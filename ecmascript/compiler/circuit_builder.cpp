@@ -174,12 +174,12 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
     return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CONVERT), type, operandTypes, inList, GateType::AnyType());
 }
 
-GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typleVal,
-                                           const std::vector<GateRef>& inList)
+GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
+                                           const std::vector<GateRef>& inList, GateType gateType)
 {
     auto unaryOpIdx = static_cast<uint64_t>(unaryOp);
-    uint64_t bitfield = (static_cast<uint64_t>(typleVal.Value()) << OPRAND_TYPE_BITS) | unaryOpIdx;
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_UNARY_OP), type, bitfield, inList, GateType::AnyType());
+    uint64_t bitfield = (static_cast<uint64_t>(typeVal.Value()) << OPRAND_TYPE_BITS) | unaryOpIdx;
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_UNARY_OP), type, bitfield, inList, gateType);
 }
 
 GateRef CircuitBuilder::Int8(int8_t val)

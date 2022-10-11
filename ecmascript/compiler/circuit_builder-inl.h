@@ -562,6 +562,18 @@ GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, Gate
     return numberBinaryOp;
 }
 
+template<TypedUnOp Op>
+GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateType)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberUnaryOp = TypedUnaryOperator(MachineType::I64, Op, xType, {currentControl, currentDepend, x}, gateType);
+    currentLabel->SetControl(numberUnaryOp);
+    currentLabel->SetDepend(numberUnaryOp);
+    return numberUnaryOp;
+}
+
 // Number operator
 template<TypedBinOp Op>
 GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)

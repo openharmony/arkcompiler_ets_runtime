@@ -200,17 +200,19 @@ void TypeLowering::LowerTypedUnaryOp(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     auto bitfield = acc_.GetBitField(gate);
     auto temp = bitfield >>  CircuitBuilder::OPRAND_TYPE_BITS;
-    auto op = static_cast<TypedUnaryOp>(bitfield ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS));
+    auto op = static_cast<TypedUnOp>(bitfield ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS));
     switch (op) {
-        case TypedUnaryOp::TYPED_TONUMBER:
+        case TypedUnOp::TYPED_TONUMBER:
             break;
-        case TypedUnaryOp::TYPED_NEG:
+        case TypedUnOp::TYPED_NEG:
             break;
-        case TypedUnaryOp::TYPED_NOT:
+        case TypedUnOp::TYPED_NOT:
             break;
-        case TypedUnaryOp::TYPED_INC:
+        case TypedUnOp::TYPED_INC:
+            LowerTypedInc(gate);
             break;
-        case TypedUnaryOp::TYPED_DEC:
+        case TypedUnOp::TYPED_DEC:
+            LowerTypedDec(gate);
             break;
         default:
             break;
@@ -357,6 +359,28 @@ void TypeLowering::LowerTypedNotEq(GateRef gate)
     return;
 }
 
+void TypeLowering::LowerTypedInc(GateRef gate)
+{
+    auto value = GetLeftType(gate);
+    if (value.IsNumberType()) {
+        LowerNumberInc(gate);
+    } else {
+        UNREACHABLE();
+    }
+    return;
+}
+
+void TypeLowering::LowerTypedDec(GateRef gate)
+{
+    auto value = GetLeftType(gate);
+    if (value.IsNumberType()) {
+        LowerNumberDec(gate);
+    } else {
+        UNREACHABLE();
+    }
+    return;
+}
+
 void TypeLowering::LowerNumberAdd(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -394,8 +418,10 @@ void TypeLowering::LowerNumberLess(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    result = CompareNumbers<TypedBinOp::TYPED_LESS>(left, right);
+    result = CompareNumbers<TypedBinOp::TYPED_LESS>(left, right, leftType, rightType);
     ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
@@ -403,8 +429,10 @@ void TypeLowering::LowerNumberLessEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    result = CompareNumbers<TypedBinOp::TYPED_LESSEQ>(left, right);
+    result = CompareNumbers<TypedBinOp::TYPED_LESSEQ>(left, right, leftType, rightType);
     ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
@@ -412,8 +440,10 @@ void TypeLowering::LowerNumberGreater(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    result = CompareNumbers<TypedBinOp::TYPED_LESS>(right, left);
+    result = CompareNumbers<TypedBinOp::TYPED_LESS>(right, left, rightType, leftType);
     ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
@@ -421,8 +451,10 @@ void TypeLowering::LowerNumberGreaterEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    result = CompareNumbers<TypedBinOp::TYPED_LESSEQ>(right, left);
+    result = CompareNumbers<TypedBinOp::TYPED_LESSEQ>(right, left, rightType, leftType);
     ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
@@ -430,8 +462,10 @@ void TypeLowering::LowerNumberDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    result = DivNumbers(left, right);
+    result = DivNumbers(left, right, leftType, rightType);
     ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
@@ -439,8 +473,10 @@ void TypeLowering::LowerNumberEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    result = CompareNumbers<TypedBinOp::TYPED_EQ>(left, right);
+    result = CompareNumbers<TypedBinOp::TYPED_EQ>(left, right, leftType, rightType);
     ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
@@ -448,12 +484,30 @@ void TypeLowering::LowerNumberNotEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    result = CompareNumbers<TypedBinOp::TYPED_NOTEQ>(left, right);
+    result = CompareNumbers<TypedBinOp::TYPED_NOTEQ>(left, right, leftType, rightType);
     ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
+void TypeLowering::LowerNumberInc(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = GetRightType(gate);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = MonocularNumber<TypedUnOp::TYPED_INC>(value, valueType);
+    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
 
+void TypeLowering::LowerNumberDec(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = GetRightType(gate);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = MonocularNumber<TypedUnOp::TYPED_DEC>(value, valueType);
+    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
 
 void TypeLowering::ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value)
 {
@@ -559,7 +613,7 @@ GateRef TypeLowering::CalculateNumbers(GateRef left, GateRef right, GateType lef
             Label notOverflowOrUnderflow(&builder_);
             // handle left is int and right is int
             GateRef res = BinaryOp<Op, MachineType::I64>(builder_.GetInt64OfTInt(left),
-                                                            builder_.GetInt64OfTInt(right));
+                                                         builder_.GetInt64OfTInt(right));
             GateRef max = builder_.Int64(INT32_MAX);
             GateRef min = builder_.Int64(INT32_MIN);
             builder_.Branch(builder_.Int64GreaterThan(res, max), &overflow, &notOverflow);
@@ -701,76 +755,108 @@ GateRef TypeLowering::FastAddOrSubOrMul(GateRef left, GateRef right)
 }
 
 template<TypedBinOp Op>
-GateRef TypeLowering::CompareNumbers(GateRef left, GateRef right)
+GateRef TypeLowering::CompareNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
     env->SubCfgEntry(&entry);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    Label leftIsInt(&builder_);
-    Label leftOrRightNotInt(&builder_);
-    Label leftOpRight(&builder_);
-    Label leftNotOpRight(&builder_);
+    DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+    DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+
     Label exit(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
-    builder_.Bind(&leftIsInt);
-    {
-        Label rightIsInt(&builder_);
-        builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
-        builder_.Bind(&rightIsInt);
+    Label doFloatOp(&builder_);
+    Label doIntOp(&builder_);
+    Label leftIsIntRightIsDouble(&builder_);
+    Label rightIsInt(&builder_);
+    Label rightIsDouble(&builder_);
+    Label leftIsInt(&builder_);
+    Label leftIsDouble(&builder_);
+    bool intOptAccessed = false;
+    bool floatOptAccessed = false;
+
+    auto LowerIntOpInt = [&]() -> void {
+        builder_.Jump(&doIntOp);
+        intOptAccessed = true;
+    };
+    auto LowerDoubleOpInt = [&]() -> void {
+        doubleLeft = builder_.GetDoubleOfTDouble(left);
+        doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
+        builder_.Jump(&doFloatOp);
+        floatOptAccessed = true;
+    };
+    auto LowerIntOpDouble = [&]() -> void {
+        doubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
+        doubleRight = builder_.GetDoubleOfTDouble(right);
+        builder_.Jump(&doFloatOp);
+        floatOptAccessed = true;
+    };
+    auto LowerDoubleOpDouble = [&]() -> void {
+        doubleLeft = builder_.GetDoubleOfTDouble(left);
+        doubleRight = builder_.GetDoubleOfTDouble(right);
+        builder_.Jump(&doFloatOp);
+        floatOptAccessed = true;
+    };
+    auto LowerRightWhenLeftIsInt = [&]() -> void {
+        if (rightType.IsIntType()) {
+            LowerIntOpInt();
+        } else if (rightType.IsDoubleType()) {
+            LowerIntOpDouble();
+        } else {
+            builder_.Branch(builder_.TaggedIsInt(right), &doIntOp, &leftIsIntRightIsDouble);
+            intOptAccessed = true;
+            builder_.Bind(&leftIsIntRightIsDouble);
+            LowerIntOpDouble();
+        }
+    };
+    auto LowerRightWhenLeftIsDouble = [&]() -> void {
+        if (rightType.IsIntType()) {
+            LowerDoubleOpInt();
+        } else if (rightType.IsDoubleType()) {
+            LowerDoubleOpDouble();
+        } else {
+            builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+            builder_.Bind(&rightIsInt);
+            LowerDoubleOpInt();
+            builder_.Bind(&rightIsDouble);
+            LowerDoubleOpDouble();
+        }
+    };
+
+    if (leftType.IsIntType()) {
+        // left is int
+        LowerRightWhenLeftIsInt();
+    } else if (leftType.IsDoubleType()){
+        // left is double
+        LowerRightWhenLeftIsDouble();
+    } else {
+        // left is number and need typecheck in runtime
+        builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+        builder_.Bind(&leftIsInt);
+        LowerRightWhenLeftIsInt();
+        builder_.Bind(&leftIsDouble);
+        LowerRightWhenLeftIsDouble();
+    }
+    if (intOptAccessed) {
+        builder_.Bind(&doIntOp);
         {
             GateRef intLeft = builder_.GetInt32OfTInt(left);
             GateRef intRight = builder_.GetInt32OfTInt(right);
-            builder_.Branch(CompareInt<Op>(intLeft, intRight), &leftOpRight, &leftNotOpRight);
+            auto cmp = builder_.ZExtInt1ToInt64(CompareInt<Op>(intLeft, intRight));
+            auto res = builder_.Int64Or(cmp, builder_.Int64(JSTaggedValue::TAG_BOOLEAN_MASK));
+            result = builder_.Int64ToTaggedPtr(res);
+            builder_.Jump(&exit);
         }
     }
-    builder_.Bind(&leftOrRightNotInt);
-    {
-        // fast path
-        DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
-        DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0.0));
-        Label leftIsInt1(&builder_);
-        Label leftNotInt1(&builder_);
-        Label exit1(&builder_);
-        Label exit2(&builder_);
-        Label rightIsInt1(&builder_);
-        Label rightNotInt1(&builder_);
-        builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
-        builder_.Bind(&leftIsInt1);
+    if (floatOptAccessed) {
+        builder_.Bind(&doFloatOp);
         {
-            doubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
-            builder_.Jump(&exit1);
+            // Other situations
+            auto cmp = builder_.ZExtInt1ToInt64(CompareDouble<Op>(*doubleLeft, *doubleRight));
+            auto res = builder_.Int64Or(cmp, builder_.Int64(JSTaggedValue::TAG_BOOLEAN_MASK));
+            result = builder_.Int64ToTaggedPtr(res);
+            builder_.Jump(&exit);
         }
-        builder_.Bind(&leftNotInt1);
-        {
-            doubleLeft = builder_.GetDoubleOfTDouble(left);
-            builder_.Jump(&exit1);
-        }
-        builder_.Bind(&exit1);
-        builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
-        builder_.Bind(&rightIsInt1);
-        {
-            doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
-            builder_.Jump(&exit2);
-        }
-        builder_.Bind(&rightNotInt1);
-        {
-            doubleRight = builder_.GetDoubleOfTDouble(right);
-            builder_.Jump(&exit2);
-        }
-        builder_.Bind(&exit2);
-        builder_.Branch(CompareDouble<Op>(*doubleLeft, *doubleRight), &leftOpRight,
-                        &leftNotOpRight);
-    }
-    builder_.Bind(&leftOpRight);
-    {
-        result = builder_.TaggedTrue();
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&leftNotOpRight);
-    {
-        result = builder_.TaggedFalse();
-        builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
     auto ret = *result;
@@ -834,6 +920,117 @@ GateRef TypeLowering::CompareDouble(GateRef left, GateRef right)
             break;
     }
     return condition;
+}
+
+template<TypedUnOp Op>
+GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
+{
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    DEFVAlUE(doubleVal, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+
+    Label exit(&builder_);
+    Label doFloatOp(&builder_);
+    Label doIntOp(&builder_);
+    Label valueIsInt(&builder_);
+    Label valueIsDouble(&builder_);
+    bool intOptAccessed = false;
+
+    auto LowerIntOp = [&]() -> void {
+        builder_.Jump(&doIntOp);
+        intOptAccessed = true;
+    };
+    auto LowerDoubleOp = [&]() -> void {
+        doubleVal = builder_.GetDoubleOfTDouble(value);
+        builder_.Jump(&doFloatOp);
+    };
+
+    if (valueType.IsIntType()) {
+        // left is int
+        LowerIntOp();
+    } else if (valueType.IsDoubleType()){
+        // left is double
+        LowerDoubleOp();
+    } else {
+        // left is number and need typecheck in runtime
+        builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+        builder_.Bind(&valueIsInt);
+        LowerIntOp();
+        builder_.Bind(&valueIsDouble);
+        LowerDoubleOp();
+    }
+    if (intOptAccessed) {
+        builder_.Bind(&doIntOp);
+        {
+            GateRef intVal = builder_.GetInt64OfTInt(value);
+            GateRef res = Circuit::NullGate();
+            switch (Op) {
+                case TypedUnOp::TYPED_INC: {
+                    Label overflow(&builder_);
+                    Label notOverflow(&builder_);
+                    GateRef max = builder_.Int64(INT32_MAX);
+                    builder_.Branch(builder_.Int64Equal(intVal, max), &overflow, &notOverflow);
+                    builder_.Bind(&overflow);
+                    {
+                        res = builder_.Double(JSTaggedValue::TAG_INT32_INC_MAX);
+                        result = DoubleToTaggedDoublePtr(res);
+                        builder_.Jump(&exit);
+                    }
+                    builder_.Bind(&notOverflow);
+                    {
+                        res = builder_.Int64Add(intVal, builder_.Int64(1));
+                        result = builder_.ToTaggedIntPtr(res);
+                        builder_.Jump(&exit);
+                    }
+                    break;
+                }
+                case TypedUnOp::TYPED_DEC: {
+                    Label underflow(&builder_);
+                    Label notUnderflow(&builder_);
+                    GateRef min = builder_.Int64(INT32_MIN);
+                    builder_.Branch(builder_.Int64Equal(intVal, min), &underflow, &notUnderflow);
+                    builder_.Bind(&underflow);
+                    {
+                        res = builder_.Double(JSTaggedValue::TAG_INT32_DEC_MIN);
+                        result = DoubleToTaggedDoublePtr(res);
+                        builder_.Jump(&exit);
+                    }
+                    builder_.Bind(&notUnderflow);
+                    {
+                        res = builder_.Int64Sub(intVal, builder_.Int64(1));
+                        result = builder_.ToTaggedIntPtr(res);
+                        builder_.Jump(&exit);
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+    builder_.Bind(&doFloatOp);
+    {
+        // Other situations
+        auto res = Circuit::NullGate();
+        switch (Op) {
+            case TypedUnOp::TYPED_INC:
+                res = builder_.DoubleAdd(*doubleVal, builder_.Double(1.0));
+                break;
+            case TypedUnOp::TYPED_DEC:
+                res = builder_.DoubleSub(*doubleVal, builder_.Double(1.0));
+                break;
+            default:
+                break;
+        }
+        result = DoubleToTaggedDoublePtr(res);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 template<OpCode::Op Op, MachineType Type>
@@ -1159,7 +1356,7 @@ GateRef TypeLowering::FastDiv(GateRef left, GateRef right)
     return ret;
 }
 
-GateRef TypeLowering::DivNumbers(GateRef left, GateRef right)
+GateRef TypeLowering::DivNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -1167,40 +1364,78 @@ GateRef TypeLowering::DivNumbers(GateRef left, GateRef right)
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
     DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-    Label leftIsNumberAndRightIsNumber(&builder_);
-    Label leftIsDoubleAndRightIsDouble(&builder_);
+    Label doFloatOp(&builder_);
+    Label leftIsIntRightIsInt(&builder_);
+    Label leftIsIntRightIsDouble(&builder_);
+    Label rightIsInt(&builder_);
+    Label rightIsDouble(&builder_);
+    Label leftIsInt(&builder_);
+    Label leftIsDouble(&builder_);
     Label exit(&builder_);
 
-    Label leftIsInt(&builder_);
-    Label leftNotInt(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftNotInt);
-    builder_.Bind(&leftIsInt);
-    {
+    auto LowerIntOpInt = [&]() -> void {
         doubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
-        builder_.Jump(&leftIsNumberAndRightIsNumber);
-    }
-    builder_.Bind(&leftNotInt);
-    {
+        doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
+        builder_.Jump(&doFloatOp);
+    };
+    auto LowerDoubleOpInt = [&]() -> void {
         doubleLeft = builder_.GetDoubleOfTDouble(left);
-        builder_.Jump(&leftIsNumberAndRightIsNumber);
-    }
-    builder_.Bind(&leftIsNumberAndRightIsNumber);
-    {
-        Label rightIsInt(&builder_);
-        Label rightNotInt(&builder_);
-        builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightNotInt);
-        builder_.Bind(&rightIsInt);
-        {
-            doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
-            builder_.Jump(&leftIsDoubleAndRightIsDouble);
+        doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
+        builder_.Jump(&doFloatOp);
+    };
+    auto LowerIntOpDouble = [&]() -> void {
+        doubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
+        doubleRight = builder_.GetDoubleOfTDouble(right);
+        builder_.Jump(&doFloatOp);
+    };
+    auto LowerDoubleOpDouble = [&]() -> void {
+        doubleLeft = builder_.GetDoubleOfTDouble(left);
+        doubleRight = builder_.GetDoubleOfTDouble(right);
+        builder_.Jump(&doFloatOp);
+    };
+    auto LowerRightWhenLeftIsInt = [&]() -> void {
+        if (rightType.IsIntType()) {
+            LowerIntOpInt();
+        } else if (rightType.IsDoubleType()) {
+            LowerIntOpDouble();
+        } else {
+            builder_.Branch(builder_.TaggedIsInt(right), &leftIsIntRightIsInt, &leftIsIntRightIsDouble);
+            builder_.Bind(&leftIsIntRightIsInt);
+            LowerIntOpInt();
+            builder_.Bind(&leftIsIntRightIsDouble);
+            LowerIntOpDouble();
         }
-        builder_.Bind(&rightNotInt);
-        {
-            doubleRight = builder_.GetDoubleOfTDouble(right);
-            builder_.Jump(&leftIsDoubleAndRightIsDouble);
+    };
+    auto LowerRightWhenLeftIsDouble = [&]() -> void {
+        if (rightType.IsIntType()) {
+            LowerDoubleOpInt();
+        } else if (rightType.IsDoubleType()) {
+            LowerDoubleOpDouble();
+        } else {
+            builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+            builder_.Bind(&rightIsInt);
+            LowerDoubleOpInt();
+            builder_.Bind(&rightIsDouble);
+            LowerDoubleOpDouble();
         }
+    };
+
+    if (leftType.IsIntType()) {
+        // left is int
+        LowerRightWhenLeftIsInt();
+    } else if (leftType.IsDoubleType()){
+        // left is double
+        LowerRightWhenLeftIsDouble();
+    } else {
+        // left is number and need typecheck in runtime
+        builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+        builder_.Bind(&leftIsInt);
+        LowerRightWhenLeftIsInt();
+        builder_.Bind(&leftIsDouble);
+        LowerRightWhenLeftIsDouble();
     }
-    builder_.Bind(&leftIsDoubleAndRightIsDouble);
+
+    builder_.Bind(&doFloatOp);
     {
         Label rightIsZero(&builder_);
         Label rightNotZero(&builder_);

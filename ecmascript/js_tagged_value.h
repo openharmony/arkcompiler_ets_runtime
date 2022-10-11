@@ -77,6 +77,8 @@ public:
     static constexpr JSTaggedType TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
     // int tag
     static constexpr JSTaggedType TAG_INT = TAG_MARK;
+    static constexpr JSTaggedType TAG_INT32_INC_MAX = INT32_MAX + 1ULL;
+    static constexpr JSTaggedType TAG_INT32_DEC_MIN = INT32_MIN - 1ULL;
     // object tag
     static constexpr JSTaggedType TAG_OBJECT = 0x0000ULL << TAG_BITS_SHIFT;
     // weak object tag

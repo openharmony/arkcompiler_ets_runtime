@@ -59,6 +59,8 @@ private:
     void LowerTypedDiv(GateRef gate);
     void LowerTypedEq(GateRef gate);
     void LowerTypedNotEq(GateRef gate);
+    void LowerTypedInc(GateRef gate);
+    void LowerTypedDec(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
 
@@ -66,9 +68,9 @@ private:
     bool IsTrustedType(GateRef gate) const;
 
     template<TypedBinOp Op>
-    void SpeculateNumberCalculate(GateRef gate);
-    template<TypedBinOp Op>
-    void SpeculateNumberCompare(GateRef gate);
+    void SpeculateNumbers(GateRef gate);
+    template<TypedUnOp Op>
+    void SpeculateNumber(GateRef gate);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

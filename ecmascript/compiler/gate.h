@@ -81,7 +81,7 @@ enum class TypedBinOp : BinaryOp {
     TYPED_EXP,
 };
 
-enum class TypedUnaryOp : uint8_t {
+enum class TypedUnOp : uint8_t {
     TYPED_TONUMBER,
     TYPED_NEG,
     TYPED_NOT,

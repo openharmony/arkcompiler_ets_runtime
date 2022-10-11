@@ -26,7 +26,8 @@ public:
     static std::tuple<std::vector<GateRef>, std::unordered_map<GateRef, size_t>, std::vector<size_t>>
     CalculateDominatorTree(const Circuit *circuit);
 
-    static ControlFlowGraph Run(const Circuit *circuit, const std::string& methodName = "", bool enableLog = false);
+    static ControlFlowGraph Run(const Circuit *circuit, [[maybe_unused]] const std::string& methodName = "",
+                                bool enableLog = false);
 
     static std::optional<std::unordered_map<GateRef, size_t>> CalculateSchedulingUpperBound(const Circuit *circuit,
         const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
