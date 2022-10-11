@@ -243,8 +243,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     } else {
         functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
     }
-    JSHandle<JSFunction> jsFunc =
-        factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
+    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
 
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
     CString moduleName = jsPandaFile->GetJSPandaFileDesc();

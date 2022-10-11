@@ -142,6 +142,9 @@ using ecmascript::DebugInfoExtractor;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
+template<typename T>
+using JSMutableHandle = ecmascript::JSMutableHandle<T>;
+
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
@@ -1290,19 +1293,24 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
             ecmascript::SourceTextModule::Cast(function->GetModule().GetTaggedObject())->GetEcmaModuleRecordName();
         entry = ConvertToString(recordName);
     }
-    const std::string &allSourceCode = debugExtractor->GetSourceCode(panda_file::File::EntityId(
-        jsPandaFile->GetMainMethodIndex(entry)));
+
+    uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entry);
+    JSMutableHandle<JSTaggedValue> sourceCodeHandle(thread, BuiltinsBase::GetTaggedString(thread, ""));
+    if (mainMethodIndex == 0) {
+        return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
+    }
+
+    const std::string &allSourceCode = debugExtractor->GetSourceCode(panda_file::File::EntityId(mainMethodIndex));
     std::string sourceCode = StringHelper::GetSpecifiedLine(allSourceCode, lineNumber);
     uint32_t codeLen = sourceCode.length();
     if (codeLen == 0 || sourceCode == "ANDA") {
-        sourceCode = "";
-        JSHandle<JSTaggedValue> sourceCodeHandle(thread, BuiltinsBase::GetTaggedString(thread, sourceCode.c_str()));
         return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
     }
+
     if (sourceCode[codeLen - 1] == '\r') {
         sourceCode = sourceCode.substr(0, codeLen - 1);
     }
-    JSHandle<JSTaggedValue> sourceCodeHandle(thread, BuiltinsBase::GetTaggedString(thread, sourceCode.c_str()));
+    sourceCodeHandle.Update(BuiltinsBase::GetTaggedString(thread, sourceCode.c_str()));
     return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
 }
 

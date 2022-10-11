@@ -191,7 +191,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     JSHandle<ConstantPool> constpool = AllocateConstPool(vm, jsPandaFile);
 
-    EcmaHandleScope handleScope(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     const CUnorderedMap<uint32_t, uint64_t> &constpoolMap = jsPandaFile->GetConstpoolMap();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     auto fileLoader = vm->GetFileLoader();
@@ -302,7 +302,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::ARRAY_LITERAL) {
             size_t index = it.first;
-            JSHandle<TaggedArray> literal =LiteralDataExtractor::GetDatasIgnoreType(
+            JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
                 thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool));
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, literal);
@@ -337,6 +337,8 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
     ObjectFactory *factory = vm->GetFactory();
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     auto fileLoader = vm->GetFileLoader();
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CUnorderedMap<uint32_t, uint64_t> constpoolMap = *jsPandaFile->GetConstpoolMapByReocrd(entryPoint);
     for (const auto &it : constpoolMap) {
         ConstPoolValue value(it.second);
@@ -432,7 +434,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());
         } else if (value.GetConstpoolType() == ConstPoolType::ARRAY_LITERAL) {
             size_t index = it.first;
-            JSHandle<TaggedArray> literal =LiteralDataExtractor::GetDatasIgnoreType(
+            JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
                 thread, jsPandaFile, static_cast<size_t>(index), JSHandle<JSTaggedValue>(constpool), entryPoint);
             if (isLoadedAOT) {
                 fileLoader->SetAOTFuncEntryForLiteral(jsPandaFile, literal);

@@ -2463,19 +2463,22 @@ OptimizedJSFunctionFrame *RuntimeStubs::GetOptimizedJSFunctionFrame(JSThread *th
 
 JSTaggedValue RuntimeStubs::RuntimeLdPatchVar(JSThread *thread, uint32_t index)
 {
-    JSHandle<JSTaggedValue> globalPatch = thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalPatch();
+    JSHandle<TaggedArray> globalPatch =
+        JSHandle<TaggedArray>::Cast(thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalPatch());
 
-    OperationResult res = JSTaggedValue::GetProperty(thread, globalPatch, index);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return res.GetValue().GetTaggedValue();
+    return globalPatch->Get(thread, index);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeStPatchVar(JSThread *thread, uint32_t index, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<JSTaggedValue> globalPatch = thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalPatch();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
-    JSTaggedValue::SetProperty(thread, globalPatch, index, value, true);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<TaggedArray> globalPatch = JSHandle<TaggedArray>::Cast(env->GetGlobalPatch());
+    if (index >= globalPatch->GetLength()) {
+        globalPatch = TaggedArray::SetCapacity(thread, globalPatch, index + 1);
+    }
+    globalPatch->Set(thread, index, value);
+    env->SetGlobalPatch(thread, globalPatch.GetTaggedValue());
     return JSTaggedValue::True();
 }
 }  // namespace panda::ecmascript
