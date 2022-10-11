@@ -21,12 +21,12 @@
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/js_array.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -663,6 +663,21 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
     return CallSetter(thread, *accessor, receiver, value, mayThrow);
 }
 
+void JSObject::CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> arr(thread, obj->GetElements());
+    if (Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*arr))->InNonMovableSpace()) {
+        obj->SetElements(thread, factory->CopyArray(arr, arr->GetLength(), arr->GetLength(), JSTaggedValue::Hole(),
+            MemSpaceType::SEMI_SPACE));
+    }
+    JSHandle<TaggedArray> propertiesArray(thread, obj->GetProperties());
+    if (Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*propertiesArray))->InNonMovableSpace()) {
+        obj->SetProperties(thread, factory->CopyArray(propertiesArray, propertiesArray->GetLength(),
+            propertiesArray->GetLength(), JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE));
+    }
+}
+
 bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const JSHandle<JSTaggedValue> &receiver,
                           const JSHandle<JSTaggedValue> &value, bool mayThrow)
 {
@@ -904,6 +919,12 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
 bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool extensible, const PropertyDescriptor &desc,
                                                   const PropertyDescriptor &current)
 {
+    if (op->GetHolder().GetTaggedValue().IsJSArray()) {
+        CheckAndCopyArray(op->GetThread(), JSHandle<JSArray>::Cast(op->GetHolder()));
+    }
+    if (op->GetReceiver() != op->GetHolder() && op->GetReceiver().GetTaggedValue().IsJSArray()) {
+        CheckAndCopyArray(op->GetThread(), JSHandle<JSArray>::Cast(op->GetReceiver()));
+    }
     // 2. If current is undefined, then
     if (current.IsEmpty()) {
         // 2a. If extensible is false, return false.

@@ -610,7 +610,7 @@ public:
 
     static JSHandle<JSTaggedValue> IterableToList(JSThread *thread, const JSHandle<JSTaggedValue> &items,
                                                   JSTaggedValue method = JSTaggedValue::Undefined());
-
+    static void CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj);
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
