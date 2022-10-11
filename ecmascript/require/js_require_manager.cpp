@@ -28,7 +28,7 @@ void RequireManager::ResolveCurrentPath(JSThread *thread,
                                         const JSPandaFile *jsPandaFile)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    CString fullName = CString(jsPandaFile->GetPandaFile()->GetFilename());
+    CString fullName = jsPandaFile->GetJSPandaFileDesc();
     // find last '/'
     int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
     if (foundPos == -1) {
