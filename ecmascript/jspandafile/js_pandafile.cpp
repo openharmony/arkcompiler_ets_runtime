@@ -23,8 +23,8 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
-JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, bool isPatch)
-    : pf_(pf), desc_(descriptor), isPatch_(isPatch)
+JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
+    : pf_(pf), desc_(descriptor)
 {
     ASSERT(pf_ != nullptr);
 #if ECMASCRIPT_ENABLE_MERGE_ABC
@@ -257,20 +257,20 @@ CString JSPandaFile::FindrecordName(const CString &recordName) const
     return name;
 }
 
-std::string JSPandaFile::ParseOhmUrl(std::string fileName)
+CString JSPandaFile::ParseOhmUrl(const CString &fileName)
 {
-    std::string bundleInstallName(BUNDLE_INSTALL_PATH);
+    CString bundleInstallName(BUNDLE_INSTALL_PATH);
     size_t startStrLen =  bundleInstallName.length();
-    size_t pos = std::string::npos;
+    size_t pos = CString::npos;
 
     if (fileName.length() > startStrLen && fileName.compare(0, startStrLen, bundleInstallName) == 0) {
         pos = startStrLen;
     }
-    std::string result = fileName;
-    if (pos != std::string::npos) {
+    CString result = fileName;
+    if (pos != CString::npos) {
         result = fileName.substr(pos);
         pos = result.find('/');
-        if (pos != std::string::npos) {
+        if (pos != CString::npos) {
             result = result.substr(pos + 1);
         }
     } else {
@@ -278,14 +278,14 @@ std::string JSPandaFile::ParseOhmUrl(std::string fileName)
         result = MODULE_DEFAULE_ETS + result;
     }
     pos = result.find_last_of(".");
-    if (pos != std::string::npos) {
+    if (pos != CString::npos) {
         result = result.substr(0, pos);
     }
 
     return result;
 }
 
-std::string JSPandaFile::ParseRecordName(const std::string &fileName)
+CString JSPandaFile::ParseRecordName(const CString &fileName)
 {
     size_t begin = fileName.find_last_of("/");
     ASSERT(begin != std::string::npos);

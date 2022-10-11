@@ -39,7 +39,6 @@ public:
     static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
     static constexpr char PATCH_FUNCTION_NAME_0[] = "patch_main_0";
     static constexpr char PATCH_FUNCTION_NAME_1[] = "patch_main_1";
-    static constexpr char PATCH_RECORD_PREFIX[] = "Patch.";
 
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
@@ -56,7 +55,7 @@ public:
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
     static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
 
-    JSPandaFile(const panda_file::File *pf, const CString &descriptor, bool isPatch);
+    JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
 
     const CString &GetJSPandaFileDesc() const
@@ -240,9 +239,6 @@ public:
     CString ParseEntryPoint(const CString &recordName) const
     {
         CString record = recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
-        if (isPatch_) {
-            record = PATCH_RECORD_PREFIX + record;
-        }
         return record;
     }
 
@@ -250,9 +246,9 @@ public:
 
     CString FindrecordName(const CString &record) const;
 
-    static std::string ParseOhmUrl(std::string fileName);
+    static CString ParseOhmUrl(const CString &fileName);
     // For local merge abc, get record name from file name.
-    static std::string PUBLIC_API ParseRecordName(const std::string &fileName);
+    static CString PUBLIC_API ParseRecordName(const CString &fileName);
 
 private:
     void InitializeUnMergedPF();
@@ -272,7 +268,6 @@ private:
     bool isLoadedAOT_ {false};
     uint32_t typeSummaryOffset_ {0};
     bool isNewVersion_ {false};
-    bool isPatch_ {false};
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle

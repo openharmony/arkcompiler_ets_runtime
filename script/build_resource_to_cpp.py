@@ -15,9 +15,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Description: run script
-    expect_output will get run result,
-    expect_sub_output will catch pivotal sub output,
-    expect_file will get print string
+    input: resource file
+    output: output file
 """
 
 import argparse

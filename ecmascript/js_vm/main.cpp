@@ -91,6 +91,8 @@ int Main(const int argc, const char **argv)
         return -1;
     }
 
+    bool isMergeAbc = runtimeOptions.GetMergeAbc();
+    JSNApi::SetBundle(vm, !isMergeAbc);
     {
         LocalScope scope(vm);
         std::string entry = runtimeOptions.GetEntryPoint();

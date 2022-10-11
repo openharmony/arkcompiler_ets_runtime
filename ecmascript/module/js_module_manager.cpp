@@ -256,7 +256,13 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModuleWithMerge(con
         UNREACHABLE();
     }
 
-    return ResolveModuleWithMerge(thread, jsPandaFile, recordName);
+    JSHandle<SourceTextModule> moduleRecord = ResolveModuleWithMerge(thread, jsPandaFile, recordName);
+    JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
+    resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
+                                           JSHandle<JSTaggedValue>(moduleRecord), PropertyAttributes::Default())
+                                           .GetTaggedValue();
+
+    return moduleRecord;
 }
 
 JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CString &referencingModule)
@@ -354,10 +360,6 @@ JSHandle<SourceTextModule> ModuleManager::ResolveModuleWithMerge(
 
     JSHandle<JSTaggedValue> recordNameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recordName));
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHandle);
-    JSHandle<NameDictionary> dict(thread, resolvedModules_);
-    resolvedModules_ =
-        NameDictionary::Put(thread, dict, recordNameHandle, moduleRecord, PropertyAttributes::Default())
-        .GetTaggedValue();
     return JSHandle<SourceTextModule>::Cast(moduleRecord);
 }
 
