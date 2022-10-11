@@ -303,24 +303,18 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
+                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, prototype);
                 JSHandle<Method> propMethod(thread, propFunc->GetMethod());
                 propMethod->SetConstantPool(thread, constantPool.GetTaggedValue());
                 propFunc->SetLexicalEnv(thread, lexenv);
+                propValue.Update(propFunc);
             }
             prototype->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
     } else {
         JSHandle<NameDictionary> dict = BuildDictionaryProperties(thread, prototype, nonStaticKeys, nonStaticProperties,
-                                                                  ClassPropertyType::NON_STATIC, constantPool);
-        for (uint32_t index = 0; index < nonStaticLength; ++index) {
-            propValue.Update(nonStaticProperties->Get(index));
-            if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
-                propFunc->SetLexicalEnv(thread, lexenv);
-            }
-        }
+                                                                  ClassPropertyType::NON_STATIC, constantPool, lexenv);
         prototype->SetProperties(thread, dict);
     }
 
@@ -337,25 +331,19 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, JSH
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
+                JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
                 propFunc->SetHomeObject(thread, constructor);
                 JSHandle<Method> propMethod(thread, propFunc->GetMethod());
                 propMethod->SetConstantPool(thread, constantPool.GetTaggedValue());
                 propFunc->SetLexicalEnv(thread, lexenv);
+                propValue.Update(propFunc);
             }
             JSHandle<JSObject>::Cast(constructor)->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
     } else {
         JSHandle<NameDictionary> dict = BuildDictionaryProperties(thread, JSHandle<JSObject>(constructor), staticKeys,
                                                                   staticProperties, ClassPropertyType::STATIC,
-                                                                  constantPool);
-        for (uint32_t index = 0; index < staticLength; ++index) {
-            propValue.Update(staticProperties->Get(index));
-            if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
-                propFunc->SetLexicalEnv(thread, lexenv);
-            }
-        }
+                                                                  constantPool, lexenv);
         constructor->SetProperties(thread, dict);
     }
 
@@ -380,8 +368,10 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
                                                                 JSHandle<TaggedArray> &keys,
                                                                 JSHandle<TaggedArray> &properties,
                                                                 ClassPropertyType type,
-                                                                const JSHandle<ConstantPool> &constantpool)
+                                                                const JSHandle<ConstantPool> &constantpool,
+                                                                const JSHandle<JSTaggedValue> &lexenv)
 {
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t length = keys->GetLength();
     ASSERT(length > PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES);
     ASSERT(keys->GetLength() == properties->GetLength());
@@ -418,15 +408,16 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
         propKey.Update(keys->Get(index));
         propValue.Update(properties->Get(index));
         if (propValue->IsJSFunction()) {
-            JSHandle<JSFunction> propFunc = JSHandle<JSFunction>::Cast(propValue);
+            JSHandle<JSFunction> propFunc = factory->CloneJSFuction(JSHandle<JSFunction>::Cast(propValue));
             propFunc->SetHomeObject(thread, object);
+            propFunc->SetLexicalEnv(thread, lexenv);
             JSHandle<Method> method(thread, propFunc->GetMethod());
             method->SetConstantPool(thread, constantpool.GetTaggedValue());
+            propValue.Update(propFunc);
         }
         JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attributes);
         dict.Update(newDict);
     }
-
     return dict;
 }
 

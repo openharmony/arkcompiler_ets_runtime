@@ -73,3 +73,13 @@ class B extends A {
 }
 var par = new A;
 print(par.a);
+
+for (let i = 0; i < 2; i++) {
+    class Cls{
+        foo() { }
+    }
+    if (i == 0) {
+        Cls.prototype.foo.x = 1;
+    }
+    print(Cls.prototype.foo.x);
+}

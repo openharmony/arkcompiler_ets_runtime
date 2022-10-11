@@ -93,7 +93,8 @@ private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,
                                                               JSHandle<TaggedArray> &properties, ClassPropertyType type,
-                                                              const JSHandle<ConstantPool> &constantpool);
+                                                              const JSHandle<ConstantPool> &constantpool,
+                                                              const JSHandle<JSTaggedValue> &lexenv);
 
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                          JSHandle<TaggedArray> &elements, const JSHandle<ConstantPool> &constantpool);
