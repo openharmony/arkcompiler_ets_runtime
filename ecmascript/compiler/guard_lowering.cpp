@@ -19,6 +19,7 @@ namespace panda::ecmascript::kungfu {
 void GuardLowering::LowerGuard(GateRef gate)
 {
     GateRef checkGate = acc_.GetIn(gate, 1);
+    acc_.ReplaceValueIn(gate, builder_.False(), 0);
     std::vector<GateRef> outs;
     acc_.GetOutVector(gate, outs); // get guard next gate
     ASSERT(outs.size() == 1);
@@ -32,7 +33,6 @@ void GuardLowering::LowerGuard(GateRef gate)
     acc_.ReplaceDependIn(next, dep);
     GateRef relay = builder_.DependRelay(ifFalse, dep);
     acc_.ReplaceDependIn(gate, relay);
-    acc_.ReplaceValueIn(gate, ifFalse, 0);
     builder_.Return(ifFalse, gate, gate);
 }
 
