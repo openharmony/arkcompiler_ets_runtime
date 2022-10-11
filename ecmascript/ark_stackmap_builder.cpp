@@ -171,7 +171,6 @@ void ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
                 binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&offsetType),
                     sizeof(offsetType), ptr + deoptOffset);
                 deoptOffset += sizeof(offsetType);
-                ASSERT(reg == GCStackMapRegisters::SP || reg == GCStackMapRegisters::FP);
                 LOG_COMPILER(VERBOSE) << " reg:" << std::dec << reg << " offset:" << static_cast<int>(offsetType);
                 deopt.value = std::make_pair(reg, offsetType);
                 break;
