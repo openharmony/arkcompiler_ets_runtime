@@ -134,7 +134,7 @@ void TSTypeLowering::Lower(GateRef gate)
             // lower JS_EXP
             break;
         case EcmaOpcode::TONUMERIC_IMM8:
-            // lower ToNumberic
+            LowerTypeToNumeric(gate);
             break;
         case EcmaOpcode::NEG_IMM8:
             // lower JS_NEG
@@ -147,6 +147,11 @@ void TSTypeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::DEC_IMM8:
             LowerTypedDec(gate);
+            break;
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+            LowerConditionJump(gate);
             break;
         default:
             break;
@@ -448,5 +453,39 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     std::vector<GateRef> removedGate{gate};
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(removedGate);
+}
+
+void TSTypeLowering::LowerConditionJump(GateRef gate)
+{
+    GateRef condition = acc_.GetValueIn(gate, 0);
+    GateType conditionType = acc_.GetGateType(condition);
+    if (conditionType.IsBooleanType() && IsTrustedType(condition)) {
+        SpeculateConditionJump(gate);
+    }
+}
+
+void TSTypeLowering::SpeculateConditionJump(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef condition = builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE);
+    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
+    ReplaceGate(gate, ifBranch, builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TSTypeLowering::ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value)
+{
+    auto uses = acc_.Uses(gate);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (acc_.IsStateIn(useIt)) {
+            useIt = acc_.ReplaceIn(useIt, state);
+        } else if (acc_.IsDependIn(useIt)) {
+            useIt = acc_.ReplaceIn(useIt, depend);
+        } else if (acc_.IsValueIn(useIt)) {
+            useIt = acc_.ReplaceIn(useIt, value);
+        } else {
+            UNREACHABLE();
+        }
+    }
+    acc_.DeleteGate(gate);
 }
 }  // namespace panda::ecmascript
