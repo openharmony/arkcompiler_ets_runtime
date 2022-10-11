@@ -120,6 +120,7 @@ const std::string HELP_OPTION_MSG =
     "--startup-time: Print the start time of command execution. Default: false\n"
     "--stub-file: Path of file includes common stubs module compiled by stub compiler. Default: \"stub.an\"\n"
     "--target-triple: target triple for aot compiler or stub compiler.\n"
+    "--enable-print-execute-time: enable print execute pandafile spent time\"\n"
     "       Possible values: [\"x86_64-unknown-linux-gnu\", \"arm-unknown-linux-gnu\", "
                              "\"aarch64-unknown-linux-gnu\"].\n"
     "       Default: \"x86_64-unknown-linux-gnu\"\n";
@@ -173,7 +174,8 @@ enum CommandValues {
     OPTION_MERGE_ABC,
     OPTION_ENABLE_TYPE_LOWERING,
     OPTION_HELP,
-    OPTION_OPTIONS
+    OPTION_OPTIONS,
+    OPTION_PRINT_EXECUTE_TIME
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -800,6 +802,16 @@ public:
         mergeAbc_ = value;
     }
 
+    void SetEnablePrintExecuteTime(bool value)
+    {
+        enablePrintExecuteTime_ = value;
+    }
+
+    bool IsEnablePrintExecuteTime()
+    {
+        return enablePrintExecuteTime_;
+    }
+
     void ParseAbcListFile(std::vector<std::string> &moduleList) const
     {
         std::ifstream moduleFile(abcFilelist_);
@@ -890,6 +902,7 @@ private:
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};
     uint64_t wasSet_ {0};
+    bool enablePrintExecuteTime_ {false};
 };
 }  // namespace panda::ecmascript
 

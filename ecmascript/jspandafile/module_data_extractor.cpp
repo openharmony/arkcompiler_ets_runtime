@@ -61,6 +61,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
                                              panda_file::File::EntityId moduleId,
                                              JSHandle<SourceTextModule> &moduleRecord)
 {
+    [[maybe_unused]] EcmaHandleScope scope(thread);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ModuleDataAccessor mda(*pf, moduleId);

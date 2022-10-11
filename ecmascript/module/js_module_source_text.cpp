@@ -217,6 +217,7 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<SourceTextMod
 int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
                                                CVector<JSHandle<SourceTextModule>> &stack, int index)
 {
+    [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. If module is not a Source Text Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
         //  a. Perform ? module.Instantiate().
@@ -251,6 +252,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
         size_t requestedModulesLen = requestedModules->GetLength();
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            [[maybe_unused]] EcmaHandleScope scope2(thread);
             required.Update(requestedModules->Get(idx));
             // a. Let requiredModule be ? HostResolveImportedModule(module, required).
             JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
@@ -539,6 +541,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
                                             CVector<JSHandle<SourceTextModule>> &stack, int index,
                                             const void *buffer, size_t size)
 {
+    [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. If module is not a Source Text Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
         //  a. Perform ? module.Instantiate().
@@ -581,6 +584,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
         size_t requestedModulesLen = requestedModules->GetLength();
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            [[maybe_unused]] EcmaHandleScope scope2(thread);
             required.Update(requestedModules->Get(idx));
             // a. Let requiredModule be ! HostResolveImportedModule(module, required).
             JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
