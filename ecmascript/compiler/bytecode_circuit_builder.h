@@ -583,7 +583,7 @@ private:
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
-    void RemoveDeadRegions(const std::map<size_t, size_t> &dfsTimestamp);
+    void RemoveDeadRegions();
     void InsertPhi();
     void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
@@ -640,6 +640,8 @@ private:
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
     FrameStateBuilder frameStateBuilder_;
     std::string methodName_;
+    std::vector<size_t> bbDfsList_;
+    std::map<size_t, size_t> bbIdToDfsTimestamp_; // (basicblock id, dfs order)
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

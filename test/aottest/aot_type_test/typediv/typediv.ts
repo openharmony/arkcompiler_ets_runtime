@@ -19,7 +19,7 @@ let b:number = 2;
 let c:number = a / b;
 print(c);
 
-/*
+
 function foo(arg0:number, arg1:number) {
     print(arg0 / arg1);
 }
@@ -39,5 +39,3 @@ function foo2(arg:number) {
     return arg;
 }
 print(foo2(3));
-
- */
