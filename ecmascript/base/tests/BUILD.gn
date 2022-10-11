@@ -30,6 +30,7 @@ host_unittest_action("BaseTest") {
     "json_parser_test.cpp",
     "json_stringifier_test.cpp",
     "number_helper_test.cpp",
+    "typed_array_helper_test.cpp",
     "utf_helper_test.cpp",
   ]
 
