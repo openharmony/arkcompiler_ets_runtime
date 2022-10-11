@@ -410,13 +410,12 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
     JSTaggedValue env = mainFunc->GetLexicalEnv();
     Method *method = mainFunc->GetCallTarget();
     args[6] = env.GetRawData(); // 6: last arg is env.
-    ASSERT(method->GetCodeEntry() != 0);
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             reinterpret_cast<uintptr_t>(thread_->GetCurrentSPFrame()),
                                                             static_cast<uint32_t>(args.size()) - 1,
                                                             static_cast<uint32_t>(args.size()) - 1,
                                                             args.data(),
-                                                            method->GetCodeEntry());
+                                                            method->GetCodeEntryOrLiteral());
     return JSTaggedValue(res);
 }
 

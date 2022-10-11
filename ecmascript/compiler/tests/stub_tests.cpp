@@ -94,7 +94,7 @@ public:
         method->SetAotCodeBit(true);
         method->SetNativeBit(false);
         method->SetNumArgsWithCallField(numArgs);
-        method->SetCodeEntry(reinterpret_cast<uintptr_t>(codeEntry));
+        method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(codeEntry));
         JSHandle<JSFunction> jsfunc = factory->NewJSFunction(env, method);
         return jsfunc.GetTaggedValue();
     }

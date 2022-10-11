@@ -68,7 +68,7 @@ DEF_RUNTIME_STUBS(DefineAotFunc)
     method->SetAotCodeBit(true);
     method->SetNativeBit(false);
     method->SetNumArgsWithCallField(numArgs.GetInt());
-    method->SetCodeEntry(reinterpret_cast<uintptr_t>(codeEntry));
+    method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(codeEntry));
     JSHandle<JSFunction> jsfunc = factory->NewJSFunction(env, method);
     return jsfunc.GetTaggedValue().GetRawData();
 }
