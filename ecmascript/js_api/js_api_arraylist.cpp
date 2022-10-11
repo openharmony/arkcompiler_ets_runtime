@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_api/js_api_arraylist.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_function.h"
@@ -25,6 +26,8 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 bool JSAPIArrayList::Add(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
                          const JSHandle<JSTaggedValue> &value)
 {
@@ -41,11 +44,14 @@ void JSAPIArrayList::Insert(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
                             const JSHandle<JSTaggedValue> &value, const int &index)
 {
     int length = arrayList->GetLength().GetInt();
-    if (index < 0 || index >= length) {
-        THROW_ERROR(thread, ErrorType::RANGE_ERROR, "ArrayList: set out-of-bounds");
+    if (index < 0 || index > length) {
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << length
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     JSHandle<TaggedArray> elements = GrowCapacity(thread, arrayList, length + 1);
-
     ASSERT(!elements->IsDictionaryMode());
     for (int i = length - 1; i >= index; --i) {
         elements->Set(thread, i + 1, elements->Get(i));
@@ -120,7 +126,11 @@ void JSAPIArrayList::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIA
 JSTaggedValue JSAPIArrayList::Get(JSThread *thread, const uint32_t index)
 {
     if (index >= GetLength().GetArrayLength()) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Get property index out-of-bounds", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= "
+            << (GetLength().GetArrayLength() - 1) << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
@@ -166,7 +176,11 @@ bool JSAPIArrayList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayLi
 {
     int length = arrayList->GetLength().GetInt();
     if (index < 0 || index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "removeByIndex is out-of-bounds", false);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
@@ -187,7 +201,11 @@ bool JSAPIArrayList::Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
     int curLength = length;
     if (index >= 0) {
         if (index >= curLength) {
-            THROW_RANGE_ERROR_AND_RETURN(thread, "index-out-of-bounds", false);
+            std::ostringstream oss;
+            oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (curLength - 1)
+            << ". Received value is: " << index;
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
         }
 
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
@@ -209,13 +227,20 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
     int32_t startIndex = JSTaggedValue::ToInt32(thread, value1);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, value2);
     int32_t length = arrayList->GetLength().GetInt();
-    if (endIndex <= startIndex) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "fromIndex cannot be less than or equal to toIndex",
-                                     JSTaggedValue::Exception());
+    int32_t size = length > endIndex ? endIndex : length;
+    if (startIndex < 0 || startIndex >= size) {
+        std::ostringstream oss;
+        oss << "The value of \"fromIndex\" is out of range. It must be >= 0 && <= " << (size - 1)
+            << ". Received value is: " << startIndex;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-
-    if (startIndex < 0 || startIndex >= length || endIndex < 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "ArrayList: set out-of-bounds", JSTaggedValue::Exception());
+    if (endIndex <= startIndex || endIndex < 0 || endIndex > length) {
+        std::ostringstream oss;
+        oss << "The value of \"toIndex\" is out of range. It must be >= 0 && <= " << length
+            << ". Received value is: " << endIndex;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     int32_t toIndex;
@@ -266,7 +291,11 @@ JSTaggedValue JSAPIArrayList::ReplaceAllElements(JSThread *thread, const JSHandl
 JSTaggedValue JSAPIArrayList::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
     if (index >= GetLength().GetArrayLength()) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Set property index out-of-bounds", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= "
+            << (GetLength().GetArrayLength() - 1) << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
@@ -281,13 +310,22 @@ JSHandle<JSAPIArrayList> JSAPIArrayList::SubArrayList(JSThread *thread, const JS
     int length = arrayList->GetLength().GetInt();
     int fromIndex = JSTaggedValue::ToInt32(thread, value1);
     int toIndex = JSTaggedValue::ToInt32(thread, value2);
-    if (toIndex <= fromIndex) {
+    int32_t size = length > toIndex ? toIndex : length;
+    if (fromIndex < 0 || fromIndex >= size) {
+        std::ostringstream oss;
+        oss << "The value of \"fromIndex\" is out of range. It must be >= 0 && <= " << (size - 1)
+            << ". Received value is: " << fromIndex;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         JSHandle<JSAPIArrayList> newArrayList = thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(0);
-        THROW_RANGE_ERROR_AND_RETURN(thread, "fromIndex cannot be less than or equal to toIndex", newArrayList);
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, newArrayList);
     }
-    if (fromIndex < 0 || fromIndex >= length || toIndex < 0) {
+    if (toIndex <= fromIndex || toIndex < 0 || toIndex > length) {
+        std::ostringstream oss;
+        oss << "The value of \"toIndex\" is out of range. It must be >= 0 && <= " << length
+            << ". Received value is: " << toIndex;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         JSHandle<JSAPIArrayList> newArrayList = thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(0);
-        THROW_RANGE_ERROR_AND_RETURN(thread, "fromIndex or toIndex is out-of-bounds", newArrayList);
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, newArrayList);
     }
 
     int endIndex = toIndex >= length - 1 ? length - 1 : toIndex;
@@ -386,12 +424,21 @@ bool JSAPIArrayList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIArrayL
 {
     uint32_t index = 0;
     if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Can not obtain attributes of no-number type", false);
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
+            + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     uint32_t length = obj->GetLength().GetArrayLength();
     if (index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetOwnProperty index out-of-bounds", false);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     obj->Get(thread, index);
@@ -413,8 +460,12 @@ OperationResult JSAPIArrayList::GetProperty(JSThread *thread, const JSHandle<JSA
     int length = obj->GetLength().GetInt();
     int index = key->GetInt();
     if (index < 0 || index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetProperty index out-of-bounds",
-                                     OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                         OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     }
 
     return OperationResult(thread, obj->Get(thread, index), PropertyMetaData(false));

@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_api/js_api_list.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_list_iterator.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
@@ -25,6 +26,8 @@
 #include "ecmascript/tagged_list.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 void JSAPIList::Add(JSThread *thread, const JSHandle<JSAPIList> &list, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
@@ -56,7 +59,11 @@ JSTaggedValue JSAPIList::Insert(JSThread *thread, const JSHandle<JSAPIList> &lis
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
     int nodeLength = singleList->Length();
     if (index < 0 || index > nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << nodeLength
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSTaggedValue newList = TaggedSingleList::Insert(thread, singleList, value, index);
     list->SetSingleList(thread, newList);
@@ -69,7 +76,11 @@ JSTaggedValue JSAPIList::Set(JSThread *thread, const JSHandle<JSAPIList> &list,
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
     int nodeLength = singleList->Length();
     if (index < 0 || index >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (nodeLength - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSTaggedValue oldValue = singleList->Get(index);
     TaggedSingleList::Set(thread, singleList, index, value);
@@ -121,7 +132,12 @@ JSTaggedValue JSAPIList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPILis
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
     int nodeLength = singleList->Length();
     if (index < 0 || index >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", JSTaggedValue::Exception());
+        int size = (nodeLength > 0) ? (nodeLength - 1) : 0;
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << size
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     return singleList->RemoveByIndex(thread, index);
 }
@@ -166,13 +182,20 @@ JSTaggedValue JSAPIList::GetSubList(JSThread *thread, const JSHandle<JSAPIList> 
 {
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
     int nodeLength = singleList->Length();
-    if (fromIndex < 0 || toIndex < 0 || toIndex >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the fromIndex or the toIndex is out-of-bounds",
-                                     JSTaggedValue::Exception());
+    int32_t size = nodeLength > toIndex ? toIndex : nodeLength;
+    if (fromIndex < 0 || fromIndex >= size) {
+        std::ostringstream oss;
+        oss << "The value of \"fromIndex\" is out of range. It must be >= 0 && <= "
+            << (size - 1) << ". Received value is: " << fromIndex;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (fromIndex >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the toIndex cannot be less than or equal to fromIndex",
-                                     JSTaggedValue::Exception());
+    if (toIndex < 0 || toIndex <= fromIndex || toIndex >= nodeLength) {
+        std::ostringstream oss;
+        oss << "The value of \"toIndex\" is out of range. It must be >= 0 && <= "
+            << nodeLength << ". Received value is: " << toIndex;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     int len = TaggedSingleList::ELEMENTS_START_INDEX + (toIndex - fromIndex) * TaggedSingleList::ENTRY_SIZE;
     JSHandle<JSAPIList> sublist = thread->GetEcmaVM()->GetFactory()->NewJSAPIList();
@@ -192,12 +215,21 @@ bool JSAPIList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIList> &list
 {
     uint32_t index = 0;
     if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Can not obtain attributes of no-number type", false);
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
+            + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
     uint32_t length = static_cast<uint32_t>(singleList->Length());
     if (index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetOwnProperty index out-of-bounds", false);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
     list->Get(index);
     return true;
@@ -210,8 +242,13 @@ OperationResult JSAPIList::GetProperty(JSThread *thread, const JSHandle<JSAPILis
     int nodeLength = singleList->Length();
     int index = key->GetInt();
     if (index < 0 || index >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetProperty index out-of-bounds",
-                                     OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (nodeLength - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, OperationResult(thread,
+                                                                        JSTaggedValue::Exception(),
+                                                                        PropertyMetaData(false)));
     }
     
     return OperationResult(thread, singleList->Get(index), PropertyMetaData(false));

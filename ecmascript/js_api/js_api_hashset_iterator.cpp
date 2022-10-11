@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_hashset_iterator.h"
 
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/object_factory.h"
@@ -24,6 +25,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -32,7 +35,10 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
 
     if (!input->IsJSAPIHashSetIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not a hashset iterator", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                          "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIHashSetIterator> iter = JSHandle<JSAPIHashSetIterator>::Cast(input);
     JSHandle<JSTaggedValue> iteratedHashSet(thread, iter->GetIteratedHashSet());
@@ -121,8 +127,9 @@ JSHandle<JSTaggedValue> JSAPIHashSetIterator::CreateHashSetIterator(JSThread *th
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet",
-                                    thread->GlobalConstants()->GetHandledUndefined());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPIHashSetIterator(JSHandle<JSAPIHashSet>(obj), kind));
     return iter;

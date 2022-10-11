@@ -16,12 +16,15 @@
 #include "ecmascript/js_api/js_api_queue_iterator.h"
 
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 // QueueIteratorPrototype%.next()
 JSTaggedValue JSAPIQueueIterator::Next(EcmaRuntimeCallInfo *argv)
 {
@@ -31,7 +34,9 @@ JSTaggedValue JSAPIQueueIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
 
     if (!input->IsJSAPIQueueIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an queue iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIQueueIterator> iter(input);
     JSHandle<JSTaggedValue> queue(thread, iter->GetIteratedQueue());

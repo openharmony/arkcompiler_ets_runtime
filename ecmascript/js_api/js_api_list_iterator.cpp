@@ -18,6 +18,7 @@
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_list.h"
 #include "ecmascript/object_factory.h"
@@ -25,6 +26,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPIListIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -32,7 +35,9 @@ JSTaggedValue JSAPIListIterator::Next(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
     if (!input->IsJSAPIListIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an List iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIListIterator> iter(input);
     JSHandle<JSTaggedValue> list(thread, iter->GetIteratedList());
@@ -59,8 +64,10 @@ JSHandle<JSTaggedValue> JSAPIListIterator::CreateListIterator(JSThread *thread, 
         if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPIList()) {
             obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIList",
-                                        thread->GlobalConstants()->GetHandledUndefined());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The Symbol.iterator method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                             JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
         }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPIListIterator(JSHandle<JSAPIList>(obj)));

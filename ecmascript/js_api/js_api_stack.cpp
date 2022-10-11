@@ -15,10 +15,13 @@
 
 #include "ecmascript/js_api/js_api_stack.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 bool JSAPIStack::Empty()
 {
     if (this->GetTop() == -1) {
@@ -141,12 +144,21 @@ bool JSAPIStack::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIStack> &ob
 {
     uint32_t index = 0;
     if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Can not obtain attributes of no-number type", false);
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
+            + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     uint32_t length = static_cast<uint32_t>(obj->GetTop() + 1);
     if (index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetOwnProperty index out-of-bounds", false);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     obj->Get(index);
@@ -159,8 +171,13 @@ OperationResult JSAPIStack::GetProperty(JSThread *thread, const JSHandle<JSAPISt
     int length = obj->GetTop() + 1;
     int index = key->GetInt();
     if (index < 0 || index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetProperty index out-of-bounds",
-                                     OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, OperationResult(thread,
+                                                                        JSTaggedValue::Exception(),
+                                                                        PropertyMetaData(false)));
     }
 
     return OperationResult(thread, obj->Get(index), PropertyMetaData(false));

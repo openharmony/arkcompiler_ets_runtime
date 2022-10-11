@@ -15,6 +15,7 @@
  
 #include "ecmascript/js_api/js_api_plain_array.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_plain_array_iterator.h"
 #include "ecmascript/js_function.h"
@@ -22,6 +23,8 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 void JSAPIPlainArray::Add(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj, JSHandle<JSTaggedValue> key,
                           JSHandle<JSTaggedValue> value)
 {
@@ -135,10 +138,17 @@ JSTaggedValue JSAPIPlainArray::RemoveRangeFrom(JSThread *thread, int32_t index, 
 {
     int32_t size = GetLength();
     if (index < 0 || index >= size) {
-        return JSTaggedValue(-1);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (batchSize < 1) {
-        return JSTaggedValue(-1);
+        std::ostringstream oss;
+        oss << "The value of \"size\" is out of range. It must be > 0" << ". Received value is: " << batchSize;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     int32_t safeSize = (size - (index + batchSize)) < 0 ? size - index : batchSize;
     AdjustForward(thread, index, safeSize);
@@ -161,7 +171,11 @@ bool JSAPIPlainArray::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIPlain
     int32_t size = obj->GetLength();
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
     if (index < 0 || index >= size) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetOwnProperty index out-of-bounds", false);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     obj->Get(key.GetTaggedValue());
@@ -175,8 +189,13 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
     int32_t size = obj->GetLength();
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
     if (index < 0 || index >= size) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetProperty index out-of-bounds",
-                                     OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, OperationResult(thread,
+                                                                        JSTaggedValue::Exception(),
+                                                                        PropertyMetaData(false)));
     }
     
     return OperationResult(thread, obj->Get(JSTaggedValue(index)), PropertyMetaData(false));
@@ -281,7 +300,7 @@ JSTaggedValue JSAPIPlainArray::ToString(JSThread *thread, const JSHandle<JSAPIPl
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     for (int32_t k = 0; k < length; k++) {
         std::u16string valueStr;
-        valueHandle.Update(plainarray->GetValueAt(k));
+        valueHandle.Update(plainarray->GetValueAt(thread, k));
         if (!valueHandle->IsUndefined() && !valueHandle->IsNull()) {
             JSHandle<EcmaString> valueStringHandle = JSTaggedValue::ToString(thread, valueHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -357,11 +376,15 @@ JSTaggedValue JSAPIPlainArray::GetKeyAt(int32_t index)
     return keyArray->Get(index);
 }
 
-JSTaggedValue JSAPIPlainArray::GetValueAt(int32_t index)
+JSTaggedValue JSAPIPlainArray::GetValueAt(JSThread *thread, int32_t index)
 {
     int32_t size = GetLength();
     if (index < 0 || index >= size) {
-        return JSTaggedValue::Undefined();
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
     return values->Get(index);
@@ -399,7 +422,11 @@ bool JSAPIPlainArray::SetValueAt(JSThread *thread, JSTaggedValue index, JSTagged
     int32_t size = GetLength();
     int32_t seat = index.GetNumber();
     if (seat < 0 || seat >= size) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", false);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
+            << ". Received value is: " << seat;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
     values->Set(thread, seat, value);

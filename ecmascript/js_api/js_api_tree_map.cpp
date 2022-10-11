@@ -15,15 +15,22 @@
 
 #include "ecmascript/js_api/js_api_tree_map.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_tree.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 void JSAPITreeMap::Set(JSThread *thread, const JSHandle<JSAPITreeMap> &map, const JSHandle<JSTaggedValue> &key,
                        const JSHandle<JSTaggedValue> &value)
 {
     if (!TaggedTreeMap::IsKey(key.GetTaggedValue())) {
-        THROW_TYPE_ERROR(thread, "the value must be Key of JS");
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"key\" must be not null. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     JSHandle<TaggedTreeMap> mapHandle(thread, TaggedTreeMap::Cast(map->GetTreeMap().GetTaggedObject()));
 

@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/object_factory.h"
@@ -23,6 +24,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -32,7 +35,9 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
 
     if (!input->IsJSAPITreeSetIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not a tree set iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPITreeSetIterator> iter(input);
     // Let it be [[IteratedSet]].
@@ -87,7 +92,10 @@ JSHandle<JSTaggedValue> JSAPITreeSetIterator::CreateTreeSetIterator(JSThread *th
         if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPITreeSet()) {
             obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not TreeSet", thread->GlobalConstants()->GetHandledUndefined());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The Symbol.iterator method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                             JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
         }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPITreeSetIterator(JSHandle<JSAPITreeSet>(obj), kind));

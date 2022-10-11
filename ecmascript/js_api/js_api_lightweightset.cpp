@@ -15,6 +15,7 @@
  
 #include "ecmascript/js_api/js_api_lightweightset.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_lightweightset_iterator.h"
 #include "ecmascript/js_array.h"
@@ -23,6 +24,8 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 bool JSAPILightWeightSet::Add(JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
                               const JSHandle<JSTaggedValue> &value)
 {
@@ -298,7 +301,11 @@ void JSAPILightWeightSet::IncreaseCapacityTo(JSThread *thread, const JSHandle<JS
     uint32_t capacity = TaggedArray::Cast(obj->GetValues().GetTaggedObject())->GetLength();
     int32_t intCapacity = static_cast<int32_t>(capacity);
     if (minCapacity <= 0 || intCapacity >= minCapacity) {
-        return;
+        std::ostringstream oss;
+        oss << "The value of \"minimumCapacity\" is out of range. It must be > " << intCapacity
+            << ". Received value is: " << minCapacity;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     obj->SizeCopy(thread, obj, intCapacity, minCapacity);
 }
