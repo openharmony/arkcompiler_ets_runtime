@@ -101,4 +101,11 @@ JSTaggedValue BuiltinsArkTools::GetHClass(EcmaRuntimeCallInfo *info)
     JSHClass* hclass = object->GetTaggedObject()->GetClass();
     return JSTaggedValue(hclass);
 }
+
+JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->CollectGarbage(TriggerGCType::FULL_GC);
+    return JSTaggedValue::True();
+}
 }  // namespace panda::ecmascript::builtins

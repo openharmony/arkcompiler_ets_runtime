@@ -34,6 +34,8 @@ public:
     static JSTaggedValue IsTSHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue GetHClass(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
 };
 }  // namespace panda::ecmascript::builtins
 

@@ -53,7 +53,7 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
     EcmaVM *ecmaVm1 = JSNApi::CreateJSVM(options);
 
     JSRuntimeOptions options2;
-    options2.SetEnableArkTools(true);
+    options2.SetEnableArkTools(false);
     options2.SetEnableForceGC(false);
     options2.SetForceFullGC(false);
     options2.SetEnableCpuprofiler(true);
