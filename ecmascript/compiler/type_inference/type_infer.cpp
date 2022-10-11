@@ -464,7 +464,7 @@ bool TypeInfer::InferLdStr(GateRef gate)
 bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
 {
     // first elem is function in old isa
-    auto funcIndex = 0;
+    size_t funcIndex = 0;
     if (!isDeprecated) {
         // 2: last two elem is function anc bytecode offset in new isa
         funcIndex = gateAccessor_.GetNumValueIn(gate) - 2;

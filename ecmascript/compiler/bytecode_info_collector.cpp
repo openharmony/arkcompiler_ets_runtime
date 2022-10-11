@@ -1581,13 +1581,15 @@ void BytecodeInfoCollector::CollectMethodInfoFromNewBC(const BytecodeInstruction
             uint32_t methodId;
             case BytecodeInstruction::Opcode::DEFINEFUNC_IMM8_ID16_IMM8:
             case BytecodeInstruction::Opcode::DEFINEFUNC_IMM16_ID16_IMM8: {
-                methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue()).GetOffset();
+                methodId = pf->ResolveMethodIndex(method->GetMethodId(),
+                                                  static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
                 CollectInnerMethods(method, methodId);
                 break;
             }
             case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:
             case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
-                methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue()).GetOffset();
+                methodId = pf->ResolveMethodIndex(method->GetMethodId(),
+                                                  static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
                 CollectInnerMethods(method, methodId);
                 break;
             }
@@ -1612,7 +1614,8 @@ void BytecodeInfoCollector::CollectMethodInfoFromNewBC(const BytecodeInstruction
                 break;
             }
             case BytecodeInstruction::Opcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8: {
-                methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue()).GetOffset();
+                methodId = pf->ResolveMethodIndex(method->GetMethodId(),
+                                                  static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
                 auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_ID16_IMM16_IMM16_V8_V8>();
                 CollectInnerMethods(method, methodId);
                 CollectInnerMethodsFromLiteral(method, imm);
@@ -1620,7 +1623,8 @@ void BytecodeInfoCollector::CollectMethodInfoFromNewBC(const BytecodeInstruction
             }
             case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
             case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
-                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue());
+                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
+                                                        static_cast<uint16_t>(bcIns.GetId().AsRawValue()));
                 CollectInnerMethodsFromNewLiteral(method, literalId);
                 break;
             }
@@ -1631,7 +1635,8 @@ void BytecodeInfoCollector::CollectMethodInfoFromNewBC(const BytecodeInstruction
             }
             case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
             case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
-                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId().AsRawValue());
+                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
+                                                        static_cast<uint16_t>(bcIns.GetId().AsRawValue()));
                 CollectInnerMethodsFromNewLiteral(method, literalId);
                 break;
             }
