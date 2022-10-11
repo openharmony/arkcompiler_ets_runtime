@@ -40,6 +40,9 @@ private:
     }
 
     bool HasGuard(GateRef gate) const;
+    void ProcessTwoConditions(GateRef gate, std::set<GateRef> &conditionSet);
+    void ProcessOneCondition(GateRef gate, std::set<GateRef> &conditionSet);
+    void RemoveConditionFromSet(GateRef condition, std::set<GateRef> &conditionSet);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

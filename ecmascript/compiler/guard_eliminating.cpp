@@ -30,6 +30,51 @@ bool GuardEliminating::HasGuard(GateRef gate) const
     return false;
 }
 
+void GuardEliminating::ProcessTwoConditions(GateRef gate, std::set<GateRef> &conditionSet) {
+    auto guard = acc_.GetDep(gate);
+    auto condition = acc_.GetValueIn(guard, 0);
+    auto left = acc_.GetValueIn(condition, 0);
+    auto right = acc_.GetValueIn(condition, 1);
+    if (left == right) {
+        acc_.ReplaceValueIn(guard, 0, left);
+        ProcessOneCondition(gate, conditionSet);
+        return;
+    }
+    if (conditionSet.count(left) > 0 && conditionSet.count(right) > 0) {
+        acc_.DeleteGuardAndFrameState(gate);
+    } else if (conditionSet.count(left) > 0) {
+        acc_.ReplaceValueIn(guard, 0, right);
+        conditionSet.insert(right);
+    } else if (conditionSet.count(right) > 0) {
+        acc_.ReplaceValueIn(guard, 0, left);
+        conditionSet.insert(left);
+    } else {
+        conditionSet.insert(left);
+        conditionSet.insert(right);
+    }
+}
+
+void GuardEliminating::ProcessOneCondition(GateRef gate, std::set<GateRef> &conditionSet) {
+    auto guard = acc_.GetDep(gate);
+    auto condition = acc_.GetValueIn(guard, 0);
+    if (conditionSet.count(condition) > 0) {
+        acc_.DeleteGuardAndFrameState(gate);
+    } else {
+        conditionSet.insert(condition);
+    }
+}
+
+void GuardEliminating::RemoveConditionFromSet(GateRef condition, std::set<GateRef> &conditionSet) {
+    if (acc_.GetOpCode(condition) == OpCode::AND) {
+        auto left = acc_.GetValueIn(condition, 0);
+        auto right = acc_.GetValueIn(condition, 1);
+        conditionSet.erase(left);
+        conditionSet.erase(right);
+    } else {
+        conditionSet.erase(condition);
+    }
+}
+
 void GuardEliminating::Run()
 {
     // eliminate duplicate typecheck
@@ -65,7 +110,7 @@ void GuardEliminating::Run()
             if (HasGuard(curGate)) {
                 auto guard = acc_.GetDep(curGate);
                 auto condition = acc_.GetValueIn(guard, 0);
-                conditionSet.erase(condition);
+                RemoveConditionFromSet(condition, conditionSet);
             }
             dfsStack.pop();
             continue;
@@ -75,10 +120,10 @@ void GuardEliminating::Run()
         if (HasGuard(succGate)) {
             auto guard = acc_.GetDep(succGate);
             auto condition = acc_.GetValueIn(guard, 0);
-            if (conditionSet.count(condition) > 0) {
-                acc_.DeleteGuardAndFrameState(succGate);
+            if (acc_.GetOpCode(condition) == OpCode::AND) {
+                ProcessTwoConditions(succGate, conditionSet);
             } else {
-                conditionSet.insert(condition);
+                ProcessOneCondition(succGate, conditionSet);
             }
         }
         DFSState newState = { succbb, 0 };
