@@ -1875,7 +1875,6 @@ LLVMValueRef LLVMIRBuilder::GetExperimentalDeopt(LLVMModuleRef &module)
 
 void LLVMIRBuilder::VisitGuardCall(GateRef gate)
 {
-    GateRef checkGate = acc_.GetIn(gate, 1);
     LLVMValueRef glue = gate2LValue_.at(acc_.GetIn(gate, 3));
     GateRef frameState = acc_.GetIn(gate, 2);
     std::vector<LLVMValueRef> params;
@@ -1898,18 +1897,9 @@ void LLVMIRBuilder::VisitGuardCall(GateRef gate)
     values.emplace_back(gate2LValue_.at(acc));
     values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_INDEX), false));
     values.emplace_back(gate2LValue_.at(pc));
-    int btrue = scheduledGates_->size() + 2;
-    int bfalse = scheduledGates_->size() + 1;
-    VisitBranch(gate, checkGate, btrue, bfalse);
-    BasicBlock *trueBB = EnsureBB(btrue);
-    BasicBlock *falseBB = EnsureBB(bfalse);
-
-    SetToCfg(falseBB);
     LLVMValueRef runtimeCall = LLVMBuildCall3(
             builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());
-    LLVMBuildRet(builder_, runtimeCall);
     gate2LValue_[gate] = runtimeCall;
-    SetToCfg(trueBB);
 }
 
 LLVMModule::LLVMModule(const std::string &name, const std::string &triple)

@@ -360,7 +360,6 @@ void TSTypeLowering::SpeculateNumberCalculate(GateRef gate)
     } else {
         check = builder_.BoolAnd(builder_.TypeCheck(leftType, left), builder_.TypeCheck(rightType, right));
     }
-    check = builder_.False();
 
     // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);

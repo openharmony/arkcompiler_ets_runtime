@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/guard_eliminating.h"
+#include "ecmascript/compiler/guard_lowering.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
@@ -207,6 +208,16 @@ public:
         if (lowering.IsAsyncRelated()) {
             lowering.ProcessAll();
         }
+        return true;
+    }
+};
+
+class GuardLoweringPass {
+public:
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
+    {
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        GuardLowering(builder, cmpCfg, data->GetCircuit(), data->GetMethodName(), enableLog).Run();
         return true;
     }
 };

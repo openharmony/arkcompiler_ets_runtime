@@ -105,7 +105,8 @@ struct ModuleSectionDes {
 
     uint64_t GetSecAddr(const ElfSecName idx) const
     {
-        return sectionsInfo_.at(idx).first;
+        auto it = sectionsInfo_.find(idx);
+        return it == sectionsInfo_.end() ? 0 : it->second.first;
     }
 
     void EraseSec(ElfSecName idx)
@@ -120,7 +121,8 @@ struct ModuleSectionDes {
 
     uint32_t GetSecSize(const ElfSecName idx) const
     {
-        return sectionsInfo_.at(idx).second;
+        auto it = sectionsInfo_.find(idx);
+        return it == sectionsInfo_.end() ? 0 : it->second.second;
     }
 
     uint32_t GetSecInfosSize()
