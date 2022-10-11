@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/object_factory.h"
@@ -240,4 +241,27 @@ HWTEST_F_L0(GCTest, NonNewSpaceNativeBindingCheckGCTest)
     newNativeSize = heap->GetNonNewSpaceNativeBindingSize();
     EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
 }
+
+HWTEST_F_L0(GCTest, ArkToolsForceFullGC)
+{
+    const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->CollectGarbage(TriggerGCType::FULL_GC);
+    size_t originalHeapSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    size_t newSize = originalHeapSize;
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+
+        for (int i = 0; i < 10; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> obj = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(1024 * 1024);
+        }
+        newSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
+    }
+    EXPECT_TRUE(newSize > originalHeapSize);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    [[maybe_unused]] JSTaggedValue result1 = builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
+
+    ASSERT_TRUE(thread->GetEcmaVM()->GetHeap()->GetCommittedSize() < newSize);
+}
+
 }  // namespace panda::test

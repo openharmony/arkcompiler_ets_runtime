@@ -30,3 +30,7 @@ if(!ArkTools.compareHClass(obj1, obj2) && ArkTools.compareHClass(obj1, obj3)) {
 }
 
 print(res);
+
+print(ArkTools.forceFullGC());
+
+

@@ -240,7 +240,8 @@ public:
 
     int GetDefaultProperties()
     {
-        return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP;
+        return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP
+            | ArkProperties::ENABLE_ARKTOOLS;
     }
 
     int GetArkProperties()
@@ -683,7 +684,7 @@ public:
         }
     }
 private:
-    PandArg<bool> enableArkTools_ {"enable-ark-tools", false, R"(Enable ark tools to debug. Default: false)"};
+    PandArg<bool> enableArkTools_ {"enable-ark-tools", true, R"(Enable ark tools to debug. Default: false)"};
     PandArg<bool> enableCpuprofiler_ {"enable-cpuprofiler", false,
         R"(Enable cpuprofiler to sample call stack and output to json file. Default: false)"};
     PandArg<std::string> stubFile_ {"stub-file",
