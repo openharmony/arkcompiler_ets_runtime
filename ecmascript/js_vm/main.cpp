@@ -27,6 +27,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 #include "ecmascript/mem/mem_controller.h"
+#include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
@@ -98,6 +99,7 @@ int Main(const int argc, const char **argv)
 #else
         arg_list_t fileNames = base::StringHelper::SplitString(files, ":");
 #endif
+        ClockScope execute;
         for (const auto &fileName : fileNames) {
             auto res = JSNApi::Execute(vm, fileName, entry);
             if (!res) {
@@ -105,6 +107,10 @@ int Main(const int argc, const char **argv)
                 ret = false;
                 break;
             }
+        }
+        auto totalTime = execute.TotalSpentTime();
+        if (runtimeOptions.IsEnablePrintExecuteTime()) {
+            std::cout << "execute pandafile spent time " << totalTime << "ms" << std::endl;
         }
     }
 

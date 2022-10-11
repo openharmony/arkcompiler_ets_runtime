@@ -140,7 +140,6 @@ void JSPandaFileManager::InsertJSPandaFile(const JSPandaFile *jsPandaFile)
 void JSPandaFileManager::IncreaseRefJSPandaFileUnlocked(const JSPandaFile *jsPandaFile)
 {
     auto const filename = jsPandaFile->GetJSPandaFileDesc();
-    LOG_ECMA(DEBUG) << "IncreaseRefJSPandaFileUnlocked " << filename;
     auto iter = loadedJSPandaFiles_.find(filename);
     ASSERT(iter != loadedJSPandaFiles_.end());
     iter->second.second++;
@@ -149,7 +148,6 @@ void JSPandaFileManager::IncreaseRefJSPandaFileUnlocked(const JSPandaFile *jsPan
 void JSPandaFileManager::DecreaseRefJSPandaFile(const JSPandaFile *jsPandaFile)
 {
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
-    LOG_ECMA(DEBUG) << "DecreaseRefJSPandaFile " << filename;
     os::memory::LockHolder lock(jsPandaFileLock_);
     auto iter = loadedJSPandaFiles_.find(filename);
     if (iter != loadedJSPandaFiles_.end()) {

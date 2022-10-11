@@ -69,6 +69,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
         {"stub-file", required_argument, nullptr, OPTION_STUB_FILE},
         {"target-triple", required_argument, nullptr, OPTION_TARGET_TRIPLE},
+        {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -303,6 +304,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetPrintAnyTypes(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_PRINT_EXECUTE_TIME:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnablePrintExecuteTime(argBool);
                 } else {
                     return false;
                 }
