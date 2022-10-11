@@ -45,7 +45,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
 JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 {
     auto chunk = vm->GetChunk();
-    globalStorage_ = chunk->New<EcmaGlobalStorage>(this, chunk);
+    globalStorage_ = chunk->New<EcmaGlobalStorage>(this, vm->GetNativeAreaAllocator());
     propertiesCache_ = new PropertiesCache();
     vmThreadControl_ = new VmThreadControl();
 }

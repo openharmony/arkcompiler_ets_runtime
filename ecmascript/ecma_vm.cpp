@@ -124,7 +124,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
       nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
       chunk_(nativeAreaAllocator_.get()),
-      nativePointerList_(&chunk_),
       ecmaParamConfiguration_(std::move(config))
 {
     options_ = std::move(options);

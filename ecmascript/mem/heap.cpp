@@ -328,9 +328,9 @@ void Heap::CollectGarbage(TriggerGCType gcType)
     }
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
     memController_->StartCalculationBeforeGC();
-    LOG_GC(INFO) << "Heap::CollectGarbage, gcType = " << gcType;
-    OPTIONAL_LOG(ecmaVm_, ERROR) << " global CommittedSize " << GetCommittedSize()
-                                             << " global limit " << globalSpaceAllocLimit_;
+    OPTIONAL_LOG(ecmaVm_, ERROR) << "Heap::CollectGarbage, gcType = " << gcType
+                                 << " global CommittedSize " << GetCommittedSize()
+                                 << " global limit " << globalSpaceAllocLimit_;
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
             // Use partial GC for young generation.
