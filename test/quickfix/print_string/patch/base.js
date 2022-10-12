@@ -16,3 +16,9 @@
 function foo() {
   print("patch foo")
 }
+
+function A() {
+  (()=>{
+      print("anonymous: patch A");
+  })()
+}

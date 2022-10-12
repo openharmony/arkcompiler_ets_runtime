@@ -330,9 +330,11 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
                                                        const CString &entryPoint,
                                                        JSHandle<ConstantPool> constpool)
 {
-    if (jsPandaFile->HasParsedLiteralConstPool(entryPoint)) {
+    auto recordInfo = jsPandaFile->FindRecordInfo(entryPoint);
+    if (recordInfo.hasParsedLiteralConstPool) {
         return;
     }
+
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
@@ -454,7 +456,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), literal.GetTaggedValue());
         }
     }
-    const_cast<JSPandaFile *>(jsPandaFile)->UpdateJSRecordInfo(entryPoint);
+    recordInfo.hasParsedLiteralConstPool = true;
 }
 
 JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
@@ -1686,8 +1688,7 @@ void PandaFileTranslator::TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t i
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         if (bcIns.HasFlag(OldBytecodeInst::Flags::STRING_ID) &&
             OldBytecodeInst::HasId(OldBytecodeInst::GetFormat(bcIns.GetOpcode()), 0)) {
-            auto index = jsPandaFile->GetOrInsertConstantPool(
-                ConstPoolType::STRING, bcIns.GetId());
+            auto index = jsPandaFile->GetOrInsertConstantPool(ConstPoolType::STRING, bcIns.GetId());
             FixInstructionId32(bcIns, index);
         } else {
             OldBytecodeInst::Opcode opcode = static_cast<OldBytecodeInst::Opcode>(bcIns.GetOpcode());

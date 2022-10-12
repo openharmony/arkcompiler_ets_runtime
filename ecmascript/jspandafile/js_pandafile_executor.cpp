@@ -28,7 +28,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 {
     CString entry = entryPoint.data();
     CString name = filename;
-#if ECMASCRIPT_ENABLE_MERGE_ABC
     if (!thread->GetEcmaVM()->IsBundlePack()) {
 #if defined(PANDA_TARGET_LINUX)
         entry = JSPandaFile::ParseRecordName(filename);
@@ -45,7 +44,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 #endif
 #endif
     }
-#endif
 
     const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str());
     if (jsPandaFile == nullptr) {

@@ -27,20 +27,16 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     : pf_(pf), desc_(descriptor)
 {
     ASSERT(pf_ != nullptr);
-#if ECMASCRIPT_ENABLE_MERGE_ABC
-    checkIsBundlePack();
+    CheckIsBundlePack();
     if (isBundlePack_) {
         InitializeUnMergedPF();
     } else {
         InitializeMergedPF();
     }
-#else
-    InitializeUnMergedPF();
-#endif
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 
-void JSPandaFile::checkIsBundlePack()
+void JSPandaFile::CheckIsBundlePack()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     for (const uint32_t index : classIndexes) {
@@ -229,10 +225,10 @@ bool JSPandaFile::IsCjs(const CString &recordName) const
     return false;
 }
 
-CString JSPandaFile::FindrecordName(const CString &recordName) const
+CString JSPandaFile::FindEntryPoint(const CString &recordName) const
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
-    CString name = "";
+    CString entryPoint;
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -244,23 +240,23 @@ CString JSPandaFile::FindrecordName(const CString &recordName) const
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
-                const char *fieldName = utf::Mutf8AsCString(sd.data);
+                CString fieldName = utf::Mutf8AsCString(sd.data);
                 if (HasRecord(fieldName)) {
-                    name = fieldName;
+                    entryPoint = fieldName;
                 }
             });
         }
-        if (!name.empty()) {
-            return name;
+        if (!entryPoint.empty()) {
+            return entryPoint;
         }
     }
-    return name;
+    return entryPoint;
 }
 
 CString JSPandaFile::ParseOhmUrl(const CString &fileName)
 {
     CString bundleInstallName(BUNDLE_INSTALL_PATH);
-    size_t startStrLen =  bundleInstallName.length();
+    size_t startStrLen = bundleInstallName.length();
     size_t pos = CString::npos;
 
     if (fileName.length() > startStrLen && fileName.compare(0, startStrLen, bundleInstallName) == 0) {

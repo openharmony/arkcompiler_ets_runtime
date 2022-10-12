@@ -113,7 +113,7 @@ public:
         if (info != jsRecordInfo_.end()) {
             return &info->second.constpoolMap;
         }
-        LOG_FULL(FATAL) << "find entryPoint fail " << recordName;
+        LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
         UNREACHABLE();
     }
 
@@ -205,6 +205,16 @@ public:
         return false;
     }
 
+    JSRecordInfo FindRecordInfo(const CString &recordName) const
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info == jsRecordInfo_.end()) {
+            LOG_FULL(FATAL) << "find recordName failed: " << recordName;
+            UNREACHABLE();
+        }
+        return info->second;
+    }
+
     // note : it only uses in TDD
     void InsertJSRecordInfo(const CString &recordName)
     {
@@ -212,39 +222,19 @@ public:
         jsRecordInfo_.insert({recordName, info});
     }
 
-    bool HasParsedLiteralConstPool(const CString &recordName) const
-    {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info == jsRecordInfo_.end()) {
-            LOG_FULL(FATAL) << "find recordName fail " << recordName;
-            UNREACHABLE();
-        }
-        return info->second.hasParsedLiteralConstPool;
-    }
-
-    void UpdateJSRecordInfo(const CString &recordName)
-    {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info == jsRecordInfo_.end()) {
-            LOG_FULL(FATAL) << "find recordName fail " << recordName;
-            UNREACHABLE();
-        }
-        info->second.hasParsedLiteralConstPool = true;
-    }
-
     const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
     }
+
     CString ParseEntryPoint(const CString &recordName) const
     {
-        CString record = recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
-        return record;
+        return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
     }
 
-    void checkIsBundlePack();
+    void CheckIsBundlePack();
 
-    CString FindrecordName(const CString &record) const;
+    CString FindEntryPoint(const CString &record) const;
 
     static CString ParseOhmUrl(const CString &fileName);
     // For local merge abc, get record name from file name.

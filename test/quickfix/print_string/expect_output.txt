@@ -15,9 +15,11 @@ QuickFix Execute start
 QuickFix start load patch
 QuickFix load patch success
 patch foo
+anonymous: patch A
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch
 QuickFix unload patch success
 base foo
+anonymous: base A
 QuickFix Execute end
