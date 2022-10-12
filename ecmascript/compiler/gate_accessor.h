@@ -327,6 +327,7 @@ public:
     void DeleteIn(GateRef gate, size_t idx);
     UseIterator DeleteGate(const UseIterator &useIt);
     void DecreaseIn(const UseIterator &useIt);
+    void DecreaseIn(GateRef gate, size_t index);
     void NewIn(GateRef gate, size_t idx, GateRef in);
     size_t GetStateCount(GateRef gate) const;
     size_t GetDependCount(GateRef gate) const;

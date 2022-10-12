@@ -92,7 +92,7 @@ void TSTypeLowering::Lower(GateRef gate)
             LowerTypedDiv(gate);
             break;
         case EcmaOpcode::MOD2_IMM8_V8:
-            LowerTypedMod(gate);
+            // LowerTypedMod(gate);
             break;
         case EcmaOpcode::LESS_IMM8_V8:
             LowerTypedLess(gate);
@@ -158,46 +158,71 @@ void TSTypeLowering::Lower(GateRef gate)
     }
 }
 
-void TSTypeLowering::DeleteGates(std::vector<GateRef> &unusedGate)
+void TSTypeLowering::DeleteGates(GateRef hir, std::vector<GateRef> &unusedGate)
 {
     for (auto &gate : unusedGate) {
+        auto uses = acc_.Uses(gate);
+        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+            if (acc_.GetOpCode(gate) == OpCode::IF_EXCEPTION && acc_.GetOpCode(*useIt) == OpCode::MERGE)
+            acc_.DecreaseIn(useIt);
+        }
         acc_.DeleteGate(gate);
     }
+    acc_.DeleteGate(hir);
 }
 
 void TSTypeLowering::ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, GateRef depend,
                                     std::vector<GateRef> &unusedGate)
 {
+    std::map<GateRef, size_t> deleteMap;
     auto uses = acc_.Uses(hir);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         const OpCode op = acc_.GetOpCode(*useIt);
         if (op == OpCode::IF_SUCCESS) {
-            auto successUse = acc_.Uses(*useIt).begin();
-            acc_.ReplaceStateIn(*successUse, state);
+            // success path use fastpath state
             unusedGate.emplace_back(*useIt);
+            auto successUse = acc_.Uses(*useIt).begin();
+            acc_.ReplaceIn(successUse, state);
             ++useIt;
         } else if (op == OpCode::IF_EXCEPTION) {
-            auto exceptionUse = acc_.Uses(*useIt).begin();
-            ASSERT(acc_.GetOpCode(*exceptionUse) == OpCode::RETURN);
-            unusedGate.emplace_back(*exceptionUse);
+            // exception path needs to delete all related nodes
             unusedGate.emplace_back(*useIt);
+            auto exceptionUse = acc_.Uses(*useIt);
+            auto exceptionUseIt = exceptionUse.begin();
+            if (acc_.GetOpCode(*exceptionUseIt) == OpCode::MERGE) {
+                auto mergeUse = acc_.Uses(*exceptionUseIt);
+                // handle exception->merge->value_selector/depend_selector
+                for (auto mergeUseIt = mergeUse.begin(); mergeUseIt != mergeUse.end();) {
+                    if (acc_.GetOpCode(*mergeUseIt) == OpCode::VALUE_SELECTOR ||
+                        acc_.GetOpCode(*mergeUseIt) == OpCode::DEPEND_SELECTOR) {
+                        deleteMap[*mergeUseIt] = exceptionUseIt.GetIndex() + 1;
+                    }
+                    ++mergeUseIt;
+                }
+            }
             ++useIt;
         } else if (op == OpCode::RETURN) {
+            // replace return valueIn and dependIn
             if (acc_.IsValueIn(useIt)) {
                 useIt = acc_.ReplaceIn(useIt, outir);
-                continue;
+            } else if (acc_.IsDependIn(useIt)) {
+                useIt = acc_.ReplaceIn(useIt, depend);
+            } else {
+                ++useIt;
             }
-            if (acc_.GetOpCode(acc_.GetIn(*useIt, 0)) != OpCode::IF_EXCEPTION) {
-                acc_.ReplaceStateIn(*useIt, state);
-                acc_.ReplaceDependIn(*useIt, depend);
-                acc_.ReplaceValueIn(*useIt, outir);
-            }
-            ++useIt;
         } else if (op == OpCode::DEPEND_SELECTOR) {
-            useIt = acc_.ReplaceIn(useIt, depend);
+            if (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION) {
+                ++useIt;
+            } else {
+                useIt = acc_.ReplaceIn(useIt, depend);
+            }
         } else {
             useIt = acc_.ReplaceIn(useIt, outir);
         }
+    }
+
+    for (auto it = deleteMap.begin(); it != deleteMap.end(); it++) {
+        acc_.DecreaseIn(it->first, it->second);
     }
 }
 
@@ -397,9 +422,9 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType);
 
     acc_.SetDep(result, guard);
-    std::vector<GateRef> removedGate{gate};
+    std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(removedGate);
+    DeleteGates(gate, removedGate);
 }
 
 template<TypedUnOp Op>
@@ -424,9 +449,9 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
     GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, gateType);
 
     acc_.SetDep(result, guard);
-    std::vector<GateRef> removedGate{gate};
+    std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(removedGate);
+    DeleteGates(gate, removedGate);
 }
 
 void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
@@ -450,9 +475,9 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     acc_.ReplaceIn(guard, 1, check);
     GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
     acc_.SetDep(result, guard);
-    std::vector<GateRef> removedGate{gate};
+    std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(removedGate);
+    DeleteGates(gate, removedGate);
 }
 
 void TSTypeLowering::LowerConditionJump(GateRef gate)

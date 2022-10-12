@@ -313,6 +313,12 @@ void GateAccessor::DecreaseIn(const UseIterator &useIt)
     circuit_->DecreaseIn(*useIt, idx);
 }
 
+
+void GateAccessor::DecreaseIn(GateRef gate, size_t index)
+{
+    circuit_->DecreaseIn(gate, index);
+}
+
 void GateAccessor::NewIn(GateRef gate, size_t idx, GateRef in)
 {
     circuit_->NewIn(gate, idx, in);

@@ -385,10 +385,8 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
 void BytecodeCircuitBuilder::ComputeDominatorTree()
 {
     // Construct graph backward order
-    std::map<size_t, size_t> bbIdToDfsTimestamp; // (basicblock id, dfs order)
     std::unordered_map<size_t, size_t> dfsFatherIdx;
     std::unordered_map<size_t, size_t> bbDfsTimestampToIdx;
-    std::vector<size_t> basicBlockList;
     size_t timestamp = 0;
     std::deque<size_t> pendingList;
     std::vector<size_t> visited(graph_.size(), 0);
@@ -398,30 +396,30 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
     while (!pendingList.empty()) {
         size_t curBlockId = pendingList.back();
         pendingList.pop_back();
-        basicBlockList.push_back(curBlockId);
-        bbIdToDfsTimestamp[curBlockId] = timestamp++;
+        bbDfsList_.push_back(curBlockId);
+        bbIdToDfsTimestamp_[curBlockId] = timestamp++;
         for (const auto &succBlock: graph_[curBlockId].succs) {
             if (visited[succBlock->id] == 0) {
                 visited[succBlock->id] = 1;
                 pendingList.push_back(succBlock->id);
-                dfsFatherIdx[succBlock->id] = bbIdToDfsTimestamp[curBlockId];
+                dfsFatherIdx[succBlock->id] = bbIdToDfsTimestamp_[curBlockId];
             }
         }
     }
 
-    for (size_t idx = 0; idx < basicBlockList.size(); idx++) {
-        bbDfsTimestampToIdx[basicBlockList[idx]] = idx;
+    for (size_t idx = 0; idx < bbDfsList_.size(); idx++) {
+        bbDfsTimestampToIdx[bbDfsList_[idx]] = idx;
     }
-    RemoveDeadRegions(bbIdToDfsTimestamp);
+    RemoveDeadRegions();
 
-    std::vector<size_t> immDom(basicBlockList.size()); // immediate dominator with dfs order index
-    std::vector<size_t> semiDom(basicBlockList.size());
+    std::vector<size_t> immDom(bbDfsList_.size()); // immediate dominator with dfs order index
+    std::vector<size_t> semiDom(bbDfsList_.size());
     std::vector<size_t> realImmDom(graph_.size()); // immediate dominator with real index
-    std::vector<std::vector<size_t> > semiDomTree(basicBlockList.size());
+    std::vector<std::vector<size_t> > semiDomTree(bbDfsList_.size());
     {
-        std::vector<size_t> parent(basicBlockList.size());
+        std::vector<size_t> parent(bbDfsList_.size());
         std::iota(parent.begin(), parent.end(), 0);
-        std::vector<size_t> minIdx(basicBlockList.size());
+        std::vector<size_t> minIdx(bbDfsList_.size());
         std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
             if (parent[idx] == idx) return idx;
             size_t unionFindSetRoot = unionFind(parent[idx]);
@@ -437,8 +435,8 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
         };
         std::iota(semiDom.begin(), semiDom.end(), 0);
         semiDom[0] = semiDom.size();
-        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx--) {
-            for (const auto &preBlock : graph_[basicBlockList[idx]].preds) {
+        for (size_t idx = bbDfsList_.size() - 1; idx >= 1; idx--) {
+            for (const auto &preBlock : graph_[bbDfsList_[idx]].preds) {
                 if (bbDfsTimestampToIdx[preBlock->id] < idx) {
                     semiDom[idx] = std::min(semiDom[idx], bbDfsTimestampToIdx[preBlock->id]);
                 } else {
@@ -455,14 +453,14 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
                 }
             }
             minIdx[idx] = idx;
-            merge(dfsFatherIdx[basicBlockList[idx]], idx);
+            merge(dfsFatherIdx[bbDfsList_[idx]], idx);
             semiDomTree[semiDom[idx]].push_back(idx);
         }
-        for (size_t idx = 1; idx < basicBlockList.size(); idx++) {
+        for (size_t idx = 1; idx < bbDfsList_.size(); idx++) {
             if (immDom[idx] != semiDom[idx]) {
                 immDom[idx] = immDom[immDom[idx]];
             }
-            realImmDom[basicBlockList[idx]] = basicBlockList[immDom[idx]];
+            realImmDom[bbDfsList_[idx]] = bbDfsList_[immDom[idx]];
         }
         semiDom[0] = 0;
     }
@@ -527,12 +525,12 @@ void BytecodeCircuitBuilder::ComputeDomFrontiers(const std::vector<size_t> &immD
     }
 }
 
-void BytecodeCircuitBuilder::RemoveDeadRegions(const std::map<size_t, size_t> &bbIdToDfsTimestamp)
+void BytecodeCircuitBuilder::RemoveDeadRegions()
 {
     for (auto &block: graph_) {
         std::vector<BytecodeRegion *> newPreds;
         for (auto &bb : block.preds) {
-            if (bbIdToDfsTimestamp.count(bb->id)) {
+            if (bbIdToDfsTimestamp_.count(bb->id)) {
                 newPreds.emplace_back(bb);
             }
         }
@@ -540,7 +538,7 @@ void BytecodeCircuitBuilder::RemoveDeadRegions(const std::map<size_t, size_t> &b
     }
 
     for (auto &block : graph_) {
-        block.isDead = !bbIdToDfsTimestamp.count(block.id);
+        block.isDead = !bbIdToDfsTimestamp_.count(block.id);
         if (block.isDead) {
             block.succs.clear();
         }
@@ -801,43 +799,36 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::SHL2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.deopt = true;
             break;
         }
         case EcmaOpcode::SHR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.deopt = true;
             break;
         }
         case EcmaOpcode::ASHR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.deopt = true;
             break;
         }
         case EcmaOpcode::AND2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.deopt = true;
             break;
         }
         case EcmaOpcode::OR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.deopt = true;
             break;
         }
         case EcmaOpcode::XOR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.deopt = true;
             break;
         }
         case EcmaOpcode::EXP_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.deopt = true;
             break;
         }
         case EcmaOpcode::ISIN_IMM8_V8: {
@@ -1557,7 +1548,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::NOT_IMM8:
         case EcmaOpcode::INC_IMM8:
         case EcmaOpcode::DEC_IMM8: {
-            info.deopt = true;
+            info.deopt = false;
             break;
         }
         case EcmaOpcode::JMP_IMM8:
@@ -2373,12 +2364,17 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
 void BytecodeCircuitBuilder::BuildFrameState()
 {
     const uint8_t *predPc = nullptr;
-    for (auto &bb: graph_) {
+    for (auto &dfsOrder : bbDfsList_) {
+        auto bb = graph_[dfsOrder];
         if (bb.isDead) {
             continue;
         }
-        if (bb.numOfStatePreds != 0) {
-            predPc = std::get<const uint8_t *>(bb.expandedPreds.at(0));
+        if (bb.preds.size() != 0) {
+            std::sort(bb.preds.begin(), bb.preds.end(), [this](BytecodeRegion *a, BytecodeRegion *b) {
+                    return bbIdToDfsTimestamp_[a->id] < bbIdToDfsTimestamp_[b->id];
+            });
+            auto predBb = bb.preds.at(0);
+            predPc = predBb->end;
         }
         frameStateBuilder_.AdvenceToSuccessor(predPc, bb.end);
         if (bb.valueSelectorAccGate != Circuit::NullGate()) {
