@@ -61,10 +61,9 @@ HWTEST_F_L0(JSPtHooksTest, BreakpointTest)
 {
     auto debugger = std::make_unique<DebuggerImpl>(ecmaVm, nullptr, nullptr);
     std::unique_ptr<JSPtHooks> jspthooks = std::make_unique<JSPtHooks>(debugger.get());
-    const char *pandaFile = " ";
     EntityId methodId(0);
     uint32_t bytecodeOffset = 0;
-    JSPtLocation ptLocation1(pandaFile, methodId, bytecodeOffset);
+    JSPtLocation ptLocation1(nullptr, methodId, bytecodeOffset);
     jspthooks->Breakpoint(ptLocation1);
     ASSERT_NE(jspthooks, nullptr);
 }
@@ -81,10 +80,9 @@ HWTEST_F_L0(JSPtHooksTest, ExceptionTest)
 {
     auto debugger = std::make_unique<DebuggerImpl>(ecmaVm, nullptr, nullptr);
     std::unique_ptr<JSPtHooks> jspthooks = std::make_unique<JSPtHooks>(debugger.get());
-    const char *pandaFile = " ";
     EntityId methodId(0);
     uint32_t bytecodeOffset = 0;
-    JSPtLocation ptLocation2(pandaFile, methodId, bytecodeOffset);
+    JSPtLocation ptLocation2(nullptr, methodId, bytecodeOffset);
     jspthooks->Exception(ptLocation2);
     ASSERT_NE(jspthooks, nullptr);
 }
@@ -93,10 +91,9 @@ HWTEST_F_L0(JSPtHooksTest, SingleStepTest)
 {
     auto debugger = std::make_unique<DebuggerImpl>(ecmaVm, nullptr, nullptr);
     std::unique_ptr<JSPtHooks> jspthooks = std::make_unique<JSPtHooks>(debugger.get());
-    const char *pandaFile = " ";
     EntityId methodId(0);
     uint32_t bytecodeOffset = 0;
-    JSPtLocation ptLocation4(pandaFile, methodId, bytecodeOffset);
+    JSPtLocation ptLocation4(nullptr, methodId, bytecodeOffset);
     ASSERT_NE(jspthooks, nullptr);
 }
 

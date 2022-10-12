@@ -16,9 +16,11 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_DEBUG_INFO_EXTRACTOR_H
 #define ECMASCRIPT_JSPANDAFILE_DEBUG_INFO_EXTRACTOR_H
 
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/common.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
-#include "ecmascript/common.h"
+#include "ecmascript/tooling/backend/js_pt_location.h"
 
 #include "libpandafile/file.h"
 
@@ -47,6 +49,7 @@ struct ColumnTableEntry {
 
 using LineNumberTable = CVector<LineTableEntry>;
 using ColumnNumberTable = CVector<ColumnTableEntry>;
+using JSPtLocation = tooling::JSPtLocation;
 
 /*
  * LocalVariableInfo define in frontend, now only use name and regNumber:
@@ -81,21 +84,24 @@ public:
 
     CVector<panda_file::File::EntityId> GetMethodIdList() const;
 
+    bool ContainsMethod(panda_file::File::EntityId methodId) const;
+
     template<class Callback>
-    bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column, const std::string &url)
+    bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column, const std::string &url) const
     {
         if (line == SPECIAL_LINE_MARK) {
             return false;
         }
 
         auto methods = GetMethodIdList();
-        for (const auto &method : methods) {
+        for (const auto &[id, debugInfo] : methods_) {
             // the url for testcases is empty
-            if (!url.empty() && url != GetSourceFile(method)) {
+            if (!url.empty() && url != debugInfo.sourceFile) {
                 continue;
             }
-            const LineNumberTable &lineTable = GetLineNumberTable(method);
-            const ColumnNumberTable &columnTable = GetColumnNumberTable(method);
+            auto methodId = panda_file::File::EntityId(id);
+            const LineNumberTable &lineTable = GetLineNumberTable(methodId);
+            const ColumnNumberTable &columnTable = GetColumnNumberTable(methodId);
             for (uint32_t i = 0; i < lineTable.size(); i++) {
                 if (lineTable[i].line != line) {
                     continue;
@@ -104,10 +110,10 @@ public:
                 uint32_t nextOffset = ((i == lineTable.size() - 1) ? UINT32_MAX : lineTable[i + 1].offset);
                 for (const auto &pair : columnTable) {
                     if (pair.column == column && pair.offset >= currentOffset && pair.offset < nextOffset) {
-                        return cb(method, pair.offset);
+                        return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, url));
                     }
                 }
-                return cb(method, currentOffset);
+                return cb(JSPtLocation(jsPandaFile_, methodId, currentOffset, url));
             }
         }
         return false;
@@ -140,7 +146,7 @@ public:
     constexpr static int32_t SPECIAL_LINE_MARK = -1;
 
 private:
-    void Extract(const panda_file::File *pf);
+    void Extract();
 
     struct MethodDebugInfo {
         std::string sourceFile;
@@ -151,6 +157,7 @@ private:
     };
 
     CUnorderedMap<uint32_t, MethodDebugInfo> methods_;
+    const JSPandaFile *jsPandaFile_ {nullptr};
 };
 }  // namespace panda::ecmascript
 

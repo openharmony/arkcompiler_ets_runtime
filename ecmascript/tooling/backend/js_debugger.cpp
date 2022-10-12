@@ -38,13 +38,14 @@ bool JSDebugger::SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> 
         return false;
     }
 
-    auto [_, success] = breakpoints_.emplace(ptMethod.release(), location.GetBytecodeOffset(),
-        Global<FunctionRef>(ecmaVm_, condFuncRef));
+    auto [_, success] = breakpoints_.emplace(location.GetSourceFile(), ptMethod.release(),
+        location.GetBytecodeOffset(), Global<FunctionRef>(ecmaVm_, condFuncRef));
     if (!success) {
         // also return true
         LOG_DEBUGGER(WARN) << "SetBreakpoint: Breakpoint already exists";
     }
 
+    DumpBreakpoints();
     return true;
 }
 
@@ -61,6 +62,7 @@ bool JSDebugger::RemoveBreakpoint(const JSPtLocation &location)
         return false;
     }
 
+    DumpBreakpoints();
     return true;
 }
 
@@ -101,8 +103,8 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
         }
     }
 
-    auto *pf = method->GetJSPandaFile();
-    JSPtLocation location {pf->GetJSPandaFileDesc().c_str(), method->GetMethodId(), bcOffset};
+    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset,
+        breakpoint.value().GetSourceFile()};
 
     hooks_->Breakpoint(location);
     return true;
@@ -114,8 +116,7 @@ void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Meth
         return;
     }
 
-    auto *pf = method->GetJSPandaFile();
-    JSPtLocation throwLocation {pf->GetJSPandaFileDesc().c_str(), method->GetMethodId(), bcOffset};
+    JSPtLocation throwLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
 
     hooks_->Exception(throwLocation);
 }
@@ -126,8 +127,7 @@ bool JSDebugger::HandleStep(JSHandle<Method> method, uint32_t bcOffset)
         return false;
     }
 
-    auto *pf = method->GetJSPandaFile();
-    JSPtLocation location {pf->GetJSPandaFileDesc().c_str(), method->GetMethodId(), bcOffset};
+    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
 
     return hooks_->SingleStep(location);
 }
@@ -164,7 +164,7 @@ std::unique_ptr<PtMethod> JSDebugger::FindMethod(const JSPtLocation &location) c
     std::unique_ptr<PtMethod> ptMethod {nullptr};
     ::panda::ecmascript::JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&ptMethod, location](
         const panda::ecmascript::JSPandaFile *jsPandaFile) {
-        if (jsPandaFile->GetJSPandaFileDesc() == location.GetPandaFile()) {
+        if (jsPandaFile->GetJSPandaFileDesc() == location.GetJsPandaFile()->GetJSPandaFileDesc()) {
             MethodLiteral *methodsData = jsPandaFile->GetMethodLiterals();
             uint32_t numberMethods = jsPandaFile->GetNumMethods();
             for (uint32_t i = 0; i < numberMethods; ++i) {
@@ -179,5 +179,13 @@ std::unique_ptr<PtMethod> JSDebugger::FindMethod(const JSPtLocation &location) c
         return true;
     });
     return ptMethod;
+}
+
+void JSDebugger::DumpBreakpoints()
+{
+    LOG_DEBUGGER(INFO) << "dump breakpoints with size " << breakpoints_.size();
+    for (const auto &bp : breakpoints_) {
+        LOG_DEBUGGER(DEBUG) << bp.ToString();
+    }
 }
 }  // namespace panda::tooling::ecmascript

@@ -618,6 +618,7 @@ if (is_ohos && is_standard_system && enable_hitrace) {
 ecma_debugger_source = [
   "ecmascript/tooling/backend/debugger_api.cpp",
   "ecmascript/tooling/backend/js_debugger.cpp",
+  "ecmascript/tooling/interface/hot_reload_manager.cpp",
 ]
 
 ecma_profiler_source = []

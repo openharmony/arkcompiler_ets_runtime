@@ -371,4 +371,16 @@ bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
     }
     return false;
 }
+
+DebugInfoExtractor *DebuggerApi::GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url)
+{
+    const auto *hotReloadManager = ecmaVm->GetJsDebuggerManager()->GetHotReloadManager();
+    return hotReloadManager->GetPatchExtractor(url);
+}
+
+const JSPandaFile *DebuggerApi::GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile)
+{
+    const auto *hotReloadManager = ecmaVm->GetJsDebuggerManager()->GetHotReloadManager();
+    return hotReloadManager->GetBaseJSPandaFile(jsPandaFile);
+}
 }  // namespace panda::ecmascript::tooling

@@ -27,9 +27,15 @@ namespace panda::ecmascript::tooling {
 class JSBreakpoint {
 public:
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    JSBreakpoint(PtMethod *ptMethod, uint32_t bcOffset, const Global<FunctionRef> &condFuncRef)
-        : ptMethod_(ptMethod), bcOffset_(bcOffset), condFuncRef_(condFuncRef) {}
+    JSBreakpoint(const std::string &sourceFile, PtMethod *ptMethod, uint32_t bcOffset,
+        const Global<FunctionRef> &condFuncRef) : sourceFile_(sourceFile), ptMethod_(ptMethod),
+        bcOffset_(bcOffset), condFuncRef_(condFuncRef) {}
     ~JSBreakpoint() = default;
+
+    const std::string &GetSourceFile() const
+    {
+        return sourceFile_;
+    }
 
     PtMethod *GetPtMethod() const
     {
@@ -43,9 +49,22 @@ public:
 
     bool operator==(const JSBreakpoint &bpoint) const
     {
-        return ptMethod_->GetMethodId() == bpoint.GetPtMethod()->GetMethodId() &&
-            ptMethod_->GetJSPandaFile() == bpoint.GetPtMethod()->GetJSPandaFile() &&
-            GetBytecodeOffset() == bpoint.GetBytecodeOffset();
+        return bcOffset_ == bpoint.GetBytecodeOffset() &&
+            ptMethod_->GetMethodId() == bpoint.GetPtMethod()->GetMethodId() &&
+            sourceFile_ == bpoint.GetSourceFile() &&
+            ptMethod_->GetJSPandaFile() == bpoint.GetPtMethod()->GetJSPandaFile();
+    }
+
+    std::string ToString() const
+    {
+        std::stringstream breakpoint;
+        breakpoint << "[";
+        breakpoint << "methodId:" << ptMethod_->GetMethodId()  << ", ";
+        breakpoint << "bytecodeOffset:" << bcOffset_ << ", ";
+        breakpoint << "sourceFile:" << "\""<< sourceFile_ << "\""<< ", ";
+        breakpoint << "jsPandaFile:" << "\"" << ptMethod_->GetJSPandaFile()->GetJSPandaFileDesc() << "\"";
+        breakpoint << "]";
+        return breakpoint.str();
     }
 
     const Global<FunctionRef> &GetConditionFunction()
@@ -57,6 +76,7 @@ public:
     DEFAULT_MOVE_SEMANTIC(JSBreakpoint);
 
 private:
+    std::string sourceFile_;
     PtMethod *ptMethod_ {nullptr};
     uint32_t bcOffset_;
     Global<FunctionRef> condFuncRef_;
@@ -66,7 +86,9 @@ class HashJSBreakpoint {
 public:
     size_t operator()(const JSBreakpoint &bpoint) const
     {
-        return (std::hash<PtMethod *>()(bpoint.GetPtMethod())) ^ (std::hash<uint32_t>()(bpoint.GetBytecodeOffset()));
+        return (std::hash<std::string>()(bpoint.GetSourceFile())) ^
+            (std::hash<uint32_t>()(bpoint.GetPtMethod()->GetMethodId().GetOffset())) ^
+            (std::hash<uint32_t>()(bpoint.GetBytecodeOffset()));
     }
 };
 
@@ -140,6 +162,7 @@ private:
     void HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Method> method, uint32_t bcOffset);
     bool HandleStep(JSHandle<Method> method, uint32_t bcOffset);
     bool HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset);
+    void DumpBreakpoints();
 
     const EcmaVM *ecmaVm_;
     PtHooks *hooks_ {nullptr};

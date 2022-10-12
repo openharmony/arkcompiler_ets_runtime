@@ -30,9 +30,9 @@ std::pair<EntityId, uint32_t> TestExtractor::GetBreakpointAddress(const SourceLo
 {
     EntityId retId = EntityId();
     uint32_t retOffset = 0;
-    auto callbackFunc = [&retId, &retOffset](File::EntityId id, uint32_t offset) -> bool {
-        retId = id;
-        retOffset = offset;
+    auto callbackFunc = [&retId, &retOffset](const JSPtLocation &jsLocation) -> bool {
+        retId = jsLocation.GetMethodId();
+        retOffset = jsLocation.GetBytecodeOffset();
         return true;
     };
     MatchWithLocation(callbackFunc, sourceLocation.line, sourceLocation.column, sourceLocation.path);

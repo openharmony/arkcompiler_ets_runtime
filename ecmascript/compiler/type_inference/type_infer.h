@@ -97,7 +97,8 @@ private:
     void TypeCheck(GateRef gate) const;
     void FilterAnyTypeGates() const;
 
-    std::string CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor, const std::string &logPreFix) const;
+    std::string CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
+        const std::string &logPreFix) const;
 
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
