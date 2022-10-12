@@ -163,6 +163,8 @@ public:
 
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
             ASSERT(methodLiteral != nullptr);
+
+            EcmaHandleScope handleScope(thread);
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
 
             panda_file::IndexAccessor newIndexAccessor(*pf, id);

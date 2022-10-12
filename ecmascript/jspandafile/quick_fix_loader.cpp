@@ -31,7 +31,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
 {
     baseFile_ = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName);
     if (baseFile_ == nullptr) {
-        LOG_FULL(ERROR) << "find base jsPandafile failed";
+        LOG_ECMA(ERROR) << "find base jsPandafile failed";
         return false;
     }
 
@@ -39,7 +39,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
     patchFile_ = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, patchFileName,
                                                                     JSPandaFile::PATCH_ENTRY_FUNCTION);
     if (patchFile_ == nullptr) {
-        LOG_FULL(ERROR) << "load patch jsPandafile failed";
+        LOG_ECMA(ERROR) << "load patch jsPandafile failed";
         return false;
     }
 
@@ -52,7 +52,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
     // Get base constpool.
     baseFile_ = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName);
     if (baseFile_ == nullptr) {
-        LOG_FULL(ERROR) << "find base jsPandafile failed";
+        LOG_ECMA(ERROR) << "find base jsPandafile failed";
         return false;
     }
 
@@ -60,7 +60,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
                                                                     JSPandaFile::PATCH_ENTRY_FUNCTION,
                                                                     patchBuffer, patchSize);
     if (patchFile_ == nullptr) {
-        LOG_FULL(ERROR) << "load patch jsPandafile failed";
+        LOG_ECMA(ERROR) << "load patch jsPandafile failed";
         return false;
     }
 
@@ -72,7 +72,7 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
     // support multi constpool: baseFile_->GetPandaFile()->GetHeader()->num_indexes
     EcmaVM *vm = thread->GetEcmaVM();
     if (baseFile_->IsBundlePack() != patchFile_->IsBundlePack()) {
-        LOG_FULL(ERROR) << "base and patch is not the same type hap!";
+        LOG_ECMA(ERROR) << "base and patch is not the same type hap!";
         return false;
     }
 
@@ -81,61 +81,64 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
         ParseAllConstpoolWithMerge(thread, baseFile_);
         JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
         if (baseConstpoolValue.IsHole()) {
-            LOG_FULL(ERROR) << "base constpool is hole";
+            LOG_ECMA(ERROR) << "base constpool is hole";
             return false;
         }
         JSHandle<ConstantPool> baseConstpool = JSHandle<ConstantPool>(thread, baseConstpoolValue);
 
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         // Get patch constpool.
         [[maybe_unused]] CVector<JSHandle<Program>> patchPrograms = ParseAllConstpoolWithMerge(thread, patchFile_);
         JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_, 0);
         if (patchConstpoolValue.IsHole()) {
-            LOG_FULL(ERROR) << "patch constpool is hole";
+            LOG_ECMA(ERROR) << "patch constpool is hole";
             return false;
         }
         JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
 
         // Only esmodule support check
         if (CheckIsInvalidPatch(vm)) {
-            LOG_FULL(ERROR) << "Invalid patch";
+            LOG_ECMA(ERROR) << "Invalid patch";
             return false;
         }
 
         if (!ReplaceMethod(thread, baseConstpool, patchConstpool)) {
-            LOG_FULL(ERROR) << "replace method failed";
+            LOG_ECMA(ERROR) << "replace method failed";
             return false;
         }
     } else {
         // Get base constpool.
         JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
         if (baseConstpoolValue.IsHole()) {
-            LOG_FULL(ERROR) << "base constpool is hole";
+            LOG_ECMA(ERROR) << "base constpool is hole";
             return false;
         }
         JSHandle<ConstantPool> baseConstpool = JSHandle<ConstantPool>(thread, baseConstpoolValue);
 
         // Get patch constpool.
-        vm->GetModuleManager()->ResolveModule(thread, patchFile_);
+        vm->GetModuleManager()->HostResolveImportedModule(patchFile_->GetJSPandaFileDesc());
+
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         JSHandle<Program> patchProgram =
             JSPandaFileManager::GetInstance()->GenerateProgram(vm, patchFile_, JSPandaFile::PATCH_ENTRY_FUNCTION);
         JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_, 0);
         if (patchConstpoolValue.IsHole()) {
-            LOG_FULL(ERROR) << "patch constpool is hole";
+            LOG_ECMA(ERROR) << "patch constpool is hole";
             return false;
         }
         JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
 
         if (!ReplaceMethod(thread, baseConstpool, patchConstpool)) {
-            LOG_FULL(ERROR) << "replace method failed";
+            LOG_ECMA(ERROR) << "replace method failed";
             return false;
         }
         if (!ExecutePatchMain(thread, patchProgram)) {
-            LOG_FULL(ERROR) << "execute patch main failed";
+            LOG_ECMA(ERROR) << "execute patch main failed";
             return false;
         }
     }
 
-    LOG_FULL(INFO) << "LoadPatch success!";
+    LOG_ECMA(INFO) << "LoadPatch success!";
     return true;
 }
 
@@ -177,7 +180,7 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     const CString &fileName = jsPandaFile->GetJSPandaFileDesc();
     for (const auto &item : recordInfos) {
         const CString &recordName = item.first;
-        LOG_FULL(DEBUG) << "Parse constpool: " << fileName << ":" << recordName;
+        LOG_ECMA(DEBUG) << "Parse constpool: " << fileName << ":" << recordName;
         vm->GetModuleManager()->HostResolveImportedModuleWithMerge(fileName, recordName);
         if (!isNewVersion) {
             PandaFileTranslator::ParseFuncAndLiteralConstPool(vm, jsPandaFile, recordName, constpool);
@@ -190,6 +193,8 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
         if (methodLiteral == nullptr) {
             program->SetMainFunction(thread, JSTaggedValue::Undefined());
         } else {
+            [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
             JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
 
@@ -326,7 +331,7 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
                     InsertBaseClassMethodInfo(index, i, base);
 
                     ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
-                    LOG_FULL(INFO) << "Replace class method: " << patchRecordName << ":" << patchMethodName;
+                    LOG_ECMA(INFO) << "Replace class method: " << patchRecordName << ":" << patchMethodName;
                     break;
                 }
             }
@@ -352,14 +357,14 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
                 reservedBaseMethodInfo_.emplace(index, base);
 
                 ReplaceMethodInner(thread, baseMethod, patch, patchConstpool.GetTaggedValue());
-                LOG_FULL(INFO) << "Replace normal method: " << patchRecordName << ":" << patchMethodName;
+                LOG_ECMA(INFO) << "Replace normal method: " << patchRecordName << ":" << patchMethodName;
                 break;
             }
         }
     }
 
     if (reservedBaseMethodInfo_.empty() && reservedBaseClassInfo_.empty()) {
-        LOG_FULL(ERROR) << "can not find same method to base";
+        LOG_ECMA(ERROR) << "can not find same method to base";
         return false;
     }
     return true;
@@ -382,7 +387,7 @@ bool QuickFixLoader::ExecutePatchMain(JSThread *thread, const JSHandle<Program> 
         // clear exception and rollback.
         thread->ClearException();
         UnloadPatch(thread, patchFile_->GetJSPandaFileDesc());
-        LOG_FULL(ERROR) << "execute patch main has exception";
+        LOG_ECMA(ERROR) << "execute patch main has exception";
         return false;
     }
     return true;
@@ -410,19 +415,19 @@ CString QuickFixLoader::GetRecordName(const JSPandaFile *jsPandaFile, EntityId m
 bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
 {
     if (patchFile_ == nullptr || patchFileName != patchFile_->GetJSPandaFileDesc()) {
-        LOG_FULL(ERROR) << "patch file is null or has not been loaded";
+        LOG_ECMA(ERROR) << "patch file is null or has not been loaded";
         return false;
     }
 
     if (reservedBaseMethodInfo_.empty() && reservedBaseClassInfo_.empty()) {
-        LOG_FULL(ERROR) << "no method need to unload";
+        LOG_ECMA(ERROR) << "no method need to unload";
         return false;
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
     JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
     if (baseConstpoolValue.IsHole()) {
-        LOG_FULL(ERROR) << "base constpool is hole";
+        LOG_ECMA(ERROR) << "base constpool is hole";
         return false;
     }
 
@@ -436,6 +441,7 @@ bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
         Method *method = Method::Cast(value.GetTaggedObject());
 
         ReplaceMethodInner(thread, method, base, baseConstpoolValue);
+        LOG_ECMA(INFO) << "Replace normal method: " << method->GetMethodName();
     }
 
     for (const auto& item : reservedBaseClassInfo_) {
@@ -452,12 +458,31 @@ bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
             Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
 
             ReplaceMethodInner(thread, method, base, baseConstpoolValue);
+            LOG_ECMA(INFO) << "Replace class method: " << method->GetMethodName();
         }
     }
 
     ClearReservedInfo();
-    LOG_FULL(INFO) << "UnloadPatch success!";
+    ClearPatchInfo(thread);
+    LOG_ECMA(INFO) << "UnloadPatch success!";
     return true;
+}
+
+void QuickFixLoader::ClearPatchInfo(JSThread *thread) const
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+
+    vm->GetGlobalEnv()->SetGlobalPatch(thread, vm->GetFactory()->EmptyArray());
+
+    // For release patch constpool and JSPandaFile.
+    vm->CollectGarbage(TriggerGCType::FULL_GC);
+
+    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile_, 0);
+    if (!patchConstpoolValue.IsHole()) {
+        LOG_ECMA(WARN) << "patch constpool still exists!";
+    } else {
+        LOG_ECMA(INFO) << "patch constpool is hole!";
+    }
 }
 
 void QuickFixLoader::ReplaceMethodInner(JSThread *thread,
@@ -579,7 +604,7 @@ bool QuickFixLoader::CheckImportEntriesMismatch(JSThread *thread, JSTaggedValue 
         auto baseArr = TaggedArray::Cast(base);
         uint32_t size = patchArr->GetLength();
         if (size != baseArr->GetLength()) {
-            LOG_FULL(ERROR) << "ModuleMismatch of ImportEntries length";
+            LOG_ECMA(ERROR) << "ModuleMismatch of ImportEntries length";
             return true;
         }
         for (uint32_t i = 0; i < size; i++) {
@@ -590,7 +615,7 @@ bool QuickFixLoader::CheckImportEntriesMismatch(JSThread *thread, JSTaggedValue 
             }
         }
     } else if (!patch.IsUndefined() || !base.IsUndefined()) {
-        LOG_FULL(ERROR) << "ModuleMismatch of ImportEntries type";
+        LOG_ECMA(ERROR) << "ModuleMismatch of ImportEntries type";
         return true;
     }
 
@@ -604,7 +629,7 @@ bool QuickFixLoader::CheckLocalExportEntriesMismatch(JSThread *thread, JSTaggedV
         auto baseArr = TaggedArray::Cast(base);
         uint32_t size = patchArr->GetLength();
         if (size != baseArr->GetLength()) {
-            LOG_FULL(ERROR) << "ModuleMismatch of LocalExportEntries length";
+            LOG_ECMA(ERROR) << "ModuleMismatch of LocalExportEntries length";
             return true;
         }
         for (uint32_t i = 0; i < size; i++) {
@@ -621,7 +646,7 @@ bool QuickFixLoader::CheckLocalExportEntriesMismatch(JSThread *thread, JSTaggedV
             return true;
         }
     } else if (!patch.IsUndefined() || !base.IsUndefined()) {
-        LOG_FULL(ERROR) << "ModuleMismatch of LocalExportEntries type";
+        LOG_ECMA(ERROR) << "ModuleMismatch of LocalExportEntries type";
         return true;
     }
 
@@ -635,7 +660,7 @@ bool QuickFixLoader::CheckIndirectExportEntriesMismatch(JSThread *thread, JSTagg
         auto baseArr = TaggedArray::Cast(base);
         uint32_t size = patchArr->GetLength();
         if (size != baseArr->GetLength()) {
-            LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntries length";
+            LOG_ECMA(ERROR) << "ModuleMismatch of IndirectExportEntries length";
             return true;
         }
         for (uint32_t i = 0; i < size; i++) {
@@ -652,7 +677,7 @@ bool QuickFixLoader::CheckIndirectExportEntriesMismatch(JSThread *thread, JSTagg
             return true;
         }
     } else if (!patch.IsUndefined() || !base.IsUndefined()) {
-        LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntries type";
+        LOG_ECMA(ERROR) << "ModuleMismatch of IndirectExportEntries type";
         return true;
     }
 
@@ -666,7 +691,7 @@ bool QuickFixLoader::CheckStarExportEntriesMismatch(JSThread *thread, JSTaggedVa
         auto baseArr = TaggedArray::Cast(base);
         uint32_t size = patchArr->GetLength();
         if (size != baseArr->GetLength()) {
-            LOG_FULL(ERROR) << "ModuleMismatch of StarExportEntries length";
+            LOG_ECMA(ERROR) << "ModuleMismatch of StarExportEntries length";
             return true;
         }
         for (uint32_t i = 0; i < size; i++) {
@@ -683,7 +708,7 @@ bool QuickFixLoader::CheckStarExportEntriesMismatch(JSThread *thread, JSTaggedVa
             return true;
         }
     } else if (!patch.IsUndefined() || !base.IsUndefined()) {
-        LOG_FULL(ERROR) << "ModuleMismatch of StarExportEntries type";
+        LOG_ECMA(ERROR) << "ModuleMismatch of StarExportEntries type";
         return true;
     }
 
@@ -699,21 +724,21 @@ bool QuickFixLoader::CheckImportEntryMismatch(ImportEntry *patch, ImportEntry *b
     auto patchLocalName = EcmaString::Cast(patch->GetLocalName());
     auto baseLocalName = EcmaString::Cast(base->GetLocalName());
     if (!EcmaStringAccessor::StringsAreEqual(patchModuleRequest, baseModuleRequest)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of ImportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of ImportEntry: "
                         << EcmaStringAccessor(patchModuleRequest).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseModuleRequest).ToStdString();
         return true;
     }
     if (!EcmaStringAccessor::StringsAreEqual(patchImportName, baseImportName)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of ImportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of ImportEntry: "
                         << EcmaStringAccessor(patchImportName).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseImportName).ToStdString();
         return true;
     }
     if (!EcmaStringAccessor::StringsAreEqual(patchLocalName, baseLocalName)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of ImportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of ImportEntry: "
                         << EcmaStringAccessor(patchLocalName).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseLocalName).ToStdString();
@@ -730,14 +755,14 @@ bool QuickFixLoader::CheckLocalExportEntryMismatch(LocalExportEntry *patch, Loca
     auto patchLocalName = EcmaString::Cast(patch->GetLocalName());
     auto baseLocalName = EcmaString::Cast(base->GetLocalName());
     if (!EcmaStringAccessor::StringsAreEqual(patchExportName, baseExportName)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of LocalExportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of LocalExportEntry: "
                         << EcmaStringAccessor(patchExportName).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseExportName).ToStdString();
         return true;
     }
     if (!EcmaStringAccessor::StringsAreEqual(patchLocalName, baseLocalName)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of LocalExportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of LocalExportEntry: "
                         << EcmaStringAccessor(patchLocalName).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseLocalName).ToStdString();
@@ -756,21 +781,21 @@ bool QuickFixLoader::CheckIndirectExportEntryMismatch(IndirectExportEntry *patch
     auto patchImportName = EcmaString::Cast(patch->GetImportName());
     auto baseImportName = EcmaString::Cast(base->GetImportName());
     if (!EcmaStringAccessor::StringsAreEqual(patchExportName, baseExportName)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of IndirectExportEntry: "
                         << EcmaStringAccessor(patchExportName).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseExportName).ToStdString();
         return true;
     }
     if (!EcmaStringAccessor::StringsAreEqual(patchModuleRequest, baseModuleRequest)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of IndirectExportEntry: "
                         << EcmaStringAccessor(patchModuleRequest).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseModuleRequest).ToStdString();
         return true;
     }
     if (!EcmaStringAccessor::StringsAreEqual(patchImportName, baseImportName)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of IndirectExportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of IndirectExportEntry: "
                         << EcmaStringAccessor(patchImportName).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseImportName).ToStdString();
@@ -785,7 +810,7 @@ bool QuickFixLoader::CheckStarExportEntryMismatch(StarExportEntry *patch, StarEx
     auto patchModuleRequest = EcmaString::Cast(patch->GetModuleRequest());
     auto baseModuleRequest = EcmaString::Cast(base->GetModuleRequest());
     if (!EcmaStringAccessor::StringsAreEqual(patchModuleRequest, baseModuleRequest)) {
-        LOG_FULL(ERROR) << "ModuleMismatch of StarExportEntry: "
+        LOG_ECMA(ERROR) << "ModuleMismatch of StarExportEntry: "
                         << EcmaStringAccessor(patchModuleRequest).ToStdString()
                         << " vs "
                         << EcmaStringAccessor(baseModuleRequest).ToStdString();

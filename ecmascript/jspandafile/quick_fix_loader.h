@@ -55,11 +55,14 @@ private:
     bool ExecutePatchMain(JSThread *thread, const CVector<JSHandle<Program>> &programs);
 
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
+
     void ClearReservedInfo()
     {
         reservedBaseMethodInfo_.clear();
         reservedBaseClassInfo_.clear();
     }
+    void ClearPatchInfo(JSThread *thread) const;
+
     bool CheckIsInvalidPatch(EcmaVM *vm) const;
     // Check module mismatch
     static bool CheckIsModuleMismatch(JSThread *thread, JSHandle<SourceTextModule> patchModule,

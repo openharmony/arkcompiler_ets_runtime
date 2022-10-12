@@ -139,9 +139,6 @@ public:
             case JSType::JS_GLOBAL_OBJECT:
                 JSGlobalObject::Cast(object)->VisitRangeSlot(visitor);
                 break;
-            case JSType::GLOBAL_PATCH:
-                GlobalPatch::Cast(object)->VisitRangeSlot(visitor);
-                break;
             case JSType::JS_FUNCTION_BASE: {
                 auto jsFunctionBase = JSFunctionBase::Cast(object);
                 jsFunctionBase->VisitRangeSlot(visitor);

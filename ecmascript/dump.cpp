@@ -420,8 +420,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "CommonJSRequire";
         case JSType::METHOD:
             return "Method";
-        case JSType::GLOBAL_PATCH:
-            return "GlobalPatch";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);
@@ -588,7 +586,6 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
-        case JSType::GLOBAL_PATCH:
             JSObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_FUNCTION_BASE:
@@ -3457,7 +3454,6 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
         case JSType::JS_GLOBAL_OBJECT:
-        case JSType::GLOBAL_PATCH:
             JSObject::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_FUNCTION_BASE:

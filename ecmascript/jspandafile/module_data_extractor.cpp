@@ -30,8 +30,7 @@ using StringData = panda_file::StringData;
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                          const CString &descriptor, const CString &moduleFilename)
 {
-    int moduleIdx = -1;
-    moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
+    int moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     ASSERT(moduleIdx != -1);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
