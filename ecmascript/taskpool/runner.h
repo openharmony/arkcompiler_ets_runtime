@@ -26,6 +26,7 @@
 #include "os/mutex.h"
 
 namespace panda::ecmascript {
+static constexpr uint32_t MIN_TASKPOOL_THREAD_NUM = 3;
 static constexpr uint32_t MAX_TASKPOOL_THREAD_NUM = 7;
 static constexpr uint32_t DEFAULT_TASKPOOL_THREAD_NUM = 0;
 
