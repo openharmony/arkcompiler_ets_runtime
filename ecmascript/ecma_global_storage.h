@@ -497,7 +497,7 @@ private:
         if (!list->HasUsagedNode() && (*topNodes != *lastNodes)) {
             list->RemoveList();
             if (*freeList == list) {
-                *freeList = list->GetNext();
+                *freeList = list->GetFreeNext();
             }
             if (*topNodes == list) {
                 *topNodes = list->GetNext();
