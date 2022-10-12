@@ -112,6 +112,8 @@ TaggedObject *ObjectFactory::AllocObjectWithSpaceType(size_t size, JSHClass *cls
             return heap_->AllocateOldOrHugeObject(cls, size);
         case MemSpaceType::NON_MOVABLE:
             return heap_->AllocateNonMovableOrHugeObject(cls, size);
+        case MemSpaceType::READ_ONLY_SPACE:
+            return heap_->AllocateReadOnlyOrHugeObject(cls, size);
         default:
             UNREACHABLE();
     }
