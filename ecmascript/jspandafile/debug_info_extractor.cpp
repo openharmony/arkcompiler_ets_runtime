@@ -38,7 +38,8 @@ static const char *GetStringFromConstantPool(const panda_file::File &pf, uint32_
 
 DebugInfoExtractor::DebugInfoExtractor(const JSPandaFile *jsPandaFile)
 {
-    Extract(jsPandaFile->GetPandaFile());
+    jsPandaFile_ = jsPandaFile;
+    Extract();
 }
 
 class LineNumberProgramHandler {
@@ -166,8 +167,9 @@ private:
     ColumnNumberTable cnt_;
 };
 
-void DebugInfoExtractor::Extract(const panda_file::File *pf)
+void DebugInfoExtractor::Extract()
 {
+    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     ASSERT(pf != nullptr);
     const auto &pandaFile = *pf;
     auto classes = pf->GetClasses();
@@ -272,5 +274,10 @@ CVector<panda_file::File::EntityId> DebugInfoExtractor::GetMethodIdList() const
         list.push_back(panda_file::File::EntityId(method.first));
     }
     return list;
+}
+
+bool DebugInfoExtractor::ContainsMethod(panda_file::File::EntityId methodId) const
+{
+    return methods_.find(methodId.GetOffset()) != methods_.end();
 }
 }  // namespace panda::ecmascript
