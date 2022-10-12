@@ -39,6 +39,9 @@ CpuProfiler::CpuProfiler(const EcmaVM *vm) : vm_(vm)
     if (generator_->SemInit(1, 0, 0) != 0) {
         LOG_ECMA(ERROR) << "sem_[1] init failed";
     }
+    if (generator_->SemInit(2, 0, 0) != 0) { // 2: signal 2
+        LOG_ECMA(ERROR) << "sem_[2] init failed";
+    }
 }
 
 void CpuProfiler::StartCpuProfilerForInfo()
@@ -68,9 +71,10 @@ void CpuProfiler::StartCpuProfilerForInfo()
         os::memory::LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
+    vm_->GetJSThread()->SetCallNapiGetStack(true);
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SamplingProcessor>(generator_, interval_, outToFile_));
+        std::make_unique<SamplingProcessor>(generator_, interval_));
 }
 
 void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
@@ -120,9 +124,11 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
     SetProfileStart(ts);
     outToFile_ = true;
+    generator_->SetOutToFile(outToFile_);
+    vm_->GetJSThread()->SetCallNapiGetStack(true);
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SamplingProcessor>(generator_, interval_, outToFile_));
+        std::make_unique<SamplingProcessor>(generator_, interval_));
 }
 
 std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
@@ -138,8 +144,9 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
         return profileInfo;
     }
     isProfiling_ = false;
+    vm_->GetJSThread()->SetCallNapiGetStack(false);
     generator_->SetIsStart(false);
-    generator_->SetSampleFlag(true);
+    generator_->SetIsBreakSampleFlag(true);
     if (generator_->SemPost(0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] post failed";
         return profileInfo;
@@ -173,8 +180,9 @@ void CpuProfiler::StopCpuProfilerForFile()
     }
 
     isProfiling_ = false;
+    vm_->GetJSThread()->SetCallNapiGetStack(false);
     generator_->SetIsStart(false);
-    generator_->SetSampleFlag(true);
+    generator_->SetIsBreakSampleFlag(true);
     if (generator_->SemPost(0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] post failed";
         return;
@@ -196,6 +204,9 @@ CpuProfiler::~CpuProfiler()
     }
     if (generator_->SemDestroy(1) != 0) {
         LOG_ECMA(ERROR) << "sem_[1] destroy failed";
+    }
+    if (generator_->SemDestroy(2) != 0) { // 2: signal 2
+        LOG_ECMA(ERROR) << "sem_[2] destroy failed";
     }
     if (generator_ != nullptr) {
         delete generator_;
@@ -252,25 +263,58 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
             }
 
             if (stackInfo.count(method) == 0) {
-                ParseMethodInfo(method, frameHandler);
+                if (UNLIKELY(!ParseMethodInfo(method, frameHandler, false))) {
+                    generator_->SetIsBreakSampleFlag(true);
+                    return;
+                }
             }
-            generator_->PushFrameStack(method);
+            if (UNLIKELY(!generator_->PushFrameStack(method))) {
+                generator_->SetIsBreakSampleFlag(true);
+                return;
+            }
         }
     }
 }
 
-void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
+bool CpuProfiler::GetFrameStackCallNapi(FrameHandler &frameHandler)
+{
+    const CMap<JSMethod *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
+    generator_->ClearNapiStack();
+    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        if (!frameHandler.IsInterpretedFrame()) {
+            continue;
+        }
+        auto method = frameHandler.CheckAndGetMethod();
+        if (method == nullptr) {
+            continue;
+        }
+
+        if (stackInfo.count(method) == 0) {
+            if (UNLIKELY(!ParseMethodInfo(method, frameHandler, true))) {
+                LOG_ECMA(ERROR) << "CpuProfiler ParseMethodInfo fail";
+                return false;
+            }
+        }
+        if (UNLIKELY(!generator_->PushNapiFrameStack(method))) {
+            LOG_ECMA(ERROR) << "CpuProfiler PushNapiFrameStack fail";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler, bool isCallNapi)
 {
     struct FrameInfoTemp codeEntry;
     codeEntry.method = method;
     if (method != nullptr && method->IsNativeWithCallField()) {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
-            return;
+            return false;
         }
         GetNativeStack(frameHandler, codeEntry.functionName, sizeof(codeEntry.functionName));
     } else {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
-            return;
+            return false;
         }
         const char *tempVariable = method->GetMethodName();
         uint8_t length = strlen(tempVariable);
@@ -285,7 +329,7 @@ void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
             tempVariable = "anonymous";
         }
         if (!CheckAndCopy(codeEntry.functionName, sizeof(codeEntry.functionName), tempVariable)) {
-            return;
+            return false;
         }
         // source file
         tooling::JSPtExtractor *debugExtractor =
@@ -297,7 +341,7 @@ void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
             tempVariable = sourceFile.c_str();
         }
         if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), tempVariable)) {
-            return;
+            return false;
         }
         // line number
         int32_t lineNumber = 0;
@@ -321,16 +365,20 @@ void CpuProfiler::ParseMethodInfo(JSMethod *method, FrameHandler &frameHandler)
             codeEntry.columnNumber = columnNumber;
         }
     }
-    generator_->PushStackInfo(codeEntry);
+    if (isCallNapi) {
+        return generator_->PushNapiStackInfo(codeEntry);
+    }
+    return generator_->PushStackInfo(codeEntry);
 }
 
 void CpuProfiler::GetNativeStack(FrameHandler &frameHandler, char *functionName, size_t size)
 {
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
     // napi method
     if (function->GetCallNative()) {
-        JSNativePointer *extraInfo = JSNativePointer::Cast(function->GetFunctionExtraInfo().GetTaggedObject());
+        JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
         auto cb = vm_->GetNativePtrGetter();
         if (cb != nullptr  && extraInfo != nullptr) {
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
@@ -342,6 +390,15 @@ void CpuProfiler::GetNativeStack(FrameHandler &frameHandler, char *functionName,
             CheckAndCopy(functionName + napiBeginLength + srcLength, size - napiBeginLength - srcLength, ")");
             return;
         }
+    }
+    if (extraInfoValue.IsJSNativePointer()) {
+        stream << JSNativePointer::Cast(extraInfoValue.GetTaggedObject())->GetExternalPointer();
+        CheckAndCopy(functionName, size, "arkui(");
+        const uint8_t arkuiBeginLength = 6; // 6:the length of "arkui("
+        CheckAndCopy(functionName + arkuiBeginLength, size - arkuiBeginLength, stream.str().c_str());
+        uint8_t srcLength = stream.str().size();
+        CheckAndCopy(functionName + arkuiBeginLength + srcLength, size - arkuiBeginLength - srcLength, ")");
+        return;
     }
     // builtin method
     auto method = frameHandler.CheckAndGetMethod();
@@ -364,6 +421,22 @@ void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
             return;
         }
         thread->SetGetStackSignal(false);
+    }
+}
+
+void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread)
+{
+    generator_->SetBeforeGetCallNapiStackFlag(true);
+    FrameHandler frameHandler(thread);
+    if (GetFrameStackCallNapi(frameHandler)) {
+        generator_->SetCallNapiFlag(true);
+        generator_->SetAfterGetCallNapiStackFlag(true);
+        if (generator_->SemWait(2) != 0) { // 2: signal 2
+            LOG_ECMA(ERROR) << "sem_[2] wait failed";
+            return;
+        }
+    } else {
+        generator_->SetBeforeGetCallNapiStackFlag(false);
     }
 }
 
@@ -536,7 +609,6 @@ bool CpuProfiler::CheckAndCopy(char *dest, size_t length, const char *src) const
     int srcLength = strlen(src);
     if (length <= static_cast<size_t>(srcLength) || strcpy_s(dest, srcLength + 1, src) != EOK) {
         LOG_ECMA(ERROR) << "CpuProfiler parseMethodInfo strcpy_s failed, maybe srcLength more than destLength";
-        generator_->SetSampleFlag(true);
         return false;
     }
     dest[srcLength] = '\0';

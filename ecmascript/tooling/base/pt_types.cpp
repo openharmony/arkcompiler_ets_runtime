@@ -1936,7 +1936,15 @@ std::unique_ptr<Profile> Profile::Create(const PtJson &params)
     } else {
         error += "Unknown 'nodes';";
     }
-    
+
+    int64_t tid;
+    ret = params.GetInt64("tid", &tid);
+    if (ret == Result::SUCCESS) {
+        profile->tid_ = tid;
+    } else {
+        error += "Unknown 'tid';";
+    }
+
     int64_t startTime;
     ret = params.GetInt64("startTime", &startTime);
     if (ret == Result::SUCCESS) {
@@ -1988,6 +1996,7 @@ std::unique_ptr<Profile> Profile::Create(const PtJson &params)
 std::unique_ptr<Profile> Profile::FromProfileInfo(const ProfileInfo &profileInfo)
 {
     auto profile = std::make_unique<Profile>();
+    profile->SetTid(static_cast<int64_t>(profileInfo.tid));
     profile->SetStartTime(static_cast<int64_t>(profileInfo.startTime));
     profile->SetEndTime(static_cast<int64_t>(profileInfo.stopTime));
     size_t samplesLen = profileInfo.samples.size();
@@ -2020,6 +2029,7 @@ std::unique_ptr<PtJson> Profile::ToJson() const
 {
     std::unique_ptr<PtJson> result = PtJson::CreateObject();
 
+    result->Add("tid", tid_);
     result->Add("startTime", startTime_);
     result->Add("endTime", endTime_);
 
