@@ -209,7 +209,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, GetJSPtExtractor)
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
     pfManager->InsertJSPandaFile(pf);
-    tooling::JSPtExtractor *extractor = pfManager->GetJSPtExtractor(pf);
+    DebugInfoExtractor *extractor = pfManager->GetJSPtExtractor(pf);
     EXPECT_TRUE(extractor != nullptr);
 
     pfManager->RemoveJSPandaFile((void *)pf);

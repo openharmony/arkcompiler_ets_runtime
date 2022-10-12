@@ -135,7 +135,7 @@ int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_
         LOG_DEBUGGER(ERROR) << "GetVregIndex: native frame not support";
         return -1;
     }
-    JSPtExtractor *extractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
+    DebugInfoExtractor *extractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "GetVregIndex: extractor is null";
         return -1;

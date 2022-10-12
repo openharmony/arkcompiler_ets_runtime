@@ -335,7 +335,7 @@ bool CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, bo
             return false;
         }
         // source file
-        tooling::JSPtExtractor *debugExtractor =
+        DebugInfoExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
         const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
         if (sourceFile.empty()) {

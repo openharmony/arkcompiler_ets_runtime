@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_TOOLING_TEST_UTILS_TEST_EXTRACTOR_H
 #define ECMASCRIPT_TOOLING_TEST_UTILS_TEST_EXTRACTOR_H
 
-#include "ecmascript/tooling/backend/js_pt_extractor.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
 
 namespace panda::ecmascript::tooling::test {
 using EntityId = panda_file::File::EntityId;
@@ -38,9 +38,9 @@ struct SourceLocation {
     }
 };
 
-class TestExtractor : public JSPtExtractor {
+class TestExtractor : public DebugInfoExtractor {
 public:
-    explicit TestExtractor(const JSPandaFile *pandaFile) : JSPtExtractor(pandaFile) {}
+    explicit TestExtractor(const JSPandaFile *pandaFile) : DebugInfoExtractor(pandaFile) {}
     ~TestExtractor() = default;
 
     std::pair<EntityId, uint32_t> GetBreakpointAddress(const SourceLocation &sourceLocation);

@@ -22,7 +22,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tooling/backend/js_pt_extractor.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
 
 namespace panda::ecmascript::builtins {
 // ecma 19.2.1 Function (p1, p2, ... , pn, body)
@@ -273,7 +273,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
             startStr.append(nameStr).append(endStr);
             return GetTaggedString(thread, startStr.c_str());
         }
-        tooling::JSPtExtractor *debugExtractor =
+        DebugInfoExtractor *debugExtractor =
                 JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
         const std::string &sourceCode = debugExtractor->GetSourceCode(method->GetMethodId());
         if (!sourceCode.empty()) {

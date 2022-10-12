@@ -20,7 +20,7 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/tooling/backend/js_pt_extractor.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
 
 namespace panda::ecmascript {
 std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
@@ -44,7 +44,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
             data += name;
             data.append(" (");
             // source file
-            tooling::JSPtExtractor *debugExtractor =
+            DebugInfoExtractor *debugExtractor =
                 JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
             const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
             if (sourceFile.empty()) {
@@ -107,7 +107,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
                 frameInfo.functionName = name;
             }
             // source file
-            tooling::JSPtExtractor *debugExtractor =
+            DebugInfoExtractor *debugExtractor =
                 JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
             const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
             if (sourceFile.empty()) {

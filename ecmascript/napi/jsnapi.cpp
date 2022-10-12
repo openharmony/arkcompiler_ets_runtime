@@ -35,6 +35,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/quick_fix_manager.h"
@@ -138,6 +139,7 @@ using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
 using ecmascript::RegExpParser;
+using ecmascript::DebugInfoExtractor;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -1273,8 +1275,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    ecmascript::tooling::JSPtExtractor *debugExtractor =
-                                        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
     if (!jsPandaFile->IsBundlePack()) {
         JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());

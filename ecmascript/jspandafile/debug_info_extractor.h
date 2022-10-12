@@ -81,6 +81,64 @@ public:
 
     CVector<panda_file::File::EntityId> GetMethodIdList() const;
 
+    template<class Callback>
+    bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column, const std::string &url)
+    {
+        if (line == SPECIAL_LINE_MARK) {
+            return false;
+        }
+
+        auto methods = GetMethodIdList();
+        for (const auto &method : methods) {
+            // the url for testcases is empty
+            if (!url.empty() && url != GetSourceFile(method)) {
+                continue;
+            }
+            const LineNumberTable &lineTable = GetLineNumberTable(method);
+            const ColumnNumberTable &columnTable = GetColumnNumberTable(method);
+            for (uint32_t i = 0; i < lineTable.size(); i++) {
+                if (lineTable[i].line != line) {
+                    continue;
+                }
+                uint32_t currentOffset = lineTable[i].offset;
+                uint32_t nextOffset = ((i == lineTable.size() - 1) ? UINT32_MAX : lineTable[i + 1].offset);
+                for (const auto &pair : columnTable) {
+                    if (pair.column == column && pair.offset >= currentOffset && pair.offset < nextOffset) {
+                        return cb(method, pair.offset);
+                    }
+                }
+                return cb(method, currentOffset);
+            }
+        }
+        return false;
+    }
+
+    template<class Callback>
+    bool MatchLineWithOffset(const Callback &cb, panda_file::File::EntityId methodId, uint32_t offset)
+    {
+        int32_t line = 0;
+        const LineNumberTable &lineTable = GetLineNumberTable(methodId);
+        auto iter = std::upper_bound(lineTable.begin(), lineTable.end(), LineTableEntry {offset, 0});
+        if (iter != lineTable.begin()) {
+            line = (iter - 1)->line;
+        }
+        return cb(line);
+    }
+
+    template<class Callback>
+    bool MatchColumnWithOffset(const Callback &cb, panda_file::File::EntityId methodId, uint32_t offset)
+    {
+        int32_t column = 0;
+        const ColumnNumberTable &columnTable = GetColumnNumberTable(methodId);
+        auto iter = std::upper_bound(columnTable.begin(), columnTable.end(), ColumnTableEntry {offset, 0});
+        if (iter != columnTable.begin()) {
+            column = (iter - 1)->column;
+        }
+        return cb(column);
+    }
+
+    constexpr static int32_t SPECIAL_LINE_MARK = -1;
+
 private:
     void Extract(const panda_file::File *pf);
 

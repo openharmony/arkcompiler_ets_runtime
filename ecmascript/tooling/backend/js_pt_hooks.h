@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_TOOLING_BACKEND_JS_PT_HOOKS_H
 #define ECMASCRIPT_TOOLING_BACKEND_JS_PT_HOOKS_H
 
-#include "ecmascript/tooling/backend/js_pt_extractor.h"
+#include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/tooling/base/pt_events.h"
 #include "ecmascript/tooling/base/pt_script.h"
 #include "ecmascript/tooling/backend/js_debugger_interface.h"

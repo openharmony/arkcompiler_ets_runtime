@@ -479,7 +479,7 @@ void TypeInfer::PrintAllGatesTypes() const
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
     const MethodLiteral *methodLiteral = builder_->GetMethod();
     EntityId methodId = builder_->GetMethod()->GetMethodId();
-    JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
     const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
 
@@ -538,7 +538,7 @@ void TypeInfer::TypeCheck(GateRef gate) const
             const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
             const MethodLiteral *methodLiteral = builder_->GetMethod();
             EntityId methodId = builder_->GetMethod()->GetMethodId();
-            JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+            DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
             const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
             const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
 
@@ -557,7 +557,7 @@ void TypeInfer::FilterAnyTypeGates() const
     const MethodLiteral *methodLiteral = builder_->GetMethod();
     EntityId methodId = methodLiteral->GetMethodId();
 
-    tooling::JSPtExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
     const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
 
@@ -575,7 +575,7 @@ void TypeInfer::FilterAnyTypeGates() const
     LOG_COMPILER(INFO) << log << "[TypeFilter] end";
 }
 
-std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, JSPtExtractor *debugExtractor,
+std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
                                               const std::string &logPreFix) const
 {
     std::string log(logPreFix);
