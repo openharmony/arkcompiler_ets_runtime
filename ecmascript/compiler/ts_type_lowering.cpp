@@ -163,8 +163,26 @@ void TSTypeLowering::DeleteGates(GateRef hir, std::vector<GateRef> &unusedGate)
     for (auto &gate : unusedGate) {
         auto uses = acc_.Uses(gate);
         for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
-            if (acc_.GetOpCode(gate) == OpCode::IF_EXCEPTION && acc_.GetOpCode(*useIt) == OpCode::MERGE)
-            acc_.DecreaseIn(useIt);
+            if (acc_.GetOpCode(gate) == OpCode::IF_EXCEPTION && acc_.GetOpCode(*useIt) == OpCode::MERGE) {
+                // handle exception merge has only one input, using state entry and depend entry to replace merge and
+                // dependselector.
+                if (acc_.GetNumIns(*useIt) == 1) {
+                    GateRef stateEntry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
+                    GateRef dependEntry = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+                    auto mergeUses = acc_.Uses(*useIt);
+                    for (auto mergeUseIt = mergeUses.begin(); mergeUseIt != uses.end(); ++mergeUseIt) {
+                        if (acc_.GetOpCode(*mergeUseIt) == OpCode::DEPEND_SELECTOR) {
+                            auto dependSelectorUses = acc_.Uses(*mergeUseIt);
+                            acc_.ReplaceIn(*dependSelectorUses.begin(), 0, dependEntry);
+                            acc_.DeleteGate(*mergeUseIt);
+                            break;
+                        }
+                    }
+                    acc_.ReplaceIn(*useIt, 0, stateEntry);
+                } else {
+                    acc_.DecreaseIn(useIt);
+                }
+            }
         }
         acc_.DeleteGate(gate);
     }

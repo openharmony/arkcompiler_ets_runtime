@@ -72,13 +72,29 @@ void FrameStateBuilder::BuildArgsValues(ArgumentAccessor *argAcc)
     ASSERT(currentInfo_->GetNumberVRegs() == values->size());
 }
 
-GateRef FrameStateBuilder::FrameState(size_t pcOffset)
+GateRef FrameStateBuilder::FrameState(size_t pcOffset,
+    std::map<GateRef, std::pair<size_t, const uint8_t *>> &jsgateToBytecode)
 {
     auto numVregs = currentInfo_->GetNumberVRegs();
     size_t frameStateInputs = numVregs + 1; // +1: for pc
     std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
     for (size_t i = 0; i < numVregs; i++) {
-        inList[i] = ValuesAt(i);
+        auto iter = jsgateToBytecode.find(ValuesAt(i));
+        if (iter != jsgateToBytecode.end()) {
+            auto pc = iter->second.second;
+            BytecodeInstruction inst(pc);
+            EcmaOpcode op = inst.GetOpcode();
+            // vreg needed remove from framstate if it comes from RESUMEGENERATOR, otherwisethe superbound will not be
+            // found
+            if (op == EcmaOpcode::RESUMEGENERATOR) {
+                inList[i] = circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED,
+                                                      GateType::TaggedValue());
+            } else {
+                inList[i] = ValuesAt(i);
+            }
+        } else {
+            inList[i] = ValuesAt(i);
+        }
     }
     auto pcGate = circuit_->GetConstantGate(MachineType::I64,
                                             pcOffset,
@@ -87,10 +103,11 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset)
     return circuit_->NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
 }
 
-void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, GateRef glue)
+void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, GateRef glue,
+    std::map<GateRef, std::pair<size_t, const uint8_t *>> &jsgateToBytecode)
 {
     auto depend = gateAcc_.GetDep(gate);
-    GateRef frameState = FrameState(pcOffset);
+    GateRef frameState = FrameState(pcOffset, jsgateToBytecode);
     auto trueGate = circuit_->GetConstantGate(MachineType::I1,
                                               1, // 1: true
                                               GateType::NJSValue());

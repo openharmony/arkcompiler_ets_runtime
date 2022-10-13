@@ -757,7 +757,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::MOD2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
-            info.deopt = true;
+            info.deopt = false;
             break;
         }
         case EcmaOpcode::EQ_IMM8_V8: {
@@ -1550,7 +1550,10 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::NEG_IMM8:
-        case EcmaOpcode::NOT_IMM8:
+        case EcmaOpcode::NOT_IMM8: {
+            info.deopt = false;
+            break;
+        }
         case EcmaOpcode::JMP_IMM8:
         case EcmaOpcode::JMP_IMM16:
         case EcmaOpcode::JMP_IMM32:
@@ -2398,7 +2401,7 @@ void BytecodeCircuitBuilder::BuildFrameState()
                 gate = byteCodeToJSGate_.at(pc);
                 if (bytecodeInfo.deopt) {
                     GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
-                    frameStateBuilder_.BindGuard(gate, bytecodeInfo.pcOffset, glue);
+                    frameStateBuilder_.BindGuard(gate, bytecodeInfo.pcOffset, glue, jsgateToBytecode_);
                 }
             } else if (bytecodeInfo.IsSetConstant()) {
                 gate = byteCodeToJSGate_.at(pc);

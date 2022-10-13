@@ -109,7 +109,8 @@ public:
     {
         currentInfo_->UpdateVirtualRegister(index, gate);
     }
-    void BindGuard(GateRef gate, size_t pcOffset, GateRef glue);
+    void BindGuard(GateRef gate, size_t pcOffset, GateRef glue,
+        std::map<GateRef, std::pair<size_t, const uint8_t *>> &jsgateToBytecode);
 
     void AdvenceToSuccessor(const uint8_t *predPc, const uint8_t *endPc);
 private:
@@ -120,7 +121,7 @@ private:
         stateInfos_[pcOffset] = info;
         return info;
     }
-    GateRef FrameState(size_t pcOffset);
+    GateRef FrameState(size_t pcOffset, std::map<GateRef, std::pair<size_t, const uint8_t *>> &jsgateToBytecode);
 
     FrameStateInfo *currentInfo_{nullptr};
     const MethodLiteral *literal_ {nullptr};
