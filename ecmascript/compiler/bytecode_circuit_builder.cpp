@@ -199,7 +199,7 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(std::map<std::pair<uint8_t
             // pre block
             if (byteCodeCurPrePc_.at(tryStartPc) != tryStartPc) {
                 bytecodeBlockInfos_.emplace_back(byteCodeCurPrePc_.at(tryStartPc), SplitKind::END,
-                                             std::vector<uint8_t *>(1, tryStartPc));
+                                                 std::vector<uint8_t *>(1, tryStartPc));
             }
         }
         // try block

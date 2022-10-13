@@ -1897,7 +1897,7 @@ void SlowPathLowering::LowerLdLocalModuleVarByIndex(GateRef gate, GateRef glue, 
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     GateRef result = LowerCallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc), {index, jsFunc}, true);
-     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit);
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }

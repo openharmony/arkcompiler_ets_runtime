@@ -1524,7 +1524,7 @@ JSTaggedValue BuiltinsString::ToLocaleLowerCase(EcmaRuntimeCallInfo *argv)
     // starting at the first element of S.
     // Transform those elements in uString to the to the Unicode Default Case Conversion algorithm
     icu::Locale icuLocale = icu::Locale::createFromName(locale.c_str());
-    EcmaString *result = EcmaStringAccessor::LocaleConvertCase<true>(ecmaVm, string, icuLocale);
+    EcmaString *result = EcmaStringAccessor::ToLocaleLower(ecmaVm, string, icuLocale);
     return JSTaggedValue(result);
 }
 
@@ -1580,7 +1580,7 @@ JSTaggedValue BuiltinsString::ToLocaleUpperCase(EcmaRuntimeCallInfo *argv)
     // starting at the first element of S.
     // Transform those elements in uString to the to the Unicode Default Case Conversion algorithm
     icu::Locale icuLocale = icu::Locale::createFromName(locale.c_str());
-    EcmaString *result = EcmaStringAccessor::LocaleConvertCase<false>(ecmaVm, string, icuLocale);
+    EcmaString *result = EcmaStringAccessor::ToLocaleUpper(ecmaVm, string, icuLocale);
     return JSTaggedValue(result);
 }
 
@@ -1594,7 +1594,7 @@ JSTaggedValue BuiltinsString::ToLowerCase(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    EcmaString *result = EcmaStringAccessor::ConvertCase<true>(thread->GetEcmaVM(), thisHandle);
+    EcmaString *result = EcmaStringAccessor::ToLower(thread->GetEcmaVM(), thisHandle);
     return JSTaggedValue(result);
 }
 
@@ -1616,7 +1616,7 @@ JSTaggedValue BuiltinsString::ToUpperCase(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    EcmaString *result = EcmaStringAccessor::ConvertCase<false>(thread->GetEcmaVM(), thisHandle);
+    EcmaString *result = EcmaStringAccessor::ToUpper(thread->GetEcmaVM(), thisHandle);
     return JSTaggedValue(result);
 }
 
