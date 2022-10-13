@@ -28,7 +28,7 @@ action("gen_snapshot_bin") {
   script = "$ark_root/tools/gen_snapshot.sh"
 
   args = [
-    "./clang_x64/ark/ark_js_runtime/ark_js_vm ",
+    "./clang_x64/arkcompiler/ets_runtime/ark_js_vm ",
     "--boot-class-spaces=core:ecmascript",
     "--boot-intrinsic-spaces=core:ecmascript",
     "--compiler-enable-jit=false",
@@ -52,6 +52,6 @@ ohos_prebuilt_etc("gen_ark_snapshot_bin") {
   source = snapshot_bin_output_path
 
   install_enable = true
-  part_name = "ark_js_runtime"
-  subsystem_name = "ark"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }

@@ -53,8 +53,8 @@ template("host_unittest_action") {
       "--expect-output",
       "0",
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) + "/test/test:" +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/test/test:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       "--timeout-limit",
@@ -82,6 +82,10 @@ template("host_moduletest_action") {
   _is_merge_ = false
   if (defined(invoker.is_merge) && invoker.is_merge) {
     _is_merge_ = true
+  }
+  _timeout_ = "120"
+  if (defined(invoker.timeout)) {
+    _timeout_ = invoker.timeout
   }
 
   _test_js_path_ = "./${_target_name_}.js"
@@ -153,19 +157,19 @@ template("host_moduletest_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/ark_js_vm",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       js_vm_options,
       "--script-args",
       _script_args_,
       "--timeout-limit",
-      "180",
+      "${_timeout_}",
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 
@@ -202,7 +206,7 @@ template("host_moduletest_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/ark_js_vm",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       _asm_run_options_,
       "--script-args",
@@ -210,9 +214,9 @@ template("host_moduletest_action") {
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 
@@ -251,7 +255,7 @@ template("host_moduletest_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/ark_js_vm",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       _asm_run_options_,
       "--script-args",
@@ -259,9 +263,9 @@ template("host_moduletest_action") {
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 
@@ -327,7 +331,7 @@ template("host_aot_js_test_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/ark_aot_compiler",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
       "--script-options",
       _aot_compile_options_,
       "--script-args",
@@ -335,9 +339,8 @@ template("host_aot_js_test_action") {
       "--expect-sub-output",
       "ts aot compile success",
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 
@@ -379,7 +382,7 @@ template("host_aot_js_test_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/ark_js_vm",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       _aot_run_options_,
       "--script-args",
@@ -387,9 +390,8 @@ template("host_aot_js_test_action") {
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 
@@ -453,7 +455,7 @@ template("host_aot_test_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/ark_aot_compiler",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
       "--script-options",
       _aot_compile_options_,
       "--script-args",
@@ -461,9 +463,8 @@ template("host_aot_test_action") {
       "--expect-sub-output",
       "ts aot compile success",
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 
@@ -501,7 +502,7 @@ template("host_aot_test_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/ark_js_vm",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
       "--script-options",
       _aot_run_options_,
       "--script-args",
@@ -509,9 +510,8 @@ template("host_aot_test_action") {
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 
@@ -589,7 +589,7 @@ template("host_typeinfer_test_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/ark_aot_compiler",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
       "--script-options",
       _aot_compile_options_,
       "--script-args",
@@ -597,9 +597,8 @@ template("host_typeinfer_test_action") {
       "--expect-output",
       "0",
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 
@@ -824,7 +823,7 @@ template("host_quickfix_test_action") {
 
     args = [
       "--script-file",
-      rebase_path(_root_out_dir_) + "/ark/ark_js_runtime/quick_fix",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/quick_fix",
       "--script-options",
       quickfix_options,
       "--script-args",
@@ -834,9 +833,9 @@ template("host_quickfix_test_action") {
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",
-      rebase_path(_root_out_dir_) + "/ark/ark:" + rebase_path(_root_out_dir_) +
-          "/ark/ark_js_runtime:" + rebase_path(_root_out_dir_) +
-          "/${_icu_path_}:" + rebase_path(_root_out_dir_) +
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
 

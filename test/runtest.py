@@ -86,19 +86,14 @@ class ArkTest():
 
         product_dir = f'{self.ohdir}/out/{self.product}'
         libs_dir_x64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
-                                f'{product_dir}/clang_x64/ark/ark:'
-                                f'{product_dir}/clang_x64/ark/ark_js_runtime:'
+                                f'{product_dir}/clang_x64/arkcompiler/ets_runtime:'
                                 f'{product_dir}/clang_x64/thirdparty/icu')
         libs_dir_x64_debug = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
-                              f'{product_dir}/clang_x64/exe.unstripped/clang_x64/ark/ark:'
-                              f'{product_dir}/clang_x64/exe.unstripped/clang_x64/ark/ark_js_runtime:'
-                              f'{product_dir}/clang_x64/lib.unstripped/clang_x64/ark/ark:'
-                              f'{product_dir}/clang_x64/lib.unstripped/clang_x64/ark/ark_js_runtime:'
+                              f'{product_dir}/clang_x64/lib.unstripped/clang_x64/arkcompiler/ets_runtime:'
                               f'{product_dir}/clang_x64/lib.unstripped/clang_x64/test/test:'
                               f'{product_dir}/clang_x64/lib.unstripped/clang_x64/thirdparty/icu')
         libs_dir_arm64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib/aarch64-linux-ohos/c++/:'
-                                  f'{product_dir}/ark/ark/:'
-                                  f'{product_dir}/ark/ark_js_runtime/:'
+                                  f'{product_dir}/arkcompiler/ets_runtime/:'
                                   f'{product_dir}/utils/utils_base/:'
                                   f'{product_dir}/thirdparty/icu:'
                                   f'{product_dir}/securec/thirdparty_bounds_checking_function:'
@@ -116,12 +111,10 @@ class ArkTest():
                                   f'{product_dir}/communication/dsoftbus:'
                                   f'{product_dir}/startup/startup_l2/:'
                                   f'{product_dir}/security/huks/:'
-                                  f'{product_dir}/clang_x64/ark/ark/:'
                                   f'{product_dir}/clang_x64/thirdparty/icu/:'
-                                  f'{product_dir}/clang_x64/ark/ark_js_runtime')
+                                  f'{product_dir}/clang_x64/arkcompiler/ets_runtime')
         libs_dir_arm64_debug = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib/aarch64-linux-ohos/c++/:'
-                                f'{product_dir}/lib.unstripped/ark/ark/:'
-                                f'{product_dir}/lib.unstripped/ark/ark_js_runtime/:'
+                                f'{product_dir}/lib.unstripped/arkcompiler/ets_runtime/:'
                                 f'{product_dir}/utils/utils_base/:'
                                 f'{product_dir}/thirdparty/icu:'
                                 f'{product_dir}/securec/thirdparty_bounds_checking_function:'
@@ -139,16 +132,15 @@ class ArkTest():
                                 f'{product_dir}/communication/dsoftbus:'
                                 f'{product_dir}/startup/startup_l2/:'
                                 f'{product_dir}/security/huks/:'
-                                f'{product_dir}/clang_x64/ark/ark/:'
                                 f'{product_dir}/clang_x64/thirdparty/icu/:'
-                                f'{product_dir}/clang_x64/ark/ark_js_runtime')
+                                f'{product_dir}/clang_x64/arkcompiler/ets_runtime')
         libs_dir = [[libs_dir_x64_release, libs_dir_x64_debug], [libs_dir_arm64_release, libs_dir_arm64_debug]]
         bins_dir = [['clang_x64/ark', 'clang_x64/exe.unstripped/clang_x64/ark'], ['ark', 'exe.unstripped/ark']]
         icu_arg = f'--icu-data-path={self.ohdir}/third_party/icu/ohos_icu4j/data'
         self.libs_dir = libs_dir[args.arm64][args.debug]
         self.compiler = f'{product_dir}/{bins_dir[0][args.debug]}/ark_js_runtime/ark_aot_compiler'
         self.jsvm = f'{product_dir}/{bins_dir[args.arm64][args.debug]}/ark_js_runtime/ark_js_vm'
-        self.ts2abc = f'{product_dir}/clang_x64/ark/ark/build/src/index.js'
+        self.ts2abc = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/build/src/index.js'
         self.aot_args = ''
         self.jsvm_args = icu_arg
         if args.aot_args:

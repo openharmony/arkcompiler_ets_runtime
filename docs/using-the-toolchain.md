@@ -15,7 +15,7 @@ $ ./build.sh --product-name hispark_taurus_standard --build-target ark_ts2abc
 Install `node` and `npm`, then use tools:
 
 ```
-$ cd out/hispark_taurus/clang_x64/ark/ark/build
+$ cd out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/build
 $ npm install
 $ node --expose-gc src/index.js [option] file.js
 ```

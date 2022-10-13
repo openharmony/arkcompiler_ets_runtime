@@ -239,8 +239,8 @@ ohos_shared_library("libark_jsoptimizer") {
   install_enable = false
 
   output_extension = "so"
-  part_name = "ark_js_runtime"
-  subsystem_name = "ark"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_shared_library("libark_jsoptimizer_test") {
@@ -273,8 +273,8 @@ ohos_executable("ark_stub_compiler") {
     defines = [ "RUN_WITH_ASAN" ]
   }
 
-  part_name = "ark_js_runtime"
-  subsystem_name = "ark"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_executable("ark_aot_compiler") {
@@ -285,8 +285,8 @@ ohos_executable("ark_aot_compiler") {
   }
   install_enable = false
 
-  part_name = "ark_js_runtime"
-  subsystem_name = "ark"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 action("gen_stub_file") {
@@ -308,7 +308,7 @@ action("gen_stub_file") {
   args = [
     "--script-file",
     rebase_path(root_out_dir_with_host_toolchain) +
-        "/ark/ark_js_runtime/ark_stub_compiler",
+        "/arkcompiler/ets_runtime/ark_stub_compiler",
     "--script-options",
     stub_option,
     "--expect-output",
@@ -316,8 +316,8 @@ action("gen_stub_file") {
     "--timeout-limit",
     "300",
     "--env-path",
-    rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark:" +
-        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark_js_runtime:" +
+    rebase_path(root_out_dir_with_host_toolchain) +
+        "/arkcompiler/ets_runtime:" +
         rebase_path(root_out_dir_with_host_toolchain) +
         "/${icu_subsystem_name}/${icu_part_name}:" +
         rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),

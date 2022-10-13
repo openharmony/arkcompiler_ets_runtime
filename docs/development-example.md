@@ -48,20 +48,20 @@ Run the  **hello-world.js**  file.
 1.  Use the ARK frontend to create the  **hello-world.abc**  file.
 
     ```
-    node --expose-gc /your code path/out/hispark_taurus/clang_x64/ark/ark/build/src/index.js hello-world.js
+    node --expose-gc /your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/build/src/index.js hello-world.js
     ```
 
 2.  Run the  **hello-world.abc**  file.
     1.  Set the search path.
 
         ```
-        export LD_LIBRARY_PATH= out/hispark_taurus/clang_x64/ark/ark:out/hispark_taurus/clang_x64/ark/ark_js_runtime:out/hispark_taurus/clang_x64/global/i18n_standard:prebuilts/clang/ohos/linux-x86_64/llvm/lib
+        export LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/arkcompiler/ets_runtime:out/hispark_taurus/clang_x64/global/i18n_standard:prebuilts/clang/ohos/linux-x86_64/llvm/lib
         ```
 
     2.  Run  **ark\_js\_vm**.
 
         ```
-        /your code path/out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm hello-world.abc
+        /your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_runtime/ark_js_vm hello-world.abc
         ```
 
         The execution result is as follows:
@@ -77,7 +77,7 @@ Run the  **hello-world.js**  file.
 Run the following command to export the result to the  **output**  file:
 
 ```
-./your code path/out/hispark_taurus/clang_x64/ark/ark/ark_disasm hello-world.abc output
+./your code path/out/hispark_taurus/clang_x64/arkcompiler/runtime_core/ark_disasm hello-world.abc output
 ```
 
 The output is as follows:
@@ -298,7 +298,7 @@ node
         test262/harness/bin/run.js
         --hostType=panda
         --hostPath=python3
-        --hostArgs='-B test262/run_sunspider.py --ark-tool=/your code path/out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm --ark-frontend-tool=/your code path/out/hispark_taurus/clang_x64/ark/ark/build/src/index.js --libs-dir=/your code path/out/hispark_taurus/clang_x64/ark/ark:/your code path/out/hispark_taurus/clang_x64/global/i18n:/your code path/prebuilts/clang/ohos/linux-x86_64/llvm/lib/ --ark-frontend=ts2panda'
+        --hostArgs='-B test262/run_sunspider.py --ark-tool=/your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_runtime/ark_js_vm --ark-frontend-tool=/your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/build/src/index.js --libs-dir=/your code path/out/hispark_taurus/clang_x64/global/i18n:/your code path/prebuilts/clang/ohos/linux-x86_64/llvm/lib/ --ark-frontend=ts2panda'
         --threads=15
         --mode=only strict mode
         --timeout=60000
