@@ -197,10 +197,9 @@ int TaggedList<Derived>::FindDataIndexByNodeIndex(int index) const
 }
 
 template<typename Derived>
-void TaggedList<Derived>::MapNodeIndexToDataIndex(int* nodeIndexMapToDataIndex)
+void TaggedList<Derived>::MapNodeIndexToDataIndex(int* nodeIndexMapToDataIndex, int length)
 {
     int i = 0;
-    int length = NumberOfNodes();
     int nextIndex = ELEMENTS_START_INDEX;
     while (i < length) {
         nextIndex = GetElement(nextIndex + NEXT_PTR_OFFSET).GetInt();
@@ -400,7 +399,7 @@ JSTaggedValue TaggedSingleList::Sort(JSThread *thread, const JSHandle<JSTaggedVa
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
     // create index map
     int* nodeIndexMapToDataIndex = new int[length];
-    taggedList->MapNodeIndexToDataIndex(nodeIndexMapToDataIndex);
+    taggedList->MapNodeIndexToDataIndex(nodeIndexMapToDataIndex, length);
     
     int beginIndex = 0;
     int endIndex = 0;

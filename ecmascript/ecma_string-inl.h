@@ -176,50 +176,5 @@ EcmaString *EcmaString::FastSubUtf16String(const EcmaVM *vm, const JSHandle<Ecma
     ASSERT_PRINT(canBeCompressed == CanBeCompressed(string), "canBeCompresse does not match the real value!");
     return string;
 }
-
-template<bool isLower>
-EcmaString *EcmaString::ConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src)
-{
-    uint32_t srcLength = src->GetLength();
-    auto factory = vm->GetFactory();
-    if (src->IsUtf16()) {
-        std::u16string u16str = base::StringHelper::Utf16ToU16String(src->GetDataUtf16(), srcLength);
-        std::string res;
-        if (isLower) {
-            res = base::StringHelper::ToLower(u16str);
-        } else {
-            res = base::StringHelper::ToUpper(u16str);
-        }
-        return *(factory->NewFromStdString(res));
-    } else {
-        const char start = isLower ? 'A' : 'a';
-        const char end = isLower ? 'Z' : 'z';
-        auto newString = AllocStringObject(vm, srcLength, true);
-        Span<uint8_t> data(src->GetDataUtf8Writable(), srcLength);
-        auto newStringPtr = newString->GetDataUtf8Writable();
-        for (uint32_t index = 0; index < srcLength; ++index) {
-            if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
-                *(newStringPtr + index) = data[index] ^ (1 << 5);   // 1 and 5 means lower to upper or upper to lower
-            } else {
-                *(newStringPtr + index) = data[index];
-            }
-        }
-        return newString;
-    }
-}
-
-template<bool isLower>
-EcmaString *EcmaString::LocaleConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale)
-{
-    auto factory = vm->GetFactory();
-    std::u16string utf16 = src->ToU16String();
-    std::string res;
-    if (isLower) {
-        res = base::StringHelper::ToLocaleLower(utf16, locale);
-    } else {
-        res = base::StringHelper::ToLocaleUpper(utf16, locale);
-    }
-    return *(factory->NewFromStdString(res));
-}
 }  // namespace panda::ecmascript
 #endif

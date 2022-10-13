@@ -386,11 +386,13 @@ private:
 
     bool ToTypedArrayIndex(uint32_t *index);
 
-    template<bool isLower>
-    static EcmaString *ConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src);
+    static EcmaString *ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src);
 
-    template<bool isLower>
-    static EcmaString *LocaleConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
+    static EcmaString *ToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src);
+
+    static EcmaString *ToLocaleLower(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
+
+    static EcmaString *ToLocaleUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
 
     template<typename T>
     static EcmaString *TrimBody(const JSThread *thread, const JSHandle<EcmaString> &src, Span<T> &data, TrimMode mode);
@@ -680,16 +682,24 @@ public:
         return string_->ToTypedArrayIndex(index);
     }
 
-    template<bool isLower>
-    static EcmaString *ConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src)
+    static EcmaString *ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src)
     {
-        return EcmaString::ConvertCase<isLower>(vm, src);
+        return EcmaString::ToLower(vm, src);
     }
 
-    template<bool isLower>
-    static EcmaString *LocaleConvertCase(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale)
+    static EcmaString *ToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src)
     {
-        return EcmaString::LocaleConvertCase<isLower>(vm, src, locale);
+        return EcmaString::ToUpper(vm, src);
+    }
+
+    static EcmaString *ToLocaleLower(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale)
+    {
+        return EcmaString::ToLocaleLower(vm, src, locale);
+    }
+
+    static EcmaString *ToLocaleUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale)
+    {
+        return EcmaString::ToLocaleUpper(vm, src, locale);
     }
 
     static EcmaString *Trim(const JSThread *thread,
