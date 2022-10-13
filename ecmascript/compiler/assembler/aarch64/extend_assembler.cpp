@@ -21,7 +21,7 @@ namespace panda::ecmascript::aarch64 {
 Register ExtendedAssembler::ghcJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
     { X19, FP, X20, X21, X22, X23, X24, X25, X26 };
 Register ExtendedAssembler::cppJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] =
-    { X0, FP, X1, X2, X3, X4, X5, INVALID_REG, INVALID_REG };
+    { X0, FP, X1, X2, X3, X4, X5, X6, X7 };
 
 void ExtendedAssembler::CalleeSave()
 {

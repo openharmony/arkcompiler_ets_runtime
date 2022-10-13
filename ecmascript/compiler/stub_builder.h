@@ -254,6 +254,8 @@ public:
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
     GateRef IsNonExist(GateRef attr);
+    GateRef IsJSAPIVector(GateRef attr);
+    GateRef GetTarget(GateRef proxyObj);
     GateRef HandlerBaseIsAccessor(GateRef attr);
     GateRef HandlerBaseIsJSArray(GateRef attr);
     GateRef HandlerBaseIsInlinedProperty(GateRef attr);

@@ -447,8 +447,13 @@ void AsmInterpreterCall::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCa
         __ Bind(&pushCallThis);
     } else if (argc > 0) {
         if (argc > 2) { // 2: call arg2
-            Register arg2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
-            __ Pushq(arg2);
+            if (mode == JSCallMode::CALL_THIS_ARG3_WITH_RETURN) {
+                Register arg2 = __ CppJSCallAvailableRegister1();
+                __ Pushq(arg2);
+            } else {
+                Register arg2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
+                __ Pushq(arg2);
+            }
         }
         if (argc > 1) {
             __ Pushq(arg1);
@@ -563,6 +568,8 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
             __ Movq(Operand(argvRegister, -FRAME_SLOT_SIZE), defaultRegister);  // 8: this is just before the argv list
             return defaultRegister;
         }
+        case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+            return __ CppJSCallAvailableRegister2();
         default:
             UNREACHABLE();
     }
@@ -1048,6 +1055,21 @@ void AsmInterpreterCall::CallSetter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER);
+}
+
+void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs3));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    GetArgvAtStack(assembler);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+    }
 }
 
 // ResumeRspAndReturn(uintptr_t acc)

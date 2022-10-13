@@ -32,6 +32,7 @@ public:
     static void PushAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register argc);
+    static void GetArgvAtStack(ExtendedAssembler *assembler);
 };
 
 class OptimizedCall : public CommonCall {
@@ -122,6 +123,8 @@ public:
     static void CallGetter(ExtendedAssembler *assembler);
 
     static void CallSetter(ExtendedAssembler *assembler);
+
+    static void CallContainersArgs3(ExtendedAssembler *assembler);
 
     static void ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembler);
 

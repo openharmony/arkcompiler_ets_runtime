@@ -59,6 +59,14 @@ public:
         // r11 is neither callee saved reegister nor argument register
         return r11;
     }
+    Register CppJSCallAvailableRegister1() const
+    {
+        return r13;
+    }
+    Register CppJSCallAvailableRegister2() const
+    {
+        return r14;
+    }
     Register CallDispatcherArgument(kungfu::CallDispatchInputs index)
     {
         size_t i = static_cast<size_t>(index);
