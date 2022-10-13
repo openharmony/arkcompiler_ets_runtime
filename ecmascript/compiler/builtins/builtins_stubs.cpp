@@ -18,6 +18,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
@@ -455,6 +456,121 @@ DECLARE_BUILTINS(CharAt)
             }
         }
     }
+    Bind(&slowPath);
+    {
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(ForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Hole());
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
+    DEFVARIABLE(thisArg, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(key, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(kValue, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(length, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(k, VariableType::INT32(), Int32(0));
+    Label valueIsJSAPIVector(env);
+    Label valueNotJSAPIVector(env);
+    Label objIsJSProxy(env);
+    Label objNotJSProxy(env);
+    Label objIsJSAPIVector(env);
+    Label thisArgUndefined(env);
+    Label thisArgNotUndefined(env);
+    Label callbackUndefined(env);
+    Label callbackNotUndefined(env);
+    Label nextCount(env);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label exit(env);
+    Label slowPath(env);
+    Label afterLoop(env);
+    GateRef callbackFnHandle;
+    Branch(IsJSAPIVector(*thisObj), &valueIsJSAPIVector, &valueNotJSAPIVector);
+    Bind(&valueNotJSAPIVector);
+    {
+        Branch(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        Bind(&objIsJSProxy);
+        {
+            GateRef tempObj = GetTarget(*thisObj);
+            Branch(IsJSAPIVector(tempObj), &objIsJSAPIVector, &slowPath);
+            Bind(&objIsJSAPIVector);
+            {
+                thisObj = tempObj;
+                Jump(&valueIsJSAPIVector);
+            }
+        }
+        Bind(&objNotJSProxy);
+        Jump(&slowPath);
+    }
+    Bind(&valueIsJSAPIVector);
+    {
+        Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &callbackUndefined, &callbackNotUndefined);
+        Bind(&callbackUndefined);
+        Jump(&slowPath);
+        Bind(&callbackNotUndefined);
+        {
+            Label isCall(env);
+            Label notCall(env);
+            callbackFnHandle = GetCallArg(argv, IntPtr(0));
+            Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
+            Bind(&notCall);
+            Jump(&slowPath);
+            Bind(&isCall);
+            {
+                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &thisArgUndefined, &thisArgNotUndefined);
+                Bind(&thisArgUndefined);
+                Jump(&nextCount);
+                Bind(&thisArgNotUndefined);
+                thisArg = GetCallArg(argv, IntPtr(1));
+                Jump(&nextCount);
+            }
+        }
+    }
+    ContainersVectorStubBuilder vectorBuilder(this);
+    Bind(&nextCount);
+    {
+        length = vectorBuilder.GetSize(*thisObj);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label lenChange(env);
+            Label hasException(env);
+            Label notHasException(env);
+            Branch(Int32LessThan(*k, *length), &next, &afterLoop);
+            Bind(&next);
+            {
+                kValue = vectorBuilder.Get(*thisObj, *k);
+                key = IntToTaggedInt(*k);
+                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *kValue, *key, *thisObj });
+                Branch(HasPendingException(glue), &hasException, &notHasException);
+                Bind(&hasException);
+                {
+                    res = retValue;
+                    Jump(&exit);
+                }
+                Bind(&notHasException);
+                GateRef tempLen = vectorBuilder.GetSize(*thisObj);
+                Branch(Int32NotEqual(tempLen, *length), &lenChange, &loopEnd);
+                Bind(&lenChange);
+                length = tempLen;
+                Jump(&loopEnd);
+            }
+        }
+        Bind(&loopEnd);
+        k = Int32Add(*k, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&afterLoop);
+    res = Undefined();
+    Jump(&exit);
     Bind(&slowPath);
     {
         res = CALLSLOWPATH();

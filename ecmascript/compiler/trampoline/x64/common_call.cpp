@@ -54,6 +54,14 @@ void CommonCall::PushAsmInterpBridgeFrame(ExtendedAssembler *assembler)
     }
 }
 
+void CommonCall::GetArgvAtStack(ExtendedAssembler *assembler)
+{
+    Register r13 = __ CppJSCallAvailableRegister1();
+    Register r14 = __ CppJSCallAvailableRegister1();
+    __ Movq(Operand(rbp, FRAME_SLOT_SIZE), r13);
+    __ Movq(Operand(rbp, 2 * FRAME_SLOT_SIZE), r14);  // 2: skip second argv
+}
+
 void CommonCall::PopAsmInterpBridgeFrame(ExtendedAssembler *assembler)
 {
     if (!assembler->FromInterpreterHandler()) {

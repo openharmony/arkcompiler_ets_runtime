@@ -340,6 +340,7 @@ private:
     V(PushCallNewAndDispatch)               \
     V(CallGetter)                           \
     V(CallSetter)                           \
+    V(CallContainersArgs3)                    \
     V(JSCallWithArgV)                       \
     V(ConstructorJSCallWithArgV)            \
     V(ResumeRspAndDispatch)                 \

@@ -182,11 +182,11 @@ JSHandle<JSFunction> ContainersPrivate::NewContainerConstructor(JSThread *thread
 }
 
 void ContainersPrivate::SetFrozenFunction(JSThread *thread, const JSHandle<JSObject> &obj, const char *key,
-                                          EcmaEntrypoint func, int length)
+                                          EcmaEntrypoint func, int length, uint8_t builtinId)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> keyString(factory->NewFromASCII(key));
-    JSHandle<JSFunction> function = NewFunction(thread, keyString, func, length);
+    JSHandle<JSFunction> function = NewFunction(thread, keyString, func, length, builtinId);
     PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>(function), false, false, false);
     JSObject::DefineOwnProperty(thread, obj, keyString, descriptor);
 }
@@ -202,11 +202,12 @@ void ContainersPrivate::SetFrozenConstructor(JSThread *thread, const JSHandle<JS
 }
 
 JSHandle<JSFunction> ContainersPrivate::NewFunction(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                                                    EcmaEntrypoint func, int length)
+                                                    EcmaEntrypoint func, int length, uint8_t builtinId)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> function =
-        factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(), reinterpret_cast<void *>(func));
+        factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(), reinterpret_cast<void *>(func),
+                               FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSFunction::SetFunctionName(thread, baseFunction, key, thread->GlobalConstants()->GetHandledUndefined());
@@ -787,7 +788,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     SetFrozenFunction(thread, prototype, "set", ContainersVector::Set, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "subVector", ContainersVector::SubVector, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "toString", ContainersVector::ToString, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "forEach", ContainersVector::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "forEach", ContainersVector::ForEach, FuncLength::TWO,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(ForEach)));
     SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersVector::ReplaceAllElements, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "has", ContainersVector::Has, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "sort", ContainersVector::Sort, FuncLength::ZERO);

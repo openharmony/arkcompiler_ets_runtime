@@ -158,6 +158,8 @@ public:
 
     static void CallSetter(ExtendedAssembler *assembler);
 
+    static void CallContainersArgs3(ExtendedAssembler *assembler);
+
 private:
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
 

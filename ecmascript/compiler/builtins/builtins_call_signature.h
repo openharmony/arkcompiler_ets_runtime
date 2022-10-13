@@ -27,6 +27,7 @@ namespace panda::ecmascript::kungfu {
     V(IndexOf)                                      \
     V(Substring)                                    \
     V(CharAt)                                       \
+    V(ForEach)                                      \
 
 class BuiltinsStubCSigns {
 public:
