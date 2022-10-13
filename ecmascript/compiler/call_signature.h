@@ -41,6 +41,7 @@ public:
         RUNTIME_STUB,
         RUNTIME_STUB_VARARGS,
         RUNTIME_STUB_NO_GC,
+        DEOPT_STUB,
         BYTECODE_HANDLER,
         BYTECODE_DEBUGGER_HANDLER,
         BYTECODE_HELPER_HANDLER,
@@ -160,6 +161,11 @@ public:
     bool IsBCHandlerStub() const
     {
         return (GetTargetKind() == TargetKind::BYTECODE_HANDLER);
+    }
+
+    bool IsDeoptStub() const
+    {
+        return (GetTargetKind() == TargetKind::DEOPT_STUB);
     }
 
     void SetParameters(VariableType *paramsType)
@@ -370,6 +376,7 @@ private:
     V(CreateArrayFromList)                  \
     V(JSObjectGetMethod)                    \
     V(JsProxyCallInternal)                  \
+    V(DeoptHandlerAsm)                      \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

@@ -126,6 +126,11 @@ public:
             HaveNewTargetWithCallField() + HaveThisWithCallField();
     }
 
+    uint32_t GetNumberVRegs() const
+    {
+        return GetNumVregsWithCallField() + GetNumArgs();
+    }
+
     inline int16_t GetHotnessCounter() const
     {
         uint64_t literalInfo = GetLiteralInfo();
@@ -224,6 +229,7 @@ public:
     MethodLiteral *GetMethodLiteral() const;
 
     const char *PUBLIC_API GetMethodName() const;
+    const char *PUBLIC_API GetMethodName(const JSPandaFile* file) const;
     std::string PUBLIC_API ParseFunctionName() const;
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();

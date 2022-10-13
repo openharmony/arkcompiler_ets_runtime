@@ -1752,7 +1752,7 @@ void GlobalValueNumbering::SplitByOpCode(const std::vector<std::shared_ptr<Parti
         auto op = OpCode::Op(acc_.GetOpCode(node->GetGate()));
         auto bit = acc_.GetBitField(node->GetGate());
         auto mt = acc_.GetMachineType(node->GetGate());
-        auto gt = acc_.GetGateType(node->GetGate()).GetType();
+        auto gt = acc_.GetGateType(node->GetGate()).Value();
         auto tp = std::make_tuple(op, bit, mt, gt);
         if (opToPartition.count(tp) == 0) {
             auto p = std::make_shared<Partition>(Partition());

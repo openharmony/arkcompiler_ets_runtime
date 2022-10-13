@@ -48,25 +48,10 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
     return delta;
 }
 
-std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
+ModulePackInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
     auto loader = thread_->GetEcmaVM()->GetFileLoader();
-    const std::vector<AOTModulePackInfo>& aotPackInfos = loader->GetPackInfos();
-    std::tuple<uint64_t, uint8_t *, int> callsiteInfo;
-
-    StubModulePackInfo stubInfo = loader->GetStubPackInfo();
-    bool ans = stubInfo.CalCallSiteInfo(retAddr, callsiteInfo);
-    if (ans) {
-        return callsiteInfo;
-    }
-    // aot
-    for (auto &info : aotPackInfos) {
-        ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
-        if (ans) {
-            return callsiteInfo;
-        }
-    }
-    return callsiteInfo;
+    return loader->CalCallSiteInfo(retAddr);
 }
 
 template <GCVisitedFlag GCVisit>
@@ -242,7 +227,7 @@ void FrameIterator::Advance()
             return;
         }
         uint64_t textStart;
-        std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_) = CalCallSiteInfo(optimizedReturnAddr_);
+        std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_, calleeRegInfo_) = CalCallSiteInfo(optimizedReturnAddr_);
         ASSERT(optimizedReturnAddr_ >= textStart);
         optimizedReturnAddr_ = optimizedReturnAddr_ - textStart;
     }
@@ -365,6 +350,11 @@ void FrameIterator::CollectBCOffsetInfo(kungfu::ConstInfo &info) const
     arkStackMapParser_->GetConstInfo(optimizedReturnAddr_, info, stackMapAddr_);
 }
 
+void FrameIterator::CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const
+{
+    arkStackMapParser_->GetArkDeopt(optimizedReturnAddr_, stackMapAddr_, deopts);
+}
+
 ARK_INLINE JSTaggedType* OptimizedJSFunctionFrame::GetArgv(const FrameIterator &it) const
 {
     uintptr_t *preFrameSp = ComputePrevFrameSp(it);
@@ -413,6 +403,17 @@ ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
         LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
 #endif
     }
+}
+
+void OptimizedJSFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const
+{
+    it.CollectArkDeopt(deopts);
+}
+
+void OptimizedJSFunctionFrame::GetFuncCalleeRegAndOffset(
+        const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const
+{
+    it.GetCalleeRegAndOffsetVec(ret);
 }
 
 ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,

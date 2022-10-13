@@ -22,6 +22,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/deoptimizer.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/message_string.h"
@@ -38,6 +39,9 @@ extern const uint8_t _binary_stub_an_start[];
 extern const uint32_t _binary_stub_an_length;
 
 namespace panda::ecmascript {
+using CommonStubCSigns = kungfu::CommonStubCSigns;
+using BytecodeStubCSigns = kungfu::BytecodeStubCSigns;
+
 void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
 {
     uint32_t secInfoSize = GetSecInfosSize();
@@ -199,7 +203,7 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
             entry.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
         }
     }
-    LOG_COMPILER(INFO) << "Load stub file success";
+    LOG_COMPILER(INFO) << "loaded stub file successfully";
     return true;
 }
 
@@ -226,11 +230,13 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
 {
     if (!VerifyFilePath(filename)) {
         LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
-            << "please execute ark_aot_compiler with options --aot-file.";
+                            << "please execute ark_aot_compiler with options --aot-file.";
+        UNREACHABLE();
         return false;
     }
     std::ifstream file(filename.c_str(), std::ofstream::binary);
     if (!file.good()) {
+        LOG_COMPILER(ERROR) << "Fail to load aot file: " << filename.c_str();
         file.close();
         return false;
     }
@@ -253,14 +259,15 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
         des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
     }
     for (size_t i = 0; i < entries_.size(); i++) {
-        auto des = des_[entries_[i].moduleIndex_];
-        entries_[i].codeAddr_ += des.GetSecAddr(ElfSecName::TEXT);
-        auto curFileHash = aotFileHashs_[entries_[i].moduleIndex_];
-        auto curMethodId = entries_[i].indexInKind_;
-        vm->GetFileLoader()->SaveAOTFuncEntry(curFileHash, curMethodId, entries_[i].codeAddr_);
+        FuncEntryDes& funcDes = entries_[i];
+        auto moduleDes = des_[funcDes.moduleIndex_];
+        funcDes.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
+        auto curFileHash = aotFileHashs_[funcDes.moduleIndex_];
+        auto curMethodId = funcDes.indexInKind_;
+        vm->GetFileLoader()->SaveAOTFuncEntry(curFileHash, curMethodId, funcDes.codeAddr_);
     }
     file.close();
-    LOG_COMPILER(INFO) << "Load aot file success";
+    LOG_COMPILER(INFO) << "loaded aot file: " << filename.c_str();
     return true;
 }
 
@@ -334,12 +341,67 @@ void FileLoader::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFil
     mainMethod->SetNativeBit(false);
     Method *method = mainFunc->GetCallTarget();
     method->SetCodeEntryAndMarkAOT(reinterpret_cast<uintptr_t>(mainEntry));
+#ifndef NDEBUG
+    PrintAOTEntry(jsPandaFile, method, mainEntry);
+#endif
+}
+
+bool FileLoader::InsideStub(uint64_t pc) const
+{
+    uint64_t stubStartAddr = stubPackInfo_.GetAsmStubAddr();
+    uint64_t stubEndAddr = stubStartAddr + stubPackInfo_.GetAsmStubSize();
+    if (pc >= stubStartAddr && pc <= stubEndAddr) {
+        return true;
+    }
+
+    const std::vector<ModuleSectionDes> &des = stubPackInfo_.GetCodeUnits();
+    stubStartAddr = des[0].GetSecAddr(ElfSecName::TEXT);
+    stubEndAddr = stubStartAddr + des[0].GetSecSize(ElfSecName::TEXT);
+    if (pc >= stubStartAddr && pc <= stubEndAddr) {
+        return true;
+    }
+
+    stubStartAddr = des[1].GetSecAddr(ElfSecName::TEXT);
+    stubEndAddr = stubStartAddr + des[1].GetSecSize(ElfSecName::TEXT);
+    if (pc >= stubStartAddr && pc <= stubEndAddr) {
+        return true;
+    }
+    return false;
+}
+
+ModulePackInfo::CallSiteInfo FileLoader::CalCallSiteInfo(uintptr_t retAddr) const
+{
+    ModulePackInfo::CallSiteInfo callsiteInfo;
+    bool ans = stubPackInfo_.CalCallSiteInfo(retAddr, callsiteInfo);
+    if (ans) {
+        return callsiteInfo;
+    }
+    // aot
+    for (auto &info : aotPackInfos_) {
+        ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
+        if (ans) {
+            return callsiteInfo;
+        }
+    }
+    return callsiteInfo;
+}
+
+void FileLoader::PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry)
+{
+    uint32_t mId = method->GetMethodId().GetOffset();
+    std::string mName = method->GetMethodName(file);
+    std::string fileName = file->GetFileName();
+    LOG_COMPILER(INFO) << "Bind " << mName << "@" << mId << "@" << fileName
+                       << " -> AOT-Entry = " << reinterpret_cast<void*>(entry);
 }
 
 void FileLoader::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method)
 {
     uint32_t methodId = method->GetMethodId().GetOffset();
     auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
+#ifndef NDEBUG
+    PrintAOTEntry(jsPandaFile, method, codeEntry);
+#endif
     if (!codeEntry) {
         return;
     }
@@ -430,14 +492,37 @@ bool FileLoader::RewriteDataSection(uintptr_t dataSec, size_t size,
     return true;
 }
 
-void FileLoader::RuntimeRelocate()
+bool FileLoader::RewriteGotSection()
 {
-    auto desVector = stubPackInfo_.GetModuleSectionDes();
-    for (auto &des : desVector) {
-        auto dataSec = des.GetSecAddr(ElfSecName::DATA);
-        auto dataSecSize = des.GetSecSize(ElfSecName::DATA);
-        (void)RewriteDataSection(dataSec, dataSecSize, 0, 0);
+    auto fn = [&](const ModuleSectionDes& d) {
+        uintptr_t addr = d.GetSecAddr(ElfSecName::GOT);
+        uint32_t size = d.GetSecSize(ElfSecName::GOT);
+        if (size == 0) {
+            return true;
+        }
+        // only support __llvm_deoptimize is undefined
+        if(size != sizeof(uintptr_t)) {
+            LOG_FULL(FATAL) << "more than one function/data is undefined failed";
+            return false;
+        }
+        auto thread = vm_->GetAssociatedJSThread();
+        uintptr_t ptr = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
+        *(reinterpret_cast<uintptr_t *>(addr)) = ptr;
+        return true;
+    };
+    // aot
+    bool ans = false;
+    for (auto &info : aotPackInfos_) {
+        auto& des = info.GetCodeUnits();
+        for (size_t i = 0; i < des.size(); i++) {
+            auto d = des[i];
+            ans = fn(d);
+            if (!ans) {
+                return ans;
+            }
+        }
     }
+    return ans;
 }
 
 FileLoader::~FileLoader()
@@ -530,7 +615,8 @@ void BinaryBufferParser::ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src)
     }
 }
 
-bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uint8_t *, int>& ret) const
+bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr,
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>& ret) const
 {
     uint64_t textStart = 0;
     uint8_t *stackmapAddr = nullptr;
@@ -562,7 +648,14 @@ bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr, std::tuple<uint64_t, uin
         ASSERT(it != t);
         ASSERT((it->codeAddr_ <= target.codeAddr_) && (target.codeAddr_ < it->codeAddr_ + it->funcSize_));
         delta = it->fpDeltaPrevFrameSp_;
-        ret = std::make_tuple(textStart, stackmapAddr, delta);
+        kungfu::CalleeRegAndOffsetVec calleeRegInfo;
+        for (uint32_t j = 0; j < it->calleeRegisterNum_; j++) {
+            kungfu::DwarfRegType reg = static_cast<kungfu::DwarfRegType>(it->CalleeReg2Offset_[2 * j]);
+            kungfu::OffsetType offset = static_cast<kungfu::OffsetType>(it->CalleeReg2Offset_[2 * j + 1]);
+            kungfu::DwarfRegAndOffsetType regAndOffset = std::make_pair(reg, offset);
+            calleeRegInfo.emplace_back(regAndOffset);
+        }
+        ret = std::make_tuple(textStart, stackmapAddr, delta, calleeRegInfo);
         return true;
     }
     return false;

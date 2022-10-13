@@ -127,7 +127,8 @@ group("ark_aot_test") {
     "supercallspread:supercallspreadAotAction",
     "suspendgenerator:suspendgeneratorAotAction",
     "suspendgeneratorbranch:suspendgeneratorbranchAotAction",
-    "suspendgeneratorfor:suspendgeneratorforAotAction",
+
+    # "suspendgeneratorfor:suspendgeneratorforAotAction",
     "suspendgeneratorphi:suspendgeneratorphiAotAction",
     "suspendgeneratorreturn:suspendgeneratorreturnAotAction",
     "suspendgeneratorthrow:suspendgeneratorthrowAotAction",

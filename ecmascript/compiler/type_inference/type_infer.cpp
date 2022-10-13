@@ -60,7 +60,7 @@ void TypeInfer::TraverseCircuit()
 bool TypeInfer::UpdateType(GateRef gate, const GateType type)
 {
     auto preType = gateAccessor_.GetGateType(gate);
-    if (type.IsTSType() && !type.IsAnyType() && type != preType) {
+    if (type != preType) {
         gateAccessor_.SetGateType(gate, type);
         return true;
     }
@@ -105,9 +105,6 @@ bool TypeInfer::Infer(GateRef gate)
     switch (op) {
         case EcmaOpcode::LDNAN:
         case EcmaOpcode::LDINFINITY:
-        case EcmaOpcode::SUB2_IMM8_V8:
-        case EcmaOpcode::MUL2_IMM8_V8:
-        case EcmaOpcode::DIV2_IMM8_V8:
         case EcmaOpcode::MOD2_IMM8_V8:
         case EcmaOpcode::SHL2_IMM8_V8:
         case EcmaOpcode::ASHR2_IMM8_V8:
@@ -119,8 +116,6 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::NEG_IMM8:
         case EcmaOpcode::NOT_IMM8:
-        case EcmaOpcode::INC_IMM8:
-        case EcmaOpcode::DEC_IMM8:
         case EcmaOpcode::EXP_IMM8_V8:
         case EcmaOpcode::STARRAYSPREAD_V8_V8:
         case EcmaOpcode::DEPRECATED_TONUMBER_PREF_V8:
@@ -169,6 +164,15 @@ bool TypeInfer::Infer(GateRef gate)
             return InferTypeOf(gate);
         case EcmaOpcode::ADD2_IMM8_V8:
             return InferAdd2(gate);
+        case EcmaOpcode::SUB2_IMM8_V8:
+            return InferSub2(gate);
+        case EcmaOpcode::MUL2_IMM8_V8:
+            return InferMul2(gate);
+        case EcmaOpcode::DIV2_IMM8_V8:
+            return InferDiv2(gate);
+        case EcmaOpcode::INC_IMM8:
+        case EcmaOpcode::DEC_IMM8:
+            return InferIncDec(gate);
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
         case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
         case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
@@ -276,7 +280,7 @@ bool TypeInfer::InferPhiGate(GateRef gate)
         if (valueInType.IsAnyType()) {
             return UpdateType(gate, valueInType);
         }
-        typeList.emplace_back(GlobalTSTypeRef(valueInType.GetType()));
+        typeList.emplace_back(valueInType.GetGTRef());
     }
     // deduplicate
     auto deduplicateIndex = std::unique(typeList.begin(), typeList.end());
@@ -321,14 +325,14 @@ bool TypeInfer::InferLdNull(GateRef gate)
 
 bool TypeInfer::InferLdai(GateRef gate)
 {
-    auto numberType = GateType::NumberType();
-    return UpdateType(gate, numberType);
+    auto intType = GateType::IntType();
+    return UpdateType(gate, intType);
 }
 
 bool TypeInfer::InferFLdai(GateRef gate)
 {
-    auto numberType = GateType::NumberType();
-    return UpdateType(gate, numberType);
+    auto doubleType = GateType::DoubleType();
+    return UpdateType(gate, doubleType);
 }
 
 bool TypeInfer::InferLdSymbol(GateRef gate)
@@ -351,6 +355,16 @@ bool TypeInfer::InferTypeOf(GateRef gate)
     return UpdateType(gate, gateType);
 }
 
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number + number = number
+ * int    + number = number
+ * double + number = number
+ * int    + int    = int
+ * int    + double = double
+ * double + double = double
+ * string + string = string
+ */
 bool TypeInfer::InferAdd2(GateRef gate)
 {
     // 2: number of value inputs
@@ -360,10 +374,116 @@ bool TypeInfer::InferAdd2(GateRef gate)
     if (firInType.IsStringType() || secInType.IsStringType()) {
         return UpdateType(gate, GateType::StringType());
     }
+    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsIntType()) ||
+        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if ((firInType.IsIntType() && secInType.IsIntType())) {
+        return UpdateType(gate, GateType::IntType());
+    }
     if (firInType.IsNumberType() && secInType.IsNumberType()) {
         return UpdateType(gate, GateType::NumberType());
     }
     return UpdateType(gate, GateType::AnyType());
+}
+
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number - number = number
+ * int    - number = number
+ * double - number = number
+ * int    - int    = int
+ * int    - double = double
+ * double - double = double
+ */
+bool TypeInfer::InferSub2(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsIntType()) ||
+        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if ((firInType.IsIntType() && secInType.IsIntType())) {
+        return UpdateType(gate, GateType::IntType());
+    }
+    return UpdateType(gate, GateType::NumberType());
+}
+
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number * number = number
+ * int    * number = number
+ * double * number = number
+ * int    * int    = int
+ * int    * double = double
+ * double * double = double
+ */
+bool TypeInfer::InferMul2(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsIntType()) ||
+        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if ((firInType.IsIntType() && secInType.IsIntType())) {
+        return UpdateType(gate, GateType::IntType());
+    }
+    return UpdateType(gate, GateType::NumberType());
+}
+
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number / number = number
+ * int    / number = number
+ * double / number = number
+ * int    / int    = double
+ * int    / double = double
+ * double / double = double
+ */
+bool TypeInfer::InferDiv2(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    if ((firInType.IsIntType() && secInType.IsIntType()) ||
+        (firInType.IsIntType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsIntType()) ||
+        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    return UpdateType(gate, GateType::NumberType());
+}
+
+/*
+ * Type Infer rule:
+ * number++ = number
+ * number-- = number
+ * int++    = int
+ * int--    = int
+ * double++ = double
+ * double-- = double
+ */
+bool TypeInfer::InferIncDec(GateRef gate)
+{
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    if (firInType.IsDoubleType()) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if (firInType.IsIntType()) {
+        return UpdateType(gate, GateType::IntType());
+    }
+    return UpdateType(gate, GateType::NumberType());
 }
 
 bool TypeInfer::InferLdObjByIndex(GateRef gate)
@@ -424,7 +544,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
-    if (objType.IsTSType()) {
+    if (!objType.IsAnyType()) {
         if (tsManager_->IsArrayTypeKind(objType)) {
             auto builtinGt = GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, TSManager::BUILTIN_ARRAY_ID);
             auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
@@ -470,7 +590,7 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
         funcIndex = gateAccessor_.GetNumValueIn(gate) - 2;
     }
     auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, funcIndex));
-    if (funcType.IsTSType() && tsManager_->IsFunctionTypeKind(funcType)) {
+    if (tsManager_->IsFunctionTypeKind(funcType)) {
         auto returnType = tsManager_->GetFuncReturnValueTypeGT(funcType);
         return UpdateType(gate, returnType);
     }
@@ -480,20 +600,19 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
 bool TypeInfer::InferLdObjByValue(GateRef gate)
 {
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
-    if (objType.IsTSType()) {
-        // handle array
-        if (tsManager_->IsArrayTypeKind(objType)) {
-            auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
-            return UpdateType(gate, elementType);
-        }
-        // handle object
-        if (IsObjectOrClass(objType)) {
-            auto valueGate = gateAccessor_.GetValueIn(gate, 1);
-            if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
-                auto value = gateAccessor_.GetBitField(valueGate);
-                auto type = GetPropType(objType, value);
-                return UpdateType(gate, type);
-            }
+
+    // handle array
+    if (tsManager_->IsArrayTypeKind(objType)) {
+        auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
+        return UpdateType(gate, elementType);
+    }
+    // handle object
+    if (IsObjectOrClass(objType)) {
+        auto valueGate = gateAccessor_.GetValueIn(gate, 1);
+        if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
+            auto value = gateAccessor_.GetBitField(valueGate);
+            auto type = GetPropType(objType, value);
+            return UpdateType(gate, type);
         }
     }
     return false;
@@ -581,17 +700,13 @@ void TypeInfer::PrintAllByteCodesTypes() const
         if (findIt != bytecodeToGate.end()) {
             GateRef gate = bytecodeToGate.at(pc);
             GateType type = gateAccessor_.GetGateType(gate);
-            if (type.IsTSType()) {
-                if (!tsManager_->IsPrimitiveTypeKind(type)) {
-                    GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
-                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type)
-                                       << ", [moduleId: " + std::to_string(gt.GetModuleId())
-                                       << "], [localId: " + std::to_string(gt.GetLocalId()) + "]";
-                } else {
-                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
-                }
+            if (!tsManager_->IsPrimitiveTypeKind(type)) {
+                GlobalTSTypeRef gt = type.GetGTRef();
+                LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type)
+                                   << ", [moduleId: " + std::to_string(gt.GetModuleId())
+                                   << ", [localId: " + std::to_string(gt.GetLocalId()) + "]";
             } else {
-                LOG_COMPILER(INFO) << "    " << inst;
+                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
             }
         }
     }
@@ -691,13 +806,11 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
     // handle ByteCode gate: print gate id, bytecode and line number in source code.
         log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
         GateType type = gateAccessor_.GetGateType(gate);
-        if (type.IsTSType()) {
-            log += "type: " + tsManager_->GetTypeStr(type) + ", ";
-            if (!tsManager_->IsPrimitiveTypeKind(type)) {
-                GlobalTSTypeRef gt = GlobalTSTypeRef(type.GetType());
-                log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
-                log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
-            }
+        log += "type: " + tsManager_->GetTypeStr(type) + ", ";
+        if (!tsManager_->IsPrimitiveTypeKind(type)) {
+            GlobalTSTypeRef gt = type.GetGTRef();
+            log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
+            log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
         }
 
         int32_t lineNumber = 0;

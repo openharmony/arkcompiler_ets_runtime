@@ -63,6 +63,9 @@ public:
     static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
     static inline int16_t GetHotnessCounter(uint32_t codeSize);
+    static inline JSTaggedType *GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp);
+
+
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_INTERPRETER_H

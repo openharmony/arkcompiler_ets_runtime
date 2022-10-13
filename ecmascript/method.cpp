@@ -19,7 +19,6 @@
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
-// It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.
 std::string Method::ParseFunctionName() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
@@ -30,6 +29,11 @@ const char *Method::GetMethodName() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
     return MethodLiteral::GetMethodName(jsPandaFile, GetMethodId());
+}
+
+const char *Method::GetMethodName(const JSPandaFile* file) const
+{
+    return MethodLiteral::GetMethodName(file, GetMethodId());
 }
 
 uint32_t Method::GetCodeSize() const

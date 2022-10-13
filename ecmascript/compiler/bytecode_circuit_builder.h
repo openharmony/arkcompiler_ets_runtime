@@ -26,6 +26,7 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
+#include "ecmascript/compiler/frame_states.h"
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -258,8 +259,20 @@ struct BytecodeInfo {
     std::vector<VRegIDType> vregOut {}; // write register
     bool accIn {false}; // read acc
     bool accOut {false}; // write acc
+    bool deopt {false}; // may trigger deopt
     EcmaOpcode opcode {0};
     uint16_t offset {0};
+    uint32_t pcOffset {0};
+
+    bool Deopt() const
+    {
+        return deopt;
+    }
+
+    bool IsDef() const
+    {
+        return (!vregOut.empty()) || accOut;
+    }
 
     bool IsOut(VRegIDType reg, uint32_t index) const
     {
@@ -451,12 +464,14 @@ public:
                                     MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
                                     const CompilationConfig* cconfig,
-                                    bool enableLog)
+                                    bool enableLog,
+                                    std::string name)
         : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
-          byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)
+          byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
+          frameStateBuilder_(&circuit_, methodLiteral), methodName_(name)
     {
     }
     ~BytecodeCircuitBuilder() = default;
@@ -514,6 +529,11 @@ public:
         return file_;
     }
 
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
+    }
+
     BytecodeInfo GetBytecodeInfo(const uint8_t *pc);
     // for external users, circuit must be built
     BytecodeInfo GetByteCodeInfo(const GateRef gate)
@@ -563,7 +583,7 @@ private:
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
-    void RemoveDeadRegions(const std::map<size_t, size_t> &dfsTimestamp);
+    void RemoveDeadRegions();
     void InsertPhi();
     void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
@@ -586,12 +606,13 @@ private:
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
     GateRef RenameVariable(const size_t bbId, const uint8_t *end, const uint16_t reg, const bool acc);
     void BuildCircuit();
+    void BuildFrameState();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
-    void PrintCollectBlockInfo(std::vector<CfgInfo> &bytecodeBlockInfos);
     void PrintGraph();
-    void PrintBytecodeInfo();
     void PrintBBInfo();
+    void PrintGraph(const char* title);
+    void PrintBytecodeInfo(BytecodeRegion& region, const std::map<const uint8_t *, GateRef>& bcToGate);
     void PrintDefsitesInfo(const std::map<uint16_t, std::set<size_t>> &defsitesInfo);
 
     inline bool IsEntryBlock(const size_t bbId) const
@@ -617,6 +638,10 @@ private:
     const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
     std::vector<CfgInfo> &bytecodeBlockInfos_;
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
+    FrameStateBuilder frameStateBuilder_;
+    std::string methodName_;
+    std::vector<size_t> bbDfsList_;
+    std::map<size_t, size_t> bbIdToDfsTimestamp_; // (basicblock id, dfs order)
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/compiler/assembler/x64/extended_assembler_x64.h"
-
+#include "ecmascript/calleeReg.h"
 #include "ecmascript/frames.h"
 
 namespace panda::ecmascript::x64 {
@@ -50,6 +50,11 @@ void ExtendedAssembler::PopCppCalleeSaveRegisters()
     Popq(r14);
     Popq(r13);
     Popq(r12);
+}
+
+void ExtendedAssembler::UpdateCalleeSaveRegisters()
+{
+    Addq(8 * 5, rsp);  // 8: 8 bytes
 }
 
 void ExtendedAssembler::PushGhcCalleeSaveRegisters()

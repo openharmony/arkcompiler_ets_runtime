@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/deoptimizer.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
@@ -2145,6 +2146,18 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
         runtimeInfo->SetCallArg(argsLength, boundLength, info, 0);
     }
     return EcmaInterpreter::Execute(runtimeInfo);
+}
+
+DEF_RUNTIME_STUBS(DeoptHandler)
+{
+    RUNTIME_STUBS_HEADER(DeoptHandler);
+
+    Deoptimizier deopt(thread);
+    std::vector<kungfu::ARKDeopt> deoptBundle;
+    deopt.CollectDeoptBundleVec(deoptBundle);
+    ASSERT(!deoptBundle.empty());
+    deopt.CollectVregs(deoptBundle);
+    return deopt.ConstructAsmInterpretFrame();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)
