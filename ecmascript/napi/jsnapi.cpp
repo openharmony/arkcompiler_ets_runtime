@@ -416,12 +416,13 @@ uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
     return vm->GetJSThread()->GetEcmaGlobalStorage()->SetWeak(localAddress);
 }
 
-uintptr_t JSNApi::SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref, WeakRefClearCallBack callback)
+uintptr_t JSNApi::SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref,
+                                  WeakRefClearCallBack firstCallback, WeakRefClearCallBack secondCallback)
 {
     if (localAddress == 0) {
         return 0;
     }
-    return vm->GetJSThread()->GetEcmaGlobalStorage()->SetWeak(localAddress, ref, callback);
+    return vm->GetJSThread()->GetEcmaGlobalStorage()->SetWeak(localAddress, ref, firstCallback, secondCallback);
 }
 
 uintptr_t JSNApi::ClearWeak(const EcmaVM *vm, uintptr_t localAddress)

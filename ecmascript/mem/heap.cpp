@@ -407,6 +407,9 @@ void Heap::CollectGarbage(TriggerGCType gcType)
 # if ECMASCRIPT_ENABLE_GC_LOG
     ecmaVm_->GetEcmaGCStats()->PrintStatisticResult();
 #endif
+    // weak node secondPassCallback may execute JS and change the weakNodeList status,
+    // even lead to another GC, so this have to invoke after this GC process.
+    InvokeWeakNodeSecondPassCallback();
 
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     // post gc heap verify
@@ -924,6 +927,24 @@ bool Heap::ContainObject(TaggedObject *object) const
      */
     Region *region = Region::ObjectAddressToRange(object);
     return region->InHeapSpace();
+}
+
+void Heap::InvokeWeakNodeSecondPassCallback()
+{
+    // the second callback may lead to another GC, if this, return directly;
+    if (runningSecondPassCallbacks_) {
+        return;
+    }
+    runningSecondPassCallbacks_ = true;
+    auto weakNodesSecondCallbacks = thread_->GetWeakNodeSecondPassCallbacks();
+    while (!weakNodesSecondCallbacks->empty()) {
+        auto callbackPair = weakNodesSecondCallbacks->back();
+        weakNodesSecondCallbacks->pop_back();
+        ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
+        auto callback = callbackPair.first;
+        callback(callbackPair.second);
+    }
+    runningSecondPassCallbacks_ = false;
 }
 
 void Heap::StatisticHeapObject(TriggerGCType gcType) const
