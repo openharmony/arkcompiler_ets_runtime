@@ -23,14 +23,6 @@ class JsThrowExceptionTest : public TestEvents {
 public:
     JsThrowExceptionTest()
     {
-        vmStart = [this] {
-            location_ = TestUtil::GetLocation(28, 0, pandaFile_.c_str()); // 28: breakpointer line
-            std::cout<<"vmStart1"<<std::endl;
-            ASSERT_TRUE(location_.GetMethodId().IsValid());
-            std::cout<<"vmStart2"<<std::endl;
-            return true;
-        };
-
         breakpoint = [this](const JSPtLocation &location) {
             ASSERT_TRUE(location.GetMethodId().IsValid());
             ASSERT_LOCATION_EQ(location, location_);
@@ -64,6 +56,10 @@ public:
         };
 
         loadModule = [this](std::string_view moduleName) {
+            location_ = TestUtil::GetLocation(28, 0, pandaFile_.c_str()); // 28: breakpointer line
+            std::cout<<"vmStart1"<<std::endl;
+            ASSERT_TRUE(location_.GetMethodId().IsValid());
+            std::cout<<"vmStart2"<<std::endl;
             TestUtil::SuspendUntilContinue(DebugEvent::LOAD_MODULE);
             ASSERT_EQ(moduleName, pandaFile_);
             ASSERT_TRUE(debugger_->NotifyScriptParsed(0, pandaFile_));

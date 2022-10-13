@@ -35,13 +35,13 @@ std::pair<EntityId, uint32_t> TestExtractor::GetBreakpointAddress(const SourceLo
         retOffset = jsLocation.GetBytecodeOffset();
         return true;
     };
-    MatchWithLocation(callbackFunc, sourceLocation.line, sourceLocation.column, sourceLocation.path);
+    MatchWithLocation(callbackFunc, sourceLocation.line, sourceLocation.column, "");
     return {retId, retOffset};
 }
 
-SourceLocation TestExtractor::GetSourceLocation(EntityId methodId, uint32_t bytecodeOffset)
+SourceLocation TestExtractor::GetSourceLocation(const JSPandaFile *file, EntityId methodId, uint32_t bytecodeOffset)
 {
-    SourceLocation location {GetSourceFile(methodId), 0, 0};
+    SourceLocation location {file, 0, 0};
     auto callbackLineFunc = [&location](int32_t line) -> bool {
         location.line = line;
         return true;

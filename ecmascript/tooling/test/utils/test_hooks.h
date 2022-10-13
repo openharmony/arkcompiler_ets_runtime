@@ -97,7 +97,7 @@ public:
 
     void PendingJobEntry() override {}
 
-    void NativeCalling(const void *nativeAddress) override {}
+    void NativeCalling([[maybe_unused]] const void *nativeAddress) override {}
 
     void TerminateTest()
     {

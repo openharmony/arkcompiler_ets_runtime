@@ -130,23 +130,25 @@ public:
 
     static JSPtLocation GetLocation(int32_t line, int32_t column, const char *pandaFile)
     {
-        auto jsPandaFile = ::panda::ecmascript::JSPandaFileManager::GetInstance()->OpenJSPandaFile(pandaFile);
+        auto jsPandaFile = ::panda::ecmascript::JSPandaFileManager::GetInstance()->FindJSPandaFile(pandaFile);
         if (jsPandaFile == nullptr) {
-            return JSPtLocation(nullptr, EntityId(0), 0);
+            LOG_DEBUGGER(FATAL) << "cannot find: " << pandaFile;
+            UNREACHABLE();
         }
         TestExtractor extractor(jsPandaFile);
-        auto [id, offset] = extractor.GetBreakpointAddress({nullptr, line, column});
+        auto [id, offset] = extractor.GetBreakpointAddress({jsPandaFile, line, column});
         return JSPtLocation(jsPandaFile, id, offset);
     }
 
     static SourceLocation GetSourceLocation(const JSPtLocation &location, const char *pandaFile)
     {
-        auto jsPandaFile = ::panda::ecmascript::JSPandaFileManager::GetInstance()->OpenJSPandaFile(pandaFile);
+        auto jsPandaFile = ::panda::ecmascript::JSPandaFileManager::GetInstance()->FindJSPandaFile(pandaFile);
         if (jsPandaFile == nullptr) {
-            return SourceLocation();
+            LOG_DEBUGGER(FATAL) << "cannot find: " << pandaFile;
+            UNREACHABLE();
         }
         TestExtractor extractor(jsPandaFile);
-        return extractor.GetSourceLocation(location.GetMethodId(), location.GetBytecodeOffset());
+        return extractor.GetSourceLocation(jsPandaFile, location.GetMethodId(), location.GetBytecodeOffset());
     }
 
     static bool SuspendUntilContinue(DebugEvent reason, JSPtLocation location = JSPtLocation(nullptr, EntityId(0), 0))
