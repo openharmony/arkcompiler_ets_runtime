@@ -68,6 +68,11 @@ public:
         return pf_;
     }
 
+    std::string GetFileName() const
+    {
+        return pf_->GetFilename();
+    }
+
     MethodLiteral* GetMethodLiterals() const
     {
         return methodLiterals_;

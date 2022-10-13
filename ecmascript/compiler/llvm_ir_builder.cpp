@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/deoptimizer.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"
@@ -190,12 +191,14 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::LSL, &LLVMIRBuilder::HandleIntLsl},
         {OpCode::SMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
+        {OpCode::GUARD, &LLVMIRBuilder::HandleGuardCall},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
         OpCode::FRAMESTATE_ENTRY, OpCode::RETURN_LIST, OpCode::THROW_LIST,
         OpCode::CONSTANT_LIST, OpCode::ARG_LIST, OpCode::THROW,
-        OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY, OpCode::DEPEND_AND
+        OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY, OpCode::DEPEND_AND,
+        OpCode::FRAME_STATE
     };
 }
 
@@ -232,15 +235,6 @@ void LLVMIRBuilder::Build()
 
         for (size_t instIdx = bb.size(); instIdx > 0; instIdx--) {
             GateRef gate = bb[instIdx - 1];
-            std::vector<GateRef> ins;
-            acc_.GetInVector(gate, ins);
-            std::vector<GateRef> outs;
-            acc_.GetOutVector(gate, outs);
-
-            if (IsLogEnabled()) {
-                acc_.Print(gate);
-            }
-
             auto found = opHandlers_.find(acc_.GetOpCode(gate));
             if (found != opHandlers_.end()) {
                 (this->*(found->second))(gate);
@@ -509,14 +503,17 @@ void LLVMIRBuilder::HandleRuntimeCall(GateRef gate)
 }
 
 LLVMValueRef LLVMIRBuilder::GetFunction(LLVMValueRef glue, const CallSignature *signature,
-    LLVMValueRef rtbaseoffset) const
+                                        LLVMValueRef rtbaseoffset, const std::string &realName) const
 {
     LLVMTypeRef rtfuncType = llvmModule_->GetFuncType(signature);
     LLVMTypeRef rtfuncTypePtr = LLVMPointerType(rtfuncType, 0);
     LLVMTypeRef glueType = LLVMTypeOf(glue);
     LLVMValueRef rtbaseAddr = LLVMBuildIntToPtr(builder_, rtbaseoffset, LLVMPointerType(glueType, 0), "");
-    LLVMValueRef llvmAddr = LLVMBuildLoad(builder_, rtbaseAddr, "");
-    LLVMValueRef callee = LLVMBuildIntToPtr(builder_, llvmAddr, rtfuncTypePtr, "cast");
+    std::string name = realName.empty()
+            ? signature->GetName()
+            : realName;
+    LLVMValueRef llvmAddr = LLVMBuildLoad(builder_, rtbaseAddr, name.c_str());
+    LLVMValueRef callee = LLVMBuildIntToPtr(builder_, llvmAddr, rtfuncTypePtr, (name + "-cast").c_str());
     ASSERT(callee != nullptr);
     return callee;
 }
@@ -550,11 +547,10 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
     LLVMValueRef rtoffset = GetRTStubOffset(glue, stubIndex);
     LLVMValueRef rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
     const CallSignature *signature = RuntimeStubCSigns::Get(std::get<RuntimeStubCSigns::ID>(stubId));
-    LLVMValueRef callee = GetFunction(glue, signature, rtbaseoffset);
 
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
-    int index = static_cast<int>(acc_.GetBitField(inList[static_cast<int>(CallInputs::TARGET)]));
+    const int index = static_cast<int>(acc_.GetBitField(inList[static_cast<int>(CallInputs::TARGET)]));
     params.push_back(LLVMConstInt(LLVMInt64Type(), index, 0)); // target
     params.push_back(LLVMConstInt(LLVMInt64Type(),
         inList.size() - static_cast<size_t>(CallInputs::FIRST_PARAMETER), 0)); // argc
@@ -564,6 +560,8 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
     }
 
     LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, signature);
+    std::string targetName = RuntimeStubCSigns::GetRTName(index);
+    LLVMValueRef callee = GetFunction(glue, signature, rtbaseoffset, targetName);
     callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
     LLVMValueRef runtimeCall = LLVMBuildCall2(builder_, funcType, callee, params.data(), inList.size(), "");
     if (!compCfg_->Is32Bit()) {  // Arm32 not support webkit jscc calling convention
@@ -794,9 +792,8 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         auto bcIndex = LLVMConstInt(LLVMInt64Type(), static_cast<int>(SpecVregIndex::BC_OFFSET_INDEX), 1);
         values.push_back(bcIndex);
         values.push_back(bcOffset);
-        call = LLVMBuildCall3(
-            builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt, "", values.data(),
-            values.size());
+        call = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt,
+                              "", values.data(), values.size());
     } else {
         call = LLVMBuildCall2(builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt,
                               "");
@@ -1853,6 +1850,57 @@ void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
     gate2LValue_[gate] = result;
 }
 
+void LLVMIRBuilder::HandleGuardCall(GateRef gate)
+{
+    VisitGuardCall(gate);
+}
+
+LLVMTypeRef LLVMIRBuilder::GetExperimentalDeoptTy()
+{
+    auto fnTy = LLVMFunctionType(LLVMPointerType(LLVMInt64Type(), 1), nullptr, 0, 1);
+    return fnTy;
+}
+
+LLVMValueRef LLVMIRBuilder::GetExperimentalDeopt(LLVMModuleRef &module)
+{
+    /* 0:calling 1:its caller */
+    auto fn = LLVMGetNamedFunction(module, "llvm.experimental.deoptimize.p1i64");
+    if (!fn) {
+        auto fnTy = GetExperimentalDeoptTy();
+        fn = LLVMAddFunction(module, "llvm.experimental.deoptimize.p1i64", fnTy);
+    }
+    return fn;
+}
+
+void LLVMIRBuilder::VisitGuardCall(GateRef gate)
+{
+    LLVMValueRef glue = gate2LValue_.at(acc_.GetIn(gate, 3));
+    GateRef frameState = acc_.GetIn(gate, 2);
+    std::vector<LLVMValueRef> params;
+    params.push_back(glue); // glue
+    LLVMValueRef callee = GetExperimentalDeopt(module_);
+    LLVMTypeRef funcType = GetExperimentalDeoptTy();
+
+    const size_t numValueIn = acc_.GetBitField(frameState);
+    const size_t accIndex = numValueIn - 2; // 2: acc valueIn index
+    const size_t pcIndex = numValueIn - 1;
+    GateRef acc = acc_.GetValueIn(frameState, accIndex);
+    GateRef pc = acc_.GetValueIn(frameState, pcIndex);
+    std::vector<LLVMValueRef> values;
+    for (size_t i = 0; i < accIndex; i++) {
+        GateRef vreg = acc_.GetValueIn(frameState, i);
+        values.emplace_back(LLVMConstInt(LLVMInt32Type(), i, false));
+        values.emplace_back(gate2LValue_.at(vreg));
+    }
+    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ACC_INDEX), false));
+    values.emplace_back(gate2LValue_.at(acc));
+    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_INDEX), false));
+    values.emplace_back(gate2LValue_.at(pc));
+    LLVMValueRef runtimeCall =
+        LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());
+    gate2LValue_[gate] = runtimeCall;
+}
+
 LLVMModule::LLVMModule(const std::string &name, const std::string &triple)
     : cfg_(triple)
 {
@@ -1982,9 +2030,13 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
     auto numOfRestArgs = paramCount - funcIndex;
     paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
     auto funcType = LLVMFunctionType(returnType, paramTys.data(), paramCount, false); // not variable args
-    const char *name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
-    auto function = LLVMAddFunction(module_, name, funcType);
     auto offsetInPandaFile = methodLiteral->GetMethodId().GetOffset();
+
+    std::string fileName = jsPandaFile->GetFileName();
+    std::string name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
+    name += std::string("@") + std::to_string(offsetInPandaFile) + std::string("@") + fileName;
+
+    auto function = LLVMAddFunction(module_, name.c_str(), funcType);
     SetFunction(offsetInPandaFile, function);
     return function;
 }

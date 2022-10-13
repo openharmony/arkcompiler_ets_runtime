@@ -549,6 +549,31 @@ GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
     return ret;
 }
 
+template<TypedBinOp Op>
+GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op, xType, yType,
+                                              {currentControl, currentDepend, x, y}, gateType);
+    currentLabel->SetControl(numberBinaryOp);
+    currentLabel->SetDepend(numberBinaryOp);
+    return numberBinaryOp;
+}
+
+template<TypedUnOp Op>
+GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateType)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto numberUnaryOp = TypedUnaryOperator(MachineType::I64, Op, xType, {currentControl, currentDepend, x}, gateType);
+    currentLabel->SetControl(numberUnaryOp);
+    currentLabel->SetDepend(numberUnaryOp);
+    return numberUnaryOp;
+}
+
 // Number operator
 template<TypedBinOp Op>
 GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)
@@ -558,7 +583,7 @@ GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)
     auto currentDepend = currentLabel->GetDepend();
     auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op,
                                               GateType::NumberType(), GateType::NumberType(),
-                                              {currentControl, currentDepend, x, y});
+                                              {currentControl, currentDepend, x, y}, GateType::AnyType());
     currentLabel->SetControl(numberBinaryOp);
     currentLabel->SetDepend(numberBinaryOp);
     return numberBinaryOp;

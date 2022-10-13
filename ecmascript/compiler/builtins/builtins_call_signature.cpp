@@ -23,16 +23,17 @@ CallSignature BuiltinsStubCSigns::builtinsCSign_;
 
 void BuiltinsStubCSigns::Initialize()
 {
-#define INIT_SIGNATURES(name)                                            \
-    BuiltinsCallSignature::Initialize(&callSigns_[name]);                \
-    callSigns_[name].SetID(name);                                        \
-    callSigns_[name].SetName(#name);                                     \
-    callSigns_[name].SetConstructor(                                     \
-    [](void* env) {                                                   \
-        return static_cast<void*>(                                       \
-            new name##StubBuilder(&callSigns_[name],                     \
-                static_cast<Environment*>(env)));                        \
+#define INIT_SIGNATURES(name)                                        \
+    BuiltinsCallSignature::Initialize(&callSigns_[name]);            \
+    callSigns_[name].SetID(name);                                    \
+    callSigns_[name].SetName(std::string("BuiltinStub_") + #name);   \
+    callSigns_[name].SetConstructor(                                 \
+    [](void* env) {                                                  \
+        return static_cast<void*>(                                   \
+            new name##StubBuilder(&callSigns_[name],                 \
+                static_cast<Environment*>(env)));                    \
     });
+
     BUILTINS_STUB_LIST(INIT_SIGNATURES)
 #undef INIT_SIGNATURES
     BuiltinsCallSignature::Initialize(&builtinsCSign_);

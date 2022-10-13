@@ -41,12 +41,13 @@ public:
                           const RootBaseAndDerivedVisitor &derivedVisitor,
                           uintptr_t callSiteAddr, uintptr_t callsiteFp,
                           uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
+    void GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAddr, std::vector<kungfu::ARKDeopt>& deopts) const;
 private:
     int BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const;
     void GetArkDeopt(uint8_t *stackmapAddr, uint32_t length, const CallsiteHead& callsiteHead,
-                     std::vector<ARKDeopt>& deopt) const;
+                     std::vector<kungfu::ARKDeopt>& deopt) const;
     void ParseArkDeopt(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-                       uint8_t *ptr, std::vector<ARKDeopt> &deopts) const;
+                       uint8_t *ptr, std::vector<kungfu::ARKDeopt> &deopts) const;
     void ParseArkStackMap(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
                           uint8_t *ptr, ArkStackMap &stackMap) const;
     void ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const;

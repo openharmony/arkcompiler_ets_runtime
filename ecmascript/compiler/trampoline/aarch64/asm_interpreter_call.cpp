@@ -136,14 +136,6 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         __ Mov(Register(SP), tempRegister);
     }
 
-    if (kungfu::AssemblerModule::IsCallNew(mode)) {
-        Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
-        [[maybe_unused]] TempRegister1Scope scope(assembler);
-        Register tempArgcRegister = __ TempRegister1();
-        __ PushArgc(argcRegister, tempArgcRegister, currentSlotRegister);
-        __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    }
-
     Register declaredNumArgsRegister = __ AvailableRegister2();
     GetDeclaredNumArgsFromCallField(assembler, callFieldRegister, declaredNumArgsRegister);
 
@@ -1038,7 +1030,8 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
 //        FP - sp
 //        X20 - callTarget
 //        X21 - method
-void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister)
+void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcRegister,
+    Register newSpRegister, Register accRegister)
 {
     Register glueRegister = __ GlueRegister();
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
@@ -1048,7 +1041,11 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
         __ Mov(Register(X19), glueRegister);
     }
     __ Ldrh(Register(X24, W), MemoryOperand(methodRegister, Method::LITERAL_INFO_OFFSET));
-    __ Mov(Register(X23), Immediate(JSTaggedValue::VALUE_HOLE));
+    if (accRegister == INVALID_REG) {
+        __ Mov(Register(X23), Immediate(JSTaggedValue::VALUE_HOLE));
+    } else {
+        ASSERT(accRegister == Register(X23));
+    }
     __ Ldr(Register(X22), MemoryOperand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET));
     __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
     __ Mov(Register(X20), pcRegister);
@@ -1218,7 +1215,9 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue,
     Register fp, Register op)
 {
-    __ Mov(Register(SP), fp);
+    if (fp != Register(SP)) {
+        __ Mov(Register(SP), fp);
+    }
     __ Mov(op, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException));
     // 3 : 3 means *8
     __ Add(op, glue, Operand(op, LSL, 3));

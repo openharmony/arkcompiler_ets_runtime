@@ -83,7 +83,8 @@ void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlo
 }
 
 void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-    const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
+                                       const panda::ecmascript::MethodLiteral *methodLiteral,
+                                       const JSPandaFile *jsPandaFile)
 {
     auto function = module_->AddFunc(methodLiteral, jsPandaFile);
     circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
@@ -187,9 +188,11 @@ void LLVMAssembler::Run(const CompilerLog &log)
 {
     char *error = nullptr;
     std::string originName = llvm::unwrap(module_)->getModuleIdentifier() + ".ll";
-    std::string optName = llvm::unwrap(module_)->getModuleIdentifier() + "_opt" + ".ll";
+    std::string optName = llvm::unwrap(module_)->getModuleIdentifier() + "_opt.ll";
     if (!log.NoneMethod() && log.OutputLLIR()) {
         LLVMPrintModuleToFile(module_, originName.c_str(), &error);
+        std::string errInfo = (error != nullptr) ? error : "";
+        LOG_COMPILER(INFO) << "generate " << originName << " " << errInfo;
     }
     LLVMVerifyModule(module_, LLVMAbortProcessAction, &error);
     LLVMDisposeMessage(error);
@@ -197,10 +200,13 @@ void LLVMAssembler::Run(const CompilerLog &log)
     if (!BuildMCJITEngine()) {
         return;
     }
-    llvm::unwrap(engine_)-> setProcessAllSections(true);
+    llvm::unwrap(engine_)->setProcessAllSections(true);
     BuildAndRunPasses();
     if (!log.NoneMethod() && log.OutputLLIR()) {
+        error = nullptr;
         LLVMPrintModuleToFile(module_, optName.c_str(), &error);
+        std::string errInfo = (error != nullptr) ? error : "";
+        LOG_COMPILER(INFO) << "generate " << optName << " " << errInfo;
     }
 }
 
@@ -248,6 +254,32 @@ static const char *SymbolLookupCallback([[maybe_unused]] void *disInfo, [[maybe_
     *referenceType = LLVMDisassembler_ReferenceType_InOut_None;
     return nullptr;
 }
+
+
+kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn, const CompilerLog &log)
+{
+    kungfu::CalleeRegAndOffsetVec info;
+    llvm::Function* func = llvm::unwrap<llvm::Function>(fn);
+    for (const auto &Attr : func->getAttributes().getFnAttributes()) {
+        if (Attr.isStringAttribute()) {
+            std::string str = std::string(Attr.getKindAsString().data());
+            std::string expectedKey = "DwarfReg";
+            if (str.size() >= expectedKey.size() &&
+                str.substr(0, expectedKey.size()) == expectedKey) {
+                int RegNum = std::stoi(str.substr(expectedKey.size(), str.size() - expectedKey.size()));
+                auto value = std::stoi(std::string(Attr.getValueAsString()));
+                info.push_back(std::make_pair(RegNum, value));
+                (void)log;
+                auto logFlag = true;
+                if (logFlag) {
+                    LOG_COMPILER(INFO) << " RegNum:" << RegNum << " value:" << value << std::endl;
+                }
+            }
+        }
+    }
+    return info;
+}
+
 
 int LLVMAssembler::GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log)
 {
@@ -311,8 +343,10 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
                     logFlag = false;
                 }
                 if (logFlag) {
-                    LOG_COMPILER(INFO) << "=======================================================================";
-                    LOG_COMPILER(INFO) << methodName.c_str() << " disassemble:";
+                    LOG_COMPILER(INFO) << "\033[34m"
+                                       << "========================  Generated Asm Code ============================="
+                                       << "\033[0m";
+                    LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << methodName << "]:" << "\033[0m";
                 }
             }
 

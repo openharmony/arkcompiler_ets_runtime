@@ -114,6 +114,11 @@ public:
             HaveNewTargetWithCallField() + HaveThisWithCallField();
     }
 
+    uint32_t GetNumberVRegs() const
+    {
+        return GetNumVregsWithCallField() + GetNumArgs();
+    }
+
     static uint64_t SetNumArgsWithCallField(uint64_t callField, uint32_t numargs)
     {
         return NumArgsBits::Update(callField, numargs);
@@ -177,6 +182,11 @@ public:
     static uint32_t GetNumVregsWithCallField(uint64_t callField)
     {
         return NumVregsBits::Decode(callField);
+    }
+
+    uint32_t GetNumVregsWithCallField() const
+    {
+        return NumVregsBits::Decode(callField_);
     }
 
     static uint32_t GetNumArgsWithCallField(uint64_t callField)

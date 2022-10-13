@@ -98,14 +98,14 @@ void Heap::Initialize()
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
 
-    LOG_GC(INFO) << "heap initialize: heap size = " << maxHeapSize
-        << ", semispace capacity = " << minSemiSpaceCapacity
-        << ", nonmovablespace capacity = " << nonmovableSpaceCapacity
-        << ", snapshotspace capacity = " << snapshotSpaceCapacity
-        << ", machinecodespace capacity = " << machineCodeSpaceCapacity
-        << ", oldspace capacity = " << oldSpaceCapacity
-        << ", globallimit = " << globalSpaceAllocLimit_
-        << ", gcThreadNum = " << maxMarkTaskCount_;
+    LOG_GC(INFO) << "heap initialize: heap size = " << (maxHeapSize / 1_MB) << "MB"
+                 << ", semispace capacity = " << (minSemiSpaceCapacity / 1_MB) << "MB"
+                 << ", nonmovablespace capacity = " << (nonmovableSpaceCapacity / 1_MB) << "MB"
+                 << ", snapshotspace capacity = " << (snapshotSpaceCapacity / 1_MB) << "MB"
+                 << ", machinecodespace capacity = " << (machineCodeSpaceCapacity / 1_MB) << "MB"
+                 << ", oldspace capacity = " << (oldSpaceCapacity / 1_MB) << "MB"
+                 << ", globallimit = " << (globalSpaceAllocLimit_ / 1_MB) << "MB"
+                 << ", gcThreadNum = " << maxMarkTaskCount_;
     parallelGC_ = ecmaVm_->GetJSOptions().EnableParallelGC();
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
     markType_ = MarkType::MARK_YOUNG;

@@ -82,7 +82,10 @@ public:
 
     static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
+    static void DeoptHandlerAsm(ExtendedAssembler *assembler);
+
 private:
+    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
                             Label *nonCallable, Label *notJSFunction);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp);
@@ -168,7 +171,8 @@ private:
 
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
 
-    static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp);
+    static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp,
+                             Register acc = INVALID_REG);
 
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
 

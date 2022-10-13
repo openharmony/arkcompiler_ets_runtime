@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_FRAMES_H
 #define ECMASCRIPT_FRAMES_H
 
+#include "ecmascript/ark_stackmap.h"
 #include "ecmascript/js_tagged_value.h"
 
 // Frame Layout
@@ -476,7 +477,6 @@ public:
     {
         return prevFp;
     }
-    uintptr_t* ComputePrevFrameSp(const FrameIterator &it) const;
 
     JSTaggedType* GetArgv(uintptr_t *preFrameSp) const
     {
@@ -520,13 +520,17 @@ public:
         return MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp);
     }
     friend class FrameIterator;
-
+    void GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const;
+    void GetFuncCalleeRegAndOffset(
+        const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const;
+    uintptr_t* ComputePrevFrameSp(const FrameIterator &it) const;
 private:
     static OptimizedJSFunctionFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<OptimizedJSFunctionFrame *>(reinterpret_cast<uintptr_t>(sp)
             - MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp));
     }
+
     // dynamic callee saveregisters for x86-64
     alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
@@ -592,6 +596,11 @@ struct InterpretedFrameBase : public base::AlignedStruct<base::AlignedPointer::S
     static size_t GetTypeOffset(bool isArch32)
     {
         return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
+    }
+
+    static constexpr size_t GetSize(bool isArch32)
+    {
+        return isArch32 ? InterpretedFrameBase::SizeArch32 : InterpretedFrameBase::SizeArch64;
     }
 
     alignas(EAS) JSTaggedType *prev {nullptr}; // for llvm :c-fp ; for interrupt: thread-fp for gc
@@ -867,6 +876,11 @@ struct AsmInterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::Tagg
         return base.prev;
     }
 
+    static size_t GetBaseOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32);
+    }
+
     static AsmInterpretedEntryFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<AsmInterpretedEntryFrame *>(const_cast<JSTaggedType *>(sp)) - 1;
@@ -876,7 +890,7 @@ struct AsmInterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::Tagg
     alignas(EAS) InterpretedFrameBase base;
 };
 
-struct AsmInterpretedBridgeFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                               AsmInterpretedEntryFrame,
                                                               base::AlignedPointer> {
     enum class Index : size_t {
@@ -900,7 +914,17 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<JSTaggedValue::Tag
         return entry.base.prev;
     }
 
-    alignas(EAS) AsmInterpretedEntryFrame entry;
+    static size_t GetReturnAddrOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
+    }
+
+    static constexpr size_t GetSize(bool isArch32)
+    {
+        return isArch32 ? AsmInterpretedBridgeFrame::SizeArch32 : AsmInterpretedBridgeFrame::SizeArch64;
+    }
+
+    AsmInterpretedEntryFrame entry;
     alignas(EAS) uintptr_t returnAddr;
     uintptr_t GetReturnAddr() const
     {
@@ -1170,6 +1194,10 @@ public:
     {
         return current_;
     }
+    void GetCalleeRegAndOffsetVec(kungfu::CalleeRegAndOffsetVec &ret) const
+    {
+        ret = calleeRegInfo_;
+    }
     int ComputeDelta() const;
     template <GCVisitedFlag GCVisit = GCVisitedFlag::IGNORED>
     void Advance();
@@ -1189,7 +1217,8 @@ public:
     }
     bool IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
     void CollectBCOffsetInfo(kungfu::ConstInfo &info) const;
-    std::tuple<uint64_t, uint8_t *, int> CalCallSiteInfo(uintptr_t retAddr) const;
+    void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;
 private:
     JSTaggedType *current_ {nullptr};
@@ -1199,6 +1228,7 @@ private:
     uintptr_t optimizedReturnAddr_ {0};
     uint8_t *stackMapAddr_ {nullptr};
     int fpDeltaPrevFrameSp_ {0};
+    kungfu::CalleeRegAndOffsetVec calleeRegInfo_;
 };
 }  // namespace panda::ecmascript
 extern "C" int step_ark_managed_native_frame(

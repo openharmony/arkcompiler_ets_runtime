@@ -34,7 +34,7 @@ namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
     explicit StubPassData(Stub *stub, LLVMModule *module, const CompilerLog *log, bool enableMethodLog)
-        : PassData(nullptr, log, enableMethodLog), module_(module), stub_(stub) {}
+        : PassData(nullptr, log, enableMethodLog, "stubs"), module_(module), stub_(stub) {}
     ~StubPassData() = default;
 
     const CompilationConfig *GetCompilationConfig() const
@@ -85,7 +85,7 @@ public:
         bool enableLog =  data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         auto stubModule = data->GetStubModule();
         CreateCodeGen(stubModule, enableLog);
-        CodeGenerator codegen(llvmImpl_);
+        CodeGenerator codegen(llvmImpl_, "stubs");
         codegen.RunForStub(data->GetCircuit(), data->GetScheduleResult(), index, data->GetCompilationConfig());
         return true;
     }

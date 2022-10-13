@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
 
 #include "ecmascript/frames.h"
 #include "ecmascript/interpreter/frame_handler.h"
@@ -40,20 +40,8 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj, JSHandle<JSTaggedValue> newTarget,
     uint32_t numArgs, bool needCheckStack)
 {
-    JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-    JSTaggedType *newSp = nullptr;
-    JSTaggedType *prevSp = sp;
-    if (thread->IsAsmInterpreter()) {
-        newSp = sp - InterpretedEntryFrame::NumOfMembers();
-    } else {
-        if (FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_FRAME ||
-            FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_FAST_NEW_FRAME) {
-            newSp = sp - InterpretedFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        } else {
-            newSp =
-                sp - InterpretedEntryFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        }
-    }
+    JSTaggedType *prevSp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
+    JSTaggedType *newSp = GetInterpreterFrameEnd(thread, prevSp);
     if (needCheckStack && UNLIKELY(thread->DoStackOverflowCheck(newSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
         return nullptr;
     }

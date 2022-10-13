@@ -17,14 +17,14 @@ declare function AssertType(value:any, type:string):void;
 {
     let a : number = 2;
     let b : number = 2;
-    AssertType(a, "number");
+    AssertType(a, "int");
     while(b--) {
-        AssertType(a, "number");
+        AssertType(a, "int");
         if (a < 4) {
             a += 2; 
         } else {
             let str : string = "abc";
         }
-        AssertType(a, "number");
+        AssertType(a, "int");
     }
 }

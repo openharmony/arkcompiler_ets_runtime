@@ -537,29 +537,7 @@ bool CpuProfiler::IsAddrAtStub(void *context)
     return true;
 #endif
     FileLoader *loader = vm_->GetFileLoader();
-    if (loader == nullptr) {
-        return false;
-    }
-    const StubModulePackInfo &stubPackInfo = loader->GetStubPackInfo();
-    uint64_t stubStartAddr = stubPackInfo.GetAsmStubAddr();
-    uint64_t stubEndAddr = stubStartAddr + stubPackInfo.GetAsmStubSize();
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
-    }
-
-    const std::vector<ModuleSectionDes> &des = stubPackInfo.GetCodeUnits();
-    stubStartAddr = des[0].GetSecAddr(ElfSecName::TEXT);
-    stubEndAddr = stubStartAddr + des[0].GetSecSize(ElfSecName::TEXT);
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
-    }
-
-    stubStartAddr = des[1].GetSecAddr(ElfSecName::TEXT);
-    stubEndAddr = stubStartAddr + des[1].GetSecSize(ElfSecName::TEXT);
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
-    }
-    return false;
+    return loader->InsideStub(pc);
 }
 
 std::string CpuProfiler::GetProfileName() const
