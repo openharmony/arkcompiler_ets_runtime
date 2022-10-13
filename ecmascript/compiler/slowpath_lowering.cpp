@@ -867,6 +867,11 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
     GateRef regsArrayOffset = builder_.IntPtr(GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET);
     builder_.Store(VariableType::JS_POINTER(), glue, context, regsArrayOffset, taggedArray);
 
+    // set this
+    GateRef thisOffset = builder_.IntPtr(GeneratorContext::GENERATOR_THIS_OFFSET);
+    GateRef thisObj = argAcc_.GetCommonArgGate(CommonArgIdx::THIS);
+    builder_.Store(VariableType::JS_ANY(), glue, context, thisOffset, thisObj);
+
     // set method
     GateRef methodOffset = builder_.IntPtr(GeneratorContext::GENERATOR_METHOD_OFFSET);
     builder_.Store(VariableType::JS_ANY(), glue, context, methodOffset, jsFunc);
@@ -2029,6 +2034,8 @@ void SlowPathLowering::LowerNewObjRange(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 {
+    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    DebugPrintBC(gate, glue);
     std::vector<GateRef> trueState;
     GateRef value = acc_.GetValueIn(gate, 0);
     // GET_ACC() == JSTaggedValue::False()
@@ -3082,7 +3089,9 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef glue, GateRef jsFun
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
     {
-        result = LowerCallRuntime(glue, RTSTUB_ID(DefineFunc), { *result });
+        GateRef method = GetObjectFromConstPool(glue, jsFunc, builder_.ZExtInt16ToInt32(methodId),
+                                                ConstPoolType::METHOD);
+        result = LowerCallRuntime(glue, RTSTUB_ID(DefineFunc), { method });
         Label isException(&builder_);
         Label notException(&builder_);
         builder_.Branch(builder_.TaggedIsException(*result), &isException, &notException);
@@ -3320,38 +3329,80 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
         acc_.DeleteGate(item);
     }
 
+    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    DebugPrintBC(gate, glue);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    GateRef resumeResultOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
-    GateRef result = builder_.Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+    Label isAsyncGeneratorObj(&builder_);
+    Label notAsyncGeneratorObj(&builder_);
+    Label exit(&builder_);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    builder_.Branch(builder_.TaggedIsAsyncGeneratorObject(obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
+    builder_.Bind(&isAsyncGeneratorObj);
+    {
+        GateRef resumeResultOffset = builder_.IntPtr(JSAsyncGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
+        result = builder_.Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notAsyncGeneratorObj);
+    {
+        GateRef resumeResultOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
+        result = builder_.Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl, true);
 }
 
 void SlowPathLowering::LowerGetResumeMode(GateRef gate)
 {
+    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    DebugPrintBC(gate, glue);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label isAsyncGeneratorObj(&builder_);
+    Label notAsyncGeneratorObj(&builder_);
+    Label exit(&builder_);
     GateRef obj = acc_.GetValueIn(gate, 0);
-    GateRef bitFieldOffset = builder_.IntPtr(JSGeneratorObject::BIT_FIELD_OFFSET);
-    GateRef bitField = builder_.Load(VariableType::INT32(), obj, bitFieldOffset);
-    auto bitfieldlsr = builder_.Int32LSR(bitField, builder_.Int32(JSGeneratorObject::ResumeModeBits::START_BIT));
-    GateRef resumeModeBits = builder_.Int32And(bitfieldlsr,
-                                               builder_.Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
-    auto resumeMode = builder_.SExtInt32ToInt64(resumeModeBits);
-    GateRef result = builder_.ToTaggedIntPtr(resumeMode);
+    builder_.Branch(builder_.TaggedIsAsyncGeneratorObject(obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
+    builder_.Bind(&isAsyncGeneratorObj);
+    {
+        GateRef bitFieldOffset = builder_.IntPtr(JSAsyncGeneratorObject::BIT_FIELD_OFFSET);
+        GateRef bitField = builder_.Load(VariableType::INT32(), obj, bitFieldOffset);
+        auto bitfieldlsr = builder_.Int32LSR(bitField,
+                                             builder_.Int32(JSAsyncGeneratorObject::ResumeModeBits::START_BIT));
+        GateRef modeBits = builder_.Int32And(bitfieldlsr,
+                                             builder_.Int32((1LU << JSAsyncGeneratorObject::ResumeModeBits::SIZE) - 1));
+        auto resumeMode = builder_.SExtInt32ToInt64(modeBits);
+        result = builder_.ToTaggedIntPtr(resumeMode);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notAsyncGeneratorObj);
+    {
+        GateRef bitFieldOffset = builder_.IntPtr(JSGeneratorObject::BIT_FIELD_OFFSET);
+        GateRef bitField = builder_.Load(VariableType::INT32(), obj, bitFieldOffset);
+        auto bitfieldlsr = builder_.Int32LSR(bitField, builder_.Int32(JSGeneratorObject::ResumeModeBits::START_BIT));
+        GateRef modeBits = builder_.Int32And(bitfieldlsr,
+                                             builder_.Int32((1LU << JSGeneratorObject::ResumeModeBits::SIZE) - 1));
+        auto resumeMode = builder_.SExtInt32ToInt64(modeBits);
+        result = builder_.ToTaggedIntPtr(resumeMode);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl, true);
 }
 
 void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef glue, GateRef jsFunc)
