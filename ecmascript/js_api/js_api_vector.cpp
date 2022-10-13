@@ -265,7 +265,6 @@ JSTaggedValue JSAPIVector::ToString(JSThread *thread, const JSHandle<JSAPIVector
 
     int32_t length = vector->GetSize();
     std::u16string concatStr;
-    std::u16string concatStrNew;
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
     for (int32_t k = 0; k < length; k++) {
         std::u16string nextStr;
@@ -276,11 +275,11 @@ JSTaggedValue JSAPIVector::ToString(JSThread *thread, const JSHandle<JSAPIVector
             nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
         }
         if (k > 0) {
-            concatStrNew = concatStr.append(sepHandle);
-            concatStr = concatStrNew.append(nextStr);
+            concatStr.append(sepHandle);
+            concatStr.append(nextStr);
             continue;
         }
-        concatStr = concatStr.append(nextStr);
+        concatStr.append(nextStr);
     }
 
     char16_t *char16tData = concatStr.data();

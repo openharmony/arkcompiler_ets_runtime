@@ -38,7 +38,9 @@ JSTaggedValue JSAPILinkedList::Insert(JSThread *thread, const JSHandle<JSAPILink
 void JSAPILinkedList::Clear(JSThread *thread)
 {
     TaggedDoubleList *doubleList = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
-    doubleList->Clear(thread);
+    if (doubleList->NumberOfNodes() > 0) {
+        doubleList->Clear(thread);
+    }
 }
 
 JSHandle<JSAPILinkedList> JSAPILinkedList::Clone(JSThread *thread, const JSHandle<JSAPILinkedList> &list)

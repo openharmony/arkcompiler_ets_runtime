@@ -54,7 +54,7 @@ void TaggedList<Derived>::CopyArray(const JSThread *thread, JSHandle<Derived> &t
         value.Update(GetElement(i));
         taggedList->SetElement(thread, i, value.GetTaggedValue());
     }
-    taggedList->SetNumberOfDeletedNodes(thread, 0);
+    taggedList->SetNumberOfDeletedNodes(thread, NumberOfDeletedNodes());
 }
 
 template <typename Derived>
@@ -94,6 +94,12 @@ JSTaggedValue TaggedList<Derived>::AddNode(const JSThread *thread, const JSHandl
 template <typename Derived>
 void TaggedList<Derived>::Clear(const JSThread *thread)
 {
+    int numberOfNodes = NumberOfNodes();
+    int dataIndex = ELEMENTS_START_INDEX;
+    for (int i = 0; i < numberOfNodes; i++) {
+        dataIndex = GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
+        SetElement(thread, dataIndex, JSTaggedValue::Hole());
+    }
     JSTaggedValue data = JSTaggedValue(ELEMENTS_START_INDEX);
     SetNumberOfNodes(thread, 0);
     SetNumberOfDeletedNodes(thread, 0);
@@ -101,11 +107,6 @@ void TaggedList<Derived>::Clear(const JSThread *thread)
     SetElement(thread, TAIL_TABLE_INDEX, data);
     SetElement(thread, ELEMENTS_START_INDEX, JSTaggedValue::Hole());
     SetElement(thread, ELEMENTS_START_INDEX + NEXT_PTR_OFFSET, data);
-
-    int taggedArrayLength = GetCapacityFromTaggedArray();
-    for (int i = ELEMENTS_START_INDEX + NEXT_PTR_OFFSET + 1; i < taggedArrayLength; ++i) {
-        SetElement(thread, i, JSTaggedValue::Hole());
-    }
 }
 
 template <typename Derived>
@@ -266,16 +267,13 @@ int TaggedList<Derived>::FindPrevNodeByValue(const JSTaggedValue &element)
 template<typename Derived>
 JSTaggedValue TaggedList<Derived>::FindElementByIndex(int index) const
 {
-    int dataIndex = ELEMENTS_START_INDEX;
-    int nextIndex = GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
+    int dataIndex = GetElement(ELEMENTS_START_INDEX + NEXT_PTR_OFFSET).GetInt();
     int nodeSum = 0;
-    while (nextIndex != ELEMENTS_START_INDEX) {
-        dataIndex = nextIndex;
-        JSTaggedValue dataValue = GetElement(dataIndex);
+    while (dataIndex != ELEMENTS_START_INDEX) {
         if (nodeSum == index) {
-            return dataValue;
+            return GetElement(dataIndex);
         }
-        nextIndex = GetElement(nextIndex + NEXT_PTR_OFFSET).GetInt();
+        dataIndex = GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
         nodeSum++;
     }
     return JSTaggedValue::Undefined();
