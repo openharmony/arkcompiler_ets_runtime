@@ -469,10 +469,19 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-    GateRef check = builder_.TypeCheck(srcType, src);
+    GateRef check = Circuit::NullGate();
+    if (IsTrustedType(src)) {
+        acc_.DeleteGuardAndFrameState(gate);
+    } else {
+        check = builder_.TypeCheck(srcType, src);
+    }
+
+    // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    acc_.ReplaceIn(guard, 1, check);
+    if (check != Circuit::NullGate()) {
+        acc_.ReplaceIn(guard, 1, check);
+    }
+
     GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
     acc_.SetDep(result, guard);
     std::vector<GateRef> removedGate;
