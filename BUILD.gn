@@ -132,6 +132,9 @@ if (defined(ark_standalone_build)) {
       # quickfix test
       deps += [ "//arkcompiler/ets_runtime/test/quickfix:ark_quickfix_test" ]
 
+      # toolchain test
+      deps += [ "//arkcompiler/toolchain:ark_toolchain_host_unittest" ]
+
       # ts aot test and asm test
       if (is_standard_system && !run_with_asan) {
         deps += [
