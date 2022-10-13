@@ -351,6 +351,26 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
     // and k is as small as possible. If there are multiple possibilities for s, choose the value of s for which s ×
     // 10n−k is closest in value to m. If there are two such possible values of s, choose the one that is even. Note
     // that k is the number of digits in the decimal representation of s and that s is not divisible by 10.
+    if (0.1 <= d && d < 1) {  // 0.1: 10 ** -1
+        // Fast path. In this case, n==0, just need to calculate k and s.
+        std::string resultFast = "0.";
+        int64_t sFast = 0;
+        int kFast = 1;
+        int64_t power = 1;
+        while (kFast <= DOUBLE_MAX_PRECISION) {
+            power *= 10;  // 10: base 10
+            int digitFast = static_cast<int64_t>(d * power) % 10;  // 10: base 10
+            ASSERT(0 <= digitFast && digitFast <= 9);  // 9: single digit max
+            sFast = sFast * 10 + digitFast;  // 10: base 10
+            resultFast += (digitFast + '0');
+            if (sFast / static_cast<double>(power) == d) {  // s * (10 ** -k)
+                break;
+            }
+            kFast++;
+        }
+        result += resultFast;
+        return factory->NewFromASCII(result.c_str());
+    }
     char buffer[JS_DTOA_BUF_SIZE] = {0};
     int n = 0;
     int k = GetMinmumDigits(d, &n, buffer);
