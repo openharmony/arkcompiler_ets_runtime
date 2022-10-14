@@ -81,5 +81,47 @@ void CommonCall::PushUndefinedWithArgc(ExtendedAssembler *assembler, Register ar
     __ Subq(1, argc);
     __ Ja(&loopBeginning);
 }
+
+void CommonCall::PushArgsWithArgvAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,
+    Register argv, Register op1, Register op2, Label *stackOverflow)
+{
+    ASSERT(stackOverflow != nullptr);
+    StackOverflowCheck(assembler, glue, argc, op1, op2, stackOverflow);
+    Register opArgc = argc;
+    Register op = op1;
+    if (op1 != op2) {
+        // use op2 as opArgc and will not change argc register
+        opArgc = op2;
+        __ Movq(argc, opArgc);
+    }
+    Label loopBeginning;
+    __ Bind(&loopBeginning);
+    __ Movq(Operand(argv, opArgc, Times8, -8), op);  // 8: 8 bytes   argv crash rdx=0x8
+    __ Pushq(op);
+    __ Subq(1, opArgc);
+    __ Ja(&loopBeginning);
+}
+
+void CommonCall::StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs, Register op1,
+    Register op2, Label *stackOverflow)
+{
+    Register temp1 = op1;
+    Register temp2 = op2;
+    if (op1 == op2) {
+        // reuse glue as an op register for temporary
+        __ Pushq(glue);
+        temp2 = glue;
+    }
+    __ Movq(Operand(glue, JSThread::GlueData::GetStackLimitOffset(false)), temp1);
+    __ Movq(rsp, temp2);
+    __ Subq(temp1, temp2);
+    __ Movl(numArgs, temp1);
+    __ Shlq(3, temp1);  // 3: each arg occupies 8 bytes
+    __ Cmpq(temp1, temp2);
+    if (op1 == op2) {
+        __ Popq(glue);
+    }
+    __ Jle(stackOverflow);
+}
 #undef __
 }  // namespace panda::ecmascript::x64

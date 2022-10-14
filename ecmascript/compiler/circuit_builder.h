@@ -204,10 +204,10 @@ public:
     // low level interface
     GateRef TypeCheck(GateType type, GateRef gate);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
-                                std::vector<GateRef> inList);
+                                std::vector<GateRef> inList, GateType gateType);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
-    GateRef TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typleVal,
-                               const std::vector<GateRef>& inList);
+    GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
+                               const std::vector<GateRef>& inList, GateType gateType);
     GateRef Arguments(size_t index);
     GateRef Merge(GateRef *in, size_t controlCount);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -373,6 +373,13 @@ public:
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
+
+    // middle ir: operations with any type
+    template<TypedBinOp Op>
+    inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType);
+    template<TypedUnOp Op>
+    inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
+
     // middle ir: Number operations
     template<TypedBinOp Op>
     inline GateRef NumberBinaryOp(GateRef x, GateRef y);

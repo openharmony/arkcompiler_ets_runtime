@@ -36,7 +36,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto constantPool = CreateConstPool(jsPandaFile);
     DecodeTSTypes(jsPandaFile, fileName);
 
-    auto aotModule = new LLVMModule("aot_" + fileName, triple_);
+    auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
                                                 LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
@@ -63,20 +63,22 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             enableMethodLog = logList_->IncludesMethod(fileName, methodName);
         }
 
+        std::string fullName = methodName + "@" + fileName;
         if (enableMethodLog) {
-            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
-                            << methodName << "] log:" << "\033[0m";
+            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName << "] log:" << "\033[0m";
         }
 
         BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager,
-                                       &cmpCfg, enableMethodLog && log_->OutputCIR());
+                                       &cmpCfg, enableMethodLog && log_->OutputCIR(), fullName);
         builder.BytecodeToCircuit();
-        PassData data(builder.GetCircuit(), log_, enableMethodLog);
+        PassData data(builder.GetCircuit(), log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
         if (EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);
+            pipeline.RunPass<GuardEliminatingPass>(&builder);
+            pipeline.RunPass<GuardLoweringPass>(&builder, &cmpCfg);
             pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
         }
         pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg, tsManager);
@@ -84,6 +86,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
     });
+    LOG_COMPILER(INFO) << " ";
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
     generator.AddModule(aotModule, aotModuleAssembler, jsPandaFile);
     return true;
@@ -108,7 +111,8 @@ JSPandaFile *PassManager::ResolveModuleFile(JSPandaFile *jsPandaFile, const std:
         JSThread *thread = vm_->GetJSThread();
         ModuleManager *moduleManager = vm_->GetModuleManager();
         CString moduleFileName = moduleManager->ResolveModuleFileName(fileName.c_str());
-        return const_cast<JSPandaFile *>(JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName,
+        return const_cast<JSPandaFile *>(JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
+                                                                                            moduleFileName,
                                                                                             entry_));
     }
     return jsPandaFile;

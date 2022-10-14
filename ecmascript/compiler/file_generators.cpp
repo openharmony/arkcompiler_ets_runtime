@@ -38,14 +38,14 @@ void Module::CollectStackMapDes(ModuleSectionDes& des) const
     std::shared_ptr<uint8_t> ptr = nullptr;
     uint32_t size = 0;
     ArkStackMapBuilder builder;
-    std::tie(ptr, size) =  builder.Run(std::move(stackmapPtr), textAddr);
+    std::tie(ptr, size) = builder.Run(std::move(stackmapPtr), textAddr);
     des.EraseSec(ElfSecName::LLVM_STACKMAP);
     des.SetArkStackMapPtr(ptr);
     des.SetArkStackMapSize(size);
 }
 
 void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name,
-    uint32_t bridgeModuleIdx)
+                                               uint32_t bridgeModuleIdx)
 {
     uint32_t funSize = 0;
     for (size_t i = 0; i < asmModule_.GetFunctionCount(); i++) {
@@ -88,10 +88,7 @@ void AOTFileGenerator::CollectCodeInfo()
         modulePackage_[i].CollectModuleSectionDes(des);
         aotInfo_.AddModuleDes(des, aotfileHashs_[i]);
     }
-
-#ifndef NDEBUG
     DisassembleEachFunc(addr2name);
-#endif
 }
 
 void StubFileGenerator::RunAsmAssembler()

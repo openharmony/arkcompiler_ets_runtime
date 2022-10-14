@@ -110,12 +110,12 @@ namespace panda::ecmascript::kungfu {
 
 class SlowPathLowering {
 public:
-    SlowPathLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit,
-                     CompilationConfig *cmpCfg, TSManager *tsManager, bool enableLog)
+    SlowPathLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
+                     TSManager *tsManager, bool enableLog, const std::string& name)
         : tsManager_(tsManager), bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
-          enableLog_(enableLog)
+          enableLog_(enableLog), methodName_(name)
     {
         enableBcTrace_ = cmpCfg->IsEnableByteCodeTrace();
     }
@@ -133,6 +133,11 @@ public:
     }
 
 private:
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
+    }
+
     GateAccessor::UseIterator ReplaceHirControlGate(const GateAccessor::UseIterator &useIt, GateRef newGate,
                                                     bool noThrow = false);
     void ReplaceHirToSubCfg(GateRef hir, GateRef outir,
@@ -295,6 +300,7 @@ private:
     GateRef dependEntry_;
     bool enableLog_ {false};
     bool enableBcTrace_ {false};
+    std::string methodName_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_SLOWPATH_LOWERING_H

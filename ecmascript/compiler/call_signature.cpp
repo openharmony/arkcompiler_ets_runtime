@@ -1168,4 +1168,19 @@ DEF_CALL_SIGNATURE(CreateArrayFromList)
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_VARARGS);
 }
+
+DEF_CALL_SIGNATURE(DeoptHandlerAsm)
+{
+    // 1 : 1 input parameters
+    CallSignature deoptHandlerAsm("DeoptHandlerAsm", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = deoptHandlerAsm;
+    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+        VariableType::NATIVE_POINTER(),     // glue
+    };
+    callSign->SetVariadicArgs(false);
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    callSign->SetTargetKind(CallSignature::TargetKind::DEOPT_STUB);
+}
 }  // namespace panda::ecmascript::kungfu

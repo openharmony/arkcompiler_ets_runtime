@@ -44,7 +44,7 @@ class Gate;
 struct Properties;
 class BytecodeCircuitBuilder;
 
-enum MachineType { // Bit width
+enum MachineType : uint8_t { // Bit width
     NOVALUE,
     ANYVALUE,
     ARCH,
@@ -81,7 +81,7 @@ enum class TypedBinOp : BinaryOp {
     TYPED_EXP,
 };
 
-enum class TypedUnaryOp : uint8_t {
+enum class TypedUnOp : uint8_t {
     TYPED_TONUMBER,
     TYPED_NEG,
     TYPED_NOT,
@@ -93,7 +93,7 @@ class OpCode {
 public:
     enum Op : GateOp {
         // SHARED
-        NOP,
+        NOP = 0,
         CIRCUIT_ROOT,
         STATE_ENTRY,
         DEPEND_ENTRY,
@@ -120,6 +120,8 @@ public:
         DEPEND_SELECTOR,
         DEPEND_RELAY,
         DEPEND_AND,
+        GUARD,
+        FRAME_STATE,
         // High Level IR
         JS_BYTECODE,
         IF_SUCCESS,
@@ -196,8 +198,6 @@ public:
         TYPED_BINARY_OP,
         TYPE_CONVERT,
         TYPED_UNARY_OP,
-
-        // middle hir level
         TO_LENGTH,
         HEAP_ALLOC,
         LOAD_ELEMENT,
@@ -206,11 +206,11 @@ public:
         STORE_PROPERTY,
 
         COMMON_CIR_FIRST = NOP,
-        COMMON_CIR_LAST = DEPEND_AND,
+        COMMON_CIR_LAST = FRAME_STATE,
         HIGH_CIR_FIRST = JS_BYTECODE,
         HIGH_CIR_LAST = GET_EXCEPTION,
         MID_CIR_FIRST = RUNTIME_CALL,
-        MID_CIR_LAST = SAVE_REGISTER
+        MID_CIR_LAST = STORE_PROPERTY
     };
 
     OpCode() = default;
@@ -220,7 +220,6 @@ public:
         return op_;
     }
     explicit operator bool() const = delete;
-    [[nodiscard]] Properties GetProperties() const;
     [[nodiscard]] size_t GetStateCount(BitField bitfield) const;
     [[nodiscard]] size_t GetDependCount(BitField bitfield) const;
     [[nodiscard]] size_t GetInValueCount(BitField bitfield) const;
@@ -236,15 +235,18 @@ public:
     [[nodiscard]] bool IsSchedulable() const;
     [[nodiscard]] bool IsState() const;  // note: IsState(STATE_ENTRY) == false
     [[nodiscard]] bool IsGeneralState() const;
-    [[nodiscard]] bool IsTypedGate() const;
     [[nodiscard]] bool IsTerminalState() const;
     [[nodiscard]] bool IsCFGMerge() const;
     [[nodiscard]] bool IsControlCase() const;
     [[nodiscard]] bool IsLoopHead() const;
     [[nodiscard]] bool IsNop() const;
+    [[nodiscard]] bool IsConstant() const;
+    [[nodiscard]] bool IsTypedOperator() const;
     ~OpCode() = default;
 
 private:
+    friend class Gate;
+    [[nodiscard]] const Properties& GetProperties() const;
     Op op_;
 };
 
@@ -396,6 +398,7 @@ public:
     void SetBitField(BitField bitfield);
     void AppendIn(const Gate *in);  // considered very slow
     void Print(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
+    void ShortPrint(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
     size_t PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPreview, size_t highlightIdx,
                        std::string &log, bool isEnd = false) const;
     void PrintByteCode(std::string bytecode) const;
@@ -423,14 +426,14 @@ private:
     // out(2)
     // out(1)
     // out(0)
-    GateId id_ {0};
-    OpCode opcode_;
-    MachineType bitValue_ = MachineType::NOVALUE;
-    GateType type_;
-    TimeStamp stamp_;
-    MarkCode mark_;
-    BitField bitfield_;
-    GateRef firstOut_;
+    GateId id_ {0}; // uint32_t
+    GateType type_; // uint32_t
+    OpCode opcode_; // uint8_t
+    MachineType bitValue_ = MachineType::NOVALUE; // uint8_t
+    TimeStamp stamp_; // uint8_t
+    MarkCode mark_; // uint8_t
+    BitField bitfield_; // uint64_t
+    GateRef firstOut_; // int32_t
     // in(0)
     // in(1)
     // in(2)

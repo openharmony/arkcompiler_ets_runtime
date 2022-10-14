@@ -280,6 +280,9 @@ std::vector<GateRef> Circuit::GetInVector(GateRef gate) const
 GateRef Circuit::GetIn(GateRef gate, size_t idx) const
 {
     ASSERT(idx < LoadGatePtrConst(gate)->GetNumIns());
+    if (IsInGateNull(gate, idx)) {
+        return NullGate();
+    }
     const Gate *curGate = LoadGatePtrConst(gate);
     return GetGateRef(curGate->GetInGateConst(idx));
 }
