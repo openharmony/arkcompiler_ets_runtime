@@ -1111,13 +1111,13 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8: {
-            uint16_t stringId = READ_INST_8_0();
-            info.inputs.emplace_back(StringId(stringId));
+            int32_t index = READ_INST_8_0();
+            info.inputs.emplace_back(Immediate(index));
             break;
         }
         case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16: {
-            uint16_t stringId = READ_INST_16_1();
-            info.inputs.emplace_back(StringId(stringId));
+            int32_t index = READ_INST_16_1();
+            info.inputs.emplace_back(Immediate(index));
             break;
         }
         case EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16: {
