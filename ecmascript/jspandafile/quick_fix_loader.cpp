@@ -134,6 +134,9 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
             return false;
         }
     }
+
+    vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile_, patchFile_);
+    LOG_FULL(INFO) << "LoadPatch success!";
     return true;
 }
 
@@ -361,6 +364,7 @@ bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
         }
     }
 
+    vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchUnloaded(baseFile_, patchFile_);
     ClearReservedInfo();
     return true;
 }

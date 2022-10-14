@@ -24,7 +24,7 @@ bool TestUtil::initialized_ = false;
 os::memory::Mutex TestUtil::suspendMutex_;
 os::memory::ConditionVariable TestUtil::suspendCv_;
 bool TestUtil::suspended_ = false;
-JSPtLocation TestUtil::lastEventLocation_("", EntityId(0), 0);
+JSPtLocation TestUtil::lastEventLocation_(nullptr, EntityId(0), 0);
 
 std::ostream &operator<<(std::ostream &out, DebugEvent value)
 {

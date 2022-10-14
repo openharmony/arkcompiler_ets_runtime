@@ -745,7 +745,7 @@ void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandle
     GetString(codeEntry.functionName.c_str());
 
     // source file
-    tooling::JSPtExtractor *debugExtractor =
+    DebugInfoExtractor *debugExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
     const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
     if (sourceFile.empty()) {

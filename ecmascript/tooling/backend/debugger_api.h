@@ -31,6 +31,7 @@ class FrameHandler;
 class EcmaVM;
 class Method;
 class JSThread;
+class DebugInfoExtractor;
 namespace tooling {
 class JSDebugger;
 }
@@ -95,6 +96,10 @@ public:
         std::shared_ptr<FrameHandler> &frameHandler);
     static Local<FunctionRef> GenerateFuncFromBuffer(const EcmaVM *ecmaVm, const void *buffer, size_t size,
         std::string_view entryPoint);
+
+    // HotReload
+    static DebugInfoExtractor *GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url);
+    static const JSPandaFile *GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile);
 };
 }  // namespace panda::ecmascript::tooling
 

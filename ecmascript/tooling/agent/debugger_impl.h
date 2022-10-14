@@ -20,7 +20,7 @@
 #include "ecmascript/tooling/backend/js_pt_hooks.h"
 #include "ecmascript/tooling/base/pt_method.h"
 #include "ecmascript/tooling/base/pt_params.h"
-#include "ecmascript/tooling/backend/js_pt_extractor.h"
+#include "ecmascript/tooling/backend/js_single_stepper.h"
 #include "ecmascript/tooling/dispatcher.h"
 #include "ecmascript/tooling/interface/js_debugger_manager.h"
 
@@ -138,8 +138,8 @@ private:
     NO_MOVE_SEMANTIC(DebuggerImpl);
 
     std::string Trim(const std::string &str);
-    JSPtExtractor *GetExtractor(const JSPandaFile *jsPandaFile);
-    JSPtExtractor *GetExtractor(const std::string &url);
+    DebugInfoExtractor *GetExtractor(const JSPandaFile *jsPandaFile);
+    DebugInfoExtractor *GetExtractor(const std::string &url);
     std::optional<std::string> CmptEvaluateValue(CallFrameId callFrameId, const std::string &expression,
                                              std::unique_ptr<RemoteObject> *result);
     bool GenerateCallFrame(CallFrame *callFrame, const FrameHandler *frameHandler, CallFrameId frameId);
@@ -183,11 +183,11 @@ private:
     std::unique_ptr<JSPtHooks> hooks_ {nullptr};
     JSDebugger *jsDebugger_ {nullptr};
 
-    std::unordered_map<std::string, JSPtExtractor *> extractors_ {};
+    std::unordered_map<std::string, DebugInfoExtractor *> extractors_ {};
     std::unordered_map<ScriptId, std::unique_ptr<PtScript>> scripts_ {};
     PauseOnExceptionsState pauseOnException_ {PauseOnExceptionsState::NONE};
     bool pauseOnNextByteCode_ {false};
-    std::unique_ptr<JSPtExtractor::SingleStepper> singleStepper_ {nullptr};
+    std::unique_ptr<SingleStepper> singleStepper_ {nullptr};
 
     std::unordered_map<JSTaggedType *, RemoteObjectId> scopeObjects_ {};
     std::vector<std::shared_ptr<FrameHandler>> callFrameHandlers_;

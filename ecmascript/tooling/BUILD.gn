@@ -32,7 +32,7 @@ debugger_sources = [
   "agent/runtime_impl.cpp",
   "agent/tracing_impl.cpp",
   "backend/debugger_executor.cpp",
-  "backend/js_pt_extractor.cpp",
+  "backend/js_single_stepper.cpp",
   "backend/js_pt_hooks.cpp",
   "base/pt_base64.cpp",
   "base/pt_events.cpp",

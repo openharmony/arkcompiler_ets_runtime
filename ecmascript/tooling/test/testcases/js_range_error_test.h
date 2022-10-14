@@ -23,12 +23,6 @@ class JsRangeErrorTest : public TestEvents {
 public:
     JsRangeErrorTest()
     {
-        vmStart = [this] {
-            location_ = TestUtil::GetLocation(20, 0, pandaFile_.c_str());  // 20: breakpointer line
-            ASSERT_TRUE(location_.GetMethodId().IsValid());
-            return true;
-        };
-
         breakpoint = [this](const JSPtLocation &location) {
             ASSERT_TRUE(location.GetMethodId().IsValid());
             ASSERT_LOCATION_EQ(location, location_);
@@ -61,6 +55,8 @@ public:
         };
 
         loadModule = [this](std::string_view moduleName) {
+            location_ = TestUtil::GetLocation(20, 0, pandaFile_.c_str());  // 20: breakpointer line
+            ASSERT_TRUE(location_.GetMethodId().IsValid());
             TestUtil::SuspendUntilContinue(DebugEvent::LOAD_MODULE);
             ASSERT_EQ(moduleName, pandaFile_);
             ASSERT_TRUE(debugger_->NotifyScriptParsed(0, pandaFile_));

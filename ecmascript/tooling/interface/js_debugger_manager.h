@@ -19,6 +19,7 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/tooling/interface/hot_reload_manager.h"
 #include "ecmascript/tooling/interface/notification_manager.h"
 
 #include "libpandabase/os/library_loader.h"
@@ -36,6 +37,7 @@ public:
     ~JsDebuggerManager()
     {
         delete notificationManager_;
+        delete hotReloadManager_;
     }
 
     NO_COPY_SEMANTIC(JsDebuggerManager);
@@ -44,12 +46,18 @@ public:
     void Initialize(const EcmaVM *vm)
     {
         notificationManager_ = new NotificationManager();
+        hotReloadManager_ = new HotReloadManager(vm);
         jsThread_ = vm->GetJSThread();
     }
 
     NotificationManager *GetNotificationManager() const
     {
         return notificationManager_;
+    }
+
+    HotReloadManager *GetHotReloadManager() const
+    {
+        return hotReloadManager_;
     }
 
     void SetDebugMode(bool isDebugMode)
@@ -139,6 +147,7 @@ private:
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     NotificationManager *notificationManager_ {nullptr};
+    HotReloadManager *hotReloadManager_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};
     SingleStepperFunc *stepperFunc_ {nullptr};
     JSThread *jsThread_ {nullptr};

@@ -31,7 +31,7 @@ using namespace std::placeholders;
 using ObjectType = RemoteObject::TypeName;
 using ObjectSubType = RemoteObject::SubTypeName;
 using ObjectClassName = RemoteObject::ClassName;
-using StepperType = JSPtExtractor::SingleStepper::Type;
+using StepperType = SingleStepper::Type;
 
 #ifdef DEBUGGER_TEST
 const std::string DATA_APP_PATH = "/";
@@ -82,7 +82,7 @@ bool DebuggerImpl::NotifyScriptParsed(ScriptId scriptId, const std::string &file
         return false;
     }
 
-    JSPtExtractor *extractor = GetExtractor(jsPandaFile);
+    DebugInfoExtractor *extractor = GetExtractor(jsPandaFile);
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "NotifyScriptParsed: Unsupported file: " << fileName;
         return false;
@@ -150,18 +150,21 @@ bool DebuggerImpl::NotifySingleStep(const JSPtLocation &location)
 
 bool DebuggerImpl::IsSkipLine(const JSPtLocation &location)
 {
-    JSPtExtractor *extractor = nullptr;
-    auto scriptFunc = [this, &extractor](PtScript *script) -> bool {
-        extractor = GetExtractor(script->GetUrl());
+    DebugInfoExtractor *extractor = nullptr;
+    const auto *jsPandaFile = location.GetJsPandaFile();
+    auto scriptFunc = [this, &extractor, jsPandaFile](PtScript *) -> bool {
+        extractor = GetExtractor(jsPandaFile);
         return true;
     };
-    if (!MatchScripts(scriptFunc, location.GetPandaFile(), ScriptMatchType::FILE_NAME) || extractor == nullptr) {
-        LOG_DEBUGGER(INFO) << "StepComplete: skip unknown file";
+    // In hot reload scenario, use the base js panda file instead
+    const auto &fileName = DebuggerApi::GetBaseJSPandaFile(vm_, jsPandaFile)->GetJSPandaFileDesc();
+    if (!MatchScripts(scriptFunc, fileName.c_str(), ScriptMatchType::FILE_NAME) || extractor == nullptr) {
+        LOG_DEBUGGER(INFO) << "StepComplete: skip unknown file " << fileName.c_str();
         return true;
     }
 
     auto callbackFunc = [](int32_t line) -> bool {
-        return line == JSPtExtractor::SPECIAL_LINE_MARK;
+        return line == DebugInfoExtractor::SPECIAL_LINE_MARK;
     };
     File::EntityId methodId = location.GetMethodId();
     uint32_t offset = location.GetBytecodeOffset();
@@ -197,10 +200,10 @@ void DebuggerImpl::NotifyPaused(std::optional<JSPtLocation> location, PauseReaso
     std::vector<std::string> hitBreakpoints;
     if (location.has_value()) {
         BreakpointDetails detail;
-        JSPtExtractor *extractor = nullptr;
-        auto scriptFunc = [this, &extractor, &detail](PtScript *script) -> bool {
+        DebugInfoExtractor *extractor = nullptr;
+        auto scriptFunc = [this, &location, &detail, &extractor](PtScript *script) -> bool {
             detail.url_ = script->GetUrl();
-            extractor = GetExtractor(detail.url_);
+            extractor = GetExtractor(location->GetJsPandaFile());
             return true;
         };
         auto callbackLineFunc = [&detail](int32_t line) -> bool {
@@ -213,10 +216,11 @@ void DebuggerImpl::NotifyPaused(std::optional<JSPtLocation> location, PauseReaso
         };
         File::EntityId methodId = location->GetMethodId();
         uint32_t offset = location->GetBytecodeOffset();
-        if (!MatchScripts(scriptFunc, location->GetPandaFile(), ScriptMatchType::FILE_NAME) ||
+        // In merge abc scenario, need to use the source file to match to get right url
+        if (!MatchScripts(scriptFunc, location->GetSourceFile(), ScriptMatchType::URL) ||
             extractor == nullptr || !extractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
             !extractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-            LOG_DEBUGGER(ERROR) << "NotifyPaused: unknown " << location->GetPandaFile();
+            LOG_DEBUGGER(ERROR) << "NotifyPaused: unknown file " << location->GetSourceFile();
             return;
         }
         hitBreakpoints.emplace_back(BreakpointDetails::ToString(detail));
@@ -619,7 +623,7 @@ DispatchResponse DebuggerImpl::GetPossibleBreakpoints(const GetPossibleBreakpoin
         return DispatchResponse::Fail("Unknown file name.");
     }
     const std::string &url = iter->second->GetUrl();
-    JSPtExtractor *extractor = GetExtractor(url);
+    DebugInfoExtractor *extractor = GetExtractor(url);
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "GetPossibleBreakpoints: extractor is null";
         return DispatchResponse::Fail("Unknown file name.");
@@ -627,7 +631,7 @@ DispatchResponse DebuggerImpl::GetPossibleBreakpoints(const GetPossibleBreakpoin
 
     int32_t line = start->GetLine();
     int32_t column = start->GetColumn();
-    auto callbackFunc = []([[maybe_unused]] File::EntityId id, [[maybe_unused]] uint32_t offset) -> bool {
+    auto callbackFunc = [](const JSPtLocation &) -> bool {
         return true;
     };
     if (extractor->MatchWithLocation(callbackFunc, line, column, url)) {
@@ -665,15 +669,13 @@ DispatchResponse DebuggerImpl::RemoveBreakpoint(const RemoveBreakpointParams &pa
     if (!BreakpointDetails::ParseBreakpointId(id, &metaData)) {
         return DispatchResponse::Fail("Parse breakpoint id failed");
     }
-    JSPtExtractor *extractor = GetExtractor(metaData.url_);
+    DebugInfoExtractor *extractor = GetExtractor(metaData.url_);
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "RemoveBreakpoint: extractor is null";
         return DispatchResponse::Fail("Unknown file name.");
     }
 
-    std::string fileName;
-    auto scriptFunc = [&fileName](PtScript *script) -> bool {
-        fileName = script->GetFileName();
+    auto scriptFunc = [](PtScript *) -> bool {
         return true;
     };
     if (!MatchScripts(scriptFunc, metaData.url_, ScriptMatchType::URL)) {
@@ -681,12 +683,12 @@ DispatchResponse DebuggerImpl::RemoveBreakpoint(const RemoveBreakpointParams &pa
         return DispatchResponse::Fail("Unknown file name.");
     }
 
-    auto callbackFunc = [this, fileName](File::EntityId id, uint32_t offset) -> bool {
-        JSPtLocation location {fileName.c_str(), id, offset};
+    auto callbackFunc = [this](const JSPtLocation &location) -> bool {
+        LOG_DEBUGGER(INFO) << "remove breakpoint location: " << location.ToString();
         return DebuggerApi::RemoveBreakpoint(jsDebugger_, location);
     };
     if (!extractor->MatchWithLocation(callbackFunc, metaData.line_, metaData.column_, metaData.url_)) {
-        LOG_DEBUGGER(ERROR) << "failed to set breakpoint location number: "
+        LOG_DEBUGGER(ERROR) << "failed to remove breakpoint location number: "
             << metaData.line_ << ":" << metaData.column_;
         return DispatchResponse::Fail("Breakpoint not found.");
     }
@@ -716,7 +718,7 @@ DispatchResponse DebuggerImpl::SetBreakpointByUrl(const SetBreakpointByUrlParams
     int32_t columnNumber = params.GetColumn();
     auto condition = params.HasCondition() ? params.GetCondition() : std::optional<std::string> {};
 
-    JSPtExtractor *extractor = GetExtractor(url);
+    DebugInfoExtractor *extractor = GetExtractor(url);
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "SetBreakpointByUrl: extractor is null";
         return DispatchResponse::Fail("Unknown file name.");
@@ -734,8 +736,8 @@ DispatchResponse DebuggerImpl::SetBreakpointByUrl(const SetBreakpointByUrlParams
         return DispatchResponse::Fail("Unknown file name.");
     }
 
-    auto callbackFunc = [this, fileName, &condition](File::EntityId id, uint32_t offset) -> bool {
-        JSPtLocation location {fileName.c_str(), id, offset};
+    auto callbackFunc = [this, &condition](const JSPtLocation &location) -> bool {
+        LOG_DEBUGGER(INFO) << "set breakpoint location: " << location.ToString();
         Local<FunctionRef> condFuncRef = FunctionRef::Undefined(vm_);
         if (condition.has_value() && !condition.value().empty()) {
             std::string dest;
@@ -775,39 +777,33 @@ DispatchResponse DebuggerImpl::SetPauseOnExceptions(const SetPauseOnExceptionsPa
 
 DispatchResponse DebuggerImpl::StepInto([[maybe_unused]] const StepIntoParams &params)
 {
-    JSPtExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
-    if (extractor == nullptr) {
-        LOG_DEBUGGER(ERROR) << "StepOver: extractor is null";
-        return DispatchResponse::Fail("Unknown file name.");
+    singleStepper_ = SingleStepper::GetStepIntoStepper(vm_);
+    if (singleStepper_ == nullptr) {
+        LOG_DEBUGGER(ERROR) << "StepInto: singleStepper is null";
+        return DispatchResponse::Fail("Failed to StepInto");
     }
-    singleStepper_ = extractor->GetStepIntoStepper(vm_);
-
     frontend_.Resumed(vm_);
     return DispatchResponse::Ok();
 }
 
 DispatchResponse DebuggerImpl::StepOut()
 {
-    JSPtExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
-    if (extractor == nullptr) {
-        LOG_DEBUGGER(ERROR) << "StepOut: extractor is null";
-        return DispatchResponse::Fail("Unknown file name.");
+    singleStepper_ = SingleStepper::GetStepOutStepper(vm_);
+    if (singleStepper_ == nullptr) {
+        LOG_DEBUGGER(ERROR) << "StepOut: singleStepper is null";
+        return DispatchResponse::Fail("Failed to StepOut");
     }
-    singleStepper_ = extractor->GetStepOutStepper(vm_);
-
     frontend_.Resumed(vm_);
     return DispatchResponse::Ok();
 }
 
 DispatchResponse DebuggerImpl::StepOver([[maybe_unused]] const StepOverParams &params)
 {
-    JSPtExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
-    if (extractor == nullptr) {
-        LOG_DEBUGGER(ERROR) << "StepOver: extractor is null";
-        return DispatchResponse::Fail("Unknown file name.");
+    singleStepper_ = SingleStepper::GetStepOverStepper(vm_);
+    if (singleStepper_ == nullptr) {
+        LOG_DEBUGGER(ERROR) << "StepOver: singleStepper is null";
+        return DispatchResponse::Fail("Failed to StepOver");
     }
-    singleStepper_ = extractor->GetStepOverStepper(vm_);
-
     frontend_.Resumed(vm_);
     return DispatchResponse::Ok();
 }
@@ -851,13 +847,21 @@ std::string DebuggerImpl::Trim(const std::string &str)
     return ret;
 }
 
-JSPtExtractor *DebuggerImpl::GetExtractor(const JSPandaFile *jsPandaFile)
+DebugInfoExtractor *DebuggerImpl::GetExtractor(const JSPandaFile *jsPandaFile)
 {
     return JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
 }
 
-JSPtExtractor *DebuggerImpl::GetExtractor(const std::string &url)
+// mainly used for breakpoints to match location
+DebugInfoExtractor *DebuggerImpl::GetExtractor(const std::string &url)
 {
+    // match patch file first if it contains diff for the url, and currently only support the file
+    // specified by the url change as a whole
+    auto *extractor = DebuggerApi::GetPatchExtractor(vm_, url);
+    if (extractor != nullptr) {
+        return extractor;
+    }
+
     auto iter = extractors_.find(url);
     if (iter == extractors_.end()) {
         return nullptr;
@@ -901,7 +905,7 @@ bool DebuggerImpl::GenerateCallFrame(CallFrame *callFrame,
 {
     Method *method = DebuggerApi::GetMethod(frameHandler);
     auto methodId = method->GetMethodId();
-    JSPtExtractor *extractor = GetExtractor(method->GetJSPandaFile());
+    DebugInfoExtractor *extractor = GetExtractor(method->GetJSPandaFile());
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "GenerateCallFrame: extractor is null";
         return false;
@@ -960,7 +964,7 @@ std::unique_ptr<Scope> DebuggerImpl::GetLocalScopeChain(const FrameHandler *fram
     Method *method = DebuggerApi::GetMethod(frameHandler);
     auto methodId = method->GetMethodId();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    JSPtExtractor *extractor = GetExtractor(jsPandaFile);
+    DebugInfoExtractor *extractor = GetExtractor(jsPandaFile);
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "GetScopeChain: extractor is null";
         return localScope;
@@ -1117,7 +1121,7 @@ std::optional<std::string> DebuggerImpl::CmptEvaluateValue(CallFrameId callFrame
             Exception::EvalError(vm_, StringRef::NewFromUtf8(vm_, "Native Frame not support.")));
         return "Native Frame not support.";
     }
-    JSPtExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
+    DebugInfoExtractor *extractor = GetExtractor(DebuggerApi::GetJSPandaFile(vm_));
     if (extractor == nullptr) {
         *result = RemoteObject::FromTagged(vm_,
             Exception::EvalError(vm_, StringRef::NewFromUtf8(vm_, "Internal error.")));

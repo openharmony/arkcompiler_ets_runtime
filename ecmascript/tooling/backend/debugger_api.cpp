@@ -135,7 +135,7 @@ int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_
         LOG_DEBUGGER(ERROR) << "GetVregIndex: native frame not support";
         return -1;
     }
-    JSPtExtractor *extractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
+    DebugInfoExtractor *extractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
     if (extractor == nullptr) {
         LOG_DEBUGGER(ERROR) << "GetVregIndex: extractor is null";
         return -1;
@@ -370,5 +370,17 @@ bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
         }
     }
     return false;
+}
+
+DebugInfoExtractor *DebuggerApi::GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url)
+{
+    const auto *hotReloadManager = ecmaVm->GetJsDebuggerManager()->GetHotReloadManager();
+    return hotReloadManager->GetPatchExtractor(url);
+}
+
+const JSPandaFile *DebuggerApi::GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile)
+{
+    const auto *hotReloadManager = ecmaVm->GetJsDebuggerManager()->GetHotReloadManager();
+    return hotReloadManager->GetBaseJSPandaFile(jsPandaFile);
 }
 }  // namespace panda::ecmascript::tooling
