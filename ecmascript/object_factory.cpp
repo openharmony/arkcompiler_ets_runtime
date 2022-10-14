@@ -106,7 +106,6 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/space.h"
-#include "ecmascript/mem/region.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/record.h"
@@ -435,27 +434,12 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     cloneObject->SetArrayLength(thread_, object->GetArrayLength());
 
     JSHandle<TaggedArray> elements(thread_, object->GetElements());
-    static constexpr uint8_t MAX_READ_ONLY_ARRAY_LENGTH = 10;
-    uint32_t elementsLength = elements->GetLength();
-    MemSpaceType type = elementsLength > MAX_READ_ONLY_ARRAY_LENGTH ?
-        MemSpaceType::SEMI_SPACE : MemSpaceType::NON_MOVABLE;
-    auto newElements = CopyArray(elements, elementsLength, elementsLength, JSTaggedValue::Hole(), type);
+    auto newElements = CopyArray(elements, elements->GetLength(), elements->GetLength());
     cloneObject->SetElements(thread_, newElements.GetTaggedValue());
-    if (type == MemSpaceType::NON_MOVABLE &&
-        !Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*elements))->InNonMovableSpace()) {
-        object->SetElements(thread_, newElements.GetTaggedValue());
-    }
 
     JSHandle<TaggedArray> properties(thread_, object->GetProperties());
-    uint32_t propertiesLength = properties->GetLength();
-    type = propertiesLength > MAX_READ_ONLY_ARRAY_LENGTH ?
-        MemSpaceType::SEMI_SPACE : MemSpaceType::NON_MOVABLE;
-    auto newProperties = CopyArray(properties, propertiesLength, propertiesLength, JSTaggedValue::Hole(), type);
+    auto newProperties = CopyArray(properties, properties->GetLength(), properties->GetLength());
     cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
-    if (type == MemSpaceType::NON_MOVABLE &&
-        !Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*properties))->InNonMovableSpace()) {
-        object->SetProperties(thread_, newProperties.GetTaggedValue());
-    }
 
     for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
         cloneObject->SetPropertyInlinedProps(thread_, i, object->GetPropertyInlinedProps(i));
@@ -2198,13 +2182,10 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     if (newLength == 0) {
         return EmptyArray();
     }
-    if (type == MemSpaceType::NON_MOVABLE && oldLength == newLength &&
-        Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*old))->InNonMovableSpace()) {
-        return old;
-    }
     if (newLength > oldLength) {
         return ExtendArray(old, newLength, initVal, type);
     }
+
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
     JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());

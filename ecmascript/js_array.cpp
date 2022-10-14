@@ -370,16 +370,12 @@ JSHandle<JSTaggedValue> JSArray::FastGetPropertyByValue(JSThread *thread, const 
 bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
                                      const JSHandle<JSTaggedValue> &value)
 {
-    ASSERT(obj.GetTaggedValue().IsJSArray());
-    CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(obj));
     return FastRuntimeStub::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
 }
 
 bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
-    ASSERT(obj.GetTaggedValue().IsJSArray());
-    CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(obj));
     return FastRuntimeStub::FastSetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
                                                    value.GetTaggedValue());
 }
