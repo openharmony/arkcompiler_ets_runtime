@@ -1055,7 +1055,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             LOG_INST() << "callarg0";
             CALL_INITIALIZE();
             callThis = false;
-            DEPRECATED_CALL_PUSH_ARGS(0);
+            CALL_PUSH_ARGS(0);
         }
         HANDLE_OPCODE(DEPRECATED_CALLARG0_PREF_V8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARG0;
