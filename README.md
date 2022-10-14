@@ -61,7 +61,7 @@ For details about how to generate JS bytecodes, see [Using the Toolchain](docs/u
 
 To run bytecodes: 
 ```
-LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/ark/ark:out/hispark_taurus/clang_x64/ark/ark_js_runtime:out/hispark_taurus/clang_x64/thirdparty/icu:prebuilts/clang/ohos/linux-x86_64/llvm/lib ./out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm helloworld.abc
+LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/arkcompiler/ets_runtime:out/hispark_taurus/clang_x64/thirdparty/icu:prebuilts/clang/ohos/linux-x86_64/llvm/lib ./out/hispark_taurus/clang_x64/arkcompiler/ets_runtime/ark_js_vm helloworld.abc
 
 ```
 

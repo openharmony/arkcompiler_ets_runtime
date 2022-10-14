@@ -15,7 +15,7 @@ $ ./build.sh --product-name hispark_taurus_standard --build-target ark_ts2abc_bu
 安装`node`和`npm`后, 使用前端工具：
 
 ```
-$ cd out/hispark_taurus/clang_x64/ark/ark/build
+$ cd out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/build
 $ npm install
 $ node --expose-gc src/index.js [选项] file.js
 ```

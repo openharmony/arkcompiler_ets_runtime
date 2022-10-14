@@ -46,9 +46,11 @@ Ubuntu版本要求18.04或20.04，详细环境搭建参考：
 方舟相关的二进制文件在如下路径：
 
 ```
-out/hispark_taurus/ark/ark/
-out/hispark_taurus/ark/ark_js_runtime/
-out/hispark_taurus/clang_x64/ark/ark/
-out/hispark_taurus/clang_x64/ark/ark_js_runtime
+out/hispark_taurus/arkcompiler/runtime_core/
+out/hispark_taurus/arkcompiler/ets_frontend/
+out/hispark_taurus/arkcompiler/ets_runtime/
+out/hispark_taurus/clang_x64/arkcompiler/runtime_core/
+out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/
+out/hispark_taurus/clang_x64/arkcompiler/ets_runtime
 ```
 

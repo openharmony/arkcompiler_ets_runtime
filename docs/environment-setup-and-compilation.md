@@ -42,8 +42,10 @@ Use Ubuntu 18.04 or 20.04. For details about how to set up the environment, see:
 The binary files related to ARK are available in the following paths:
 
 ```
-out/hispark_taurus/ark/ark/
-out/hispark_taurus/ark/ark_js_runtime/
-out/hispark_taurus/clang_x64/ark/ark/
-out/hispark_taurus/clang_x64/ark/ark_js_runtime
+out/hispark_taurus/arkcompiler/runtime_core/
+out/hispark_taurus/arkcompiler/ets_frontend/
+out/hispark_taurus/arkcompiler/ets_runtime/
+out/hispark_taurus/clang_x64/arkcompiler/runtime_core/
+out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/
+out/hispark_taurus/clang_x64/arkcompiler/ets_runtime
 ```

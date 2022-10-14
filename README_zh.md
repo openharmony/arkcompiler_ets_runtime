@@ -73,7 +73,7 @@ ArkTS生成字节码参考[方舟eTS编译器](docs/using-the-toolchain-zh.md)
 
 字节码执行：
 ```
-LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/ark/ark:out/hispark_taurus/clang_x64/ark/ark_js_runtime:out/hispark_taurus/clang_x64/thirdparty/icu:prebuilts/clang/ohos/linux-x86_64/llvm/lib ./out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm helloworld.abc
+LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/arkcompiler/ets_runtime:out/hispark_taurus/clang_x64/thirdparty/icu:prebuilts/clang/ohos/linux-x86_64/llvm/lib ./out/hispark_taurus/clang_x64/arkcompiler/ets_runtime/ark_js_vm helloworld.abc
 
 ```
 

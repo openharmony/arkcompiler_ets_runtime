@@ -38,6 +38,6 @@ ohos_executable("ark_js_vm") {
 
   install_enable = false
 
-  part_name = "ark_js_runtime"
-  subsystem_name = "ark"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
