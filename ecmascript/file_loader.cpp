@@ -319,7 +319,7 @@ void FileLoader::LoadAOTFile(const std::string &fileName)
 void FileLoader::LoadSnapshotFile([[maybe_unused]] const std::string& filename)
 {
     Snapshot snapshot(vm_);
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
     snapshot.Deserialize(SnapshotType::ETSO, filename.c_str());
 #endif
 }

@@ -37,7 +37,7 @@
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
 
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/sysinfo.h>
 #endif
 

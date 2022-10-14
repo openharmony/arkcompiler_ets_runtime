@@ -24,7 +24,7 @@
 
 #include "libpandabase/os/mutex.h"
 
-#if !(defined PANDA_TARGET_MACOS || defined PANDA_TARGET_WINDOWS)
+#if !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_IOS)
 #include <sys/prctl.h>
 #ifndef PR_SET_VMA
 #define PR_SET_VMA 0x53564d41
@@ -282,7 +282,7 @@ private:
 
     void PageTag([[maybe_unused]]void *mem, [[maybe_unused]]size_t size, [[maybe_unused]]bool remove = false)
     {
-#if !(defined PANDA_TARGET_MACOS || defined PANDA_TARGET_WINDOWS)
+#if !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_IOS)
         if (remove) {
             prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, mem, size, nullptr);
         } else {

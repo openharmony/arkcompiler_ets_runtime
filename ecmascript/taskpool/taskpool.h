@@ -23,7 +23,7 @@
 #include "os/mutex.h"
 
 namespace panda::ecmascript {
-#ifdef PANDA_TARGET_MACOS
+#if defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
 static constexpr uint32_t MAC_MAX_THREADS_NUM = 5;
 #endif
 class Taskpool {
