@@ -734,9 +734,9 @@ void RuntimeStubs::RuntimeUpdateAotStatus(JSThread *thread,
     auto method = Method::Cast(methodValue.GetTaggedObject());
     // JSPandaFile is in the first index of constpool.
     auto jsPandaFile = constpool->GetJSPandaFile();
-    AOTFileManager *aotFile = thread->GetEcmaVM()->GetAOTFile();
+    AOTFileManager *aotFileManager = thread->GetEcmaVM()->GetAOTFileManager();
     if (jsPandaFile->IsLoadedAOT()) {
-        aotFile->SetAOTFuncEntry(jsPandaFile, method);
+        aotFileManager->SetAOTFuncEntry(jsPandaFile, method);
     }
 }
 
@@ -1187,7 +1187,8 @@ JSTaggedValue RuntimeStubs::RuntimeTryLdGlobalByName(JSThread *thread, const JSH
     if (!res.GetPropertyMetaData().IsFound()) {
         return RuntimeThrowReferenceError(thread, prop, " is not defined");
     }
-    return res.GetValue().GetTaggedValue();
+    auto result = res.GetValue().GetTaggedValue();
+    return result;
 }
 
 JSTaggedValue RuntimeStubs::RuntimeTryUpdateGlobalRecord(JSThread *thread, JSTaggedValue prop,
@@ -2199,16 +2200,29 @@ JSTaggedValue RuntimeStubs::RuntimeOptCopyRestArgs(JSThread *thread, uint32_t ac
 JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                        const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
-
-    // change state to SuspendedYield
-    if (generatorObjectHandle->IsExecuting()) {
-        generatorObjectHandle->SetGeneratorState(JSGeneratorState::SUSPENDED_YIELD);
+    if (genObj->IsAsyncGeneratorObject()) {
+        JSHandle<JSAsyncGeneratorObject> generatorObjectHandle(genObj);
+        // change state to SuspendedYield
+        if (generatorObjectHandle->IsExecuting()) {
+            generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::SUSPENDED_YIELD);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return value.GetTaggedValue();
+        }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        return value.GetTaggedValue();
+        return generatorObjectHandle.GetTaggedValue();
+    } else if (genObj->IsGeneratorObject()) {
+        JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
+        // change state to SuspendedYield
+        if (generatorObjectHandle->IsExecuting()) {
+            generatorObjectHandle->SetGeneratorState(JSGeneratorState::SUSPENDED_YIELD);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return value.GetTaggedValue();
+        }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return generatorObjectHandle.GetTaggedValue();
+    } else {
+        return RuntimeThrowTypeError(thread, "RuntimeSuspendGenerator failed");
     }
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return generatorObjectHandle.GetTaggedValue();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeOptConstruct(JSThread *thread, JSHandle<JSTaggedValue> ctor,

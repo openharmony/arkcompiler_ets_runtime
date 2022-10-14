@@ -270,9 +270,9 @@ public:
         return tsManager_;
     }
 
-    AOTFileManager* PUBLIC_API GetAOTFile() const
+    AOTFileManager* PUBLIC_API GetAOTFileManager() const
     {
-        return aotFile_;
+        return aotFileManager_;
     }
 
     SnapshotEnv *GetSnapshotEnv() const
@@ -560,7 +560,7 @@ private:
     TSManager *tsManager_ {nullptr};
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
-    AOTFileManager *aotFile_ {nullptr};
+    AOTFileManager *aotFileManager_ {nullptr};
 
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};

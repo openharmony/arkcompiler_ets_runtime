@@ -211,7 +211,7 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
     ASSERT(GetJSPandaFile(pf) == nullptr);
     JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc);
 
-    auto loader = thread->GetEcmaVM()->GetAOTFile();
+    auto loader = thread->GetEcmaVM()->GetAOTFileManager();
     if (loader->hasLoaded(newJsPandaFile)) {
         newJsPandaFile->SetLoadedAOTStatus(true);
     }

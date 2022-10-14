@@ -182,7 +182,7 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     binBufparser.ParseBuffer(&totalCodeSize, sizeof(totalCodeSize_));
     int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(totalCodeSize, 256_KB), 0, false, prot);
-    vm->GetAOTFile()->SetStubmmap(pool.GetMem(), pool.GetSize());
+    vm->GetAOTFileManager()->SetStubmmap(pool.GetMem(), pool.GetSize());
     uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
     uint32_t curUnitOffset = 0;
     uint32_t asmStubSize = 0;
@@ -244,7 +244,7 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
     }
     std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> anVersion;
     file.read(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
-    if (anVersion != vm->GetAOTFile()->AOT_VERSION) {
+    if (anVersion != vm->GetAOTFileManager()->AOT_VERSION) {
         LOG_COMPILER(ERROR) << "Load aot file failed";
         file.close();
         return false;
@@ -260,7 +260,7 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetAssociatedJSThread());
     int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(totalCodeSize, 256_KB), 0, false, prot);
-    vm->GetAOTFile()->SetAOTmmap(pool.GetMem(), pool.GetSize());
+    vm->GetAOTFileManager()->SetAOTmmap(pool.GetMem(), pool.GetSize());
     uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
     file.read(reinterpret_cast<char *>(aotFileHashs_.data()), sizeof(uint32_t) * moduleNum_);
     uint32_t curUnitOffset = 0;
@@ -273,7 +273,7 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
         funcDes.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
         auto curFileHash = aotFileHashs_[funcDes.moduleIndex_];
         auto curMethodId = funcDes.indexInKind_;
-        vm->GetAOTFile()->SaveAOTFuncEntry(curFileHash, curMethodId, funcDes.codeAddr_);
+        vm->GetAOTFileManager()->SaveAOTFuncEntry(curFileHash, curMethodId, funcDes.codeAddr_);
     }
     file.close();
     LOG_COMPILER(INFO) << "loaded aot file: " << filename.c_str();

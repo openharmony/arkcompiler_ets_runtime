@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ECMASCRIPT_COMPILER_FILE_LOADER_H
-#define ECMASCRIPT_COMPILER_FILE_LOADER_H
+#ifndef ECMASCRIPT_AOT_FILE_MANAGER_H
+#define ECMASCRIPT_AOT_FILE_MANAGER_H
 
 #include "ecmascript/ark_stackmap.h"
 #include "ecmascript/calleeReg.h"
@@ -464,4 +464,4 @@ private:
     friend class StubModulePackInfo;
 };
 }
-#endif // ECMASCRIPT_COMPILER_FILE_LOADER_H
+#endif // ECMASCRIPT_AOT_FILE_MANAGER_H

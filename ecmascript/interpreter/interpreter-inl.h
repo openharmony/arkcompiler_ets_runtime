@@ -809,6 +809,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
                                    JSTaggedValue::Undefined().GetRawData());
     args[0] = func.GetTaggedValue().GetRawData();
     args[1] = genObject.GetRawData();
+    args[2] = context->GetThis().GetRawData(); // 2: this
     JSTaggedValue env = func->GetLexicalEnv();
     args[args.size() - 1] = env.GetRawData(); // last arg is env.
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);

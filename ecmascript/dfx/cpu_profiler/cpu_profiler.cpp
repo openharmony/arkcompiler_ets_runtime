@@ -536,7 +536,7 @@ bool CpuProfiler::IsAddrAtStub(void *context)
     LOG_ECMA(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
     return true;
 #endif
-    AOTFileManager *loader = vm_->GetAOTFile();
+    AOTFileManager *loader = vm_->GetAOTFileManager();
     return loader->InsideStub(pc);
 }
 

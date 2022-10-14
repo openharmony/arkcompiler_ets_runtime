@@ -350,7 +350,7 @@ void FrameHandler::Iterate(const RootVisitor &visitor, const RootRangeVisitor &r
     }
     // lazy assignment: only Iterate need arkStackMapParser_ in order to high improve performance
     if (arkStackMapParser_ == nullptr) {
-        arkStackMapParser_ = thread_->GetEcmaVM()->GetAOTFile()->GetStackMapParser();
+        arkStackMapParser_ = thread_->GetEcmaVM()->GetAOTFileManager()->GetStackMapParser();
     }
     IterateFrameChain(current, visitor, rangeVisitor, derivedVisitor);
 }

@@ -32,7 +32,7 @@ namespace panda::ecmascript {
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
-        arkStackMapParser_ = thread->GetEcmaVM()->GetAOTFile()->GetStackMapParser();
+        arkStackMapParser_ = thread->GetEcmaVM()->GetAOTFileManager()->GetStackMapParser();
     }
 }
 
@@ -50,7 +50,7 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
 
 ModulePackInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    auto loader = thread_->GetEcmaVM()->GetAOTFile();
+    auto loader = thread_->GetEcmaVM()->GetAOTFileManager();
     return loader->CalCallSiteInfo(retAddr);
 }
 

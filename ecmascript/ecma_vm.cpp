@@ -213,7 +213,7 @@ bool EcmaVM::Initialize()
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Initialize();
     }
-    aotFile_ = new AOTFileManager(this);
+    aotFileManager_ = new AOTFileManager(this);
     if (options_.GetEnableAsmInterpreter()) {
         LoadStubFile();
     }
@@ -345,9 +345,9 @@ EcmaVM::~EcmaVM()
         snapshotEnv_ = nullptr;
     }
 
-    if (aotFile_ != nullptr) {
-        delete aotFile_;
-        aotFile_  = nullptr;
+    if (aotFileManager_ != nullptr) {
+        delete aotFileManager_;
+        aotFileManager_  = nullptr;
     }
 
     if (thread_ != nullptr) {
@@ -402,7 +402,7 @@ bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                               const JSPandaFile *jsPandaFile)
 {
-    aotFile_->UpdateJSMethods(mainFunc, jsPandaFile);
+    aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile);
     std::vector<JSTaggedType> args(7, JSTaggedValue::Undefined().GetRawData()); // 7: number of para
     args[0] = mainFunc.GetTaggedValue().GetRawData();
     args[2] = thisArg.GetTaggedValue().GetRawData();  // 2: parameter of this
@@ -738,7 +738,7 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
         ObjectSlot(ToUintPtr(&internalNativeMethods_.front())), ObjectSlot(ToUintPtr(&internalNativeMethods_.back())));
     moduleManager_->Iterate(v);
     tsManager_->Iterate(v);
-    aotFile_->Iterate(v);
+    aotFileManager_->Iterate(v);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
@@ -763,17 +763,17 @@ void EcmaVM::SetupRegExpResultCache()
 
 void EcmaVM::LoadStubFile()
 {
-    aotFile_->LoadStubFile();
+    aotFileManager_->LoadStubFile();
 }
 
 void EcmaVM::LoadAOTFiles()
 {
     std::string anFile = options_.GetAOTOutputFile() + ".an";
-    aotFile_->LoadAnFile(anFile);
-    aotFile_->RewriteGotSection();
+    aotFileManager_->LoadAnFile(anFile);
+    aotFileManager_->RewriteGotSection();
 
     std::string etsoFile = options_.GetAOTOutputFile() + ".etso";
-    aotFile_->LoadSnapshotFile(etsoFile);
+    aotFileManager_->LoadSnapshotFile(etsoFile);
 }
 
 #if !WIN_OR_MAC_OR_IOS_PLATFORM

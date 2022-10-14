@@ -1487,7 +1487,7 @@ HWTEST_F_L0(StubTest, RelocateTest)
     uint64_t input = 0x111;
     auto *ptr =
         reinterpret_cast<JSTaggedValue (*)(uint64_t)>(assembler.GetFuncPtrFromCompiledModule(function));
-    auto loader = thread->GetEcmaVM()->GetAOTFile();
+    auto loader = thread->GetEcmaVM()->GetAOTFileManager();
     auto dataSecAddr = assembler.GetSectionAddr(ElfSecName::DATA);
     auto dataSecSize = assembler.GetSectionSize(ElfSecName::DATA);
     std::vector<uint64_t> newData;
