@@ -26,7 +26,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/heap.h"

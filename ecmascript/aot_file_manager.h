@@ -374,12 +374,16 @@ private:
     std::vector<int> asmStubTempHolder_ {};
 };
 
-class FileLoader {
+class AOTFileManager {
 public:
-    explicit FileLoader(EcmaVM *vm);
-    virtual ~FileLoader();
+    explicit AOTFileManager(EcmaVM *vm);
+    virtual ~AOTFileManager();
+
+    static constexpr size_t AOT_VERSION_SIZE = 4;
+    static constexpr std::array<uint8_t, AOT_VERSION_SIZE> AOT_VERSION {0, 0, 0, 1};
+
     void LoadStubFile();
-    void LoadAOTFile(const std::string &fileName);
+    void LoadAnFile(const std::string &fileName);
     ModulePackInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool InsideStub(uint64_t pc) const;
 

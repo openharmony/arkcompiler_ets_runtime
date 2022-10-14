@@ -15,7 +15,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
@@ -211,7 +211,7 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
     ASSERT(GetJSPandaFile(pf) == nullptr);
     JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc);
 
-    auto loader = thread->GetEcmaVM()->GetFileLoader();
+    auto loader = thread->GetEcmaVM()->GetAOTFile();
     if (loader->hasLoaded(newJsPandaFile)) {
         newJsPandaFile->SetLoadedAOTStatus(true);
     }

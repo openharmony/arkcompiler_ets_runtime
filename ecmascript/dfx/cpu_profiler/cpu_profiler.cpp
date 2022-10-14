@@ -23,7 +23,7 @@
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 #include "ecmascript/frames.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
 
@@ -536,7 +536,7 @@ bool CpuProfiler::IsAddrAtStub(void *context)
     LOG_ECMA(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
     return true;
 #endif
-    FileLoader *loader = vm_->GetFileLoader();
+    AOTFileManager *loader = vm_->GetAOTFile();
     return loader->InsideStub(pc);
 }
 

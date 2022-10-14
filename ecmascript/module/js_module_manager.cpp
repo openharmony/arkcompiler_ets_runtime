@@ -14,7 +14,7 @@
  */
 #include "ecmascript/module/js_module_manager.h"
 
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
@@ -273,7 +273,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
     JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(referencingModule);
     CString moduleFileName = referencingModule;
     if (!vm_->GetResolvePathCallback()) {
-        if (FileLoader::GetAbsolutePath(referencingModule, moduleFileName)) {
+        if (AOTFileManager::GetAbsolutePath(referencingModule, moduleFileName)) {
             referencingHandle = factory->NewFromUtf8(moduleFileName);
         } else {
             LOG_ECMA(FATAL) << "absolute " << referencingModule << " path error";

@@ -20,7 +20,7 @@
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_string_table.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -734,9 +734,9 @@ void RuntimeStubs::RuntimeUpdateAotStatus(JSThread *thread,
     auto method = Method::Cast(methodValue.GetTaggedObject());
     // JSPandaFile is in the first index of constpool.
     auto jsPandaFile = constpool->GetJSPandaFile();
-    FileLoader *fileLoader = thread->GetEcmaVM()->GetFileLoader();
+    AOTFileManager *aotFile = thread->GetEcmaVM()->GetAOTFile();
     if (jsPandaFile->IsLoadedAOT()) {
-        fileLoader->SetAOTFuncEntry(jsPandaFile, method);
+        aotFile->SetAOTFuncEntry(jsPandaFile, method);
     }
 }
 

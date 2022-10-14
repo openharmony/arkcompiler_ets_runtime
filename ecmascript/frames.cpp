@@ -17,7 +17,7 @@
 
 #include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/interpreter/frame_handler.h"
@@ -32,7 +32,7 @@ namespace panda::ecmascript {
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
-        arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+        arkStackMapParser_ = thread->GetEcmaVM()->GetAOTFile()->GetStackMapParser();
     }
 }
 
@@ -50,7 +50,7 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
 
 ModulePackInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    auto loader = thread_->GetEcmaVM()->GetFileLoader();
+    auto loader = thread_->GetEcmaVM()->GetAOTFile();
     return loader->CalCallSiteInfo(retAddr);
 }
 

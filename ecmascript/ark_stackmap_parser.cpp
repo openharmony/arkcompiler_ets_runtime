@@ -16,7 +16,7 @@
 #include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/deoptimizer.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 
 namespace panda::ecmascript::kungfu {
 // implement simple binary-search is improve performance. if use std api, it'll trigger copy CallsiteHead.
