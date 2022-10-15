@@ -405,7 +405,7 @@ void JSThread::CollectBCOffsetInfo()
 // static
 size_t JSThread::GetAsmStackLimit()
 {
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     // js stack limit
     size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
     pthread_attr_t attr;
