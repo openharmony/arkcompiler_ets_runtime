@@ -168,6 +168,8 @@ config("ark_jsruntime_public_config") {
       "ECMASCRIPT_SUPPORT_CPUPROFILER",
       "ECMASCRIPT_SUPPORT_DEBUGGER",
     ]
+  } else if (target_os == "ios") {
+    defines += [ "ECMASCRIPT_SUPPORT_DEBUGGER" ]
   }
 
   include_dirs = [
