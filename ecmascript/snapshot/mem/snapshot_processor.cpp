@@ -1052,19 +1052,19 @@ void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &write
                 ASSERT(alignedRegionObjSize + (current->end_ - ToUintPtr(current->packedData_.markGCBitset_)) ==
                        DEFAULT_REGION_SIZE);
 
-                // Firstly, serialize the region object into the file;
+                // Firstly, serialize the region head into the file;
                 writer.write(reinterpret_cast<char *>(current), alignedRegionObjSize);
-                // Secondly, write the valid region memory (from the GC bit set at the beginning to end).
-                writer.write(reinterpret_cast<char *>(current->packedData_.markGCBitset_),
-                             DEFAULT_REGION_SIZE - alignedRegionObjSize);
+                // Secondly, write the valid region memory (exclude region head and GC bit set).
+                writer.write(reinterpret_cast<char *>(current->packedData_.begin_),
+                             ToUintPtr(current) + DEFAULT_REGION_SIZE - current->packedData_.begin_);
                 writer.flush();
             }
         });
         // Firstly, serialize the region object into the file;
         writer.write(reinterpret_cast<char *>(lastRegion), alignedRegionObjSize);
-        // Secondly, write the valid region memory (from the GC bit set at the beginning to high water mark).
-        writer.write(reinterpret_cast<char *>(lastRegion->packedData_.markGCBitset_),
-                     lastRegion->highWaterMark_ - ToUintPtr(lastRegion->packedData_.markGCBitset_));
+        // Secondly, write the valid region memory (exclude region head and GC bit set).
+        writer.write(reinterpret_cast<char *>(lastRegion->packedData_.begin_),
+                     lastRegion->highWaterMark_ - lastRegion->packedData_.begin_);
         writer.flush();
     }
 }
@@ -1086,14 +1086,15 @@ uint32_t SnapshotProcessor::StatisticsSpaceObjectSize(Space* space)
     if (regionCount > 0) {
         auto lastRegion = space->GetCurrentRegion();
         size_t alignedRegionObjSize = AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        size_t lastRegionSize = lastRegion->highWaterMark_ - ToUintPtr(lastRegion->packedData_.markGCBitset_);
+        size_t lastRegionSize = lastRegion->highWaterMark_ - lastRegion->packedData_.begin_;
         // fixme: Except for the last region of a space,
         // currently the snapshot feature assumes that every serialized region must have fixed size.
         // The original region size plus the aligned region object size should not exceed DEFAULT_REGION_SIZE.
         // Because in the snapshot file the region object and the associated region will be serialized
         // together to an area which has the fixed size of DEFAULT_REGION_SIZE.
         // Need to relax this assumption / limitation.
-        objSize = (regionCount - 1) * DEFAULT_REGION_SIZE + alignedRegionObjSize + lastRegionSize;
+        objSize = (regionCount - 1) * (DEFAULT_REGION_SIZE - GetMarkGCBitSetSize()) +
+            alignedRegionObjSize + lastRegionSize;
     }
     ASSERT(objSize <= Constants::MAX_UINT_32);
     return static_cast<uint32_t>(objSize);
@@ -1124,8 +1125,10 @@ uintptr_t SnapshotProcessor::AllocateObjectToLocalSpace(Space *space, size_t obj
     }
     auto current = space->GetCurrentRegion();
     if (newObj == current->GetBegin()) {
+        // region param wasted_ is reused to record regionIndex
+        current->ResetWasted();
+        current->IncreaseWasted(regionIndex_);
         regionIndex_++;
-        current->GetMarkGCBitset()->SetGCWords(regionIndex_-1);
     }
     return newObj;
 }
@@ -1159,15 +1162,16 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
 {
     size_t numberOfRegions = 0U;
     if (spaceObjSize != 0) {
-        numberOfRegions = (spaceObjSize - 1) / DEFAULT_REGION_SIZE + 1; // round up
+        numberOfRegions = (spaceObjSize - 1) / (DEFAULT_REGION_SIZE - GetMarkGCBitSetSize()) + 1; // round up
     }
     for (size_t i = 0; i < numberOfRegions; i++) {
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
             space, DEFAULT_REGION_SIZE, vm_->GetAssociatedJSThread());
-        auto fileRegion = ToNativePtr<Region>(beginAddr + i * DEFAULT_REGION_SIZE);
-        uintptr_t oldMarkGCBitsetAddr =
+        auto fileRegion = ToNativePtr<Region>(beginAddr + i * (DEFAULT_REGION_SIZE - GetMarkGCBitSetSize()));
+        uintptr_t objectBeginAddr =
             ToUintPtr(fileRegion) + AlignUp(sizeof(Region),  static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        uint32_t regionIndex = *(reinterpret_cast<GCBitset *>(oldMarkGCBitsetAddr)->Words());
+        //region wasted_ is used to record region index for snapshot
+        size_t regionIndex = fileRegion->GetWastedSize();
         regionIndexMap_.emplace(regionIndex, region);
 
         size_t liveObjectSize = 0;
@@ -1176,23 +1180,19 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         } else {
             liveObjectSize = fileRegion->AliveObject();
         }
-        // Retrieve the data beginning address based on the serialized data format.
-        uintptr_t copyFrom = oldMarkGCBitsetAddr +
-            (fileRegion->packedData_.begin_ - ToUintPtr(fileRegion->packedData_.markGCBitset_));
         ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
 
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->packedData_.begin_), liveObjectSize);
         if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
                      liveObjectSize,
-                     ToVoidPtr(copyFrom),
+                     ToVoidPtr(objectBeginAddr),
                      liveObjectSize) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
         }
 
-        // Other information like aliveObject size, wasted size etc. in the region object to restore.
+        // Other information like aliveObject size, highWaterMark etc. in the region object to restore.
         region->aliveObject_ = liveObjectSize;
-        region->wasted_ = fileRegion->wasted_;
         region->highWaterMark_ = region->packedData_.begin_ + liveObjectSize;
         region->SetGCFlag(RegionGCFlags::NEED_RELOCATE);
 
@@ -1548,20 +1548,13 @@ EncodeBit SnapshotProcessor::NativePointerToEncodeBit(void *nativePointer)
 
 size_t SnapshotProcessor::SearchNativeMethodIndex(void *nativePointer)
 {
-    size_t nativeMethodSize = GetNativeTableSize() - Constants::PROGRAM_NATIVE_METHOD_BEGIN;
-    for (size_t i = 0; i < Constants::PROGRAM_NATIVE_METHOD_BEGIN; i++) {
-        if (nativePointer == reinterpret_cast<void *>(g_nativeTable[i + nativeMethodSize])) {
-            return i + nativeMethodSize;
-        }
-    }
-
-    // not found
-    for (size_t i = 0; i < nativeMethodSize; i++) {
+    for (size_t i = 0; i < GetNativeTableSize(); i++) {
         if (nativePointer == reinterpret_cast<void *>(g_nativeTable[i])) {
             return i;
         }
     }
 
+    // not found
     LOG_FULL(FATAL) << "native method did not register in g_table, please register it first";
     UNREACHABLE();
 }
@@ -1683,7 +1676,8 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
         UNREACHABLE();
     }
     auto currentRegion = Region::ObjectAddressToRange(newObj);
-    size_t regionIndex = *(currentRegion->GetMarkGCBitset()->Words());
+    //region wasted_ is used to record region index for snapshot
+    size_t regionIndex = currentRegion->GetWastedSize();
     size_t objOffset = newObj - ToUintPtr(currentRegion);
     EncodeBit encodeBit(static_cast<uint64_t>(regionIndex));
     encodeBit.SetObjectOffsetInRegion(objOffset);
