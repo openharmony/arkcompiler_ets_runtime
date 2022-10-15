@@ -432,9 +432,10 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);
     if (check != Circuit::NullGate()) {
+        ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
         acc_.ReplaceIn(guard, 1, check);
     }
-    
+
     // Replace the old NumberBinaryOp<Op> with TypedBinaryOp<Op>
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType);
 
@@ -460,6 +461,7 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
     // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);
     if (check != Circuit::NullGate()) {
+        ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
         acc_.ReplaceIn(guard, 1, check);
     }
 
@@ -496,6 +498,7 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);
     if (check != Circuit::NullGate()) {
+        ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
         acc_.ReplaceIn(guard, 1, check);
     }
 
@@ -520,23 +523,6 @@ void TSTypeLowering::SpeculateConditionJump(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef condition = builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE);
     GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
-    ReplaceGate(gate, ifBranch, builder_.GetDepend(), Circuit::NullGate());
-}
-
-void TSTypeLowering::ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value)
-{
-    auto uses = acc_.Uses(gate);
-    for (auto useIt = uses.begin(); useIt != uses.end();) {
-        if (acc_.IsStateIn(useIt)) {
-            useIt = acc_.ReplaceIn(useIt, state);
-        } else if (acc_.IsDependIn(useIt)) {
-            useIt = acc_.ReplaceIn(useIt, depend);
-        } else if (acc_.IsValueIn(useIt)) {
-            useIt = acc_.ReplaceIn(useIt, value);
-        } else {
-            UNREACHABLE();
-        }
-    }
-    acc_.DeleteGate(gate);
+    acc_.ReplaceGate(gate, ifBranch, builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript

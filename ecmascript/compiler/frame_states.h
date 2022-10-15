@@ -77,6 +77,10 @@ public:
         SetValuesAt(index, gate);
     }
     FrameStateInfo *Clone();
+    size_t GetAccumulatorIndex() const
+    {
+        return accumulator_index_;
+    }
 private:
     size_t numVregs_ {0};
     size_t accumulator_index_ {0};
@@ -100,7 +104,6 @@ public:
         return currentInfo_->ValuesAtAccumulator();
     }
 
-    void BuildArgsValues(ArgumentAccessor *argAcc);
     void UpdateAccumulator(GateRef gate)
     {
         currentInfo_->UpdateAccumulator(gate);
@@ -109,19 +112,22 @@ public:
     {
         currentInfo_->UpdateVirtualRegister(index, gate);
     }
-    void BindGuard(GateRef gate, size_t pcOffset, GateRef glue,
-        std::map<GateRef, std::pair<size_t, const uint8_t *>> &jsgateToBytecode);
-
-    void AdvenceToSuccessor(const uint8_t *predPc, const uint8_t *endPc);
-private:
-    FrameStateInfo *CloneFrameState(size_t pcOffset)
+    void BindGuard(GateRef gate, size_t pcOffset, GateRef glue);
+    void AdvenceToBasicBlock(size_t id);
+    size_t GetAccumulatorIndex() const
     {
-        ASSERT(stateInfos_[pcOffset] == nullptr);
-        auto info = currentInfo_->Clone();
-        stateInfos_[pcOffset] = info;
+        return currentInfo_->GetAccumulatorIndex();
+    }
+private:
+    FrameStateInfo *CloneFrameState(FrameStateInfo *current, size_t id)
+    {
+        ASSERT(stateInfos_[id] == nullptr);
+        auto info = current->Clone();
+        stateInfos_[id] = info;
         return info;
     }
-    GateRef FrameState(size_t pcOffset, std::map<GateRef, std::pair<size_t, const uint8_t *>> &jsgateToBytecode);
+    GateRef FrameState(size_t pcOffset);
+    void InitFrameValues();
 
     FrameStateInfo *currentInfo_{nullptr};
     const MethodLiteral *literal_ {nullptr};

@@ -1023,16 +1023,15 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
     __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE)); // 2: skip runtimeId argc
 
+    __ CalleeRestore();
+    Register context(X2);
+    __ Mov(context, Register(X0));
+    __ Ldr(glueReg, MemoryOperand(sp, 0));
+
     Register ret(X0);
     Label stackOverflow;
     __ Cmp(ret, Immediate(JSTaggedValue::VALUE_EXCEPTION));
     __ B(Condition::EQ, &stackOverflow);
-
-    __ CalleeRestore();
-
-    Register context(X2);
-    __ Mov(context, Register(X0));
-    __ Ldr(glueReg, MemoryOperand(sp, 0));
 
     Label target;
     Register temp(X1);
@@ -1054,9 +1053,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
         // 2 : 2 means pair
         __ Stp(runtimeId, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
         __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-        __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE)); // 2: skip runtimeId argc
-
-        __ CalleeRestore();
+        __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 2: skip runtimeId&argc glue&type
         __ RestoreFpAndLr();
         __ Ret();
     }

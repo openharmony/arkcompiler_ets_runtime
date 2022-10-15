@@ -385,8 +385,10 @@ void BytecodeCircuitBuilder::BuildBasicBlocks(std::map<std::pair<uint8_t *, uint
 void BytecodeCircuitBuilder::ComputeDominatorTree()
 {
     // Construct graph backward order
+    std::map<size_t, size_t> bbIdToDfsTimestamp;
     std::unordered_map<size_t, size_t> dfsFatherIdx;
     std::unordered_map<size_t, size_t> bbDfsTimestampToIdx;
+    std::vector<size_t> basicBlockList;
     size_t timestamp = 0;
     std::deque<size_t> pendingList;
     std::vector<size_t> visited(graph_.size(), 0);
@@ -396,30 +398,30 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
     while (!pendingList.empty()) {
         size_t curBlockId = pendingList.back();
         pendingList.pop_back();
-        bbDfsList_.push_back(curBlockId);
-        bbIdToDfsTimestamp_[curBlockId] = timestamp++;
+        basicBlockList.push_back(curBlockId);
+        bbIdToDfsTimestamp[curBlockId] = timestamp++;
         for (const auto &succBlock: graph_[curBlockId].succs) {
             if (visited[succBlock->id] == 0) {
                 visited[succBlock->id] = 1;
                 pendingList.push_back(succBlock->id);
-                dfsFatherIdx[succBlock->id] = bbIdToDfsTimestamp_[curBlockId];
+                dfsFatherIdx[succBlock->id] = bbIdToDfsTimestamp[curBlockId];
             }
         }
     }
 
-    for (size_t idx = 0; idx < bbDfsList_.size(); idx++) {
-        bbDfsTimestampToIdx[bbDfsList_[idx]] = idx;
+    for (size_t idx = 0; idx < basicBlockList.size(); idx++) {
+        bbDfsTimestampToIdx[basicBlockList[idx]] = idx;
     }
-    RemoveDeadRegions();
+    RemoveDeadRegions(bbIdToDfsTimestamp);
 
-    std::vector<size_t> immDom(bbDfsList_.size()); // immediate dominator with dfs order index
-    std::vector<size_t> semiDom(bbDfsList_.size());
+    std::vector<size_t> immDom(basicBlockList.size()); // immediate dominator with dfs order index
+    std::vector<size_t> semiDom(basicBlockList.size());
     std::vector<size_t> realImmDom(graph_.size()); // immediate dominator with real index
-    std::vector<std::vector<size_t> > semiDomTree(bbDfsList_.size());
+    std::vector<std::vector<size_t> > semiDomTree(basicBlockList.size());
     {
-        std::vector<size_t> parent(bbDfsList_.size());
+        std::vector<size_t> parent(basicBlockList.size());
         std::iota(parent.begin(), parent.end(), 0);
-        std::vector<size_t> minIdx(bbDfsList_.size());
+        std::vector<size_t> minIdx(basicBlockList.size());
         std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
             if (parent[idx] == idx) return idx;
             size_t unionFindSetRoot = unionFind(parent[idx]);
@@ -435,8 +437,8 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
         };
         std::iota(semiDom.begin(), semiDom.end(), 0);
         semiDom[0] = semiDom.size();
-        for (size_t idx = bbDfsList_.size() - 1; idx >= 1; idx--) {
-            for (const auto &preBlock : graph_[bbDfsList_[idx]].preds) {
+        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx--) {
+            for (const auto &preBlock : graph_[basicBlockList[idx]].preds) {
                 if (bbDfsTimestampToIdx[preBlock->id] < idx) {
                     semiDom[idx] = std::min(semiDom[idx], bbDfsTimestampToIdx[preBlock->id]);
                 } else {
@@ -453,14 +455,14 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
                 }
             }
             minIdx[idx] = idx;
-            merge(dfsFatherIdx[bbDfsList_[idx]], idx);
+            merge(dfsFatherIdx[basicBlockList[idx]], idx);
             semiDomTree[semiDom[idx]].push_back(idx);
         }
-        for (size_t idx = 1; idx < bbDfsList_.size(); idx++) {
+        for (size_t idx = 1; idx < basicBlockList.size(); idx++) {
             if (immDom[idx] != semiDom[idx]) {
                 immDom[idx] = immDom[immDom[idx]];
             }
-            realImmDom[bbDfsList_[idx]] = bbDfsList_[immDom[idx]];
+            realImmDom[basicBlockList[idx]] = basicBlockList[immDom[idx]];
         }
         semiDom[0] = 0;
     }
@@ -525,12 +527,12 @@ void BytecodeCircuitBuilder::ComputeDomFrontiers(const std::vector<size_t> &immD
     }
 }
 
-void BytecodeCircuitBuilder::RemoveDeadRegions()
+void BytecodeCircuitBuilder::RemoveDeadRegions(const std::map<size_t, size_t> &bbIdToDfsTimestamp)
 {
     for (auto &block: graph_) {
         std::vector<BytecodeRegion *> newPreds;
         for (auto &bb : block.preds) {
-            if (bbIdToDfsTimestamp_.count(bb->id)) {
+            if (bbIdToDfsTimestamp.count(bb->id)) {
                 newPreds.emplace_back(bb);
             }
         }
@@ -538,7 +540,7 @@ void BytecodeCircuitBuilder::RemoveDeadRegions()
     }
 
     for (auto &block : graph_) {
-        block.isDead = !bbIdToDfsTimestamp_.count(block.id);
+        block.isDead = !bbIdToDfsTimestamp.count(block.id);
         if (block.isDead) {
             block.succs.clear();
         }
@@ -1743,7 +1745,6 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     argAcc_.CollectArgs();
     if (hasTypes_) {
         argAcc_.FillArgsGateType(&typeRecorder_);
-        frameStateBuilder_.BuildArgsValues(&argAcc_);
     }
 }
 
@@ -1998,7 +1999,7 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
             gate = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
             break;
         case EcmaOpcode::LDTHIS:
-            gate = argAcc_.GetCommonArgGate(CommonArgIdx::THIS);
+            gate = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
             break;
         default:
             UNREACHABLE();
@@ -2360,56 +2361,125 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, const uint8_t 
     }
 }
 
+void BytecodeCircuitBuilder::BuildDfsList()
+{
+    bbDfsList_.clear();
+
+    std::deque<size_t> pendingList;
+    std::vector<bool> visited(graph_.size(), false);
+    auto basicBlockId = graph_[0].id;
+    pendingList.push_back(basicBlockId);
+    while (!pendingList.empty()) {
+        size_t curBlockId = pendingList.back();
+        if (visited[curBlockId]) {
+            bbDfsList_.push_back(curBlockId);
+            pendingList.pop_back();
+            continue;
+        }
+        visited[curBlockId] = true;
+        for (const auto &succBlock: graph_[curBlockId].succs) {
+            if (!visited[succBlock->id]) {
+                pendingList.push_back(succBlock->id);
+            }
+        }
+        for (const auto &succBlock: graph_[curBlockId].catchs) {
+            if (!visited[succBlock->id]) {
+                pendingList.push_back(succBlock->id);
+            }
+        }
+    }
+}
+
+void BytecodeCircuitBuilder::FrameStateReplacePhi(GateRef phi, size_t reg)
+{
+    ASSERT(gateAcc_.GetOpCode(phi) == OpCode::VALUE_SELECTOR);
+    auto numValue = gateAcc_.GetNumValueIn(phi);
+    for (size_t i = 0; i < numValue; i++) {
+        auto value = gateAcc_.GetValueIn(phi, i);
+        auto it = jsgateToBytecode_.find(value);
+        if (it == jsgateToBytecode_.cend()) {
+            continue;
+        }
+        auto id = jsgateToBytecode_.at(value).first;
+        frameStateBuilder_.AdvenceToBasicBlock(id);
+        frameStateBuilder_.UpdateVirtualRegister(reg, value);
+    }
+}
+
 void BytecodeCircuitBuilder::BuildFrameState()
 {
-    const uint8_t *predPc = nullptr;
+    BuildDfsList();
+    auto undefinedGate = circuit_.GetConstantGate(MachineType::I64,
+                                                  JSTaggedValue::VALUE_UNDEFINED,
+                                                  GateType::TaggedValue());
     for (auto &dfsOrder : bbDfsList_) {
         auto bb = graph_[dfsOrder];
         if (bb.isDead) {
             continue;
         }
-        if (bb.preds.size() != 0) {
-            std::sort(bb.preds.begin(), bb.preds.end(), [this](BytecodeRegion *a, BytecodeRegion *b) {
-                    return bbIdToDfsTimestamp_[a->id] < bbIdToDfsTimestamp_[b->id];
-            });
-            auto predBb = bb.preds.at(0);
-            predPc = predBb->end;
-        }
-        frameStateBuilder_.AdvenceToSuccessor(predPc, bb.end);
+        frameStateBuilder_.AdvenceToBasicBlock(bb.id);
+        ReverseEnumerateBlock(bb, [this, undefinedGate]
+            (uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
+            GateRef gate = Circuit::NullGate();
+            if (bytecodeInfo.IsMov()) {
+                // end def live range
+                if (bytecodeInfo.accOut) {
+                    frameStateBuilder_.UpdateAccumulator(undefinedGate);
+                    gate = frameStateBuilder_.ValuesAtAccumulator();
+                } else if (bytecodeInfo.vregOut.size() != 0) {
+                    auto out = bytecodeInfo.vregOut[0];
+                    gate = frameStateBuilder_.ValuesAt(out);
+                    frameStateBuilder_.UpdateVirtualRegister(out, undefinedGate);
+                }
+                // start use live range
+                if (bytecodeInfo.accIn) {
+                    frameStateBuilder_.UpdateAccumulator(gate);
+                } else if (bytecodeInfo.inputs.size() != 0) {
+                    auto vreg = std::get<VirtualRegister>(bytecodeInfo.inputs.at(0)).GetId();
+                    frameStateBuilder_.UpdateVirtualRegister(vreg, gate);
+                }
+                return true;
+            } else if (bytecodeInfo.IsGeneral() || bytecodeInfo.IsReturn() || bytecodeInfo.IsCondJump()) {
+                gate = byteCodeToJSGate_.at(pc);
+            }
+            // end def live range
+            if (bytecodeInfo.accOut) {
+                frameStateBuilder_.UpdateAccumulator(undefinedGate);
+            }
+            for (const auto &out: bytecodeInfo.vregOut) {
+                frameStateBuilder_.UpdateVirtualRegister(out, undefinedGate);
+            }
+            // start use live range
+            if (bytecodeInfo.accIn) {
+                auto id = bytecodeInfo.inputs.size();
+                GateRef def = gateAcc_.GetValueIn(gate, id);
+                frameStateBuilder_.UpdateAccumulator(def);
+            }
+            for (size_t i = 0; i < bytecodeInfo.inputs.size(); i++) {
+                auto in = bytecodeInfo.inputs[i];
+                if (std::holds_alternative<VirtualRegister>(in)) {
+                    auto vreg = std::get<VirtualRegister>(in).GetId();
+                    GateRef def = gateAcc_.GetValueIn(gate, i);
+                    frameStateBuilder_.UpdateVirtualRegister(vreg, def);
+                }
+            }
+            // build guard
+            if (bytecodeInfo.deopt) {
+                GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+                frameStateBuilder_.BindGuard(gate, bytecodeInfo.pcOffset, glue);
+            }
+            return true;
+        });
+        // replace phi
         if (bb.valueSelectorAccGate != Circuit::NullGate()) {
-            frameStateBuilder_.UpdateAccumulator(bb.valueSelectorAccGate);
+            auto reg = frameStateBuilder_.GetAccumulatorIndex();
+            FrameStateReplacePhi(bb.valueSelectorAccGate, reg);
         }
         for (auto &it : bb.vregToValSelectorGate) {
             auto reg = it.first;
             auto gate = it.second;
-            frameStateBuilder_.UpdateVirtualRegister(reg, gate);
+            FrameStateReplacePhi(gate, reg);
         }
-        EnumerateBlock(bb, [this](uint8_t * pc, BytecodeInfo &bytecodeInfo) -> bool {
-            GateRef gate = Circuit::NullGate();
-            if (bytecodeInfo.IsMov()) {
-                if (bytecodeInfo.accIn) {
-                    gate = frameStateBuilder_.ValuesAtAccumulator();
-                } else if (bytecodeInfo.inputs.size() != 0) {
-                    auto index = std::get<VirtualRegister>(bytecodeInfo.inputs.at(0)).GetId();
-                    gate = frameStateBuilder_.ValuesAt(index);
-                }
-            } else if (bytecodeInfo.IsGeneral()) {
-                gate = byteCodeToJSGate_.at(pc);
-                if (bytecodeInfo.deopt) {
-                    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
-                    frameStateBuilder_.BindGuard(gate, bytecodeInfo.pcOffset, glue, jsgateToBytecode_);
-                }
-            } else if (bytecodeInfo.IsSetConstant()) {
-                gate = byteCodeToJSGate_.at(pc);
-            }
-            if (bytecodeInfo.accOut) {
-                frameStateBuilder_.UpdateAccumulator(gate);
-            }
-            for (const auto &out: bytecodeInfo.vregOut) {
-                frameStateBuilder_.UpdateVirtualRegister(out, gate);
-            }
-            return true;
-        });
     }
 }
 

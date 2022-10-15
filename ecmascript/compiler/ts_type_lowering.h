@@ -48,7 +48,6 @@ private:
     void DeleteGates(GateRef hir, std::vector<GateRef> &unusedGate);
     void ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, GateRef depend,
                         std::vector<GateRef> &unuseGate);
-    void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     void LowerTypedAdd(GateRef gate);
     void LowerTypedSub(GateRef gate);
     void LowerTypedMul(GateRef gate);

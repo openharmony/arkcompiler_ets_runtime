@@ -154,7 +154,6 @@ private:
     void LowerNumberNotEq(GateRef gate);
     void LowerNumberInc(GateRef gate);
     void LowerNumberDec(GateRef gate);
-    void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);

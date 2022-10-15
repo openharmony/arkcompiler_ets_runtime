@@ -571,6 +571,23 @@ public:
         }
     }
 
+    template <class Callback>
+    void ReverseEnumerateBlock(BytecodeRegion &bb, const Callback &cb)
+    {
+        auto pc = bb.end;
+        while (true) {
+            auto bytecodeInfo = GetBytecodeInfo(pc);
+            bool ret = cb(pc, bytecodeInfo);
+            if (!ret) {
+                break;
+            }
+            pc = byteCodeCurPrePc_.at(pc);
+            if (pc <= bb.start || pc >= bb.end) {
+                break;
+            }
+        }
+    }
+
     const std::map<const uint8_t *, int32_t> &GetPcToBCOffset() const
     {
         return pcToBCOffset_;
@@ -583,7 +600,7 @@ private:
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
-    void RemoveDeadRegions();
+    void RemoveDeadRegions(const std::map<size_t, size_t> &bbIdToDfsTimestamp);
     void InsertPhi();
     void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
@@ -606,6 +623,8 @@ private:
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
     GateRef RenameVariable(const size_t bbId, const uint8_t *end, const uint16_t reg, const bool acc);
     void BuildCircuit();
+    void BuildDfsList();
+    void FrameStateReplacePhi(GateRef phi, size_t reg);
     void BuildFrameState();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
@@ -641,7 +660,6 @@ private:
     FrameStateBuilder frameStateBuilder_;
     std::string methodName_;
     std::vector<size_t> bbDfsList_;
-    std::map<size_t, size_t> bbIdToDfsTimestamp_; // (basicblock id, dfs order)
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

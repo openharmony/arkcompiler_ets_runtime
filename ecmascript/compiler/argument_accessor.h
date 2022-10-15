@@ -29,7 +29,7 @@ enum class CommonArgIdx : uint8_t {
     ACTUAL_ARGC,
     FUNC,
     NEW_TARGET,
-    THIS,
+    THIS_OBJECT,
     NUM_OF_ARGS,
 };
 

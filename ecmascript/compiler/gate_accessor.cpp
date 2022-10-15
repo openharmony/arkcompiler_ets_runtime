@@ -457,4 +457,21 @@ void GateAccessor::DeleteGuardAndFrameState(GateRef gate)
         DeleteGate(guard);
     }
 }
+
+void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value)
+{
+    auto uses = Uses(gate);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (IsStateIn(useIt)) {
+            useIt = ReplaceIn(useIt, state);
+        } else if (IsDependIn(useIt)) {
+            useIt = ReplaceIn(useIt, depend);
+        } else if (IsValueIn(useIt)) {
+            useIt = ReplaceIn(useIt, value);
+        } else {
+            UNREACHABLE();
+        }
+    }
+    DeleteGate(gate);
+}
 }  // namespace panda::ecmascript::kungfu
