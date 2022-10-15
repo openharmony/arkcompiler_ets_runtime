@@ -17,7 +17,7 @@
 #include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/llvm_stackmap_parser.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 
 namespace panda::ecmascript::kungfu {
 void BinaryBufferWriter::WriteBuffer(const uint8_t *src, uint32_t count, bool flag)

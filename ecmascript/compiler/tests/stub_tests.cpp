@@ -29,7 +29,7 @@
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/llvm_stackmap_parser.h"
@@ -1487,7 +1487,7 @@ HWTEST_F_L0(StubTest, RelocateTest)
     uint64_t input = 0x111;
     auto *ptr =
         reinterpret_cast<JSTaggedValue (*)(uint64_t)>(assembler.GetFuncPtrFromCompiledModule(function));
-    auto loader = thread->GetEcmaVM()->GetFileLoader();
+    auto loader = thread->GetEcmaVM()->GetAOTFileManager();
     auto dataSecAddr = assembler.GetSectionAddr(ElfSecName::DATA);
     auto dataSecSize = assembler.GetSectionSize(ElfSecName::DATA);
     std::vector<uint64_t> newData;

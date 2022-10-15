@@ -31,7 +31,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
@@ -626,7 +626,7 @@ void JSNApi::InitializeIcuData(const JSRuntimeOptions &options)
 #endif
     } else {
         std::string absPath;
-        if (ecmascript::FileLoader::GetAbsolutePath(icuPath, absPath)) {
+        if (ecmascript::AOTFileManager::GetAbsolutePath(icuPath, absPath)) {
             u_setDataDirectory(absPath.c_str());
         }
     }

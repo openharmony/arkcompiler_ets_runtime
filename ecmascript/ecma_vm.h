@@ -68,7 +68,7 @@ class JSArrayBuffer;
 class JSFunction;
 class Program;
 class TSManager;
-class FileLoader;
+class AOTFileManager;
 class ModuleManager;
 class CjsModule;
 class CjsExports;
@@ -270,9 +270,9 @@ public:
         return tsManager_;
     }
 
-    FileLoader* PUBLIC_API GetFileLoader() const
+    AOTFileManager* PUBLIC_API GetAOTFileManager() const
     {
-        return fileLoader_;
+        return aotFileManager_;
     }
 
     SnapshotEnv *GetSnapshotEnv() const
@@ -560,7 +560,7 @@ private:
     TSManager *tsManager_ {nullptr};
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
-    FileLoader *fileLoader_ {nullptr};
+    AOTFileManager *aotFileManager_ {nullptr};
 
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
