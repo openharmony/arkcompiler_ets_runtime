@@ -495,7 +495,25 @@ JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t inde
     if (iter == cachedConstpools_.end()) {
         return JSTaggedValue::Hole();
     }
-    return iter->second[index];
+    auto constpoolIter = iter->second.find(index);
+    if (constpoolIter == iter->second.end()) {
+        return JSTaggedValue::Hole();
+    }
+    return constpoolIter->second;
+}
+
+JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
+{
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+    JSTaggedValue constpool = FindConstpool(jsPandaFile, index);
+    if (constpool.IsHole()) {
+        JSHandle<ConstantPool> newConstpool = ConstantPool::CreateConstPool(this, jsPandaFile, id);
+        AddConstpool(jsPandaFile, newConstpool.GetTaggedValue(), index);
+        return newConstpool;
+    }
+
+    return JSHandle<ConstantPool>(thread_, constpool);
 }
 
 void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile)
@@ -536,15 +554,16 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     return;
 }
 
-void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total)
+void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index)
 {
     ASSERT(constpool.IsConstantPool());
     if (cachedConstpools_.find(jsPandaFile) == cachedConstpools_.end()) {
-        cachedConstpools_[jsPandaFile] = CVector<JSTaggedValue>(total);
-        cachedConstpools_[jsPandaFile].reserve(total);
+        cachedConstpools_[jsPandaFile] = CMap<int32_t, JSTaggedValue>();
     }
+    auto &constpoolMap = cachedConstpools_[jsPandaFile];
+    ASSERT(constpoolMap.find(index) == constpoolMap.end());
 
-    cachedConstpools_[jsPandaFile][index] = constpool;
+    constpoolMap.insert({index, constpool});
 }
 
 JSHandle<JSTaggedValue> EcmaVM::GetAndClearEcmaUncaughtException() const
@@ -623,19 +642,25 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
     auto iterator = cachedConstpools_.begin();
     while (iterator != cachedConstpools_.end()) {
         auto &constpools = iterator->second;
-        auto size = constpools.size();
-        for (uint32_t i = 0; i < size; i++) {
-            if (constpools[i].IsHeapObject()) {
-                TaggedObject *obj = constpools[i].GetTaggedObject();
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                TaggedObject *obj = constpoolVal.GetTaggedObject();
                 auto fwd = visitor(obj);
                 if (fwd == nullptr) {
-                    auto constantPool = ConstantPool::Cast(obj);
-                    JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
-                    constpools[i] = JSTaggedValue::Hole();
+                    constpoolIter = constpools.erase(constpoolIter);
+                    continue;
                 }
             }
+            ++constpoolIter;
         }
-        ++iterator;
+        if (constpools.size() == 0) {
+            JSPandaFileManager::RemoveJSPandaFile(const_cast<JSPandaFile *>(iterator->first));
+            iterator = cachedConstpools_.erase(iterator);
+        } else {
+            ++iterator;
+        }
     }
 }
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
@@ -645,7 +670,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     }
     heap_->ResetNativeBindingSize();
     // array buffer
-    for (auto iter = nativePointerList_.begin(); iter != nativePointerList_.end();) {
+    auto iter = nativePointerList_.begin();
+    while (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
         auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
         if (fwd == nullptr) {
@@ -661,23 +687,30 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     }
 
     // program maps
-    for (auto iter = cachedConstpools_.begin(); iter != cachedConstpools_.end();) {
-        auto &constpools = iter->second;
-        auto size = constpools.size();
-        for (uint32_t i = 0; i < size; i++) {
-            if (constpools[i].IsHeapObject()) {
-                TaggedObject *obj = constpools[i].GetTaggedObject();
+    auto iterator = cachedConstpools_.begin();
+    while (iterator != cachedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                TaggedObject *obj = constpoolVal.GetTaggedObject();
                 auto fwd = visitor(obj);
                 if (fwd == nullptr) {
-                    auto constantPool = ConstantPool::Cast(obj);
-                    JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
-                    constpools[i] = JSTaggedValue::Hole();
+                    constpoolIter = constpools.erase(constpoolIter);
+                    continue;
                 } else if (fwd != obj) {
-                    constpools[i] = JSTaggedValue(fwd);
+                    constpoolIter->second = JSTaggedValue(fwd);
                 }
             }
+            ++constpoolIter;
         }
-        ++iter;
+        if (constpools.size() == 0) {
+            JSPandaFileManager::RemoveJSPandaFile(const_cast<JSPandaFile *>(iterator->first));
+            iterator = cachedConstpools_.erase(iterator);
+        } else {
+            ++iterator;
+        }
     }
 }
 
