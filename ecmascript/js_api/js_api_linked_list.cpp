@@ -15,20 +15,26 @@
 
 #include "ecmascript/js_api/js_api_linked_list.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_list.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPILinkedList::Insert(JSThread *thread, const JSHandle<JSAPILinkedList> &list,
                                       const JSHandle<JSTaggedValue> &value, const int index)
 {
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
     if (index < 0 || index > nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds",
-                                     JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << nodeLength
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSTaggedValue newList = TaggedDoubleList::Insert(thread, doubleList, value, index);
     list->SetDoubleList(thread, newList);
@@ -57,8 +63,9 @@ JSTaggedValue JSAPILinkedList::RemoveFirst(JSThread *thread, const JSHandle<JSAP
 {
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
-    if (nodeLength < 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "there is no element", JSTaggedValue::Exception());
+    if (nodeLength <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_EMPTY_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     return doubleList->RemoveFirst(thread);
 }
@@ -67,8 +74,9 @@ JSTaggedValue JSAPILinkedList::RemoveLast(JSThread *thread, const JSHandle<JSAPI
 {
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
-    if (nodeLength < 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "there is no element", JSTaggedValue::Exception());
+    if (nodeLength <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_EMPTY_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     return doubleList->RemoveLast(thread);
 }
@@ -78,7 +86,12 @@ JSTaggedValue JSAPILinkedList::RemoveByIndex(JSThread *thread, JSHandle<JSAPILin
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
     if (index < 0 || index >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", JSTaggedValue::Exception());
+        int size = (nodeLength > 0) ? (nodeLength - 1) : 0;
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << size
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     return doubleList->RemoveByIndex(thread, index);
 }
@@ -98,8 +111,9 @@ JSTaggedValue JSAPILinkedList::RemoveFirstFound(JSThread *thread, JSHandle<JSAPI
 {
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
-    if (nodeLength < 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "there is no element", JSTaggedValue::Exception());
+    if (nodeLength <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_EMPTY_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     return TaggedDoubleList::RemoveFirstFound(thread, doubleList, element);
 }
@@ -110,7 +124,8 @@ JSTaggedValue JSAPILinkedList::RemoveLastFound(JSThread *thread, JSHandle<JSAPIL
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
     if (nodeLength < 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "there is no element", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_EMPTY_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     return TaggedDoubleList::RemoveLastFound(thread, doubleList, element);
 }
@@ -154,7 +169,11 @@ JSTaggedValue JSAPILinkedList::Set(JSThread *thread, const JSHandle<JSAPILinkedL
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
     if (index < 0 || index >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (nodeLength - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSTaggedValue oldValue = doubleList->Get(index);
     TaggedDoubleList::Set(thread, doubleList, index, value);
@@ -207,12 +226,21 @@ bool JSAPILinkedList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPILinke
 {
     uint32_t index = 0;
     if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Can not obtain attributes of no-number type", false);
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
+            + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     uint32_t length = static_cast<uint32_t>(doubleList->Length());
     if (index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index out-of-bounds", false);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     list->Get(index);
@@ -226,8 +254,13 @@ OperationResult JSAPILinkedList::GetProperty(JSThread *thread, const JSHandle<JS
     int nodeLength = doubleList->Length();
     int index = key->GetInt();
     if (index < 0 || index >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "the index out-of-bounds",
-                                     OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (nodeLength - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, OperationResult(thread,
+                                                                        JSTaggedValue::Exception(),
+                                                                        PropertyMetaData(false)));
     }
     
     return OperationResult(thread, doubleList->Get(index), PropertyMetaData(false));

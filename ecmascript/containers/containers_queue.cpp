@@ -15,6 +15,7 @@
 
 #include "ecmascript/containers/containers_queue.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_queue.h"
@@ -32,7 +33,10 @@ JSTaggedValue ContainersQueue::QueueConstructor(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "new target can't be undefined", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::IS_NULL_ERROR,
+                                          "The Queue's constructor cannot be directly invoked");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
@@ -55,7 +59,9 @@ JSTaggedValue ContainersQueue::Add(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The add method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -76,7 +82,9 @@ JSTaggedValue ContainersQueue::GetFirst(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getFirst method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -97,7 +105,9 @@ JSTaggedValue ContainersQueue::Pop(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The pop method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -119,7 +129,9 @@ JSTaggedValue ContainersQueue::ForEach(EcmaRuntimeCallInfo *argv)
         if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIQueue()) {
             thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The forEach method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -131,7 +143,11 @@ JSTaggedValue ContainersQueue::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     // If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!callbackFnHandle->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // If thisArg was supplied, let T be thisArg; else let T be undefined.
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
@@ -169,7 +185,9 @@ JSTaggedValue ContainersQueue::GetIteratorObj(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The remove method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSAPIQueueIterator> iter(factory->NewJSAPIQueueIterator(JSHandle<JSAPIQueue>::Cast(self)));
@@ -188,7 +206,9 @@ JSTaggedValue ContainersQueue::GetSize(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIQueue()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIQueue", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The Symbol.iterator method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 

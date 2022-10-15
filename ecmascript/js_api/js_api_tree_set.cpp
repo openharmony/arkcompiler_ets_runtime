@@ -15,14 +15,21 @@
 
 #include "ecmascript/js_api/js_api_tree_set.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_tree.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 void JSAPITreeSet::Add(JSThread *thread, const JSHandle<JSAPITreeSet> &set, const JSHandle<JSTaggedValue> &value)
 {
     if (!TaggedTreeSet::IsKey(value.GetTaggedValue())) {
-        THROW_TYPE_ERROR(thread, "the value must be Key of JS");
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     JSHandle<TaggedTreeSet> setHandle(thread, TaggedTreeSet::Cast(set->GetTreeSet().GetTaggedObject()));
 

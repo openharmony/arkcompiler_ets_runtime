@@ -98,9 +98,6 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     res.set("test map throw error", flag);
 
-    let set1 = new fastset();
-    set1.increaseCapacityTo(1000);
-    set1.increaseCapacityTo(1000);
     flag = undefined;
     function elements(value, key, res) {
         if (!value) {

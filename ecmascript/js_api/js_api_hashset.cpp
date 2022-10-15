@@ -15,11 +15,14 @@
 
 #include "ecmascript/js_api/js_api_hashset.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/tagged_hash_array.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPIHashSet::IsEmpty()
 {
     return JSTaggedValue(GetSize() == 0);
@@ -27,6 +30,13 @@ JSTaggedValue JSAPIHashSet::IsEmpty()
 
 JSTaggedValue JSAPIHashSet::Has(JSThread *thread, JSTaggedValue value)
 {
+    if (!TaggedHashArray::IsKey(value)) {
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value);
+        CString errorMsg =
+            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable().GetTaggedObject());
     int hash = TaggedNode::Hash(value);
     return JSTaggedValue(!(hashArray->GetNode(thread, hash, value).IsHole()));
@@ -35,7 +45,11 @@ JSTaggedValue JSAPIHashSet::Has(JSThread *thread, JSTaggedValue value)
 void JSAPIHashSet::Add(JSThread *thread, JSHandle<JSAPIHashSet> hashSet, JSHandle<JSTaggedValue> value)
 {
     if (!TaggedHashArray::IsKey(value.GetTaggedValue())) {
-        THROW_TYPE_ERROR(thread, "the value must be Key of JS");
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     JSHandle<TaggedHashArray> hashArray(thread, hashSet->GetTable());
     int hash = TaggedNode::Hash(value.GetTaggedValue());
@@ -65,7 +79,11 @@ void JSAPIHashSet::Clear(JSThread *thread)
 JSTaggedValue JSAPIHashSet::Remove(JSThread *thread, JSHandle<JSAPIHashSet> hashSet, JSTaggedValue key)
 {
     if (!TaggedHashArray::IsKey(key)) {
-        return JSTaggedValue::False();
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key);
+        CString errorMsg =
+            "The type of \"key\" must be not null. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     JSHandle<TaggedHashArray> hashArray(thread, hashSet->GetTable());

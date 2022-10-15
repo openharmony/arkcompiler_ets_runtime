@@ -14,6 +14,8 @@
  */
 
 #include "containers_hashmap.h"
+
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
@@ -36,7 +38,10 @@ JSTaggedValue ContainersHashMap::HashMapConstructor(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "new target can't be undefined", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::IS_NULL_ERROR,
+                                          "The HashMap's constructor cannot be directly invoked");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
@@ -62,7 +67,9 @@ JSTaggedValue ContainersHashMap::Keys(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The keys method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> iter =
@@ -81,7 +88,9 @@ JSTaggedValue ContainersHashMap::Values(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The values method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> iter =
@@ -100,7 +109,9 @@ JSTaggedValue ContainersHashMap::Entries(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The entries method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> iter =
@@ -119,12 +130,18 @@ JSTaggedValue ContainersHashMap::ForEach(EcmaRuntimeCallInfo *argv)
         if (thisHandle->IsJSProxy() && JSHandle<JSProxy>::Cast(thisHandle)->GetTarget().IsJSAPIHashMap()) {
             thisHandle = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(thisHandle)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The forEach method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle);
+        CString errorMsg =
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
     JSHandle<JSAPIHashMap> hashMap = JSHandle<JSAPIHashMap>::Cast(thisHandle);
@@ -165,7 +182,9 @@ JSTaggedValue ContainersHashMap::Set(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The set method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -187,7 +206,9 @@ JSTaggedValue ContainersHashMap::SetAll(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The setAll method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -196,8 +217,11 @@ JSTaggedValue ContainersHashMap::SetAll(EcmaRuntimeCallInfo *argv)
         if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPIHashMap()) {
             obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "Incorrect parameters, it should be HashMap",
-                                        JSTaggedValue::Exception());
+            JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, obj);
+            CString errorMsg =
+                "The type of \"map\" must be HashMap. Received value is: " + ConvertToString(*result);
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -218,7 +242,9 @@ JSTaggedValue ContainersHashMap::Get(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The get method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -238,7 +264,9 @@ JSTaggedValue ContainersHashMap::Remove(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The remove method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -258,7 +286,9 @@ JSTaggedValue ContainersHashMap::HasKey(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The hasKey method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -278,7 +308,9 @@ JSTaggedValue ContainersHashMap::HasValue(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The hasValue method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -297,7 +329,9 @@ JSTaggedValue ContainersHashMap::Replace(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The replace method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
@@ -317,7 +351,9 @@ JSTaggedValue ContainersHashMap::Clear(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The clear method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSAPIHashMap> jsHashMap = JSHandle<JSAPIHashMap>::Cast(self);
@@ -336,7 +372,9 @@ JSTaggedValue ContainersHashMap::GetLength(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getLength method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSAPIHashMap> jsHashMap = JSHandle<JSAPIHashMap>::Cast(self);
@@ -354,7 +392,9 @@ JSTaggedValue ContainersHashMap::IsEmpty(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The isEmpty method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSAPIHashMap> jsHashMap = JSHandle<JSAPIHashMap>::Cast(self);

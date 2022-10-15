@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_api/js_api_hashmap.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -22,6 +23,8 @@
 #include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPIHashMap::IsEmpty()
 {
     return JSTaggedValue(GetSize() == 0);
@@ -76,7 +79,11 @@ void JSAPIHashMap::Set(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
                        JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value)
 {
     if (!TaggedHashArray::IsKey(key.GetTaggedValue())) {
-        THROW_TYPE_ERROR(thread, "the value must be Key of JS");
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"key\" must be Key of JS. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
     int hash = TaggedNode::Hash(key.GetTaggedValue());

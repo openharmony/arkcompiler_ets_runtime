@@ -19,6 +19,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_lightweightmap.h"
@@ -37,7 +38,10 @@ JSTaggedValue ContainersLightWeightMap::LightWeightMapConstructor(EcmaRuntimeCal
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "new target can't be undefined", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::IS_NULL_ERROR,
+                                          "The LightWeightMap's constructor cannot be directly invoked");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
@@ -65,7 +69,9 @@ JSTaggedValue ContainersLightWeightMap::Length(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The length method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -84,7 +90,9 @@ JSTaggedValue ContainersLightWeightMap::HasAll(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The hasAll method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -94,7 +102,11 @@ JSTaggedValue ContainersLightWeightMap::HasAll(EcmaRuntimeCallInfo *argv)
             JSHandle<JSProxy>::Cast(lightWeightMap)->GetTarget().IsJSAPILightWeightMap()) {
             lightWeightMap = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(lightWeightMap)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "argv is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, lightWeightMap.GetTaggedValue());
+            CString errorMsg =
+                "The type of \"map\" must be LightWeightMap. Received value is: " + ConvertToString(*result);
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -114,7 +126,9 @@ JSTaggedValue ContainersLightWeightMap::HasKey(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The hasKey method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
@@ -134,7 +148,9 @@ JSTaggedValue ContainersLightWeightMap::HasValue(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The hasValue method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -154,14 +170,20 @@ JSTaggedValue ContainersLightWeightMap::IncreaseCapacityTo(EcmaRuntimeCallInfo *
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The increaseCapacityTo method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
 
     if (!index->IsInt()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the size is not integer", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
+        CString errorMsg =
+            "The type of \"minimumCapacity\" must be number. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSAPILightWeightMap::IncreaseCapacityTo(thread, JSHandle<JSAPILightWeightMap>::Cast(self),
                                             index.GetTaggedValue().GetInt());
@@ -194,7 +216,9 @@ JSTaggedValue ContainersLightWeightMap::Get(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The get method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -215,7 +239,9 @@ JSTaggedValue ContainersLightWeightMap::GetIndexOfKey(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getIndexOfKey method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -237,7 +263,9 @@ JSTaggedValue ContainersLightWeightMap::GetIndexOfValue(EcmaRuntimeCallInfo *arg
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getIndexOfValue method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -259,7 +287,9 @@ JSTaggedValue ContainersLightWeightMap::IsEmpty(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The isEmpty method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     return JSHandle<JSAPILightWeightMap>::Cast(self)->IsEmpty();
@@ -277,14 +307,20 @@ JSTaggedValue ContainersLightWeightMap::GetKeyAt(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getKeyAt method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
 
     if (!index->IsInt()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the index is not integer", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
+        CString errorMsg =
+            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     return JSAPILightWeightMap::GetKeyAt(thread, JSHandle<JSAPILightWeightMap>::Cast(self),
@@ -315,7 +351,9 @@ JSTaggedValue ContainersLightWeightMap::SetAll(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The setAll method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -326,7 +364,11 @@ JSTaggedValue ContainersLightWeightMap::SetAll(EcmaRuntimeCallInfo *argv)
             JSHandle<JSProxy>::Cast(lightWeightMap)->GetTarget().IsJSAPILightWeightMap()) {
             lightWeightMap = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(lightWeightMap)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "argv is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, lightWeightMap.GetTaggedValue());
+            CString errorMsg =
+                "The type of \"map\" must be LightWeightMap. Received value is: " + ConvertToString(*result);
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -347,7 +389,9 @@ JSTaggedValue ContainersLightWeightMap::Set(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The set method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -370,7 +414,9 @@ JSTaggedValue ContainersLightWeightMap::Remove(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The remove method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
@@ -390,13 +436,19 @@ JSTaggedValue ContainersLightWeightMap::RemoveAt(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The removeAt method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
     if (!index->IsInt()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "index is not integer", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
+        CString errorMsg =
+            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     return JSAPILightWeightMap::RemoveAt(thread, JSHandle<JSAPILightWeightMap>::Cast(self),
@@ -415,7 +467,9 @@ JSTaggedValue ContainersLightWeightMap::Clear(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The clear method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -435,14 +489,20 @@ JSTaggedValue ContainersLightWeightMap::SetValueAt(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The setValueAt method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 1));
     if (!index->IsInt()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "index is not Integer", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
+        CString errorMsg =
+            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     return JSAPILightWeightMap::SetValueAt(thread, JSHandle<JSAPILightWeightMap>::Cast(self),
@@ -461,13 +521,19 @@ JSTaggedValue ContainersLightWeightMap::ForEach(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The forEach method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     // get and check callback function
     JSHandle<JSTaggedValue> func(GetCallArg(argv, 0));
     if (!func->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "The first arg is not Callable", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, func.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     // If thisArg was supplied, let T be thisArg; else let T be undefined.
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
@@ -513,7 +579,9 @@ JSTaggedValue ContainersLightWeightMap::ToString(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The toString method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -532,12 +600,18 @@ JSTaggedValue ContainersLightWeightMap::GetValueAt(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPILightWeightMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILightWeightMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getValueAt method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
     if (!index->IsInt()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "the index is not integer", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
+        CString errorMsg =
+            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     return JSAPILightWeightMap::GetValueAt(thread, JSHandle<JSAPILightWeightMap>::Cast(self),

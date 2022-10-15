@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_hclass.h"
@@ -25,6 +26,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 // StackIteratorPrototype%.next()
 JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
 {
@@ -34,7 +37,9 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
 
     if (!input->IsJSAPIStackIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an stack iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIStackIterator> iter(input);
     JSHandle<JSTaggedValue> stack(thread, iter->GetIteratedStack());

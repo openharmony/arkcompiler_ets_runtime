@@ -15,6 +15,7 @@
 
 #include "ecmascript/containers/containers_treemap.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_tree_map.h"
@@ -34,7 +35,10 @@ JSTaggedValue ContainersTreeMap::TreeMapConstructor(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "new target can't be undefined", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::IS_NULL_ERROR,
+                                          "The TreeMap's constructor cannot be directly invoked");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     // new TreeMap
@@ -53,7 +57,11 @@ JSTaggedValue ContainersTreeMap::TreeMapConstructor(EcmaRuntimeCallInfo *argv)
         return map.GetTaggedValue();
     }
     if (!compareFn->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "comparefn is not Callable", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, compareFn.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"comparefn\" must be callable. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     TaggedTreeMap::Cast(internal.GetTaggedObject())->SetCompare(thread, compareFn.GetTaggedValue());
@@ -72,7 +80,9 @@ JSTaggedValue ContainersTreeMap::Set(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The set method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -97,7 +107,9 @@ JSTaggedValue ContainersTreeMap::Get(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The get method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -117,7 +129,9 @@ JSTaggedValue ContainersTreeMap::Remove(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The remove method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -137,7 +151,9 @@ JSTaggedValue ContainersTreeMap::HasKey(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The hasKey method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -160,7 +176,9 @@ JSTaggedValue ContainersTreeMap::HasValue(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The hasValue method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -180,7 +198,9 @@ JSTaggedValue ContainersTreeMap::GetFirstKey(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getFirstKey method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -199,7 +219,9 @@ JSTaggedValue ContainersTreeMap::GetLastKey(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getLastKey method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -218,7 +240,9 @@ JSTaggedValue ContainersTreeMap::SetAll(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The setAll method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -227,8 +251,11 @@ JSTaggedValue ContainersTreeMap::SetAll(EcmaRuntimeCallInfo *argv)
         if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPITreeMap()) {
             obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "Incorrect parameters, it should be TreeMap",
-                                        JSTaggedValue::Exception());
+            JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, obj.GetTaggedValue());
+            CString errorMsg =
+                "The type of \"map\" must be TreeMap. Received value is: " + ConvertToString(*result);
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -253,7 +280,9 @@ JSTaggedValue ContainersTreeMap::Clear(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The clear method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -272,7 +301,9 @@ JSTaggedValue ContainersTreeMap::GetLowerKey(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getLowerKey method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -294,7 +325,9 @@ JSTaggedValue ContainersTreeMap::GetHigherKey(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getHigherKey method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -316,7 +349,9 @@ JSTaggedValue ContainersTreeMap::Replace(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The replace method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
@@ -371,23 +406,26 @@ JSTaggedValue ContainersTreeMap::ForEach(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The rorEach method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
-
     // get and check callback function
     JSHandle<JSTaggedValue> func(GetCallArg(argv, 0));
     if (!func->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "The first arg is not Callable", JSTaggedValue::Exception());
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, func.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-
     // If thisArg was supplied, let T be thisArg; else let T be undefined.
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
     JSHandle<JSAPITreeMap> tmap = JSHandle<JSAPITreeMap>::Cast(self);
     JSMutableHandle<TaggedTreeMap> iteratedMap(thread, tmap->GetTreeMap());
     int elements = iteratedMap->NumberOfElements();
     JSMutableHandle<TaggedArray> entries(TaggedTreeMap::GetArrayFromMap(thread, iteratedMap));
-
     int index = 0;
     size_t length = entries->GetLength();
     const int32_t argsLength = 3;
@@ -398,14 +436,12 @@ JSTaggedValue ContainersTreeMap::ForEach(EcmaRuntimeCallInfo *argv)
         int entriesIndex = entries->Get(index).GetInt();
         key.Update(iteratedMap->GetKey(entriesIndex));
         value.Update(iteratedMap->GetValue(entriesIndex));
-
         // Let funcResult be Call(callbackfn, T, «e, e, S»).
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisArg, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(value.GetTaggedValue(), key.GetTaggedValue(), self.GetTaggedValue());
         JSTaggedValue ret = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ret);
-
         // check entries should be update, size will be update in tmap set or remove.
         if (tmap->GetSize() != static_cast<int>(length)) {
             iteratedMap.Update(tmap->GetTreeMap());
@@ -430,7 +466,9 @@ JSTaggedValue ContainersTreeMap::GetLength(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The getLength method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     int count = JSHandle<JSAPITreeMap>::Cast(self)->GetSize();
@@ -448,7 +486,9 @@ JSTaggedValue ContainersTreeMap::IsEmpty(EcmaRuntimeCallInfo *argv)
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPITreeMap()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPITreeMap", JSTaggedValue::Exception());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The isEmpty method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     JSHandle<JSAPITreeMap> map = JSHandle<JSAPITreeMap>::Cast(self);

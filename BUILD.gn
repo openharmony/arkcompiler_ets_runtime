@@ -433,6 +433,7 @@ ecma_source = [
   "ecmascript/calleeReg.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
   "ecmascript/containers/containers_deque.cpp",
+  "ecmascript/containers/containers_errors.cpp",
   "ecmascript/containers/containers_hashmap.cpp",
   "ecmascript/containers/containers_hashset.cpp",
   "ecmascript/containers/containers_lightweightmap.cpp",

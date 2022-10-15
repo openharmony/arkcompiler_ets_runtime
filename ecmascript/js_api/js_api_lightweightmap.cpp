@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_api/js_api_lightweightmap.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
@@ -24,6 +25,8 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPILightWeightMap::IncreaseCapacityTo(JSThread *thread,
                                                       const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                                       int32_t index)
@@ -230,7 +233,11 @@ JSTaggedValue JSAPILightWeightMap::GetKeyAt(JSThread *thread, const JSHandle<JSA
 {
     int32_t length = lightWeightMap->GetSize();
     if (index < 0 || length <= index) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "index is not exits", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<TaggedArray> keyArray = GetArrayByKind(thread, lightWeightMap, AccossorsKind::KEY);
     return keyArray->Get(index);
@@ -241,7 +248,11 @@ JSTaggedValue JSAPILightWeightMap::GetValueAt(JSThread *thread, const JSHandle<J
 {
     int32_t length = lightWeightMap->GetSize();
     if (index < 0 || length <= index) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "index is not exits", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<TaggedArray> valueArray = GetArrayByKind(thread, lightWeightMap, AccossorsKind::VALUE);
     return valueArray->Get(index);
@@ -327,7 +338,11 @@ JSTaggedValue JSAPILightWeightMap::SetValueAt(JSThread *thread, const JSHandle<J
 {
     int32_t length = lightWeightMap->GetSize();
     if (index < 0 || length <= index) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "index is not exits", JSTaggedValue::False());
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     SetValue(thread, lightWeightMap, index, value, AccossorsKind::VALUE);
     return JSTaggedValue::True();

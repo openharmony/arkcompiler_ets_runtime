@@ -18,6 +18,7 @@
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/js_array.h"
@@ -25,6 +26,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -32,8 +35,9 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
     if (!input->IsJSAPILightWeightSetIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an lightweightset iterator",
-                                    JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPILightWeightSetIterator> iter(input);
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());

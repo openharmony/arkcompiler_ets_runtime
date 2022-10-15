@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
 
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/object_factory.h"
@@ -24,6 +25,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPIHashMapIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -32,7 +35,9 @@ JSTaggedValue JSAPIHashMapIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
 
     if (!input->IsJSAPIHashMapIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not a hashmap iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIHashMapIterator> iter = JSHandle<JSAPIHashMapIterator>::Cast(input);
     JSHandle<JSTaggedValue> iteratedHashMap(thread, iter->GetIteratedHashMap());
@@ -126,8 +131,9 @@ JSHandle<JSTaggedValue> JSAPIHashMapIterator::CreateHashMapIterator(JSThread *th
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPIHashMap()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashMap",
-                                    thread->GlobalConstants()->GetHandledUndefined());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPIHashMapIterator(JSHandle<JSAPIHashMap>(obj), kind));
     return iter;
