@@ -752,7 +752,7 @@ source_set("libark_jsruntime_test_set") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios") {
+      !is_mac && target_os != "ios" && host_os != "mac") {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
@@ -785,14 +785,10 @@ source_set("libark_jsruntime_static") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios") {
+      !is_mac && target_os != "ios" && host_os != "mac") {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
-  }
-
-  if (target_os == "android") {
-    aosp_deps = [ "shared_library:liblog" ]
   }
 }
 
@@ -825,6 +821,10 @@ ohos_shared_library("libark_jsruntime") {
   }
   if (!is_standard_system) {
     relative_install_dir = "ark"
+  }
+
+  if (target_os == "android") {
+    aosp_deps = [ "shared_library:liblog" ]
   }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
