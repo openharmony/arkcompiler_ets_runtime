@@ -107,6 +107,7 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
             return false;
         }
     } else {
+        bool isNewVersion = baseFile_->IsNewVersion();
         // Get base constpool.
         JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile_, 0);
         if (baseConstpoolValue.IsHole()) {
@@ -114,6 +115,9 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
             return false;
         }
         JSHandle<ConstantPool> baseConstpool = JSHandle<ConstantPool>(thread, baseConstpoolValue);
+        if (isNewVersion) {
+            GenerateConstpoolCache(thread, baseFile_, baseConstpool);
+        }
 
         // Get patch constpool.
         vm->GetModuleManager()->HostResolveImportedModule(patchFile_->GetJSPandaFileDesc());
@@ -127,6 +131,9 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread)
             return false;
         }
         JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
+        if (isNewVersion) {
+            GenerateConstpoolCache(thread, patchFile_, patchConstpool);
+        }
 
         if (!ReplaceMethod(thread, baseConstpool, patchConstpool)) {
             LOG_ECMA(ERROR) << "replace method failed";
@@ -173,7 +180,7 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
         constpool = JSHandle<ConstantPool>(thread, constpoolValue);
     }
     if (isNewVersion) {
-        GenerateConstpoolCache(vm, jsPandaFile, constpool);
+        GenerateConstpoolCache(thread, jsPandaFile, constpool);
     }
 
     CVector<JSHandle<Program>> programs;
@@ -207,11 +214,10 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     return programs;
 }
 
-void QuickFixLoader::GenerateConstpoolCache(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+void QuickFixLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
                                             JSHandle<ConstantPool> constpool)
 {
     ASSERT(jsPandaFile->IsNewVersion());
-    auto thread = vm->GetJSThread();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
     for (const uint32_t index : classIndexes) {

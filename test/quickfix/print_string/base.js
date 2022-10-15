@@ -17,4 +17,11 @@ function foo() {
   print("base foo")
 }
 
+function A() {
+  (()=>{
+      print("anonymous: base A");
+  })()
+}
+
 globalThis.foo = foo
+globalThis.A = A

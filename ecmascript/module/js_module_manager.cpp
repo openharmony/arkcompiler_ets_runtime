@@ -594,17 +594,17 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         CString key = "";
         if (pos != CString::npos) {
             key = moduleRecordName + "/" + JSPandaFile::NODE_MODULES + "/" + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
+            entryPoint = jsPandaFile->FindEntryPoint(key);
         }
 
         if (entryPoint.empty()) {
             key = JSPandaFile::NODE_MODULES_ZERO + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
+            entryPoint = jsPandaFile->FindEntryPoint(key);
         }
 
         if (entryPoint.empty()) {
             key = JSPandaFile::NODE_MODULES_ONE + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
+            entryPoint = jsPandaFile->FindEntryPoint(key);
         }
     }
     return entryPoint;

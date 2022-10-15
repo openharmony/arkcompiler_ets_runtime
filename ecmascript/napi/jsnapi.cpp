@@ -575,11 +575,9 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
 Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
     ecmascript::CString entry = file.c_str();
-#if ECMASCRIPT_ENABLE_MERGE_ABC
     if (!vm->IsBundlePack()) {
         entry = ecmascript::JSPandaFile::ParseOhmUrl(entry);
     }
-#endif
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry);
@@ -2548,12 +2546,9 @@ void JSNApi::RegisterQuickFixQueryFunc(EcmaVM *vm, QuickFixQueryCallBack callBac
     quickFixManager->RegisterQuickFixQueryFunc(callBack);
 }
 
-bool JSNApi::IsBundle([[maybe_unused]]EcmaVM *vm)
+bool JSNApi::IsBundle(EcmaVM *vm)
 {
-#if ECMASCRIPT_ENABLE_MERGE_ABC
     return vm->IsBundlePack();
-#endif
-    return true;
 }
 
 void JSNApi::SetBundle(EcmaVM *vm, bool value)
