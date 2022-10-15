@@ -233,6 +233,16 @@ public:
         return WasOptionSet(OPTION_STUB_FILE);
     }
 
+    void SetEnableAOT(bool value)
+    {
+        enableAOT_ = value;
+    }
+
+    bool GetEnableAOT() const
+    {
+        return enableAOT_;
+    }
+
     std::string GetAOTOutputFile() const
     {
         return aotOutputFile_;
@@ -896,6 +906,7 @@ private:
     arg_list_t logError_ {{"all"}};
     arg_list_t logFatal_ {{"all"}};
     arg_list_t logComponents_ {{"all"}};
+    bool enableAOT_ {false};
     uint32_t maxAotMethodSize_ {32_KB};
     std::string abcFilelist_ {"none"};
     std::string entryPoint_ {"_GLOBAL::func_main_0"};

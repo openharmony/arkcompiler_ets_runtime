@@ -1007,6 +1007,17 @@ public:
     {
         return isWorker_;
     }
+
+    void SetEnableAOT(bool value)
+    {
+        enableAsmInterpreter_ = value;
+    }
+
+    void SetAnDir(const std::string &value)
+    {
+        anDir_ = value;
+    }
+
 private:
     std::string GetGcType() const
     {
@@ -1102,6 +1113,16 @@ private:
         return asmOpcodeDisableRange_;
     }
 
+    bool GetEnableAOT() const
+    {
+        return enableAOT_;
+    }
+
+    std::string GetAnDir() const
+    {
+        return anDir_;
+    }
+
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
     LOG_LEVEL logLevel_ = LOG_LEVEL::DEBUG;
     uint32_t gcPoolSize_ = ecmascript::DEFAULT_GC_POOL_SIZE;
@@ -1117,6 +1138,8 @@ private:
     bool enableAsmInterpreter_ {true};
     bool isWorker_ {false};
     std::string asmOpcodeDisableRange_ {""};
+    bool enableAOT_ {false};
+    std::string anDir_ {};
     friend JSNApi;
 };
 
