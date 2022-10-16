@@ -854,18 +854,27 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
 //               sp:      thread
 // construct Native Leave Frame
 //               +--------------------------+
-//               |       argv0              | calltarget , newTarget, this, ....
-//               +--------------------------+ ---
-//               |       argc               |   ^
-//               |--------------------------|   |
-//               |       thread             |   |
-//               |--------------------------|  Fixed
-//               |       returnAddr         |  BuiltinFrame
-//               |--------------------------|   |
-//               |       callsiteFp         |   |
-//               |--------------------------|   |
-//               |       frameType          |   v
-//               +--------------------------+ ---
+//               |     argV[N - 1]          |
+//               |--------------------------|
+//               |       . . . .            |
+//               |--------------------------+
+//               |     argV[2]=this         |
+//               +--------------------------+
+//               |     argV[1]=new-target   |
+//               +--------------------------+
+//               |     argV[0]=call-target  |
+//               +--------------------------+ ---------
+//               |       argc               |         ^
+//               |--------------------------|         |
+//               |       thread             |         |
+//               |--------------------------|         |
+//               |       returnAddr         |     BuiltinFrame
+//               |--------------------------|         |
+//               |       callsiteFp         |         |
+//               |--------------------------|         |
+//               |       frameType          |         v
+//               +--------------------------+ ---------
+
 void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArgsAndDispatchNative));
