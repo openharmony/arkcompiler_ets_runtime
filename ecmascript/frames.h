@@ -18,238 +18,6 @@
 
 #include "ecmascript/ark_stackmap.h"
 #include "ecmascript/js_tagged_value.h"
-
-// Frame Layout
-// Interpreter Frame(alias   **iframe** ) Layout as follow:
-// ```
-//   +----------------------------------+-------------------+
-//   |    argv[n-1]                     |                   ^
-//   |----------------------------------|                   |
-//   |    ......                        |                   |
-//   |----------------------------------|                   |
-//   |    thisArg [maybe not exist]     |                   |
-//   |----------------------------------|                   |
-//   |    newTarget [maybe not exist]   |                   |
-//   |----------------------------------|                   |
-//   |    ......                        |                   |
-//   |----------------------------------|                   |
-//   |    Vregs [not exist in native]   |                   |
-//   +----------------------------------+--------+      interpreter frame
-//   |    base.frameType                |        ^          |
-//   |----------------------------------|        |          |
-//   |    base.prev(prev stack pointer) |        |          |
-//   |----------------------------------|        |          |
-//   |    pc(bytecode addr)             |        |          |
-//   |----------------------------------|        |          |
-//   |    sp(current stack pointer)     |        |          |
-//   |----------------------------------|        |          |
-//   |    env                           |        |          |
-//   |----------------------------------|        |          |
-//   |    acc                           |        |          |
-//   |----------------------------------|InterpretedFrame   |
-//   |    profileTypeInfo               |        |          |
-//   |----------------------------------|        |          |
-//   |    thisObj                       |        |          |
-//   |----------------------------------|        |          |
-//   |    function                      |        |          |
-//   |----------------------------------|        |          |
-//   |    constpool                     |        v          v
-//   +----------------------------------+--------+----------+
-
-//   Optimized Leave Frame(alias OptimizedLeaveFrame) layout
-//   +--------------------------+
-//   |       argv[argc-1]       |
-//   +--------------------------+
-//   |       ..........         |
-//   +--------------------------+
-//   |       argv[1]            |
-//   +--------------------------+
-//   |       argv[0]            |
-//   +--------------------------+ ---
-//   |       argc               |   ^
-//   |--------------------------|  Fixed
-//   |       RuntimeId          | OptimizedLeaveFrame
-//   |--------------------------|   |
-//   |       returnAddr         |   |
-//   |--------------------------|   |
-//   |       callsiteFp         |   |
-//   |--------------------------|   |
-//   |       frameType          |   v
-//   +--------------------------+ ---
-//   |  callee save registers   |
-//   +--------------------------+
-
-//   Optimized Leave Frame with Argv(alias OptimizedWithArgvLeaveFrame) layout
-//   +--------------------------+
-//   |       argv[]             |
-//   +--------------------------+ ---
-//   |       argc               |   ^
-//   |--------------------------|  Fixed
-//   |       RuntimeId          | OptimizedWithArgvLeaveFrame
-//   |--------------------------|   |
-//   |       returnAddr         |   |
-//   |--------------------------|   |
-//   |       callsiteFp         |   |
-//   |--------------------------|   |
-//   |       frameType          |   v
-//   +--------------------------+ ---
-//   |  callee save registers   |
-//   +--------------------------+
-
-//   Optimized Frame(alias OptimizedFrame) layout
-//   +--------------------------+
-//   | calleesave registers |   ^
-//   |----------------------|   |
-//   |   returnaddress      | Fixed
-//   |----------------------| OptimizedFrame
-//   |       prevFp         |   |
-//   |----------------------|   |
-//   |     frameType        |   |
-//   |----------------------|   |
-//   |       callSiteSp     |   v
-//   +--------------------------+
-
-//   Optimized JSFunction Frame Frame(alias OptimizedJSFunctionFrame) layout
-//   +--------------------------+
-//   | calleesave registers |   ^
-//   |----------------------|   |
-//   |   returnaddress      | Fixed
-//   |----------------------| OptimizedJSFunctionFrame
-//   |       prevFp         |   |
-//   |----------------------|   |
-//   |     frameType        |   |
-//   |----------------------|   |
-//   |       lexEnv         |   v
-//   +--------------------------+
-
-//   Optimized Entry Frame(alias OptimizedEntryFrame) layout
-//   +--------------------------+
-//   |   returnaddress      |   ^
-//   |----------------------|   |
-//   |calleesave registers  | Fixed
-//   |----------------------| OptimizedEntryFrame
-//   |      prevFp          |   |
-//   |----------------------|   |
-//   |      frameType       |   |
-//   |----------------------|   |
-//   |  prevLeaveFrameFp    |   v
-//   +--------------------------+
-
-//   Interpreted Entry Frame(alias InterpretedEntryFrame) layout
-//   +--------------------------+
-//   |      base.type       |   ^
-//   |----------------------|   |
-//   |      base.prev       | InterpretedEntryFrame
-//   |----------------------|   |
-//   |          pc          |   v
-//   +--------------------------+
-
-// ```
-// address space grow from high address to low address.we add new field  **FrameType** ,
-// the field's value is INTERPRETER_FRAME(represent interpreter frame).
-// **currentsp**  is pointer to  callTarget field address, sp field 's value is  **currentsp** ,
-// pre field pointer pre stack frame point. fill JSThread's sp field with iframe sp field
-// by  calling JSThread->SetCurrentSPFrame and save pre Frame address to iframe pre field.
-
-// For Example:
-// ```
-//                     call                   call
-//     foo    -----------------> bar   ----------------------->baz ---------------------> rtfunc
-// (interpret frame)       (OptimizedEntryFrame)      (OptimizedFrame)     (OptimizedLeaveFrame + Runtime Frame)
-// ```
-
-// Frame Layout as follow:
-// ```
-//   +----------------------------------+-------------------+
-//   |    argv[n-1]                     |                   ^
-//   |----------------------------------|                   |
-//   |    ......                        |                   |
-//   |----------------------------------|                   |
-//   |    thisArg [maybe not exist]     |                   |
-//   |----------------------------------|                   |
-//   |    newTarget [maybe not exist]   |                   |
-//   |----------------------------------|                   |
-//   |    ......                        |                   |
-//   |----------------------------------|                   |
-//   |    Vregs                         |                   |
-//   +----------------------------------+--------+     foo's frame
-//   |    base.frameType                |        ^          |
-//   |----------------------------------|        |          |
-//   |    base.prev(prev stack pointer) |        |          |
-//   |----------------------------------|        |          |
-//   |    pc(bytecode addr)             |        |          |
-//   +----------------------------------|        |          |
-//   |    sp(current stack pointer)     |        |          |
-//   |----------------------------------|        |          |
-//   |    env                           |        |          |
-//   |----------------------------------|        |          |
-//   |    acc                           |        |          |
-//   |----------------------------------|        |          |
-//   |    profileTypeInfo               |InterpretedFrame   |
-//   |----------------------------------|        |          |
-//   |    thisObj                       |        |          |
-//   |----------------------------------|        |          |
-//   |    function                      |        |          |
-//   |----------------------------------|        |          |
-//   |    constpool                     |        v          v
-//   +----------------------------------+--------+----------+
-//   |                   .............                      |
-//   +--------------------------+---------------------------+
-//   |   returnaddress      |   ^                           ^
-//   |----------------------|   |                           |
-//   |calleesave registers  | Fixed                         |
-//   |----------------------| OptimizedEntryFrame       bar's frame
-//   |      prevFp          |   |                           |
-//   |----------------------|   |                           |
-//   |      frameType       |   |                           |
-//   |----------------------|   |                           |
-//   |  prevLeaveFrameFp    |   v                           |
-//   +--------------------------+                           V
-//   +--------------------------+---------------------------+
-//   |                   .............                      |
-//   +--------------------------+---------------------------+
-//   +--------------------------+---------------------------+
-//   | calleesave registers |   ^                           ^
-//   |----------------------|   |                           |
-//   |   returnaddress      | Fixed                         |
-//   |----------------------| OptimizedJSFunctionFrame      |
-//   |       prevFp         |   |                           |
-//   |----------------------|   |                       baz's frame Header
-//   |     frameType        |   |                           |
-//   |----------------------|   |                           |
-//   |       lexEnv         |   |                           V
-//   +--------------------------+
-//   +--------------------------+---------------------------+
-//   |                   .............                      |
-//   +--------------------------+---------------------------+
-//   +--------------------------+---------------------------+
-//   |       argv[]             |                           ^
-//   +--------------------------+----                       |
-//   |       argc               |   ^                       |
-//   |--------------------------|  Fixed                    |
-//   |       RuntimeId          | OptimizedLeaveFrame       |
-//   |--------------------------|   |                  OptimizedLeaveFrame
-//   |       returnAddr         |   |                       |
-//   |--------------------------|   |                       |
-//   |       callsiteFp         |   |                       |
-//   |--------------------------|   |                       |
-//   |       frameType          |   V                       |
-//   +--------------------------+ ----                      |
-//   |  callee save registers   |                           V
-//   +--------------------------+---------------------------+
-//   |                   .............                      |
-//   +--------------------------+---------------------------+
-//   |                                                      |
-//   |                 rtfunc's Frame                       |
-//   |                                                      |
-//   +------------------------------------------------------+
-// ```
-// Iterator:
-// rtfunc get OptimizedLeaveFrame by calling GetCurrentSPFrame.
-// get baz's Frame by OptimizedLeaveFrame.prev field.
-// get bar's Frame by baz's frame fp field
-// get foo's Frame by bar's Frame prev field
-
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/llvm_stackmap_type.h"
 #include "ecmascript/mem/visitor.h"
@@ -261,6 +29,86 @@ class FrameIterator;
 namespace kungfu {
     class ArkStackMapParser;
 };
+
+// Here list all scenarios of calling between Runtime/CInterpreter/ASMInterpreter/AOTCompiler/CBuiltin/ASMBuitlin.
+// Please note that the "[]" means a must frame while "<>" means an optional frame. Each case is from top to down.
+//
+// * Runtime (C++) => CInterpreter:
+//          1) [INTERPRETER_FRAME]
+//
+// * Runtime (C++) -> AOTCompiler:
+//          1) [OPTIMIZED_ENTRY_FRAME]
+//             <OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME>
+//             <OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME>
+//             [OPTIMIZED_JS_FUNCTION_FRAME]
+//
+// * Runtime (C++) => ASMInterpreter:
+//          1) [INTERPRETER_ENTRY_FRAME][ASM_INTERPRETER_FRAME]
+//
+// * Runtime (C++) => CBuiltin:
+//          1) [not supported]
+//
+// * Runtime (C++) => ASMBuiltin:
+//          1) [not supported]
+//
+// * CInterpreter => CInterpreter:
+//          1) [INTERPRETER_FRAME]
+//
+// * CInterpreter => Runtime (C++):
+//          1) [INTERPRETER_FAST_NEW_FRAME]
+//          2) [INTERPRETER_CONSTRUCTOR_FRAME]
+//
+// * CInterpreter => AOTCompiler:
+//          1) [not supported]
+//
+// * CInterperter => CBuiltin:
+//          1) [INTERPRETER_BUILTIN_FRAME]
+//
+// * CInterpreter => ASMBuiltin:
+//          1) [not supported]
+//
+// * ASMInterpreter => Runtime (C++):
+//          1) [LEAVE_FRAME]
+//          2) [LEAVE_FRAME_WITH_ARGV]
+//
+// * ASMInterpreter => AOTCompiler:
+//          1) [OPTIMIZED_ENTRY_FRAME]
+//             <OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME>
+//             <OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME>
+//             [OPTIMIZED_JS_FUNCTION_FRAME]
+//
+// * ASMInterpreter => ASMInterpreter:
+//          1) [ASM_INTERPRETER_FRAME]
+//
+// * ASMInterpreter => AsmBuiltin:
+//          1) [BUILTIN_ENTRY_FRAME]
+//             [BUILTIN_FRAME]
+//          2) [BUILTIN_ENTRY_FRAME]
+//             [BUILTIN_FRAME_WITH_ARGV]
+//
+// * ASMInterpreter => CBuiltin:
+//          1) [LEAVE_FRAME]
+//          2) [LEAVE_FRAME_WITH_ARGV]
+//
+// * AOTCompiler => Runtime (C++):
+//          1) [LEAVE_FRAME]
+//          2) [LEAVE_FRAME_WITH_ARGV]
+//
+// * AOTCompiler => ASMInterpreter:
+//          1) [ASM_INTERPRETER_BRIDGE_FRAME]
+//          2) [ASM_INTERPRETER_FRAME]
+//
+// * AOTCompiler => CBuiltin:
+//          1) [LEAVE_FRAME]
+//          2) [LEAVE_FRAME_WITH_ARGV]
+//
+// * AOTCompiler => ASMBuiltin:
+//          1) [BUILTIN_ENTRY_FRAME]
+//             [BUILTIN_FRAME]
+//          2) [BUILTIN_ENTRY_FRAME]
+//             [BUILTIN_FRAME_WITH_ARGV]
+
+
 enum class FrameType: uintptr_t {
     OPTIMIZED_FRAME = 0,
     OPTIMIZED_ENTRY_FRAME,
@@ -369,6 +217,17 @@ private:
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
 
+// * OptimizedUnfoldArgVFrame layout description as the following:
+//      sp ----> |--------------------------| ---------------
+//               |       returnAddr         |               ^
+//  currentFp--> |--------------------------|               |
+//               |       prevFp             |               |
+//               |--------------------------|   OptimizedUnfoldArgVFrame
+//               |       frameType          |               |
+//               |--------------------------|               |
+//               |       currentFp          |               v
+//               +--------------------------+ ---------------
+//
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                                        base::AlignedPointer,
@@ -419,10 +278,27 @@ private:
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
 
+// * The OptimizedJSFunctionArgsConfig Frame's structure is illustrated as the following:
+//          +--------------------------+
+//          |         arg[N-1]         |
+//          +--------------------------+
+//          |         . . . .          |
+//          +--------------------------+
+//          |         arg[0]           |
+//          +--------------------------+
+//          |         argC             |
+//  sp ---> +--------------------------+ -----------------
+//          |                          |                 ^
+//          |        prevFP            |                 |
+//          |--------------------------|    OptimizedJSFunctionArgsConfigFrame
+//          |       frameType          |                 |
+//          |                          |                 V
+//          +--------------------------+ -----------------
+//
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionArgConfigFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
-                                                   base::AlignedPointer,
-                                                   base::AlignedPointer> {
+                                                                      base::AlignedPointer,
+                                                                      base::AlignedPointer> {
 public:
     static size_t GetTypeOffset()
     {
@@ -454,14 +330,44 @@ private:
     friend class FrameIterator;
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
-    OptimizedJSFunctionArgConfigFrame::SizeArch32, OptimizedJSFunctionArgConfigFrame::SizeArch64);
+                      OptimizedJSFunctionArgConfigFrame::SizeArch32,
+                      OptimizedJSFunctionArgConfigFrame::SizeArch64);
 
+// * OptimizedJSFunctionFrame layout description as the following:
+//               +--------------------------+
+//               |        arg[N-1]          |
+//               +--------------------------+
+//               |       ...                |
+//               +--------------------------+
+//               |       arg[1]             |
+//               +--------------------------+
+//               |       arg[0]             |
+//               +--------------------------+
+//               |       this               |
+//               +--------------------------+
+//               |       new-target         |
+//               +--------------------------+
+//               |       call-target        |
+//               |--------------------------|
+//               |       argc               |
+//               |--------------------------|
+//               |       lexEnv             |
+//      sp ----> |--------------------------| ---------------
+//               |       returnAddr         |               ^
+//               |--------------------------|               |
+//               |       callsiteFp         |               |
+//               |--------------------------|   OptimizedJSFunctionFrame
+//               |       frameType          |               |
+//               |--------------------------|               |
+//               |       lexEnv             |               v
+//               +--------------------------+ ---------------
+//
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
-                                                   JSTaggedValue,
-                                                   base::AlignedPointer,
-                                                   base::AlignedPointer,
-                                                   base::AlignedPointer> {
+                                                             JSTaggedValue,
+                                                             base::AlignedPointer,
+                                                             base::AlignedPointer,
+                                                             base::AlignedPointer> {
 public:
     static constexpr size_t ENV_SLOT_DIFF = 2;
     enum class Index : size_t {
@@ -524,6 +430,7 @@ public:
     void GetFuncCalleeRegAndOffset(
         const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const;
     uintptr_t* ComputePrevFrameSp(const FrameIterator &it) const;
+
 private:
     static OptimizedJSFunctionFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
@@ -537,14 +444,21 @@ private:
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
     // dynamic callee saveregisters for arm64
-    // env
-    // argc
-    // argv[0]
-    // argv[1]
-    // ... argv[n - 1]
 };
-STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionFrame), OptimizedJSFunctionFrame::SizeArch32,
-    OptimizedJSFunctionFrame::SizeArch64);
+STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionFrame),
+                      OptimizedJSFunctionFrame::SizeArch32,
+                      OptimizedJSFunctionFrame::SizeArch64);
+
+// * The JSFunctionEntry Frame's structure is illustrated as the following:
+//          +--------------------------+
+//          |      . . . . . .         |
+//  sp ---> +--------------------------+ -----------------
+//          |        prevFP            |                 ^
+//          |--------------------------|                 |
+//          |       frameType          |      JSFunctionEntryFrame
+//          |--------------------------|                 |
+//          |    preLeaveFrameFp       |                 v
+//          +--------------------------+ -----------------
 
 struct OptimizedEntryFrame {
 public:
@@ -559,6 +473,7 @@ public:
         return preLeaveFrameFp;
     }
     friend class FrameIterator;
+
 private:
     static OptimizedEntryFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
@@ -610,6 +525,41 @@ STATIC_ASSERT_EQ_ARCH(sizeof(InterpretedFrameBase),
                       InterpretedFrameBase::SizeArch32,
                       InterpretedFrameBase::SizeArch64);
 
+// Interpreter Frame Layout as the following:
+//   +----------------------------------+
+//   |    argv[n-1]                     |
+//   |----------------------------------|
+//   |    ......                        |
+//   |----------------------------------|
+//   |    thisArg [maybe not exist]     |
+//   |----------------------------------|
+//   |    newTarget [maybe not exist]   |
+//   |----------------------------------|
+//   |    ......                        |
+//   |----------------------------------|
+//   |    Vregs [not exist in native]   |
+//   +----------------------------------+--------+
+//   |    base.frameType                |        ^
+//   |----------------------------------|        |
+//   |    base.prev(prev stack pointer) |        |
+//   |----------------------------------|        |
+//   |    pc(bytecode addr)             |        |
+//   |----------------------------------|        |
+//   |    sp(current stack pointer)     |        |
+//   |----------------------------------|        |
+//   |    env                           |        |
+//   |----------------------------------|        |
+//   |    acc                           |        |
+//   |----------------------------------|   InterpretedFrame
+//   |    profileTypeInfo               |        |
+//   |----------------------------------|        |
+//   |    thisObj                       |        |
+//   |----------------------------------|        |
+//   |    function                      |        |
+//   |----------------------------------|        |
+//   |    constpool                     |        v
+//   +----------------------------------+--------+
+//
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct InterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                      JSTaggedValue,
@@ -672,6 +622,17 @@ public:
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(InterpretedFrame), InterpretedFrame::SizeArch32, InterpretedFrame::SizeArch64);
 
+// * InterpretedBuiltinFrame layout description as the following:
+//               |--------------------------| ---------------
+//               |         . . . . .        |               ^
+//               |    InterpretedFrameBase  |               |
+//               |         . . . . .        |               |
+//               |--------------------------|    InterpretedBuiltinFrame
+//               |       bytecode-PC        |               |
+//               |--------------------------|               |
+//               |       call-target        |               v
+//               +--------------------------+ ---------------
+//
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct InterpretedBuiltinFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                             JSTaggedValue,
@@ -710,6 +671,39 @@ STATIC_ASSERT_EQ_ARCH(sizeof(InterpretedBuiltinFrame),
                       InterpretedBuiltinFrame::SizeArch32,
                       InterpretedBuiltinFrame::SizeArch64);
 
+// AsmInterpretedFrame Layout as the following:
+//   +----------------------------------+
+//   |    argv[n-1]                     |
+//   |----------------------------------|
+//   |    ......                        |
+//   |----------------------------------|
+//   |    thisArg [maybe not exist]     |
+//   |----------------------------------|
+//   |    newTarget [maybe not exist]   |
+//   |----------------------------------|
+//   |    ......                        |
+//   |----------------------------------|
+//   |    Vregs [not exist in native]   |
+//   +----------------------------------+--------+
+//   |        .  .  .   .               |        ^
+//   |     InterpretedFrameBase         |        |
+//   |        .  .  .   .               |        |
+//   |----------------------------------|        |
+//   |    pc(bytecode addr)             |        |
+//   |----------------------------------|        |
+//   |    sp(current stack pointer)     |        |
+//   |----------------------------------|   AsmInterpretedFrame
+//   |    callSize                      |        |
+//   |----------------------------------|        |
+//   |    env                           |        |
+//   |----------------------------------|        |
+//   |    acc                           |        |
+//   |----------------------------------|        |
+//   |    thisObj                       |        |
+//   |----------------------------------|        |
+//   |    call-target                   |        v
+//   +----------------------------------+--------+
+//
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                         JSTaggedValue,
@@ -824,6 +818,15 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(AsmInterpretedFrame), AsmInterpretedFrame::SizeArch32, AsmInterpretedFrame::SizeArch64);
 
+// InterpretedEntryFrame Layout as the following:
+//   +----------------------------------+---------------
+//   |        .  .  .   .               |              ^
+//   |     InterpretedFrameBase         |              |
+//   |        .  .  .   .               |    InterpretedEntryFrame
+//   |----------------------------------|              |
+//   |    pc(bytecode addr)             |              v
+//   |----------------------------------|---------------
+//
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct InterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                           base::AlignedPointer,
@@ -855,11 +858,20 @@ struct InterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::TaggedT
     alignas(EAS) const uint8_t *pc {nullptr};
     alignas(EAS) InterpretedFrameBase base;
 };
-
 STATIC_ASSERT_EQ_ARCH(sizeof(InterpretedEntryFrame),
                       InterpretedEntryFrame::SizeArch32,
                       InterpretedEntryFrame::SizeArch64);
 
+
+// AsmInterpretedEntryFrame Layout as the following:
+//   +----------------------------------+---------------
+//   |        .  .  .   .               |              ^
+//   |     InterpretedFrameBase         |              |
+//   |        .  .  .   .               |    AsmInterpretedEntryFrame
+//   |----------------------------------|              |
+//   |    pc(bytecode addr)             |              v
+//   |----------------------------------|---------------
+//
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct AsmInterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                              base::AlignedPointer,
@@ -890,6 +902,16 @@ struct AsmInterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::Tagg
     alignas(EAS) InterpretedFrameBase base;
 };
 
+// AsmInterpretedBridgeFrame Layout as the following:
+//   +----------------------------------+---------------
+//   |      ret-address                 |              ^
+//   |----------------------------------|              |
+//   |        .  .  .   .               |     AsmInterpretedBridgeFrame
+//   |     AsmInterpretedEntryFrame     |              |
+//   |        .  .  .   .               |              v
+//   |----------------------------------|---------------
+//
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                               AsmInterpretedEntryFrame,
                                                               base::AlignedPointer> {
@@ -932,6 +954,26 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPoint
     }
 };
 
+// * Optimized-leaved-frame layout as the following:
+//         +--------------------------+
+//         |       argv[N-1]          |
+//         |--------------------------|
+//         |       . . . . .          |
+//         |--------------------------|
+//         |       argv[0]            |
+//         +--------------------------+-------------
+//         |       argc               |            ^
+//         |--------------------------|            |
+//         |       RuntimeId          |            |
+//  sp --> |--------------------------|   OptimizedLeaveFrame
+//         |       ret-addr           |            |
+//         |--------------------------|            |
+//         |       prevFp             |            |
+//         |--------------------------|            |
+//         |       frameType          |            v
+//         +--------------------------+-------------
+//
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedLeaveFrame {
     FrameType type;
     uintptr_t callsiteFp; // thread sp set here
@@ -960,12 +1002,28 @@ struct OptimizedLeaveFrame {
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
+// * Optimized-leaved-frame-with-argv layout as the following:
+//         +--------------------------+
+//         |       argv[]             |
+//         +--------------------------+-------------
+//         |       argc               |            ^
+//         |--------------------------|            |
+//         |       RuntimeId          |   OptimizedWithArgvLeaveFrame
+//  sp --> |--------------------------|            |
+//         |       returnAddr         |            |
+//         |--------------------------|            |
+//         |       callsiteFp         |            |
+//         |--------------------------|            |
+//         |       frameType          |            v
+//         +--------------------------+-------------
+
 struct OptimizedWithArgvLeaveFrame {
     FrameType type;
     uintptr_t callsiteFp; // thread sp set here
     uintptr_t returnAddr;
     uint64_t argRuntimeId;
     uint64_t argc;
+
     static OptimizedWithArgvLeaveFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<OptimizedWithArgvLeaveFrame *>(reinterpret_cast<uintptr_t>(sp) -
@@ -986,6 +1044,28 @@ struct OptimizedWithArgvLeaveFrame {
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
+// * OptimizedBuiltinLeaveFrame layout as the following:
+//         +--------------------------+
+//         |       argv[N-1]          |
+//         |--------------------------|
+//         |       . . . . .          |
+//         |--------------------------|
+//         |       argv[0]            |
+//         +--------------------------+-------------
+//         |       argc               |            ^
+//         |--------------------------|            |
+//         |       env                |            |
+//         +--------------------------+            |
+//         |       RuntimeId          |            |
+//  sp --> |--------------------------|   OptimizedBuiltinLeaveFrame
+//         |       ret-addr           |            |
+//         |--------------------------|            |
+//         |       prevFp             |            |
+//         |--------------------------|            |
+//         |       frameType          |            v
+//         +--------------------------+-------------
+//
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedBuiltinLeaveFrame {
 public:
     static OptimizedBuiltinLeaveFrame* GetFrameFromSp(const JSTaggedType *sp)
@@ -1025,6 +1105,30 @@ private:
     // argv[0]...argv[argc-1] dynamic according to agc
 };
 
+// * BuiltinFrame layout as the following:
+//               +--------------------------+
+//               |     argV[N - 1]          |
+//               |--------------------------|
+//               |       . . . .            |
+//               |--------------------------+
+//               |     argV[2]=this         |
+//               +--------------------------+
+//               |     argV[1]=new-target   |
+//               +--------------------------+
+//               |     argV[0]=call-target  |
+//               +--------------------------+ ---------
+//               |       argc               |         ^
+//               |--------------------------|         |
+//               |       thread             |         |
+//               |--------------------------|         |
+//               |       returnAddr         |     BuiltinFrame
+//               |--------------------------|         |
+//               |       callsiteFp         |         |
+//               |--------------------------|         |
+//               |       frameType          |         v
+//               +--------------------------+ ---------
+//
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                  base::AlignedSize,
                                                  base::AlignedPointer,
@@ -1097,6 +1201,26 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
     alignas(EAS) uintptr_t stackArgs;
 };
 
+// * BuiltinWithArgvFrame layout as the following:
+//               +--------------------------+ ---------
+//               |       . . . . .          |         ^
+//               |--------------------------|         |
+//               |       returnAddr         |         |
+//               |--------------------------|         |
+//               |       callsiteFp         |   BuiltinWithArgvFrame
+//               |--------------------------|         |
+//               |       frameType          |         |
+//               +--------------------------+         |
+//               |        argc              |         v
+//               +--------------------------+ ---------
+//               |        argV[0]           |
+//               +--------------------------+
+//               |        argV[1]           |
+//               +--------------------------+
+//               |        . . . .           |
+//               +--------------------------+
+//
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                          base::AlignedSize,
                                                          base::AlignedPointer,
@@ -1220,6 +1344,7 @@ public:
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;
+
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
