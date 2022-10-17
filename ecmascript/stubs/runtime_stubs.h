@@ -425,13 +425,15 @@ private:
                                                              const JSHandle<JSTaggedValue> &base,
                                                              const JSHandle<JSTaggedValue> &lexenv,
                                                              const JSHandle<JSTaggedValue> &constpool,
-                                                             uint16_t methodId, uint16_t literalId);
+                                                             uint16_t methodId, uint16_t literalId,
+                                                             const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeCreateClassWithIHClass(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &base,
                                                               const JSHandle<JSTaggedValue> &lexenv,
                                                               const JSHandle<JSTaggedValue> &constpool,
                                                               const uint16_t methodId, uint16_t literalId,
-                                                              const JSHandle<JSHClass> &ihclass);
+                                                              const JSHandle<JSHClass> &ihclass,
+                                                              const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base);

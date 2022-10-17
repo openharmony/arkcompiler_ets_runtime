@@ -53,6 +53,7 @@ public:
 
     static inline JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);
     static inline JSTaggedValue GetConstantPool(JSTaggedType *sp);
+    static inline JSTaggedValue GetEcmaModule(JSTaggedType *sp);
     static inline bool UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset);
     static inline void NotifyBytecodePcChanged(JSThread *thread);
     static inline const JSPandaFile *GetNativeCallPandafile(JSThread *thread);

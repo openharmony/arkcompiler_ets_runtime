@@ -23,6 +23,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/index_accessor.h"
 
@@ -209,7 +210,7 @@ public:
                 vm->AddConstpool(jsPandaFile, newConstpool, constpoolIndex);
             }
             method->SetConstantPool(thread, newConstpool);
-        
+
             val = method.GetTaggedValue();
             constpool->Set(thread, index, val);
             return val;
@@ -219,7 +220,7 @@ public:
     }
 
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
-                                                  uint32_t literal)
+                                                  uint32_t literal, CString entry)
     {
         auto val = constpool->Get(literal);
         if (val.IsHole()) {
@@ -242,7 +243,7 @@ public:
                 newConstpoolHandle = JSHandle<ConstantPool>(thread, newConstpool);
             }
             JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, literalId, JSHandle<JSTaggedValue>(newConstpoolHandle));
+                thread, jsPandaFile, literalId, JSHandle<JSTaggedValue>(newConstpoolHandle), entry);
 
             val = literalArray.GetTaggedValue();
             constpool->Set(thread, literal, val);
@@ -253,7 +254,7 @@ public:
     }
 
     template <ConstPoolType type>
-    static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
+    static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index, CString entry)
     {
         static_assert(type == ConstPoolType::OBJECT_LITERAL || type == ConstPoolType::ARRAY_LITERAL);
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
@@ -274,7 +275,7 @@ public:
                     JSMutableHandle<TaggedArray> elements(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
                     LiteralDataExtractor::ExtractObjectDatas(
-                        thread, jsPandaFile, id, elements, properties, JSHandle<JSTaggedValue>(constpoolHandle));
+                        thread, jsPandaFile, id, elements, properties, JSHandle<JSTaggedValue>(constpoolHandle), entry);
                     JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
                     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
@@ -292,7 +293,7 @@ public:
                 }
                 case ConstPoolType::ARRAY_LITERAL: {
                     JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
-                        thread, jsPandaFile, id, JSHandle<JSTaggedValue>(constpoolHandle));
+                        thread, jsPandaFile, id, JSHandle<JSTaggedValue>(constpoolHandle), entry);
 
                     uint32_t length = literal->GetLength();
 
@@ -309,6 +310,14 @@ public:
         }
 
         return val;
+    }
+
+    template <ConstPoolType type>
+    static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool,
+                                             uint32_t index, JSTaggedValue module)
+    {
+        CString entry = ModuleManager::GetRecordName(module);
+        return GetLiteralFromCache<type>(thread, constpool, index, entry);
     }
 
     static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)

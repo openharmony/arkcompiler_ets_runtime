@@ -189,7 +189,7 @@ GateRef InterpreterStubBuilder::GetMethodFromConstPool(GateRef constpool, GateRe
     return ret;
 }
 
-GateRef InterpreterStubBuilder::GetArrayLiteralFromConstPool(GateRef constpool, GateRef index)
+GateRef InterpreterStubBuilder::GetArrayLiteralFromConstPool(GateRef constpool, GateRef index, GateRef module)
 {
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));
     auto env = GetEnvironment();
@@ -204,7 +204,7 @@ GateRef InterpreterStubBuilder::GetArrayLiteralFromConstPool(GateRef constpool, 
     Bind(&cacheMiss);
     {
         result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache),
-            { constpool, IntToTaggedInt(index) });
+            { constpool, IntToTaggedInt(index), module });
         Jump(&exit);
     }
 
@@ -214,7 +214,7 @@ GateRef InterpreterStubBuilder::GetArrayLiteralFromConstPool(GateRef constpool, 
     return ret;
 }
 
-GateRef InterpreterStubBuilder::GetObjectLiteralFromConstPool(GateRef constpool, GateRef index)
+GateRef InterpreterStubBuilder::GetObjectLiteralFromConstPool(GateRef constpool, GateRef index, GateRef module)
 {
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));
     auto env = GetEnvironment();
@@ -229,7 +229,7 @@ GateRef InterpreterStubBuilder::GetObjectLiteralFromConstPool(GateRef constpool,
     Bind(&cacheMiss);
     {
         result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache),
-            { constpool, IntToTaggedInt(index) });
+            { constpool, IntToTaggedInt(index), module });
         Jump(&exit);
     }
 
@@ -5158,10 +5158,12 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
 
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
                               { proto, lexicalEnv, constpool,
                                 Int16ToTaggedInt(methodId),
-                                Int16ToTaggedInt(literalId) });
+                                Int16ToTaggedInt(literalId), module });
 
     Label isException(env);
     Label isNotException(env);
@@ -5172,8 +5174,7 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
     }
     Bind(&isNotException);
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
+    SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
     varAcc = res;
     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
@@ -5191,10 +5192,12 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
 
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
                               { proto, lexicalEnv, constpool,
                                 Int16ToTaggedInt(methodId),
-                                Int16ToTaggedInt(literalId) });
+                                Int16ToTaggedInt(literalId), module });
 
     Label isException(env);
     Label isNotException(env);
@@ -5205,8 +5208,7 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
     }
     Bind(&isNotException);
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
+    SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
     varAcc = res;
     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8);
@@ -5226,10 +5228,12 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
     GateRef lexicalEnv = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v1));
 
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
                               { proto, lexicalEnv, constpool,
                                 Int16ToTaggedInt(methodId),
-                                Int16ToTaggedInt(literalId) });
+                                Int16ToTaggedInt(literalId), module });
 
     Label isException(env);
     Label isNotException(env);
@@ -5240,8 +5244,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8)
     }
     Bind(&isNotException);
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    SetModuleToFunction(glue, res, GetModuleFromFunction(currentFunc));
+    SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
     varAcc = res;
     DISPATCH_WITH_ACC(DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8);
@@ -5599,7 +5602,9 @@ DECLARE_ASM_HANDLER(HandleCallthis3Imm8V8V8V8V8)
 DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Id16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
-    GateRef result = GetArrayLiteralFromConstPool(constpool, imm);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef result = GetArrayLiteralFromConstPool(constpool, imm, module);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM8_ID16));
 }
@@ -5607,7 +5612,9 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Id16)
 DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm16Id16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_2(pc));
-    GateRef result = GetArrayLiteralFromConstPool(constpool, imm);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef result = GetArrayLiteralFromConstPool(constpool, imm, module);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM16_ID16));
 }
@@ -5615,7 +5622,9 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm16Id16)
 DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
-    GateRef result = GetArrayLiteralFromConstPool(constpool, imm);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef result = GetArrayLiteralFromConstPool(constpool, imm, module);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16));
 }
@@ -5623,7 +5632,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
-    GateRef result = GetObjectLiteralFromConstPool(constpool, imm);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef result = GetObjectLiteralFromConstPool(constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
@@ -5632,7 +5643,9 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_2(pc));
-    GateRef result = GetObjectLiteralFromConstPool(constpool, imm);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef result = GetObjectLiteralFromConstPool(constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
@@ -5641,7 +5654,9 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
 DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjectwithbufferPrefImm16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
-    GateRef result = GetObjectLiteralFromConstPool(constpool, imm);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef result = GetObjectLiteralFromConstPool(constpool, imm, module);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithBuffer), { result });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16));
 }
@@ -6485,7 +6500,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdhomeobjectPrefNone)
 DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjecthavingmethodPrefImm16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
-    GateRef result = GetObjectLiteralFromConstPool(constpool, imm);
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef result = GetObjectLiteralFromConstPool(constpool, imm, module);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, acc });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16));
 }

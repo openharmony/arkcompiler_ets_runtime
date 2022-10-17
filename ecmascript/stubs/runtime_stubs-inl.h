@@ -745,15 +745,17 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
                                                          const JSHandle<JSTaggedValue> &lexenv,
                                                          const JSHandle<JSTaggedValue> &constpool,
-                                                         uint16_t methodId, uint16_t literalId)
+                                                         uint16_t methodId, uint16_t literalId,
+                                                         const JSHandle<JSTaggedValue> &module)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
     JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
     auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId);
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId, entry);
     JSHandle<TaggedArray> literal(thread, literalObj);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
@@ -771,19 +773,21 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
                                                           const JSHandle<JSTaggedValue> &lexenv,
                                                           const JSHandle<JSTaggedValue> &constpool,
                                                           const uint16_t methodId, uint16_t literalId,
-                                                          const JSHandle<JSHClass> &ihclass)
+                                                          const JSHandle<JSHClass> &ihclass,
+                                                          const JSHandle<JSTaggedValue> &module)
 {
     if (ihclass.GetTaggedValue().IsHole()) {
-        return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool, methodId, literalId);
+        return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool, methodId, literalId, module);
     }
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
     JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
     auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId);
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId, entry);
     JSHandle<TaggedArray> literal(thread, literalObj);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 

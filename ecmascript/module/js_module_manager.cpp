@@ -609,4 +609,37 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
     }
     return entryPoint;
 }
+
+CString ModuleManager::GetRecordName(JSTaggedValue module)
+{
+    CString entry = "";
+    if (module.IsSourceTextModule()) {
+        SourceTextModule *sourceTextModule = SourceTextModule::Cast(module.GetTaggedObject());
+        if (sourceTextModule->GetEcmaModuleRecordName().IsString()) {
+            entry = ConvertToString(sourceTextModule->GetEcmaModuleRecordName());
+        }
+    }
+    return entry;
+}
+
+int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule,
+                                        const std::string &key)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<TaggedArray> localExportEntries = JSHandle<TaggedArray>(thread, ecmaModule->GetLocalExportEntries());
+    size_t exportEntriesLen = localExportEntries->GetLength();
+    // 0: There's only one export value "default"
+    int index = 0;
+    JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
+    if (exportEntriesLen > 1) { // 1:  The number of export objects exceeds 1
+        for (size_t idx = 0; idx < exportEntriesLen; idx++) {
+            ee.Update(localExportEntries->Get(idx));
+            if (EcmaStringAccessor(ee->GetExportName()).ToStdString() == key) {
+                index = idx;
+                break;
+            }
+        }
+    }
+    return index;
+}
 } // namespace panda::ecmascript

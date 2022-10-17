@@ -1066,15 +1066,15 @@ JSTaggedValue SlowRuntimeStub::CloneClassFromTemplate(JSThread *thread, JSTagged
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue SlowRuntimeStub::CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
                                                      JSTaggedValue lexenv, JSTaggedValue constpool,
-                                                     uint16_t methodId, uint16_t literalId)
+                                                     uint16_t methodId, uint16_t literalId, JSTaggedValue module)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
     JSHandle<JSTaggedValue> baseHandle(thread, base);
     JSHandle<JSTaggedValue> lexenvHandle(thread, lexenv);
     JSHandle<JSTaggedValue> constpoolHandle(thread, constpool);
+    JSHandle<JSTaggedValue> moduleHandle(thread, module);
     return RuntimeStubs::RuntimeCreateClassWithBuffer(thread, baseHandle, lexenvHandle,
-                                                      constpoolHandle, methodId, literalId);
+                                                      constpoolHandle, methodId, literalId, moduleHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::SetClassInheritanceRelationship(JSThread *thread, JSTaggedValue ctor, JSTaggedValue base)
