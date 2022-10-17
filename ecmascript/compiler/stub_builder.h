@@ -483,6 +483,7 @@ public:
                       std::initializer_list<GateRef> args, JSCallMode mode);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
+    inline void PGOProfiler(GateRef glue, GateRef func);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode::Op Op>

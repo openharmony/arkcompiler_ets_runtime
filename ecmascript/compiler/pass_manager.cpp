@@ -23,7 +23,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
-bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator)
+bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
     JSPandaFile *jsPandaFile = CreateJSPandaFile(fileName.c_str());
@@ -48,14 +48,14 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto lexEnvManager = LexEnvManager(bytecodeInfo);
     bool enableMethodLog = !log_->NoneMethod();
     uint32_t skippedMethodNum = 0;
+    profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
 
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
         &cmpCfg, tsManager, &lexEnvManager, &skippedMethodNum]
         (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
-        if (methodPCInfo.methodsSize > maxAotMethodSize_ &&
-            methodOffset != jsPandaFile->GetMainMethodIndex(recordName)) {
+        if (FilterMethod(jsPandaFile, recordName, method, methodOffset, methodPCInfo)) {
             ++skippedMethodNum;
             tsManager->AddSkippedMethodID(method->GetMethodId().GetOffset());
             LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
@@ -129,5 +129,17 @@ JSHandle<JSTaggedValue> PassManager::ResolveModuleAndConstPool(const JSPandaFile
     JSHandle<Method> method(thread, mainFunc->GetMethod());
     JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());
     return constPool;
+}
+
+bool PassManager::FilterMethod(const JSPandaFile *jsPandaFile, const CString &recordName, MethodLiteral *method,
+    uint32_t methodOffset, MethodPcInfo &methodPCInfo)
+{
+    if (methodOffset != jsPandaFile->GetMainMethodIndex(recordName)) {
+        if (methodPCInfo.methodsSize > maxAotMethodSize_ ||
+            !profilerLoader_.Match(recordName, method->GetMethodId())) {
+            return true;
+        }
+    }
+    return false;
 }
 } // namespace panda::ecmascript::kungfu

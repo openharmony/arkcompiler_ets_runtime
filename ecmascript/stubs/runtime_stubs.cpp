@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/number_helper.h"
@@ -21,6 +22,7 @@
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
@@ -343,6 +345,12 @@ void RuntimeStubs::DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, cons
 {
     BytecodeInstruction inst(pc);
     LOG_INTERPRETER(DEBUG) << inst;
+}
+
+void RuntimeStubs::PGOProfiler(uintptr_t argGlue, uintptr_t func)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetPGOProfiler()->Sample(func);
 }
 
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)

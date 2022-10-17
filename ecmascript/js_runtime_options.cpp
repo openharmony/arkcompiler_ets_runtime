@@ -69,7 +69,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"stub-file", required_argument, nullptr, OPTION_STUB_FILE},
         {"target-triple", required_argument, nullptr, OPTION_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
-        {"sample-profile", required_argument, nullptr, OPTION_SAMPLE_PROFILE},
+        {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
+        {"pgo-profiler-path", required_argument, nullptr, OPTION_PGO_PROFILER_PATH},
+        {"pgo-hotness-threshold", required_argument, nullptr, OPTION_PGO_HOTNESS_THRESHOLD},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -313,8 +315,24 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_SAMPLE_PROFILE:
-                SetSampleProfilePath(optarg);
+            case OPTION_ENABLE_PGO_PROFILER:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnablePGOProfiler(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_PGO_PROFILER_PATH:
+                SetPGOProfilerPath(optarg);
+                break;
+            case OPTION_PGO_HOTNESS_THRESHOLD:
+                ret = ParseUint32Param("pgo-hotness-threshold", &argUint32);
+                if (ret) {
+                    SetPGOHotnessThreshold(argUint32);
+                } else {
+                    return false;
+                }
                 break;
             case OPTION_RELOCATION_MODE:
                 ret = ParseUint32Param("reloc-mode", &argUint32);
