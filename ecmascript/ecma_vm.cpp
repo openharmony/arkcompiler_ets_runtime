@@ -454,6 +454,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
 
     if (jsPandaFile->IsLoadedAOT()) {
         thread_->SetPrintBCOffset(true);
+        EcmaRuntimeStatScope runtimeStatScope(this);
         result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile);
     } else {
         if (jsPandaFile->IsCjs(entryPoint.data())) {

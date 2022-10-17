@@ -756,10 +756,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId, entry);
-    JSHandle<TaggedArray> literal(thread, literalObj);
+    JSHandle<TaggedArray> literalHandle(thread, literalObj);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal);
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literalHandle);
     JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, constpool, lexenv);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
@@ -788,10 +788,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
     auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId, entry);
-    JSHandle<TaggedArray> literal(thread, literalObj);
+    JSHandle<TaggedArray> literalHandle(thread, literalObj);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literal);
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literalHandle);
     JSHandle<JSFunction> cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, constpool, lexenv, ihclass);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);

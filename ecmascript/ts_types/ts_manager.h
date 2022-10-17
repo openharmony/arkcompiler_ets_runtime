@@ -18,6 +18,7 @@
 
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
@@ -30,7 +31,7 @@ enum class MTableIdx : uint8_t {
 };
 
 enum class CacheKind: uint8_t {
-    STRING_INDEX = 0,
+    CONST_DATA_INDEX = 0,
     HCLASS,
 };
 
@@ -253,16 +254,32 @@ public:
 
     void ClearCaches()
     {
-        stringIndexCache_.clear();
+        constIndexCache_.clear();
         hclassCache_.clear();
     }
 
     void AddStringIndex(uint32_t index)
     {
-        if (stringIndexCache_.find(index) != stringIndexCache_.end()) {
+        if (constIndexCache_.find({ConstPoolType::STRING, index}) != constIndexCache_.end()) {
             return;
         }
-        stringIndexCache_.insert(index);
+        constIndexCache_.insert({ConstPoolType::STRING, index});
+    }
+
+    void AddMethodIndex(uint32_t index)
+    {
+        if (constIndexCache_.find({ConstPoolType::METHOD, index}) != constIndexCache_.end()) {
+            return;
+        }
+        constIndexCache_.insert({ConstPoolType::METHOD, index});
+    }
+
+    void AddClassLiteraIndex(uint32_t index)
+    {
+        if (constIndexCache_.find({ConstPoolType::CLASS_LITERAL, index}) != constIndexCache_.end()) {
+            return;
+        }
+        constIndexCache_.insert({ConstPoolType::CLASS_LITERAL, index});
     }
 
     EcmaVM *GetEcmaVM() const
@@ -363,7 +380,7 @@ private:
     uint32_t ComputeSizeOfConstantPoolInfo() const
     {
         return CONSTANTPOOL_INFO_DATA_OFFSET + ORIGINAL_CONSTANTPOOL_DATA_SIZE *
-               GetStringCacheSize() + GetHClassCacheSize();
+               GetConstDataCacheSize() + GetHClassCacheSize();
     }
 
     uint32_t GetHClassCacheSize() const
@@ -371,9 +388,9 @@ private:
         return hclassCache_.size();
     }
 
-    uint32_t GetStringCacheSize() const
+    uint32_t GetConstDataCacheSize() const
     {
-        return stringIndexCache_.size();
+        return constIndexCache_.size();
     }
 
     void AddHClassInCompilePhase(GlobalTSTypeRef gt, JSTaggedValue hclass, uint32_t constantPoolLen)
@@ -383,24 +400,19 @@ private:
     }
 
     template <class Callback>
-    void IterateCaches(CacheKind kind, const Callback &cb)
+    void IterateConstDataCaches(const Callback &cb)
     {
-        switch (kind) {
-            case CacheKind::STRING_INDEX: {
-                for (uint32_t item: stringIndexCache_) {
-                    cb(item);
-                }
-                break;
-            }
-            case CacheKind::HCLASS: {
-                for (JSTaggedType item: hclassCache_) {
-                    cb(item);
-                }
-                break;
-            }
-            default:
-                UNREACHABLE();
-        };
+        for (auto item: constIndexCache_) {
+            cb(std::get<0>(item), std::get<1>(item));
+        }
+    }
+
+    template <class Callback>
+    void IterateHClassCaches(const Callback &cb)
+    {
+        for (JSTaggedType item: hclassCache_) {
+            cb(item);
+        }
     }
 
     EcmaVM *vm_ {nullptr};
@@ -416,7 +428,7 @@ private:
     friend class EcmaVM;
 
     // recode the index of String in each constpool
-    std::set<uint32_t> stringIndexCache_ {};
+    std::set<std::tuple<ConstPoolType, int>>constIndexCache_ {};
     // store hclass of each abc which produced from static type info
     CVector<JSTaggedType> hclassCache_ {};
 

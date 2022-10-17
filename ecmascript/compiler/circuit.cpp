@@ -456,6 +456,18 @@ GateRef Circuit::GetConstantGate(MachineType bitValue, BitField bitfield,
     return gate;
 }
 
+GateRef Circuit::GetConstantDataGate(BitField bitfield, GateType type)
+{
+    auto search = constantDataCache_.find(bitfield);
+    if (search != constantDataCache_.end()) {
+        return constantDataCache_.at(bitfield);
+    }
+    auto gate = NewGate(OpCode(OpCode::CONST_DATA), bitfield,
+                        {GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))}, type);
+    constantDataCache_[bitfield] = gate;
+    return gate;
+}
+
 size_t Circuit::GetGateCount() const
 {
     return gateCount_;
