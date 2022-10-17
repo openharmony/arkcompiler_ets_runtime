@@ -109,6 +109,7 @@ using ecmascript::JSTaggedType;
 using ecmascript::JSTaggedValue;
 using ecmascript::JSThread;
 using ecmascript::LinkedHashMap;
+using ecmascript::LinkedHashSet;
 using ecmascript::ObjectFactory;
 using ecmascript::PromiseCapability;
 using ecmascript::PropertyDescriptor;
@@ -1830,6 +1831,12 @@ int32_t MapRef::GetSize()
     return map->GetSize();
 }
 
+int32_t MapRef::GetTotalElements()
+{
+    JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    return map->GetSize() + LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
+}
+
 Local<JSValueRef> MapRef::GetKey(const EcmaVM *vm, int entry)
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
@@ -1848,6 +1855,12 @@ int32_t SetRef::GetSize()
 {
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
     return set->GetSize();
+}
+
+int32_t SetRef::GetTotalElements()
+{
+    JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
+    return set->GetSize() + LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> SetRef::GetValue(const EcmaVM *vm, int entry)
