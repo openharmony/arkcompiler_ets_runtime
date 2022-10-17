@@ -297,6 +297,22 @@ public:
 #undef IS_TSTYPEKIND
 
     static constexpr int BUILTIN_ARRAY_ID = 24;
+    static constexpr int BUILTIN_TYPED_ARRAY_FIRST_ID = 25;
+    static constexpr int BUILTIN_TYPED_ARRAY_LAST_ID = 36;
+
+    bool IsTypedArrayType(kungfu::GateType gateType) const
+    {
+        if (!IsClassInstanceTypeKind(gateType)) {
+            return false;
+        }
+
+        const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
+        GlobalTSTypeRef classGT = GetClassType(gt);
+        uint32_t m = classGT.GetModuleId();
+        uint32_t l = classGT.GetLocalId();
+        return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
+               (l >= BUILTIN_TYPED_ARRAY_FIRST_ID) && (l <= BUILTIN_TYPED_ARRAY_LAST_ID);
+    }
 
     void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, panda_file::File::EntityId offset,
                                         GlobalTSTypeRef gt)

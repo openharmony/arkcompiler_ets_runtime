@@ -495,6 +495,10 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
         auto type = tsManager_->GetArrayParameterTypeGT(inValueType);
         return UpdateType(gate, type);
     }
+
+    if (tsManager_->IsTypedArrayType(inValueType)) {
+        return UpdateType(gate, GateType::NumberType());
+    }
     return false;
 }
 
