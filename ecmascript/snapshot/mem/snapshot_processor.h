@@ -91,6 +91,12 @@ public:
     size_t GetNativeTableSize() const;
 
 private:
+    size_t GetMarkGCBitSetSize() const
+    {
+        return GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE -
+            AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION)));
+    }
+
     void SetObjectEncodeField(uintptr_t obj, size_t offset, uint64_t value);
 
     EncodeBit SerializeObjectHeader(TaggedObject *objectHeader, size_t objectType, CQueue<TaggedObject *> *queue,
@@ -124,7 +130,7 @@ private:
     bool builtinsDeserialize_ {false};
     CVector<uintptr_t> pandaMethod_;
     CVector<uintptr_t> stringVector_;
-    std::unordered_map<uint32_t, Region *> regionIndexMap_;
+    std::unordered_map<size_t, Region *> regionIndexMap_;
     size_t regionIndex_ {0};
 
     NO_COPY_SEMANTIC(SnapshotProcessor);
