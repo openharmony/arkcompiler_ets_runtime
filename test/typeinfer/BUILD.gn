@@ -61,7 +61,6 @@ group("ark_typeinfer_test") {
     "trystglobalbyname:trystglobalbynameAotTypeInferAction",
     "tsarraytobuiltin:tsarraytobuiltinAotTypeInferAction",
     "typeof:typeofAotTypeInferAction",
-
-    #"variable_after_loops:variable_after_loopsAotTypeInferAction",
+    "variable_after_loops:variable_after_loopsAotTypeInferAction",
   ]
 }

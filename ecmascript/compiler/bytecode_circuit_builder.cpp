@@ -2472,6 +2472,12 @@ void BytecodeCircuitBuilder::BuildFrameState()
         });
         // replace phi
         if (bb.valueSelectorAccGate != Circuit::NullGate()) {
+            frameStateBuilder_.UpdateAccumulator(undefinedGate);
+        }
+        for (auto &it : bb.vregToValSelectorGate) {
+            frameStateBuilder_.UpdateVirtualRegister(it.first, undefinedGate);
+        }
+        if (bb.valueSelectorAccGate != Circuit::NullGate()) {
             auto reg = frameStateBuilder_.GetAccumulatorIndex();
             FrameStateReplacePhi(bb.valueSelectorAccGate, reg);
         }
