@@ -27,14 +27,14 @@ class FrameStateInfo {
 public:
     explicit FrameStateInfo(const MethodLiteral *literal)
         : numVregs_(literal->GetNumberVRegs() + 1),
-          accumulator_index_(GetNumberVRegs() - 1),
+          accumulatorIndex_(GetNumberVRegs() - 1),
           literal_(literal)
     {
     }
 
     explicit FrameStateInfo(const FrameStateInfo *other)
         : numVregs_(other->numVregs_),
-          accumulator_index_(other->accumulator_index_),
+          accumulatorIndex_(other->accumulatorIndex_),
           literal_(other->literal_)
     {
         values_ = other->values_;
@@ -65,12 +65,12 @@ public:
 
     GateRef ValuesAtAccumulator() const
     {
-        return ValuesAt(accumulator_index_);
+        return ValuesAt(accumulatorIndex_);
     }
 
     void UpdateAccumulator(GateRef gate)
     {
-        return UpdateVirtualRegister(accumulator_index_, gate);
+        return UpdateVirtualRegister(accumulatorIndex_, gate);
     }
     void UpdateVirtualRegister(size_t index, GateRef gate)
     {
@@ -79,11 +79,11 @@ public:
     FrameStateInfo *Clone();
     size_t GetAccumulatorIndex() const
     {
-        return accumulator_index_;
+        return accumulatorIndex_;
     }
 private:
     size_t numVregs_ {0};
-    size_t accumulator_index_ {0};
+    size_t accumulatorIndex_ {0};
     const MethodLiteral *literal_ {nullptr};
     // [numVRegs_] [extra args] [numArgs_] [accumulator]
     std::vector<GateRef> values_{};
