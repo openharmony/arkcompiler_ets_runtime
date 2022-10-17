@@ -375,29 +375,9 @@ GateRef CircuitBuilder::TaggedFalse()
 
 GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 {
-    Label subentry(env_);
-    SubCfgEntry(&subentry);
-    Label exit(env_);
-    Label isUndefined(env_);
-    Label notUndefined(env_);
-    GateRef initVal = UndefineConstant();
-    DEFVAlUE(result, env_, VariableType::JS_ANY(), initVal);
-    Branch(TaggedIsUndefined(array), &isUndefined, &notUndefined);
-    Bind(&isUndefined);
-    {
-        Jump(&exit);
-    }
-    Bind(&notUndefined);
-    {
-        GateRef offset = PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
-        GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-        result = Load(VariableType::JS_ANY(), array, dataOffset);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
+    GateRef offset = PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return Load(VariableType::JS_ANY(), array, dataOffset);
 }
 
 void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,

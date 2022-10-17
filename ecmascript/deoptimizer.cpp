@@ -20,11 +20,6 @@
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 
 namespace panda::ecmascript {
-using DeoptFromAOTType = JSTaggedType (*)(uintptr_t glue, JSTaggedType* sp,
-    uintptr_t vregsSp, uintptr_t stateSp, JSTaggedType callTarget);
-static constexpr size_t LEXENV_INDEX = 1;
-static constexpr size_t THIS_VALUE_INDEX = 5;
-
 class FrameWriter {
 public:
     explicit FrameWriter(Deoptimizier *deoptimizier) : thread_(deoptimizier->GetThread())
@@ -73,7 +68,7 @@ private:
 
 void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle)
 {
-    vregs_.clear();
+    deoptVregs_.clear();
     for (size_t i = 0; i < deoptBundle.size(); i++) {
         kungfu::ARKDeopt deopt = deoptBundle.at(i);
         JSTaggedType v;
@@ -100,7 +95,7 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
             v = JSTaggedType(static_cast<int64_t>(std::get<kungfu::OffsetType>(deopt.value)));
         }
         if (id != static_cast<kungfu::OffsetType>(SpecVregIndex::PC_INDEX)) {
-            vregs_[id] = JSTaggedValue(v);
+            deoptVregs_[id] = JSTaggedValue(v);
         } else {
             pc_ = static_cast<uint32_t>(v);
         }
@@ -122,23 +117,18 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBun
                 context_.calleeRegAndOffset = calleeRegInfo;
                 context_.callsiteSp = it.GetCallSiteSp();
                 context_.callsiteFp = reinterpret_cast<uintptr_t>(it.GetSp());
-                context_.preFrameSp = frame->ComputePrevFrameSp(it);
-                context_.returnAddr = frame->GetReturnAddr();
-                uint64_t argc = frame->GetArgc(context_.preFrameSp);
-                auto argv = frame->GetArgv(reinterpret_cast<uintptr_t *>(context_.preFrameSp));
-                if (argc > 0) {
-                    ASSERT(argc >= FIXED_NUM_ARGS);
-                    callTarget_ = JSTaggedValue(argv[0]);
-                }
-                AotArgvs_ = argv;
+                auto preFrameSp = frame->ComputePrevFrameSp(it);
+                frameArgc_ = frame->GetArgc(preFrameSp);
+                frameArgvs_ = frame->GetArgv(preFrameSp);
+                env_ = frame->GetEnv();
                 stackContext_.callFrameTop_ = it.GetPrevFrameCallSiteSp();
-                stackContext_.returnAddr_ = context_.returnAddr;
+                stackContext_.returnAddr_ = frame->GetReturnAddr();
                 stackContext_.callerFp_ = reinterpret_cast<uintptr_t>(frame->GetPrevFrameFp());
                 break;
             }
             case FrameType::OPTIMIZED_FRAME: {
                 auto sp = reinterpret_cast<uintptr_t*>(it.GetSp());
-                sp--; // skip type
+                sp -= 2; // 2: skip type & glue
                 calleeRegAddr_ = sp - numCalleeRegs_;
                 break;
             }
@@ -173,33 +163,90 @@ void Deoptimizier::RelocateCalleeSave()
     }
 }
 
+bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWriter)
+{
+    int32_t actualNumArgs = static_cast<int32_t>(frameArgc_) - NUM_MANDATORY_JSFUNC_ARGS;
+    bool haveExtra = method->HaveExtraWithCallField();
+    int32_t declaredNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
+    int32_t callFieldNumVregs = static_cast<int32_t>(method->GetNumVregsWithCallField());
+    // layout of frame:
+    // [maybe argc] [actual args] [reserved args] [call field virtual regs]
+
+    // [maybe argc]
+    if (declaredNumArgs != actualNumArgs && haveExtra) {
+        auto value = JSTaggedValue(actualNumArgs);
+        frameWriter->PushValue(value.GetRawData());
+    }
+    int32_t reservedCount = std::max(actualNumArgs, declaredNumArgs);
+    int32_t virtualIndex = reservedCount + callFieldNumVregs +
+        static_cast<int32_t>(method->GetNumRevervedArgs()) - 1;
+    if (!frameWriter->Reserve(static_cast<size_t>(virtualIndex))) {
+        return false;
+    }
+    // [actual args]
+    if (declaredNumArgs > actualNumArgs) {
+        frameWriter->PushValue(JSTaggedValue::Undefined().GetRawData());
+        virtualIndex--;
+    }
+    for (int32_t i = actualNumArgs - 1; i >= 0; i--) {
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        // deopt value
+        if (hasDeoptValue(virtualIndex)) {
+            value = deoptVregs_.at(static_cast<kungfu::OffsetType>(virtualIndex));
+        } else {
+            value = GetActualFrameArgs(i);
+        }
+        frameWriter->PushValue(value.GetRawData());
+        virtualIndex--;
+    }
+
+    // [reserved args]
+    if (method->HaveThisWithCallField()) {
+        JSTaggedValue value = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);
+        frameWriter->PushValue(value.GetRawData());
+        virtualIndex--;
+    }
+    if (method->HaveNewTargetWithCallField()) {
+        JSTaggedValue value = GetFrameArgv(kungfu::CommonArgIdx::NEW_TARGET);
+        frameWriter->PushValue(value.GetRawData());
+        virtualIndex--;
+    }
+    if (method->HaveFuncWithCallField()) {
+        JSTaggedValue value = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
+        frameWriter->PushValue(value.GetRawData());
+        virtualIndex--;
+    }
+
+    // [call field virtual regs]
+    for (int32_t i = virtualIndex; i >= 0; i--) {
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (hasDeoptValue(virtualIndex)) {
+            value = deoptVregs_.at(static_cast<kungfu::OffsetType>(virtualIndex));
+        }
+        frameWriter->PushValue(value.GetRawData());
+        virtualIndex--;
+    }
+    return true;
+}
+
 JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 {
     ASSERT(thread_ != nullptr);
-    auto fun = callTarget_;
+    JSTaggedValue callTarget = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
     FrameWriter frameWriter(this);
     // Push asm interpreter frame
-    auto method = GetMethod(callTarget_);
-    auto numVRegs = method->GetNumberVRegs();
-    if (!frameWriter.Reserve(numVRegs)) {
+    auto method = GetMethod(callTarget);
+    if (!CollectVirtualRegisters(method, &frameWriter)) {
         return JSTaggedValue::Exception().GetRawData();
-    }
-
-    for (int32_t i = numVRegs - 1; i >= 0; i--) {
-        JSTaggedValue value = JSTaggedValue::Undefined();
-        if (vregs_.find(static_cast<kungfu::OffsetType>(i)) != vregs_.end()) {
-            value = vregs_.at(static_cast<kungfu::OffsetType>(i));
-        }
-        frameWriter.PushValue(value.GetRawData());
     }
     const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
     AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
-    JSTaggedValue env = JSTaggedValue(GetArgv(LEXENV_INDEX));
-    JSTaggedValue thisObj = JSTaggedValue(GetArgv(THIS_VALUE_INDEX));
-    auto acc = vregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::ACC_INDEX));
-    statePtr->function = fun;
+
+    JSTaggedValue thisObj = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);;
+    auto acc = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::ACC_INDEX));
+    statePtr->function = callTarget;
     statePtr->acc = acc;
-    statePtr->env = env;
+    statePtr->env = env_;
     statePtr->callSize = 0;
     statePtr->fp = 0;  // need update
     statePtr->thisObj = thisObj;

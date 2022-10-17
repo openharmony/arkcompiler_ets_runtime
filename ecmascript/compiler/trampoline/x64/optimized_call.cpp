@@ -1375,29 +1375,31 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
 
+    Register glueReg = rdi;
     __ Pushq(rbp);
     __ Movq(rsp, rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_FRAME));
+    __ Push(glueReg);
     __ PushCppCalleeSaveRegisters();
 
-    Register glueReg = rdi;
-    __ Push(glueReg);
     __ Movq(rdi, rax); // glue
     __ PushAlignBytes();
     __ Pushq(0);  // argc
     __ Pushq(kungfu::RuntimeStubCSigns::ID_DeoptHandler);
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-    __ Addq(3 * FRAME_SLOT_SIZE, rsp); // 3: skip runtimeId argc argv[0] argv[1]
-    __ Pop(glueReg);
+    __ Addq(3 * FRAME_SLOT_SIZE, rsp); // 3: skip runtimeId argc & align
 
     Register context = rsi;
     __ Movq(rax, context);
+
+    Label target;
+    __ PopCppCalleeSaveRegisters();
+    __ Pop(glueReg);
+
     Label stackOverflow;
     __ Cmpq(JSTaggedValue::VALUE_EXCEPTION, rax);
     __ Je(&stackOverflow);
 
-    Label target;
-    __ PopCppCalleeSaveRegisters();
     __ Movq(Operand(context, AsmStackContext::GetCallerFpOffset(false)), rbp);
     __ Movq(Operand(context, AsmStackContext::GetCallFrameTopOffset(false)), rsp);
     __ Subq(FRAME_SLOT_SIZE, rsp); // skip lr
@@ -1416,10 +1418,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
         __ Pushq(0); // argc
         __ Pushq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException);
         __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-        __ Addq(16, rsp); // 16: skip runtimeId argc
-
-        __ PopCppCalleeSaveRegisters();
-        __ Addq(FRAME_SLOT_SIZE, rsp);
+        __ Addq(FRAME_SLOT_SIZE * 3, rsp); // skip runtimeId argc & type
         __ Popq(rbp);
         __ Ret();
     }

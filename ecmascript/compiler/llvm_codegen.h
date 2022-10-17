@@ -71,9 +71,6 @@ struct CodeInfo {
         if (reqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
             reqSecs_ = nullptr;
         }
-        // align machineCode for aarch64
-        reqSecs_ += MachineCode::DATA_OFFSET +
-            AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
         unreqSecs_ = static_cast<uint8_t *>(mmap(nullptr, UNREQUIRED_SECS_LIMIT, protRWX, flags, -1, 0));
         if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
             unreqSecs_ = nullptr;
@@ -84,8 +81,6 @@ struct CodeInfo {
     {
         Reset();
         if (reqSecs_ != nullptr) {
-            reqSecs_ -= MachineCode::DATA_OFFSET +
-                AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
             munmap(reqSecs_, REQUIRED_SECS_LIMIT);
         }
         reqSecs_ = nullptr;

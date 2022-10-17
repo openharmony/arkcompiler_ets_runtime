@@ -299,7 +299,7 @@ void SlowPathLowering::Lower(GateRef gate)
     GateRef newTarget = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
     GateRef actualArgc = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
-    GateRef thisObj = argAcc_.GetCommonArgGate(CommonArgIdx::THIS);
+    GateRef thisObj = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
 
     auto pc = bcBuilder_->GetJSBytecode(gate);
     EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
@@ -869,7 +869,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
 
     // set this
     GateRef thisOffset = builder_.IntPtr(GeneratorContext::GENERATOR_THIS_OFFSET);
-    GateRef thisObj = argAcc_.GetCommonArgGate(CommonArgIdx::THIS);
+    GateRef thisObj = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     builder_.Store(VariableType::JS_ANY(), glue, context, thisOffset, thisObj);
 
     // set method
@@ -2851,7 +2851,7 @@ void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef glue, GateRef thi
     {
         GateRef undefined = builder_.UndefineConstant();
         result = LowerCallRuntime(glue, RTSTUB_ID(StoreICByValue), {undefined, receiver, propKey, accValue,
-            builder_.ToTaggedInt(undefined)});
+            builder_.ToTaggedInt(builder_.Int64(0))});
         builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
             &exceptionExit, &successExit);
     }

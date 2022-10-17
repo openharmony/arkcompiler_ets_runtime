@@ -122,7 +122,12 @@ public:
 
     uint32_t GetNumArgs() const
     {
-        return GetNumArgsWithCallField() + HaveFuncWithCallField() +
+        return GetNumArgsWithCallField() + GetNumRevervedArgs();
+    }
+
+    uint32_t GetNumRevervedArgs() const
+    {
+        return HaveFuncWithCallField() +
             HaveNewTargetWithCallField() + HaveThisWithCallField();
     }
 

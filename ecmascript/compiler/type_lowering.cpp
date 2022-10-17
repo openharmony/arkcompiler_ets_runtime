@@ -98,7 +98,7 @@ void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType src
         UNREACHABLE();
     }
     builder_.Bind(&exit);
-    ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerTypeCheck(GateRef gate)
@@ -388,7 +388,7 @@ void TypeLowering::LowerNumberAdd(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CalculateNumbers<OpCode::ADD>(left, right, leftType, rightType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberSub(GateRef gate)
@@ -399,7 +399,7 @@ void TypeLowering::LowerNumberSub(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CalculateNumbers<OpCode::SUB>(left, right, leftType, rightType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberMul(GateRef gate)
@@ -410,7 +410,7 @@ void TypeLowering::LowerNumberMul(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CalculateNumbers<OpCode::MUL>(left, right, leftType, rightType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberLess(GateRef gate)
@@ -421,7 +421,7 @@ void TypeLowering::LowerNumberLess(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_LESS>(left, right, leftType, rightType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberLessEq(GateRef gate)
@@ -432,7 +432,7 @@ void TypeLowering::LowerNumberLessEq(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_LESSEQ>(left, right, leftType, rightType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberGreater(GateRef gate)
@@ -443,7 +443,7 @@ void TypeLowering::LowerNumberGreater(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_LESS>(right, left, rightType, leftType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberGreaterEq(GateRef gate)
@@ -454,7 +454,7 @@ void TypeLowering::LowerNumberGreaterEq(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_LESSEQ>(right, left, rightType, leftType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberDiv(GateRef gate)
@@ -465,7 +465,7 @@ void TypeLowering::LowerNumberDiv(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = DivNumbers(left, right, leftType, rightType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberEq(GateRef gate)
@@ -476,7 +476,7 @@ void TypeLowering::LowerNumberEq(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_EQ>(left, right, leftType, rightType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberNotEq(GateRef gate)
@@ -487,7 +487,7 @@ void TypeLowering::LowerNumberNotEq(GateRef gate)
     GateType rightType = GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_NOTEQ>(left, right, leftType, rightType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberInc(GateRef gate)
@@ -496,7 +496,7 @@ void TypeLowering::LowerNumberInc(GateRef gate)
     GateType valueType = GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_INC>(value, valueType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerNumberDec(GateRef gate)
@@ -505,24 +505,7 @@ void TypeLowering::LowerNumberDec(GateRef gate)
     GateType valueType = GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_DEC>(value, valueType);
-    ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
-}
-
-void TypeLowering::ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value)
-{
-    auto uses = acc_.Uses(gate);
-    for (auto useIt = uses.begin(); useIt != uses.end();) {
-        if (acc_.IsStateIn(useIt)) {
-            useIt = acc_.ReplaceIn(useIt, state);
-        } else if (acc_.IsDependIn(useIt)) {
-            useIt = acc_.ReplaceIn(useIt, depend);
-        } else if (acc_.IsValueIn(useIt)) {
-            useIt = acc_.ReplaceIn(useIt, value);
-        } else {
-            UNREACHABLE();
-        }
-    }
-    acc_.DeleteGate(gate);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 template<OpCode::Op Op>

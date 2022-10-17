@@ -364,6 +364,7 @@ public:
     bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
     void DeleteGuardAndFrameState(GateRef gate);
+    void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const

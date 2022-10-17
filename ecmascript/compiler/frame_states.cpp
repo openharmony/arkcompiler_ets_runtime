@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/frame_states.h"
 
 namespace panda::ecmascript::kungfu {
@@ -24,7 +23,6 @@ FrameStateInfo *FrameStateInfo::Clone()
 FrameStateBuilder::FrameStateBuilder(Circuit *circuit, const MethodLiteral *literal)
     : literal_(literal), circuit_(circuit), gateAcc_(circuit)
 {
-    currentInfo_ = new FrameStateInfo(literal_);
 }
 
 FrameStateBuilder::~FrameStateBuilder()
@@ -37,62 +35,28 @@ FrameStateBuilder::~FrameStateBuilder()
     currentInfo_ = nullptr;
 }
 
-void FrameStateBuilder::BuildArgsValues(ArgumentAccessor *argAcc)
+void FrameStateBuilder::InitFrameValues()
 {
-    auto callFieldNumVregs = literal_->GetNumVregsWithCallField();
+    auto values = currentInfo_->GetValues();
     auto undefinedGate = circuit_->GetConstantGate(MachineType::I64,
                                                    JSTaggedValue::VALUE_UNDEFINED,
                                                    GateType::TaggedValue());
-    auto values = currentInfo_->GetValues();
-    for (size_t i = 0; i < callFieldNumVregs; i++) {
-        values->push_back(undefinedGate);
-    }
-    if (literal_->HaveFuncWithCallField()) {
-        auto gate = argAcc->GetCommonArgGate(CommonArgIdx::FUNC);
-        values->push_back(gate);
-    }
-    if (literal_->HaveNewTargetWithCallField()) {
-        auto gate = argAcc->GetCommonArgGate(CommonArgIdx::NEW_TARGET);
-        values->push_back(gate);
-    }
-    if (literal_->HaveThisWithCallField()) {
-        auto gate = argAcc->GetCommonArgGate(CommonArgIdx::THIS);
-        values->push_back(gate);
-    }
-
-    auto numArgs = literal_->GetNumArgsWithCallField();
+    auto numArgs = literal_->GetNumberVRegs();
     for (size_t i = 0; i < numArgs; i++) {
-        auto gate = argAcc->ArgsAt(i + static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS));
-        values->push_back(gate);
+        values->push_back(undefinedGate);
     }
     // push acc
     values->push_back(undefinedGate);
     ASSERT(currentInfo_->GetNumberVRegs() == values->size());
 }
 
-GateRef FrameStateBuilder::FrameState(size_t pcOffset,
-    std::map<GateRef, std::pair<size_t, const uint8_t *>> &jsgateToBytecode)
+GateRef FrameStateBuilder::FrameState(size_t pcOffset)
 {
     auto numVregs = currentInfo_->GetNumberVRegs();
     size_t frameStateInputs = numVregs + 1; // +1: for pc
     std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
     for (size_t i = 0; i < numVregs; i++) {
-        auto iter = jsgateToBytecode.find(ValuesAt(i));
-        if (iter != jsgateToBytecode.end()) {
-            auto pc = iter->second.second;
-            BytecodeInstruction inst(pc);
-            EcmaOpcode op = inst.GetOpcode();
-            // vreg needed remove from framstate if it comes from RESUMEGENERATOR, otherwisethe upperbound will not be
-            // found
-            if (op == EcmaOpcode::RESUMEGENERATOR) {
-                inList[i] = circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED,
-                                                      GateType::TaggedValue());
-            } else {
-                inList[i] = ValuesAt(i);
-            }
-        } else {
-            inList[i] = ValuesAt(i);
-        }
+        inList[i] = ValuesAt(i);
     }
     auto pcGate = circuit_->GetConstantGate(MachineType::I64,
                                             pcOffset,
@@ -101,11 +65,10 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset,
     return circuit_->NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
 }
 
-void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, GateRef glue,
-    std::map<GateRef, std::pair<size_t, const uint8_t *>> &jsgateToBytecode)
+void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, GateRef glue)
 {
     auto depend = gateAcc_.GetDep(gate);
-    GateRef frameState = FrameState(pcOffset, jsgateToBytecode);
+    GateRef frameState = FrameState(pcOffset);
     auto trueGate = circuit_->GetConstantGate(MachineType::I1,
                                               1, // 1: true
                                               GateType::NJSValue());
@@ -114,18 +77,19 @@ void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, GateRef glue,
     gateAcc_.ReplaceDependIn(gate, guard);
 }
 
-void FrameStateBuilder::AdvenceToSuccessor(const uint8_t *predPc, const uint8_t *endPc)
+void FrameStateBuilder::AdvenceToBasicBlock(size_t id)
 {
-    size_t pcOffset = static_cast<size_t>(endPc - literal_->GetBytecodeArray());
-    if (predPc != nullptr) {
-        size_t predPcOffset = static_cast<size_t>(predPc - literal_->GetBytecodeArray());
-        auto predFrameInfo = stateInfos_[predPcOffset];
-        ASSERT(predFrameInfo != nullptr);
-        currentInfo_ = predFrameInfo;
-        currentInfo_ = CloneFrameState(pcOffset);
-    } else {
-        // for first block
-        stateInfos_[pcOffset] = currentInfo_;
+    if (currentInfo_ == nullptr) {
+        // for last block
+        currentInfo_ = new FrameStateInfo(literal_);
+        stateInfos_[id] = currentInfo_;
+        InitFrameValues();
+        return;
     }
+    auto frameInfo = stateInfos_[id];
+    if (frameInfo == nullptr) {
+        frameInfo = CloneFrameState(currentInfo_, id);
+    }
+    currentInfo_ = frameInfo;
 }
 }

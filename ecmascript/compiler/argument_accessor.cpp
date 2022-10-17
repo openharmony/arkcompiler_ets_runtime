@@ -63,13 +63,13 @@ size_t ArgumentAccessor::GetFunctionArgIndex(const size_t currentVreg, const boo
             return static_cast<size_t>(CommonArgIdx::NEW_TARGET);
         }
         if (!haveFunc && currentVreg == 1) {
-            return static_cast<size_t>(CommonArgIdx::THIS);
+            return static_cast<size_t>(CommonArgIdx::THIS_OBJECT);
         }
         if (!haveNewTarget && currentVreg == 0) {
             return static_cast<size_t>(CommonArgIdx::FUNC);
         }
         if (!haveNewTarget && currentVreg == 1) {
-            return static_cast<size_t>(CommonArgIdx::THIS);
+            return static_cast<size_t>(CommonArgIdx::THIS_OBJECT);
         }
         if (!haveThis && currentVreg == 0) {
             return static_cast<size_t>(CommonArgIdx::FUNC);
@@ -87,7 +87,7 @@ size_t ArgumentAccessor::GetFunctionArgIndex(const size_t currentVreg, const boo
             return static_cast<size_t>(CommonArgIdx::NEW_TARGET);
         }
         if (haveThis) {
-            return static_cast<size_t>(CommonArgIdx::THIS);
+            return static_cast<size_t>(CommonArgIdx::THIS_OBJECT);
         }
     }
     return currentVreg - numCommonArgs + static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS);
