@@ -78,6 +78,12 @@ public:
     {
         return name_;
     }
+
+    void SetName(CString *name)
+    {
+        name_ = name;
+    }
+
     NodeType GetType() const
     {
         return type_;
