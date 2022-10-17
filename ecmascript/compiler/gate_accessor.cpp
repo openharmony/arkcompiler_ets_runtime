@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/circuit_builder.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -473,5 +474,19 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
         }
     }
     DeleteGate(gate);
+}
+
+GateType GateAccessor::GetLeftType(GateRef gate) const
+{
+    auto operandTypes = GetBitField(gate);
+    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
+    return GateType(static_cast<uint32_t>(temp));
+}
+
+GateType GateAccessor::GetRightType(GateRef gate) const
+{
+    auto operandTypes = GetBitField(gate);
+    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
+    return GateType(static_cast<uint32_t>(operandTypes ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS)));
 }
 }  // namespace panda::ecmascript::kungfu

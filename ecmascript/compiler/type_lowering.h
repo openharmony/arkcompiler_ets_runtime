@@ -180,8 +180,6 @@ private:
     GateRef FastDiv(GateRef left, GateRef right);
     GateRef DivNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     GateRef FastEqual(GateRef left, GateRef right);
-    GateType GetLeftType(GateRef gate);
-    GateType GetRightType(GateRef gate);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

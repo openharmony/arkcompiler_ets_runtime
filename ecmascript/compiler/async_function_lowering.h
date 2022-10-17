@@ -45,6 +45,11 @@ public:
     }
 
 private:
+    bool IsLogEnabled() const
+    {
+        return enableLog_;
+    }
+
     void ProcessJumpTable();
 
     void RebuildGeneratorCfg(GateRef resumeGate, GateRef restoreOffsetGate, GateRef ifFalseCondition, GateRef newTarget,

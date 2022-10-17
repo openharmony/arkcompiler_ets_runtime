@@ -160,10 +160,12 @@ public:
 
 class GuardEliminatingPass {
 public:
-    bool Run(PassData* data, BytecodeCircuitBuilder *builder)
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
     {
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        GuardEliminating(builder, data->GetCircuit(), enableLog, data->GetMethodName()).Run();
+        if (builder->HasTypes()) {
+            GuardEliminating(builder, data->GetCircuit(), cmpCfg, enableLog, data->GetMethodName()).Run();
+        }
         return true;
     }
 };

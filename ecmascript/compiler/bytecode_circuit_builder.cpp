@@ -2082,13 +2082,15 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
         gateAcc_.NewIn(gate, 0, state);
         gateAcc_.NewIn(gate, 1, depend);
         auto ifTrue = circuit_.NewGate(OpCode(OpCode::IF_TRUE), 0, {gate}, GateType::Empty());
+        auto trueRelay = circuit_.NewGate(OpCode(OpCode::DEPEND_RELAY), 0, {ifTrue, gate}, GateType::Empty());
         auto ifFalse = circuit_.NewGate(OpCode(OpCode::IF_FALSE), 0, {gate}, GateType::Empty());
+        auto falseRelay = circuit_.NewGate(OpCode(OpCode::DEPEND_RELAY), 0, {ifFalse, gate}, GateType::Empty());
         if (bb.succs.size() == 1) {
             auto &bbNext = bb.succs[0];
             ASSERT(bbNext->id == bb.id + 1);
             auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
-            SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
-            SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
+            SetBlockPred(*bbNext, ifFalse, trueRelay, isLoopBack);
+            SetBlockPred(*bbNext, ifTrue, falseRelay, isLoopBack);
             bbNext->expandedPreds.push_back({bb.id, pc, false});
         } else {
             ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
@@ -2096,12 +2098,12 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, const uint8_t *pc, Gate
             for (auto &bbNext: bb.succs) {
                 if (bbNext->id == bb.id + 1) {
                     auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
-                    SetBlockPred(*bbNext, ifFalse, gate, isLoopBack);
+                    SetBlockPred(*bbNext, ifFalse, falseRelay, isLoopBack);
                     bbNext->expandedPreds.push_back({bb.id, pc, false});
                     bitSet |= 1;
                 } else {
                     auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
-                    SetBlockPred(*bbNext, ifTrue, gate, isLoopBack);
+                    SetBlockPred(*bbNext, ifTrue, trueRelay, isLoopBack);
                     bbNext->expandedPreds.push_back({bb.id, pc, false});
                     bitSet |= 2; // 2:verify
                 }
