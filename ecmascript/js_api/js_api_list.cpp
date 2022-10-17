@@ -124,7 +124,9 @@ JSTaggedValue JSAPIList::GetLastIndexOf(const JSTaggedValue &element)
 void JSAPIList::Clear(JSThread *thread)
 {
     TaggedSingleList *singleList = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
-    singleList->Clear(thread);
+    if (singleList->NumberOfNodes() > 0) {
+        singleList->Clear(thread);
+    }
 }
 
 JSTaggedValue JSAPIList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIList> &list, const int &index)

@@ -403,7 +403,6 @@ JSTaggedValue JSAPILightWeightMap::ToString(JSThread *thread, const JSHandle<JSA
     std::u16string colonStr = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> {}.from_bytes(":");
     uint32_t length = lightWeightMap->GetLength();
     std::u16string concatStr;
-    std::u16string concatStrNew;
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
 
@@ -417,24 +416,24 @@ JSTaggedValue JSAPILightWeightMap::ToString(JSThread *thread, const JSHandle<JSA
             valueStr = EcmaStringAccessor(valueStringHandle).ToU16String();
         }
 
-        std::u16string keyStr;
+        std::u16string nextStr;
         keyHandle.Update(lightWeightMap->GetKeyAt(thread, lightWeightMap, k));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!keyHandle->IsUndefined() && !keyHandle->IsNull()) {
             JSHandle<EcmaString> keyStringHandle = JSTaggedValue::ToString(thread, keyHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            keyStr = EcmaStringAccessor(keyStringHandle).ToU16String();
+            nextStr = EcmaStringAccessor(keyStringHandle).ToU16String();
         }
 
-        std::u16string nextStr = base::StringHelper::Append(keyStr, colonStr);
-        nextStr = base::StringHelper::Append(nextStr, valueStr);
+        nextStr.append(colonStr);
+        nextStr.append(valueStr);
 
         if (k > 0) {
-            concatStrNew = base::StringHelper::Append(concatStr, sepStr);
-            concatStr = base::StringHelper::Append(concatStrNew, nextStr);
+            concatStr.append(sepStr);
+            concatStr.append(nextStr);
             continue;
         }
-        concatStr = base::StringHelper::Append(concatStr, nextStr);
+        concatStr.append(nextStr);
     }
 
     char16_t *char16tData = concatStr.data();

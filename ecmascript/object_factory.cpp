@@ -2190,7 +2190,8 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
     TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
     JSHandle<TaggedArray> newArray(thread_, header);
-    newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
+    newArray->SetLength(newLength);
+    newArray->SetExtraLength(old->GetExtraLength());
 
     for (uint32_t i = 0; i < newLength; i++) {
         JSTaggedValue value = old->Get(i);

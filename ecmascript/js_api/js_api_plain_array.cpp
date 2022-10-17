@@ -307,23 +307,22 @@ JSTaggedValue JSAPIPlainArray::ToString(JSThread *thread, const JSHandle<JSAPIPl
             valueStr = EcmaStringAccessor(valueStringHandle).ToU16String();
         }
 
-        std::u16string keyStr;
+        std::u16string nextStr;
         keyHandle.Update(plainarray->GetKeyAt(k));
         if (!keyHandle->IsUndefined() && !keyHandle->IsNull()) {
             JSHandle<EcmaString> keyStringHandle = JSTaggedValue::ToString(thread, keyHandle);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            keyStr = EcmaStringAccessor(keyStringHandle).ToU16String();
+            nextStr = EcmaStringAccessor(keyStringHandle).ToU16String();
         }
 
-        std::u16string nextStr = base::StringHelper::Append(keyStr, colonStr);
-        nextStr = base::StringHelper::Append(nextStr, valueStr);
-
+        nextStr.append(colonStr);
+        nextStr.append(valueStr);
         if (k > 0) {
-            concatStrNew = base::StringHelper::Append(concatStr, sepStr);
-            concatStr = base::StringHelper::Append(concatStrNew, nextStr);
+            concatStr.append(sepStr);
+            concatStr.append(nextStr);
             continue;
         }
-        concatStr = base::StringHelper::Append(concatStr, nextStr);
+        concatStr.append(nextStr);
     }
 
     char16_t *char16tData = concatStr.data();
