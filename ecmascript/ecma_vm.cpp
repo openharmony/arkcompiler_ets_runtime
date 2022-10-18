@@ -403,13 +403,24 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
                                               const JSPandaFile *jsPandaFile)
 {
     aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile);
-    std::vector<JSTaggedType> args(7, JSTaggedValue::Undefined().GetRawData()); // 7: number of para
-    args[0] = mainFunc.GetTaggedValue().GetRawData();
-    args[2] = thisArg.GetTaggedValue().GetRawData();  // 2: parameter of this
+    size_t argsNum = 7; // 7: number of para
+    JSTaggedType newTarget = thread_->GlobalConstants()->GetUndefined().GetRawData();
+    JSTaggedType thisValue = thisArg.GetTaggedValue().GetRawData();
+    JSTaggedValue res = ExecuteAot(argsNum, mainFunc, newTarget, thisValue);
+    return res;
+}
+
+JSTaggedValue EcmaVM::ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, JSTaggedType newTarget,
+                                 JSTaggedType thisArg)
+{
+    std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
+    args[0] = callTarget.GetTaggedValue().GetRawData();
+    args[1] = newTarget;
+    args[2] = thisArg; // 2: parameter of this
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    JSTaggedValue env = mainFunc->GetLexicalEnv();
-    Method *method = mainFunc->GetCallTarget();
-    args[6] = env.GetRawData(); // 6: last arg is env.
+    JSTaggedValue env = callTarget->GetLexicalEnv();
+    Method *method = callTarget->GetCallTarget();
+    args[argsNum - 1] = env.GetRawData();
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             reinterpret_cast<uintptr_t>(thread_->GetCurrentSPFrame()),
                                                             static_cast<uint32_t>(args.size()) - 1,

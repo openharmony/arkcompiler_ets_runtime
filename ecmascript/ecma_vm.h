@@ -484,6 +484,9 @@ public:
     {
         return quickFixManager_;
     }
+
+    JSTaggedValue ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, JSTaggedType newTarget,
+                             JSTaggedType thisArg);
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
