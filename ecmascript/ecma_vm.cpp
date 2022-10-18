@@ -147,8 +147,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     snapshotFileName_ = options_.GetSnapshotFile().c_str();
     frameworkAbcFileName_ = options_.GetFrameworkAbcFile().c_str();
     options_.ParseAsmInterOption();
-
-    debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>();
 }
 
 bool EcmaVM::Initialize()
@@ -168,6 +166,7 @@ bool EcmaVM::Initialize()
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
     }
+    debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
 
     if (!options_.EnableSnapshotDeserialize()) {
@@ -205,7 +204,6 @@ bool EcmaVM::Initialize()
     GenerateInternalNativeMethods();
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
-    debuggerManager_->Initialize(this);
     tsManager_ = new TSManager(this);
     tsManager_->Initialize();
     quickFixManager_ = new QuickFixManager();
