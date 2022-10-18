@@ -42,9 +42,9 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIHashSetIterator> iter = JSHandle<JSAPIHashSetIterator>::Cast(input);
     JSHandle<JSTaggedValue> iteratedHashSet(thread, iter->GetIteratedHashSet());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratedHashSet->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     JSHandle<JSAPIHashSet> hashSet = JSHandle<JSAPIHashSet>::Cast(iteratedHashSet);
     JSHandle<TaggedHashArray> tableArr(thread, hashSet->GetTable());
@@ -78,7 +78,7 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     // Set O.[[IteratedMap]] to undefined.
     iter->SetIteratedHashSet(thread, JSTaggedValue::Undefined());
-    return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+    return globalConst->GetUndefinedIterResult();
 }
 
 // level traversal

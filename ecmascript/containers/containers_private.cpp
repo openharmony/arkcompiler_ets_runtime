@@ -61,6 +61,7 @@
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
@@ -75,6 +76,12 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
     if (!JSTaggedValue::ToElementIndex(argv.GetTaggedValue(), &tag) || tag >= ContainerTag::END) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Incorrect input parameters", JSTaggedValue::Exception());
     }
+
+    // Lazy set an undefinedIteratorResult to global constants
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<JSObject> undefinedIteratorResult = JSIterator::CreateIterResultObject(thread, undefinedHandle, true);
+    globalConst->SetConstant(ConstantIndex::UNDEFINED_INTERATOR_RESULT_INDEX, undefinedIteratorResult.GetTaggedValue());
 
     JSTaggedValue res = JSTaggedValue::Undefined();
     switch (tag) {

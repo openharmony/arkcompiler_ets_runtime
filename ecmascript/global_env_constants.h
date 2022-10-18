@@ -152,6 +152,7 @@ class JSThread;
     V(JSTaggedValue, ListFunction, LIST_FUNCTION_INDEX, ListFunction)                                                 \
     V(JSTaggedValue, LinkedListFunction, LINKED_LIST_FUNCTION_INDEX, LinkedListFunction)                              \
     V(JSTaggedValue, ListIteratorPrototype, LIST_ITERATOR_PROTOTYPE_INDEX, ListIterator)                              \
+    V(JSTaggedValue, UndefinedIterResult, UNDEFINED_INTERATOR_RESULT_INDEX, UndefinedIterResult)                      \
     V(JSTaggedValue, LinkedListIteratorPrototype, LINKED_LIST_ITERATOR_PROTOTYPE_INDEX, LinkedListIterator)           \
     /* SymbolTable*RegisterSymbols */                                                                                 \
     V(JSTaggedValue, NameString, NAME_STRING_INDEX, name)                                                             \
