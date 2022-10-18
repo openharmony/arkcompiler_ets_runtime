@@ -2522,7 +2522,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
         if (it == jsgateToBytecode_.cend()) {
             continue;
         }
-        if (gateAcc_.GetOpCode(gate) == OpCode::CONSTANT || gateAcc_.GetOpCode(gate) == OpCode::CONST_DATA) {
+        if (gateAcc_.IsConstant(gate)) {
             continue;
         }
         const auto &[id, pc] = it->second;

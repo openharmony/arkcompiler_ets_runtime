@@ -144,7 +144,7 @@ public:
 
     bool IsClassLiteraId() const
     {
-         return type_ == ConstDataIDType::ClassLiteralIDType;
+        return type_ == ConstDataIDType::ClassLiteralIDType;
     }
 
     BitField CaculateBitField() const

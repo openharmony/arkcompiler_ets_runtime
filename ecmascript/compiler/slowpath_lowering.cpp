@@ -315,9 +315,6 @@ void SlowPathLowering::Lower(GateRef gate)
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (op) {
-        case EcmaOpcode::LDA_STR_ID16:
-            // LowerLoadStr(gate, glue, jsFunc);
-            break;
         case EcmaOpcode::CALLARG0_IMM8:
             LowerCallArg0(gate, glue);
             break;

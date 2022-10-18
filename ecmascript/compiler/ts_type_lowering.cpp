@@ -152,25 +152,6 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::JEQZ_IMM32:
             LowerConditionJump(gate);
             break;
-        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-            // lower LD_OBJ
-            // LowerTypedLoadObjByName(gate);
-            break;
-        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-            // LowerTypedStoreObjByName(gate);
-            break;
-        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
-        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
-        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
-            // LowerTypedLoadObjByIndex(gate);
-            break;
-        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
-        case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
-        case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
-            // LowerTypedStoreObjByIndex(gate);
-            break;
         default:
             break;
     }

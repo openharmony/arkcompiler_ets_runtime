@@ -577,18 +577,6 @@ JSTaggedValue TSManager::GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile
                 constantPoolInfo->Set(thread, index++, string);
                 break;
             }
-            case ConstPoolType::METHOD: {
-                auto method = ConstantPool::GetMethodFromCache(thread, constantPool.GetTaggedValue(), constIndex);
-                constantPoolInfo->Set(thread, index++, JSTaggedValue(constIndex));
-                constantPoolInfo->Set(thread, index++, method);
-                break;
-            }
-            case ConstPoolType::CLASS_LITERAL: {
-                auto litera = ConstantPool::GetClassLiteralFromCache(thread, constantPool, constIndex);
-                constantPoolInfo->Set(thread, index++, JSTaggedValue(constIndex));
-                constantPoolInfo->Set(thread, index++, litera);
-                break;
-            }
             default:
                 UNREACHABLE();
         }

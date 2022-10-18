@@ -255,7 +255,7 @@ private:
     void LowerLdSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByValue(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerTryStGlobalByName(GateRef gate, GateRef glue);
-    void LowerStConstToGlobalRecord(GateRef gate, GateRef glue,bool isConst);
+    void LowerStConstToGlobalRecord(GateRef gate, GateRef glue, bool isConst);
     void LowerStOwnByValueWithNameSet(GateRef gate, GateRef glue);
     void LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue);
     void LowerLdGlobalVar(GateRef gate, GateRef glue);
