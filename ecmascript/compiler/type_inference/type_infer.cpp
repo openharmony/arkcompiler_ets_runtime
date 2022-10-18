@@ -617,6 +617,10 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
             auto thread = tsManager_->GetEcmaVM()->GetJSThread();
             auto name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
             auto type = GetPropType(objType, name);
+            if (tsManager_->IsGetterSetterFunc(type)) {
+                auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
+                return UpdateType(gate, returnGt);
+            }
             return UpdateType(gate, type);
         }
     }

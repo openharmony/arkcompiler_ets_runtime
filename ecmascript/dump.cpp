@@ -3181,9 +3181,10 @@ void TSFunctionType::Dump(std::ostream &os) const
             os << " - Visibility: protected";
             break;
     }
-    os << " | Static: " << std::boolalpha << GetStatic();
-    os << " | Async: " << std::boolalpha << GetAsync();
-    os << " | Generator: " << std::boolalpha << GetGenerator();
+    os << " | IsStatic: " << std::boolalpha << GetStatic();
+    os << " | IsAsync: " << std::boolalpha << GetAsync();
+    os << " | IsGenerator: " << std::boolalpha << GetGenerator();
+    os << " | IsGetterSetter: " << std::boolalpha << GetIsGetterSetter();
     os << "\n";
 }
 
