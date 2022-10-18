@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/deoptimizer.h"
+#include "ecmascript/Relocator.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/message_string.h"
@@ -228,6 +229,41 @@ void AOTModulePackInfo::Save(const std::string &filename)
     file.close();
 }
 
+
+void AOTModulePackInfo::RewriteRelcateDeoptHandler([[maybe_unused]] EcmaVM *vm)
+{
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+    JSThread *thread = vm->GetJSThread();
+    uintptr_t patchAddr = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
+    RewriteRelcateTextSection(LLVM_DEOPT_RELOCATE_SYMBOL, patchAddr);
+#endif
+}
+
+void AOTModulePackInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
+    [[maybe_unused]] uintptr_t patchAddr)
+{
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+    for (auto &des: des_) {
+        uint32_t relaTextSize = des.GetSecSize(ElfSecName::RELATEXT);
+        if (relaTextSize != 0) {
+            uint64_t relatextAddr = des.GetSecAddr(ElfSecName::RELATEXT);
+            uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
+            uint64_t symTabAddr = des.GetSecAddr(ElfSecName::SYMTAB);
+            uint32_t symTabSize = des.GetSecSize(ElfSecName::SYMTAB);
+            uint32_t strTabSize = des.GetSecSize(ElfSecName::STRTAB);
+            uint64_t strTabAddr = des.GetSecAddr(ElfSecName::STRTAB);
+            RelocateTextInfo relaText = {textAddr, relatextAddr, relaTextSize};
+            SymAndStrTabInfo symAndStrTabInfo = {symTabAddr, symTabSize, strTabAddr, strTabSize};
+            Relocator relocate(relaText, symAndStrTabInfo);
+#ifndef NDEBUG
+            relocate.DumpRelocateText();
+#endif
+            relocate.RelocateBySymbol(symbol, patchAddr);
+        }
+    }
+#endif
+}
+
 bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
 {
     if (!VerifyFilePath(filename)) {
@@ -323,6 +359,7 @@ void AOTFileManager::LoadAnFile(const std::string &fileName)
         return;
     }
     AddAOTPackInfo(aotPackInfo_);
+    aotPackInfo_.RewriteRelcateDeoptHandler(vm_);
 }
 
 void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filename)
@@ -499,39 +536,6 @@ bool AOTFileManager::RewriteDataSection(uintptr_t dataSec, size_t size,
         return false;
     }
     return true;
-}
-
-bool AOTFileManager::RewriteGotSection()
-{
-    auto fn = [&](const ModuleSectionDes& d) {
-        uintptr_t addr = d.GetSecAddr(ElfSecName::GOT);
-        uint32_t size = d.GetSecSize(ElfSecName::GOT);
-        if (size == 0) {
-            return true;
-        }
-        // only support __llvm_deoptimize is undefined
-        if (size != sizeof(uintptr_t)) {
-            LOG_FULL(FATAL) << "more than one function/data is undefined failed";
-            return false;
-        }
-        auto thread = vm_->GetAssociatedJSThread();
-        uintptr_t ptr = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
-        *(reinterpret_cast<uintptr_t *>(addr)) = ptr;
-        return true;
-    };
-    // aot
-    bool ans = false;
-    for (auto &info : aotPackInfos_) {
-        auto& des = info.GetCodeUnits();
-        for (size_t i = 0; i < des.size(); i++) {
-            auto d = des[i];
-            ans = fn(d);
-            if (!ans) {
-                return ans;
-            }
-        }
-    }
-    return ans;
 }
 
 AOTFileManager::~AOTFileManager()

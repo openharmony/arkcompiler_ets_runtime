@@ -193,14 +193,14 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::LSL, &LLVMIRBuilder::HandleIntLsl},
         {OpCode::SMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
-        {OpCode::GUARD, &LLVMIRBuilder::HandleGuardCall},
+        {OpCode::DEOPT, &LLVMIRBuilder::HandleDeopt},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
         OpCode::FRAMESTATE_ENTRY, OpCode::RETURN_LIST, OpCode::THROW_LIST,
         OpCode::CONSTANT_LIST, OpCode::ARG_LIST, OpCode::THROW,
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY, OpCode::DEPEND_AND,
-        OpCode::FRAME_STATE
+        OpCode::FRAME_STATE, OpCode::GUARD
     };
 }
 
@@ -1852,9 +1852,9 @@ void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
     gate2LValue_[gate] = result;
 }
 
-void LLVMIRBuilder::HandleGuardCall(GateRef gate)
+void LLVMIRBuilder::HandleDeopt(GateRef gate)
 {
-    VisitGuardCall(gate);
+    VisitDeopt(gate);
 }
 
 LLVMTypeRef LLVMIRBuilder::GetExperimentalDeoptTy()
@@ -1874,10 +1874,10 @@ LLVMValueRef LLVMIRBuilder::GetExperimentalDeopt(LLVMModuleRef &module)
     return fn;
 }
 
-void LLVMIRBuilder::VisitGuardCall(GateRef gate)
+void LLVMIRBuilder::VisitDeopt(GateRef gate)
 {
-    LLVMValueRef glue = gate2LValue_.at(acc_.GetIn(gate, 3));
-    GateRef frameState = acc_.GetIn(gate, 2);
+    LLVMValueRef glue = gate2LValue_.at(acc_.GetIn(gate, 2));
+    GateRef frameState = acc_.GetIn(gate, 1);
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
     LLVMValueRef callee = GetExperimentalDeopt(module_);

@@ -121,6 +121,7 @@ public:
         DEPEND_RELAY,
         DEPEND_AND,
         GUARD,
+        DEOPT,
         FRAME_STATE,
         // High Level IR
         JS_BYTECODE,

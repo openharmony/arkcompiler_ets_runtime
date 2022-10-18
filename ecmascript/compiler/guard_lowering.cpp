@@ -32,8 +32,12 @@ void GuardLowering::LowerGuard(GateRef gate)
     GateRef dep = acc_.GetDep(gate);
     acc_.ReplaceDependIn(next, dep);
     GateRef relay = builder_.DependRelay(ifFalse, dep);
-    acc_.ReplaceDependIn(gate, relay);
-    builder_.Return(ifFalse, gate, gate);
+    GateRef frameState = acc_.GetValueIn(gate, 1);
+    GateRef glue = acc_.GetValueIn(gate, 2);
+    GateRef deoptCall = circuit_->NewGate(
+        OpCode(OpCode::DEOPT), 2, {relay, frameState, glue}, GateType::Empty());
+    acc_.DeleteGate(gate);
+    builder_.Return(ifFalse, deoptCall, deoptCall);
 }
 
 void GuardLowering::Run()

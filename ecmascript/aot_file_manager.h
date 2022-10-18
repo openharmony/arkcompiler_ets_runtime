@@ -308,8 +308,9 @@ public:
         accumulateTotalSize(moduleDes.GetArkStackMapSize());
         aotFileHashs_.emplace_back(hash);
     }
-
+    void RewriteRelcateDeoptHandler(EcmaVM *vm);
 private:
+    void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::vector<uint32_t> aotFileHashs_ {};
 };
 
@@ -414,7 +415,6 @@ public:
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
-    bool RewriteGotSection();
 
 private:
     void SetAOTmmap(void *addr, size_t totalCodeSize)
@@ -435,6 +435,11 @@ private:
     void AddAOTPackInfo(AOTModulePackInfo packInfo)
     {
         aotPackInfos_.emplace_back(packInfo);
+    }
+
+    void RewriteRelcateDeoptHandler(EcmaVM *vm, AOTModulePackInfo packInfo)
+    {
+        packInfo.RewriteRelcateDeoptHandler(vm);
     }
 
     uintptr_t GetAOTFuncEntry(uint32_t hash, uint32_t methodId)

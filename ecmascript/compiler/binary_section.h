@@ -32,6 +32,9 @@ enum class ElfSecName : uint8_t {
     TEXT,
     DATA,
     GOT,
+    RELATEXT,
+    STRTAB,
+    SYMTAB,
     LLVM_STACKMAP,
     SIZE
 };
@@ -72,7 +75,13 @@ public:
             value_ = ElfSecName::DATA;
         } else if (str.compare(".got") == 0) {
             value_ = ElfSecName::GOT;
-        } else if (str.compare(".llvm_stackmaps") == 0) {
+        } else if (str.compare(".rela.text") == 0) {
+            value_ = ElfSecName::RELATEXT;
+        } else if (str.compare(".strtab") == 0) {
+            value_ = ElfSecName::STRTAB;
+        } else if (str.compare(".symtab") == 0) {
+            value_ = ElfSecName::SYMTAB;
+        }  else if (str.compare(".llvm_stackmaps") == 0) {
             value_ = ElfSecName::LLVM_STACKMAP;
         }
     }
@@ -108,6 +117,9 @@ private:
     ElfSecName value_ {ElfSecName::NONE};
     static constexpr size_t AOTSecFeatureTable_[static_cast<size_t>(ElfSecName::SIZE)] = {
         ElfSecFeature::NOT_VALID,
+        ElfSecFeature::VALID_AND_SEQUENTIAL,
+        ElfSecFeature::VALID_AND_SEQUENTIAL,
+        ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,

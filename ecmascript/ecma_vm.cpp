@@ -771,7 +771,6 @@ void EcmaVM::LoadAOTFiles()
 {
     std::string anFile = options_.GetAOTOutputFile() + ".an";
     aotFileManager_->LoadAnFile(anFile);
-    aotFileManager_->RewriteGotSection();
 
     std::string etsoFile = options_.GetAOTOutputFile() + ".etso";
     aotFileManager_->LoadSnapshotFile(etsoFile);
