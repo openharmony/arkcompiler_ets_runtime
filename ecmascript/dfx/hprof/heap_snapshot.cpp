@@ -814,6 +814,9 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId)
     }
     ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
     if (existNode != node) {
+        if ((node->GetAddress() == existNode->GetAddress()) && (existNode->GetName()->empty())) {
+            existNode->SetName(GetString(strContent));
+        }
         const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(node);
         return nullptr;
     }
@@ -844,6 +847,9 @@ Node *HeapSnapshot::GeneratePrivateStringNode(int sequenceId)
     }
     ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
     if (existNode != node) {
+        if ((node->GetAddress() == existNode->GetAddress()) && (existNode->GetName()->empty())) {
+            existNode->SetName(GetString(strContent));
+        }
         const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(node);
         return nullptr;
     }
