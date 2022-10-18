@@ -1457,7 +1457,7 @@ bool OpCode::IsNop() const
 
 bool OpCode::IsConstant() const
 {
-    return (op_ == OpCode::CONSTANT);
+    return (op_ == OpCode::CONSTANT || op_ == OpCode::CONST_DATA);
 }
 
 bool OpCode::IsTypedOperator() const

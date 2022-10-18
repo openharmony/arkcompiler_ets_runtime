@@ -35,9 +35,15 @@
 namespace panda::ecmascript::kungfu {
 using VRegIDType = uint32_t;
 using ImmValueType = uint64_t;
-using StringIdType = uint16_t;
-using MethodIdType = uint16_t;
 using EcmaOpcode = BytecodeInstruction::Opcode;
+
+enum class ConstDataIDType : uint8_t {
+    StringIDType,
+    MethodIDType,
+    ArrayLiteralIDType,
+    ObjectLiteralIDType,
+    ClassLiteralIDType,
+};
 
 class VirtualRegister {
 public:
@@ -91,46 +97,65 @@ private:
     ImmValueType value_;
 };
 
-class StringId {
+class ConstDataId {
 public:
-    explicit StringId(StringIdType id) : id_(id)
+    explicit ConstDataId(ConstDataIDType type, uint16_t id)
+        :type_(type), id_(id)
     {
     }
-    ~StringId() = default;
 
-    void SetId(StringIdType id)
+    explicit ConstDataId(BitField bitfield)
+    {
+        type_ = ConstDataIDType(bitfield >> TYPE_SHIFT);
+        id_ = bitfield & ((1 << TYPE_SHIFT) - 1);
+    }
+
+    ~ConstDataId() = default;
+
+    void SetId(uint16_t id)
     {
         id_ = id;
     }
 
-    StringIdType GetId() const
+    uint16_t GetId() const
     {
         return id_;
     }
 
+    void SetType(ConstDataIDType type)
+    {
+        type_ = type;
+    }
+
+    ConstDataIDType GetType() const
+    {
+        return type_;
+    }
+
+    bool IsStringId() const
+    {
+        return type_ == ConstDataIDType::StringIDType;
+    }
+
+    bool IsMethodId() const
+    {
+        return type_ == ConstDataIDType::MethodIDType;
+    }
+
+    bool IsClassLiteraId() const
+    {
+        return type_ == ConstDataIDType::ClassLiteralIDType;
+    }
+
+    BitField CaculateBitField() const
+    {
+        return (static_cast<uint8_t>(type_) << TYPE_SHIFT) | id_;
+    }
+
 private:
-    StringIdType id_;
-};
-
-class MethodId {
-public:
-    explicit MethodId(MethodIdType id) : id_(id)
-    {
-    }
-    ~MethodId() = default;
-
-    void SetId(MethodIdType id)
-    {
-        id_ = id;
-    }
-
-    MethodIdType GetId() const
-    {
-        return id_;
-    }
-
-private:
-    MethodIdType id_;
+    static constexpr int TYPE_SHIFT = 16;
+    ConstDataIDType type_;
+    uint16_t id_;
 };
 
 enum class SplitKind : uint8_t {
@@ -255,7 +280,7 @@ using BytecodeGraph = std::vector<BytecodeRegion>;
 
 struct BytecodeInfo {
     // set of id, immediate and read register
-    std::vector<std::variant<StringId, MethodId, Immediate, VirtualRegister>> inputs {};
+    std::vector<std::variant<ConstDataId, Immediate, VirtualRegister>> inputs {};
     std::vector<VRegIDType> vregOut {}; // write register
     bool accIn {false}; // read acc
     bool accOut {false}; // write acc
@@ -375,6 +400,7 @@ struct BytecodeInfo {
             case EcmaOpcode::LDAI_IMM32:
             case EcmaOpcode::FLDAI_IMM64:
             case EcmaOpcode::LDFUNCTION:
+            case EcmaOpcode::LDA_STR_ID16:
                 return true;
             default:
                 return false;

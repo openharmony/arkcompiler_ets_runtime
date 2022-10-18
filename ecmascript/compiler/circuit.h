@@ -56,6 +56,7 @@ public:
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType bitValue, BitField bitfield, GateType type);
+    GateRef GetConstantDataGate(BitField index, GateType type);
     size_t GetGateCount() const;
     TimeStamp GetTime() const;
     void AdvanceTime() const;
@@ -116,6 +117,7 @@ private:
     TimeStamp time_;
     std::vector<uint8_t> dataSection_ {};
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
+    std::map<BitField, GateRef> constantDataCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
     bool isArch64_ {false};
 

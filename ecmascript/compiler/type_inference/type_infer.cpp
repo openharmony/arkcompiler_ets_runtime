@@ -506,7 +506,7 @@ bool TypeInfer::SetStGlobalBcType(GateRef gate)
 {
     auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
     ASSERT(byteCodeInfo.inputs.size() == 1);
-    auto stringId = std::get<StringId>(byteCodeInfo.inputs[0]).GetId();
+    auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[0]).GetId();
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
@@ -522,7 +522,7 @@ bool TypeInfer::InferLdGlobalVar(GateRef gate)
 {
     auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
     ASSERT(byteCodeInfo.inputs.size() == 1);
-    auto stringId = std::get<StringId>(byteCodeInfo.inputs[0]).GetId();
+    auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[0]).GetId();
     auto iter = stringIdToGateType_.find(stringId);
     if (iter != stringIdToGateType_.end()) {
         return UpdateType(gate, iter->second);
@@ -651,7 +651,7 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
     // todo by hongtao, should consider function of .d.ts
     auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
     ASSERT(byteCodeInfo.inputs.size() == 1);
-    auto stringId = std::get<StringId>(byteCodeInfo.inputs[0]).GetId();
+    auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[0]).GetId();
     auto iter = stringIdToGateType_.find(stringId);
     if (iter != stringIdToGateType_.end()) {
         return UpdateType(gate, iter->second);
@@ -751,9 +751,9 @@ void TypeInfer::TypeCheck(GateRef gate) const
     ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), gateAccessor_.GetBitField(funcName));
     auto funcNameString = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));
     if (funcNameString ==  "AssertType") {
-        GateRef expectedGate = gateAccessor_.GetValueIn(gateAccessor_.GetValueIn(gate, 1), 0);
+        GateRef expectedGate = gateAccessor_.GetValueIn(gate, 1);
         ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(),
-                                         gateAccessor_.GetBitField(expectedGate));
+                                         ConstDataId(gateAccessor_.GetBitField(expectedGate)).GetId());
         auto expectedTypeStr = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
         auto type = gateAccessor_.GetGateType(valueGate);
