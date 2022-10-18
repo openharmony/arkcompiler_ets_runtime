@@ -32,26 +32,49 @@ declare function AssertType(value: any, type: string): void;
     AssertType(Object.is("arg1", "arg2"), "boolean");
     AssertType(Object.entries({}), "array");
     AssertType(Object.fromEntries(it), "any");
+    // Call Object
+    let obj2 = Object();
+    AssertType(obj2.toString(), "string");
+    AssertType(obj2.toLocaleString(), "string");
+    AssertType(obj2.hasOwnProperty("key"), "boolean");
+    AssertType(obj2.isPrototypeOf({}), "boolean");
+    AssertType(obj2.propertyIsEnumerable(""), "boolean");
 
     // Function
     let f = new Function();
     AssertType(f.toString(), "string");
     AssertType(f.length, "number");
+    // Call Function
+    let fun2 = Function();
+    AssertType(fun2.length, "number");
 
     // Error
     let err = new Error();
     AssertType(err.message, "string");
     AssertType(err.toString(), "string");
+    // Call Error
+    let err2 = Error("err2");
+    AssertType(err2.message, "string");
+    AssertType(err2.name, "string");
+    AssertType(err2.stack, "union");
 
     // RangeError
     let rangeErr = new RangeError();
     AssertType(rangeErr.message, "string");
     AssertType(rangeErr.toString(), "string");
+    // Call RangeError
+    let rangeErr2 = RangeError("RangeError");
+    AssertType(rangeErr2.message, "string");
+    AssertType(rangeErr2.name, "string");
+    AssertType(rangeErr2.stack, "union");
 
     // Boolean
     let bool = new Boolean(4);
     AssertType(bool.toString(), "string");
     AssertType(bool.valueOf(), "boolean");
+    // Call Boolean
+    let bool2 = Boolean();
+    AssertType(bool2.valueOf(), "boolean");
 
     // Date
     let date = new Date();
@@ -84,6 +107,13 @@ declare function AssertType(value: any, type: string): void;
     AssertType(Number.isSafeInteger(1), "boolean");
     AssertType(Number.parseFloat("1.2"), "number");
     AssertType(Number.MAX_VALUE, "number");
+    // Call Number
+    let num2 = Number(1);
+    AssertType(num2.toExponential(), "string");
+    AssertType(num2.toFixed(), "string");
+    AssertType(num2.toLocaleString(), "string");
+    AssertType(num2.toPrecision(), "string");
+    AssertType(num2.valueOf(), "number");
 
     // Set
     let set = new Set();
@@ -135,6 +165,11 @@ declare function AssertType(value: any, type: string): void;
     AssertType(arr.includes(1), "boolean");
     AssertType(arr.flatMap((x) => [x]), "array");
     AssertType(arr.flat(), "array");
+    // Call Array
+    let arr2 = Array();
+    AssertType(arr2.length, "number");
+    AssertType(arr2.concat([1, 2, 3]), "array");
+    AssertType(arr2.copyWithin(0, 1), "class_instance");
 
     // ArrayBuffer
     let arrBuf = new ArrayBuffer(5);
@@ -172,6 +207,11 @@ declare function AssertType(value: any, type: string): void;
     AssertType(str.valueOf(), "string");
     AssertType(String.fromCharCode(1,2), "string");
     AssertType(String.raw`Multiline\nstring`, "string");
+    // Call String
+    let str2 = String("str2");
+    AssertType(str2.charAt(2), "string");
+    AssertType(str2.endsWith("2"), "boolean");
+    AssertType(str2.substring(2, 3), "string");
 
     // Symbol
     let sym = Symbol.prototype;

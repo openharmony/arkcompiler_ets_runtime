@@ -156,12 +156,6 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::NOT_IMM8:
         case EcmaOpcode::EXP_IMM8_V8:
         case EcmaOpcode::STARRAYSPREAD_V8_V8:
-        case EcmaOpcode::DEPRECATED_TONUMBER_PREF_V8:
-        case EcmaOpcode::DEPRECATED_TONUMERIC_PREF_V8:
-        case EcmaOpcode::DEPRECATED_NEG_PREF_V8:
-        case EcmaOpcode::DEPRECATED_NOT_PREF_V8:
-        case EcmaOpcode::DEPRECATED_INC_PREF_V8:
-        case EcmaOpcode::DEPRECATED_DEC_PREF_V8:
             return SetNumberType(gate);
         case EcmaOpcode::LDBIGINT_ID16:
             return SetBigIntType(gate);
@@ -182,8 +176,6 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8:
         case EcmaOpcode::SETOBJECTWITHPROTO_IMM16_V8:
         case EcmaOpcode::DELOBJPROP_V8:
-        case EcmaOpcode::DEPRECATED_SETOBJECTWITHPROTO_PREF_V8_V8:
-        case EcmaOpcode::DEPRECATED_DELOBJPROP_PREF_V8_V8:
             return SetBooleanType(gate);
         case EcmaOpcode::LDUNDEFINED:
             return InferLdUndefined(gate);
@@ -214,7 +206,6 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
         case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
         case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
-        case EcmaOpcode::DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32:
             return InferLdObjByIndex(gate);
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
@@ -222,9 +213,6 @@ bool TypeInfer::Infer(GateRef gate)
             return SetStGlobalBcType(gate, true);
         case EcmaOpcode::STTOGLOBALRECORD_IMM16_ID16:
         case EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
-        case EcmaOpcode::DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32:
-        case EcmaOpcode::DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32:
-        case EcmaOpcode::DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32:
             return SetStGlobalBcType(gate, false);
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
             return InferLdGlobalVar(gate);
@@ -234,7 +222,6 @@ bool TypeInfer::Infer(GateRef gate)
             return InferReturn(gate);
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-        case EcmaOpcode::DEPRECATED_LDOBJBYNAME_PREF_ID32_V8:
             return InferLdObjByName(gate);
         case EcmaOpcode::LDA_STR_ID16:
             return InferLdStr(gate);
@@ -252,17 +239,8 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
         case EcmaOpcode::APPLY_IMM8_V8_V8:
             return InferCallFunction(gate);
-        case EcmaOpcode::DEPRECATED_CALLARG0_PREF_V8:
-        case EcmaOpcode::DEPRECATED_CALLARG1_PREF_V8_V8:
-        case EcmaOpcode::DEPRECATED_CALLARGS2_PREF_V8_V8_V8:
-        case EcmaOpcode::DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8:
-        case EcmaOpcode::DEPRECATED_CALLSPREAD_PREF_V8_V8_V8:
-        case EcmaOpcode::DEPRECATED_CALLRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8:
-            return InferCallFunction(gate, true);
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
-        case EcmaOpcode::DEPRECATED_LDOBJBYVALUE_PREF_V8_V8:
             return InferLdObjByValue(gate);
         case EcmaOpcode::GETNEXTPROPNAME_V8:
             return InferGetNextPropName(gate);
@@ -296,9 +274,6 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::STLEXVAR_IMM4_IMM4:
         case EcmaOpcode::STLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::DEPRECATED_STLEXVAR_PREF_IMM4_IMM4_V8:
-        case EcmaOpcode::DEPRECATED_STLEXVAR_PREF_IMM8_IMM8_V8:
-        case EcmaOpcode::DEPRECATED_STLEXVAR_PREF_IMM16_IMM16_V8:
             return InferStLexVarDyn(gate);
         case EcmaOpcode::GETITERATOR_IMM8:
         case EcmaOpcode::GETITERATOR_IMM16:
@@ -678,14 +653,10 @@ bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t inde
     return UpdateType(gate, type);
 }
 
-bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
+bool TypeInfer::InferCallFunction(GateRef gate)
 {
-    // first elem is function in old isa
-    size_t funcIndex = 0;
-    if (!isDeprecated) {
-        // 1: last one elem is function
-        funcIndex = gateAccessor_.GetNumValueIn(gate) - 1;
-    }
+    // 1: last one elem is function
+    size_t funcIndex = gateAccessor_.GetNumValueIn(gate) - 1;
     auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, funcIndex));
     if (tsManager_->IsFunctionTypeKind(funcType)) {
         auto returnType = tsManager_->GetFuncReturnValueTypeGT(funcType);
@@ -697,6 +668,34 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
         GlobalTSTypeRef iteratorResultInstanceType = tsManager_->GetOrCreateTSIteratorInstanceType(
             TSRuntimeType::ITERATOR_RESULT, elementGT);
         return UpdateType(gate, iteratorResultInstanceType);
+    }
+    /* According to the ECMAScript specification, user-defined classes can only be instantiated by constructing (with
+     * new keyword). However, a few builtin types can be called like a function. Upon the results of calling and
+     * constructing, there are 4 categories of builtin types:
+     *
+     * Category 1: non-callable, objects of such a type can only be created by constructing.
+     * Category 2: non-constructable, such types can only be called.
+     * Category 3: simple, calling and constructing are equivalent.
+     * Category 4: complex, a type can be called and constructed, but the results differ.
+     *
+     * Constructing a builtin type always create objects of the type if supported. So in this function, we focus on the
+     * builtin types which are callable. While the majority of the callable builtin types have the same calling behavior
+     * as constructing, here are some special cases:
+     *
+     * | Type    | Call              | Category |
+     * | ------- | ----------------- | -------- |
+     * | BigInt  | primitive bigint  | 2        |
+     * | Boolean | primitive boolean | 4        |
+     * | Date    | primitive string  | 4        |
+     * | Number  | primitive number  | 4        |
+     * | String  | primitive string  | 4        |
+     *
+     * See the list of builtin types' constructors at:
+     *     https://tc39.es/ecma262/2021/#sec-constructor-properties-of-the-global-object
+     */
+    if (tsManager_->IsClassTypeKind(funcType) && tsManager_->IsBuiltin(funcType)) {
+        // For simplicity, calling and constructing are considered equivalent.
+        return UpdateType(gate, tsManager_->CreateClassInstanceType(funcType));
     }
     return false;
 }
