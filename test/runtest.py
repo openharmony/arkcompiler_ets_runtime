@@ -135,11 +135,12 @@ class ArkTest():
                                 f'{product_dir}/clang_x64/thirdparty/icu/:'
                                 f'{product_dir}/clang_x64/arkcompiler/ets_runtime')
         libs_dir = [[libs_dir_x64_release, libs_dir_x64_debug], [libs_dir_arm64_release, libs_dir_arm64_debug]]
-        bins_dir = [['clang_x64/ark', 'clang_x64/exe.unstripped/clang_x64/ark'], ['ark', 'exe.unstripped/ark']]
+        bins_dir = [['clang_x64/arkcompiler', 'clang_x64/exe.unstripped/clang_x64/arkcompiler'],
+                    ['arkcompiler', 'exe.unstripped/arkcompiler']]
         icu_arg = f'--icu-data-path={self.ohdir}/third_party/icu/ohos_icu4j/data'
         self.libs_dir = libs_dir[args.arm64][args.debug]
-        self.compiler = f'{product_dir}/{bins_dir[0][args.debug]}/ark_js_runtime/ark_aot_compiler'
-        self.jsvm = f'{product_dir}/{bins_dir[args.arm64][args.debug]}/ark_js_runtime/ark_js_vm'
+        self.compiler = f'{product_dir}/{bins_dir[0][args.debug]}/ets_runtime/ark_aot_compiler'
+        self.jsvm = f'{product_dir}/{bins_dir[args.arm64][args.debug]}/ets_runtime/ark_js_vm'
         self.ts2abc = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/build/src/index.js'
         self.aot_args = ''
         self.jsvm_args = icu_arg

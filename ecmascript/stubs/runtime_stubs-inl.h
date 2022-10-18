@@ -1118,6 +1118,16 @@ JSTaggedValue RuntimeStubs::RuntimeGetIterator(JSThread *thread, const JSHandle<
     if (!valuesFunc->IsCallable()) {
         return valuesFunc.GetTaggedValue();
     }
+
+    JSHandle<JSFunction> funcHandle = JSHandle<JSFunction>::Cast(valuesFunc);
+    Method *method = funcHandle->GetCallTarget();
+    if (method->IsAotWithCallField()) {
+        size_t argsNum = 4;  // 4: number of args
+        JSTaggedType newTarget = thread->GlobalConstants()->GetUndefined().GetRawData();
+        JSTaggedType thisArg = obj.GetTaggedValue().GetRawData();
+        auto res = thread->GetEcmaVM()->ExecuteAot(argsNum, funcHandle, newTarget, thisArg);
+        return res;
+    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, valuesFunc, obj, undefined, 0);
     return EcmaInterpreter::Execute(info);
