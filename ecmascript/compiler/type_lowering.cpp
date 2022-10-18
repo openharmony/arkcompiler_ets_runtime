@@ -61,8 +61,8 @@ void TypeLowering::LowerTypeConvert(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateAccessor acc(circuit_);
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (rightType.IsNumberType()) {
         GateRef value = acc_.GetValueIn(gate, 0);
         if (leftType.IsPrimitiveType() && !leftType.IsStringType()) {
@@ -218,24 +218,10 @@ void TypeLowering::LowerTypedUnaryOp(GateRef gate)
     }
 }
 
-GateType TypeLowering::GetLeftType(GateRef gate)
-{
-    auto operandTypes = acc_.GetBitField(gate);
-    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
-    return GateType(static_cast<uint32_t>(temp));
-}
-
-GateType TypeLowering::GetRightType(GateRef gate)
-{
-    auto operandTypes = acc_.GetBitField(gate);
-    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
-    return GateType(static_cast<uint32_t>(operandTypes ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS)));
-}
-
 void TypeLowering::LowerTypedAdd(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberAdd(gate);
     } else {
@@ -246,8 +232,8 @@ void TypeLowering::LowerTypedAdd(GateRef gate)
 
 void TypeLowering::LowerTypedSub(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberSub(gate);
     } else {
@@ -258,8 +244,8 @@ void TypeLowering::LowerTypedSub(GateRef gate)
 
 void TypeLowering::LowerTypedMul(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberMul(gate);
     } else {
@@ -276,8 +262,8 @@ void TypeLowering::LowerTypedMod(GateRef gate)
 
 void TypeLowering::LowerTypedLess(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberLess(gate);
     } else {
@@ -288,8 +274,8 @@ void TypeLowering::LowerTypedLess(GateRef gate)
 
 void TypeLowering::LowerTypedLessEq(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberLessEq(gate);
     } else {
@@ -300,8 +286,8 @@ void TypeLowering::LowerTypedLessEq(GateRef gate)
 
 void TypeLowering::LowerTypedGreater(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberGreater(gate);
     } else {
@@ -312,8 +298,8 @@ void TypeLowering::LowerTypedGreater(GateRef gate)
 
 void TypeLowering::LowerTypedGreaterEq(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberGreaterEq(gate);
     } else {
@@ -324,8 +310,8 @@ void TypeLowering::LowerTypedGreaterEq(GateRef gate)
 
 void TypeLowering::LowerTypedDiv(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberDiv(gate);
     } else {
@@ -336,8 +322,8 @@ void TypeLowering::LowerTypedDiv(GateRef gate)
 
 void TypeLowering::LowerTypedEq(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberEq(gate);
     } else {
@@ -348,8 +334,8 @@ void TypeLowering::LowerTypedEq(GateRef gate)
 
 void TypeLowering::LowerTypedNotEq(GateRef gate)
 {
-    auto leftType = GetLeftType(gate);
-    auto rightType = GetRightType(gate);
+    auto leftType = acc_.GetLeftType(gate);
+    auto rightType = acc_.GetRightType(gate);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberNotEq(gate);
     } else {
@@ -360,7 +346,7 @@ void TypeLowering::LowerTypedNotEq(GateRef gate)
 
 void TypeLowering::LowerTypedInc(GateRef gate)
 {
-    auto value = GetLeftType(gate);
+    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
         LowerNumberInc(gate);
     } else {
@@ -371,7 +357,7 @@ void TypeLowering::LowerTypedInc(GateRef gate)
 
 void TypeLowering::LowerTypedDec(GateRef gate)
 {
-    auto value = GetLeftType(gate);
+    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
         LowerNumberDec(gate);
     } else {
@@ -384,8 +370,8 @@ void TypeLowering::LowerNumberAdd(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CalculateNumbers<OpCode::ADD>(left, right, leftType, rightType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -395,8 +381,8 @@ void TypeLowering::LowerNumberSub(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CalculateNumbers<OpCode::SUB>(left, right, leftType, rightType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -406,8 +392,8 @@ void TypeLowering::LowerNumberMul(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CalculateNumbers<OpCode::MUL>(left, right, leftType, rightType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -417,8 +403,8 @@ void TypeLowering::LowerNumberLess(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_LESS>(left, right, leftType, rightType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -428,8 +414,8 @@ void TypeLowering::LowerNumberLessEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_LESSEQ>(left, right, leftType, rightType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -439,8 +425,8 @@ void TypeLowering::LowerNumberGreater(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_LESS>(right, left, rightType, leftType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -450,8 +436,8 @@ void TypeLowering::LowerNumberGreaterEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_LESSEQ>(right, left, rightType, leftType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -461,8 +447,8 @@ void TypeLowering::LowerNumberDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = DivNumbers(left, right, leftType, rightType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -472,8 +458,8 @@ void TypeLowering::LowerNumberEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_EQ>(left, right, leftType, rightType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -483,8 +469,8 @@ void TypeLowering::LowerNumberNotEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = GetLeftType(gate);
-    GateType rightType = GetRightType(gate);
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = CompareNumbers<TypedBinOp::TYPED_NOTEQ>(left, right, leftType, rightType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -493,7 +479,7 @@ void TypeLowering::LowerNumberNotEq(GateRef gate)
 void TypeLowering::LowerNumberInc(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = GetLeftType(gate);
+    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_INC>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -502,7 +488,7 @@ void TypeLowering::LowerNumberInc(GateRef gate)
 void TypeLowering::LowerNumberDec(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = GetLeftType(gate);
+    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_DEC>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
@@ -933,7 +919,26 @@ GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
 
     if (valueType.IsIntType()) {
         // value is int
-        LowerIntOp();
+        // no need to consider if value will overflow or underflow,
+        // since guard has already checked that.
+        GateRef intVal = builder_.GetInt64OfTInt(value);
+        GateRef res = Circuit::NullGate();
+        switch (Op) {
+            case TypedUnOp::TYPED_INC: {
+                res = builder_.Int64Add(intVal, builder_.Int64(1));
+                result = builder_.ToTaggedIntPtr(res);
+                builder_.Jump(&exit);
+                break;
+            }
+            case TypedUnOp::TYPED_DEC: {
+                res = builder_.Int64Sub(intVal, builder_.Int64(1));
+                result = builder_.ToTaggedIntPtr(res);
+                builder_.Jump(&exit);
+                break;
+            }
+            default:
+                break;
+        }
     } else if (valueType.IsDoubleType()) {
         // value is double
         LowerDoubleOp();

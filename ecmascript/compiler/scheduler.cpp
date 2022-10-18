@@ -221,6 +221,9 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
             }
         }
     }
+    if (enableLog) {
+        Print(&result, circuit);
+    }
     return result;
 }
 

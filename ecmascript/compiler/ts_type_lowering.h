@@ -73,6 +73,8 @@ private:
     template<TypedUnOp Op>
     void SpeculateNumber(GateRef gate);
     void SpeculateConditionJump(GateRef gate);
+    template<TypedUnOp Op>
+    GateRef AppendOverflowCheck(GateRef typeCheck, GateRef intVal);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

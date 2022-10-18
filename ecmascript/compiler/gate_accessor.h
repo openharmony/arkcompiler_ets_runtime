@@ -365,6 +365,8 @@ public:
     bool IsValueIn(GateRef gate, size_t index) const;
     void DeleteGuardAndFrameState(GateRef gate);
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
+    GateType GetLeftType(GateRef gate) const;
+    GateType GetRightType(GateRef gate) const;
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <queue>
 #include <stack>
 
 #include "ecmascript/compiler/circuit_optimizer.h"
@@ -33,6 +34,7 @@ bool GuardEliminating::HasGuard(GateRef gate) const
 void GuardEliminating::ProcessTwoConditions(GateRef gate, std::set<GateRef> &conditionSet)
 {
     auto guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     auto condition = acc_.GetValueIn(guard, 0);
     auto left = acc_.GetValueIn(condition, 0);
     auto right = acc_.GetValueIn(condition, 1);
@@ -58,6 +60,7 @@ void GuardEliminating::ProcessTwoConditions(GateRef gate, std::set<GateRef> &con
 void GuardEliminating::ProcessOneCondition(GateRef gate, std::set<GateRef> &conditionSet)
 {
     auto guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     auto condition = acc_.GetValueIn(guard, 0);
     if (conditionSet.count(condition) > 0) {
         acc_.DeleteGuardAndFrameState(gate);
@@ -75,6 +78,92 @@ void GuardEliminating::RemoveConditionFromSet(GateRef condition, std::set<GateRe
         conditionSet.erase(right);
     } else {
         conditionSet.erase(condition);
+    }
+}
+
+bool GuardEliminating::IsTrustedType(GateRef gate) const
+{
+    if (acc_.IsConstant(gate)) {
+        return true;
+    }
+    if (acc_.IsTypedOperator(gate)) {
+        if (acc_.GetOpCode(gate) == OpCode::TYPED_BINARY_OP) {
+            return !acc_.GetGateType(gate).IsIntType();
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
+
+void GuardEliminating::RemoveOneTrusted(GateRef gate)
+{
+    auto guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    auto condition = acc_.GetValueIn(guard);
+    if (condition == builder_.Boolean(true)) {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void GuardEliminating::RemoveTwoTrusted(GateRef gate)
+{
+    auto guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    auto condition = acc_.GetValueIn(guard);
+    auto left = acc_.GetValueIn(condition, 0);
+    auto right = acc_.GetValueIn(condition, 1);
+    if (left == builder_.Boolean(true) && right == builder_.Boolean(true)) {
+        acc_.DeleteGuardAndFrameState(gate);
+    } else if (left == builder_.Boolean(true)) {
+        acc_.ReplaceValueIn(guard, right, 0);
+    } else if (right == builder_.Boolean(true)) {
+        acc_.ReplaceValueIn(guard, left, 0);
+    }
+}
+
+void GuardEliminating::TrustedTypePropagate(std::queue<GateRef>& workList, const std::vector<GateRef>& checkList)
+{
+    std::unordered_map<GateRef, size_t> trustedInCount;
+    while (!workList.empty()) {
+        auto gate = workList.front();
+        workList.pop();
+        std::vector<GateRef> outs;
+        acc_.GetOutVector(gate, outs);
+        for (auto phi : outs) {
+            if ((acc_.GetOpCode(phi) != OpCode::VALUE_SELECTOR) ||
+                (acc_.GetGateType(phi) != acc_.GetGateType(gate))) {
+                continue;
+            }
+            trustedInCount[phi]++;
+            if (trustedInCount.at(phi) == acc_.GetNumValueIn(phi)) {
+                workList.push(phi);
+            }
+        }
+    }
+    for (auto check : checkList) {
+        ASSERT(acc_.GetOpCode(check) == OpCode::TYPE_CHECK);
+        auto phi = acc_.GetValueIn(check, 0);
+        if ((trustedInCount.count(phi) == 0) ||
+            (trustedInCount.at(phi) != acc_.GetNumValueIn(phi)) ||
+            (acc_.GetGateType(phi) != acc_.GetRightType(check))) {
+            continue;
+        }
+        acc_.UpdateAllUses(check, builder_.Boolean(true));
+    }
+}
+
+void GuardEliminating::RemoveTrustedTypeCheck(const std::vector<GateRef>& guardedList)
+{
+    for (auto gate : guardedList) {
+        ASSERT(HasGuard(gate));
+        auto guard = acc_.GetDep(gate);
+        auto condition = acc_.GetValueIn(guard);
+        if (acc_.GetOpCode(condition) == OpCode::AND) {
+            RemoveTwoTrusted(gate);
+        } else {
+            RemoveOneTrusted(gate);
+        }
     }
 }
 
@@ -133,6 +222,25 @@ void GuardEliminating::Run()
         dfsStack.push(newState);
         idx++;
     }
+
+    std::vector<GateRef> allGates;
+    acc_.GetAllGates(allGates);
+    std::queue<GateRef> workList;
+    std::vector<GateRef> checkList;
+    std::vector<GateRef> guardedList;
+    for (auto gate : allGates) {
+        if (IsTrustedType(gate)) {
+            workList.push(gate);
+        }
+        if (acc_.GetOpCode(gate) == OpCode::TYPE_CHECK) {
+            checkList.emplace_back(gate);
+        }
+        if (HasGuard(gate)) {
+            guardedList.emplace_back(gate);
+        }
+    }
+    TrustedTypePropagate(workList, checkList);
+    RemoveTrustedTypeCheck(guardedList);
 
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";

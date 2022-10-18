@@ -48,10 +48,10 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
     }
     auto op = acc_.GetOpCode(gate);
     if (acc_.IsTypedOperator(gate)) {
-        if (op == OpCode::TYPE_CONVERT) {
-            return true;
-        } else {
+        if (op == OpCode::TYPED_BINARY_OP) {
             return !acc_.GetGateType(gate).IsIntType();
+        } else {
+            return true;
         }
     }
     if (op == OpCode::JS_BYTECODE) {
@@ -61,8 +61,10 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
             case EcmaOpcode::ADD2_IMM8_V8:
             case EcmaOpcode::SUB2_IMM8_V8:
             case EcmaOpcode::MUL2_IMM8_V8:
-            case EcmaOpcode::INC_IMM8:
                 return !acc_.GetGateType(gate).IsIntType();
+            case EcmaOpcode::INC_IMM8:
+            case EcmaOpcode::DEC_IMM8:
+            case EcmaOpcode::LESS_IMM8_V8:
             case EcmaOpcode::LESSEQ_IMM8_V8:
                 return true;
             default:
@@ -446,6 +448,29 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
 }
 
 template<TypedUnOp Op>
+GateRef TSTypeLowering::AppendOverflowCheck(GateRef typeCheck, GateRef intVal)
+{
+    GateRef check = typeCheck;
+    switch (Op) {
+        case TypedUnOp::TYPED_INC: {
+            auto max = builder_.Int64(INT32_MAX);
+            auto rangeCheck = builder_.Int64NotEqual(intVal, max);
+            check = typeCheck != Circuit::NullGate() ? builder_.BoolAnd(typeCheck, rangeCheck) : rangeCheck;
+            break;
+        }
+        case TypedUnOp::TYPED_DEC: {
+            auto min = builder_.Int64(INT32_MIN);
+            auto rangeCheck = builder_.Int64NotEqual(intVal, min);
+            check = typeCheck != Circuit::NullGate() ? builder_.BoolAnd(typeCheck, rangeCheck) : rangeCheck;
+            break;
+        }
+        default:
+            break;
+    }
+    return check;
+}
+
+template<TypedUnOp Op>
 void TSTypeLowering::SpeculateNumber(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
@@ -453,9 +478,16 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
     GateType gateType = acc_.GetGateType(gate);
     GateRef check = Circuit::NullGate();
     if (IsTrustedType(value)) {
-        acc_.DeleteGuardAndFrameState(gate);
+        if (!valueType.IsIntType()) {
+            acc_.DeleteGuardAndFrameState(gate);
+        }
     } else {
         check = builder_.TypeCheck(valueType, value);
+    }
+
+    if (valueType.IsIntType()) {
+        auto intVal = builder_.GetInt64OfTInt(value);
+        check = AppendOverflowCheck<Op>(check, intVal);
     }
 
     // guard maybe not a GUARD

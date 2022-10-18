@@ -16,13 +16,16 @@
 #ifndef ECMASCRIPT_COMPILER_GUARD_ELIMINATING_H
 #define ECMASCRIPT_COMPILER_GUARD_ELIMINATING_H
 
+#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 class GuardEliminating {
 public:
-    GuardEliminating(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, bool enableLog, const std::string& name)
-        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), enableLog_(enableLog), methodName_(name) {}
+    GuardEliminating(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
+        bool enableLog, const std::string& name)
+        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+        enableLog_(enableLog), methodName_(name) {}
     
     ~GuardEliminating() = default;
 
@@ -43,9 +46,15 @@ private:
     void ProcessTwoConditions(GateRef gate, std::set<GateRef> &conditionSet);
     void ProcessOneCondition(GateRef gate, std::set<GateRef> &conditionSet);
     void RemoveConditionFromSet(GateRef condition, std::set<GateRef> &conditionSet);
+    bool IsTrustedType(GateRef gate) const;
+    void TrustedTypePropagate(std::queue<GateRef>& workList, const std::vector<GateRef>& checkList);
+    void RemoveOneTrusted(GateRef gate);
+    void RemoveTwoTrusted(GateRef gate);
+    void RemoveTrustedTypeCheck(const std::vector<GateRef>& guardedList);
     BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
+    CircuitBuilder builder_;
     bool enableLog_ {false};
     std::string methodName_;
 };
