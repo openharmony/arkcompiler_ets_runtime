@@ -41,17 +41,18 @@ JSTaggedValue JSAPILightWeightMapIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPILightWeightMapIterator> iter(input);
     JSHandle<JSTaggedValue> oldlightWeightMap(thread, iter->GetIteratedLightWeightMap());
-    JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSAPILightWeightMap> lightWeightMap(oldlightWeightMap);
     IterationKind itemKind = IterationKind(iter->GetIterationKind());
     if (oldlightWeightMap->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     int32_t index = iter->GetNextIndex();
     int32_t length = lightWeightMap->GetSize();
     if (index >= length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedLightWeightMap(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
 

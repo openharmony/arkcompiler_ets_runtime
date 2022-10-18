@@ -42,16 +42,17 @@ JSTaggedValue JSAPILinkedListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPILinkedListIterator> iter(input);
     JSHandle<JSTaggedValue> linkedList(thread, iter->GetIteratedLinkedList());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<TaggedDoubleList> list(linkedList);
     if (linkedList->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     int index = static_cast<int>(iter->GetNextIndex());
     int length = list->Length();
     if (index >= length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedLinkedList(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
     JSHandle<JSTaggedValue> value(thread, list->Get(index));

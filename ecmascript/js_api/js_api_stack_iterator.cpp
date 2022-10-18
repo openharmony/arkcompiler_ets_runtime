@@ -43,9 +43,9 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIStackIterator> iter(input);
     JSHandle<JSTaggedValue> stack(thread, iter->GetIteratedStack());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (stack->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     uint32_t index = iter->GetNextIndex();
 
@@ -54,12 +54,13 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     if (index + 1 > length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedStack(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
     JSHandle<JSTaggedValue> key(thread, JSTaggedValue(index));
-    JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, stack, key).GetValue();
+    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIStack>::Cast(stack)->Get(index));
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }
 }  // namespace panda::ecmascript

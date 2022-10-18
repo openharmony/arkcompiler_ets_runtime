@@ -37,10 +37,9 @@ JSTaggedValue JSAPIVectorIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIVectorIterator> iter(input);
     // Let a be O.[[IteratedVectorLike]].
     JSHandle<JSTaggedValue> vector(thread, iter->GetIteratedVector());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
-    // If a is undefined, return CreateIterResultObject(undefined, true).
+    // If a is undefined, return an undefinedIteratorResult.
     if (vector->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return thread->GlobalConstants()->GetUndefinedIterResult();
     }
     // Let index be O.[[VectorLikeNextIndex]].
     uint32_t index = iter->GetNextIndex();
@@ -51,13 +50,15 @@ JSTaggedValue JSAPIVectorIterator::Next(EcmaRuntimeCallInfo *argv)
     // If index >= len, then
     if (index >= length) {
         // Set O.[[IteratedVectorLike]] to undefined.
-        // Return CreateIterResultObject(undefined, true).
+        // Return undefinedIteratorResult.
+        JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedVector(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return thread->GlobalConstants()->GetUndefinedIterResult();
     }
     // Set O.[[VectorLikeNextIndex]] to index + 1.
     iter->SetNextIndex(index + 1);
-    JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, vector, index).GetValue();
+    JSHandle<JSTaggedValue> value(thread, JSAPIVector::Get(thread, JSHandle<JSAPIVector>::Cast(vector),
+                                    static_cast<int32_t>(index)));
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }
 } // namespace panda::ecmascript
