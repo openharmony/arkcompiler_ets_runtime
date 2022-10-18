@@ -229,16 +229,20 @@ void AOTModulePackInfo::Save(const std::string &filename)
     file.close();
 }
 
-#if !WIN_OR_MAC_PLATFORM
-void AOTModulePackInfo::RewriteRelcateDeoptHandler(EcmaVM *vm)
+
+void AOTModulePackInfo::RewriteRelcateDeoptHandler([[maybe_unused]] EcmaVM *vm)
 {
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
     JSThread *thread = vm->GetJSThread();
     uintptr_t patchAddr = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
     RewriteRelcateTextSection(LLVM_DEOPT_RELOCATE_SYMBOL, patchAddr);
+#endif
 }
 
-void AOTModulePackInfo::RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr)
+void AOTModulePackInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
+    [[maybe_unused]] uintptr_t patchAddr)
 {
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
     for (auto &des: des_) {
         uint32_t relaTextSize = des.GetSecSize(ElfSecName::RELATEXT);
         if (relaTextSize != 0) {
@@ -257,8 +261,8 @@ void AOTModulePackInfo::RewriteRelcateTextSection(const char* symbol, uintptr_t 
             relocate.RelocateBySymbol(symbol, patchAddr);
         }
     }
-}
 #endif
+}
 
 bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
 {
@@ -355,9 +359,7 @@ void AOTFileManager::LoadAnFile(const std::string &fileName)
         return;
     }
     AddAOTPackInfo(aotPackInfo_);
-#if !WIN_OR_MAC_PLATFORM
     aotPackInfo_.RewriteRelcateDeoptHandler(vm_);
-#endif
 }
 
 void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filename)

@@ -308,13 +308,9 @@ public:
         accumulateTotalSize(moduleDes.GetArkStackMapSize());
         aotFileHashs_.emplace_back(hash);
     }
-#if !WIN_OR_MAC_PLATFORM
     void RewriteRelcateDeoptHandler(EcmaVM *vm);
-#endif
 private:
-#if !WIN_OR_MAC_PLATFORM
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
-#endif
     std::vector<uint32_t> aotFileHashs_ {};
 };
 

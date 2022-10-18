@@ -16,10 +16,12 @@
 #include "ecmascript/Relocator.h"
 #include <climits>
 #include <iomanip>
+#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64_constants.h"
 #include "ecmascript/message_string.h"
-#if !WIN_OR_MAC_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+
 namespace panda::ecmascript {
-std::optional<Elf64_Word> Relocator::GetSymbol(const char* symbol)
+std::optional<Elf64_Word> Relocator::GetSymbol(const char* symbol) const
 {
     ASSERT(symAndStrTabInfo_.symSize_ % sizeof(Elf64_Sym) == 0);
     int n = symAndStrTabInfo_.symSize_ / sizeof(Elf64_Sym);
@@ -43,7 +45,18 @@ bool Relocator::Relocate(Elf64_Rela *sec, uintptr_t symbolAddr, uintptr_t patchA
     Elf64_Sxword addend = sec->r_addend;
 
     switch (type) {
-        case R_AARCH64_CALL26:
+        case R_AARCH64_CALL26: {
+            /* S + A - P
+            S: (when used on its own) is the address of the symbol
+            A: is the addend for the relocation
+            P: is the address of the place beging relocated(derived from r_offset)
+            */
+            intptr_t imm = patchAddr + addend - symbolAddr;
+            ASSERT(-(1 << 27) <= imm && imm < (1 << 27));  // 27: "Check that -2^27 <= result < 2^27".
+            imm = (imm & 0x0FFFFFFC) >> 2; // 0x0FFFFFFC: get immediate file to bits [27:2]
+            *(reinterpret_cast<uint32_t *>(symbolAddr)) = imm | panda::ecmascript::aarch64::CallOpCode::BL;
+            break;
+        }
         case R_X86_64_PLT32: {
             /* S + A - P
             S: (when used on its own) is the address of the symbol
@@ -57,20 +70,20 @@ bool Relocator::Relocate(Elf64_Rela *sec, uintptr_t symbolAddr, uintptr_t patchA
             break;
         }
         default: {
-            LOG_FULL(FATAL) << " unsupported type:" << type;
+            LOG_COMPILER(FATAL) << " unsupported type:" << type;
             return false;
         }
     }
     return ret;
 }
 
-bool Relocator::HasSymStrTable()
+bool Relocator::HasSymStrTable() const
 {
     return (symAndStrTabInfo_.symAddr_ >= 0) && (symAndStrTabInfo_.symSize_ >= 0)
         && (symAndStrTabInfo_.strAddr_ >= 0) && (symAndStrTabInfo_.strSize_ >= 0);
 }
 
-bool Relocator::HasRelocateText()
+bool Relocator::HasRelocateText() const
 {
     return (relocateTextInfo_.relaTextAddr_ > 0) && (relocateTextInfo_.relaTextSize_ > 0);
 }
@@ -100,7 +113,7 @@ bool Relocator::RelocateBySymbol(const char* symbol, uintptr_t patchAddr)
     }
     auto symId = GetSymbol(symbol);
     if (!symId.has_value()) {
-        LOG_FULL(ERROR) << " don't find symbol:" << symbol << " in symbol table.";
+        LOG_COMPILER(ERROR) << " don't find symbol:" << symbol << " in symbol table.";
         return false;
     }
     bool ret = RelocateBySymbolId(symId.value(), patchAddr);
@@ -110,7 +123,7 @@ bool Relocator::RelocateBySymbol(const char* symbol, uintptr_t patchAddr)
 void Relocator::DumpRelocateText()
 {
     if (!HasRelocateText()) {
-        LOG_FULL(ERROR) << " input valid relocateText addr & size:";
+        LOG_COMPILER(ERROR) << " input valid relocateText addr & size:";
         return;
     }
     ASSERT(relocateTextInfo_.relaTextSize_ % sizeof(Elf64_Rela) == 0);
@@ -118,7 +131,7 @@ void Relocator::DumpRelocateText()
     int n  = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
     Elf64_Rela *ptr = reinterpret_cast<Elf64_Rela *>(relocateTextInfo_.relaTextAddr_);
     static constexpr int leftAdjustment = 12;
-    LOG_FULL(DEBUG) << std::left << std::setw(leftAdjustment) << "symbolId "
+    LOG_COMPILER(DEBUG) << std::left << std::setw(leftAdjustment) << "symbolId "
                    << std::left << std::setw(leftAdjustment) << "Info(0x): "
                    << std::left << std::setw(leftAdjustment) << "Type: "
                    << std::left << std::setw(leftAdjustment) << "r_offset(0x): "
@@ -128,7 +141,7 @@ void Relocator::DumpRelocateText()
         Elf64_Word id = GetSymbol(cur);
         Elf64_Word type = GetType(cur);
         Elf64_Sxword addend = ptr->r_addend;
-        LOG_FULL(DEBUG) << std::left << std::setw(leftAdjustment) << id
+        LOG_COMPILER(DEBUG) << std::left << std::setw(leftAdjustment) << id
                 << std::left << std::setw(leftAdjustment) << std::hex << cur->r_info
                 << std::left << std::setw(leftAdjustment) << std::dec << type
                 << std::left << std::setw(leftAdjustment) << std::hex << static_cast<intptr_t>(cur->r_offset)
@@ -141,7 +154,7 @@ void Relocator::DumpRelocateText()
     n = symAndStrTabInfo_.symSize_ / sizeof(Elf64_Sym);
     ASSERT(symAndStrTabInfo_.symAddr_ > 0 && symAndStrTabInfo_.symSize_ > 0);
     Elf64_Sym *symPtr = reinterpret_cast<Elf64_Sym *>(symAndStrTabInfo_.symAddr_);
-    LOG_FULL(DEBUG) << std::left << std::setw(leftAdjustment) << "symbolId "
+    LOG_COMPILER(DEBUG) << std::left << std::setw(leftAdjustment) << "symbolId "
                 << std::left << std::setw(leftAdjustment) << "binding: "
                 << std::left << std::setw(leftAdjustment) << "Type: "
                 << std::left << std::setw(leftAdjustment) << "st_name: "
@@ -151,12 +164,12 @@ void Relocator::DumpRelocateText()
         const char *name = reinterpret_cast<char *>(symAndStrTabInfo_.strAddr_) + cur->st_name;
         unsigned char binding = GetBinding(cur);
         unsigned char type = GetType(cur);
-        LOG_FULL(DEBUG) << std::left << std::setw(leftAdjustment) << i
+        LOG_COMPILER(DEBUG) << std::left << std::setw(leftAdjustment) << i
             << std::left << std::setw(leftAdjustment) << std::dec << static_cast<int>(binding)
             << std::left << std::setw(leftAdjustment) << std::dec << static_cast<int>(type)
             << std::left << std::setw(leftAdjustment) << std::dec << cur->st_name
             << std::left << std::setw(leftAdjustment) << name;
     }
 }
-#endif
 } // namespace panda::ecmascript
+#endif

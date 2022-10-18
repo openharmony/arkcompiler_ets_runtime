@@ -16,10 +16,11 @@
 #ifndef ECMASCRIPT_RELCATOR_H
 #define ECMASCRIPT_RELCATOR_H
 
-#if !WIN_OR_MAC_PLATFORM
+#include "ecmascript/common.h"
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+
 #include <elf.h>
 #include <optional>
-#include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"
 
 namespace panda::ecmascript {
@@ -39,16 +40,16 @@ struct SymAndStrTabInfo {
 class Relocator {
 public:
     PUBLIC_API Relocator(RelocateTextInfo relaText, SymAndStrTabInfo symAndStrTabInfo)
-                :relocateTextInfo_(relaText), symAndStrTabInfo_(symAndStrTabInfo) {};
+        :relocateTextInfo_(relaText), symAndStrTabInfo_(symAndStrTabInfo) {};
 
     PUBLIC_API bool RelocateBySymbolId(Elf64_Word symbolId, uintptr_t patchAddr);
     PUBLIC_API bool RelocateBySymbol(const char* symbol, uintptr_t patchAddr);
     PUBLIC_API void DumpRelocateText();
     ~Relocator() = default;
 private:
-    bool HasSymStrTable();
-    bool HasRelocateText();
-    std::optional<Elf64_Word> GetSymbol(const char* symbol);
+    bool HasSymStrTable() const;
+    bool HasRelocateText() const;
+    std::optional<Elf64_Word> GetSymbol(const char* symbol) const;
     bool Relocate(Elf64_Rela *sec, uintptr_t symbolAddr, uintptr_t patchAddr);
 
     Elf64_Word GetSymbol(Elf64_Rela *cur) const
@@ -77,7 +78,7 @@ private:
     RelocateTextInfo relocateTextInfo_ {0};
     SymAndStrTabInfo symAndStrTabInfo_ {0};
 };
-#endif
 }  // panda::ecmascript
+#endif
 #endif  // ECMASCRIPT_RELCATOR_H
 
