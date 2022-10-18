@@ -323,6 +323,8 @@ public:
 
     GlobalTSTypeRef PUBLIC_API GetFuncThisGT(GlobalTSTypeRef gt) const;
 
+    bool PUBLIC_API IsGetterSetterFunc(GlobalTSTypeRef gt) const;
+
     inline GlobalTSTypeRef PUBLIC_API GetFuncReturnValueTypeGT(kungfu::GateType gateType) const
     {
         GlobalTSTypeRef gt = gateType.GetGTRef();

@@ -33,6 +33,7 @@ group("ark_typeinfer_test") {
     "definegeneratorfunc:definegeneratorfuncAotTypeInferAction",
     "div2dyn:div2dynAotTypeInferAction",
     "getiterator:getiteratorAotTypeInferAction",
+    "infergetterfunc:infergetterfuncAotTypeInferAction",
     "ldboolean:ldbooleanAotTypeInferAction",
     "ldglobalvar:ldglobalvarAotTypeInferAction",
     "ldinfinity:ldinfinityAotTypeInferAction",

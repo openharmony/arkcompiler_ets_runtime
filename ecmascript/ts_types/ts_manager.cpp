@@ -602,6 +602,17 @@ GlobalTSTypeRef TSManager::GetFuncThisGT(GlobalTSTypeRef gt) const
     return functionType->GetThisGT();
 }
 
+bool TSManager::IsGetterSetterFunc(GlobalTSTypeRef gt) const
+{
+    if (GetTypeKind(gt) != TSTypeKind::FUNCTION) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetIsGetterSetter();
+}
+
 GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
 {
     ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
