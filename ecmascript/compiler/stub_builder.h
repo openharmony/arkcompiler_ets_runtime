@@ -478,6 +478,9 @@ public:
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
+    void CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, GateRef actualNumArgs,
+                      GateRef callField, GateRef method, Label* notFastBuiltins, Label* exit, Variable* result,
+                      std::initializer_list<GateRef> args, JSCallMode mode);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
 private:

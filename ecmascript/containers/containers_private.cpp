@@ -789,8 +789,9 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     SetFrozenFunction(thread, prototype, "subVector", ContainersVector::SubVector, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "toString", ContainersVector::ToString, FuncLength::ZERO);
     SetFrozenFunction(thread, prototype, "forEach", ContainersVector::ForEach, FuncLength::TWO,
-                      static_cast<uint8_t>(BUILTINS_STUB_ID(ForEach)));
-    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersVector::ReplaceAllElements, FuncLength::TWO);
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(VectorForEach)));
+    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersVector::ReplaceAllElements, FuncLength::TWO,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(VectorReplaceAllElements)));
     SetFrozenFunction(thread, prototype, "has", ContainersVector::Has, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "sort", ContainersVector::Sort, FuncLength::ZERO);
     SetFrozenFunction(thread, prototype, "clear", ContainersVector::Clear, FuncLength::ZERO);
