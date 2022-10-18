@@ -75,6 +75,8 @@ public:
 
     // use for AOT PassManager
     PUBLIC_API CString ResolveModuleFileName(const CString &fileName);
+    static CString GetRecordName(JSTaggedValue module);
+    static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);

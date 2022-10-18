@@ -42,7 +42,7 @@ public:
                                                     JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
-                                   JSHandle<JSTaggedValue> constpool);
+                                   JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                     panda_file::File::EntityId index,
                                                     JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");

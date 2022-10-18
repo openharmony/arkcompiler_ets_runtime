@@ -259,6 +259,7 @@ GateRef SlowPathLowering::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, G
     Label cacheMiss(&builder_);
 
     GateRef constPool = GetConstPool(jsFunc);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
     auto cacheValue = builder_.GetValueFromTaggedArray(constPool, index);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), cacheValue);
     builder_.Branch(builder_.TaggedIsHole(cacheValue), &cacheMiss, &exit);
@@ -269,10 +270,10 @@ GateRef SlowPathLowering::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, G
                 { constPool, builder_.Int32ToTaggedInt(index) }, true);
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
             result = LowerCallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache),
-                { constPool, builder_.Int32ToTaggedInt(index) }, true);
+                { constPool, builder_.Int32ToTaggedInt(index), module }, true);
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             result = LowerCallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache),
-                { constPool, builder_.Int32ToTaggedInt(index) }, true);
+                { constPool, builder_.Int32ToTaggedInt(index), module }, true);
         } else {
             result = LowerCallRuntime(glue, RTSTUB_ID(GetMethodFromCache),
                 { constPool, builder_.Int32ToTaggedInt(index) }, true);
@@ -3032,12 +3033,13 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     GateRef length = acc_.GetValueIn(gate, 2);  // 2: second arg
     GateRef lexicalEnv = LowerCallRuntime(glue, RTSTUB_ID(OptGetLexicalEnv), {}, true);
     GateRef constpool = GetConstPool(jsFunc);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
     Label isException(&builder_);
     Label isNotException(&builder_);
 
     if (type.IsAnyType()) {
         auto args = { proto, lexicalEnv, constpool,
-                      builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId) };
+                      builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), module };
         result = LowerCallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer), args, true);
         builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
     } else {
@@ -3051,7 +3053,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
         builder_.Store(VariableType::JS_ANY(), glue, constpool, dataOffset, builder_.HoleConstant());
 
         auto args = { proto, lexicalEnv, constpool,
-                      builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), ihclass };
+                      builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), ihclass, module };
         result = LowerCallRuntime(glue, RTSTUB_ID(CreateClassWithIHClass), args, true);
         builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
     }
@@ -3061,7 +3063,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
     builder_.Bind(&isNotException);
     {
         builder_.SetLexicalEnvToFunction(glue, *result, lexicalEnv);
-        builder_.SetModuleToFunction(glue, *result, builder_.GetModuleFromFunction(jsFunc));
+        builder_.SetModuleToFunction(glue, *result, module);
         LowerCallRuntime(glue, RTSTUB_ID(SetClassConstructorLength),
             { *result, builder_.ToTaggedInt(length) }, true);
         successControl.emplace_back(builder_.GetState());

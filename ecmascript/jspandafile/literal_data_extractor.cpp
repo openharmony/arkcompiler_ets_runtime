@@ -317,7 +317,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                                               panda_file::File::EntityId index,
                                               JSMutableHandle<TaggedArray> elements,
                                               JSMutableHandle<TaggedArray> properties,
-                                              JSHandle<JSTaggedValue> constpool)
+                                              JSHandle<JSTaggedValue> constpool, const CString &entry)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
@@ -335,7 +335,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile, pf, &methodId, &kind, &constpool]
+        index, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile,
+                pf, &methodId, &kind, &constpool, &entry]
         (const LiteralValue &value, const LiteralTag &tag) {
         JSTaggedValue jt = JSTaggedValue::Null();
         bool flag = false;
@@ -382,7 +383,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
 
                 JSHandle<Method> method = factory->NewMethod(methodLiteral);
                 method->SetConstantPool(thread, constpool.GetTaggedValue());
-                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
+                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entry);
                 jt = jsFunc.GetTaggedValue();
                 break;
             }

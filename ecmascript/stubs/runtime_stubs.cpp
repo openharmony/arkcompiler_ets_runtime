@@ -718,8 +718,9 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
     RUNTIME_STUBS_HEADER(GetObjectLiteralFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+        thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
@@ -727,8 +728,9 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
     RUNTIME_STUBS_HEADER(GetArrayLiteralFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+        thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LdObjByIndex)
@@ -879,9 +881,10 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
+    JSHandle<JSTaggedValue> module =  GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
     return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
                                         static_cast<uint16_t>(methodId.GetInt()),
-                                        static_cast<uint16_t>(literalId.GetInt())).GetRawData();
+                                        static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateClassWithIHClass)
@@ -893,10 +896,11 @@ DEF_RUNTIME_STUBS(CreateClassWithIHClass)
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
     JSHandle<JSHClass> ihclass = GetHArg<JSHClass>(argv, argc, 5);  // 5: means the fifth parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
     return RuntimeCreateClassWithIHClass(thread, base, lexenv, constpool,
                                          static_cast<uint16_t>(methodId.GetInt()),
                                          static_cast<uint16_t>(literalId.GetInt()),
-                                         ihclass).GetRawData();
+                                         ihclass, module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SetClassConstructorLength)

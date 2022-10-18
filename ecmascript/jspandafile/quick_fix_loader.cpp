@@ -179,9 +179,6 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     } else {
         constpool = JSHandle<ConstantPool>(thread, constpoolValue);
     }
-    if (isNewVersion) {
-        GenerateConstpoolCache(thread, jsPandaFile, constpool);
-    }
 
     CVector<JSHandle<Program>> programs;
     auto recordInfos = jsPandaFile->GetJSRecordInfo();
@@ -211,6 +208,9 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
             programs.emplace_back(program);
         }
     }
+    if (isNewVersion) {
+        GenerateConstpoolCache(thread, jsPandaFile, constpool);
+    }
     return programs;
 }
 
@@ -226,7 +226,8 @@ void QuickFixLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile 
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        cda.EnumerateMethods([pf, thread, constpool](panda_file::MethodDataAccessor &mda) {
+        CString entry = jsPandaFile->ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+        cda.EnumerateMethods([pf, thread, constpool, &entry](panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
             ASSERT(codeId.has_value());
             panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
@@ -257,7 +258,7 @@ void QuickFixLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile 
                         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
                             uint32_t id = bcIns.GetId().AsRawValue();
                             ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-                                thread, constpool.GetTaggedValue(), id);
+                                thread, constpool.GetTaggedValue(), id, entry);
                             break;
                         }
                         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
@@ -265,7 +266,7 @@ void QuickFixLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile 
                         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
                             uint32_t id = bcIns.GetId().AsRawValue();
                             ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-                                thread, constpool.GetTaggedValue(), id);
+                                thread, constpool.GetTaggedValue(), id, entry);
                             break;
                         }
                         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
@@ -274,7 +275,7 @@ void QuickFixLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile 
                             uint32_t methodId = bcIns.GetId(0).AsRawValue();
                             uint32_t literalId = bcIns.GetId(1).AsRawValue();
                             ConstantPool::GetClassMethodFromCache(thread, constpool, methodId);
-                            ConstantPool::GetClassLiteralFromCache(thread, constpool, literalId);
+                            ConstantPool::GetClassLiteralFromCache(thread, constpool, literalId, entry);
                             break;
                         }
                         default:
