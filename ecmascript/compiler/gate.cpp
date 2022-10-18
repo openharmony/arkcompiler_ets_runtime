@@ -292,6 +292,10 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
+        case DEOPT: {
+            static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case FRAME_STATE: {
             static const Properties ps { NOVALUE, NO_STATE, NO_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
             return ps;
@@ -463,6 +467,7 @@ std::string OpCode::Str() const
         {UNSIGNED_FLOAT_TO_INT, "UNSIGNED_FLOAT_TO_INT"},
         {BITCAST, "BITCAST"},
         {GUARD, "GUARD"},
+        {DEOPT, "DEOPT"},
         {FRAME_STATE, "FRAME_STATE"},
         {RESTORE_REGISTER, "RESTORE_REGISTER"},
         {SAVE_REGISTER, "SAVE_REGISTER"},
@@ -673,6 +678,7 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckStateOutput() const
             expected = 1;
         }
         if (needCheck && cnt != expected) {
+            curGate->Print();
             return std::make_pair("Number of state out branches is not valid (expected:" + std::to_string(expected) +
                     " actual:" + std::to_string(cnt) + ")",
                 -1);
