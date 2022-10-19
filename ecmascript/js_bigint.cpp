@@ -379,8 +379,6 @@ JSHandle<BigInt> BigInt::BitwiseAddOne(JSThread *thread, JSHandle<BigInt> bigint
     }
     if (needExpend) {
         newBigint->SetDigit(bigintLength, carry);
-    } else {
-        ASSERT(!carry);
     }
     newBigint->SetSign(true);
     return BigIntHelper::RightTruncate(thread, newBigint);
@@ -812,23 +810,90 @@ JSHandle<BigInt> BigInt::SignedRightShift(JSThread *thread, JSHandle<BigInt> x, 
     }
 }
 
+JSHandle<BigInt> BigInt::ReturnIfRightShiftOverMax(JSThread *thread, bool sign)
+{
+    if (sign) {
+        return Int32ToBigInt(thread, -1);
+    }
+    return Int32ToBigInt(thread, 0);
+}
+
+void BigInt::RightShift(JSHandle<BigInt> bigint, JSHandle<BigInt> x, uint32_t digitMove, uint32_t bitsMove)
+{
+    uint32_t size = x->GetLength();
+    if (bitsMove == 0) {
+        for (uint32_t i = digitMove; i < size; i++) {
+            bigint->SetDigit(i - digitMove, x->GetDigit(i));
+        }
+    } else {
+        uint32_t carry = x->GetDigit(digitMove) >> bitsMove;
+        uint32_t last = size - digitMove - 1;
+        for (uint32_t i = 0; i < last; i++) {
+            uint32_t value = x->GetDigit(i + digitMove + 1);
+            bigint->SetDigit(i, (value << (DATEBITS - bitsMove)) | carry);
+            carry = value >> bitsMove;
+        }
+        bigint->SetDigit(last, carry);
+    }
+}
+
+void BigInt::JudgeRoundDown(JSHandle<BigInt> x, uint32_t digitMove, uint32_t bitsMove, uint32_t &needLen,
+                            bool &roundDown)
+{
+    uint32_t stamp = (static_cast<uint32_t>(1U) << bitsMove) - 1;
+    if (x->GetDigit(digitMove) & stamp) {
+        roundDown = true;
+    } else {
+        for (uint32_t i = 0; i < digitMove; i++) {
+            if (x->GetDigit(i) != 0) {
+                roundDown = true;
+                break;
+            }
+        }
+    }
+
+    if (roundDown && bitsMove == 0) {
+        uint32_t highBits = x->GetDigit(x->GetLength() - 1);
+        // If all the most significant bits are 1, we think that carry will cause overflow,
+        // and needLen needs to be increased by 1
+        if ((~highBits) == 0) {
+            needLen++;
+        }
+    }
+}
+
 JSHandle<BigInt> BigInt::RightShiftHelper(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y)
 {
-    CString shiftBinay = BigIntHelper::GetBinary(*x);
-    CString revTemp = CString(shiftBinay.rbegin(), shiftBinay.rend());
-    for (uint32_t i = 0; i < y->GetLength(); i++) {
-        revTemp = revTemp.erase(0, y->GetDigit(i));
+    ASSERT(y->GetLength() == 1);
+    ASSERT(y->GetDigit(0) <= MAXBITS);
+    bool sign = x->GetSign();
+    if (y->GetLength() > 1 || y->GetDigit(0) > MAXBITS) {
+        return ReturnIfRightShiftOverMax(thread, sign);
     }
-    CString finalBinay = CString(revTemp.rbegin(), revTemp.rend());
-    if (finalBinay.empty()) {
-        finalBinay = "0";
+    uint32_t moveNum = y->GetDigit(0);
+    uint32_t digitMove = moveNum / DATEBITS;
+    uint32_t bitsMove = moveNum % DATEBITS;
+    if (x->GetLength() <= digitMove) {
+        return ReturnIfRightShiftOverMax(thread, sign);
     }
-    JSHandle<BigInt> bigint = BigIntHelper::SetBigInt(thread, finalBinay, BINARY);
-    if (x->GetSign()) {
-        bigint->SetDigit(0, bigint->GetDigit(0) + 1);
+    uint32_t needLen = x->GetLength() - digitMove;
+    bool roundDown = false;
+    if (sign) {
+        // If it is a negative number, you need to consider whether it will carry after moving.
+        // NeedLen may need to increase by 1
+        JudgeRoundDown(x, digitMove, bitsMove, needLen, roundDown);
     }
-    bigint->SetSign(x->GetSign());
-    return BigIntHelper::RightTruncate(thread, bigint);
+    JSHandle<BigInt> bigint = CreateBigint(thread, needLen);
+
+    RightShift(bigint, x, digitMove, bitsMove);
+    bigint = BigIntHelper::RightTruncate(thread, bigint);
+    if (sign) {
+        bigint->SetSign(true);
+        if (roundDown) {
+            return BitwiseAddOne(thread, bigint);
+        }
+    }
+    return bigint;
 }
 
 JSHandle<BigInt> BigInt::LeftShift(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y)
@@ -842,11 +907,35 @@ JSHandle<BigInt> BigInt::LeftShift(JSThread *thread, JSHandle<BigInt> x, JSHandl
 
 JSHandle<BigInt> BigInt::LeftShiftHelper(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y)
 {
-    CString shiftBinary = BigIntHelper::GetBinary(*x);
-    for (size_t i = 0; i < y->GetLength(); i++) {
-        shiftBinary = shiftBinary.append(y->GetDigit(i), '0');
+    ASSERT(y->GetLength() == 1);
+    ASSERT(y->GetDigit(0) <= MAXBITS);
+    uint32_t moveNum = y->GetDigit(0);
+    uint32_t digitMove = moveNum / DATEBITS;
+    uint32_t bitsMove = moveNum % DATEBITS;
+    // If bitsMove is not zero, needLen needs to be increased by 1
+    uint32_t needLen = digitMove + x->GetLength() + static_cast<uint32_t>(!!bitsMove);
+    ASSERT(needLen < MAXSIZE);
+    JSHandle<BigInt> bigint = CreateBigint(thread, needLen);
+    if (bitsMove == 0) {
+        uint32_t index = digitMove;
+        while (index < needLen) {
+            bigint->SetDigit(index, x->GetDigit(index - digitMove));
+            ++index;
+        }
+    } else {
+        uint32_t carry = 0;
+        uint32_t index = 0;
+        while (index < x->GetLength()) {
+            uint32_t value = x->GetDigit(index);
+            bigint->SetDigit(index + digitMove, (value << bitsMove) | carry);
+            carry = value >> (DATEBITS - bitsMove);
+            ++index;
+        }
+        if (carry != 0) {
+            ASSERT(index + digitMove < needLen);
+            bigint->SetDigit(index + digitMove, carry);
+        }
     }
-    JSHandle<BigInt> bigint = BigIntHelper::SetBigInt(thread, shiftBinary, BINARY);
     bigint->SetSign(x->GetSign());
     return BigIntHelper::RightTruncate(thread, bigint);
 }
@@ -898,53 +987,66 @@ JSHandle<BigInt> BigInt::Exponentiate(JSThread *thread, JSHandle<BigInt> base, J
     }
     ASSERT(exponent->GetLength() == 1);
     if (exponent->IsZero()) {
-        return BigIntHelper::SetBigInt(thread, "1");
+        return Int32ToBigInt(thread, 1);
     }
-    
-    if (base->IsZero()) {
-        return BigIntHelper::SetBigInt(thread, "0");
-    }
-    uint32_t EValue = exponent->GetDigit(0);
-    if (EValue == 1) {
+    uint32_t expValue = exponent->GetDigit(0);
+    if (base->IsZero() || expValue == 1) {
         return base;
     }
-    uint32_t j = exponent->GetDigit(0) - 1;
-    CString a = BigIntHelper::GetBinary(*base);
-    a = BigIntHelper::Conversion(a, DECIMAL, BINARY);
-    CString b = a;
-    for (uint32_t i = 0; i < j; ++i) {
-        b = BigIntHelper::MultiplyImpl(b, a);
+    if (base->GetLength() == 1 && base->GetDigit(0) == 1) {
+        if (base->GetSign() && !(expValue & 1)) {
+            return BigInt::UnaryMinus(thread, base);
+        }
+        return base;
     }
-    if (exponent->GetDigit(0) & 1) {
+    if (base->GetLength() == 1 && base->GetDigit(0) == 2) { // 2 : We use fast path processing 2 ^ n
+        int needLength = expValue / DATEBITS + 1;
+        JSHandle<BigInt> bigint = CreateBigint(thread, needLength);
+        uint32_t value = 1U << (expValue % DATEBITS);
+        bigint->SetDigit(needLength - 1, value);
         if (base->GetSign()) {
-            b = "-" + b;
+            bigint->SetSign(static_cast<bool>(expValue & 1));
+        }
+        return bigint;
+    }
+    JSMutableHandle<BigInt> result(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<BigInt> temp(thread, base);
+    if (expValue & 1) {
+        result.Update(base);
+    }
+    expValue >>= 1;
+    for (; expValue; expValue >>= 1) {
+        temp.Update(BigInt::Multiply(thread, temp, temp));
+        if (expValue & 1) {
+            if (result.GetTaggedValue().IsUndefined()) {
+                result.Update(temp);
+            } else {
+                result.Update(BigInt::Multiply(thread, result, temp));
+            }
         }
     }
-    return BigIntHelper::SetBigInt(thread, b, DECIMAL);
+    ASSERT(result.GetTaggedValue().IsBigInt());
+    return result;
 }
 
-CString BigIntHelper::MultiplyImpl(CString &a, CString &b)
+std::tuple<uint32_t, uint32_t> BigInt::Mul(uint32_t x, uint32_t y)
 {
-    int size1 = static_cast<int>(a.size());
-    int size2 = static_cast<int>(b.size());
-    CString str(size1 + size2, '0');
-    for (int i = size2 - 1; i >= 0; --i) {
-        int mulflag = 0;
-        int addflag = 0;
-        for (int j = size1 - 1; j >= 0; --j) {
-            int temp1 = static_cast<int>((b[i] - '0') * (a[j] - '0')) + mulflag;
-            mulflag = temp1 / 10; // 10:help to Remove single digits
-            temp1 = temp1 % 10; // 10:help to Take single digit
-            int temp2 = static_cast<int>(str[i + j + 1] - '0') + temp1 + addflag;
-            str[i + j + 1] = static_cast<int8_t>(temp2 % 10 + '0'); // 2 and 10 and 48 is number
-            addflag = temp2 / 10;
-        }
-        str[i] += static_cast<uint32_t>(mulflag + addflag);
-    }
-    if (str[0] == '0') {
-        str = str.substr(1, str.size());
-    }
-    return str;
+    uint32_t lowBitX = x & HALFDATEMASK;
+    uint32_t highBitX = x >> HALFDATEBITS;
+    uint32_t lowBitY = y & HALFDATEMASK;
+    uint32_t highBitY = y >> HALFDATEBITS;
+    // {highBitX lowBitX} * {highBitY lowBitY}
+    uint32_t lowRes = lowBitX * lowBitY;
+    uint32_t highRes = highBitX * highBitY;
+    uint32_t midRes1 = lowBitX * highBitY;
+    uint32_t midRes2 = highBitX * lowBitY;
+
+    uint32_t carry = 0;
+    uint32_t low = BigIntHelper::AddHelper(
+        BigIntHelper::AddHelper(lowRes, midRes1 << HALFDATEBITS, carry), midRes2 << HALFDATEBITS, carry);
+    uint32_t high = (midRes1 >> HALFDATEBITS) + (midRes2 >> HALFDATEBITS) + highRes + carry;
+
+    return std::make_tuple(high, low);
 }
 
 JSHandle<BigInt> BigInt::Multiply(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y)
@@ -955,16 +1057,45 @@ JSHandle<BigInt> BigInt::Multiply(JSThread *thread, JSHandle<BigInt> x, JSHandle
     if (y->IsZero()) {
         return y;
     }
-    CString left = BigIntHelper::GetBinary(*x);
-    CString right = BigIntHelper::GetBinary(*y);
-    left = BigIntHelper::Conversion(left, DECIMAL, BINARY);
-    right = BigIntHelper::Conversion(right, DECIMAL, BINARY);
+    uint32_t needLength = x->GetLength() + y->GetLength();
+    JSHandle<BigInt> bigint = BigInt::CreateBigint(thread, needLength);
 
-    CString ab = BigIntHelper::MultiplyImpl(left, right);
-    if (x->GetSign() != y->GetSign()) {
-        ab = "-" + ab;
+    for (uint32_t i = 0; i < x->GetLength(); i++) {
+        uint32_t xVal = x->GetDigit(i);
+        if (xVal == 0) {
+            continue;
+        }
+        uint32_t carry = 0;
+        uint32_t high = 0;
+        uint32_t index = i;
+        for (uint32_t j = 0; j < y->GetLength(); j++) {
+            uint32_t currentCarry = 0;
+            uint32_t value = bigint->GetDigit(index);
+            value = BigIntHelper::AddHelper(value, high, currentCarry);
+            value = BigIntHelper::AddHelper(value, carry, currentCarry);
+
+            uint32_t low;
+            std::tie(high, low) = Mul(xVal, y->GetDigit(j));
+            value = BigIntHelper::AddHelper(value, low, currentCarry);
+            bigint->SetDigit(index, value);
+            carry = currentCarry;
+            index++;
+        }
+        while (carry != 0 || high != 0) {
+            ASSERT(index < bigint->GetLength());
+            uint32_t value = bigint->GetDigit(index);
+            uint32_t currentCarry = 0;
+            value = BigIntHelper::AddHelper(value, high, currentCarry);
+            high = 0;
+            value = BigIntHelper::AddHelper(value, carry, currentCarry);
+            bigint->SetDigit(index, value);
+            carry = currentCarry;
+            index++;
+        }
     }
-    return BigIntHelper::SetBigInt(thread, ab, DECIMAL);
+
+    bigint->SetSign(x->GetSign() != y->GetSign());
+    return BigIntHelper::RightTruncate(thread, bigint);
 }
 
 void BigIntHelper::DeZero(CString &a)
@@ -1063,7 +1194,6 @@ JSHandle<BigInt> BigInt::Divide(JSThread *thread, JSHandle<BigInt> x, JSHandle<B
     }
     return BigIntHelper::DivideImpl(thread, x, y);
 }
-
 
 JSHandle<BigInt> BigInt::Remainder(JSThread *thread, JSHandle<BigInt> n, JSHandle<BigInt> d)
 {

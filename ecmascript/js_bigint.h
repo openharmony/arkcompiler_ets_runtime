@@ -40,6 +40,8 @@ public:
     static constexpr uint32_t OCTAL = 8; // 8 : octal
     static constexpr uint32_t DECIMAL = 10; // 10 : decimal
     static constexpr uint32_t HEXADECIMAL = 16; // 16 : hexadecimal
+    static constexpr uint32_t HALFDATEBITS = DATEBITS / 2;
+    static constexpr uint32_t HALFDATEMASK = (1U << HALFDATEBITS) - 1;
     CAST_CHECK(BigInt, IsBigInt);
     static JSHandle<BigInt> CreateBigint(JSThread *thread, uint32_t size);
 
@@ -60,6 +62,7 @@ public:
     static JSHandle<BigInt> UnaryMinus(JSThread *thread, JSHandle<BigInt> x);
     static JSHandle<BigInt> BitwiseNOT(JSThread *thread, JSHandle<BigInt> x);
     static JSHandle<BigInt> Exponentiate(JSThread *thread, JSHandle<BigInt> base, JSHandle<BigInt> exponent);
+    static std::tuple<uint32_t, uint32_t> Mul(uint32_t x, uint32_t y);
     static JSHandle<BigInt> Multiply(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
     static JSHandle<BigInt> Divide(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
     static JSHandle<BigInt> Remainder(JSThread *thread, JSHandle<BigInt> n, JSHandle<BigInt> d);
@@ -72,6 +75,10 @@ public:
     static bool LessThan(const JSTaggedValue &x, const JSTaggedValue &y);
     static ComparisonResult Compare(const JSTaggedValue &x, const JSTaggedValue &y);
     static JSHandle<BigInt> SignedRightShift(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
+    static JSHandle<BigInt> ReturnIfRightShiftOverMax(JSThread *thread, bool sign);
+    static void RightShift(JSHandle<BigInt> bigint, JSHandle<BigInt> x, uint32_t digitMove, uint32_t bitsMove);
+    static void JudgeRoundDown(JSHandle<BigInt> x, uint32_t digitMove, uint32_t bitsMove, uint32_t &needLen,
+                                bool &roundDown);
     static JSHandle<BigInt> RightShiftHelper(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
     static JSTaggedValue UnsignedRightShift(JSThread *thread);
     static JSHandle<BigInt> LeftShift(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
@@ -157,7 +164,6 @@ public:
     static JSHandle<BigInt> RightTruncate(JSThread *thread, JSHandle<BigInt> x);
 
     static JSHandle<BigInt> DivideImpl(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
-    static CString MultiplyImpl(CString &a, CString &b);
     static void DeZero(CString &a);
     static void Minus(CString &a, CString &b);
     static CString Divide(CString &a, CString &b);
