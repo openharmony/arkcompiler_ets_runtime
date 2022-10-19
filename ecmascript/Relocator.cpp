@@ -113,7 +113,7 @@ bool Relocator::RelocateBySymbol(const char* symbol, uintptr_t patchAddr)
     }
     auto symId = GetSymbol(symbol);
     if (!symId.has_value()) {
-        LOG_COMPILER(ERROR) << " don't find symbol:" << symbol << " in symbol table.";
+        LOG_COMPILER(INFO) << " don't find symbol:" << symbol << " in symbol table.";
         return false;
     }
     bool ret = RelocateBySymbolId(symId.value(), patchAddr);
