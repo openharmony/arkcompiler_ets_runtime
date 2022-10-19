@@ -18,7 +18,6 @@
 
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
@@ -30,9 +29,9 @@ enum class MTableIdx : uint8_t {
     NUM_OF_DEFAULT_TABLES,
 };
 
-enum class CacheKind: uint8_t {
-    CONST_DATA_INDEX = 0,
-    HCLASS,
+enum class CacheType : uint8_t {
+    STRING = 0,
+    METHOD,
 };
 
 class TSModuleTable : public TaggedArray {
@@ -238,6 +237,9 @@ public:
 
     void PUBLIC_API CollectConstantPoolInfo(const JSPandaFile* jsPandaFile);
 
+    void PUBLIC_API ResolveConstantPoolInfo(const std::map<std::pair<uint32_t, uint32_t>, uint32_t>
+                                            &methodToEntryIndexMap);
+
     JSHandle<TaggedArray> PUBLIC_API GetConstantPoolInfos() const
     {
         return JSHandle<TaggedArray>(uintptr_t(&constantPoolInfos_));
@@ -250,36 +252,29 @@ public:
 
     void PUBLIC_API SortConstantPoolInfos();
 
-    JSHandle<ConstantPool> PUBLIC_API RestoreConstantPool(const JSPandaFile* pf, uint32_t constantPool);
+    JSHandle<ConstantPool> PUBLIC_API RestoreConstantPool(const JSPandaFile* pf);
 
     void ClearCaches()
     {
-        constIndexCache_.clear();
+        stringIndexCache_.clear();
+        methodIndexCache_.clear();
         hclassCache_.clear();
     }
 
     void AddStringIndex(uint32_t index)
     {
-        if (constIndexCache_.find({ConstPoolType::STRING, index}) != constIndexCache_.end()) {
+        if (stringIndexCache_.find(index) != stringIndexCache_.end()) {
             return;
         }
-        constIndexCache_.insert({ConstPoolType::STRING, index});
+        stringIndexCache_.insert(index);
     }
 
     void AddMethodIndex(uint32_t index)
     {
-        if (constIndexCache_.find({ConstPoolType::METHOD, index}) != constIndexCache_.end()) {
+        if (methodIndexCache_.find(index) != methodIndexCache_.end()) {
             return;
         }
-        constIndexCache_.insert({ConstPoolType::METHOD, index});
-    }
-
-    void AddClassLiteraIndex(uint32_t index)
-    {
-        if (constIndexCache_.find({ConstPoolType::CLASS_LITERAL, index}) != constIndexCache_.end()) {
-            return;
-        }
-        constIndexCache_.insert({ConstPoolType::CLASS_LITERAL, index});
+        methodIndexCache_.insert(index);
     }
 
     EcmaVM *GetEcmaVM() const
@@ -346,11 +341,7 @@ public:
 
 private:
     // constantpoolInfos
-    static constexpr uint32_t CONSTANTPOOL_INFO_DATA_OFFSET = 2;
     static constexpr uint32_t CONSTANTPOOL_INFOS_ITEM_SIZE = 2;
-    static constexpr uint32_t NUM_OF_ORIGINAL_CONSTANTPOOL_DATA_INDEX = 0;
-    static constexpr uint32_t ORIGINAL_CONSTANTPOOL_DATA_SIZE = 2;
-    static constexpr uint32_t NUM_OF_HCLASS_INDEX = 1;
 
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
@@ -377,22 +368,6 @@ private:
 
     int BinarySearch(uint32_t target, uint32_t itemSize, bool findLeftBound = true);
 
-    uint32_t ComputeSizeOfConstantPoolInfo() const
-    {
-        return CONSTANTPOOL_INFO_DATA_OFFSET + ORIGINAL_CONSTANTPOOL_DATA_SIZE *
-               GetConstDataCacheSize() + GetHClassCacheSize();
-    }
-
-    uint32_t GetHClassCacheSize() const
-    {
-        return hclassCache_.size();
-    }
-
-    uint32_t GetConstDataCacheSize() const
-    {
-        return constIndexCache_.size();
-    }
-
     void AddHClassInCompilePhase(GlobalTSTypeRef gt, JSTaggedValue hclass, uint32_t constantPoolLen)
     {
         hclassCache_.emplace_back(hclass.GetRawData());
@@ -400,18 +375,31 @@ private:
     }
 
     template <class Callback>
-    void IterateConstDataCaches(const Callback &cb)
+    void IterateConstantPoolCache(CacheType type, const Callback &cb)
     {
-        for (auto item: constIndexCache_) {
-            cb(std::get<0>(item), std::get<1>(item));
+        switch (type) {
+            case CacheType::STRING: {
+                for (auto item: stringIndexCache_) {
+                    cb(item);
+                }
+                break;
+            }
+            case CacheType::METHOD: {
+                for (auto item: methodIndexCache_) {
+                    cb(item);
+                }
+                break;
+            }
+            default:
+                UNREACHABLE();
         }
     }
 
     template <class Callback>
     void IterateHClassCaches(const Callback &cb)
     {
-        for (JSTaggedType item: hclassCache_) {
-            cb(item);
+        for (uint32_t i = 0; i < hclassCache_.size(); ++i) {
+            cb(hclassCache_[i], i);
         }
     }
 
@@ -420,6 +408,7 @@ private:
     ObjectFactory *factory_ {nullptr};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
     JSTaggedValue constantPoolInfos_ {JSTaggedValue::Hole()};
+    std::vector<std::vector<std::pair<uint32_t, uint32_t>>> recordMethodInfos_ {};
     size_t constantPoolInfosSize_ {0};
     // record the mapping relationship between classType and instance hclass index in the constant pool
     std::map<GlobalTSTypeRef, uint32_t> classTypeIhcIndexMap_ {};
@@ -427,8 +416,9 @@ private:
     bool printAnyTypes_ {false};
     friend class EcmaVM;
 
-    // recode the index of String in each constpool
-    std::set<std::tuple<ConstPoolType, int>>constIndexCache_ {};
+    // records the index in constantpool of the data that aot needs to serialize
+    std::set<int> stringIndexCache_ {};
+    std::set<int> methodIndexCache_ {};
     // store hclass of each abc which produced from static type info
     CVector<JSTaggedType> hclassCache_ {};
 

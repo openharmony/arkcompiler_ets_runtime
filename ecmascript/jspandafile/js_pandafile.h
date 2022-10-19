@@ -245,6 +245,28 @@ public:
     // For local merge abc, get record name from file name.
     static CString PUBLIC_API ParseRecordName(const CString &fileName);
 
+    bool IsSystemLib() const
+    {
+        return false;
+    }
+
+    uint32_t GetAOTPackInfoIndex() const
+    {
+        return aotPackInfoIndex_;
+    }
+
+    // If the system library is loaded, packinfos has two elements
+    // 0: system library, 1: application
+    // Note: There is no system library currently, so the aotPackInfoIndex_ is 0
+    void SetAOTPackInfoIndex()
+    {
+        if (IsSystemLib()) {
+            aotPackInfoIndex_ = 0;
+        } else {
+            aotPackInfoIndex_ = 1;
+        }
+    }
+
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
@@ -261,6 +283,7 @@ private:
     CString desc_;
     bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
+    uint32_t aotPackInfoIndex_ {0};
     uint32_t typeSummaryOffset_ {0};
     bool isNewVersion_ {false};
 

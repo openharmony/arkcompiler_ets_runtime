@@ -860,28 +860,28 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_8_3();
-            info.inputs.emplace_back(Immediate(methodId));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
             break;
         }
         case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8: {
             uint16_t methodId = READ_INST_16_2();
             uint16_t length = READ_INST_8_4();
-            info.inputs.emplace_back(Immediate(methodId));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
             break;
         }
         case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8: {
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_8_3();
-            info.inputs.emplace_back(Immediate(methodId));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
             break;
         }
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
             uint16_t methodId = READ_INST_16_2();
             uint16_t length = READ_INST_8_4();
-            info.inputs.emplace_back(Immediate(methodId));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
             break;
         }
@@ -1493,7 +1493,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             uint16_t literaId = READ_INST_16_3();
             uint16_t length = READ_INST_16_5();
             uint16_t v0 = READ_INST_8_7();
-            info.inputs.emplace_back(Immediate(methodId));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(literaId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -1504,7 +1504,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             uint16_t literaId = READ_INST_16_4();
             uint16_t length = READ_INST_16_6();
             uint16_t v0 = READ_INST_8_8();
-            info.inputs.emplace_back(Immediate(methodId));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(literaId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -1901,9 +1901,14 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
         if (std::holds_alternative<ConstDataId>(input)) {
             if (std::get<ConstDataId>(input).IsStringId()) {
                 tsManager_->AddStringIndex(std::get<ConstDataId>(input).GetId());
+                inList[i + length] = circuit_.GetConstantDataGate(std::get<ConstDataId>(input).CaculateBitField(),
+                                                                  GateType::StringType());
+            } else if (std::get<ConstDataId>(input).IsMethodId()) {
+                tsManager_->AddMethodIndex(std::get<ConstDataId>(input).GetId());
+                inList[i + length] = circuit_.GetConstantGate(MachineType::I64,
+                                                              std::get<ConstDataId>(input).GetId(),
+                                                              GateType::NJSValue());
             }
-            inList[i + length] = circuit_.GetConstantDataGate(std::get<ConstDataId>(input).CaculateBitField(),
-                                                              GateType::StringType());
         } else if (std::holds_alternative<Immediate>(input)) {
             inList[i + length] = circuit_.GetConstantGate(MachineType::I64,
                                                           std::get<Immediate>(input).GetValue(),

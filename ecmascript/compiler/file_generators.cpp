@@ -118,6 +118,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
 {
     RunLLVMAssembler();
     CollectCodeInfo();
+    GenerateMethodToEntryIndexMap();
     aotInfo_.Save(filename);
     DestoryModule();
 }
@@ -126,6 +127,7 @@ void AOTFileGenerator::SaveSnapshotFile()
 {
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
+    vm_->GetTSManager()->ResolveConstantPoolInfo(methodToEntryIndexMap_);
     snapshot.Serialize(snapshotPath + ".etso");
 }
 }  // namespace panda::ecmascript::kungfu

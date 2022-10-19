@@ -467,7 +467,7 @@ JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
     if (isLoadedAOT) {
-        constpool = vm->GetTSManager()->RestoreConstantPool(jsPandaFile, constpoolIndex);
+        constpool = vm->GetTSManager()->RestoreConstantPool(jsPandaFile);
     } else {
         constpool = factory->NewConstantPool(constpoolIndex);
     }
