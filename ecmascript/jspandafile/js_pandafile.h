@@ -220,6 +220,16 @@ public:
         return info->second;
     }
 
+    void UpdateHasParsedLiteralConstpool(const CString &recordName)
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info == jsRecordInfo_.end()) {
+            LOG_FULL(FATAL) << "find recordName failed: " << recordName;
+            UNREACHABLE();
+        }
+        info->second.hasParsedLiteralConstPool = true;
+    }
+
     // note : it only uses in TDD
     void InsertJSRecordInfo(const CString &recordName)
     {
