@@ -407,7 +407,7 @@ public:
     {
         return &nodes_;
     }
-    const CVector<Edge *> *GetEdges() const
+    const CList<Edge *> *GetEdges() const
     {
         return &edges_;
     }
@@ -470,7 +470,7 @@ private:
 
     StringHashMap stringTable_;
     CList<Node *> nodes_ {};
-    CVector<Edge *> edges_ {};
+    CList<Edge *> edges_ {};
     CVector<TimeStamp> timeStamps_ {};
     std::atomic_int sequenceId_ {1};  // 1 Reversed for SyntheticRoot
     int nodeCount_ {0};

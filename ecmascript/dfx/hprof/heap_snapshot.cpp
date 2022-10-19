@@ -1017,7 +1017,9 @@ Node *HeapSnapshot::InsertNodeAt(size_t pos, Node *node)
 Edge *HeapSnapshot::InsertEdgeAt(size_t pos, Edge *edge)
 {
     ASSERT(edge != nullptr);
-    edges_.insert(edges_.begin() + pos, edge);
+    auto iter = edges_.begin();
+    std::advance(iter, pos);
+    edges_.insert(iter, edge);
     edgeCount_++;
     return edge;
 }
