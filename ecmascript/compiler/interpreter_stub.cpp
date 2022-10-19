@@ -2148,7 +2148,7 @@ DECLARE_ASM_HANDLER(HandleStsuperbynameImm8Id16V8)
     GateRef stringId = ReadInst16_1(pc);
     GateRef v0 = ReadInst8_3(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result, INT_PTR(STSUPERBYNAME_IMM8_ID16_V8));
 }
@@ -2158,7 +2158,7 @@ DECLARE_ASM_HANDLER(HandleStsuperbynameImm16Id16V8)
     GateRef stringId = ReadInst16_2(pc);
     GateRef v0 = ReadInst8_4(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result, INT_PTR(STSUPERBYNAME_IMM16_ID16_V8));
 }
@@ -3035,14 +3035,14 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm8Id16V8)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = SetPropertyByName(glue, receiver, propKey, acc, false);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
         result = ret;
@@ -3072,14 +3072,14 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm16Id16V8)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst16_2(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = SetPropertyByName(glue, receiver, propKey, acc, false);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst16_2(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
         result = ret;
@@ -3181,7 +3181,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
 {
     auto env = GetEnvironment();
     GateRef stringId = ReadInst16_1(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label checkResult(env);
@@ -3219,7 +3219,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
 {
     auto env = GetEnvironment();
     GateRef stringId = ReadInst16_2(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label checkResult(env);
@@ -3258,7 +3258,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
     auto env = GetEnvironment();
     GateRef stringId = ReadInst16_1(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     Label isJSObject(env);
     Label notJSObject(env);
     Label notClassConstructor(env);
@@ -3300,7 +3300,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
     auto env = GetEnvironment();
     GateRef stringId = ReadInst16_2(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     Label isJSObject(env);
     Label notJSObject(env);
     Label notClassConstructor(env);
@@ -3378,7 +3378,7 @@ DECLARE_ASM_HANDLER(HandleLdaStrId16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst16_0(pc);
-    varAcc = GetStringFromConstPool(constpool, stringId);
+    varAcc = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     DISPATCH_WITH_ACC(LDA_STR_ID16);
 }
 
@@ -3917,7 +3917,7 @@ DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm8Id16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst16_1(pc);
-    GateRef prop = GetStringFromConstPool(constpool, stringId);
+    GateRef prop = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
 
     Label dispatch(env);
     Label icAvailable(env);
@@ -3996,7 +3996,7 @@ DECLARE_ASM_HANDLER(HandleTryldglobalbynameImm16Id16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst16_2(pc);
-    GateRef prop = GetStringFromConstPool(constpool, stringId);
+    GateRef prop = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
 
     Label dispatch(env);
     Label icAvailable(env);
@@ -4073,7 +4073,7 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm8Id16)
 {
     auto env = GetEnvironment();
     GateRef stringId = ReadInst16_1(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     Label checkResult(env);
@@ -4141,7 +4141,7 @@ DECLARE_ASM_HANDLER(HandleTrystglobalbynameImm16Id16)
 {
     auto env = GetEnvironment();
     GateRef stringId = ReadInst16_2(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     Label checkResult(env);
@@ -4211,7 +4211,7 @@ DECLARE_ASM_HANDLER(HandleLdglobalvarImm16Id16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst16_2(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     Label checkResult(env);
@@ -4270,7 +4270,7 @@ DECLARE_ASM_HANDLER(HandleStglobalvarImm16Id16)
     auto env = GetEnvironment();
 
     GateRef stringId = ReadInst16_2(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
     Label checkResult(env);
@@ -4313,7 +4313,7 @@ DECLARE_ASM_HANDLER(HandleStglobalvarImm16Id16)
 DECLARE_ASM_HANDLER(HandleCreateregexpwithliteralImm8Id16Imm8)
 {
     GateRef stringId = ReadInst16_1(pc);
-    GateRef pattern = GetStringFromConstPool(constpool, stringId);
+    GateRef pattern = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef flags = ReadInst8_3(pc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateRegExpWithLiteral),
                               { pattern, Int8ToTaggedInt(flags) });
@@ -4323,7 +4323,7 @@ DECLARE_ASM_HANDLER(HandleCreateregexpwithliteralImm8Id16Imm8)
 DECLARE_ASM_HANDLER(HandleCreateregexpwithliteralImm16Id16Imm8)
 {
     GateRef stringId = ReadInst16_2(pc);
-    GateRef pattern = GetStringFromConstPool(constpool, stringId);
+    GateRef pattern = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef flags = ReadInst8_4(pc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateRegExpWithLiteral),
                               { pattern, Int8ToTaggedInt(flags) });
@@ -4463,7 +4463,7 @@ DECLARE_ASM_HANDLER(HandleSub2Imm8V8)
 DECLARE_ASM_HANDLER(HandleLdbigintId16)
 {
     GateRef stringId = ReadInst16_0(pc);
-    GateRef numberBigInt = GetStringFromConstPool(constpool, stringId);
+    GateRef numberBigInt = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef res = CallRuntime(glue, RTSTUB_ID(LdBigInt), { numberBigInt });
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(LDBIGINT_ID16));
 }
@@ -4775,7 +4775,7 @@ DECLARE_ASM_HANDLER(HandleLdsuperbynameImm8Id16)
 
     GateRef stringId = ReadInst16_1(pc);
     GateRef receiver = acc;
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDSUPERBYNAME_IMM8_ID16));
 }
@@ -4786,7 +4786,7 @@ DECLARE_ASM_HANDLER(HandleLdsuperbynameImm16Id16)
 
     GateRef stringId = ReadInst16_2(pc);
     GateRef receiver = acc;
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDSUPERBYNAME_IMM16_ID16));
 }
@@ -4798,7 +4798,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdsuperbynamePrefId32V8)
     GateRef stringId = ReadInst32_1(pc);
     GateRef v0 = ReadInst8_5(pc);
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8));
 }
@@ -4909,7 +4909,7 @@ DECLARE_ASM_HANDLER(HandleStconsttoglobalrecordImm16Id16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst16_2(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedTrue() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(STCONSTTOGLOBALRECORD_IMM16_ID16));
@@ -4920,7 +4920,7 @@ DECLARE_ASM_HANDLER(HandleSttoglobalrecordImm16Id16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst16_2(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(STTOGLOBALRECORD_IMM16_ID16));
@@ -4931,7 +4931,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStconsttoglobalrecordPrefId32)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedTrue() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32));
@@ -4942,7 +4942,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStlettoglobalrecordPrefId32)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32));
@@ -4953,7 +4953,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStclasstoglobalrecordPrefId32)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, *varAcc, TaggedFalse() });
     CHECK_EXCEPTION_VARACC(result, INT_PTR(DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32));
@@ -4974,7 +4974,7 @@ DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { IntToTaggedInt(index) });
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { Int16ToTaggedInt(index) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(WIDE_GETMODULENAMESPACE_PREF_IMM16);
 }
@@ -4984,7 +4984,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedGetmodulenamespacePrefId32)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef stringId = ReadInst32_1(pc);
-    GateRef prop = GetStringFromConstPool(constpool, stringId);
+    GateRef prop = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(DEPRECATED_GETMODULENAMESPACE_PREF_ID32);
@@ -4995,7 +4995,7 @@ DECLARE_ASM_HANDLER(HandleLdlocalmodulevarImm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst8_0(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { IntToTaggedInt(index) });
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { Int8ToTaggedInt(index) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(LDLOCALMODULEVAR_IMM8);
 }
@@ -5005,7 +5005,7 @@ DECLARE_ASM_HANDLER(HandleWideLdlocalmodulevarPrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { IntToTaggedInt(index) });
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { Int16ToTaggedInt(index) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(WIDE_LDLOCALMODULEVAR_PREF_IMM16);
 }
@@ -5015,7 +5015,7 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst8_0(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { IntToTaggedInt(index) });
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { Int8ToTaggedInt(index) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(LDEXTERNALMODULEVAR_IMM8);
 }
@@ -5025,7 +5025,7 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { IntToTaggedInt(index) });
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { Int16ToTaggedInt(index) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
@@ -5036,7 +5036,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdmodulevarPrefId32Imm8)
 
     GateRef stringId = ReadInst32_1(pc);
     GateRef flag = ZExtInt8ToInt32(ReadInst8_5(pc));
-    GateRef key = GetStringFromConstPool(constpool, stringId);
+    GateRef key = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdModuleVar), { key, IntToTaggedInt(flag) });
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8);
@@ -5056,7 +5056,7 @@ DECLARE_ASM_HANDLER(HandleWideStmodulevarPrefImm16)
     GateRef index = ReadInst16_1(pc);
     GateRef value = acc;
 
-    CallRuntime(glue, RTSTUB_ID(StModuleVarByIndex), { IntToTaggedInt(index), value });
+    CallRuntime(glue, RTSTUB_ID(StModuleVarByIndex), { Int16ToTaggedInt(index), value });
     DISPATCH(WIDE_STMODULEVAR_PREF_IMM16);
 }
 
@@ -5269,14 +5269,14 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = GetPropertyByName(glue, receiver, propKey);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
                              { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
         Jump(&checkException);
@@ -5306,14 +5306,14 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm16Id16)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst16_2(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = GetPropertyByName(glue, receiver, propKey);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst16_2(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
                              { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
         Jump(&checkException);
@@ -5336,7 +5336,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdobjbynamePrefId32V8)
 
     GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_5(pc)));
     GateRef stringId = ReadInst32_1(pc);
-    GateRef propKey = GetStringFromConstPool(constpool, stringId);
+    GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
@@ -6344,14 +6344,14 @@ DECLARE_ASM_HANDLER(HandleStthisbynameImm16Id16)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst16_2(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = SetPropertyByName(glue, receiver, propKey, acc, false);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst16_2(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
         result = ret;
@@ -6380,14 +6380,14 @@ DECLARE_ASM_HANDLER(HandleStthisbynameImm8Id16)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = SetPropertyByName(glue, receiver, propKey, acc, false);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         GateRef ret = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, acc, IntToTaggedInt(slotId) });
         result = ret;
@@ -6417,14 +6417,14 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm16Id16)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst16_2(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = GetPropertyByName(glue, receiver, propKey);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst16_2(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
                              { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
         Jump(&checkException);
@@ -6453,14 +6453,14 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm8Id16)
     Bind(&tryFastPath);
     {
         GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = GetPropertyByName(glue, receiver, propKey);
         Branch(TaggedIsHole(*result), &slowPath, &checkException);
     }
     Bind(&slowPath);
     {
         GateRef stringId = ReadInst16_1(pc);
-        GateRef propKey = GetStringFromConstPool(constpool, stringId);
+        GateRef propKey = GetStringFromConstPool(constpool, ZExtInt16ToInt32(stringId));
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
                              { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
         Jump(&checkException);
@@ -6667,14 +6667,14 @@ DECLARE_ASM_HANDLER(HandleWideLdpatchvarPrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(LdPatchVar), { IntToTaggedInt(index) });
+    GateRef result = CallRuntime(glue, RTSTUB_ID(LdPatchVar), { Int16ToTaggedInt(index) });
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(WIDE_LDPATCHVAR_PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleWideStpatchvarPrefImm16)
 {
     GateRef index = ReadInst16_1(pc);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(StPatchVar), { IntToTaggedInt(index), acc });
+    GateRef result = CallRuntime(glue, RTSTUB_ID(StPatchVar), { Int16ToTaggedInt(index), acc });
     CHECK_EXCEPTION(result, INT_PTR(WIDE_STPATCHVAR_PREF_IMM16));
 }
 #undef DECLARE_ASM_HANDLER

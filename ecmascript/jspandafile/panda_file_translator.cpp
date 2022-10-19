@@ -135,34 +135,25 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<Program> program = factory->NewProgram();
-
     uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
-    int32_t index = 0;
-    int32_t total = 1;
-    bool isNewVersion = jsPandaFile->IsNewVersion();
-    if (isNewVersion) {
-        panda_file::IndexAccessor indexAccessor(
-            *jsPandaFile->GetPandaFile(), panda_file::File::EntityId(mainMethodIndex));
-        index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
-        total = static_cast<int32_t>(indexAccessor.GetNumHeaders());
-    }
 
     JSHandle<ConstantPool> constpool;
-    // Parse constpool.
-    JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, index);
-    if (constpoolVal.IsHole()) {
-        if (isNewVersion) {
-            constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
-        } else {
-            constpool = ParseConstPool(vm, jsPandaFile);
-        }
-        vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
+    bool isNewVersion = jsPandaFile->IsNewVersion();
+    if (isNewVersion) {
+        constpool = vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(mainMethodIndex));
     } else {
-        constpool = JSHandle<ConstantPool>(thread, constpoolVal);
-    }
+        JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, 0);
+        if (constpoolVal.IsHole()) {
+            constpool = ParseConstPool(vm, jsPandaFile);
+            // 1: old version dont support multi constpool
+            vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue());
+        } else {
+            constpool = JSHandle<ConstantPool>(thread, constpoolVal);
+        }
 
-    if (!jsPandaFile->IsBundlePack() && !isNewVersion) {
-        ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
+        if (!jsPandaFile->IsBundlePack()) {
+            ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
+        }
     }
 
     {

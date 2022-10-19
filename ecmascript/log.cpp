@@ -41,6 +41,9 @@ void Log::SetLogLevelFromString(const std::string& level)
     if (level == "debug") {
         level_ = DEBUG;
     }
+    if (level == "verbose") {
+        level_ = VERBOSE;
+    }
 }
 
 void Log::SetLogComponentFromString(const std::vector<std::string>& components)
