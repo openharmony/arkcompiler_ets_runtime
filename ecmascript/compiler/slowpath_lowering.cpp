@@ -265,12 +265,13 @@ GateRef SlowPathLowering::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, G
     env->SubCfgEntry(&entry);
     Label exit(&builder_);
     Label cacheMiss(&builder_);
+    Label cache(&builder_);
 
     GateRef constPool = GetConstPool(jsFunc);
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
     auto cacheValue = builder_.GetValueFromTaggedArray(constPool, index);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), cacheValue);
-    builder_.Branch(builder_.TaggedIsHole(cacheValue), &cacheMiss, &exit);
+    builder_.Branch(builder_.TaggedIsHole(cacheValue), &cacheMiss, &cache);
     builder_.Bind(&cacheMiss);
     {
         if (type == ConstPoolType::STRING) {
@@ -288,7 +289,19 @@ GateRef SlowPathLowering::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, G
         }
         builder_.Jump(&exit);
     }
-
+    builder_.Bind(&cache);
+    {
+        Label isNumber(&builder_);
+        builder_.Branch(builder_.TaggedIsNumber(cacheValue), &isNumber, &exit);
+        builder_.Bind(&isNumber);
+        {
+            if (type == ConstPoolType::METHOD) {
+                result = LowerCallRuntime(glue, RTSTUB_ID(GetMethodFromCache),
+                    { constPool, builder_.Int32ToTaggedInt(index) }, true);
+            }
+            builder_.Jump(&exit);
+        }
+    }
     builder_.Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();

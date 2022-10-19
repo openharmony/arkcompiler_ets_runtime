@@ -726,20 +726,6 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     return cloneClass.GetTaggedValue();
 }
 
-void RuntimeStubs::RuntimeUpdateAotStatus(JSThread *thread,
-                                          const JSTaggedValue constpoolValue,
-                                          const JSTaggedValue methodValue)
-{
-    auto constpool = ConstantPool::Cast(constpoolValue.GetTaggedObject());
-    auto method = Method::Cast(methodValue.GetTaggedObject());
-    // JSPandaFile is in the first index of constpool.
-    auto jsPandaFile = constpool->GetJSPandaFile();
-    AOTFileManager *aotFileManager = thread->GetEcmaVM()->GetAOTFileManager();
-    if (jsPandaFile->IsLoadedAOT()) {
-        aotFileManager->SetAOTFuncEntry(jsPandaFile, method);
-    }
-}
-
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
@@ -763,7 +749,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, constpool, lexenv);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
-    RuntimeUpdateAotStatus(thread, constpool.GetTaggedValue(), method.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return cls.GetTaggedValue();
 }
@@ -795,7 +780,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
     JSHandle<JSFunction> cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, constpool, lexenv, ihclass);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
-    RuntimeUpdateAotStatus(thread, constpool.GetTaggedValue(), method.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return cls.GetTaggedValue();
@@ -1828,7 +1812,6 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
         default:
             UNREACHABLE();
     }
-    RuntimeUpdateAotStatus(thread, methodHandle->GetConstantPool(), methodHandle.GetTaggedValue());
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     return jsFunc.GetTaggedValue();
 }
@@ -1925,7 +1908,6 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass);
     jsFunc->SetHomeObject(thread, homeObject);
-    RuntimeUpdateAotStatus(thread, methodHandle->GetConstantPool(), methodHandle.GetTaggedValue());
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     return jsFunc.GetTaggedValue();
 }

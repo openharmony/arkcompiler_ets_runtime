@@ -454,6 +454,21 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *met
     method->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
+void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex)
+{
+    uint32_t aotPackInfoIndex = jsPandaFile->GetAOTPackInfoIndex();
+    const AOTModulePackInfo &aotPackInfo = aotPackInfos_[aotPackInfoIndex];
+    const ModulePackInfo::FuncEntryDes &entry = aotPackInfo.GetStubDes(entryIndex);
+    uint64_t codeEntry = entry.codeAddr_;
+#ifndef NDEBUG
+    PrintAOTEntry(jsPandaFile, method, codeEntry);
+#endif
+    if (!codeEntry) {
+        return;
+    }
+    method->SetCodeEntryAndMarkAOT(codeEntry);
+}
+
 void AOTFileManager::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj)
 {
     JSThread *thread = vm_->GetJSThread();

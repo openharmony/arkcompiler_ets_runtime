@@ -233,6 +233,16 @@ public:
         vm_->GetTSManager()->ClearCaches();
     }
 
+    void GenerateMethodToEntryIndexMap()
+    {
+        const std::vector<ModulePackInfo::FuncEntryDes> &entries = aotInfo_.GetStubs();
+        uint32_t entriesSize = entries.size();
+        for (uint32_t i = 0; i < entriesSize; ++i) {
+            const ModulePackInfo::FuncEntryDes &entry = entries[i];
+            methodToEntryIndexMap_[std::make_pair(entry.moduleIndex_, entry.indexInKind_)] = i;
+        }
+    }
+
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
     void SaveSnapshotFile();
@@ -240,6 +250,8 @@ private:
     AOTModulePackInfo aotInfo_;
     std::vector<uint32_t> aotfileHashs_ {};
     EcmaVM* vm_;
+    // (moduleIndex, MethodID)->EntryIndex
+    std::map<std::pair<uint32_t, uint32_t>, uint32_t> methodToEntryIndexMap_ {};
 
     // collect aot component info
     void CollectCodeInfo();

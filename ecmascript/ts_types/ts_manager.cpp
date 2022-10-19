@@ -324,7 +324,7 @@ void TSManager::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalModuleTable_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constantPoolInfos_)));
 
-    uint64_t hclassCacheSize = GetHClassCacheSize();
+    uint64_t hclassCacheSize = hclassCache_.size();
     for (uint64_t i = 0; i < hclassCacheSize; i++) {
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(hclassCache_.data()[i]))));
     }
@@ -564,34 +564,49 @@ JSTaggedValue TSManager::GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile
     ObjectFactory *factory = vm_->GetFactory();
     JSThread *thread = vm_->GetJSThread();
     JSHandle<ConstantPool> constantPool(thread, vm_->FindConstpool(jsPandaFile, 0));
-    JSHandle<TaggedArray> constantPoolInfo = factory->NewTaggedArray(ComputeSizeOfConstantPoolInfo());
-    constantPoolInfo->Set(thread, NUM_OF_ORIGINAL_CONSTANTPOOL_DATA_INDEX,
-                          JSTaggedValue(GetConstDataCacheSize() * ORIGINAL_CONSTANTPOOL_DATA_SIZE));
-    constantPoolInfo->Set(thread, NUM_OF_HCLASS_INDEX, JSTaggedValue(GetHClassCacheSize()));
-    uint32_t index = CONSTANTPOOL_INFO_DATA_OFFSET;
-    IterateConstDataCaches([thread, constantPool, &index, constantPoolInfo] (ConstPoolType type, uint32_t constIndex) {
-        switch (type) {
-            case ConstPoolType::STRING: {
-                auto string = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), constIndex);
-                constantPoolInfo->Set(thread, index++, JSTaggedValue(constIndex));
-                constantPoolInfo->Set(thread, index++, string);
-                break;
-            }
-            default:
-                UNREACHABLE();
-        }
+
+    uint32_t constantPoolSize = constantPool->GetCacheLength();
+    uint32_t hclassCacheSize = hclassCache_.size();
+    JSHandle<ConstantPool> constantPoolInfo = factory->NewConstantPool(constantPoolSize + hclassCacheSize);
+    recordMethodInfos_.emplace_back(std::vector<std::pair<uint32_t, uint32_t>>{});
+
+    IterateConstantPoolCache(CacheType::STRING, [thread, constantPool, constantPoolInfo] (uint32_t index) {
+        auto string = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index);
+        constantPoolInfo->SetObjectToCache(thread, index, string);
     });
 
-    IterateHClassCaches([thread, &index, &constantPoolInfo]
-    (JSTaggedType hclass) {
-        constantPoolInfo->Set(thread, index++, JSTaggedValue(hclass));
+    IterateConstantPoolCache(CacheType::METHOD, [this, constantPool, jsPandaFile] (uint32_t index) {
+        panda_file::File::IndexHeader *indexHeader = constantPool->GetIndexHeader();
+        auto pf = jsPandaFile->GetPandaFile();
+        Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
+        panda_file::File::EntityId methodID = indexs[index];
+        recordMethodInfos_.back().emplace_back(std::make_pair(methodID.GetOffset(), index));
     });
 
-    if (ComputeSizeOfConstantPoolInfo() != index) {
-        LOG_FULL(FATAL) << "constantpool info size incorrect";
-    }
+    IterateHClassCaches([thread, constantPoolSize, constantPoolInfo] (JSTaggedType hclass, uint32_t index) {
+        constantPoolInfo->SetObjectToCache(thread, constantPoolSize + index, JSTaggedValue(hclass));
+    });
 
     return constantPoolInfo.GetTaggedValue();
+}
+
+void TSManager::ResolveConstantPoolInfo(const std::map<std::pair<uint32_t, uint32_t>, uint32_t> &methodToEntryIndexMap)
+{
+    JSHandle<TaggedArray> constantPoolInfosHandle(thread_, constantPoolInfos_);
+    JSMutableHandle<ConstantPool> currentCPInfo(thread_, JSTaggedValue::Undefined());
+    uint32_t size = recordMethodInfos_.size();
+    for (uint32_t i = 0; i < size; ++i) {
+        JSTaggedValue constantPoolInfo = constantPoolInfosHandle->Get(i * CONSTANTPOOL_INFOS_ITEM_SIZE + 1);
+        currentCPInfo.Update(constantPoolInfo);
+        const std::vector<std::pair<uint32_t, uint32_t>> &methodInfo = recordMethodInfos_[i];
+        for (auto item: methodInfo) {
+            uint32_t moduleIndex = i;
+            uint32_t methodID = item.first;
+            uint32_t constantPoolIndex = item.second;
+            uint32_t entryIndex = methodToEntryIndexMap.at(std::make_pair(moduleIndex, methodID));
+            currentCPInfo->SetObjectToCache(thread_, constantPoolIndex, JSTaggedValue(entryIndex));
+        }
+    }
 }
 
 void TSManager::SortConstantPoolInfos()
@@ -637,7 +652,7 @@ void TSManager::SortConstantPoolInfos()
     }
 }
 
-JSHandle<ConstantPool> TSManager::RestoreConstantPool(const JSPandaFile* pf, uint32_t oldConstantPoolLen)
+JSHandle<ConstantPool> TSManager::RestoreConstantPool(const JSPandaFile* pf)
 {
     JSThread *thread = vm_->GetJSThread();
     JSHandle<TaggedArray> constantPoolInfos = GetConstantPoolInfos();
@@ -650,34 +665,19 @@ JSHandle<ConstantPool> TSManager::RestoreConstantPool(const JSPandaFile* pf, uin
         LOG_FULL(FATAL) << "restore constant pool fail";
     }
 
-    JSMutableHandle<TaggedArray> valueArray(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<ConstantPool> constantPool(thread, JSTaggedValue::Undefined());
     while (leftBound <= rightBound) {
         uint32_t currentKeyIndex = static_cast<uint32_t>(leftBound) * CONSTANTPOOL_INFOS_ITEM_SIZE;
         EcmaString *nowStr = EcmaString::Cast(constantPoolInfos->Get(currentKeyIndex).GetTaggedObject());
         if (EcmaStringAccessor::StringsAreEqual(nowStr, *key)) {
-            valueArray.Update(constantPoolInfos->Get(currentKeyIndex + 1));
+            constantPool.Update(constantPoolInfos->Get(currentKeyIndex + 1));
+            break;
         }
         leftBound++;
     }
 
-    uint32_t originalConstantPoolDataStart = CONSTANTPOOL_INFO_DATA_OFFSET;
-    uint32_t originalConstantPoolDataLen = static_cast<uint32_t>(valueArray->
-                                           Get(NUM_OF_ORIGINAL_CONSTANTPOOL_DATA_INDEX).GetInt());
-    uint32_t hclassStart = originalConstantPoolDataStart + originalConstantPoolDataLen;
-    uint32_t hclassLen = static_cast<uint32_t>(valueArray->Get(NUM_OF_HCLASS_INDEX).GetInt());
-
-    JSHandle<ConstantPool> constantPool = vm_->GetFactory()->NewConstantPool(oldConstantPoolLen + hclassLen);
-
-    for (uint32_t i = 0; i < originalConstantPoolDataLen; i += ORIGINAL_CONSTANTPOOL_DATA_SIZE) {
-        uint32_t currentIndex = originalConstantPoolDataStart + i;
-        uint32_t constantPoolIndex = static_cast<uint32_t>(valueArray->Get(currentIndex).GetInt());
-        JSTaggedValue constantPoolValue = valueArray->Get(currentIndex + 1);
-        constantPool->SetObjectToCache(thread, constantPoolIndex, constantPoolValue);
-    }
-
-    for (uint32_t i = 0; i < hclassLen; ++i) {
-        JSTaggedValue value = valueArray->Get(hclassStart + i);
-        constantPool->SetObjectToCache(thread, oldConstantPoolLen + i, value);
+    if (leftBound > rightBound) {
+        LOG_FULL(FATAL) << "restore constantpool: can not find the constantpool";
     }
 
     return constantPool;
