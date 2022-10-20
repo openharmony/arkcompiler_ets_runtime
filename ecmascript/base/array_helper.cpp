@@ -50,8 +50,8 @@ bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedVa
     return obj->IsArray(thread);
 }
 
-int32_t ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
-                                 const JSHandle<JSTaggedValue> &valueX, const JSHandle<JSTaggedValue> &valueY)
+double ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
+                                const JSHandle<JSTaggedValue> &valueX, const JSHandle<JSTaggedValue> &valueY)
 {
     // 1. If x and y are both undefined, return +0.
     if (valueX->IsHole()) {
@@ -97,7 +97,7 @@ int32_t ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue>
         if (std::isnan(value)) {
             return +0;
         }
-        return static_cast<int32_t>(value);
+        return value;
     }
     // 5. Let xString be ToString(x).
     // 6. ReturnIfAbrupt(xString).

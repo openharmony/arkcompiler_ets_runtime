@@ -2198,7 +2198,7 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
             middleValue.Update(
                 FastRuntimeStub::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), middleIndex));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            int32_t compareResult = ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
+            double compareResult = ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
                 endIndex = middleIndex;
