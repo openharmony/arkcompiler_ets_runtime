@@ -76,8 +76,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             } else {
                 if (!isUpdateMainMethodIndex && (name == JSPandaFile::ENTRY_FUNCTION_NAME ||
                                                  name == JSPandaFile::PATCH_FUNCTION_NAME_0)) {
-                    jsPandaFile->UpdateMainMethodIndex(
-                        mda.GetMethodId().GetOffset(), entry);
+                    jsPandaFile->UpdateMainMethodIndex(mda.GetMethodId().GetOffset(), entry);
                     isUpdateMainMethodIndex = true;
                 }
             }
@@ -447,7 +446,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), literal.GetTaggedValue());
         }
     }
-    recordInfo.hasParsedLiteralConstPool = true;
+    const_cast<JSPandaFile *>(jsPandaFile)->UpdateHasParsedLiteralConstpool(entryPoint);
 }
 
 JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
