@@ -860,7 +860,7 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     Register envReg = r9;
     __ Movq(Operand(r8, FRAME_SLOT_SIZE), envReg); // get env
     Register argvReg = r8;
-    __ Addq(3 * FRAME_SLOT_SIZE, argvReg); // 24: sp + 24 argv
+    __ Addq(3 * FRAME_SLOT_SIZE, argvReg); // 3 : sp + 3 * 8 argv
     __ Cmpl(expectedNumArgsReg, rdx); // expectedNumArgs <= actualNumArgs
     __ Jge(&lDirectCallCodeEntry);
     __ CallAssemblerStub(RTSTUB_ID(OptimizedCallOptimized), true);
@@ -1418,7 +1418,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
         __ Pushq(0); // argc
         __ Pushq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException);
         __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-        __ Addq(FRAME_SLOT_SIZE * 3, rsp); // skip runtimeId argc & type
+        __ Addq(FRAME_SLOT_SIZE * 3, rsp); // 3 : skip runtimeId argc & type
         __ Popq(rbp);
         __ Ret();
     }

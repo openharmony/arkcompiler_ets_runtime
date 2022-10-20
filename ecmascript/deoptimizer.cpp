@@ -242,7 +242,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
     AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
 
-    JSTaggedValue thisObj = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);;
+    JSTaggedValue thisObj = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);
     auto acc = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::ACC_INDEX));
     statePtr->function = callTarget;
     statePtr->acc = acc;
