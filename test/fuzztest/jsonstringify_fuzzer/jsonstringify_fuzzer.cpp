@@ -35,7 +35,7 @@ namespace OHOS {
             JSNApi::DestroyJSVM(vm);
             return;
         }
-        Local<StringRef> res = StringRef::StringRef::NewFromUtf8(vm, (char*)data, (int)size);
+        Local<StringRef> res = StringRef::NewFromUtf8(vm, (char*)data, (int)size);
         Local<JSValueRef> jsValue = JSON::Parse(vm, res);
         JSON::Stringify(vm, jsValue);
         JSNApi::DestroyJSVM(vm);
