@@ -26,15 +26,22 @@
 namespace panda::ecmascript {
 void TSManager::DecodeTSTypes(const JSPandaFile *jsPandaFile)
 {
-    ASSERT_PRINT(jsPandaFile->HasTSTypes(), "the file has no ts type info");
     JSHandle<TSModuleTable> mTable = GetTSModuleTable();
 
-    JSHandle<EcmaString> queryFileName = factory_->NewFromUtf8(jsPandaFile->GetJSPandaFileDesc());
-    int index = mTable->GetGlobalModuleID(thread_, queryFileName);
-    if (index == TSModuleTable::NOT_FOUND) {
-        CVector<JSHandle<EcmaString>> recordImportModules {};
-        TSTypeTable::Initialize(thread_, jsPandaFile, recordImportModules);
-        Link();
+    const CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &recordInfoMap = jsPandaFile->GetJSRecordInfo();
+    for (auto it = recordInfoMap.begin(); it != recordInfoMap.end(); it++) {
+        const CString recordName = it->first;
+        if (jsPandaFile->HasTSTypes(recordName)) {
+            JSHandle<EcmaString> queryTableName = factory_->NewFromUtf8(recordName);
+            int index = mTable->GetGlobalModuleID(thread_, queryTableName);
+            if (index == TSModuleTable::NOT_FOUND) {
+                CVector<JSHandle<EcmaString>> recordImportModules {};
+                TSTypeTable::Initialize(thread_, jsPandaFile, recordName, recordImportModules);
+                Link();
+            }
+        } else {
+            LOG_COMPILER(INFO) << "record: " << recordName << " has no ts type info";
+        }
     }
 }
 
@@ -803,13 +810,13 @@ JSHandle<TSTypeTable> TSModuleTable::GenerateBuiltinsTypeTable(JSThread *thread)
     CString builtinsDTSFileName = thread->GetEcmaVM()->GetTSManager()->GetBuiltinsDTS();
     JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(builtinsDTSFileName);
     if (jsPandaFile == nullptr) {
-        LOG_COMPILER(ERROR) << "load builtins.d.ts failed";
-        return JSHandle<TSTypeTable>();
+        LOG_COMPILER(FATAL) << "load lib_ark_builtins.d.ts failed";
     }
 
     CVector<JSHandle<EcmaString>> vec;
-    JSHandle<TSTypeTable> builtinsTypeTable = TSTypeTable::GenerateTypeTable(thread, jsPandaFile, BUILTINS_TABLE_ID,
-                                                                             vec);
+    const CString builtinsRecordName("lib_ark_builtins.d");
+    JSHandle<TSTypeTable> builtinsTypeTable =
+        TSTypeTable::GenerateTypeTable(thread, jsPandaFile, builtinsRecordName, BUILTINS_TABLE_ID, vec);
     return builtinsTypeTable;
 }
 } // namespace panda::ecmascript

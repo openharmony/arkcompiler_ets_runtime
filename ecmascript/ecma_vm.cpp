@@ -398,9 +398,9 @@ bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
 }
 
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                              const JSPandaFile *jsPandaFile)
+                                              const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
-    aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile);
+    aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile, entryPoint);
     size_t argsNum = 7; // 7: number of para
     JSTaggedType newTarget = thread_->GlobalConstants()->GetUndefined().GetRawData();
     JSTaggedType thisValue = thisArg.GetTaggedValue().GetRawData();
@@ -465,7 +465,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     if (jsPandaFile->IsLoadedAOT()) {
         thread_->SetPrintBCOffset(true);
         EcmaRuntimeStatScope runtimeStatScope(this);
-        result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile);
+        result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
     } else {
         if (jsPandaFile->IsCjs(entryPoint.data())) {
             CJSExecution(func, global, jsPandaFile);

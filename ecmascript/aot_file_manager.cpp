@@ -376,10 +376,11 @@ bool AOTFileManager::hasLoaded(const JSPandaFile *jsPandaFile)
     return hashToEntryMap_.find(fileHash) != hashToEntryMap_.end();
 }
 
-void AOTFileManager::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile)
+void AOTFileManager::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
+                                     std::string_view entryPoint)
 {
     // get main func method
-    auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex();
+    auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex(entryPoint.data());
     auto fileHash = jsPandaFile->GetFileUniqId();
     auto mainEntry = GetAOTFuncEntry(fileHash, mainFuncMethodId);
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
