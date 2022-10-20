@@ -119,6 +119,8 @@ const std::string HELP_OPTION_MSG =
     "--snapshot-file: snapshot file. Default: \"/system/etc/snapshot\"\n"
     "--startup-time: Print the start time of command execution. Default: false\n"
     "--stub-file: Path of file includes common stubs module compiled by stub compiler. Default: \"stub.an\"\n"
+    "--sample-profile: Application or ark_js_vm sample profile file output path for runtime"
+        "AOT PGO compiler sampling profile file input path. Default: ""\n"
     "--target-triple: target triple for aot compiler or stub compiler.\n"
     "--enable-print-execute-time: enable print execute pandafile spent time\"\n"
     "       Possible values: [\"x86_64-unknown-linux-gnu\", \"arm-unknown-linux-gnu\", "
@@ -174,6 +176,7 @@ enum CommandValues {
     OPTION_MERGE_ABC,
     OPTION_ENABLE_TYPE_LOWERING,
     OPTION_HELP,
+    OPTION_SAMPLE_PROFILE,
     OPTION_OPTIONS,
     OPTION_PRINT_EXECUTE_TIME
 };
@@ -822,6 +825,16 @@ public:
         return enablePrintExecuteTime_;
     }
 
+    std::string GetSampleProfilePath() const
+    {
+        return sampleProfile_;
+    }
+
+    void SetSampleProfilePath(std::string value)
+    {
+        sampleProfile_ = std::move(value);
+    }
+
     void ParseAbcListFile(std::vector<std::string> &moduleList) const
     {
         std::ifstream moduleFile(abcFilelist_);
@@ -914,6 +927,7 @@ private:
     bool enableTypeLowering_ {true};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};
+    std::string sampleProfile_ {""};
 };
 }  // namespace panda::ecmascript
 

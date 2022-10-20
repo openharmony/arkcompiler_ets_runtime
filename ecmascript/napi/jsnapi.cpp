@@ -186,6 +186,9 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetAsmOpcodeDisableRange(option.GetAsmOpcodeDisableRange());
     // aot
     runtimeOptions.SetEnableAOT(option.GetEnableAOT());
+    if (option.GetEnableProfile()) {
+        runtimeOptions.SetSampleProfilePath(option.GetProfileDir());
+    }
 
     // Dfx
     runtimeOptions.SetLogLevel(option.GetLogLevel());
