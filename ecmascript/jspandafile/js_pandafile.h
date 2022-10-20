@@ -261,20 +261,20 @@ public:
         return false;
     }
 
-    uint32_t GetAOTPackInfoIndex() const
+    uint32_t GetAOTFileInfoIndex() const
     {
-        return aotPackInfoIndex_;
+        return anFileInfoIndex_;
     }
 
-    // If the system library is loaded, packinfos has two elements
+    // If the system library is loaded, aotFileInfos has two elements
     // 0: system library, 1: application
-    // Note: There is no system library currently, so the aotPackInfoIndex_ is 0
-    void SetAOTPackInfoIndex()
+    // Note: There is no system library currently, so the anFileInfoIndex_ is 0
+    void SetAOTFileInfoIndex()
     {
         if (IsSystemLib()) {
-            aotPackInfoIndex_ = 0;
+            anFileInfoIndex_ = 0;
         } else {
-            aotPackInfoIndex_ = 1;
+            anFileInfoIndex_ = 1;
         }
     }
 
@@ -310,7 +310,7 @@ private:
     const panda_file::File *pf_ {nullptr};
     CString desc_;
     bool isLoadedAOT_ {false};
-    uint32_t aotPackInfoIndex_ {0};
+    uint32_t anFileInfoIndex_ {0};
     bool isNewVersion_ {false};
 
     // marge abc

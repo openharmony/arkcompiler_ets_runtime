@@ -79,7 +79,6 @@ int Main(const int argc, const char **argv)
     {
         LocalScope scope(vm);
         arg_list_t pandaFileNames = base::StringHelper::SplitString(files, ":");
-        runtimeOptions.ParseAbcListFile(pandaFileNames);
         std::string triple = runtimeOptions.GetTargetTriple();
         std::string outputFileName = runtimeOptions.GetAOTOutputFile();
         size_t optLevel = runtimeOptions.GetOptLevel();

@@ -47,19 +47,19 @@ std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::Run(std::uniqu
     }
     auto pc2stackMapVec = parser.GetPc2StackMapVec();
     auto pc2DeoptVec = parser.GetPc2Deopt();
-    ARKCallsitePackInfo packInfo;
-    GenArkCallsitePackInfo(pc2stackMapVec, pc2DeoptVec, packInfo);
-    uint32_t totalSize = packInfo.secHead.totalSize;
+    ARKCallsiteAOTFileInfo AOTFileInfo;
+    GenArkCallsiteAOTFileInfo(pc2stackMapVec, pc2DeoptVec, AOTFileInfo);
+    uint32_t totalSize = AOTFileInfo.secHead.totalSize;
     uint8_t *p = new(std::nothrow) uint8_t[totalSize];
     if (p == nullptr) {
         LOG_FULL(FATAL) << "new totalSize:0x" << std::hex << totalSize << " failed";
     }
     std::shared_ptr<uint8_t> ptr(p, [](uint8_t *p) { delete []p;});
-    SaveArkCallsitePackInfo(ptr.get(), totalSize, packInfo);
+    SaveArkCallsiteAOTFileInfo(ptr.get(), totalSize, AOTFileInfo);
     return std::make_pair(ptr, totalSize);
 }
 
-void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsitePackInfo& info, BinaryBufferWriter& writer)
+void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer)
 {
     size_t n = info.callsites.size();
     for (size_t i = 0; i < n; i++) {
@@ -82,7 +82,7 @@ void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsitePackInfo& info, Binary
     }
 }
 
-void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsitePackInfo& info, BinaryBufferWriter& writer)
+void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer)
 {
     for (auto &it: info.callsites) {
         auto& callsite2Deopt = it.callsite2Deopt;
@@ -205,7 +205,7 @@ void ArkStackMapParser::ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) 
     }
 }
 
-void ArkStackMapBuilder::SaveArkCallsitePackInfo(uint8_t *ptr, uint32_t length, const ARKCallsitePackInfo& info)
+void ArkStackMapBuilder::SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length, const ARKCallsiteAOTFileInfo& info)
 {
     BinaryBufferWriter writer(ptr, length);
     ASSERT(length >= info.secHead.totalSize);
@@ -298,8 +298,8 @@ void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint3
     sizeAndArkDeopt.first = total;
 }
 
-void ArkStackMapBuilder::GenArkCallsitePackInfo(std::vector<Pc2CallSiteInfo> &pc2stackMapVec,
-    std::vector<Pc2Deopt>& pc2DeoptVec, ARKCallsitePackInfo &result)
+void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(std::vector<Pc2CallSiteInfo> &pc2stackMapVec,
+    std::vector<Pc2Deopt>& pc2DeoptVec, ARKCallsiteAOTFileInfo &result)
 {
     ARKCallsite callsite;
     uint32_t totalSize = 0;
