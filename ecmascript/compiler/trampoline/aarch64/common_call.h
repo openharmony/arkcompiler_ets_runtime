@@ -123,7 +123,7 @@ class AsmInterpreterCall : public CommonCall {
 public:
     static void AsmInterpreterEntry(ExtendedAssembler *assembler);
 
-    static void JSCallDispatch(ExtendedAssembler *assembler);
+    static void AsmInterpEntryDispatch(ExtendedAssembler *assembler);
 
     static void GeneratorReEnterAsmInterp(ExtendedAssembler *assembler);
 

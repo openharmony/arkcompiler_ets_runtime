@@ -23,8 +23,9 @@ class Scheduler {
 public:
     using ControlFlowGraph = std::vector<std::vector<GateRef>>;
 
-    static std::tuple<std::vector<GateRef>, std::unordered_map<GateRef, size_t>, std::vector<size_t>>
-    CalculateDominatorTree(const Circuit *circuit);
+    static void CalculateDominatorTree(const Circuit *circuit, std::vector<GateRef>& bbGatesList,
+                                       std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                       std::vector<size_t> &immDom);
 
     static ControlFlowGraph Run(const Circuit *circuit, [[maybe_unused]] const std::string& methodName = "",
                                 bool enableLog = false);

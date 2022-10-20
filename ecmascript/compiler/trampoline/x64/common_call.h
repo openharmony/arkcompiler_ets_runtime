@@ -100,7 +100,7 @@ public:
 
     static void GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *assembler);
 
-    static void JSCallDispatch(ExtendedAssembler *assembler);
+    static void AsmInterpEntryDispatch(ExtendedAssembler *assembler);
 
     static void AsmInterpreterEntry(ExtendedAssembler *assembler);
 

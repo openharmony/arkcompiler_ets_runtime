@@ -51,7 +51,7 @@ void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
 
     __ Bind(&target);
     {
-        JSCallDispatch(assembler);
+        AsmInterpEntryDispatch(assembler);
     }
 }
 
@@ -61,7 +61,7 @@ void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
 //        callField      - %X3
 //        argc           - %X4
 //        argv           - %X5(<callTarget, newTarget, this> are at the beginning of argv)
-void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
 {
     Label notJSFunction;
     Label callNativeEntry;
