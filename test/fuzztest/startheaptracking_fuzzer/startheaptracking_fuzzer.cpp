@@ -47,7 +47,6 @@ namespace OHOS {
             timeInterval = ecmascript::base::NAN_VALUE;
         }
         bool isVmMode = true;
-        // std::string path(data, data + size);
         FileStream *stream = nullptr;
         bool traceAllocation = false;
         DFXJSNApi::StartHeapTracking(vm, timeInterval, isVmMode, stream, traceAllocation);

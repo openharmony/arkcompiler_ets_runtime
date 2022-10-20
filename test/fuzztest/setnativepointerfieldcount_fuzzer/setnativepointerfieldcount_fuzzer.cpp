@@ -40,9 +40,7 @@ namespace OHOS {
             UNREACHABLE();
         }
         Local<ObjectRef> object = ObjectRef::New(vm);
-        int32_t count = 0;
-        count = object->GetNativePointerFieldCount();
-        object->SetNativePointerFieldCount(count);
+        object->SetNativePointerFieldCount(key);
         JSNApi::DestroyJSVM(vm);
     }
 }
