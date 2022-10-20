@@ -268,6 +268,15 @@ GateRef CircuitBuilder::TaggedIsNumber(GateRef x)
     return BoolNot(TaggedIsObject(x));
 }
 
+GateRef CircuitBuilder::DoubleIsINF(GateRef x)
+{
+    GateRef infinity = Double(base::POSITIVE_INFINITY);
+    GateRef negativeInfinity = Double(-base::POSITIVE_INFINITY);
+    GateRef diff1 = DoubleEqual(x, infinity);
+    GateRef diff2 = DoubleEqual(x, negativeInfinity);
+    return BoolOr(diff1, diff2);
+}
+
 GateRef CircuitBuilder::TaggedIsHole(GateRef x)
 {
     return Equal(x, HoleConstant());
@@ -480,14 +489,25 @@ GateRef CircuitBuilder::GetGlobalConstantString(ConstantIndex index)
 // object operation
 GateRef CircuitBuilder::LoadHClass(GateRef object)
 {
-    GateRef offset = IntPtr(0);
+    GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
     return Load(VariableType::JS_POINTER(), object, offset);
+}
+
+void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
+{
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
 }
 
 GateRef CircuitBuilder::IsJsType(GateRef obj, JSType type)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Equal(objectType, Int32(static_cast<int32_t>(type)));
+}
+
+inline GateRef CircuitBuilder::IsDictionaryMode(GateRef object)
+{
+    GateRef type = GetObjectType(LoadHClass(object));
+    return Int32Equal(type, Int32(static_cast<int32_t>(JSType::TAGGED_DICTIONARY)));
 }
 
 GateRef CircuitBuilder::GetObjectType(GateRef hClass)

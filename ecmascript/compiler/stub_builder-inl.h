@@ -621,18 +621,12 @@ inline GateRef StubBuilder::GetNextPositionForHash(GateRef last, GateRef count, 
 
 inline GateRef StubBuilder::DoubleIsNAN(GateRef x)
 {
-    GateRef diff = DoubleEqual(x, x);
-    return Int32Equal(SExtInt1ToInt32(diff), Int32(0));
+    return env_->GetBuilder()->DoubleIsNAN(x);
 }
 
 inline GateRef StubBuilder::DoubleIsINF(GateRef x)
 {
-    GateRef infinity = Double(base::POSITIVE_INFINITY);
-    GateRef negativeInfinity = Double(-base::POSITIVE_INFINITY);
-    GateRef diff1 = DoubleEqual(x, infinity);
-    GateRef diff2 = DoubleEqual(x, negativeInfinity);
-    return BoolOr(Int32Equal(SExtInt1ToInt32(diff1), Int32(1)),
-        Int32Equal(SExtInt1ToInt32(diff2), Int32(1)));
+    return env_->GetBuilder()->DoubleIsINF(x);
 }
 
 inline GateRef StubBuilder::TaggedIsNull(GateRef x)
@@ -668,25 +662,25 @@ inline GateRef StubBuilder::TaggedGetInt(GateRef x)
 inline GateRef StubBuilder::Int8ToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt8ToInt64(x);
-    return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
+    return env_->GetBuilder()->ToTaggedInt(val);
 }
 
 inline GateRef StubBuilder::Int16ToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt16ToInt64(x);
-    return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
+    return env_->GetBuilder()->ToTaggedInt(val);
 }
 
 inline GateRef StubBuilder::IntToTaggedPtr(GateRef x)
 {
     GateRef val = SExtInt32ToInt64(x);
-    return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_INT)));
+    return env_->GetBuilder()->ToTaggedIntPtr(val);
 }
 
 inline GateRef StubBuilder::IntToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt32ToInt64(x);
-    return Int64Or(val, Int64(JSTaggedValue::TAG_INT));
+    return env_->GetBuilder()->ToTaggedInt(val);
 }
 
 inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
@@ -909,31 +903,28 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
 
 inline GateRef StubBuilder::IsJSHClass(GateRef obj)
 {
-    return Int32Equal(GetObjectType(LoadHClass(obj)),  Int32(static_cast<int32_t>(JSType::HCLASS)));
+    return env_->GetBuilder()->IsJSHClass(obj);
 }
+
 // object operation
 inline GateRef StubBuilder::LoadHClass(GateRef object)
 {
-    return Load(VariableType::JS_POINTER(), object);
+    return env_->GetBuilder()->LoadHClass(object);
 }
 
 inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
 {
-    Store(VariableType::JS_POINTER(), glue, object, IntPtr(0), hClass);
+    return env_->GetBuilder()->StoreHClass(glue, object, hClass);
 }
 
 inline GateRef StubBuilder::GetObjectType(GateRef hClass)
 {
-    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return Int32And(bitfield, Int32((1LU << JSHClass::ObjectTypeBits::SIZE) - 1));
+    return env_->GetBuilder()->GetObjectType(hClass);
 }
 
 inline GateRef StubBuilder::IsDictionaryMode(GateRef object)
 {
-    GateRef objectType = GetObjectType(LoadHClass(object));
-    return Int32Equal(objectType,
-        Int32(static_cast<int32_t>(JSType::TAGGED_DICTIONARY)));
+    return env_->GetBuilder()->IsDictionaryMode(object);
 }
 
 inline GateRef StubBuilder::IsDictionaryModeByHClass(GateRef hClass)
@@ -1486,19 +1477,18 @@ inline GateRef StubBuilder::GetInlinedPropsStartFromHClass(GateRef hClass)
         Int32((1LU << JSHClass::InlinedPropsStartBits::SIZE) - 1));
 }
 
-inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val)
+inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array,
+                                               GateRef index, GateRef val)
 {
     // NOTE: need to translate MarkingBarrier
-    GateRef offset =
-        PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     Store(valType, glue, array, dataOffset, val);
 }
 
 inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 {
-    GateRef offset =
-        PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), array, dataOffset);
 }

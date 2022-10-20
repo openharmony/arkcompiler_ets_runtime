@@ -433,7 +433,7 @@ bool Verifier::Run(const Circuit *circuit, const std::string& methodName, bool e
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
-    std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit);
+    Scheduler::CalculateDominatorTree(circuit, bbGatesList, bbGatesAddrToIdx, immDom);
     if (!RunStateGatesCheck(circuit, bbGatesList)) {
         if (enableLog) {
             LOG_COMPILER(ERROR) << "[Verifier][Fail] RunStateGatesCheck failed";
