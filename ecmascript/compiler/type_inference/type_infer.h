@@ -91,6 +91,7 @@ private:
     bool InferStLexVarDyn(GateRef gate);
     bool IsNewLexEnv(EcmaOpcode opcode) const;
     bool InferGetIterator(GateRef gate);
+    bool InferLoopBeginPhiGate(GateRef gate);
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
@@ -133,6 +134,7 @@ private:
     bool enableLog_ {false};
     std::string methodName_;
     std::map<uint16_t, GateType> stringIdToGateType_;
+    std::map<GateRef, bool> phiState_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H
