@@ -141,7 +141,7 @@ void TSTypeLowering::Lower(GateRef gate)
             // lower JS_NEG
             break;
         case EcmaOpcode::NOT_IMM8:
-            // lower JS_NOT
+            LowerTypedNot(gate);
             break;
         case EcmaOpcode::INC_IMM8:
             LowerTypedInc(gate);
@@ -394,7 +394,6 @@ void TSTypeLowering::LowerTypedInc(GateRef gate)
     GateType valueType = acc_.GetGateType(value);
     if (valueType.IsNumberType()) {
         SpeculateNumber<TypedUnOp::TYPED_INC>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -406,7 +405,6 @@ void TSTypeLowering::LowerTypedDec(GateRef gate)
     GateType valueType = acc_.GetGateType(value);
     if (valueType.IsNumberType()) {
         SpeculateNumber<TypedUnOp::TYPED_DEC>(gate);
-        return;
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -556,5 +554,16 @@ void TSTypeLowering::SpeculateConditionJump(GateRef gate)
     GateRef condition = builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE);
     GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
     acc_.ReplaceGate(gate, ifBranch, builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TSTypeLowering::LowerTypedNot(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = acc_.GetGateType(value);
+    if (valueType.IsNumberType()) {
+        SpeculateNumber<TypedUnOp::TYPED_NOT>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
 }
 }  // namespace panda::ecmascript

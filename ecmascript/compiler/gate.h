@@ -154,6 +154,7 @@ public:
         TRUNC_TO_INT8,
         TRUNC_TO_INT16,
         REV,
+        TRUNC_FLOAT_TO_INT64,
         ADD,
         SUB,
         MUL,

@@ -404,12 +404,13 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
     size_t argsNum = 7; // 7: number of para
     JSTaggedType newTarget = thread_->GlobalConstants()->GetUndefined().GetRawData();
     JSTaggedType thisValue = thisArg.GetTaggedValue().GetRawData();
-    JSTaggedValue res = ExecuteAot(argsNum, mainFunc, newTarget, thisValue);
+    const JSTaggedType *prevFp = thread_->GetCurrentSPFrame();
+    JSTaggedValue res = ExecuteAot(argsNum, mainFunc, newTarget, thisValue, prevFp);
     return res;
 }
 
 JSTaggedValue EcmaVM::ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, JSTaggedType newTarget,
-                                 JSTaggedType thisArg)
+                                 JSTaggedType thisArg, const JSTaggedType *prevFp)
 {
     std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
     args[0] = callTarget.GetTaggedValue().GetRawData();
@@ -420,7 +421,7 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarge
     Method *method = callTarget->GetCallTarget();
     args[argsNum - 1] = env.GetRawData();
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
-                                                            reinterpret_cast<uintptr_t>(thread_->GetCurrentSPFrame()),
+                                                            reinterpret_cast<uintptr_t>(prevFp),
                                                             static_cast<uint32_t>(args.size()) - 1,
                                                             static_cast<uint32_t>(args.size()) - 1,
                                                             args.data(),

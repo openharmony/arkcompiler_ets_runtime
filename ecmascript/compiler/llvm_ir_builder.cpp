@@ -194,6 +194,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::SMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::DEOPT, &LLVMIRBuilder::HandleDeopt},
+        {OpCode::TRUNC_FLOAT_TO_INT64, &LLVMIRBuilder::HandleTruncFloatToInt},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -1390,6 +1391,25 @@ void LLVMIRBuilder::HandleAdd(GateRef gate)
     auto g0 = acc_.GetIn(gate, 0);
     auto g1 = acc_.GetIn(gate, 1);
     VisitAdd(gate, g0, g1);
+}
+
+void LLVMIRBuilder::HandleTruncFloatToInt(GateRef gate)
+{
+    auto g0 = acc_.GetIn(gate, 0);
+    VisitTruncFloatToInt(gate, g0);
+}
+
+void LLVMIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    auto machineType = acc_.GetMachineType(e1);
+    LLVMValueRef result = nullptr;
+    if (machineType <= MachineType::F64 && machineType >= MachineType::F32) {
+        result = LLVMBuildFPToSI(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
+    } else {
+        UNREACHABLE();
+    }
+    gate2LValue_[gate] = result;
 }
 
 bool IsAddIntergerType(MachineType machineType)
