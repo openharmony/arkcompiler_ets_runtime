@@ -206,6 +206,7 @@ void TypeLowering::LowerTypedUnaryOp(GateRef gate)
         case TypedUnOp::TYPED_NEG:
             break;
         case TypedUnOp::TYPED_NOT:
+            LowerTypedNot(gate);
             break;
         case TypedUnOp::TYPED_INC:
             LowerTypedInc(gate);
@@ -366,6 +367,17 @@ void TypeLowering::LowerTypedDec(GateRef gate)
     return;
 }
 
+void TypeLowering::LowerTypedNot(GateRef gate)
+{
+    auto value = acc_.GetLeftType(gate);
+    if (value.IsNumberType()) {
+        LowerNumberNot(gate);
+    } else {
+        UNREACHABLE();
+    }
+    return;
+}
+
 void TypeLowering::LowerNumberAdd(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -491,6 +503,15 @@ void TypeLowering::LowerNumberDec(GateRef gate)
     GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_DEC>(value, valueType);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberNot(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = acc_.GetLeftType(gate);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    result = MonocularNumber<TypedUnOp::TYPED_NOT>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
@@ -936,6 +957,12 @@ GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
                 builder_.Jump(&exit);
                 break;
             }
+            case TypedUnOp::TYPED_NOT: {
+                res = builder_.Int64Not(intVal);
+                result = builder_.ToTaggedIntPtr(res);
+                builder_.Jump(&exit);
+                break;
+            }
             default:
                 break;
         }
@@ -994,6 +1021,12 @@ GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
                     }
                     break;
                 }
+                case TypedUnOp::TYPED_NOT: {
+                    res = builder_.Int64Not(intVal);
+                    result = builder_.ToTaggedIntPtr(res);
+                    builder_.Jump(&exit);
+                    break;
+                }
                 default:
                     break;
             }
@@ -1004,16 +1037,24 @@ GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
         {
             auto res = Circuit::NullGate();
             switch (Op) {
-                case TypedUnOp::TYPED_INC:
+                case TypedUnOp::TYPED_INC: {
                     res = builder_.DoubleAdd(*doubleVal, builder_.Double(1.0));
+                    result = DoubleToTaggedDoublePtr(res);
                     break;
-                case TypedUnOp::TYPED_DEC:
+                }
+                case TypedUnOp::TYPED_DEC: {
                     res = builder_.DoubleSub(*doubleVal, builder_.Double(1.0));
+                    result = DoubleToTaggedDoublePtr(res);
                     break;
+                }
+                case TypedUnOp::TYPED_NOT: {
+                    res = builder_.TruncFloatToInt64(*doubleVal);
+                    result = builder_.ToTaggedIntPtr(builder_.Int64Not(res));
+                    break;
+                }
                 default:
                     break;
             }
-            result = DoubleToTaggedDoublePtr(res);
             builder_.Jump(&exit);
         }
     }

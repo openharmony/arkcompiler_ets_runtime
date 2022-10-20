@@ -1109,7 +1109,8 @@ JSTaggedValue RuntimeStubs::RuntimeGetIterator(JSThread *thread, const JSHandle<
         size_t argsNum = 4;  // 4: number of args
         JSTaggedType newTarget = thread->GlobalConstants()->GetUndefined().GetRawData();
         JSTaggedType thisArg = obj.GetTaggedValue().GetRawData();
-        auto res = thread->GetEcmaVM()->ExecuteAot(argsNum, funcHandle, newTarget, thisArg);
+        const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+        auto res = thread->GetEcmaVM()->ExecuteAot(argsNum, funcHandle, newTarget, thisArg, prevFp);
         return res;
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();

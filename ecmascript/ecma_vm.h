@@ -489,7 +489,7 @@ public:
     }
 
     JSTaggedValue ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, JSTaggedType newTarget,
-                             JSTaggedType thisArg);
+                             JSTaggedType thisArg, const JSTaggedType *prevFp);
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);

@@ -1546,12 +1546,12 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         }
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::INC_IMM8:
-        case EcmaOpcode::DEC_IMM8: {
+        case EcmaOpcode::DEC_IMM8:
+        case EcmaOpcode::NOT_IMM8: {
             info.deopt = true;
             break;
         }
         case EcmaOpcode::NEG_IMM8:
-        case EcmaOpcode::NOT_IMM8:
         case EcmaOpcode::JMP_IMM8:
         case EcmaOpcode::JMP_IMM16:
         case EcmaOpcode::JMP_IMM32:

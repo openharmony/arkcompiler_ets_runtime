@@ -221,6 +221,10 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX), NO_ROOT };
             return ps;
         }
+        case TRUNC_FLOAT_TO_INT64: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case ADD:
         case SUB:
         case MUL:
@@ -427,6 +431,7 @@ std::string OpCode::Str() const
         {TRUNC_TO_INT1, "TRUNC_TO_INT1"},
         {TRUNC_TO_INT16, "TRUNC_TO_INT16"},
         {REV, "REV"},
+        {TRUNC_FLOAT_TO_INT64, "TRUNC_FLOAT_TO_INT64"},
         {ADD, "ADD"},
         {SUB, "SUB"},
         {MUL, "MUL"},
