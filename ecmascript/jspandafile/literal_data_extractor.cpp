@@ -538,7 +538,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetTypeLiteral(JSThread *thread, con
     JSHandle<TaggedArray> literals = factory->NewOldSpaceTaggedArray(num);
     uint32_t pos = 0;
     lda.EnumerateLiteralVals(
-        offset, [literals, &pos, factory, thread, jsPandaFile]
+        offset, [literals, &pos, factory, thread, pf]
         (const panda_file::LiteralDataAccessor::LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -556,7 +556,6 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetTypeLiteral(JSThread *thread, con
                     break;
                 }
                 case LiteralTag::STRING: {
-                    const panda_file::File *pf = jsPandaFile->GetPandaFile();
                     StringData sd = pf->GetStringData(panda_file::File::EntityId(std::get<uint32_t>(value)));
                     EcmaString *str = factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii,
                                                                            MemSpaceType::OLD_SPACE);

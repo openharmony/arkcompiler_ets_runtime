@@ -297,7 +297,7 @@ template("host_aot_js_test_action") {
     extra_dependencies = _deps_
     src_js = rebase_path(_test_ts_path_)
     dst_file = rebase_path(_test_abc_path_)
-    extra_args = []
+    extra_args = [ "--merge-abc" ]
 
     if (_is_module_) {
       extra_args += [ "--module" ]
@@ -368,7 +368,8 @@ template("host_aot_js_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_run_options_ =
-        " --aot-file=" + rebase_path(_test_aot_arg_) + " --asm-interpreter=true"
+        " --aot-file=" + rebase_path(_test_aot_arg_) +
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}"
 
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
@@ -422,7 +423,7 @@ template("host_aot_test_action") {
     extra_dependencies = _deps_
     src_js = rebase_path(_test_ts_path_)
     dst_file = rebase_path(_test_abc_path_)
-    extra_args = []
+    extra_args = [ "--merge-abc" ]
     if (_is_module_) {
       extra_args += [ "--module" ]
     }
@@ -492,7 +493,8 @@ template("host_aot_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_run_options_ =
-        " --aot-file=" + rebase_path(_test_aot_arg_) + " --asm-interpreter=true"
+        " --aot-file=" + rebase_path(_test_aot_arg_) +
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}"
 
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
@@ -533,7 +535,7 @@ template("host_typeinfer_test_action") {
     extra_dependencies = _deps_
     src_js = rebase_path(_test_ts_path_)
     dst_file = rebase_path(_test_abc_path_)
-    extra_args = []
+    extra_args = [ "--merge-abc" ]
 
     # will support debug info mode in future
     if (defined(invoker._is_module_) && invoker._is_module_) {
@@ -557,6 +559,7 @@ template("host_typeinfer_test_action") {
     src_js = rebase_path(_builtins_dts_path_)
     dst_file = rebase_path(_builtins_d_abc_path_)
     extra_args = [
+      "--merge-abc",
       "--q",
       "--b",
     ]

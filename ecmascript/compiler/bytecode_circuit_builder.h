@@ -490,11 +490,12 @@ public:
                                     MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
                                     const CompilationConfig* cconfig,
+                                    bool hasTypes,
                                     bool enableLog,
                                     std::string name)
         : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
-          typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
+          typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(hasTypes),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
           frameStateBuilder_(&circuit_, methodLiteral), methodName_(name)

@@ -26,7 +26,7 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
-void TSTypeTable::Initialize(JSThread *thread, const JSPandaFile *jsPandaFile,
+void TSTypeTable::Initialize(JSThread *thread, const JSPandaFile *jsPandaFile, const CString &recordName,
                              CVector<JSHandle<EcmaString>> &recordImportModules)
 {
     EcmaVM *vm = thread->GetEcmaVM();
@@ -34,7 +34,8 @@ void TSTypeTable::Initialize(JSThread *thread, const JSPandaFile *jsPandaFile,
     ObjectFactory *factory = vm->GetFactory();
 
     uint32_t moduleId = static_cast<uint32_t>(tsManager->GetNextModuleId());
-    JSHandle<TSTypeTable> tsTypeTable = GenerateTypeTable(thread, jsPandaFile, moduleId, recordImportModules);
+    JSHandle<TSTypeTable> tsTypeTable = GenerateTypeTable(
+        thread, jsPandaFile, recordName, moduleId, recordImportModules);
 
     // Set TStypeTable -> GlobleModuleTable
     JSHandle<EcmaString> fileName = factory->NewFromUtf8(jsPandaFile->GetJSPandaFileDesc());
@@ -49,19 +50,19 @@ void TSTypeTable::Initialize(JSThread *thread, const JSPandaFile *jsPandaFile,
         recordImportModules.pop_back();
         const JSPandaFile *moduleFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(filename.c_str());
         ASSERT(moduleFile != nullptr);
-        TSTypeTable::Initialize(thread, moduleFile, recordImportModules);
+        TSTypeTable::Initialize(thread, moduleFile, filename, recordImportModules);
     }
 }
 
 JSHandle<TSTypeTable> TSTypeTable::GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                     uint32_t moduleId,
+                                                     const CString &recordName, uint32_t moduleId,
                                                      CVector<JSHandle<EcmaString>> &recordImportModules)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // read type summary literal
     // struct of summaryLiteral: {numTypes, literalOffset0, literalOffset1, ...}
-    panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset());
+    panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset(recordName));
     JSHandle<TaggedArray> summaryLiteral = LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, summaryOffset);
     uint32_t numTypes = static_cast<uint32_t>(summaryLiteral->Get(NUM_OF_TYPES_INDEX_IN_SUMMARY_LITREAL).GetInt());
 

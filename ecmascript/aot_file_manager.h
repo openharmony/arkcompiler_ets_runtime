@@ -405,7 +405,7 @@ public:
         hashToEntryMap_[hash][methodId] = funcEntry;
     }
 
-    void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile);
+    void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     bool hasLoaded(const JSPandaFile *jsPandaFile);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);

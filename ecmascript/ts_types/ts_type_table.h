@@ -40,10 +40,11 @@ public:
         return static_cast<TSTypeTable *>(object);
     }
 
-    static void Initialize(JSThread *thread, const JSPandaFile *jsPandaFile,
+    static void Initialize(JSThread *thread, const JSPandaFile *jsPandaFile, const CString &recordName,
                            CVector<JSHandle<EcmaString>> &recordImportModules);
 
-    static JSHandle<TSTypeTable> GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile, uint32_t moduleId,
+    static JSHandle<TSTypeTable> GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                   const CString &recordName, uint32_t moduleId,
                                                    CVector<JSHandle<EcmaString>> &recordImportModules);
 
     static void FillLiteralOffsetGTMap(JSThread *thread, const JSPandaFile *jsPandaFile, uint32_t moduleId,

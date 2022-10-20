@@ -74,8 +74,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
                     isUpdateMainMethodIndex = true;
                 }
             } else {
-                if (!isUpdateMainMethodIndex && (name == JSPandaFile::ENTRY_FUNCTION_NAME ||
-                                                 name == JSPandaFile::PATCH_FUNCTION_NAME_0)) {
+                if (!isUpdateMainMethodIndex && JSPandaFile::IsEntryOrPatch(name)) {
                     jsPandaFile->UpdateMainMethodIndex(mda.GetMethodId().GetOffset(), entry);
                     isUpdateMainMethodIndex = true;
                 }

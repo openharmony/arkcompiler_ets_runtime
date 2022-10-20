@@ -33,6 +33,18 @@ public:
         bool hasParsedLiteralConstPool {false};
         int moduleRecordIdx {-1};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
+        bool hasTSTypes {false};
+        uint32_t typeSummaryOffset {0};
+
+        bool HasTSTypes () const
+        {
+            return hasTSTypes;
+        }
+
+        uint32_t GetTypeSummaryOffset() const
+        {
+            return typeSummaryOffset;
+        }
     };
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
@@ -41,7 +53,6 @@ public:
     static constexpr char PATCH_FUNCTION_NAME_1[] = "patch_main_1";
 
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
-    static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char TYPE_FLAG[] = "typeFlag";
     static constexpr char TYPE_SUMMARY_OFFSET[] = "typeSummaryOffset";
@@ -171,11 +182,6 @@ public:
         return isBundlePack_;
     }
 
-    bool HasTSTypes() const
-    {
-        return hasTSTypes_;
-    }
-
     void SetLoadedAOTStatus(bool status)
     {
         isLoadedAOT_ = status;
@@ -184,11 +190,6 @@ public:
     bool IsLoadedAOT() const
     {
         return isLoadedAOT_;
-    }
-
-    uint32_t GetTypeSummaryOffset() const
-    {
-        return typeSummaryOffset_;
     }
 
     uint32_t GetFileUniqId() const
@@ -277,6 +278,23 @@ public:
         }
     }
 
+    static bool IsEntryOrPatch(const CString &name)
+    {
+        return (name == PATCH_FUNCTION_NAME_0) || (name == ENTRY_FUNCTION_NAME);
+    }
+
+    bool HasTSTypes(const CString &recordName) const
+    {
+        JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
+        return recordInfo.HasTSTypes();
+    }
+
+    uint32_t GetTypeSummaryOffset(const CString &recordName) const
+    {
+        JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
+        return recordInfo.GetTypeSummaryOffset();
+    }
+
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
@@ -291,10 +309,8 @@ private:
     MethodLiteral *methodLiterals_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     CString desc_;
-    bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
     uint32_t aotPackInfoIndex_ {0};
-    uint32_t typeSummaryOffset_ {0};
     bool isNewVersion_ {false};
 
     // marge abc
