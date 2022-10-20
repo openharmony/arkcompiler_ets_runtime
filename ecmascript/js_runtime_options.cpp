@@ -70,6 +70,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"stub-file", required_argument, nullptr, OPTION_STUB_FILE},
         {"target-triple", required_argument, nullptr, OPTION_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
+        {"sample-profile", required_argument, nullptr, OPTION_SAMPLE_PROFILE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -315,6 +316,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
+                break;
+            case OPTION_SAMPLE_PROFILE:
+                SetSampleProfilePath(optarg);
                 break;
             case OPTION_RELOCATION_MODE:
                 ret = ParseUint32Param("reloc-mode", &argUint32);
