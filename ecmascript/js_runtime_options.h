@@ -59,7 +59,6 @@ const std::string STUB_HELP_HEAD_MSG =
     "optional arguments:\n";
 
 const std::string HELP_OPTION_MSG =
-    "--abc-list-file: abc's list file.\n"
     "--aot-file: Path (file suffix not needed) to AOT output file. Default: \"aot_file\"\n"
     "--ark-properties: set ark properties\n"
     "--asm-interpreter: Enable asm interpreter. Default: true\n"
@@ -171,7 +170,6 @@ enum CommandValues {
     OPTION_LOG_FATAL,
     OPTION_LOG_COMPONENTS,
     OPTION_MAX_AOTMETHODSIZE,
-    OPTION_ABC_FILES_LIST,
     OPTION_ENTRY_POINT,
     OPTION_MERGE_ABC,
     OPTION_ENABLE_TYPE_LOWERING,
@@ -775,21 +773,6 @@ public:
         maxAotMethodSize_ = value;
     }
 
-    std::string GetAbcListFile() const
-    {
-        return abcFilelist_;
-    }
-
-    void SetAbcListFile(std::string value)
-    {
-        abcFilelist_ = std::move(value);
-    }
-
-    bool WasSetAbcListFile() const
-    {
-        return WasOptionSet(OPTION_ABC_FILES_LIST);
-    }
-
     std::string GetEntryPoint() const
     {
         return entryPoint_;
@@ -833,21 +816,6 @@ public:
     void SetSampleProfilePath(std::string value)
     {
         sampleProfile_ = std::move(value);
-    }
-
-    void ParseAbcListFile(std::vector<std::string> &moduleList) const
-    {
-        std::ifstream moduleFile(abcFilelist_);
-        if (moduleFile.is_open()) {
-            char moduleName[FILENAME_MAX];
-            while (!moduleFile.eof()) {
-                moduleFile.getline(moduleName, FILENAME_MAX);
-                if (moduleName[0] != '\0') {
-                    moduleList.emplace_back(std::string(moduleName));
-                }
-            }
-            moduleFile.close();
-        }
     }
 
     void SetEnableTypeLowering(bool value)
@@ -921,7 +889,6 @@ private:
     arg_list_t logComponents_ {{"all"}};
     bool enableAOT_ {false};
     uint32_t maxAotMethodSize_ {32_KB};
-    std::string abcFilelist_ {"none"};
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};

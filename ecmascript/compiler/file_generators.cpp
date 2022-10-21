@@ -57,7 +57,7 @@ void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> 
         } else {
             funSize = asmModule_.GetBufferSize() - entryOffset;
         }
-        stubInfo_.AddStubEntry(cs->GetTargetKind(), cs->GetID(), entryOffset, bridgeModuleIdx, 0, funSize);
+        stubInfo_.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entryOffset, bridgeModuleIdx, 0, funSize);
         ASSERT(!cs->GetName().empty());
         auto curSecBegin = asmModule_.GetBuffer();
         uintptr_t entry = reinterpret_cast<uintptr_t>(curSecBegin) + entryOffset;
@@ -86,7 +86,7 @@ void AOTFileGenerator::CollectCodeInfo()
         modulePackage_[i].CollectFuncEntryInfo(addr2name, aotInfo_, i, GetLog());
         ModuleSectionDes des;
         modulePackage_[i].CollectModuleSectionDes(des);
-        aotInfo_.AddModuleDes(des, aotfileHashs_[i]);
+        aotInfo_.AddModuleDes(des);
     }
     DisassembleEachFunc(addr2name);
 }

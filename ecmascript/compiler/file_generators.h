@@ -37,7 +37,7 @@ public:
     {
     }
 
-    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubModulePackInfo &stubInfo,
+    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
         uint32_t moduleIndex, const CompilerLog &log)
     {
         auto engine = assembler_->GetEngine();
@@ -68,14 +68,14 @@ public:
                 funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - entrys[j];
             }
             kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
-            stubInfo.AddStubEntry(cs->GetTargetKind(), cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta, funcSize,
+            stubInfo.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta, funcSize,
                 info);
             ASSERT(!cs->GetName().empty());
             addr2name[entrys[j]] = cs->GetName();
         }
     }
 
-    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AOTModulePackInfo &aotInfo,
+    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
                               uint32_t moduleIndex, const CompilerLog &log)
     {
         auto engine = assembler_->GetEngine();
@@ -110,7 +110,9 @@ public:
             } else {
                 funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - funcEntry;
             }
-            aotInfo.AddStubEntry(CallSignature::TargetKind::JSFUNCTION, idx,
+            auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
+            bool isMainFunc = found != std::string::npos;
+            aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, idx,
                                  funcEntry - codeBuff, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
         }
     }
@@ -170,7 +172,7 @@ public:
 private:
     LLVMModule *llvmModule_ {nullptr};
     LLVMAssembler *assembler_ {nullptr};
-    // record current module first function index in StubModulePackInfo/AOTModulePackInfo
+    // record current module first function index in StubFileInfo/AnFileInfo
     uint32_t startIndex_ {static_cast<uint32_t>(-1)};
     uint32_t funcCount_ {0};
 };
@@ -226,8 +228,6 @@ public:
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const JSPandaFile *jsPandaFile)
     {
         modulePackage_.emplace_back(Module(llvmModule, assembler));
-        auto hash = jsPandaFile->GetFileUniqId();
-        aotfileHashs_.emplace_back(hash);
         // Process and clean caches in tsmanager that needs to be serialized
         vm_->GetTSManager()->CollectConstantPoolInfo(jsPandaFile);
         vm_->GetTSManager()->ClearCaches();
@@ -235,11 +235,11 @@ public:
 
     void GenerateMethodToEntryIndexMap()
     {
-        const std::vector<ModulePackInfo::FuncEntryDes> &entries = aotInfo_.GetStubs();
+        const std::vector<AOTFileInfo::FuncEntryDes> &entries = aotInfo_.GetStubs();
         uint32_t entriesSize = entries.size();
         for (uint32_t i = 0; i < entriesSize; ++i) {
-            const ModulePackInfo::FuncEntryDes &entry = entries[i];
-            methodToEntryIndexMap_[std::make_pair(entry.moduleIndex_, entry.indexInKind_)] = i;
+            const AOTFileInfo::FuncEntryDes &entry = entries[i];
+            methodToEntryIndexMap_[std::make_pair(entry.moduleIndex_, entry.indexInKindOrMethodId_)] = i;
         }
     }
 
@@ -247,8 +247,7 @@ public:
     void SaveAOTFile(const std::string &filename);
     void SaveSnapshotFile();
 private:
-    AOTModulePackInfo aotInfo_;
-    std::vector<uint32_t> aotfileHashs_ {};
+    AnFileInfo aotInfo_;
     EcmaVM* vm_;
     // (moduleIndex, MethodID)->EntryIndex
     std::map<std::pair<uint32_t, uint32_t>, uint32_t> methodToEntryIndexMap_ {};
@@ -269,7 +268,7 @@ public:
     // save function funcs for aot files containing stubs
     void SaveStubFile(const std::string &filename);
 private:
-    StubModulePackInfo stubInfo_;
+    StubFileInfo stubInfo_;
     AssemblerModule asmModule_;
     CompilationConfig cfg_;
 

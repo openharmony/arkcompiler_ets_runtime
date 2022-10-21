@@ -190,15 +190,15 @@ class ArkTest():
                             module_abc_file = ''.join([module_abc_file, f':{abc}'])
         os.system(f'mkdir -p {out_case_dir}')
         cmd_map = {
-            'abc': f'node --expose-gc {self.ts2abc} {file} {module_arg}',
+            'abc': f'node --expose-gc {self.ts2abc} {file} {module_arg} --merge-abc',
             'aot': f'{self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {module_abc_file}',
             'aotd': f'{self.runnerd} {self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {module_abc_file}',
-            'run': f'{self.runner} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} {abc_file}',
-            'rund': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} {abc_file}',
-            'asmint': f'{self.runner} {self.jsvm} {self.jsvm_args} {abc_file}',
-            'asmintd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} {abc_file}',
-            'int': f'{self.runner} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 {abc_file}',
-            'intd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 {abc_file}'}
+            'run': f'{self.runner} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} --entry-point={name} {abc_file}',
+            'rund': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} --entry-point={name} {abc_file}',
+            'asmint': f'{self.runner} {self.jsvm} {self.jsvm_args} --entry-point={name} {abc_file}',
+            'asmintd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --entry-point={name} {abc_file}',
+            'int': f'{self.runner} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 --entry-point={name} {abc_file}',
+            'intd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 --entry-point={name} {abc_file}'}
         if self.args.step:
             # gdb should use the os.system
             cmd = cmd_map[self.args.step]
