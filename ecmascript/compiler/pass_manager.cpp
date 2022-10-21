@@ -57,6 +57,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         if (methodPCInfo.methodsSize > maxAotMethodSize_ &&
             methodOffset != jsPandaFile->GetMainMethodIndex(recordName)) {
             ++skippedMethodNum;
+            tsManager->AddSkippedMethodID(method->GetMethodId().GetOffset());
             LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
             return;
         }

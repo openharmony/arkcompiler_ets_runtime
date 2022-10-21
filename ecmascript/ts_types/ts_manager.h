@@ -258,6 +258,7 @@ public:
     {
         stringIndexCache_.clear();
         methodIndexCache_.clear();
+        skippedMethodIDCache_.clear();
         hclassCache_.clear();
     }
 
@@ -275,6 +276,14 @@ public:
             return;
         }
         methodIndexCache_.insert(index);
+    }
+
+    void AddSkippedMethodID(uint32_t methodID)
+    {
+        if (skippedMethodIDCache_.find(methodID) != skippedMethodIDCache_.end()) {
+            return;
+        }
+        skippedMethodIDCache_.insert(methodID);
     }
 
     EcmaVM *GetEcmaVM() const
@@ -417,8 +426,9 @@ private:
     friend class EcmaVM;
 
     // records the index in constantpool of the data that aot needs to serialize
-    std::set<int> stringIndexCache_ {};
-    std::set<int> methodIndexCache_ {};
+    std::set<uint32_t> stringIndexCache_ {};
+    std::set<uint32_t> methodIndexCache_ {};
+    std::set<uint32_t> skippedMethodIDCache_ {};
     // store hclass of each abc which produced from static type info
     CVector<JSTaggedType> hclassCache_ {};
 
