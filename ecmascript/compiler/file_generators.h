@@ -115,15 +115,25 @@ public:
         }
     }
 
-    void CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
+    bool IsRelaSection(ElfSecName sec) const
+    {
+        return sec == ElfSecName::RELATEXT || sec == ElfSecName::STRTAB || sec == ElfSecName::SYMTAB;
+    }
+
+    void CollectModuleSectionDes(ModuleSectionDes &moduleDes, bool stub = false) const
     {
         ASSERT(assembler_ != nullptr);
         assembler_->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
             auto curSec = ElfSection(i);
-            moduleDes.SetSecAddr(reinterpret_cast<uint64_t>(secInfo.first), curSec.GetElfEnumValue());
-            moduleDes.SetSecSize(secInfo.second, curSec.GetElfEnumValue());
-            moduleDes.SetStartIndex(startIndex_);
-            moduleDes.SetFuncCount(funcCount_);
+            ElfSecName sec = curSec.GetElfEnumValue();
+            if (stub && IsRelaSection(sec)) {
+                moduleDes.EraseSec(sec);
+            } else { // aot need relocated; stub don't need collect relocated section
+                moduleDes.SetSecAddr(reinterpret_cast<uint64_t>(secInfo.first), sec);
+                moduleDes.SetSecSize(secInfo.second, sec);
+                moduleDes.SetStartIndex(startIndex_);
+                moduleDes.SetFuncCount(funcCount_);
+            }
         });
         CollectStackMapDes(moduleDes);
     }
