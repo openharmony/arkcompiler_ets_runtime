@@ -61,6 +61,7 @@ group("ark_aot_test") {
     "definemethod:definemethodAotAction",
     "definencfunc:definencfuncAotAction",
     "delobjprop:delobjpropAotAction",
+    "deopt:deoptAotAction",
     "destructuring:destructuringAotAction",
     "div:divAotAction",
     "duplicatefunctions:duplicatefunctionsAotAction",
