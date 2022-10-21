@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_BUILTINS_VECTOR_STUB_BUILDER_H
-#define ECMASCRIPT_COMPILER_BUILTINS_VECTOR_STUB_BUILDER_H
+#ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_VECTOR_STUB_BUILDER_H
+#define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_VECTOR_STUB_BUILDER_H
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_api/js_api_vector.h"
 
@@ -38,6 +38,12 @@ public:
         GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
         return GetValueFromTaggedArray(elements, index);
     }
+    void Set(GateRef glue, GateRef obj, GateRef index, GateRef value)
+    {
+        GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
+        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
+    }
 };
 }  // namespace panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_BUILTINS_VECTOR_STUB_BUILDER_H
+#endif  // ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_VECTOR_STUB_BUILDER_H
