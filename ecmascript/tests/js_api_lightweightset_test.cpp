@@ -107,7 +107,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, AddIncreaseCapacityAddAll)
     // test IncreaseCapacityTo
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        bool result = JSAPILightWeightSet::Add(thread, lws, value);
+        bool result = JSAPILightWeightSet::Add(thread, lws, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
         EXPECT_TRUE(result);
     }
     EXPECT_EQ(lws->GetSize(), NODE_NUMBERS);
@@ -119,16 +119,16 @@ HWTEST_F_L0(JSAPILightWeightSetTest, AddIncreaseCapacityAddAll)
 
     // test AddAll
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        bool result = JSAPILightWeightSet::Add(thread, srcLws, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
+        bool result = JSAPILightWeightSet::Add(thread, destLws, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
         EXPECT_TRUE(result);
     }
 
     for (uint32_t i = 0; i < NODE_NUMBERS + 2; i++) {
-        JSAPILightWeightSet::Add(thread, destLws, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
+        JSAPILightWeightSet::Add(thread, srcLws, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
     }
     bool result = JSAPILightWeightSet::AddAll(thread, destLws, JSHandle<JSTaggedValue>::Cast(srcLws));
     EXPECT_TRUE(result);
-    tmp = NODE_NUMBERS * 2 + 2; // 2 means the value
+    tmp = NODE_NUMBERS + 2; // 2 means the value
     EXPECT_EQ(destLws->GetSize(), tmp);
 }
 

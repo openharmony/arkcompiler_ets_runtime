@@ -34,9 +34,10 @@ bool JSAPILightWeightSet::Add(JSThread *thread, const JSHandle<JSAPILightWeightS
     JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
     int32_t size = static_cast<int32_t>(obj->GetLength());
     int32_t index = obj->GetHashIndex(value, size);
-    if (index < 0) {
-        index ^= JSAPILightWeightSet::HASH_REBELLION;
+    if (index >= 0) {
+        return false;
     }
+    index ^= JSAPILightWeightSet::HASH_REBELLION;
     if (index < size) {
         obj->AdjustArray(thread, hashArray, index, size, true);
         obj->AdjustArray(thread, valueArray, index, size, true);
@@ -149,7 +150,7 @@ bool JSAPILightWeightSet::AddAll(JSThread *thread, const JSHandle<JSAPILightWeig
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < srcSize; i++) {
         element.Update(srcLightWeightSet->GetValueAt(i));
-        changed = JSAPILightWeightSet::Add(thread, obj, element);
+        changed |= JSAPILightWeightSet::Add(thread, obj, element);
     }
     return changed;
 }
