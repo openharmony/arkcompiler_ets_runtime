@@ -16,43 +16,23 @@
 #ifndef ECMASCRIPT_COMPILER_FRAME_STATE_H
 #define ECMASCRIPT_COMPILER_FRAME_STATE_H
 
+#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript::kungfu {
+class BytecodeCircuitBuilder;
+struct BytecodeRegion;
 
 class FrameStateInfo {
 public:
-    explicit FrameStateInfo(const MethodLiteral *literal)
-        : numVregs_(literal->GetNumberVRegs() + 1),
-          accumulatorIndex_(GetNumberVRegs() - 1),
-          literal_(literal)
-    {
-    }
-
-    explicit FrameStateInfo(const FrameStateInfo *other)
-        : numVregs_(other->numVregs_),
-          accumulatorIndex_(other->accumulatorIndex_),
-          literal_(other->literal_)
-    {
-        values_ = other->values_;
-    }
-
-    size_t GetNumberVRegs() const
-    {
-        return numVregs_;
-    }
-
-    std::vector<GateRef> *GetValues()
-    {
-        return &values_;
-    }
+    explicit FrameStateInfo(size_t numVregs) :
+        values_(numVregs) {}
 
     void SetValuesAt(size_t index, GateRef gate)
     {
-        ASSERT(gate != Circuit::NullGate());
         ASSERT(index < values_.size());
         values_[index] = gate;
     }
@@ -63,77 +43,72 @@ public:
         return values_[index];
     }
 
-    GateRef ValuesAtAccumulator() const
+    void CopyFrom(FrameStateInfo *other)
     {
-        return ValuesAt(accumulatorIndex_);
-    }
-
-    void UpdateAccumulator(GateRef gate)
-    {
-        return UpdateVirtualRegister(accumulatorIndex_, gate);
-    }
-    void UpdateVirtualRegister(size_t index, GateRef gate)
-    {
-        SetValuesAt(index, gate);
-    }
-    FrameStateInfo *Clone();
-    size_t GetAccumulatorIndex() const
-    {
-        return accumulatorIndex_;
+        values_.assign(other->values_.begin(), other->values_.end());
     }
 private:
-    size_t numVregs_ {0};
-    size_t accumulatorIndex_ {0};
-    const MethodLiteral *literal_ {nullptr};
     // [numVRegs_] [extra args] [numArgs_] [accumulator]
-    std::vector<GateRef> values_{};
+    std::vector<GateRef> values_ {};
 };
 
 class FrameStateBuilder {
 public:
-    FrameStateBuilder(Circuit *circuit, const MethodLiteral *literal);
+    FrameStateBuilder(BytecodeCircuitBuilder *builder,
+        Circuit *circuit, const MethodLiteral *literal);
     ~FrameStateBuilder();
 
+    void BuildFrameState();
+private:
     GateRef ValuesAt(size_t index) const
     {
-        return currentInfo_->ValuesAt(index);
+        return liveOutResult_->ValuesAt(index);
     }
 
     GateRef ValuesAtAccumulator() const
     {
-        return currentInfo_->ValuesAtAccumulator();
-    }
-
-    void UpdateAccumulator(GateRef gate)
-    {
-        currentInfo_->UpdateAccumulator(gate);
+        return ValuesAt(accumulatorIndex_);
     }
     void UpdateVirtualRegister(size_t index, GateRef gate)
     {
-        currentInfo_->UpdateVirtualRegister(index, gate);
+        liveOutResult_->SetValuesAt(index, gate);
     }
-    void BindGuard(GateRef gate, size_t pcOffset, GateRef glue);
-    void AdvenceToBasicBlock(size_t id);
-    size_t GetAccumulatorIndex() const
+    void UpdateAccumulator(GateRef gate)
     {
-        return currentInfo_->GetAccumulatorIndex();
+        UpdateVirtualRegister(accumulatorIndex_, gate);
     }
-private:
-    FrameStateInfo *CloneFrameState(FrameStateInfo *current, size_t id)
-    {
-        ASSERT(stateInfos_[id] == nullptr);
-        auto info = current->Clone();
-        stateInfos_[id] = info;
-        return info;
-    }
-    GateRef FrameState(size_t pcOffset);
-    void InitFrameValues();
+    void BindGuard(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo);
+    void BindGuard(size_t size);
+    void UpdateVirtualRegister(size_t id, size_t index, GateRef gate);
+    GateRef FrameState(size_t pcOffset, FrameStateInfo *stateInfo);
 
-    FrameStateInfo *currentInfo_{nullptr};
-    const MethodLiteral *literal_ {nullptr};
+    FrameStateInfo *CreateEmptyStateInfo();
+    void BuildPostOrderList(size_t size);
+    bool ComputeLiveOut(size_t bbId);
+    void ComputeLiveState();
+    void ComputeLiveOutBC(const uint8_t * pc);
+    bool MergeIntoPredBC(const uint8_t* predPc);
+    bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
+    FrameStateInfo *GetOrOCreateStateInfo(const uint8_t * pc)
+    {
+        auto currentInfo = stateInfos_[pc];
+        if (currentInfo == nullptr) {
+            currentInfo = CreateEmptyStateInfo();
+            stateInfos_[pc] = currentInfo;
+        }
+        return currentInfo;
+    }
+    GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
+
+    BytecodeCircuitBuilder *builder_{nullptr};
+    FrameStateInfo *liveOutResult_{nullptr};
+    size_t numVregs_ {0};
+    size_t accumulatorIndex_ {0};
     Circuit *circuit_ {nullptr};
     GateAccessor gateAcc_;
-    std::map<size_t, FrameStateInfo *> stateInfos_;
+    ArgumentAccessor argAcc_;
+    std::map<const uint8_t *, FrameStateInfo *> stateInfos_;
+    std::vector<size_t> postOrderList_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_FRAME_STATE_H
