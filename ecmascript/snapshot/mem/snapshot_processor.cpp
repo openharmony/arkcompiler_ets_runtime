@@ -1170,7 +1170,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         auto fileRegion = ToNativePtr<Region>(beginAddr + i * (DEFAULT_REGION_SIZE - GetMarkGCBitSetSize()));
         uintptr_t objectBeginAddr =
             ToUintPtr(fileRegion) + AlignUp(sizeof(Region),  static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        //region wasted_ is used to record region index for snapshot
+        // region wasted_ is used to record region index for snapshot
         size_t regionIndex = fileRegion->GetWastedSize();
         regionIndexMap_.emplace(regionIndex, region);
 
@@ -1676,7 +1676,7 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
         UNREACHABLE();
     }
     auto currentRegion = Region::ObjectAddressToRange(newObj);
-    //region wasted_ is used to record region index for snapshot
+    // region wasted_ is used to record region index for snapshot
     size_t regionIndex = currentRegion->GetWastedSize();
     size_t objOffset = newObj - ToUintPtr(currentRegion);
     EncodeBit encodeBit(static_cast<uint64_t>(regionIndex));
