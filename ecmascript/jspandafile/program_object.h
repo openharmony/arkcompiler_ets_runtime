@@ -168,7 +168,7 @@ public:
         uint32_t entryIndex = 0;
 
         if (isLoadedAOT && val.IsInt()) {
-            entryIndex = val.GetInt();
+            entryIndex = static_cast<uint32_t>(val.GetInt());
             val = JSTaggedValue::Hole();
         }
 
@@ -206,7 +206,7 @@ public:
         uint32_t entryIndex = 0;
 
         if (isLoadedAOT && val.IsInt()) {
-            entryIndex = val.GetInt();
+            entryIndex = static_cast<uint32_t>(val.GetInt());
             val = JSTaggedValue::Hole();
         }
 

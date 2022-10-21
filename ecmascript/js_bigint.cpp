@@ -1000,7 +1000,7 @@ JSHandle<BigInt> BigInt::Exponentiate(JSThread *thread, JSHandle<BigInt> base, J
         return base;
     }
     if (base->GetLength() == 1 && base->GetDigit(0) == 2) { // 2 : We use fast path processing 2 ^ n
-        int needLength = expValue / DATEBITS + 1;
+        uint32_t needLength = expValue / DATEBITS + 1;
         JSHandle<BigInt> bigint = CreateBigint(thread, needLength);
         uint32_t value = 1U << (expValue % DATEBITS);
         bigint->SetDigit(needLength - 1, value);

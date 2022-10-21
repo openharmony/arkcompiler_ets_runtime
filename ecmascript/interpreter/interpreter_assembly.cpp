@@ -3628,7 +3628,7 @@ void InterpreterAssembly::HandleWideNewobjrangePrefImm16V8(
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo*>(newSp);
             newSp[index++] = ToUintPtr(thread);
-            newSp[index++] = numArgs + 2; // +1 for this
+            newSp[index++] = numArgs + 2; // 2 : for newtarget / this
             // func
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             newSp[index++] = ctor.GetRawData();
