@@ -64,6 +64,7 @@ group("ark_aot_test") {
     "duplicatefunctions:duplicatefunctionsAotAction",
     "exceptionhandler:exceptionhandlerAotAction",
     "exp:expAotAction",
+    "forloop:forloopAotAction",
     "generatorcontinuefinally:generatorcontinuefinallyAotAction",
     "getiterator:getiteratorAotAction",
     "getiteratornext:getiteratornextAotAction",
