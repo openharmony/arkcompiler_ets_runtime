@@ -575,6 +575,8 @@ JSTaggedValue TSManager::GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile
     uint32_t constantPoolSize = constantPool->GetCacheLength();
     uint32_t hclassCacheSize = hclassCache_.size();
     JSHandle<ConstantPool> constantPoolInfo = factory->NewConstantPool(constantPoolSize + hclassCacheSize);
+    LOG_COMPILER(INFO) << "snapshot: constantPoolSize: " << constantPoolSize;
+    LOG_COMPILER(INFO) << "snapshot: hclassCacheSize: " << hclassCacheSize;
     recordMethodInfos_.emplace_back(std::vector<std::pair<uint32_t, uint32_t>>{});
 
     IterateConstantPoolCache(CacheType::STRING, [thread, constantPool, constantPoolInfo] (uint32_t index) {
@@ -587,7 +589,9 @@ JSTaggedValue TSManager::GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile
         auto pf = jsPandaFile->GetPandaFile();
         Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
         panda_file::File::EntityId methodID = indexs[index];
-        recordMethodInfos_.back().emplace_back(std::make_pair(methodID.GetOffset(), index));
+        if (skippedMethodIDCache_.find(methodID.GetOffset()) == skippedMethodIDCache_.end()) {
+            recordMethodInfos_.back().emplace_back(std::make_pair(methodID.GetOffset(), index));
+        }
     });
 
     IterateHClassCaches([thread, constantPoolSize, constantPoolInfo] (JSTaggedType hclass, uint32_t index) {
@@ -610,6 +614,7 @@ void TSManager::ResolveConstantPoolInfo(const std::map<std::pair<uint32_t, uint3
             uint32_t moduleIndex = i;
             uint32_t methodID = item.first;
             uint32_t constantPoolIndex = item.second;
+            LOG_COMPILER(INFO) << "snapshot: resolve function method ID: " << methodID;
             uint32_t entryIndex = methodToEntryIndexMap.at(std::make_pair(moduleIndex, methodID));
             currentCPInfo->SetObjectToCache(thread_, constantPoolIndex, JSTaggedValue(entryIndex));
         }
