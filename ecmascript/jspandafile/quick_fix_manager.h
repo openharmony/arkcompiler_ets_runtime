@@ -23,7 +23,8 @@ public:
     using QuickFixQueryCallBack = bool (*)(std::string, std::string &, void **, size_t);
 
     QuickFixManager() = default;
-    ~QuickFixManager() = default;
+    ~QuickFixManager();
+
     void RegisterQuickFixQueryFunc(const QuickFixQueryCallBack callBack);
     void LoadPatchIfNeeded(JSThread *thread, const std::string &baseFileName);
     bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
@@ -40,17 +41,18 @@ public:
     }
 
     // check whether the patch is loaded.
-    inline bool HasLoadedPatch() const
+    inline bool HasLoadedPatch(std::string &patchFileName) const
     {
-        return hasLoadedPatch_;
+        return quickFixLoaders_.find(patchFileName) != quickFixLoaders_.end();
     }
 
 private:
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
 
-    QuickFixLoader quickFixLoader_;
+    // For multi patch.
+    // key: patchFileName, value: QuickFixLoader of this patch.
+    CMap<std::string, QuickFixLoader*> quickFixLoaders_;
     QuickFixQueryCallBack callBack_ {nullptr};
-    bool hasLoadedPatch_ {false};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_QUICK_FIX_MANAGER_H
