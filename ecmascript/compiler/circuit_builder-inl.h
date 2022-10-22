@@ -124,6 +124,11 @@ GateRef CircuitBuilder::ChangeInt32ToFloat64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F64, x);
 }
 
+GateRef CircuitBuilder::ChangeInt32ToFloat32(GateRef x)
+{
+    return UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F32, x);
+}
+
 GateRef CircuitBuilder::ChangeUInt32ToFloat64(GateRef x)
 {
     return UnaryArithmetic(OpCode(OpCode::UNSIGNED_INT_TO_FLOAT), MachineType::F64, x);
@@ -291,6 +296,11 @@ GateRef CircuitBuilder::TaggedIsSpecial(GateRef x)
         TaggedIsHole(x));
 }
 
+inline GateRef CircuitBuilder::IsJSHClass(GateRef obj)
+{
+    return Int32Equal(GetObjectType(LoadHClass(obj)), Int32(static_cast<int32_t>(JSType::HCLASS)));
+}
+
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
@@ -394,6 +404,24 @@ GateRef CircuitBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
+GateRef CircuitBuilder::Float32ToTaggedDoublePtr(GateRef x)
+{
+    GateRef val = ExtFloat32ToDouble(x);
+    return DoubleToTaggedDoublePtr(val);
+}
+
+GateRef CircuitBuilder::TaggedDoublePtrToFloat32(GateRef x)
+{
+    GateRef val = GetDoubleOfTDouble(x);
+    return TruncDoubleToFloat32(val);
+}
+
+GateRef CircuitBuilder::TaggedIntPtrToFloat32(GateRef x)
+{
+    GateRef val = GetInt32OfTInt(x);
+    return ChangeInt32ToFloat32(val);
+}
+
 GateRef CircuitBuilder::DoubleToTaggedDouble(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
@@ -446,7 +474,7 @@ GateRef CircuitBuilder::GetGlobalConstantString(ConstantIndex index)
 // object operation
 GateRef CircuitBuilder::LoadHClass(GateRef object)
 {
-    GateRef offset = Int32(0);
+    GateRef offset = IntPtr(0);
     return Load(VariableType::JS_POINTER(), object, offset);
 }
 

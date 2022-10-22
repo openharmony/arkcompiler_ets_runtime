@@ -152,6 +152,8 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ZEXT, &LLVMIRBuilder::HandleZExtInt},
         {OpCode::SEXT, &LLVMIRBuilder::HandleSExtInt},
         {OpCode::TRUNC, &LLVMIRBuilder::HandleCastIntXToIntY},
+        {OpCode::FEXT, &LLVMIRBuilder::HandleFPExt},
+        {OpCode::FTRUNC, &LLVMIRBuilder::HandleFPTrunc},
         {OpCode::REV, &LLVMIRBuilder::HandleIntRev},
         {OpCode::ADD, &LLVMIRBuilder::HandleAdd},
         {OpCode::SUB, &LLVMIRBuilder::HandleSub},
@@ -1815,10 +1817,38 @@ void LLVMIRBuilder::VisitCastIntXToIntY(GateRef gate, GateRef e1)
     gate2LValue_[gate] = result;
 }
 
+void LLVMIRBuilder::HandleFPExt(GateRef gate)
+{
+    VisitFPExt(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::VisitFPExt(GateRef gate, GateRef e1)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(e1)) <=
+           GetBitWidthFromMachineType(acc_.GetMachineType(gate)));
+    LLVMValueRef result = LLVMBuildFPExt(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
+    gate2LValue_[gate] = result;
+}
+
+void LLVMIRBuilder::HandleFPTrunc(GateRef gate)
+{
+    VisitFPTrunc(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::VisitFPTrunc(GateRef gate, GateRef e1)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(e1)) >=
+           GetBitWidthFromMachineType(acc_.GetMachineType(gate)));
+    LLVMValueRef result = LLVMBuildFPTrunc(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
+    gate2LValue_[gate] = result;
+}
+
 void LLVMIRBuilder::VisitChangeInt32ToDouble(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    LLVMValueRef result = LLVMBuildSIToFP(builder_, e1Value, LLVMDoubleType(), "");
+    LLVMValueRef result = LLVMBuildSIToFP(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
     gate2LValue_[gate] = result;
 }
 

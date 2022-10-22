@@ -2986,10 +2986,6 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
         const std::map<GlobalTSTypeRef, uint32_t> &classTypeIhcIndexMap = tsManager_->GetClassTypeIhcIndexMap();
         GateRef ihcIndex = builder_.Int32((classTypeIhcIndexMap.at(gt)));
         GateRef ihclass = GetObjectFromConstPool(glue, jsFunc, ihcIndex, ConstPoolType::CLASS_LITERAL);
-        GateRef offset = builder_.PtrMul(builder_.ZExtInt32ToPtr(ihcIndex),
-                                         builder_.IntPtr(JSTaggedValue::TaggedTypeSize()));
-        GateRef dataOffset = builder_.PtrAdd(offset, builder_.IntPtr(TaggedArray::DATA_OFFSET));
-        builder_.Store(VariableType::JS_ANY(), glue, constpool, dataOffset, builder_.HoleConstant());
 
         auto args = { proto, lexicalEnv, constpool,
                       builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), ihclass, module };

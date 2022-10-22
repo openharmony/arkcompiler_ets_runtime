@@ -75,14 +75,15 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
         bool hasTyps = jsPandaFile->HasTSTypes(recordName);
         BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager, &bytecodes,
-                                       &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(), fullName, recordName);
+                                       &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(),
+                                       EnableTypeLowering(), fullName, recordName);
         builder.BytecodeToCircuit();
         PassData data(builder.GetCircuit(), log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
         if (EnableTypeLowering()) {
-            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);
+            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager, constantPool);
             pipeline.RunPass<GuardEliminatingPass>(&builder, &cmpCfg);
             pipeline.RunPass<GuardLoweringPass>(&builder, &cmpCfg);
             pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);

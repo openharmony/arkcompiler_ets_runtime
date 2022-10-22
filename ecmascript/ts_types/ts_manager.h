@@ -405,6 +405,13 @@ public:
     {
         currentABCInfo_.ClearCaches();
     }
+    
+    int PUBLIC_API GetHClassIndex(const kungfu::GateType &gateType);
+
+    JSTaggedValue PUBLIC_API GetHClassFromCache(uint32_t index);
+    
+    // not consider [[prototype]] properties and accessor, -1: not find
+    int PUBLIC_API GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key);
 
     EcmaVM *GetEcmaVM() const
     {
@@ -441,20 +448,11 @@ public:
     static constexpr int BUILTIN_ARRAY_ID = 24;
     static constexpr int BUILTIN_TYPED_ARRAY_FIRST_ID = 25;
     static constexpr int BUILTIN_TYPED_ARRAY_LAST_ID = 36;
+    static constexpr int BUILTIN_FLOAT32_ARRAY_ID = 33;
 
-    bool IsTypedArrayType(kungfu::GateType gateType) const
-    {
-        if (!IsClassInstanceTypeKind(gateType)) {
-            return false;
-        }
+    bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
-        const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
-        GlobalTSTypeRef classGT = GetClassType(gt);
-        uint32_t m = classGT.GetModuleId();
-        uint32_t l = classGT.GetLocalId();
-        return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
-               (l >= BUILTIN_TYPED_ARRAY_FIRST_ID) && (l <= BUILTIN_TYPED_ARRAY_LAST_ID);
-    }
+    bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
 
     void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, panda_file::File::EntityId offset,
                                         GlobalTSTypeRef gt)
@@ -493,6 +491,8 @@ private:
     void RecursivelyResolveTargetType(JSHandle<TSImportType> importType);
 
     void RecursivelyMergeClassField(JSHandle<TSClassType> classType, JSHandle<TSClassType> extendClassType);
+
+    bool IsDuplicatedKey(JSHandle<TSObjLayoutInfo> extendLayout, JSTaggedValue key);
 
     GlobalTSTypeRef GetExportGTByName(JSHandle<EcmaString> target,
                                       JSHandle<TaggedArray> &exportTable) const;

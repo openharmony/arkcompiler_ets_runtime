@@ -24,10 +24,11 @@ namespace panda::ecmascript::kungfu {
 class TSTypeLowering {
 public:
     TSTypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
-                   TSManager *tsManager, bool enableLog, const std::string& name)
+                   TSManager *tsManager, bool enableLog, const std::string& name,
+                   const JSHandle<JSTaggedValue> &constantPool)
         : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
-          enableLog_(enableLog), methodName_(name) {}
+          enableLog_(enableLog), methodName_(name), constantPool_(constantPool) {}
 
     ~TSTypeLowering() = default;
 
@@ -68,7 +69,12 @@ private:
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
     void LowerConditionJump(GateRef gate);
+    void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
+    void LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool isThis = false);
+    void LowerTypedStObjByName(GateRef gate, GateRef thisObj, bool isThis = false);
+    void LowerTypedLdObjByIndex(GateRef gate);
+    void LowerTypedStObjByIndex(GateRef gate);
 
     // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
@@ -85,9 +91,10 @@ private:
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
-    [[maybe_unused]]TSManager *tsManager_ {nullptr};
+    TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
+    JSHandle<ConstantPool> constantPool_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H

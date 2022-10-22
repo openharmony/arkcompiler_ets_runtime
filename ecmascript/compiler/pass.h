@@ -109,10 +109,12 @@ public:
 
 class TSTypeLoweringPass {
 public:
-    bool Run(PassData *data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, TSManager *tsManager)
+    bool Run(PassData *data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, TSManager *tsManager,
+             const JSHandle<JSTaggedValue> &constantPool)
     {
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        TSTypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog, data->GetMethodName());
+        TSTypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog,
+                                data->GetMethodName(), constantPool);
         if (builder->HasTypes()) {
             lowering.RunTSTypeLowering();
         }
