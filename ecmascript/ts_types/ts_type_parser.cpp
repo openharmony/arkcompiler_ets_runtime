@@ -98,7 +98,7 @@ JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSHandle<TaggedArray> &
     classType->SetPrototypeType(thread_, prototypeType);
 
     // resolve constructor type
-    // stitic include fields and methods, which the former takes up 4 spaces and the latter takes up 2 spaces.
+    // static include fields and methods, which the former takes up 4 spaces and the latter takes up 2 spaces.
     uint32_t numStaticFields = literal->Get(index++).GetInt();
     uint32_t numStaticMethods = literal->Get(index + numStaticFields * TSClassType::FIELD_LENGTH).GetInt();
     uint32_t numStatic = numStaticFields + numStaticMethods;

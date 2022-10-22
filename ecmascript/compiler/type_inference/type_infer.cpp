@@ -631,6 +631,13 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
             auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
             objType = GateType(builtinInstanceType);
         }
+        if (tsManager_->IsPrimitiveTypeKind(objType)) {
+            auto builtinGt = tsManager_->ConvertPrimitiveToBuiltin(objType);
+            if (builtinGt.GetModuleId() == TSModuleTable::BUILTINS_TABLE_ID) {
+                auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
+                objType = GateType(builtinInstanceType);
+            }
+        }
         // If this object has no gt type, we cannot get its internal property type
         if (ShouldInferWithLdObjByName(objType)) {
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
