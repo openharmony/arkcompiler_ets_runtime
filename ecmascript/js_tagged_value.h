@@ -637,6 +637,7 @@ public:
     bool IsTSImportType() const;
     bool IsTSFunctionType() const;
     bool IsTSArrayType() const;
+    bool IsTSIteratorInstanceType() const;
 
     bool IsCjsExports() const;
     bool IsCjsModule() const;

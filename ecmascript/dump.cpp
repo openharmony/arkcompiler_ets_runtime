@@ -354,6 +354,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "TSFunctionType";
         case JSType::TS_ARRAY_TYPE:
             return "TSArrayType";
+        case JSType::TS_ITERATOR_INSTANCE_TYPE:
+            return "TSIteratorInstanceType";
         case JSType::JS_API_ARRAYLIST_ITERATOR:
             return "JSArraylistIterator";
         case JSType::LINKED_NODE:
@@ -868,6 +870,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::TS_ARRAY_TYPE:
             TSArrayType::Cast(obj)->Dump(os);
+            break;
+        case JSType::TS_ITERATOR_INSTANCE_TYPE:
+            TSIteratorInstanceType::Cast(obj)->Dump(os);
             break;
         case JSType::LINKED_NODE:
         case JSType::RB_TREENODE:
@@ -3179,6 +3184,32 @@ void TSArrayType::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void TSIteratorInstanceType::Dump(std::ostream &os) const
+{
+    os << " - Dump IteratorInstance Type - " << "\n";
+    os << " - TSIteratorInstanceType globalTSTypeRef: ";
+    GlobalTSTypeRef gt = GetGT();
+    uint64_t globalTSTypeRef = gt.GetType();
+    os << globalTSTypeRef;
+    os << "\n";
+    os << " - TSIteratorInstanceType moduleId: ";
+    uint32_t moduleId = gt.GetModuleId();
+    os << moduleId;
+    os << "\n";
+    os << " - TSIteratorInstanceType localTypeId: ";
+    uint32_t localTypeId = gt.GetLocalId();
+    os << localTypeId;
+    os << "\n";
+
+    os << " - TSIteratorInstanceType KindGT: ";
+    os << GetKindGT().GetType();
+    os << "\n";
+
+    os << " - TSIteratorInstanceType ElementGT: ";
+    os << GetElementGT().GetType();
+    os << "\n";
+}
+
 void SourceTextModule::Dump(std::ostream &os) const
 {
     os << " - Environment: ";
@@ -3832,6 +3863,9 @@ static void DumpObject(TaggedObject *obj,
                 return;
             case JSType::TS_ARRAY_TYPE:
                 TSArrayType::Cast(obj)->DumpForSnapshot(vec);
+                return;
+            case JSType::TS_ITERATOR_INSTANCE_TYPE:
+                TSIteratorInstanceType::Cast(obj)->DumpForSnapshot(vec);
                 return;
             case JSType::METHOD:
                 Method::Cast(obj)->DumpForSnapshot(vec);
@@ -4946,6 +4980,12 @@ void TSFunctionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValu
 void TSArrayType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("ParameterTypeRef"), JSTaggedValue(GetElementGT().GetType())));
+}
+
+void TSIteratorInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("kindGT"), JSTaggedValue(GetKindGT().GetType())));
+    vec.push_back(std::make_pair(CString("elementGT"), JSTaggedValue(GetElementGT().GetType())));
 }
 
 void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

@@ -90,6 +90,7 @@ private:
     bool InferLdLexVarDyn(GateRef gate);
     bool InferStLexVarDyn(GateRef gate);
     bool IsNewLexEnv(EcmaOpcode opcode) const;
+    bool InferGetIterator(GateRef gate);
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
@@ -101,12 +102,17 @@ private:
         return tsManager_->GetPropType(type, key);
     }
 
-    inline bool IsObjectOrClass(const GateType &type) const
+    inline bool ShouldInferWithLdObjByValue(const GateType &type) const
     {
         auto flag = tsManager_->IsObjectTypeKind(type) ||
                     tsManager_->IsClassTypeKind(type) ||
                     tsManager_->IsClassInstanceTypeKind(type);
         return flag;
+    }
+
+    inline bool ShouldInferWithLdObjByName(const GateType &type) const
+    {
+        return ShouldInferWithLdObjByValue(type) || tsManager_->IsIteratorInstanceTypeKind(type);
     }
 
     void PrintAllByteCodesTypes() const;

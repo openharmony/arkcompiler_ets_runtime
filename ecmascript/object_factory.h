@@ -92,6 +92,7 @@ class LayoutInfo;
 class JSIntlBoundFunction;
 class FreeObject;
 class JSNativePointer;
+class TSType;
 class TSObjectType;
 class TSClassType;
 class TSUnionType;
@@ -105,6 +106,7 @@ class TSObjLayoutInfo;
 class TSModuleTable;
 class TSFunctionType;
 class TSArrayType;
+class TSIteratorInstanceType;
 class JSAPIArrayList;
 class JSAPIArrayListIterator;
 class JSAPIDeque;
@@ -453,6 +455,7 @@ public:
     JSHandle<TSModuleTable> NewTSModuleTable(uint32_t length);
     JSHandle<TSFunctionType> NewTSFunctionType(uint32_t length);
     JSHandle<TSArrayType> NewTSArrayType();
+    JSHandle<TSIteratorInstanceType> NewTSIteratorInstanceType();
 
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> NewFromASCII(const CString &data);

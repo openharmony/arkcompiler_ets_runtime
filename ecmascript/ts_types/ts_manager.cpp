@@ -151,6 +151,9 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> 
     } else if (type->IsTSObjectType()) {
         JSHandle<TSObjectType> objectType(type);
         return TSObjectType::GetPropTypeGT(objectType, propertyName);
+    } else if (type->IsTSIteratorInstanceType()) {
+        JSHandle<TSIteratorInstanceType> iteratorInstance(type);
+        return TSIteratorInstanceType::GetPropTypeGT(thread, iteratorInstance, propertyName);
     } else {
         LOG_COMPILER(ERROR) << "unsupport TSType GetPropType: "
                             << static_cast<uint8_t>(type->GetTaggedObject()->GetClass()->GetObjectType());
@@ -210,6 +213,8 @@ TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
                     return TSTypeKind::IMPORT;
                 case JSType::TS_INTERFACE_TYPE:
                     return TSTypeKind::INTERFACE_KIND;
+                case JSType::TS_ITERATOR_INSTANCE_TYPE:
+                    return TSTypeKind::ITERATOR_INSTANCE;
                 default:
                     UNREACHABLE();
             }
@@ -272,15 +277,61 @@ JSHandle<EcmaString> TSManager::GenerateImportRelativePath(JSHandle<EcmaString> 
     return factory_->NewFromUtf8(path); // #A#./A -> ./A
 }
 
-GlobalTSTypeRef TSManager::AddUnionToInferTable(JSHandle<TSUnionType> unionType)
+GlobalTSTypeRef TSManager::GetOrCreateTSIteratorInstanceType(TSRuntimeType runtimeType, GlobalTSTypeRef elementGt)
+{
+    ASSERT((runtimeType >= TSRuntimeType::ITERATOR_RESULT) && (runtimeType <= TSRuntimeType::ITERATOR));
+    GlobalTSTypeRef kindGT = GlobalTSTypeRef(TSModuleTable::RUNTIME_TABLE_ID, static_cast<int>(runtimeType));
+    GlobalTSTypeRef foundTypeRef = FindIteratorInstanceInInferTable(kindGT, elementGt);
+    if (!foundTypeRef.IsDefault()) {
+        return foundTypeRef;
+    }
+
+    JSHandle<TSIteratorInstanceType> iteratorInstanceType = factory_->NewTSIteratorInstanceType();
+    iteratorInstanceType->SetKindGT(kindGT);
+    iteratorInstanceType->SetElementGT(elementGt);
+
+    return AddTSTypeToInferTable(JSHandle<TSType>(iteratorInstanceType));
+}
+
+GlobalTSTypeRef TSManager::GetIteratorInstanceElementGt(GlobalTSTypeRef gt) const
+{
+    ASSERT(GetTypeKind(gt) == TSTypeKind::ITERATOR_INSTANCE);
+    JSHandle<JSTaggedValue> type = GetTSType(gt);
+    ASSERT(type->IsTSIteratorInstanceType());
+    JSHandle<TSIteratorInstanceType> iteratorFuncInstance(type);
+    GlobalTSTypeRef elementGT = iteratorFuncInstance->GetElementGT();
+    return elementGT;
+}
+
+GlobalTSTypeRef TSManager::FindIteratorInstanceInInferTable(GlobalTSTypeRef kindGt, GlobalTSTypeRef elementGt) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+
+    JSHandle<TSTypeTable> table = GetInferTypeTable();
+
+    for (int index = 1; index <= table->GetNumberOfTypes(); ++index) {  // index 0 reseved for num of types
+        JSTaggedValue type = table->Get(index);
+        if (!type.IsTSIteratorInstanceType()) {
+            continue;
+        }
+
+        TSIteratorInstanceType *insType = TSIteratorInstanceType::Cast(type.GetTaggedObject());
+        if (insType->GetKindGT() == kindGt && insType->GetElementGT() == elementGt) {
+            return insType->GetGT();
+        }
+    }
+
+    return GlobalTSTypeRef::Default();  // not found
+}
+
+GlobalTSTypeRef TSManager::AddTSTypeToInferTable(JSHandle<TSType> type) const
 {
     JSHandle<TSTypeTable> iTable = GetInferTypeTable();
-    JSHandle<TSTypeTable> newITable = TSTypeTable::PushBackTypeToInferTable(thread_, iTable,
-                                                                            JSHandle<TSType>(unionType));
+    JSHandle<TSTypeTable> newITable = TSTypeTable::PushBackTypeToTable(thread_, iTable, type);
     SetInferTypeTable(newITable);
 
     GlobalTSTypeRef gt = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, newITable->GetNumberOfTypes());
-    unionType->SetGT(gt);
+    type->SetGT(gt);
     return gt;
 }
 
@@ -323,7 +374,7 @@ GlobalTSTypeRef TSManager::GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTy
         }
     }
 
-    return AddUnionToInferTable(unionType);
+    return AddTSTypeToInferTable(JSHandle<TSType>(unionType));
 }
 
 void TSManager::Iterate(const RootVisitor &v)
@@ -357,7 +408,7 @@ JSHandle<TSTypeTable> TSManager::GetInferTypeTable() const
     return inferTable;
 }
 
-void TSManager::SetInferTypeTable(JSHandle<TSTypeTable> inferTable)
+void TSManager::SetInferTypeTable(JSHandle<TSTypeTable> inferTable) const
 {
     JSHandle<TSModuleTable> mTable = GetTSModuleTable();
     ASSERT(ConvertToString(mTable->GetAmiPathByModuleId(thread_, TSModuleTable::INFER_TABLE_ID).GetTaggedValue()) ==
@@ -367,6 +418,17 @@ void TSManager::SetInferTypeTable(JSHandle<TSTypeTable> inferTable)
     mTable->Set(thread_, inferTableOffset, inferTable);
 }
 
+JSHandle<TSTypeTable> TSManager::GetRuntimeTypeTable() const
+{
+    JSHandle<TSModuleTable> mTable = GetTSModuleTable();
+    ASSERT(ConvertToString(mTable->GetAmiPathByModuleId(thread_, TSModuleTable::RUNTIME_TABLE_ID).GetTaggedValue()) ==
+           TSTypeTable::RUNTIME_TABLE_NAME);
+
+    uint32_t runtimeTableOffset = TSModuleTable::GetTSTypeTableOffset(TSModuleTable::RUNTIME_TABLE_ID);
+    JSHandle<TSTypeTable> runtimeTable(thread_, mTable->Get(runtimeTableOffset));
+    return runtimeTable;
+}
+
 uint32_t TSManager::GetFunctionTypeLength(GlobalTSTypeRef gt) const
 {
     ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
@@ -374,6 +436,16 @@ uint32_t TSManager::GetFunctionTypeLength(GlobalTSTypeRef gt) const
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
     return functionType->GetLength();
+}
+
+void TSManager::SetRuntimeTypeTable(JSHandle<TSTypeTable> runtimeTable)
+{
+    JSHandle<TSModuleTable> mTable = GetTSModuleTable();
+    ASSERT(ConvertToString(mTable->GetAmiPathByModuleId(thread_, TSModuleTable::RUNTIME_TABLE_ID).GetTaggedValue()) ==
+           TSTypeTable::RUNTIME_TABLE_NAME);
+
+    uint32_t runtimeTableOffset = TSModuleTable::GetTSTypeTableOffset(TSModuleTable::RUNTIME_TABLE_ID);
+    mTable->Set(thread_, runtimeTableOffset, runtimeTable);
 }
 
 GlobalTSTypeRef TSManager::GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const
@@ -415,8 +487,8 @@ GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
     classInstanceType->SetClassGT(gt);
     JSHandle<TSTypeTable> iTable = GetInferTypeTable();
-    JSHandle<TSTypeTable> newITable = TSTypeTable::PushBackTypeToInferTable(thread_, iTable,
-                                                                            JSHandle<TSType>(classInstanceType));
+    JSHandle<TSTypeTable> newITable = TSTypeTable::PushBackTypeToTable(thread_, iTable,
+        JSHandle<TSType>(classInstanceType));
     SetInferTypeTable(newITable);
     auto instanceGT = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, newITable->GetNumberOfTypes());
     classInstanceType->SetGT(instanceGT);
@@ -508,6 +580,8 @@ std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
             return "import";
         case TSTypeKind::INTERFACE_KIND:
             return "interface";
+        case TSTypeKind::ITERATOR_INSTANCE:
+            return "iterator_instance";
         case TSTypeKind::UNKNOWN:
             return "unknown";
         default:
@@ -765,6 +839,77 @@ void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)
     mTable->Set(thread, GetSortIdOffset(INFER_TABLE_ID), JSTaggedValue(INFER_TABLE_ID));
     JSHandle<TSTypeTable> inferTable = factory->NewTSTypeTable(0);
     mTable->Set(thread, GetTSTypeTableOffset(INFER_TABLE_ID), inferTable);
+
+    // set runtime type table
+    JSHandle<EcmaString> runtimeTableName = factory->NewFromASCII(TSTypeTable::RUNTIME_TABLE_NAME);
+    mTable->Set(thread, GetAmiPathOffset(RUNTIME_TABLE_ID), runtimeTableName);
+    mTable->Set(thread, GetSortIdOffset(RUNTIME_TABLE_ID), JSTaggedValue(RUNTIME_TABLE_ID));
+    JSHandle<TSTypeTable> runtimeTable = factory->NewTSTypeTable(0);
+    mTable->Set(thread, GetTSTypeTableOffset(RUNTIME_TABLE_ID), runtimeTable);
+    AddRuntimeTypeTable(thread);
+}
+
+void TSModuleTable::AddRuntimeTypeTable(JSThread *thread)
+{
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    JSHandle<TSTypeTable> runtimeTable = tsManager->GetRuntimeTypeTable();
+
+    // add IteratorResult GT
+    JSHandle<JSTaggedValue> valueString = thread->GlobalConstants()->GetHandledValueString();
+    JSHandle<JSTaggedValue> doneString = thread->GlobalConstants()->GetHandledDoneString();
+    std::vector<JSHandle<JSTaggedValue>> prop = {valueString, doneString};
+    std::vector<GlobalTSTypeRef> propType = { GlobalTSTypeRef(kungfu::GateType::AnyType().GetGTRef()),
+        GlobalTSTypeRef(kungfu::GateType::BooleanType().GetGTRef()) };
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TSObjectType> iteratorResultType = factory->NewTSObjectType(prop.size());
+    JSHandle<TSTypeTable> newRuntimeTable = TSTypeTable::PushBackTypeToTable(thread,
+        runtimeTable, JSHandle<TSType>(iteratorResultType));
+    GlobalTSTypeRef iteratorResultGt = GlobalTSTypeRef(TSModuleTable::RUNTIME_TABLE_ID,
+        newRuntimeTable->GetNumberOfTypes());
+    iteratorResultType->SetGT(iteratorResultGt);
+
+    JSHandle<TSObjLayoutInfo> layoutInfo(thread, iteratorResultType->GetObjLayoutInfo());
+    FillLayoutTypes(thread, layoutInfo, prop, propType);
+    iteratorResultType->SetObjLayoutInfo(thread, layoutInfo);
+
+    // add IteratorFunction GT
+    JSHandle<TSFunctionType> iteratorFunctionType = factory->NewTSFunctionType(0);
+    newRuntimeTable = TSTypeTable::PushBackTypeToTable(thread, runtimeTable, JSHandle<TSType>(iteratorFunctionType));
+    GlobalTSTypeRef functiontGt = GlobalTSTypeRef(TSModuleTable::RUNTIME_TABLE_ID, newRuntimeTable->GetNumberOfTypes());
+    iteratorFunctionType->SetGT(functiontGt);
+    iteratorFunctionType->SetReturnGT(iteratorResultGt);
+
+    // add TSIterator GT
+    JSHandle<JSTaggedValue> nextString = thread->GlobalConstants()->GetHandledNextString();
+    JSHandle<JSTaggedValue> throwString = thread->GlobalConstants()->GetHandledThrowString();
+    JSHandle<JSTaggedValue> returnString = thread->GlobalConstants()->GetHandledReturnString();
+    std::vector<JSHandle<JSTaggedValue>> iteratorProp = {nextString, throwString, returnString};
+    std::vector<GlobalTSTypeRef> iteratorPropType = {functiontGt, functiontGt, functiontGt};
+
+    JSHandle<TSObjectType> iteratorType = factory->NewTSObjectType(iteratorProp.size());
+    newRuntimeTable = TSTypeTable::PushBackTypeToTable(thread, runtimeTable, JSHandle<TSType>(iteratorType));
+    GlobalTSTypeRef iteratorGt = GlobalTSTypeRef(TSModuleTable::RUNTIME_TABLE_ID, newRuntimeTable->GetNumberOfTypes());
+    iteratorType->SetGT(iteratorGt);
+
+    JSHandle<TSObjLayoutInfo> iteratorLayoutInfo(thread, iteratorType->GetObjLayoutInfo());
+    FillLayoutTypes(thread, iteratorLayoutInfo, iteratorProp, iteratorPropType);
+    iteratorType->SetObjLayoutInfo(thread, iteratorLayoutInfo);
+
+    tsManager->SetRuntimeTypeTable(newRuntimeTable);
+}
+
+void TSModuleTable::FillLayoutTypes(JSThread *thread, JSHandle<TSObjLayoutInfo> &layOut,
+    std::vector<JSHandle<JSTaggedValue>> &prop, std::vector<GlobalTSTypeRef> &propType)
+{
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    for (uint32_t index = 0; index < prop.size(); index++) {
+        key.Update(prop[index]);
+        ASSERT(key->IsString());
+        value.Update(JSTaggedValue(propType[index].GetType()));
+        layOut->SetKey(thread, index, key.GetTaggedValue(), value.GetTaggedValue());
+    }
 }
 
 JSHandle<EcmaString> TSModuleTable::GetAmiPathByModuleId(JSThread *thread, int entry) const

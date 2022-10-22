@@ -3128,6 +3128,21 @@ JSHandle<TSModuleTable> ObjectFactory::NewTSModuleTable(uint32_t length)
 
     return array;
 }
+
+JSHandle<TSIteratorInstanceType> ObjectFactory::NewTSIteratorInstanceType()
+{
+    NewObjectHook();
+
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetTSIteratorInstanceTypeClass().GetTaggedObject()));
+    JSHandle<TSIteratorInstanceType> iteratorInstanceType(thread_, header);
+
+    iteratorInstanceType->SetGT(GlobalTSTypeRef::Default());
+    iteratorInstanceType->SetKindGT(GlobalTSTypeRef::Default());
+    iteratorInstanceType->SetElementGT(GlobalTSTypeRef::Default());
+
+    return iteratorInstanceType;
+}
 // ----------------------------------- new string ----------------------------------------
 JSHandle<EcmaString> ObjectFactory::NewFromASCII(const CString &data)
 {

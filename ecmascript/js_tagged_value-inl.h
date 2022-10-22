@@ -1232,6 +1232,11 @@ inline bool JSTaggedValue::IsTSArrayType() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSArrayType();
 }
 
+inline bool JSTaggedValue::IsTSIteratorInstanceType() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSIteratorInstanceType();
+}
+
 inline bool JSTaggedValue::IsModuleRecord() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsModuleRecord();

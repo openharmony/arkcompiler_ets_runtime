@@ -31,6 +31,7 @@ public:
     static constexpr const char* PRIMITIVE_TABLE_NAME = "primitiveTypes";
     static constexpr const char* BUILTINS_TABLE_NAME = "ohos.lib.d.ts";
     static constexpr const char* INFER_TABLE_NAME = "inferTypes";
+    static constexpr const char* RUNTIME_TABLE_NAME = "runtimeTypes";
     static constexpr const char* DECLARED_SYMBOL_TYPES = "declaredSymbolTypes";
     static constexpr const char* EXPORTED_SYMBOL_TYPES = "exportedSymbolTypes";
 
@@ -64,8 +65,8 @@ public:
 
     static void SetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> tTable, const JSPandaFile *jsPandaFile);
 
-    static JSHandle<TSTypeTable> PushBackTypeToInferTable(JSThread *thread, JSHandle<TSTypeTable> &table,
-                                                          const JSHandle<TSType> &type);
+    static JSHandle<TSTypeTable> PushBackTypeToTable(JSThread *thread, JSHandle<TSTypeTable> &table,
+                                                     const JSHandle<TSType> &type);
 
     static JSHandle<EcmaString> GenerateVarNameAndPath(JSThread *thread, JSHandle<EcmaString> importPath,
                                                        JSHandle<EcmaString> fileName,
