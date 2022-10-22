@@ -3325,7 +3325,7 @@ void InterpreterAssembly::HandleWideSupercallarrowrangePrefImm16V8(
 
                 state->function = superCtor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
+                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
                 state->env = superCtorFunc->GetLexicalEnv();
             }
 
@@ -3471,7 +3471,7 @@ void InterpreterAssembly::HandleWideSupercallthisrangePrefImm16V8(
 
                 state->function = superCtor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
+                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
                 state->env = superCtorFunc->GetLexicalEnv();
             }
 
@@ -3665,7 +3665,7 @@ void InterpreterAssembly::HandleWideNewobjrangePrefImm16V8(
 
                 state->function = ctor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
+                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
                 state->env = ctorFunc->GetLexicalEnv();
             }
 
@@ -6591,7 +6591,7 @@ void InterpreterAssembly::HandleSupercallarrowrangeImm8Imm8V8(
 
                 state->function = superCtor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
+                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
                 state->env = superCtorFunc->GetLexicalEnv();
             }
 
@@ -6737,7 +6737,7 @@ void InterpreterAssembly::HandleSupercallthisrangeImm8Imm8V8(
 
                 state->function = superCtor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = superCtorFunc->GetProfileTypeInfo();
+                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
                 state->env = superCtorFunc->GetLexicalEnv();
             }
 
@@ -6918,7 +6918,7 @@ void InterpreterAssembly::HandleNewobjrangeImm16Imm8V8(
 
                 state->function = ctor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
+                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
                 state->env = ctorFunc->GetLexicalEnv();
             }
 
@@ -7067,7 +7067,7 @@ void InterpreterAssembly::HandleNewobjrangeImm8Imm8V8(
 
                 state->function = ctor;
                 state->constpool = methodHandle->GetConstantPool();
-                state->profileTypeInfo = ctorFunc->GetProfileTypeInfo();
+                state->profileTypeInfo = methodHandle->GetProfileTypeInfo();
                 state->env = ctorFunc->GetLexicalEnv();
             }
 
@@ -7385,8 +7385,8 @@ JSTaggedValue InterpreterAssembly::GetProfileTypeInfo(JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
-    JSFunction* function = JSFunction::Cast(state->function.GetTaggedObject());
-    return function->GetProfileTypeInfo();
+    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    return method->GetProfileTypeInfo();
 }
 
 JSTaggedType *InterpreterAssembly::GetAsmInterpreterFramePointer(AsmInterpretedFrame *state)
@@ -7431,11 +7431,10 @@ inline JSTaggedValue InterpreterAssembly::UpdateHotnessCounter(JSThread* thread,
     AsmInterpretedFrame *state = GET_ASM_FRAME(sp);
     thread->CheckSafepoint();
     JSFunction* function = JSFunction::Cast(state->function.GetTaggedObject());
-    JSTaggedValue profileTypeInfo = function->GetProfileTypeInfo();
+    Method *method = function->GetCallTarget();
+    JSTaggedValue profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
-        auto method = function->GetCallTarget();
-        auto res = SlowRuntimeStub::NotifyInlineCache(thread, function, method);
-        return res;
+        return SlowRuntimeStub::NotifyInlineCache(thread, method);
     }
     return profileTypeInfo;
 }

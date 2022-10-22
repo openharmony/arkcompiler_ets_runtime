@@ -1031,14 +1031,14 @@ void SlowRuntimeStub::ThrowDeleteSuperProperty(JSThread *thread)
     return RuntimeStubs::RuntimeThrowDeleteSuperProperty(thread);
 }
 
-JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, JSFunction *func, Method *method)
+JSTaggedValue SlowRuntimeStub::NotifyInlineCache(JSThread *thread, Method *method)
 {
     INTERPRETER_TRACE(thread, NotifyInlineCache);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<JSFunction> funcHandle(thread, func);
-    uint32_t slotSize = method->GetSlotSize();
-    return RuntimeStubs::RuntimeNotifyInlineCache(thread, funcHandle, slotSize);
+    JSHandle<Method> methodHandle(thread, method);
+    uint32_t slotSize = methodHandle->GetSlotSize();
+    return RuntimeStubs::RuntimeNotifyInlineCache(thread, methodHandle, slotSize);
 }
 
 JSTaggedValue SlowRuntimeStub::ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal,

@@ -505,6 +505,7 @@ void QuickFixLoader::ReplaceMethodInner(JSThread *thread,
     destMethod->SetExtraLiteralInfo(srcMethodLiteral->GetExtraLiteralInfo());
     destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
     destMethod->SetConstantPool(thread, srcConstpool);
+    destMethod->SetProfileTypeInfo(thread, JSTaggedValue::Undefined());
     destMethod->SetAotCodeBit(false);
 }
 

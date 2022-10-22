@@ -72,8 +72,8 @@ public:
     inline GateRef GetAccFromFrame(GateRef frame);
     inline GateRef GetEnvFromFrame(GateRef frame);
     inline GateRef GetEnvFromFunction(GateRef frame);
-    inline GateRef GetConstpoolFromFunction(GateRef function);
-    inline GateRef GetProfileTypeInfoFromFunction(GateRef function);
+    inline GateRef GetConstpoolFromMethod(GateRef function);
+    inline GateRef GetProfileTypeInfoFromMethod(GateRef function);
     inline GateRef GetModuleFromFunction(GateRef function);
     inline GateRef GetHomeObjectFromFunction(GateRef function);
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);

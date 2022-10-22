@@ -439,7 +439,7 @@ private:
                                                                        const JSHandle<JSTaggedValue> &base);
     static inline JSTaggedValue RuntimeSetClassConstructorLength(JSThread *thread, JSTaggedValue ctor,
                                                                  JSTaggedValue length);
-    static inline JSTaggedValue RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<JSFunction> &func,
+    static inline JSTaggedValue RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<Method> &method,
                                                          uint32_t icSlotSize);
     static inline JSTaggedValue RuntimeStOwnByValueWithNameSet(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                                const JSHandle<JSTaggedValue> &key,
