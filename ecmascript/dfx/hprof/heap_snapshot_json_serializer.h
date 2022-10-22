@@ -29,6 +29,7 @@ using fstream = std::fstream;
 using stringstream = std::stringstream;
 
 class HeapSnapshot;
+class StreamWriter;
 class TraceNode;
 
 class HeapSnapshotJSONSerializer {
@@ -50,11 +51,9 @@ private:
     void SerializeLocations();
     void SerializeStringTable();
     void SerializerSnapshotClosure();
-    void WriteChunk();
 
     HeapSnapshot *snapshot_ {nullptr};
-    stringstream stringBuffer_;
-    Stream* stream_ {nullptr};
+    StreamWriter* writer_ {nullptr};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_HPROF_HEAP_SNAPSHOT_SERIALIZER_H
