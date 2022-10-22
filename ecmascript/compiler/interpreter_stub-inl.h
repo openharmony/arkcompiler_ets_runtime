@@ -240,9 +240,9 @@ GateRef InterpreterStubBuilder::GetEnvFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
 
-GateRef InterpreterStubBuilder::GetProfileTypeInfoFromFunction(GateRef function)
+GateRef InterpreterStubBuilder::GetProfileTypeInfoFromMethod(GateRef method)
 {
-    return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef function)
@@ -255,11 +255,9 @@ GateRef InterpreterStubBuilder::GetHomeObjectFromFunction(GateRef function)
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::HOME_OBJECT_OFFSET));
 }
 
-GateRef InterpreterStubBuilder::GetConstpoolFromFunction(GateRef function)
+GateRef InterpreterStubBuilder::GetConstpoolFromMethod(GateRef method)
 {
-    GateRef method = GetMethodFromJSFunction(function);
-    GateRef offset = IntPtr(Method::CONSTANT_POOL_OFFSET);
-    return Load(VariableType::JS_POINTER(), method, offset);
+    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetResumeModeFromGeneratorObject(GateRef obj)
