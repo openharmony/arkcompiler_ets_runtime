@@ -458,6 +458,8 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
     } else {
+        // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
+        // which can avoid the problem of larger memory caused by the new slot
         JSHandle<EcmaString> recordName =  factory_->NewFromUtf8(entryPoint.data());
         func->SetModule(thread_, recordName);
     }
