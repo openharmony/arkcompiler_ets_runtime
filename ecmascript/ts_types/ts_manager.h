@@ -315,14 +315,39 @@ public:
     IS_TSTYPEKIND_METHOD_LIST(IS_TSTYPEKIND)
 #undef IS_TSTYPEKIND
 
+    static constexpr int BUILTIN_SYMBOL_ID = 9;
+    static constexpr int BUILTIN_NUMBER_ID = 11;
+    static constexpr int BUILTIN_BOOLEAN_ID = 14;
     static constexpr int BUILTIN_ARRAY_ID = 24;
     static constexpr int BUILTIN_TYPED_ARRAY_FIRST_ID = 25;
-    static constexpr int BUILTIN_TYPED_ARRAY_LAST_ID = 36;
     static constexpr int BUILTIN_FLOAT32_ARRAY_ID = 33;
+    static constexpr int BUILTIN_TYPED_ARRAY_LAST_ID = 36;
+    static constexpr int BUILTIN_STRING_ID = 39;
 
     bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
+
+    GlobalTSTypeRef ConvertPrimitiveToBuiltin(kungfu::GateType gateType)
+    {
+        ASSERT(gateType.IsPrimitiveType());
+        const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
+        uint32_t l = gt.GetLocalId();
+        switch (l) {
+            case static_cast<uint32_t>(TSPrimitiveType::SYMBOL):
+                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, BUILTIN_SYMBOL_ID);
+            case static_cast<uint32_t>(TSPrimitiveType::INT):
+            case static_cast<uint32_t>(TSPrimitiveType::DOUBLE):
+            case static_cast<uint32_t>(TSPrimitiveType::NUMBER):
+                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, BUILTIN_NUMBER_ID);
+            case static_cast<uint32_t>(TSPrimitiveType::BOOLEAN):
+                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, BUILTIN_BOOLEAN_ID);
+            case static_cast<uint32_t>(TSPrimitiveType::STRING):
+                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, BUILTIN_STRING_ID);
+            default:
+                return gt;
+        }
+    }
 
     void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, panda_file::File::EntityId offset,
                                         GlobalTSTypeRef gt)
