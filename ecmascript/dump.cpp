@@ -1025,6 +1025,14 @@ void JSTaggedValue::DumpHeapObjectType(std::ostream &os) const
     if (type == JSType::STRING) {
         CString string = ConvertToString(EcmaString::Cast(obj));
         os << std::left << std::setw(DUMP_TYPE_OFFSET) << "[" + string + "]";
+    } else if (type == JSType::METHOD) {
+        std::ostringstream address;
+        address << obj;
+        CString addrStr = CString(address.str());
+        Method *method = Method::Cast(obj);
+
+        os << std::left << std::setw(DUMP_TYPE_OFFSET)
+                        << "[" + JSHClass::DumpJSType(type) + "(" + addrStr + "-" + method->GetMethodName() + ")]";
     } else {
         std::ostringstream address;
         address << obj;

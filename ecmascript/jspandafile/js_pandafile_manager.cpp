@@ -184,6 +184,7 @@ void JSPandaFileManager::ReleaseJSPandaFile(const JSPandaFile *jsPandaFile)
     }
     LOG_ECMA(DEBUG) << "ReleaseJSPandaFile " << jsPandaFile->GetJSPandaFileDesc();
     delete jsPandaFile;
+    jsPandaFile = nullptr;
 }
 
 DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPandaFile)
