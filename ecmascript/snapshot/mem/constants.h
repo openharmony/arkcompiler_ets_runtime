@@ -39,6 +39,7 @@ public:
     static constexpr size_t MAX_UINT_32 = 0xFFFFFFFF;
     static constexpr size_t MAX_OBJECT_INDEX = 0x0FFFFFFF;
     static constexpr size_t REGION_INDEX_MASK = 0x3FF; // 10 bits
+    static constexpr int UINT_32_BITS_COUNT = 32;
     static constexpr int UINT_64_BITS_COUNT = 64;
 
     // serialize use constants
