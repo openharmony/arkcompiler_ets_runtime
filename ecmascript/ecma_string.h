@@ -323,7 +323,7 @@ private:
         return IsUtf16() ? ComputeSizeUtf16(length) : ComputeSizeUtf8(length);
     }
 
-    uint32_t GetHashcode()
+    uint32_t PUBLIC_API GetHashcode()
     {
         uint32_t hashcode = GetRawHashcode();
         // GetLength() == 0 means it's an empty array.No need to computeHashCode again when hashseed is 0.
@@ -334,7 +334,7 @@ private:
         return hashcode;
     }
 
-    uint32_t ComputeHashcode(uint32_t hashSeed) const;
+    uint32_t PUBLIC_API ComputeHashcode(uint32_t hashSeed) const;
 
     static int32_t IndexOf(EcmaString *lhs, EcmaString *rhs, int pos = 0);
 
@@ -457,7 +457,7 @@ static_assert((EcmaString::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_
 // if you want to use functions of EcmaString, please not use directly,
 // and use functions of EcmaStringAccessor alternatively.
 // eg: EcmaString *str = ***; str->GetLength() ----->  EcmaStringAccessor(str).GetLength()
-class EcmaStringAccessor {
+class PUBLIC_API EcmaStringAccessor {
 public:
     explicit EcmaStringAccessor(EcmaString *string);
 
@@ -476,13 +476,13 @@ public:
     {
         return EcmaString::CreateEmptyString(vm);
     }
- 
+
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
                                       MemSpaceType type = MemSpaceType::SEMI_SPACE)
     {
         return EcmaString::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
     }
-  
+
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
                                        bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE)
     {

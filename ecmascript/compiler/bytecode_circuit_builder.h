@@ -169,12 +169,13 @@ public:
                                     const CompilationConfig* cconfig,
                                     bool hasTypes,
                                     bool enableLog,
+                                    bool enableTypeLowering,
                                     std::string name,
                                     const CString &recordName)
         : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(hasTypes),
-          enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
+          enableLog_(enableLog), enableTypeLowering_(enableTypeLowering), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
           frameStateBuilder_(this, &circuit_, methodLiteral), methodName_(name), recordName_(recordName),
           bytecodes_(bytecodes)
@@ -256,6 +257,11 @@ public:
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    bool IsTypeLoweringEnabled() const
+    {
+        return enableTypeLowering_;
     }
 
     [[nodiscard]] const std::vector<GateRef>& GetAsyncRelatedGates() const
@@ -366,6 +372,7 @@ private:
     TypeRecorder typeRecorder_;
     bool hasTypes_ {false};
     bool enableLog_ {false};
+    bool enableTypeLowering_ {false};
     std::vector<GateRef> suspendAndResumeGates_ {};
     const std::map<const uint8_t *, int32_t> &pcToBCOffset_;
     const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;

@@ -198,6 +198,8 @@ private:
     V(RelocatableData, (GateRef gate, uint64_t value))                                    \
     V(ZExtInt, (GateRef gate, GateRef e1))                                                \
     V(SExtInt, (GateRef gate, GateRef e1))                                                \
+    V(FPExt, (GateRef gate, GateRef e1))                                                  \
+    V(FPTrunc, (GateRef gate, GateRef e1))                                                \
     V(Load, (GateRef gate, GateRef base))                                                 \
     V(Store, (GateRef gate, GateRef base, GateRef value))                                 \
     V(IntRev, (GateRef gate, GateRef e1))                                                 \
