@@ -256,7 +256,7 @@ HWTEST_F_L0(BuiltinsCollatorTest, Compare_002)
     JSTaggedValue result = BuiltinsArray::Join(ecmaRuntimeCallInfo3);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    EXPECT_EQ(EcmaStringAccessor::Compare(*resultHandle, *str), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, str), 0);
 }
 
 // compare with options("search")

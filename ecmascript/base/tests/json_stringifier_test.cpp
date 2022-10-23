@@ -171,7 +171,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_003)
     EXPECT_TRUE(resultString->IsString());
     JSHandle<EcmaString> resultStr =
         factory->NewFromASCII("{\ntttt\"z\": 1,\ntttt\"x\": 3.6,\ntttt\"y\": \"abc\"\n}");
-    EXPECT_EQ(EcmaStringAccessor::Compare(*resultStr, reinterpret_cast<EcmaString *>(resultString->GetRawData())), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, resultStr, JSHandle<EcmaString>(resultString)), 0);
 }
 
 /**

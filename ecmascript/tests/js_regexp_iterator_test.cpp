@@ -127,7 +127,7 @@ HWTEST_F_L0(JSRegexpIteratorTest, Next)
             JSHandle<JSTaggedValue> matchResult = JSIterator::IteratorValue(thread, matchObj);
             JSHandle<JSTaggedValue> zeroHandle(JSObject::GetProperty(thread, matchResult, zero).GetValue());
             JSHandle<EcmaString> outputZero = JSTaggedValue::ToString(thread, zeroHandle);
-            EXPECT_EQ(EcmaStringAccessor::Compare(*outputZero, *compareVal), 0);
+            EXPECT_EQ(EcmaStringAccessor::Compare(instance, outputZero, compareVal), 0);
             EXPECT_FALSE(regExpIterator->GetDone());
         }
         else {

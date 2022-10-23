@@ -258,6 +258,9 @@ public:
     GateRef IsEcmaObject(GateRef obj);
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
+    GateRef IsLineString(GateRef obj);
+    GateRef IsTreeString(GateRef obj);
+    GateRef TreeStringIsFlat(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
     GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
@@ -317,6 +320,9 @@ public:
     GateRef GetBitFieldFromHClass(GateRef hClass);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    GateRef TryGetHashcodeFromString(GateRef string);
+    GateRef GetFirstFromTreeString(GateRef string);
+    GateRef GetSecondFromTreeString(GateRef string);
     void SetBitFieldToHClass(GateRef glue, GateRef hClass, GateRef bitfield);
     void SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto);
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
@@ -370,15 +376,14 @@ public:
     GateRef IsUtf8String(GateRef string);
     GateRef IsInternalString(GateRef string);
     GateRef IsDigit(GateRef ch);
-    GateRef StringToElementIndex(GateRef string);
-    GateRef TryToElementsIndex(GateRef key);
+    GateRef StringToElementIndex(GateRef glue, GateRef string);
     GateRef ComputePropertyCapacityInJSObj(GateRef oldLength);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
     GateRef TaggedToRepresentation(GateRef value);
     GateRef LdGlobalRecord(GateRef glue, GateRef key);
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef cell);
-    GateRef LoadElement(GateRef receiver, GateRef key);
+    GateRef LoadElement(GateRef glue, GateRef receiver, GateRef key);
     GateRef TryToElementsIndex(GateRef glue, GateRef key);
     GateRef CheckPolyHClass(GateRef cachedValue, GateRef hClass);
     GateRef LoadICWithHandler(GateRef glue, GateRef receiver, GateRef holder, GateRef handler);
@@ -512,7 +517,7 @@ public:
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);
-    GateRef TryStringOrSymbelToElementIndex(GateRef string);
+    GateRef TryStringOrSymbolToElementIndex(GateRef glue, GateRef string);
     inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::initializer_list<GateRef>& args);
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
@@ -524,6 +529,8 @@ public:
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
     void PGOProfiler(GateRef glue, GateRef func);
+
+    GateRef FlattenString(GateRef glue, GateRef str);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode::Op Op>

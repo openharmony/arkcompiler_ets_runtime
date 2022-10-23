@@ -471,7 +471,7 @@ JSHandle<TaggedArray> JSLocale::BestFitSupportedLocales(JSThread *thread, const 
     JSMutableHandle<EcmaString> locale(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < requestLength; ++i) {
         locale.Update(requestedLocales->Get(thread, i));
-        if (EcmaStringAccessor::StringsAreEqual(*locale, *defaultLocale)) {
+        if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), locale, defaultLocale)) {
             result->Set(thread, index++, locale.GetTaggedValue());
         } else {
             status = U_ZERO_ERROR;
@@ -479,7 +479,7 @@ JSHandle<TaggedArray> JSLocale::BestFitSupportedLocales(JSThread *thread, const 
             icu::Locale desired = icu::Locale::forLanguageTag(localeStr, status);
             auto bestFit = matcher.getBestMatch(desired, status)->toLanguageTag<std::string>(status);
             if ((U_SUCCESS(status) != 0) &&
-                EcmaStringAccessor::StringsAreEqual(*locale, *(factory->NewFromStdString(bestFit)))) {
+                EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), locale, factory->NewFromStdString(bestFit))) {
                 result->Set(thread, index++, locale.GetTaggedValue());
             }
         }

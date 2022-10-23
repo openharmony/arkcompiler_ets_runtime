@@ -69,18 +69,25 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     auto factory = ecmaVm->GetFactory();
     auto env = ecmaVm->GetGlobalEnv();
 
-    JSHandle<ConstantPool> constpool = factory->NewConstantPool(6);
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(10);
     JSHandle<JSFunction> funcFunc(env->GetFunctionFunction());
     JSHandle<JSFunction> dateFunc(env->GetDateFunction());
     JSHandle<JSFunction> numberFunc(env->GetNumberFunction());
     JSHandle<EcmaString> str1 = factory->NewFromASCII("str11");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("str22");
+    JSHandle<EcmaString> str3 = factory->NewFromASCII("str333333333333");
+    JSHandle<EcmaString> str4 = factory->ConcatFromString(str1, str3);
+    JSHandle<EcmaString> str5 = factory->NewFromASCII("str44");
     constpool->SetObjectToCache(thread, 0, funcFunc.GetTaggedValue());
     constpool->SetObjectToCache(thread, 1, dateFunc.GetTaggedValue());
     constpool->SetObjectToCache(thread, 2, str1.GetTaggedValue());
     constpool->SetObjectToCache(thread, 3, numberFunc.GetTaggedValue());
     constpool->SetObjectToCache(thread, 4, str2.GetTaggedValue());
     constpool->SetObjectToCache(thread, 5, str1.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 6, str3.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 7, str4.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 8, str4.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 9, str5.GetTaggedValue());
 
     CString fileName = "snapshot";
     Snapshot snapshotSerialize(ecmaVm);
@@ -100,9 +107,17 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
     EcmaString *str11 = reinterpret_cast<EcmaString *>(constpool1->Get(2).GetTaggedObject());
     EcmaString *str22 = reinterpret_cast<EcmaString *>(constpool1->Get(4).GetTaggedObject());
     EcmaString *str33 = reinterpret_cast<EcmaString *>(constpool1->Get(5).GetTaggedObject());
+    EcmaString *str44 = reinterpret_cast<EcmaString *>(constpool1->Get(6).GetTaggedObject());
+    EcmaString *str55 = reinterpret_cast<EcmaString *>(constpool1->Get(7).GetTaggedObject());
+    EcmaString *str66 = reinterpret_cast<EcmaString *>(constpool1->Get(8).GetTaggedObject());
+    EcmaString *str77 = reinterpret_cast<EcmaString *>(constpool1->Get(9).GetTaggedObject());
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString().c_str(), "str11"), 0);
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str22).ToCString().c_str(), "str22"), 0);
     EXPECT_EQ(std::strcmp(EcmaStringAccessor(str33).ToCString().c_str(), "str11"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str44).ToCString().c_str(), "str333333333333"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str55).ToCString().c_str(), "str11str333333333333"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str66).ToCString().c_str(), "str11str333333333333"), 0);
+    EXPECT_EQ(std::strcmp(EcmaStringAccessor(str77).ToCString().c_str(), "str44"), 0);
     std::remove(fileName.c_str());
 }
 

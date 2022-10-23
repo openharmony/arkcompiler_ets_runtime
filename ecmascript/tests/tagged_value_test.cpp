@@ -866,16 +866,16 @@ HWTEST_F_L0(JSTaggedValueTest, ToObject)
     JSTaggedValue tagged4 =
         JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value4))->GetValue());
     EXPECT_TRUE(tagged4.IsString());
-    EXPECT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(tagged4.GetRawData()),
-        value4.GetObject<EcmaString>()), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance,
+        JSHandle<EcmaString>(thread, tagged4), JSHandle<EcmaString>(value4)), 0);
 
     JSHandle<JSSymbol> symbol = factory->NewPublicSymbolWithChar("bbb");
     JSHandle<EcmaString> str = factory->NewFromASCII("bbb");
     JSHandle<JSTaggedValue> value5(symbol);
     JSTaggedValue tagged5 =
         JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value5))->GetValue());
-    EXPECT_EQ(EcmaStringAccessor::Compare(EcmaString::Cast(
-        reinterpret_cast<JSSymbol *>(tagged5.GetRawData())->GetDescription().GetTaggedObject()), *str),
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>(thread,
+        EcmaString::Cast(reinterpret_cast<JSSymbol *>(tagged5.GetRawData())->GetDescription())), str),
         0);
     EXPECT_TRUE(tagged5.IsSymbol());
 

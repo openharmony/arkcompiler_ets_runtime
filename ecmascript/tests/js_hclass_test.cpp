@@ -85,9 +85,12 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 40U);
 #endif
-    objectClass = factory->NewEcmaHClass(EcmaString::SIZE, JSType::STRING, nullHandle);
-    objectSize = objectClass->SizeFromJSHClass(*objectClass);
+    EcmaString *string = factory->AllocLineStringObject(EcmaString::SIZE);
+    objectSize = string->GetClass()->SizeFromJSHClass(string);
     EXPECT_EQ(objectSize, 16U);
+    string = factory->AllocTreeStringObject();
+    objectSize = string->GetClass()->SizeFromJSHClass(string);
+    EXPECT_EQ(objectSize, 32U);
 
     objectClass = factory->NewEcmaHClass(MachineCode::SIZE, JSType::MACHINE_CODE_OBJECT, nullHandle);
     objectSize = objectClass->SizeFromJSHClass(*objectClass);
@@ -112,13 +115,15 @@ HWTEST_F_L0(JSHClassTest, HasReferenceField)
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
 
-    JSHandle<JSHClass> obj1Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::STRING, nullHandle);
-    JSHandle<JSHClass> obj2Class =
+    JSHandle<JSHClass> obj1Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::LINE_STRING, nullHandle);
+    JSHandle<JSHClass> obj2Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::TREE_STRING, nullHandle);
+    JSHandle<JSHClass> obj3Class =
         factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_NATIVE_POINTER, nullHandle);
-    JSHandle<JSHClass> obj3Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_OBJECT, nullHandle);
+    JSHandle<JSHClass> obj4Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_OBJECT, nullHandle);
     EXPECT_FALSE(obj1Class->HasReferenceField());
-    EXPECT_FALSE(obj2Class->HasReferenceField());
-    EXPECT_TRUE(obj3Class->HasReferenceField());
+    EXPECT_TRUE(obj2Class->HasReferenceField());
+    EXPECT_FALSE(obj3Class->HasReferenceField());
+    EXPECT_TRUE(obj4Class->HasReferenceField());
 }
 
 HWTEST_F_L0(JSHClassTest, Clone)

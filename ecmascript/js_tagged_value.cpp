@@ -155,8 +155,9 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
 
     if (x->IsString()) {
         if (y->IsString()) {
-            return EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(x->GetTaggedObject()),
-                                                       static_cast<EcmaString *>(y->GetTaggedObject()));
+            return EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(),
+                                                       JSHandle<EcmaString>(x),
+                                                       JSHandle<EcmaString>(y));
         }
         if (y->IsNumber()) {
             JSTaggedNumber xNumber = ToNumber(thread, x);
@@ -274,9 +275,9 @@ ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTagge
     JSHandle<JSTaggedValue> primY(thread, ToPrimitive(thread, y));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
     if (primX->IsString() && primY->IsString()) {
-        auto xString = static_cast<EcmaString *>(primX->GetTaggedObject());
-        auto yString = static_cast<EcmaString *>(primY->GetTaggedObject());
-        int result = EcmaStringAccessor::Compare(xString, yString);
+        auto xHandle = JSHandle<EcmaString>(primX);
+        auto yHandle = JSHandle<EcmaString>(primY);
+        int result = EcmaStringAccessor::Compare(thread->GetEcmaVM(), xHandle, yHandle);
         if (result < 0) {
             return ComparisonResult::LESS;
         }
@@ -455,7 +456,7 @@ JSTaggedValue JSTaggedValue::CanonicalNumericIndexString(JSThread *thread, const
 
     if (tagged->IsString()) {
         JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("-0");
-        if (EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(tagged->GetTaggedObject()), *str)) {
+        if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), JSHandle<EcmaString>(tagged), str)) {
             return JSTaggedValue(-0.0);
         }
         JSHandle<JSTaggedValue> tmp(thread, ToNumber(thread, tagged));

@@ -434,6 +434,7 @@ public:
     inline GateRef IsExtensible(GateRef object);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef IsJSObject(GateRef obj);
+    inline GateRef TaggedObjectIsString(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef IsCallable(GateRef obj);
     inline GateRef IsCallableFromBitField(GateRef bitfield);
@@ -448,6 +449,7 @@ public:
     GateRef FunctionIsResolved(GateRef function);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsUtf16String(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);

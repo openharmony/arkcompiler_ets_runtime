@@ -30,7 +30,7 @@ public:
     GateRef StringAt(GateRef obj, GateRef index);
     GateRef FastSubUtf8String(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
     GateRef FastSubUtf16String(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
-    void StringCopy(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength, GateRef size, VariableType type);
+    void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength, GateRef size, VariableType type);
     void CopyUtf16AsUtf8(GateRef glue, GateRef src, GateRef dst, GateRef sourceLength);
     GateRef StringIndexOf(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
                           GateRef pos, GateRef max, GateRef rhsCount);

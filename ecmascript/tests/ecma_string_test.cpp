@@ -84,16 +84,16 @@ HWTEST_F_L0(EcmaStringTest, CreateEmptyString)
 }
 
 /*
- * @tc.name: AllocStringObject
- * @tc.desc: Check whether the EcmaString created through calling AllocStringObject function is within expectations.
+ * @tc.name: CreateLineString
+ * @tc.desc: Check whether the EcmaString created through calling CreateLineString function is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTest, AllocStringObject)
+HWTEST_F_L0(EcmaStringTest, CreateLineString)
 {
-    // AllocStringObject( , true, ).
+    // CreateLineString( , true, ).
     size_t sizeAllocComp = 5;
-    JSHandle<EcmaString> handleEcmaStrAllocComp(thread, EcmaString::AllocStringObject(ecmaVMPtr, sizeAllocComp, true));
+    JSHandle<EcmaString> handleEcmaStrAllocComp(thread, EcmaString::CreateLineString(ecmaVMPtr, sizeAllocComp, true));
     for (uint32_t i = 0; i < sizeAllocComp; i++) {
         EXPECT_EQ(handleEcmaStrAllocComp->At(i), 0U);
     }
@@ -101,10 +101,10 @@ HWTEST_F_L0(EcmaStringTest, AllocStringObject)
     EXPECT_TRUE(handleEcmaStrAllocComp->IsUtf8());
     EXPECT_FALSE(handleEcmaStrAllocComp->IsUtf16());
 
-    // AllocStringObject( , false, ).
+    // CreateLineString( , false, ).
     size_t sizeAllocNotComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread,
-        EcmaString::AllocStringObject(ecmaVMPtr, sizeAllocNotComp, false));
+        EcmaString::CreateLineString(ecmaVMPtr, sizeAllocNotComp, false));
     for (uint32_t i = 0; i < sizeAllocNotComp; i++) {
         EXPECT_EQ(handleEcmaStrAllocNotComp->At(i), 0U);
     }
@@ -161,51 +161,6 @@ HWTEST_F_L0(EcmaStringTest, CreateFromUtf16)
 }
 
 /*
- * @tc.name: ComputeSizeUtf8
- * @tc.desc: Check whether the value returned through calling ComputeSizeUtf8 function is within expectations.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(EcmaStringTest, ComputeSizeUtf8)
-{
-    uint32_t scale = 3333;
-    for (uint32_t i = 0x40000000U - 1; i > scale; i = i - scale) {
-        uint32_t length = i;
-        EXPECT_EQ(EcmaString::ComputeSizeUtf8(length), length + EcmaString::SIZE);
-    }
-}
-
-/*
- * @tc.name: ComputeDataSizeUtf16
- * @tc.desc: Check whether the value returned through calling ComputeDataSizeUtf16 function is within expectations.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(EcmaStringTest, ComputeDataSizeUtf16)
-{
-    uint32_t scale = 3333;
-    for (uint32_t i = 0x40000000U - 1; i > scale; i = i - scale) {
-        uint32_t length = i;
-        EXPECT_EQ(EcmaString::ComputeDataSizeUtf16(length), 2 * length);
-    }
-}
-
-/*
- * @tc.name: ComputeSizeUtf16
- * @tc.desc: Check whether the value returned through calling ComputeSizeUtf16 function is within expectations.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(EcmaStringTest, ComputeSizeUtf16)
-{
-    uint32_t scale = 3333;
-    for (uint32_t i = 0x40000000U - 1; i > scale; i = i - scale) {
-        uint32_t length = i;
-        EXPECT_EQ(EcmaString::ComputeSizeUtf16(length), 2 * length + EcmaString::SIZE);
-    }
-}
-
-/*
  * @tc.name: ObjectSize
  * @tc.desc: Check whether the value returned through calling ObjectSize function is within expectations.
  * @tc.type: FUNC
@@ -218,12 +173,12 @@ HWTEST_F_L0(EcmaStringTest, ObjectSize)
 
     size_t lengthEcmaStrAllocComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocComp(thread,
-        EcmaString::AllocStringObject(ecmaVMPtr, lengthEcmaStrAllocComp, true));
+        EcmaString::CreateLineString(ecmaVMPtr, lengthEcmaStrAllocComp, true));
     EXPECT_EQ(handleEcmaStrAllocComp->ObjectSize(), EcmaString::SIZE + sizeof(uint8_t) * lengthEcmaStrAllocComp);
 
     size_t lengthEcmaStrAllocNotComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread,
-        EcmaString::AllocStringObject(ecmaVMPtr, lengthEcmaStrAllocNotComp, false));
+        EcmaString::CreateLineString(ecmaVMPtr, lengthEcmaStrAllocNotComp, false));
     EXPECT_EQ(handleEcmaStrAllocNotComp->ObjectSize(),
         EcmaString::SIZE + sizeof(uint16_t) * lengthEcmaStrAllocNotComp);
 
@@ -654,21 +609,21 @@ HWTEST_F_L0(EcmaStringTest, FastSubString_004)
 
 /*
  * @tc.name: WriteData_001
- * @tc.desc: Check whether the target EcmaString made by AllocStringObject( , true, ) changed through calling WriteData
+ * @tc.desc: Check whether the target EcmaString made by CreateLineString( , true, ) changed through calling WriteData
  * function with a source EcmaString made by CreateFromUtf8() is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F_L0(EcmaStringTest, WriteData_001)
 {
-    // WriteData(). From EcmaString made by CreateFromUtf8() to EcmaString made by AllocStringObject( , true, ).
+    // WriteData(). From EcmaString made by CreateFromUtf8() to EcmaString made by CreateLineString( , true, ).
     uint8_t arrayU8WriteFrom[6] = {1, 12, 34, 56, 127};
     uint32_t lengthEcmaStrU8WriteFrom = sizeof(arrayU8WriteFrom) - 1;
     JSHandle<EcmaString> handleEcmaStrU8WriteFrom(thread,
         EcmaString::CreateFromUtf8(ecmaVMPtr, &arrayU8WriteFrom[0], lengthEcmaStrU8WriteFrom, true));
     size_t sizeEcmaStrU8WriteTo = 5;
     JSHandle<EcmaString> handleEcmaStrAllocTrueWriteTo(thread,
-        EcmaString::AllocStringObject(ecmaVMPtr, sizeEcmaStrU8WriteTo, true));
+        EcmaString::CreateLineString(ecmaVMPtr, sizeEcmaStrU8WriteTo, true));
     uint32_t indexStartWriteFromArrayU8 = 2;
     uint32_t lengthWriteFromArrayU8 = 2;
     handleEcmaStrAllocTrueWriteTo->WriteData(*handleEcmaStrU8WriteFrom, indexStartWriteFromArrayU8,
@@ -680,18 +635,18 @@ HWTEST_F_L0(EcmaStringTest, WriteData_001)
 
 /*
  * @tc.name: WriteData_002
- * @tc.desc: Check whether the target EcmaString made by AllocStringObject( , true, ) changed through calling WriteData
+ * @tc.desc: Check whether the target EcmaString made by CreateLineString( , true, ) changed through calling WriteData
  * function from a source char is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F_L0(EcmaStringTest, WriteData_002)
 {
-    // WriteData(). From char to EcmaString made by AllocStringObject( , true, ).
+    // WriteData(). From char to EcmaString made by CreateLineString( , true, ).
     char u8Write = 'a';
     size_t sizeEcmaStrU8WriteTo = 5;
     JSHandle<EcmaString> handleEcmaStrAllocTrueWriteTo(thread,
-        EcmaString::AllocStringObject(ecmaVMPtr, sizeEcmaStrU8WriteTo, true));
+        EcmaString::CreateLineString(ecmaVMPtr, sizeEcmaStrU8WriteTo, true));
     uint32_t indexAtWriteFromU8 = 4;
     handleEcmaStrAllocTrueWriteTo->WriteData(u8Write, indexAtWriteFromU8);
     EXPECT_EQ(handleEcmaStrAllocTrueWriteTo->At(indexAtWriteFromU8), u8Write);
@@ -699,7 +654,7 @@ HWTEST_F_L0(EcmaStringTest, WriteData_002)
 
 /*
  * @tc.name: WriteData_003
- * @tc.desc: Check whether the target EcmaString made by AllocStringObject( , false, ) changed through calling
+ * @tc.desc: Check whether the target EcmaString made by CreateLineString( , false, ) changed through calling
  * WriteData function with a source EcmaString made by CreateFromUtf16( , , , false) is within expectations.
  * @tc.type: FUNC
  * @tc.require:
@@ -707,7 +662,7 @@ HWTEST_F_L0(EcmaStringTest, WriteData_002)
 HWTEST_F_L0(EcmaStringTest, WriteData_003)
 {
     /* WriteData(). From EcmaString made by CreateFromUtf16( , , , false) to EcmaStringU16 made by
-     * AllocStringObject( , false, ).
+     * CreateLineString( , false, ).
      */
     uint16_t arrayU16WriteFrom[10] = {67, 777, 1999, 1, 45, 66, 23456, 65535, 127, 333};
     uint32_t lengthEcmaStrU16WriteFrom = sizeof(arrayU16WriteFrom) / sizeof(arrayU16WriteFrom[0]);
@@ -715,7 +670,7 @@ HWTEST_F_L0(EcmaStringTest, WriteData_003)
         EcmaString::CreateFromUtf16(ecmaVMPtr, &arrayU16WriteFrom[0], lengthEcmaStrU16WriteFrom, false));
     size_t sizeEcmaStrU16WriteTo = 10;
     JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
-        EcmaString::AllocStringObject(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
+        EcmaString::CreateLineString(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
     uint32_t indexStartWriteFromArrayU16 = 3;
     uint32_t numBytesWriteFromArrayU16 = 2 * 3;
     handleEcmaStrU16WriteTo->WriteData(*handleEcmaStrU16WriteFrom, indexStartWriteFromArrayU16, sizeEcmaStrU16WriteTo,
@@ -727,21 +682,21 @@ HWTEST_F_L0(EcmaStringTest, WriteData_003)
 
 /*
  * @tc.name: WriteData_004
- * @tc.desc: Check whether the target EcmaString made by AllocStringObject( , false, ) changed through calling
+ * @tc.desc: Check whether the target EcmaString made by CreateLineString( , false, ) changed through calling
  * WriteData function with a source EcmaString made by CreateFromUtf8() is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F_L0(EcmaStringTest, WriteData_004)
 {
-    // WriteData(). From EcmaString made by CreateFromUtf8() to EcmaString made by AllocStringObject( , false, ).
+    // WriteData(). From EcmaString made by CreateFromUtf8() to EcmaString made by CreateLineString( , false, ).
     uint8_t arrayU8WriteFrom[6] = {1, 12, 34, 56, 127};
     uint32_t lengthEcmaStrU8WriteFrom = sizeof(arrayU8WriteFrom) - 1;
     JSHandle<EcmaString> handleEcmaStrU8WriteFrom(thread,
         EcmaString::CreateFromUtf8(ecmaVMPtr, &arrayU8WriteFrom[0], lengthEcmaStrU8WriteFrom, true));
     size_t sizeEcmaStrU16WriteTo = 10;
     JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
-        EcmaString::AllocStringObject(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
+        EcmaString::CreateLineString(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
     uint32_t indexStartWriteFromU8ToU16 = 1;
     uint32_t numBytesWriteFromU8ToU16 = 4;
     handleEcmaStrU16WriteTo->WriteData(*handleEcmaStrU8WriteFrom, indexStartWriteFromU8ToU16, sizeEcmaStrU16WriteTo,
@@ -753,17 +708,17 @@ HWTEST_F_L0(EcmaStringTest, WriteData_004)
 
 /*
  * @tc.name: WriteData_005
- * @tc.desc: Check whether the target EcmaString made by AllocStringObject( , false, ) changed through calling
+ * @tc.desc: Check whether the target EcmaString made by CreateLineString( , false, ) changed through calling
  * WriteData function with a source char is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F_L0(EcmaStringTest, WriteData_005)
 {
-    // WriteData(). From char to EcmaString made by AllocStringObject( , false, ).
+    // WriteData(). From char to EcmaString made by CreateLineString( , false, ).
     size_t sizeEcmaStrU16WriteTo = 10;
     JSHandle<EcmaString> handleEcmaStrU16WriteTo(thread,
-        EcmaString::AllocStringObject(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
+        EcmaString::CreateLineString(ecmaVMPtr, sizeEcmaStrU16WriteTo, false));
     char u8Write = 'a';
     uint32_t indexAt = 4;
     handleEcmaStrU16WriteTo->WriteData(u8Write, indexAt);
@@ -793,31 +748,6 @@ HWTEST_F_L0(EcmaStringTest, GetUtf8Length)
     EXPECT_EQ(handleEcmaStrU8->GetUtf8Length(), lengthEcmaStrU8 + 1);
     EXPECT_EQ(handleEcmaStrU16Comp->GetUtf8Length(), lengthEcmaStrU16Comp + 1);
     EXPECT_EQ(handleEcmaStrU16NotComp->GetUtf8Length(), 2 * lengthEcmaStrU16NotComp + 1);
-}
-
-/*
- * @tc.name: GetUtf16Length
- * @tc.desc: Check whether the value returned through calling GetUtf16Length function is within expectations.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(EcmaStringTest, GetUtf16Length)
-{
-    uint8_t arrayU8[6] = {3, 7, 19, 54, 99};
-    uint16_t arrayU16Comp[] = {1, 12, 34, 56, 127};
-    uint16_t arrayU16NotComp[] = {19, 54, 256, 11100, 65535};
-    uint32_t lengthEcmaStrU8 = sizeof(arrayU8) - 1;
-    uint32_t lengthEcmaStrU16Comp = sizeof(arrayU16Comp) / sizeof(arrayU16Comp[0]);
-    uint32_t lengthEcmaStrU16NotComp = sizeof(arrayU16NotComp) / sizeof(arrayU16NotComp[0]);
-    JSHandle<EcmaString> handleEcmaStrU8(thread,
-        EcmaString::CreateFromUtf8(ecmaVMPtr, &arrayU8[0], lengthEcmaStrU8, true));
-    JSHandle<EcmaString> handleEcmaStrU16Comp(thread,
-        EcmaString::CreateFromUtf16(ecmaVMPtr, &arrayU16Comp[0], lengthEcmaStrU16Comp, true));
-    JSHandle<EcmaString> handleEcmaStrU16NotComp(thread,
-        EcmaString::CreateFromUtf16(ecmaVMPtr, &arrayU16NotComp[0], lengthEcmaStrU16NotComp, false));
-    EXPECT_EQ(handleEcmaStrU8->GetUtf16Length(), lengthEcmaStrU8);
-    EXPECT_EQ(handleEcmaStrU16Comp->GetUtf16Length(), lengthEcmaStrU16Comp);
-    EXPECT_EQ(handleEcmaStrU16NotComp->GetUtf16Length(), lengthEcmaStrU16NotComp);
 }
 
 /*
@@ -1631,17 +1561,17 @@ HWTEST_F_L0(EcmaStringTest, GetHashcode_004)
 
 /*
  * @tc.name: GetHashcode_005
- * @tc.desc: Check whether the value returned through an EcmaString made by AllocStringObject(, true/false, ) calling
+ * @tc.desc: Check whether the value returned through an EcmaString made by CreateLineString(, true/false, ) calling
  * GetHashcode function is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F_L0(EcmaStringTest, GetHashcode_005)
 {
-    // GetHashcode(). EcmaString made by AllocStringObject().
+    // GetHashcode(). EcmaString made by CreateLineString().
     size_t sizeAlloc = 5;
-    JSHandle<EcmaString> handleEcmaStrAllocComp(thread, EcmaString::AllocStringObject(ecmaVMPtr, sizeAlloc, true));
-    JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread, EcmaString::AllocStringObject(ecmaVMPtr, sizeAlloc, false));
+    JSHandle<EcmaString> handleEcmaStrAllocComp(thread, EcmaString::CreateLineString(ecmaVMPtr, sizeAlloc, true));
+    JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread, EcmaString::CreateLineString(ecmaVMPtr, sizeAlloc, false));
     EXPECT_EQ(handleEcmaStrAllocComp->GetHashcode(), 0U);
     EXPECT_EQ(handleEcmaStrAllocNotComp->GetHashcode(), 0U);
 }

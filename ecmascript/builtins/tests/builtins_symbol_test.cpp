@@ -81,8 +81,8 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolNoParameterToString)
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     ASSERT_TRUE(result.IsString());
 
-    auto symbolValue = ecmascript::base::BuiltinsBase::GetTaggedString(thread, "Symbol()");
-    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(symbolValue.GetRawData()), *resultHandle), 0);
+    auto symbolValue = ecmaVM->GetFactory()->NewFromASCII("Symbol()");
+    ASSERT_EQ(EcmaStringAccessor::Compare(ecmaVM, symbolValue, resultHandle), 0);
 }
 
 // new Symbol("aaa").toString()
@@ -101,8 +101,8 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolWithParameterToString)
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     ASSERT_TRUE(result.IsString());
 
-    auto symbolValue = ecmascript::base::BuiltinsBase::GetTaggedString(thread, "Symbol(aaa)");
-    ASSERT_EQ(EcmaStringAccessor::Compare(reinterpret_cast<EcmaString *>(symbolValue.GetRawData()), *resultHandle), 0);
+    auto symbolValue = ecmaVM->GetFactory()->NewFromASCII("Symbol(aaa)");
+    ASSERT_EQ(EcmaStringAccessor::Compare(ecmaVM, symbolValue, resultHandle), 0);
 }
 
 // new Symbol().valueOf()
@@ -307,7 +307,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolConstructor)
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultString = JSTaggedValue::ToString(
         thread, JSHandle<JSTaggedValue>(thread, reinterpret_cast<JSSymbol *>(result1.GetRawData())->GetDescription()));
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultString, *string), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(ecmaVM, resultString, string), 0);
 }
 
 HWTEST_F_L0(BuiltinsSymbolTest, SymbolGetter)

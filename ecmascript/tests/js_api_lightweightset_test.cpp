@@ -399,9 +399,8 @@ HWTEST_F_L0(JSAPILightWeightSetTest, ToString)
     JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
     JSTaggedValue result1 = JSAPILightWeightSet::ToString(thread, lws);
     JSHandle<EcmaString> resultHandle1(thread, result1);
-    [[maybe_unused]] auto *res1 = EcmaString::Cast(resultHandle1.GetTaggedValue().GetTaggedObject());
     JSHandle<EcmaString> det = thread->GetEcmaVM()->GetFactory()->NewFromASCII("");
-    ASSERT_EQ(EcmaStringAccessor::Compare(res1, *det), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle1, det), 0);
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         value.Update(JSTaggedValue(i));
         JSAPILightWeightSet::Add(thread, lws, value);
@@ -409,8 +408,6 @@ HWTEST_F_L0(JSAPILightWeightSetTest, ToString)
     JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0,1,2");
     JSTaggedValue result = JSAPILightWeightSet::ToString(thread, lws);
     JSHandle<EcmaString> resultHandle(thread, result);
-    [[maybe_unused]] auto *res = EcmaString::Cast(resultHandle.GetTaggedValue().GetTaggedObject());
-
-    ASSERT_EQ(EcmaStringAccessor::Compare(res, *str), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, str), 0);
 }
 }  // namespace panda::test

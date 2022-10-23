@@ -418,7 +418,7 @@ HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleFlags)
 {
     JSHandle<EcmaString> str;
     Span<const uint8_t> sp;
-    [[maybe_unused]] CVector<uint8_t> buf;
+    CVector<uint8_t> buf;
 
     // flags of IGNORE_TRAILING
 
@@ -500,7 +500,7 @@ HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleRadix)
 {
     JSHandle<EcmaString> str;
     Span<const uint8_t> sp;
-    [[maybe_unused]] CVector<uint8_t> buf;
+    CVector<uint8_t> buf;
     int radix;
 
     radix = 0;  // default 10
@@ -586,42 +586,43 @@ HWTEST_F_L0(BuiltinsNumberTest, NumberToString)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> res = factory->NewFromASCII("100");
-    ASSERT_EQ(EcmaStringAccessor::Compare(*base::NumberHelper::NumberToString(thread, JSTaggedValue(100)), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(100)), res), 0);
     res = factory->NewFromASCII("11223344");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(11223344)), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(11223344)), res), 0);
     res = factory->NewFromASCII("1234567890");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(1234567890)), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(1234567890)), res), 0);
     res = factory->NewFromASCII("100");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.0))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.0))), res), 0);
     res = factory->NewFromASCII("100.5");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.5))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.5))), res), 0);
     res = factory->NewFromASCII("100.25");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.25))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.25))), res), 0);
     res = factory->NewFromASCII("100.125");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.125))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.125))), res), 0);
     res = factory->NewFromASCII("100.6125");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.6125))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(100.6125))), res), 0);
     res = factory->NewFromASCII("0.0006125");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(0.0006125))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(0.0006125))), res), 0);
     res = factory->NewFromASCII("-0.0006125");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(-0.0006125))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(-0.0006125))), res), 0);
     res = factory->NewFromASCII("-1234567890.0006125");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(-1234567890.0006125))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(-1234567890.0006125))), res), 0);
     res = factory->NewFromASCII("1234567890.0006125");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(1234567890.0006125))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(1234567890.0006125))), res), 0);
     res = factory->NewFromASCII("11234567890.000612");
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *base::NumberHelper::NumberToString(thread, JSTaggedValue(double(11234567890.0006125))), *res), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        base::NumberHelper::NumberToString(thread, JSTaggedValue(double(11234567890.0006125))), res), 0);
 }
 }  // namespace panda::test

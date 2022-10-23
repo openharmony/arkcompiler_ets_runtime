@@ -228,7 +228,7 @@ HWTEST_F_L0(JSLocaleTest, CanonicalizeUnicodeLocaleId)
 
     canonicalizeLocaleId = JSLocale::CanonicalizeUnicodeLocaleId(thread, locale);
     JSHandle<EcmaString> emptyString = factory->GetEmptyString();
-    EXPECT_EQ(EcmaStringAccessor::Compare(*canonicalizeLocaleId, *emptyString), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, canonicalizeLocaleId, emptyString), 0);
 }
 
 /**

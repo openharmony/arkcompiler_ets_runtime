@@ -180,7 +180,8 @@ class ProtoChangeDetails;
         JS_PROXY, /* ECMA_OBJECT_LAST ////////////////////////////////////////////////////////////////////////////// */\
                                                                                                                        \
         HCLASS,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        STRING,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        LINE_STRING,   /* //////////////////////////////////////////////////////////////////////////////////-PADDING */\
+        TREE_STRING,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         BIGINT,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         BYTE_ARRAY,   /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -265,8 +266,10 @@ class ProtoChangeDetails;
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE /* ///////////////////////////////////////////////////////-PADDING */
-
+        TS_TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE, /* ///////////////////////////////////////////////////////-PADDING */\
+                                                                                                                       \
+        STRING_FIRST = LINE_STRING, /* /////////////////////////////////////////////////////////////////////-PADDING */\
+        STRING_LAST = TREE_STRING  /* /////////////////////////////////////////////////////////////////////-PADDING */
 
 enum class JSType : uint8_t {
     JSTYPE_DECL,
@@ -446,7 +449,18 @@ public:
 
     inline bool IsString() const
     {
-        return GetObjectType() == JSType::STRING;
+        JSType jsType = GetObjectType();
+        return (JSType::STRING_FIRST <= jsType && jsType <= JSType::STRING_LAST);
+    }
+
+    inline bool IsLineString() const
+    {
+        return GetObjectType() == JSType::LINE_STRING;
+    }
+
+    inline bool IsTreeString() const
+    {
+        return GetObjectType() == JSType::TREE_STRING;
     }
 
     inline bool IsBigInt() const
@@ -462,7 +476,7 @@ public:
     inline bool IsStringOrSymbol() const
     {
         JSType jsType = GetObjectType();
-        return (jsType == JSType::STRING) || (jsType == JSType::SYMBOL);
+        return (JSType::STRING_FIRST <= jsType && jsType <= JSType::STRING_LAST) || (jsType == JSType::SYMBOL);
     }
 
     inline bool IsTaggedArray() const

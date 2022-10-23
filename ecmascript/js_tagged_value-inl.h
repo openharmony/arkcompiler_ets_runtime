@@ -462,6 +462,16 @@ inline bool JSTaggedValue::IsString() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsString();
 }
 
+inline bool JSTaggedValue::IsLineString() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsLineString();
+}
+
+inline bool JSTaggedValue::IsTreeString() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTreeString();
+}
+
 inline bool JSTaggedValue::IsBigInt() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsBigInt();
@@ -1396,7 +1406,7 @@ inline JSTaggedNumber JSTaggedValue::StringToDouble(JSTaggedValue tagged)
     if (strLen == 0) {
         return JSTaggedNumber(0);
     }
-    [[maybe_unused]] CVector<uint8_t> buf;
+    CVector<uint8_t> buf;
     Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(buf);
     double d = base::NumberHelper::StringToDouble(str.begin(), str.end(), 0,
                                                   base::ALLOW_BINARY + base::ALLOW_OCTAL + base::ALLOW_HEX);

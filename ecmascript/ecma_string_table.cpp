@@ -27,6 +27,7 @@ EcmaStringTable::EcmaStringTable(const EcmaVM *vm) : vm_(vm) {}
 EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
                                        const JSHandle<EcmaString> &secondString) const
 {
+    ASSERT(EcmaStringAccessor(firstString).IsLineString() && EcmaStringAccessor(secondString).IsLineString());
     uint32_t hashCode = EcmaStringAccessor(firstString).GetHashcode();
     hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode);
     auto range = table_.equal_range(hashCode);
@@ -70,6 +71,7 @@ EcmaString *EcmaStringTable::GetString(const uint16_t *utf16Data, uint32_t utf16
 
 EcmaString *EcmaStringTable::GetString(EcmaString *string) const
 {
+    ASSERT(EcmaStringAccessor(string).IsLineString());
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
     auto range = table_.equal_range(hashcode);
     auto item = range.first;
@@ -87,6 +89,7 @@ void EcmaStringTable::InternString(EcmaString *string)
     if (EcmaStringAccessor(string).IsInternString()) {
         return;
     }
+    ASSERT(EcmaStringAccessor(string).IsLineString());
     table_.emplace(EcmaStringAccessor(string).GetHashcode(), string);
     EcmaStringAccessor(string).SetInternString();
 }
@@ -99,12 +102,14 @@ void EcmaStringTable::InternEmptyString(EcmaString *emptyStr)
 EcmaString *EcmaStringTable::GetOrInternString(const JSHandle<EcmaString> &firstString,
                                                const JSHandle<EcmaString> &secondString)
 {
-    EcmaString *concatString = GetString(firstString, secondString);
+    auto firstFlat = JSHandle<EcmaString>(vm_->GetJSThread(), EcmaStringAccessor::Flatten(vm_, firstString));
+    auto secondFlat = JSHandle<EcmaString>(vm_->GetJSThread(), EcmaStringAccessor::Flatten(vm_, secondString));
+    EcmaString *concatString = GetString(firstFlat, secondFlat);
     if (concatString != nullptr) {
         return concatString;
     }
-    concatString = EcmaStringAccessor::Concat(vm_, firstString, secondString);
-
+    JSHandle<EcmaString> concatHandle(vm_->GetJSThread(), EcmaStringAccessor::Concat(vm_, firstFlat, secondFlat));
+    concatString = EcmaStringAccessor::Flatten(vm_, concatHandle);
     InternString(concatString);
     return concatString;
 }
@@ -149,13 +154,18 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
     }
-
-    EcmaString *result = GetString(string);
+    JSHandle<EcmaString> strHandle(vm_->GetJSThread(), string);
+    // may gc
+    auto strFlat = EcmaStringAccessor::Flatten(vm_, strHandle);
+    if (EcmaStringAccessor(strFlat).IsInternString()) {
+        return strFlat;
+    }
+    EcmaString *result = GetString(strFlat);
     if (result != nullptr) {
         return result;
     }
-    InternString(string);
-    return string;
+    InternString(strFlat);
+    return strFlat;
 }
 
 EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len,
@@ -207,6 +217,9 @@ bool EcmaStringTable::CheckStringTableValidity()
 {
     for (auto itemOuter = table_.begin(); itemOuter != table_.end(); ++itemOuter) {
         auto outerString = itemOuter->second;
+        if (!EcmaStringAccessor(outerString).IsLineString()) {
+            return false;
+        }
         int counter = 0;
         auto hashcode = EcmaStringAccessor(outerString).GetHashcode();
         auto range = table_.equal_range(hashcode);

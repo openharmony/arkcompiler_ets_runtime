@@ -687,7 +687,7 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
     if (strLen == 0) {
         return BigInt::Int32ToBigInt(thread, 0).GetTaggedValue();
     }
-    [[maybe_unused]] CVector<uint8_t> buf;
+    CVector<uint8_t> buf;
     Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(buf);
 
     auto p = const_cast<uint8_t *>(str.begin());

@@ -108,10 +108,9 @@ HWTEST_F_L0(BuiltinsStringTest, StringConstructor1)
     JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
     ASSERT_TRUE(value.IsECMAObject());
     JSHandle<JSPrimitiveRef> ref(thread, JSPrimitiveRef::Cast(value.GetTaggedObject()));
-    JSTaggedValue test = factory->NewFromASCII("ABC").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(EcmaString::Cast(ref->GetValue().GetTaggedObject()),
-        reinterpret_cast<EcmaString *>(test.GetRawData())),
-        0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("ABC");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        JSHandle<EcmaString>(thread, EcmaString::Cast(ref->GetValue())), test), 0);
 }
 
 // String.fromCharCode(65, 66, 67)
@@ -134,10 +133,8 @@ HWTEST_F_L0(BuiltinsStringTest, fromCharCode1)
     ASSERT_TRUE(result.IsString());
     JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
     JSHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue(value.GetTaggedObject()));
-    JSTaggedValue test = factory->NewFromASCII("ABC").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(EcmaString::Cast(valueHandle->GetTaggedObject()),
-        reinterpret_cast<EcmaString *>(test.GetRawData())),
-        0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("ABC");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, JSHandle<EcmaString>::Cast(valueHandle), test), 0);
 }
 
 // String.fromCodePoint(65, 66, 67)
@@ -159,8 +156,8 @@ HWTEST_F_L0(BuiltinsStringTest, fromCodePoint1)
     JSTaggedValue result = BuiltinsString::FromCodePoint(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("ABC").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("ABC");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "abcabcabc".charAt(5)
@@ -178,8 +175,8 @@ HWTEST_F_L0(BuiltinsStringTest, charAt1)
     JSTaggedValue result = BuiltinsString::CharAt(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("c").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("c");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "一二三四".charAt(2)
@@ -197,8 +194,8 @@ HWTEST_F_L0(BuiltinsStringTest, charAt2)
     JSTaggedValue result = BuiltinsString::CharAt(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromUtf8("三").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromUtf8("三");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "abcabcabc".charAt(-1)
@@ -216,8 +213,8 @@ HWTEST_F_L0(BuiltinsStringTest, charAt3)
     JSTaggedValue result = BuiltinsString::CharAt(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->GetEmptyString().GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->GetEmptyString();
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "ABC".charCodeAt(0)
@@ -292,8 +289,8 @@ HWTEST_F_L0(BuiltinsStringTest, concat1)
     JSTaggedValue result = BuiltinsString::Concat(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("abcd").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("abcd");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "abcabcabc".indexof('b')
@@ -585,8 +582,8 @@ HWTEST_F_L0(BuiltinsStringTest, toLocaleLowerCase2)
     JSTaggedValue result = BuiltinsString::ToLocaleLowerCase(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> result_handle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromUtf8("有abc").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*result_handle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromUtf8("有abc");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, result_handle, test), 0);
 }
 
 // "ABC".toLowerCase()
@@ -621,8 +618,8 @@ HWTEST_F_L0(BuiltinsStringTest, toUpperCase1)
     JSTaggedValue result = BuiltinsString::ToUpperCase(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("ABC").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("ABC");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "abc".localecompare('b')
@@ -719,8 +716,8 @@ HWTEST_F_L0(BuiltinsStringTest, normalize1)
     JSTaggedValue result = BuiltinsString::Normalize(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> result_handle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("abc").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*result_handle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("abc");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, result_handle, test), 0);
 }
 
 // "abc".repeat(5)
@@ -738,8 +735,8 @@ HWTEST_F_L0(BuiltinsStringTest, repeat1)
     JSTaggedValue result = BuiltinsString::Repeat(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("abcabcabcabcabc").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("abcabcabcabcabc");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // 'The morning is upon us.'.slice(4, -2)
@@ -758,8 +755,8 @@ HWTEST_F_L0(BuiltinsStringTest, slice1)
     JSTaggedValue result = BuiltinsString::Slice(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("morning is upon u").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("morning is upon u");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // 'The morning is upon us.'.slice(12)
@@ -777,8 +774,8 @@ HWTEST_F_L0(BuiltinsStringTest, slice2)
     JSTaggedValue result = BuiltinsString::Slice(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("is upon us.").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("is upon us.");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // 'Mozilla'.substring(3, -3)
@@ -797,8 +794,8 @@ HWTEST_F_L0(BuiltinsStringTest, substring1)
     JSTaggedValue result = BuiltinsString::Substring(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("Moz").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("Moz");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // 'Mozilla'.substring(7, 4)
@@ -817,8 +814,8 @@ HWTEST_F_L0(BuiltinsStringTest, substring2)
     JSTaggedValue result = BuiltinsString::Substring(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("lla").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("lla");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "   Hello world!   ".trim()
@@ -835,8 +832,8 @@ HWTEST_F_L0(BuiltinsStringTest, trim1)
     JSTaggedValue result = BuiltinsString::Trim(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("Hello world!").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("Hello world!");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 HWTEST_F_L0(BuiltinsStringTest, trim2)
@@ -858,8 +855,8 @@ HWTEST_F_L0(BuiltinsStringTest, trim2)
     JSTaggedValue result = BuiltinsString::Trim(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("Hello world!").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("Hello world!");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 HWTEST_F_L0(BuiltinsStringTest, ToString)

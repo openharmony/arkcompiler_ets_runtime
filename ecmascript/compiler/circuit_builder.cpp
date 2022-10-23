@@ -534,8 +534,7 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = Equal(GetObjectType(LoadHClass(obj)),
-            Int32(static_cast<int32_t>(JSType::STRING)));
+        result = TaggedObjectIsString(obj);
         Jump(&exit);
     }
     Bind(&exit);
@@ -554,13 +553,13 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        GateRef objType = GetObjectType(LoadHClass(obj));
-        result = Equal(objType, Int32(static_cast<int32_t>(JSType::STRING)));
+        result = TaggedObjectIsString(obj);
         Label isString(env_);
         Label notString(env_);
         Branch(*result, &exit, &notString);
         Bind(&notString);
         {
+            GateRef objType = GetObjectType(LoadHClass(obj));
             result = Equal(objType, Int32(static_cast<int32_t>(JSType::SYMBOL)));
             Jump(&exit);
         }
@@ -685,6 +684,31 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, 
             Jump(&exit);
         }
     }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label noRawHashcode(env_);
+    Label storeHash(env_);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::INT64(), Int64(-1));
+    GateRef hashCode = ZExtInt32ToInt64(Load(VariableType::INT32(), string, IntPtr(EcmaString::HASHCODE_OFFSET)));
+    Branch(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
+    Bind(&noRawHashcode);
+    {
+        GateRef length = GetLengthFromString(string);
+        Label lengthNotZero(env_);
+        Branch(Int32Equal(length, Int32(0)), &storeHash, &exit);
+    }
+    Bind(&storeHash);
+    result = hashCode;
+    Jump(&exit);
     Bind(&exit);
     auto ret = *result;
     SubCfgExit();

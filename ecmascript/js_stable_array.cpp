@@ -255,7 +255,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     if (len > 0) {
         allocateLength += sepLength * (len - 1);
     }
-    auto newString = EcmaStringAccessor::AllocStringObject(thread->GetEcmaVM(), allocateLength, isOneByte);
+    auto newString = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), allocateLength, isOneByte);
     int current = 0;
     DISALLOW_GARBAGE_COLLECTION;
     for (uint32_t k = 0; k < len; k++) {

@@ -166,7 +166,7 @@ HWTEST_F_L0(BuiltinsLocaleTest, ToString)
     JSHandle<EcmaString> handleEcmaStr(thread, result);
     JSHandle<EcmaString> resultStr(
         factory->NewFromASCII("en-Latn-US-u-ca-chinese-co-compat-hc-h24-kn-nu-mong"));
-    EXPECT_EQ(EcmaStringAccessor::Compare(*handleEcmaStr, *resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr, resultStr), 0);
 }
 
 HWTEST_F_L0(BuiltinsLocaleTest, GetBaseName)

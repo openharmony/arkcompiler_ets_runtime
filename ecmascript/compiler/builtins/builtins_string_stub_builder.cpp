@@ -32,7 +32,7 @@ GateRef BuiltinsStringStubBuilder::StringAt(GateRef obj, GateRef index)
     Label doIntOp(env);
     Label leftIsNumber(env);
     Label rightIsNumber(env);
-    GateRef dataUtf16 = PtrAdd(obj, IntPtr(EcmaString::DATA_OFFSET));
+    GateRef dataUtf16 = PtrAdd(obj, IntPtr(LineEcmaString::DATA_OFFSET));
     Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
@@ -65,7 +65,7 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef ob
     Label isUtf16(env);
     Label isUtf8(env);
     Label allocString(env);
-    GateRef dataUtf = PtrAdd(obj, IntPtr(EcmaString::DATA_OFFSET));
+    GateRef dataUtf = PtrAdd(obj, IntPtr(LineEcmaString::DATA_OFFSET));
     Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
@@ -91,17 +91,17 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef ob
         Branch(*canBeCompressed, &isUtf8Next, &isUtf16Next);
         Bind(&isUtf8Next);
         {
-            newBuilder.AllocStringObject(&result, &afterNew, Int32(1), true);
+            newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), true);
         }
         Bind(&isUtf16Next);
         {
-            newBuilder.AllocStringObject(&result, &afterNew, Int32(1), false);
+            newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), false);
         }
         Bind(&afterNew);
         {
             Label isUtf8Copy(env);
             Label isUtf16Copy(env);
-            GateRef dst = PtrAdd(*result, IntPtr(EcmaString::DATA_OFFSET));
+            GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
             Branch(*canBeCompressed, &isUtf8Copy, &isUtf16Copy);
             Bind(&isUtf8Copy);
             {
@@ -144,12 +144,12 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisV
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
         Label afterNew(env);
-        newBuilder.AllocStringObject(&result, &afterNew, len, true);
+        newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
         Bind(&afterNew);
         {
-            GateRef dst = PtrAdd(*result, IntPtr(EcmaString::DATA_OFFSET));
-            GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(EcmaString::DATA_OFFSET)), ZExtInt32ToPtr(from));
-            StringCopy(glue, dst, source, len, IntPtr(sizeof(uint8_t)), VariableType::INT8());
+            GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
+            GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), ZExtInt32ToPtr(from));
+            CopyChars(glue, dst, source, len, IntPtr(sizeof(uint8_t)), VariableType::INT8());
             Jump(&exit);
         }
     }
@@ -184,7 +184,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
     Bind(&lenNotEqualZero);
     {
         GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
-        GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(EcmaString::DATA_OFFSET)), fromOffset);
+        GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), fromOffset);
         GateRef canBeCompressed = CanBeCompressed(source, len, true);
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
@@ -192,16 +192,16 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
         Branch(canBeCompressed, &isUtf8, &isUtf16);
         Bind(&isUtf8);
         {
-            newBuilder.AllocStringObject(&result, &afterNew, len, true);
+            newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
         }
         Bind(&isUtf16);
         {
-            newBuilder.AllocStringObject(&result, &afterNew, len, false);
+            newBuilder.AllocLineStringObject(&result, &afterNew, len, false);
         }
         Bind(&afterNew);
         {
-            GateRef source1 = PtrAdd(PtrAdd(thisValue, IntPtr(EcmaString::DATA_OFFSET)), fromOffset);
-            GateRef dst = PtrAdd(*result, IntPtr(EcmaString::DATA_OFFSET));
+            GateRef source1 = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), fromOffset);
+            GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
             Branch(canBeCompressed, &isUtf8Next, &isUtf16Next);
             Bind(&isUtf8Next);
             {
@@ -210,7 +210,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
             }
             Bind(&isUtf16Next);
             {
-                StringCopy(glue, dst, source1, len, IntPtr(sizeof(uint16_t)), VariableType::INT16());
+                CopyChars(glue, dst, source1, len, IntPtr(sizeof(uint16_t)), VariableType::INT16());
                 Jump(&exit);
             }
         }
@@ -221,7 +221,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
     return ret;
 }
 
-void BuiltinsStringStubBuilder::StringCopy(GateRef glue, GateRef dst, GateRef source,
+void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef source,
     GateRef sourceLength, GateRef size, VariableType type)
 {
     auto env = GetEnvironment();
@@ -520,8 +520,8 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateR
                 Branch(Int32LessThan(max, Int32(0)), &exit, &maxNotLessZero);
                 Bind(&maxNotLessZero);
                 {
-                    GateRef rhsData = PtrAdd(rhs, IntPtr(EcmaString::DATA_OFFSET));
-                    GateRef lhsData = PtrAdd(lhs, IntPtr(EcmaString::DATA_OFFSET));
+                    GateRef rhsData = PtrAdd(rhs, IntPtr(LineEcmaString::DATA_OFFSET));
+                    GateRef lhsData = PtrAdd(lhs, IntPtr(LineEcmaString::DATA_OFFSET));
                     Branch(IsUtf8String(rhs), &rhsIsUtf8, &rhsIsUtf16);
                     Bind(&rhsIsUtf8);
                     {

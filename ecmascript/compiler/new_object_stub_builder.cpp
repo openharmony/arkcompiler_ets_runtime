@@ -283,7 +283,7 @@ void NewObjectStubBuilder::InitializeTaggedArrayWithSpeicalValue(Label *exit,
     InitializeWithSpeicalValue(exit, array, value, dataOffset, endOffset);
 }
 
-void NewObjectStubBuilder::AllocStringObject(Variable *result, Label *exit, GateRef length, bool compressed)
+void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed)
 {
     auto env = GetEnvironment();
     if (compressed) {
@@ -297,9 +297,9 @@ void NewObjectStubBuilder::AllocStringObject(Variable *result, Label *exit, Gate
     AllocateInYoung(result, &afterAllocate);
     
     Bind(&afterAllocate);
-    GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-                                                ConstantIndex::STRING_CLASS_INDEX);
-    StoreHClass(glue_, result->ReadVariable(), arrayClass);
+    GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                 ConstantIndex::LINE_STRING_CLASS_INDEX);
+    StoreHClass(glue_, result->ReadVariable(), stringClass);
     SetLength(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
     Jump(exit);

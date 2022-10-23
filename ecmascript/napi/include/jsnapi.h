@@ -527,7 +527,7 @@ public:
     static Local<StringRef> NewFromUtf8(const EcmaVM *vm, const char *utf8, int length = -1);
     std::string ToString();
     int32_t Length();
-    int32_t Utf8Length();
+    int32_t Utf8Length(const EcmaVM *vm);
     int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
 };
 
