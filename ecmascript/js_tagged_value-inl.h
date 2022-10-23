@@ -326,6 +326,10 @@ inline bool JSTaggedValue::SameValue(const JSTaggedValue &x, const JSTaggedValue
     if (x == y) {
         return true;
     }
+    if (x.IsInt() && y.IsInt()) {
+        // same value should be returned above
+        return false;
+    }
     if (x.IsNumber() && y.IsNumber()) {
         return SameValueNumberic(x, y);
     }
