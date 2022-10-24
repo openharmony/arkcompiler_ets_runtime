@@ -141,6 +141,27 @@ private:
     NO_COPY_SEMANTIC(SnapshotProcessor);
     NO_MOVE_SEMANTIC(SnapshotProcessor);
 };
-}  // namespace panda::ecmascript
+
+class SnapshotHelper {
+public:
+    // when snapshot serialize, huge obj size is writed to region wasted_ high 32 bits
+    static inline uint64_t EncodeHugeObjectSize(uint64_t objSize)
+    {
+        return objSize << Constants::UINT_32_BITS_COUNT;
+    }
+
+    // get huge object size which is saved in region wasted_ high 32 bits
+    static inline size_t GetHugeObjectSize(uint64_t wasted)
+    {
+        return wasted >> Constants::UINT_32_BITS_COUNT;
+    }
+
+    // get huge object region index which is saved in region wasted_ low 32 bits
+    static inline size_t GetHugeObjectRegionIndex(uint64_t wasted)
+    {
+        return wasted & Constants::MAX_UINT_32;
+    }
+};
+ }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_PROCESSOR_H

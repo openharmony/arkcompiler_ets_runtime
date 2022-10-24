@@ -1086,7 +1086,7 @@ void SnapshotProcessor::WriteHugeObjectToFile(HugeObjectSpace* space, std::fstre
         size_t objSize = hugeRegionHeadSize;
         uint64_t wasted = region->GetWastedSize();
         // huge object size is storaged in region param wasted_ high 32 bits
-        objSize += wasted >> Constants::UINT_32_BITS_COUNT;
+        objSize += SnapshotHelper::GetHugeObjectSize(wasted);
         writer.write(reinterpret_cast<char *>(region), objSize);
         writer.flush();
     });
@@ -1134,7 +1134,7 @@ uint32_t SnapshotProcessor::StatisticsHugeObjectSize(HugeObjectSpace* space)
         objSize += hugeRegionHeadSize;
         uint64_t wasted = region->GetWastedSize();
         // huge object size is storaged in region param wasted_ high 32 bits
-        objSize += wasted >> Constants::UINT_32_BITS_COUNT;
+        objSize += SnapshotHelper::GetHugeObjectSize(wasted);
     });
     return static_cast<uint32_t>(objSize);
 }
@@ -1171,7 +1171,7 @@ uintptr_t SnapshotProcessor::AllocateObjectToLocalSpace(Space *space, size_t obj
         current->IncreaseWasted(regionIndex_);
         if (current->InHugeObjectSpace()) {
             // region param wasted_ high 32 bits is reused to record huge object size
-            current->IncreaseWasted(static_cast<uint64_t>(objectSize) << Constants::UINT_32_BITS_COUNT);
+            current->IncreaseWasted(SnapshotHelper::EncodeHugeObjectSize(objectSize));
         }
         regionIndex_++;
     }
@@ -1274,12 +1274,12 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         // region wasted_ is used to record region index for snapshot
         uint64_t wasted = fileRegion->GetWastedSize();
         // high 32 bits storage huge object size
-        size_t objSize = wasted >> Constants::UINT_32_BITS_COUNT;
+        size_t objSize = SnapshotHelper::GetHugeObjectSize(wasted);
         size_t alignedHugeRegionSize = AlignUp(objSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
             space, alignedHugeRegionSize, vm_->GetAssociatedJSThread());
         // low 32 bits storage regionIndex
-        size_t regionIndex = wasted & Constants::MAX_UINT_32;
+        size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(wasted);
         regionIndexMap_.emplace(regionIndex, region);
 
         if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
@@ -1770,7 +1770,7 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
     auto currentRegion = Region::ObjectAddressToRange(newObj);
     // region wasted_ low 32 bits is used to record region index for snapshot
     uint64_t wasted = currentRegion->GetWastedSize();
-    size_t regionIndex = wasted & Constants::MAX_UINT_32;
+    size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(wasted);
     size_t objOffset = newObj - ToUintPtr(currentRegion);
     EncodeBit encodeBit(static_cast<uint64_t>(regionIndex));
     encodeBit.SetObjectOffsetInRegion(objOffset);
