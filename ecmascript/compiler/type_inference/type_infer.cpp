@@ -55,6 +55,17 @@ void TypeInfer::TraverseCircuit()
     if (tsManager_->PrintAnyTypes()) {
         FilterAnyTypeGates();
     }
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "\033[34m"
+                           << "===================="
+                           << " After ts type infer "
+                           << "[" << GetMethodName() << "]"
+                           << "===================="
+                           << "\033[0m";
+        circuit_->PrintAllGates(*builder_);
+        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
 }
 
 bool TypeInfer::UpdateType(GateRef gate, const GateType type)
@@ -287,6 +298,7 @@ bool TypeInfer::InferPhiGate(GateRef gate)
 {
     ASSERT(gateAccessor_.GetOpCode(gate) == OpCode::VALUE_SELECTOR);
     CVector<GlobalTSTypeRef> typeList;
+    std::set<GlobalTSTypeRef> numberTypeSet;
     auto ins = gateAccessor_.ConstIns(gate);
     for (auto it =  ins.begin(); it != ins.end(); it++) {
         // assuming that VALUE_SELECTOR is NO_DEPEND and NO_ROOT
@@ -294,19 +306,29 @@ bool TypeInfer::InferPhiGate(GateRef gate)
             continue;
         }
         if (gateAccessor_.GetOpCode(*it) == OpCode::LOOP_BEGIN) {
-            auto loopInGate = gateAccessor_.GetValueIn(gate);
-            auto loopInType = gateAccessor_.GetGateType(loopInGate);
-            return UpdateType(gate, loopInType);
+            return InferLoopBeginPhiGate(gate);
         }
         auto valueInType = gateAccessor_.GetGateType(*it);
         if (valueInType.IsAnyType()) {
+            phiState_[gate] = true;
             return UpdateType(gate, valueInType);
         }
-        typeList.emplace_back(valueInType.GetGTRef());
+        if (valueInType.IsNumberType()) {
+            numberTypeSet.insert(valueInType.GetGTRef());
+        } else {
+            typeList.emplace_back(valueInType.GetGTRef());
+        }
     }
+    phiState_[gate] = false;
     // deduplicate
+    std::sort(typeList.begin(), typeList.end());
     auto deduplicateIndex = std::unique(typeList.begin(), typeList.end());
     typeList.erase(deduplicateIndex, typeList.end());
+    if (numberTypeSet.size() == 1) {
+        typeList.emplace_back(*(numberTypeSet.begin()));
+    } else if (numberTypeSet.size() > 1) {
+        typeList.emplace_back(GateType::NumberType().GetGTRef());
+    }
     if (typeList.size() > 1) {
         auto unionType = tsManager_->GetOrCreateUnionType(typeList);
         return UpdateType(gate, unionType);
@@ -727,6 +749,30 @@ bool TypeInfer::InferStLexVarDyn(GateRef gate)
         }
     }
     return false;
+}
+
+bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
+{
+    // loop-begin phi gate has 3 ins: loop_begin(stateWire), loopInGate(valueWire), loopBackGate(valueWire)
+    auto loopInGate = gateAccessor_.GetValueIn(gate);
+    auto loopInType = gateAccessor_.GetGateType(loopInGate);
+    auto loopBackGate = gateAccessor_.GetValueIn(gate, 1);
+    auto loopBackType = gateAccessor_.GetGateType(loopBackGate);
+    // loop-begin phi will be initialized as loopInTytpe
+    if (phiState_.find(gate) == phiState_.end()) {
+        phiState_[gate] = false;
+        return UpdateType(gate, loopInType);
+    }
+    // if loopBackType has been inferred to any, not initialized to any, the loop-begin phi should be marked as any
+    if (loopBackType.IsAnyType() && phiState_.find(loopBackGate) != phiState_.end() && phiState_[loopBackGate]) {
+        return UpdateType(gate, GateType::AnyType());
+    }
+    // if loopInType and loopBackType both have non-any type, we need special treatment for the situation
+    // in which loopInType and loopBackType both are numberType(int/double/number)
+    if (loopInType.IsNumberType() && loopBackType.IsNumberType() && loopInType != loopBackType) {
+        return UpdateType(gate, GateType::NumberType());
+    }
+    return UpdateType(gate, loopInType);
 }
 
 void TypeInfer::PrintAllByteCodesTypes() const

@@ -71,6 +71,7 @@ const std::string HELP_OPTION_MSG =
     "       \"allcir or all0\": print cir info for all methods,\n"
     "       \"allllir or all1\": print llir info for all methods,\n"
     "       \"allasm or all2\": print asm log for all methods,\n"
+    "       \"alltype or all3\": print type infer log for all methods,\n"
     "       \"cerllircirasm or cer0112\": print llIR file, CIR log and asm log for certain method defined "
                                           "in 'mlist-for-log',\n"
     "       \"cercir or cer0\": print cir info for certain method illustrated in 'mlist-for-log',\n"
