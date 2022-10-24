@@ -105,6 +105,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
     V(DebugBreak)                         \
+    V(Dump)                               \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \
@@ -204,12 +205,14 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(LdGlobalRecord)                     \
     V(GetGlobalOwnProperty)               \
     V(TryLdGlobalByName)                  \
+    V(TryLdGlobalICByName)                \
     V(LoadMiss)                           \
     V(StoreMiss)                          \
     V(TryUpdateGlobalRecord)              \
     V(ThrowReferenceError)                \
     V(StGlobalVar)                        \
     V(LdGlobalVar)                        \
+    V(LdGlobalICVar)                      \
     V(ToNumber)                           \
     V(ToBoolean)                          \
     V(NotEq)                              \

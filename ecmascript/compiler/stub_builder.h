@@ -155,6 +155,7 @@ public:
     GateRef TaggedIsException(GateRef x);
     GateRef TaggedIsSpecial(GateRef x);
     GateRef TaggedIsHeapObject(GateRef x);
+    GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
     GateRef InYoungGeneration(GateRef x);
     GateRef TaggedIsGeneratorObject(GateRef x);
@@ -344,6 +345,7 @@ public:
     GateRef ComputePropertyCapacityInJSObj(GateRef oldLength);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
     GateRef TaggedToRepresentation(GateRef value);
+    GateRef LdGlobalRecord(GateRef glue, GateRef key);
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef cell);
     GateRef LoadElement(GateRef receiver, GateRef key);
@@ -427,6 +429,10 @@ public:
     template<OpCode::Op Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key);
+
+    inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);
+
     // fast path
     GateRef FastEqual(GateRef left, GateRef right);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);

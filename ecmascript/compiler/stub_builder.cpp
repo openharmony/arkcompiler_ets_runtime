@@ -1017,6 +1017,28 @@ GateRef StubBuilder::TaggedIsBigInt(GateRef obj)
     return ret;
 }
 
+GateRef StubBuilder::TaggedIsAccessor(GateRef x)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isHeapObject(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Branch(TaggedIsHeapObject(x), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        GateRef type = GetObjectType(LoadHClass(x));
+        result = BoolOr(Int32Equal(type, Int32(static_cast<int32_t>(JSType::ACCESSOR_DATA))),
+                        Int32Equal(type, Int32(static_cast<int32_t>(JSType::INTERNAL_ACCESSOR))));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
@@ -1211,6 +1233,31 @@ GateRef StubBuilder::TryToElementsIndex(GateRef key)
     }
     Bind(&exit);
     auto ret = *resultKey;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::GLOBAL_RECORD);
+    GateRef recordEntry = FindEntryFromNameDictionary(glue, globalRecord, key);
+    Label foundInGlobalRecord(env);
+    Branch(Int32NotEqual(recordEntry, Int32(-1)), &foundInGlobalRecord, &exit);
+    Bind(&foundInGlobalRecord);
+    {
+        result = GetBoxFromGlobalDictionary(globalRecord, recordEntry);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
     env->SubCfgExit();
     return ret;
 }
@@ -4076,8 +4123,38 @@ GateRef StubBuilder::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRe
     Bind(&notNegtiveOne);
     {
         result = GetValueFromGlobalDictionary(properties, entry);
+        Label callGetter(env);
+        Branch(TaggedIsAccessor(*result), &callGetter, &exit);
+        Bind(&callGetter);
+        {
+            result = CallGetterHelper(glue, receiver, receiver, *result);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label cacheMiss(env);
+
+    auto cacheValue = GetObjectFromConstPool(constpool, index);
+    DEFVARIABLE(result, VariableType::JS_ANY(), cacheValue);
+    Branch(TaggedIsHole(cacheValue), &cacheMiss, &exit);
+    Bind(&cacheMiss);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(GetStringFromCache),
+            { constpool, IntToTaggedInt(index) });
         Jump(&exit);
     }
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();

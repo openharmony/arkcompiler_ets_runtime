@@ -77,7 +77,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test queue popFirst:",  proxy.getFirst() === 0)
     map.set("test queue pop:",  proxy.pop() === 0)
 
-    flag = undefined;
+    let flag = undefined;
     function elements(value, key, map) {
         if (!value) {
             if (!flag) {

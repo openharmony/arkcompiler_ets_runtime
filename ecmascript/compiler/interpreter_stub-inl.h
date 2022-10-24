@@ -584,11 +584,6 @@ void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, Gate
     Return();
 }
 
-GateRef InterpreterStubBuilder::GetObjectFromConstPool(GateRef constpool, GateRef index)
-{
-    return GetValueFromTaggedArray(constpool, index);
-}
-
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
 {
     GateRef x = Load(VariableType::INT16(), method, IntPtr(Method::LITERAL_INFO_OFFSET));
@@ -687,6 +682,48 @@ void InterpreterStubBuilder::CheckExceptionWithJump(GateRef glue, GateRef sp, Ga
     {
         Jump(jump);
     }
+}
+
+GateRef InterpreterToolsStubBuilder::GetStringId(const StringIdInfo &info)
+{
+    GateRef stringId;
+    switch (info.offset) {
+        case StringIdInfo::Offset::BYTE_0: {
+            if (info.length == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_0(info.pc));
+            } else {
+                stringId = 0;
+                std::abort();
+            }
+            break;
+        }
+        case StringIdInfo::Offset::BYTE_1: {
+            if (info.length == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_1(info.pc));
+            } else if (info.length == StringIdInfo::Length::BITS_32) {
+                stringId = ReadInst32_1(info.pc);
+            } else {
+                stringId = 0;
+                std::abort();
+            }
+            break;
+        }
+        case StringIdInfo::Offset::BYTE_2: {
+            if (info.length == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_2(info.pc));
+            } else {
+                stringId = 0;
+                std::abort();
+            }
+            break;
+        }
+        default: {
+            stringId = 0;
+            std::abort();
+            break;
+        }
+    }
+    return stringId;
 }
 #undef DISPATCH_LAST
 #undef DISPATCH

@@ -1631,6 +1631,11 @@ inline GateRef StubBuilder::TruncInt32ToInt1(GateRef x)
     return env_->GetBuilder()->TruncInt32ToInt1(x);
 }
 
+inline GateRef StubBuilder::GetObjectFromConstPool(GateRef constpool, GateRef index)
+{
+    return GetValueFromTaggedArray(constpool, index);
+}
+
 inline GateRef StubBuilder::GetGlobalConstantAddr(GateRef index)
 {
     return Int64Mul(Int64(sizeof(JSTaggedValue)), index);
@@ -1810,7 +1815,7 @@ inline GateRef StubBuilder::GetBoxFromGlobalDictionary(GateRef object, GateRef e
     GateRef index = GetEntryIndexOfGlobalDictionary(entry);
     GateRef offset = PtrAdd(ChangeInt32ToIntPtr(index),
         IntPtr(GlobalDictionary::ENTRY_VALUE_INDEX));
-    return Load(VariableType::JS_POINTER(), object, offset);
+    return GetValueFromTaggedArray(object, offset);
 }
 
 inline GateRef StubBuilder::GetValueFromGlobalDictionary(GateRef object, GateRef entry)

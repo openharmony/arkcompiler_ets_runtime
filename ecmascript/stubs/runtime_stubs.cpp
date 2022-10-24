@@ -125,6 +125,15 @@ DEF_RUNTIME_STUBS(DebugBreak)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(Dump)
+{
+    RUNTIME_STUBS_HEADER(Dump);
+    JSTaggedValue value = GetArg(argv, argc, 0);
+    value.D();
+    std::cout << "======================================================" << std::endl;
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetHash32)
 {
     JSTaggedValue argKey = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
@@ -626,12 +635,14 @@ DEF_RUNTIME_STUBS(LoadICByValue)
     RUNTIME_STUBS_HEADER(LoadICByValue);
     JSHandle<JSTaggedValue> profileTypeInfo = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> propKey = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue slotId = GetArg(argv, argc, 3);  // 3: means the third parameter
 
     if (profileTypeInfo->IsUndefined()) {
-        return RuntimeLdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined()).GetRawData();
+        return RuntimeLdObjByValue(thread, receiver, key, false, JSTaggedValue::Undefined()).GetRawData();
     }
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     LoadICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(), ICKind::LoadIC);
     return icRuntime.LoadMiss(receiver, propKey).GetRawData();
 }
@@ -641,13 +652,15 @@ DEF_RUNTIME_STUBS(StoreICByValue)
     RUNTIME_STUBS_HEADER(StoreICByValue);
     JSHandle<JSTaggedValue> profileTypeInfo = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> propKey = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue slotId = GetArg(argv, argc, 4);   // 4: means the fourth parameter
 
     if (profileTypeInfo->IsUndefined()) {
-        return RuntimeStObjByValue(thread, receiver, propKey, value).GetRawData();
+        return RuntimeStObjByValue(thread, receiver, key, value).GetRawData();
     }
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     StoreICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(),
                              ICKind::StoreIC);
     return icRuntime.StoreMiss(receiver, propKey, value).GetRawData();
@@ -951,6 +964,26 @@ DEF_RUNTIME_STUBS(LoadICByName)
     LoadICRuntime icRuntime(
         thread, JSHandle<ProfileTypeInfo>::Cast(profileHandle), slotId.GetInt(), ICKind::NamedLoadIC);
     return icRuntime.LoadMiss(receiverHandle, keyHandle).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TryLdGlobalICByName)
+{
+    RUNTIME_STUBS_HEADER(TryLdGlobalICByName);
+    JSHandle<JSTaggedValue> profileHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue slotId = GetArg(argv, argc, 2);  // 2: means the third parameter
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> globalObj(thread, globalEnv->GetGlobalObject());
+    if (profileHandle->IsUndefined()) {
+        auto res = RuntimeTryLdGlobalByName(thread, globalObj, keyHandle);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        return res.GetRawData();
+    }
+    LoadICRuntime icRuntime(
+        thread, JSHandle<ProfileTypeInfo>::Cast(profileHandle), slotId.GetInt(), ICKind::NamedGlobalTryLoadIC);
+    return icRuntime.LoadMiss(globalObj, keyHandle).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StoreICByName)
@@ -1319,6 +1352,22 @@ DEF_RUNTIME_STUBS(LdGlobalVar)
     JSHandle<JSTaggedValue> global = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeLdGlobalVarFromProto(thread, global, prop).GetRawData(); // After checked global itself.
+}
+
+DEF_RUNTIME_STUBS(LdGlobalICVar)
+{
+    RUNTIME_STUBS_HEADER(LdGlobalICVar);
+    JSHandle<JSTaggedValue> global = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> profileHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue slotId = GetArg(argv, argc, 3);  // 3: means the third parameter
+
+    if (profileHandle->IsUndefined()) {
+        return RuntimeLdGlobalVarFromProto(thread, global, prop).GetRawData();
+    }
+    LoadICRuntime icRuntime(
+        thread, JSHandle<ProfileTypeInfo>::Cast(profileHandle), slotId.GetInt(), ICKind::NamedGlobalLoadIC);
+    return icRuntime.LoadMiss(global, prop).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StGlobalVar)

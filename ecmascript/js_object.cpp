@@ -645,12 +645,10 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
                 }
                 return false;
             }
-            if (LIKELY(!hasReceiver)) {
-                return op->AddProperty(JSHandle<JSObject>(receiver), value, op->GetAttr());
+            if (hasReceiver || isInternalAccessor) {
+                return op->AddProperty(JSHandle<JSObject>(receiver), value, PropertyAttributes::Default());
             } else {
-                PropertyAttributes attr;
-                attr.SetDefaultAttributes();
-                return op->AddProperty(JSHandle<JSObject>(receiver), value, attr);
+                return op->AddProperty(JSHandle<JSObject>(receiver), value, op->GetAttr());
             }
         }
         return isSuccess;

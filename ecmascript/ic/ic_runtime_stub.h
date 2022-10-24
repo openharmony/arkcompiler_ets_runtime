@@ -24,10 +24,11 @@ namespace panda::ecmascript {
 class ICRuntimeStub {
 public:
     static inline JSTaggedValue LoadGlobalICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
-                                                   JSTaggedValue globalValue, JSTaggedValue key, uint32_t slotId);
+                                                   JSTaggedValue globalValue, JSTaggedValue key, uint32_t slotId,
+                                                   bool tryLoad);
     static inline JSTaggedValue StoreGlobalICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
                                                     JSTaggedValue globalValue, JSTaggedValue key,
-                                                    JSTaggedValue value, uint32_t slotId);
+                                                    JSTaggedValue value, uint32_t slotId, bool tryStore);
     static inline JSTaggedValue LoadICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
                                              JSTaggedValue receiver, JSTaggedValue key, uint32_t slotId);
     static inline JSTaggedValue TryLoadICByName(JSThread *thread, JSTaggedValue receiver,

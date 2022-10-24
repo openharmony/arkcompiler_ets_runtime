@@ -183,6 +183,7 @@ bool EcmaVM::Initialize()
         JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
         globalEnv->Init(thread_);
         globalEnv_ = globalEnv.GetTaggedValue();
+        thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(globalEnv.GetTaggedType()));
         Builtins builtins;
         builtins.Initialize(globalEnv, thread_);
         if (!WIN_OR_MAC_OR_IOS_PLATFORM && options_.EnableSnapshotSerialize()) {
