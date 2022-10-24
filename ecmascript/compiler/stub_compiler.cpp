@@ -137,24 +137,24 @@ bool StubCompiler::BuildStubModuleAndSave() const
     size_t res = 0;
     const CompilerLog *log = GetLog();
     const MethodLogList *logList = GetLogList();
-    StubFileGenerator generator(log, logList, triple_);
+    StubFileGenerator generator(log, logList, triple_, enablePGOProfiler_);
     if (!filePath_.empty()) {
         LOG_COMPILER(INFO) << "compiling bytecode handler stubs";
-        LLVMModule bcStubModule("bc_stub", triple_);
+        LLVMModule bcStubModule("bc_stub", triple_, enablePGOProfiler_);
         LLVMAssembler bcStubAssembler(bcStubModule.GetModule(), LOptions(optLevel_, false, relocMode_));
         bcStubModule.SetUpForBytecodeHandlerStubs();
         RunPipeline(&bcStubModule);
         generator.AddModule(&bcStubModule, &bcStubAssembler);
         res++;
         LOG_COMPILER(INFO) << "compiling common stubs";
-        LLVMModule comStubModule("com_stub", triple_);
+        LLVMModule comStubModule("com_stub", triple_, enablePGOProfiler_);
         LLVMAssembler comStubAssembler(comStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
         comStubModule.SetUpForCommonStubs();
         RunPipeline(&comStubModule);
         generator.AddModule(&comStubModule, &comStubAssembler);
         res++;
         LOG_COMPILER(INFO) << "compiling builtins stubs";
-        LLVMModule builtinsStubModule("builtins_stub", triple_);
+        LLVMModule builtinsStubModule("builtins_stub", triple_, enablePGOProfiler_);
         LLVMAssembler builtinsStubAssembler(builtinsStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
         builtinsStubModule.SetUpForBuiltinsStubs();
         RunPipeline(&builtinsStubModule);
@@ -189,9 +189,11 @@ int main(const int argc, const char **argv)
     size_t relocMode = runtimeOptions.GetRelocMode();
     std::string logOption = runtimeOptions.GetCompilerLogOption();
     std::string methodsList = runtimeOptions.GetMethodsListForLog();
+    bool enablePGOProfiler = runtimeOptions.IsEnablePGOProfiler();
     panda::ecmascript::kungfu::CompilerLog logOpt(logOption);
     panda::ecmascript::kungfu::MethodLogList logList(methodsList);
-    panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &logOpt, &logList);
+    panda::ecmascript::kungfu::StubCompiler compiler(
+        triple, stubFile, optLevel, relocMode, &logOpt, &logList, enablePGOProfiler);
 
     bool res = compiler.BuildStubModuleAndSave();
     LOG_COMPILER(INFO) << "stub compiler run finish, result condition(T/F):" << std::boolalpha << res;

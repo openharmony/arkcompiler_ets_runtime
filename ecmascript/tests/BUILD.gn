@@ -65,6 +65,7 @@ host_unittest_action("EcmaVm_001_Test") {
     "js_array_test.cpp",
     "js_async_function_test.cpp",
     "js_bigint_test.cpp",
+    "pgo_profiler_test.cpp",
     "throw_oom_error_test.cpp",
   ]
 

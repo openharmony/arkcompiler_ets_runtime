@@ -1240,7 +1240,9 @@ public:
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();
+    static void InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options);
     static void DestroyMemMapAllocator();
+    static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
