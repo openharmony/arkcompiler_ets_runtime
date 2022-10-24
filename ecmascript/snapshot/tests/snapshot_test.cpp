@@ -243,4 +243,37 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
 
     std::remove(fileName.c_str());
 }
+
+HWTEST_F_L0(SnapshotTest, SerializeHugeObject)
+{
+    auto factory = ecmaVm->GetFactory();
+    auto env = ecmaVm->GetGlobalEnv();
+
+    JSHandle<TaggedArray> array1 = factory->NewTaggedArray(300 * 1024 / 8);
+    JSHandle<TaggedArray> array2 = factory->NewTaggedArray(300 * 1024 / 8);
+
+    JSHandle<JSFunction> funcFunc(env->GetFunctionFunction());
+    JSHandle<JSFunction> dateFunc(env->GetDateFunction());
+    JSHandle<JSFunction> numberFunc(env->GetNumberFunction());
+    array1->Set(thread, 0, array2.GetTaggedValue());
+    array1->Set(thread, 1, funcFunc.GetTaggedValue());
+    array1->Set(thread, 2, dateFunc.GetTaggedValue());
+    array1->Set(thread, 3, numberFunc.GetTaggedValue());
+
+    CString fileName = "snapshot";
+    Snapshot snapshotSerialize(ecmaVm);
+    // serialize
+    snapshotSerialize.Serialize(*array1, nullptr, fileName);
+    // deserialize
+    Snapshot snapshotDeserialize(ecmaVm);
+    snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
+
+    auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetHugeObjectSpace()->GetFirstRegion();
+    auto array3 = reinterpret_cast<TaggedArray *>(beginRegion->GetBegin());
+    EXPECT_TRUE(array3->Get(0).IsTaggedArray());
+    EXPECT_TRUE(array3->Get(1).IsJSFunction());
+    EXPECT_TRUE(array3->Get(2).IsJSFunction());
+    EXPECT_TRUE(array3->Get(3).IsJSFunction());
+    std::remove(fileName.c_str());
+}
 }  // namespace panda::test
