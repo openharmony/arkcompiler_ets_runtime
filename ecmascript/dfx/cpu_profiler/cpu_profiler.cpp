@@ -46,7 +46,9 @@ CpuProfiler::CpuProfiler(const EcmaVM *vm) : vm_(vm)
 
 void CpuProfiler::StartCpuProfilerForInfo()
 {
+    LOG_ECMA(INFO) << "StartCpuProfilerForInfo enter";
     if (isProfiling_) {
+        LOG_ECMA(ERROR) << "Can not StartCpuProfilerForInfo when CpuProfiler is Profiling";
         return;
     }
     isProfiling_ = true;
@@ -79,7 +81,9 @@ void CpuProfiler::StartCpuProfilerForInfo()
 
 void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 {
+    LOG_ECMA(INFO) << "StartCpuProfilerForFile enter";
     if (isProfiling_) {
+        LOG_ECMA(ERROR) << "Can not StartCpuProfilerForFile when CpuProfiler is Profiling";
         return;
     }
     isProfiling_ = true;
@@ -133,6 +137,7 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 
 std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
 {
+    LOG_ECMA(INFO) << "StopCpuProfilerForInfo enter";
     std::unique_ptr<struct ProfileInfo> profileInfo;
     if (!isProfiling_) {
         LOG_ECMA(ERROR) << "Do not execute stop cpuprofiler twice in a row or didn't execute the start\
@@ -167,6 +172,7 @@ void CpuProfiler::SetCpuSamplingInterval(int interval)
 
 void CpuProfiler::StopCpuProfilerForFile()
 {
+    LOG_ECMA(INFO) << "StopCpuProfilerForFile enter";
     if (!isProfiling_) {
         LOG_ECMA(ERROR) << "Do not execute stop cpuprofiler twice in a row or didn't execute the start\
                                 or the sampling thread is not started";
@@ -346,27 +352,10 @@ bool CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, bo
         if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), tempVariable)) {
             return false;
         }
-        // line number
-        int32_t lineNumber = 0;
-        int32_t columnNumber = 0;
-        auto callbackLineFunc = [&](int32_t line) -> bool {
-            lineNumber = line + 1;
-            return true;
-        };
-        auto callbackColumnFunc = [&](int32_t column) -> bool {
-            columnNumber = column + 1;
-            return true;
-        };
+        // line number and clomn number
         panda_file::File::EntityId methodId = method->GetMethodId();
-        uint32_t offset = frameHandler.GetBytecodeOffset();
-        if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
-            !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-            codeEntry.lineNumber = 0;
-            codeEntry.columnNumber = 0;
-        } else {
-            codeEntry.lineNumber = lineNumber;
-            codeEntry.columnNumber = columnNumber;
-        }
+        codeEntry.lineNumber = debugExtractor->GetFristLine(methodId);
+        codeEntry.columnNumber = debugExtractor->GetFristColumn(methodId);
     }
     if (isCallNapi) {
         return generator_->PushNapiStackInfo(codeEntry);
