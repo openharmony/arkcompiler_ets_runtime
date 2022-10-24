@@ -11,18 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (defined(ark_standalone_build)) {
-  import("//ets_runtime/js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
+if (ark_standalone_build) {
   import("$build_root/ark.gni")
 } else {
-  import("//arkcompiler/ets_runtime/js_runtime_config.gni")
   import("//build/ohos.gni")
+}
 
-  action("build_llvm_libs") {
-    script = "compile_llvm_lib.sh"
-    sources = [ "$js_root/ecmascript/compiler/compile_llvm_lib.sh" ]
-    outputs = [ "${root_out_dir}/llvm" ]
-  }
+action("build_llvm_libs") {
+  script = "compile_llvm_lib.sh"
+  sources = [ "$js_root/ecmascript/compiler/compile_llvm_lib.sh" ]
+  outputs = [ "${root_out_dir}/llvm" ]
 }
 
 config("include_llvm") {
@@ -251,7 +251,7 @@ ohos_shared_library("libark_jsoptimizer_test") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
   ]
-  if (!defined(ark_standalone_build)) {
+  if (!ark_standalone_build) {
     ldflags = [ "-Wl,--lto-O0" ]
   }
   install_enable = false
@@ -266,13 +266,25 @@ ohos_executable("ark_stub_compiler") {
     "$ark_root/libpandafile:libarkfile_static",
   ]
 
-  if (!defined(ark_standalone_build)) {
+  if (!ark_standalone_build) {
     ldflags = [ "-Wl,--lto-O0" ]
   }
   install_enable = false
 
   if (run_with_asan) {
     defines = [ "RUN_WITH_ASAN" ]
+  }
+
+  if (target_os == "ios") {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:static_icui18n",
+      "$ark_third_party_root/icu/icu4c:static_icuuc",
+    ]
+  } else {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:shared_icui18n",
+      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    ]
   }
 
   part_name = "ets_runtime"
@@ -282,7 +294,7 @@ ohos_executable("ark_stub_compiler") {
 ohos_executable("ark_aot_compiler") {
   deps = [ ":ark_aot_compiler_set" ]
 
-  if (defined(ark_standalone_build)) {
+  if (ark_standalone_build) {
     ldflags = [ "-shared" ]
   }
   install_enable = false
@@ -300,7 +312,7 @@ action("gen_stub_file") {
   root_out_dir_with_host_toolchain =
       get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
-  if (current_toolchain == host_toolchain || defined(ark_standalone_build)) {
+  if (current_toolchain == host_toolchain || ark_standalone_build) {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an"
   } else {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
