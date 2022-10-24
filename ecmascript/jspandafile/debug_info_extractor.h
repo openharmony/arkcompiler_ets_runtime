@@ -142,6 +142,26 @@ public:
         return cb(column);
     }
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    int32_t GetFristLine(panda_file::File::EntityId methodId)
+    {
+        const LineNumberTable &lineTable = GetLineNumberTable(methodId);
+        if (lineTable.size() <= 1) {
+            return 0;
+        }
+        return lineTable[1].line + 1;
+    }
+
+    int32_t GetFristColumn(panda_file::File::EntityId methodId)
+    {
+        const ColumnNumberTable &columnTable = GetColumnNumberTable(methodId);
+        if (columnTable.size() == 0) {
+            return 0;
+        }
+        return columnTable[0].column + 1;
+    }
+#endif
+
     constexpr static int32_t SPECIAL_LINE_MARK = -1;
 
 private:
