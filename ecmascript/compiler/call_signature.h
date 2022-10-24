@@ -346,7 +346,7 @@ private:
     V(PushCallNewAndDispatch)               \
     V(CallGetter)                           \
     V(CallSetter)                           \
-    V(CallContainersArgs3)                    \
+    V(CallContainersArgs3)                  \
     V(JSCallWithArgV)                       \
     V(ConstructorJSCallWithArgV)            \
     V(ResumeRspAndDispatch)                 \
@@ -357,6 +357,7 @@ private:
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
     V(DebugPrintInstruction)                \
+    V(PGOProfiler)                          \
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \

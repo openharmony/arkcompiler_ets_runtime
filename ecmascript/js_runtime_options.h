@@ -119,6 +119,10 @@ const std::string HELP_OPTION_MSG =
     "--snapshot-file: snapshot file. Default: \"/system/etc/snapshot\"\n"
     "--startup-time: Print the start time of command execution. Default: false\n"
     "--stub-file: Path of file includes common stubs module compiled by stub compiler. Default: \"stub.an\"\n"
+    "--enable-pgo-profiler: Enable pgo profiler to sample jsfunction call and output to file. Default: false\n"
+    "--pgo-hotness-threshold: set hotness threshold for pgo in aot compiler. Default: 2\n"
+    "--pgo-profiler-path: The pgo sampling profiler file output dir for application or ark_js_vm runtime,"
+        "or the sampling profiler file input dir for AOT PGO compiler. Default: ""\n"
     "--target-triple: target triple for aot compiler or stub compiler.\n"
     "--enable-print-execute-time: enable print execute pandafile spent time\"\n"
     "       Possible values: [\"x86_64-unknown-linux-gnu\", \"arm-unknown-linux-gnu\", "
@@ -174,6 +178,9 @@ enum CommandValues {
     OPTION_MERGE_ABC,
     OPTION_ENABLE_TYPE_LOWERING,
     OPTION_HELP,
+    OPTION_PGO_PROFILER_PATH,
+    OPTION_PGO_HOTNESS_THRESHOLD,
+    OPTION_ENABLE_PGO_PROFILER,
     OPTION_OPTIONS,
     OPTION_PRINT_EXECUTE_TIME
 };
@@ -837,6 +844,36 @@ public:
         }
     }
 
+    void SetEnablePGOProfiler(bool value)
+    {
+        enablePGOProfiler_ = value;
+    }
+
+    bool IsEnablePGOProfiler() const
+    {
+        return enablePGOProfiler_;
+    }
+
+    uint32_t GetPGOHotnessThreshold() const
+    {
+        return pgoHotnessThreshold_;
+    }
+
+    void SetPGOHotnessThreshold(uint32_t threshold)
+    {
+        pgoHotnessThreshold_ = threshold;
+    }
+
+    std::string GetPGOProfilerPath() const
+    {
+        return pgoProfilerPath_;
+    }
+
+    void SetPGOProfilerPath(std::string value)
+    {
+        pgoProfilerPath_ = std::move(value);
+    }
+
     void SetEnableTypeLowering(bool value)
     {
         enableTypeLowering_ = value;
@@ -914,6 +951,9 @@ private:
     bool enableTypeLowering_ {true};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};
+    bool enablePGOProfiler_ {false};
+    uint32_t pgoHotnessThreshold_ {2};
+    std::string pgoProfilerPath_ {""};
 };
 }  // namespace panda::ecmascript
 

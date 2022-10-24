@@ -1965,5 +1965,12 @@ inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHa
 {
     Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::HASHCODE_OFFSET), rawHashcode);
 }
+
+inline void StubBuilder::PGOProfiler(GateRef glue, GateRef func)
+{
+    if (env_->IsAsmInterp() && env_->IsEnablePGOProfiler()) {
+        UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(PGOProfiler), { glue, func });
+    }
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

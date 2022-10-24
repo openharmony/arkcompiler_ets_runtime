@@ -31,6 +31,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -154,6 +155,8 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
+    pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(
+        options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler());
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
@@ -353,6 +356,11 @@ EcmaVM::~EcmaVM()
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
+    }
+
+    if (pgoProfiler_ != nullptr) {
+        PGOProfilerManager::GetInstance()->Destroy(pgoProfiler_);
+        pgoProfiler_ = nullptr;
     }
 }
 

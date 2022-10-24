@@ -27,6 +27,7 @@
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 
@@ -676,5 +677,23 @@ JSTaggedValue JSFunction::GetFunctionExtraInfo() const
         }
     }
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue JSFunction::GetRecordName() const
+{
+    JSTaggedValue module = GetModule();
+    if (module.IsSourceTextModule()) {
+        JSTaggedValue recordName =  SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
+        if (!recordName.IsString()) {
+            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
+            return JSTaggedValue::Hole();
+        }
+        return recordName;
+    } else if (module.IsString()) {
+        return module;
+    } else {
+        LOG_INTERPRETER(DEBUG) << "record name is undefined";
+        return JSTaggedValue::Hole();
+    }
 }
 }  // namespace panda::ecmascript

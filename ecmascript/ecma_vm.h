@@ -17,6 +17,7 @@
 #define ECMASCRIPT_ECMA_VM_H
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
@@ -419,7 +420,7 @@ public:
         }
         return workerVm;
     }
-    
+
     bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
     {
         if (hostVm != nullptr && workerVm != nullptr) {
@@ -471,6 +472,11 @@ public:
         profiler_ = profiler;
     }
 #endif
+
+    PGOProfiler *GetPGOProfiler() const
+    {
+        return pgoProfiler_;
+    }
 
     bool FindCatchBlock(Method *method, uint32_t pc) const;
 
@@ -599,6 +605,9 @@ private:
 
     // For repair patch.
     QuickFixManager *quickFixManager_;
+
+    // PGO Profiler
+    PGOProfiler *pgoProfiler_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

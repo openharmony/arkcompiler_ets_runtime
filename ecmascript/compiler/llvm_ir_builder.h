@@ -112,7 +112,7 @@ struct BasicBlockImpl {
 
 class LLVMModule {
 public:
-    LLVMModule(const std::string &name, const std::string &triple);
+    LLVMModule(const std::string &name, const std::string &triple, bool enablePGOProfiler = false);
     ~LLVMModule();
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();

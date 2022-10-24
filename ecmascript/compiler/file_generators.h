@@ -247,8 +247,8 @@ private:
 
 class StubFileGenerator : public FileGenerator {
 public:
-    StubFileGenerator(const CompilerLog *log, const MethodLogList *logList,
-        const std::string &triple) : FileGenerator(log, logList), cfg_(triple) {};
+    StubFileGenerator(const CompilerLog *log, const MethodLogList *logList, const std::string &triple,
+        bool enablePGOProfiler) : FileGenerator(log, logList), cfg_(triple, enablePGOProfiler) {};
     ~StubFileGenerator() override = default;
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler)
     {

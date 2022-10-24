@@ -135,8 +135,8 @@ public:
     // fake parameters for register r1 ~ r3
     static constexpr int FAKE_REGISTER_PARAMTERS_ARM32 = 3;
 
-    explicit CompilationConfig(const std::string &triple, bool isEnableBcTrace = false)
-        : triple_(GetTripleFromString(triple)), isEnableBcTrace_(isEnableBcTrace)
+    CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isEnableBcTrace = false)
+        : triple_(GetTripleFromString(triple)), isEnableBcTrace_(isEnableBcTrace), enablePGOProfiler_(enablePGOProfiler)
     {
     }
     ~CompilationConfig() = default;
@@ -171,6 +171,11 @@ public:
         return isEnableBcTrace_;
     }
 
+    bool IsEnablePGOProfiler() const
+    {
+        return enablePGOProfiler_;
+    }
+
 private:
     inline Triple GetTripleFromString(const std::string &triple)
     {
@@ -189,6 +194,7 @@ private:
     }
     Triple triple_;
     bool isEnableBcTrace_;
+    bool enablePGOProfiler_;
 };
 
 class CircuitBuilder {
@@ -647,6 +653,10 @@ public:
     inline GateRef GetArgument(size_t index) const
     {
         return arguments_.at(index);
+    }
+    inline bool IsEnablePGOProfiler() const
+    {
+        return ccfg_->IsEnablePGOProfiler();
     }
 
     inline Label GetLabelFromSelector(GateRef sel);
