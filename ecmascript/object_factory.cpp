@@ -1513,6 +1513,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral)
     }
     method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
+    method->SetProfileTypeInfo(thread_, JSTaggedValue::Undefined());
     return method;
 }
 

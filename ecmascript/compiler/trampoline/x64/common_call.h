@@ -160,8 +160,7 @@ private:
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
-                             Register callTargetRegister, Register methodRegister,
-                             Register accRegister = rInvalid);
+                             Register methodRegister, Register accRegister = rInvalid);
     static void CallNativeEntry(ExtendedAssembler *assemblSer);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
