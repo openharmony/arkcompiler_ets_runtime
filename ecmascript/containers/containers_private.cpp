@@ -651,7 +651,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
     SetFrozenFunction(thread, plainArrayFuncPrototype, "clone", ContainersPlainArray::Clone, FuncLength::ONE);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "has", ContainersPlainArray::Has, FuncLength::ONE);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "get", ContainersPlainArray::Get, FuncLength::ONE);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "forEach", ContainersPlainArray::ForEach, FuncLength::ONE);
+    SetFrozenFunction(thread, plainArrayFuncPrototype, "forEach", ContainersPlainArray::ForEach, FuncLength::ONE,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(PlainArrayForEach)));
     SetFrozenFunction(thread, plainArrayFuncPrototype, "toString", ContainersPlainArray::ToString,
                       FuncLength::ZERO);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "getIndexOfKey", ContainersPlainArray::GetIndexOfKey,
@@ -729,8 +730,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
     // Stack.prototype.search()
     SetFrozenFunction(thread, stackFuncPrototype, "locate", ContainersStack::Locate, FuncLength::ONE);
     // Stack.prototype.forEach()
-    SetFrozenFunction(thread, stackFuncPrototype, "forEach", ContainersStack::ForEach, FuncLength::ONE);
-
+    SetFrozenFunction(thread, stackFuncPrototype, "forEach", ContainersStack::ForEach, FuncLength::ONE,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(StackForEach)));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, stackFuncPrototype, "Stack");
 
@@ -861,7 +862,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
     SetFrozenFunction(thread, queueFuncPrototype, "add", ContainersQueue::Add, FuncLength::ONE);
     SetFrozenFunction(thread, queueFuncPrototype, "getFirst", ContainersQueue::GetFirst, FuncLength::ZERO);
     SetFrozenFunction(thread, queueFuncPrototype, "pop", ContainersQueue::Pop, FuncLength::ZERO);
-    SetFrozenFunction(thread, queueFuncPrototype, "forEach", ContainersQueue::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, queueFuncPrototype, "forEach", ContainersQueue::ForEach, FuncLength::TWO,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(QueueForEach)));
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, queueFuncPrototype, "Queue");
@@ -917,7 +919,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
     SetFrozenFunction(thread, dequeFuncPrototype, "has", ContainersDeque::Has, FuncLength::ONE);
     SetFrozenFunction(thread, dequeFuncPrototype, "popFirst", ContainersDeque::PopFirst, FuncLength::ZERO);
     SetFrozenFunction(thread, dequeFuncPrototype, "popLast", ContainersDeque::PopLast, FuncLength::ZERO);
-    SetFrozenFunction(thread, dequeFuncPrototype, "forEach", ContainersDeque::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, dequeFuncPrototype, "forEach", ContainersDeque::ForEach, FuncLength::TWO,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(DequeForEach)));
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, dequeFuncPrototype, "Deque");

@@ -86,6 +86,20 @@ if (globalThis["ArkPrivate"] != undefined) {
             flag.push(key);
         }
     }
+
+    let myTest = new Queue();
+    for (var i = 0; i < 10; i++) {
+        myTest.add(i);
+    }
+    for (var i = 0; i < 5; i++) {
+        myTest.pop();
+    }
+    myTest.forEach(
+        function myFunc(item, index, arr) {
+            print(item);
+	    }
+    );
+
     map.forEach(elements);
     if (!flag) {
         print("Test Queue success!!!");

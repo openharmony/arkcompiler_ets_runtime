@@ -516,4 +516,88 @@ DECLARE_BUILTINS(VectorReplaceAllElements)
     Bind(&exit);
     Return(*res);
 }
+
+DECLARE_BUILTINS(StackForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::STACK_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(PlainArrayForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::PLAINARRAY_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(QueueForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.QueueCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::QUEUE_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(DequeForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.DequeCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::DEQUE_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
 }  // namespace panda::ecmascript::kungfu
