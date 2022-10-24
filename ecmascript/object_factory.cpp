@@ -2516,12 +2516,19 @@ JSHandle<JSAPIHashMapIterator> ObjectFactory::NewJSAPIHashMapIterator(const JSHa
                                                                       IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetHashMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<TaggedArray> array = NewTaggedArray(2); // 2 means the length of array
+    array->Set(thread_, 0, undefinedHandle);
+    array->Set(thread_, 1, undefinedHandle);
+    JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread_, array));
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetHashMapIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIHashMapIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIHashMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
+    iter->SetKeyValueResult(thread_, keyAndValue);
+    iter->SetCurrentNodeResult(thread_, undefinedHandle);
     iter->SetIteratedHashMap(thread_, hashMap);
     iter->SetNextIndex(0);
     iter->SetTaggedQueue(thread_, JSTaggedValue::Undefined());
@@ -2535,12 +2542,19 @@ JSHandle<JSAPIHashSetIterator> ObjectFactory::NewJSAPIHashSetIterator(const JSHa
                                                                       IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetHashSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<TaggedArray> array = NewTaggedArray(2); // 2 means the length of array
+    array->Set(thread_, 0, undefinedHandle);
+    array->Set(thread_, 1, undefinedHandle);
+    JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread_, array));
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetHashSetIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIHashSetIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIHashSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
+    iter->SetKeyValueResult(thread_, keyAndValue);
+    iter->SetCurrentNodeResult(thread_, undefinedHandle);
     iter->SetIteratedHashSet(thread_, hashSet);
     iter->SetNextIndex(0);
     iter->SetTableIndex(0);
@@ -3266,8 +3280,8 @@ JSHandle<JSAPIArrayList> ObjectFactory::NewJSAPIArrayList(uint32_t capacity)
 JSHandle<JSAPIArrayListIterator> ObjectFactory::NewJSAPIArrayListIterator(const JSHandle<JSAPIArrayList> &arrayList)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetArrayListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetArrayListIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIArrayListIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPIArrayListIterator> iter(NewJSObject(hclassHandle));
@@ -3281,12 +3295,18 @@ JSHandle<JSAPILightWeightMapIterator> ObjectFactory::NewJSAPILightWeightMapItera
     const JSHandle<JSAPILightWeightMap> &obj, IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetLightWeightMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<TaggedArray> array = NewTaggedArray(2); // 2 means the length of array
+    array->Set(thread_, 0, undefinedHandle);
+    array->Set(thread_, 1, undefinedHandle);
+    JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread_, array));
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetLightWeightMapIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILightWeightMapIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPILightWeightMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
+    iter->SetKeyValueResult(thread_, keyAndValue);
     iter->SetIteratedLightWeightMap(thread_, obj);
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
@@ -3297,12 +3317,18 @@ JSHandle<JSAPILightWeightSetIterator> ObjectFactory::NewJSAPILightWeightSetItera
     const JSHandle<JSAPILightWeightSet> &obj, IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetLightWeightSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<TaggedArray> array = NewTaggedArray(2); // 2 means the length of array
+    array->Set(thread_, 0, undefinedHandle);
+    array->Set(thread_, 1, undefinedHandle);
+    JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread_, array));
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetLightWeightSetIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILightWeightSetIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPILightWeightSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
+    iter->SetKeyValueResult(thread_, keyAndValue);
     iter->SetIteratedLightWeightSet(thread_, obj);
     iter->SetNextIndex(0);
     iter->SetIterationKind(kind);
@@ -3342,8 +3368,8 @@ JSHandle<JSAPIPlainArrayIterator> ObjectFactory::NewJSAPIPlainArrayIterator(cons
 JSHandle<JSAPIStackIterator> ObjectFactory::NewJSAPIStackIterator(const JSHandle<JSAPIStack> &stack)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetStackIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetStackIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIStackIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPIStackIterator> iter(NewJSObject(hclassHandle));
@@ -3380,8 +3406,8 @@ JSHandle<TaggedArray> ObjectFactory::CopyDeque(const JSHandle<TaggedArray> &old,
 JSHandle<JSAPIDequeIterator> ObjectFactory::NewJSAPIDequeIterator(const JSHandle<JSAPIDeque> &deque)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetDequeIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetDequeIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIDequeIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPIDequeIterator> iter(NewJSObject(hclassHandle));
@@ -3418,8 +3444,8 @@ JSHandle<TaggedArray> ObjectFactory::CopyQueue(const JSHandle<TaggedArray> &old,
 JSHandle<JSAPIQueueIterator> ObjectFactory::NewJSAPIQueueIterator(const JSHandle<JSAPIQueue> &queue)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetQueueIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetQueueIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIQueueIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPIQueueIterator> iter(NewJSObject(hclassHandle));
@@ -3433,12 +3459,18 @@ JSHandle<JSAPITreeMapIterator> ObjectFactory::NewJSAPITreeMapIterator(const JSHa
                                                                       IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetTreeMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<TaggedArray> array = NewTaggedArray(2); // 2 means the length of array
+    array->Set(thread_, 0, undefinedHandle);
+    array->Set(thread_, 1, undefinedHandle);
+    JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread_, array));
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetTreeMapIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPITreeMapIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPITreeMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
+    iter->SetKeyValueResult(thread_, keyAndValue);
     iter->SetIteratedMap(thread_, map);
     iter->SetNextIndex(0);
     iter->SetEntries(thread_, JSTaggedValue::Hole());
@@ -3450,12 +3482,18 @@ JSHandle<JSAPITreeSetIterator> ObjectFactory::NewJSAPITreeSetIterator(const JSHa
                                                                       IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetTreeSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<TaggedArray> array = NewTaggedArray(2); // 2 means the length of array
+    array->Set(thread_, 0, undefinedHandle);
+    array->Set(thread_, 1, undefinedHandle);
+    JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread_, array));
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetTreeSetIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPITreeSetIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPITreeSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
+    iter->SetKeyValueResult(thread_, keyAndValue);
     iter->SetIteratedSet(thread_, set);
     iter->SetNextIndex(0);
     iter->SetEntries(thread_, JSTaggedValue::Hole());
@@ -3477,8 +3515,8 @@ JSHandle<JSAPIVector> ObjectFactory::NewJSAPIVector(uint32_t capacity)
 JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHandle<JSAPIVector> &vector)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetVectorIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetVectorIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIVectorIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIVectorIterator> iter(NewJSObject(hclassHandle));
@@ -3491,8 +3529,8 @@ JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHand
 JSHandle<JSAPILinkedListIterator> ObjectFactory::NewJSAPILinkedListIterator(const JSHandle<JSAPILinkedList> &linkedList)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetLinkedListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetLinkedListIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILinkedListIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPILinkedListIterator> iter(NewJSObject(hclassHandle));
@@ -3505,8 +3543,8 @@ JSHandle<JSAPILinkedListIterator> ObjectFactory::NewJSAPILinkedListIterator(cons
 JSHandle<JSAPIListIterator> ObjectFactory::NewJSAPIListIterator(const JSHandle<JSAPIList> &List)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetListIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIListIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIListIterator> iter(NewJSObject(hclassHandle));

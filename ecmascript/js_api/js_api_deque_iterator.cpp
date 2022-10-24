@@ -64,7 +64,7 @@ JSTaggedValue JSAPIDequeIterator::Next(EcmaRuntimeCallInfo *argv)
     ASSERT(capacity != 0);
     iter->SetNextIndex((index + 1) % capacity);
     uint32_t elementIndex = (index + capacity - first) % capacity;
-    JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, iteratorDeque, elementIndex).GetValue();
+    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIDeque>::Cast(iteratorDeque)->Get(elementIndex));
 
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }
