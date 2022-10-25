@@ -759,6 +759,7 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::MOD2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::EQ_IMM8_V8: {
@@ -800,16 +801,19 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::SHL2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::SHR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::ASHR2_IMM8_V8: {
             uint16_t v0 = READ_INST_8_1();
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.deopt = true;
             break;
         }
         case EcmaOpcode::AND2_IMM8_V8: {
