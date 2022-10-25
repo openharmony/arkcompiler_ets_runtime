@@ -383,8 +383,19 @@ void JSNApi::preFork(EcmaVM *vm)
     vm->preFork();
 }
 
-void JSNApi::postFork(EcmaVM *vm)
+void JSNApi::postFork(EcmaVM *vm, const RuntimeOption &option)
 {
+    JSRuntimeOptions &jsOption = vm->GetJSOptions();
+    LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
+                    << ", aot: " << jsOption.GetEnableAOT()
+                    << ", an dir: " << option.GetAnDir()
+                    << ", bundle name: " <<  option.GetBundleName();
+
+    if (jsOption.GetEnableAOT() && option.GetAnDir().size()) {
+        jsOption.SetAOTOutputFile(option.GetAnDir() + "entry");
+        vm->LoadAOTFiles();
+    }
+
     vm->postFork();
 }
 

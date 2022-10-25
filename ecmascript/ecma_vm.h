@@ -158,7 +158,7 @@ public:
         return thread_;
     }
 
-    const JSRuntimeOptions &GetJSOptions() const
+    JSRuntimeOptions &GetJSOptions()
     {
         return options_;
     }
