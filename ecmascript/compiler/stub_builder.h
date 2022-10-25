@@ -256,6 +256,10 @@ public:
     GateRef IsField(GateRef attr);
     GateRef IsNonExist(GateRef attr);
     GateRef IsJSAPIVector(GateRef attr);
+    GateRef IsJSAPIStack(GateRef obj);
+    GateRef IsJSAPIPlainArray(GateRef obj);
+    GateRef IsJSAPIQueue(GateRef obj);
+    GateRef IsJSAPIDeque(GateRef obj);
     GateRef GetTarget(GateRef proxyObj);
     GateRef HandlerBaseIsAccessor(GateRef attr);
     GateRef HandlerBaseIsJSArray(GateRef attr);

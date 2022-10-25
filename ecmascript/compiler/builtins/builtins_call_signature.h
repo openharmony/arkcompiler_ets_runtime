@@ -27,6 +27,10 @@ namespace panda::ecmascript::kungfu {
     V(CharAt)                                       \
     V(VectorForEach)                                \
     V(VectorReplaceAllElements)                     \
+    V(StackForEach)                                 \
+    V(PlainArrayForEach)                            \
+    V(QueueForEach)                                 \
+    V(DequeForEach)                                 \
 
 class BuiltinsStubCSigns {
 public:

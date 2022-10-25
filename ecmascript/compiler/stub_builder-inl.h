@@ -1061,6 +1061,30 @@ inline GateRef StubBuilder::IsJSAPIVector(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR)));
 }
 
+inline GateRef StubBuilder::IsJSAPIStack(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_STACK)));
+}
+
+inline GateRef StubBuilder::IsJSAPIPlainArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_PLAIN_ARRAY)));
+}
+
+inline GateRef StubBuilder::IsJSAPIQueue(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE)));
+}
+
+inline GateRef StubBuilder::IsJSAPIDeque(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_DEQUE)));
+}
+
 inline GateRef StubBuilder::GetTarget(GateRef proxyObj)
 {
     GateRef offset = IntPtr(JSProxy::TARGET_OFFSET);
