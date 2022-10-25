@@ -61,18 +61,10 @@ void PGOProfilerManager::Initialize(bool isEnable, const std::string &outDir)
     globalProfilerMap_.clear();
     isEnable_ = isEnable;
     if (outDir.empty()) {
-        realOutPath_ = "";
+        outDir_ = "";
         isEnable_ = false;
     }
-
-    if (!base::FilePathHelper::RealPath(outDir, realOutPath_, false)) {
-        LOG_ECMA(ERROR) << "The file path(" << outDir << ") real path failure!";
-        realOutPath_ = "";
-        isEnable_ = false;
-        return;
-    }
-    static const std::string PROFILE_FILE_NAME = "/profiler.aprof";
-    realOutPath_ += PROFILE_FILE_NAME;
+    outDir_ = outDir;
 }
 
 void PGOProfilerManager::Merge(PGOProfiler *profiler)
@@ -106,13 +98,22 @@ void PGOProfilerManager::Merge(PGOProfiler *profiler)
 
 void PGOProfilerManager::SaveProfiler()
 {
-    LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath_;
-    std::ofstream file(realOutPath_.c_str());
-    if (!file.is_open()) {
-        LOG_ECMA(ERROR) << "The file path(" << realOutPath_ << ") open failure!";
+    std::string realOutPath;
+    if (!base::FilePathHelper::RealPath(outDir_, realOutPath, false)) {
+        LOG_ECMA(ERROR) << "The file path(" << outDir_ << ") real path failure!";
+        outDir_ = "";
+        isEnable_ = false;
         return;
     }
+    static const std::string PROFILE_FILE_NAME = "/profiler.aprof";
+    realOutPath += PROFILE_FILE_NAME;
+    LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath;
 
+    std::ofstream file(realOutPath.c_str());
+    if (!file.is_open()) {
+        LOG_ECMA(ERROR) << "The file path(" << realOutPath << ") open failure!";
+        return;
+    }
     std::string profilerString = ProcessProfile();
     file.write(profilerString.c_str(), profilerString.size());
     file.close();
