@@ -71,7 +71,7 @@ void StubFileGenerator::CollectCodeInfo()
     for (size_t i = 0; i < modulePackage_.size(); i++) {
         modulePackage_[i].CollectFuncEntryInfo(addr2name, stubInfo_, i, GetLog());
         ModuleSectionDes des;
-        modulePackage_[i].CollectModuleSectionDes(des);
+        modulePackage_[i].CollectModuleSectionDes(des, true);
         stubInfo_.AddModuleDes(des);
     }
     // idx for bridge module is the one after last module in modulePackage
