@@ -44,6 +44,7 @@ public:
     void CopyArray(const JSThread *thread, JSHandle<Derived> &taggedList);
     void Clear(const JSThread *thread);
     JSTaggedValue FindElementByIndex(int index) const;
+    std::pair<int, JSTaggedValue> FindElementByDataIndex(int dataindex) const;
     int FindIndexByElement(const JSTaggedValue &element);
     int FindLastIndexByElement(const JSTaggedValue &element);
     int FindDataIndexByNodeIndex(int index) const;
@@ -140,6 +141,7 @@ public:
     bool IsEmpty() const;
     bool Has(const JSTaggedValue &value);
     JSTaggedValue Get(const int index);
+    std::pair<int, JSTaggedValue> GetByDataIndex(const int dataIndex);
     int GetIndexOf(const JSTaggedValue &value);
     int GetLastIndexOf(const JSTaggedValue &value);
     void InsertNode(const JSThread *thread, const JSHandle<JSTaggedValue> &value, const int prevDataIndex,
@@ -175,6 +177,7 @@ public:
                                          const JSTaggedValue &element);
     void Clear(const JSThread *thread);
     JSTaggedValue Get(const int index);
+    std::pair<int, JSTaggedValue> GetByDataIndex(const int dataIndex);
     bool Has(const JSTaggedValue &value);
     void InsertNode(const JSThread *thread, const JSHandle<JSTaggedValue> &value, const int prevDataIndex,
                     const int finalDataIndex);

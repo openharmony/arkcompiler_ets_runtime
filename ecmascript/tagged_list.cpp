@@ -279,6 +279,21 @@ JSTaggedValue TaggedList<Derived>::FindElementByIndex(int index) const
 }
 
 template<typename Derived>
+std::pair<int, JSTaggedValue> TaggedList<Derived>::FindElementByDataIndex(int dataindex) const
+{
+    int targetDataIndex = GetElement(dataindex + NEXT_PTR_OFFSET).GetInt();
+    JSTaggedValue value = GetElement(targetDataIndex);
+    while (value.IsHole() && targetDataIndex != ELEMENTS_START_INDEX) {
+        targetDataIndex = GetElement(targetDataIndex + NEXT_PTR_OFFSET).GetInt();
+        value = GetElement(targetDataIndex);
+    }
+    if (targetDataIndex == ELEMENTS_START_INDEX) {
+        return std::make_pair(-1, JSTaggedValue::Undefined());
+    }
+    return std::make_pair(targetDataIndex, value);
+}
+
+template<typename Derived>
 JSTaggedValue TaggedList<Derived>::RemoveByIndex(JSThread *thread, const int &index)
 {
     int prevDataIndex = FindPrevNodeByIndex(index);
@@ -339,6 +354,11 @@ bool TaggedSingleList::IsEmpty() const
 JSTaggedValue TaggedSingleList::Get(const int index)
 {
     return FindElementByIndex(index);
+}
+
+std::pair<int, JSTaggedValue> TaggedSingleList::GetByDataIndex(const int dataIndex)
+{
+    return FindElementByDataIndex(dataIndex);
 }
 
 int TaggedSingleList::GetIndexOf(const JSTaggedValue &element)
@@ -577,6 +597,11 @@ JSTaggedValue TaggedDoubleList::Get(const int index)
     } else {
         return FindElementByIndexAtLast(index);
     }
+}
+
+std::pair<int, JSTaggedValue> TaggedDoubleList::GetByDataIndex(const int dataIndex)
+{
+    return FindElementByDataIndex(dataIndex);
 }
 
 int TaggedDoubleList::GetIndexOf(const JSTaggedValue &element)

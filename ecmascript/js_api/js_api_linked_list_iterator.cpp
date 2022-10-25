@@ -55,7 +55,10 @@ JSTaggedValue JSAPILinkedListIterator::Next(EcmaRuntimeCallInfo *argv)
         return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
-    JSHandle<JSTaggedValue> value(thread, list->Get(index));
+    int dataIndex = static_cast<int>(iter->GetDataIndex());
+    std::pair<int, JSTaggedValue> resultPair = list->GetByDataIndex(dataIndex);
+    iter->SetDataIndex(resultPair.first);
+    JSHandle<JSTaggedValue> value(thread, resultPair.second);
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }
 

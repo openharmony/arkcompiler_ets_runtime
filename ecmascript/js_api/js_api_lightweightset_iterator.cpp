@@ -66,13 +66,11 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
     TaggedArray *hashArray =
         TaggedArray::Cast(JSHandle<JSAPILightWeightSet>(lightWeightSet)->GetHashes().GetTaggedObject());
     JSHandle<JSTaggedValue> keyHandle(thread, hashArray->Get(index));
-
-    JSHandle<JSTaggedValue> keyAndValue(thread, iter->GetKeyValueResult());
-    JSHandle<JSTaggedValue> zeroHandle(thread, JSTaggedValue(0));
-    JSHandle<JSTaggedValue> oneHandle(thread, JSTaggedValue(1));
-    JSArray::FastSetPropertyByValue(thread, keyAndValue, zeroHandle, keyHandle);
-    JSArray::FastSetPropertyByValue(thread, keyAndValue, oneHandle, value);
-
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(2); // 2 means the length of array
+    array->Set(thread, 0, keyHandle);
+    array->Set(thread, 1, value);
+    JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
     return JSIterator::CreateIterResultObject(thread, keyAndValue, false).GetTaggedValue();
 }
 } // namespace panda::ecmascript
