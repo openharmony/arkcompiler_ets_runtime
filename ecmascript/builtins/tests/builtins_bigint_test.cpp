@@ -476,6 +476,11 @@ HWTEST_F_L0(BuiltinsBigIntTest, NumberToBigint)
     ASSERT_TRUE(bigint->IsBigInt());
     compareRes = JSTaggedValue::Equal(thread, number, bigint);
     ASSERT_TRUE(compareRes);
+
+    number = JSHandle<JSTaggedValue>(thread, JSTaggedValue(std::numeric_limits<double>::infinity()));
+    bigint = JSHandle<JSTaggedValue>(thread, BigInt::NumberToBigInt(thread, number));
+    ASSERT_TRUE(bigint->IsException());
+    thread->ClearException();
 }
 
 // testcases of BigintToNumber()
