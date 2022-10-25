@@ -29,7 +29,7 @@ public:
     NO_MOVE_SEMANTIC(HotReloadManager);
 
     void NotifyPatchLoaded(const JSPandaFile *baseFile, const JSPandaFile *patchFile);
-    void NotifyPatchUnloaded(const JSPandaFile *baseFile, const JSPandaFile *patchFile);
+    void NotifyPatchUnloaded(const JSPandaFile *patchFile);
 
     DebugInfoExtractor *GetPatchExtractor(const std::string &url) const;
     const JSPandaFile *GetBaseJSPandaFile(const JSPandaFile *jsPandaFile) const;
