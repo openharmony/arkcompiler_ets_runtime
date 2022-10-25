@@ -1246,25 +1246,33 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint32_t v0 = READ_INST_8_1();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8: {
+            uint16_t slotId = READ_INST_16_0();
             uint32_t v0 = READ_INST_8_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint32_t v0 = READ_INST_8_1();
             uint32_t v1 = READ_INST_8_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
         }
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8: {
+            uint16_t slotId = READ_INST_16_0();
             uint32_t v0 = READ_INST_8_2();
             uint32_t v1 = READ_INST_8_3();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             break;
@@ -1294,22 +1302,30 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM16_ID16: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
@@ -1347,12 +1363,16 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::STTHISBYVALUE_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint32_t v0 = READ_INST_8_1();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::STTHISBYVALUE_IMM16_V8: {
+            uint16_t slotId = READ_INST_16_0();
             uint32_t v0 = READ_INST_8_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
@@ -1387,43 +1407,69 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::JNSTRICTEQ_V8_IMM16:
         case EcmaOpcode::LDTHIS:
             break;
-        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16: {
-            uint16_t stringId = READ_INST_16_2();
+        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16: {
+            uint16_t slotId = READ_INST_8_0();
+            uint16_t stringId = READ_INST_16_1();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
-        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::STTHISBYNAME_IMM16_ID16: {
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
+            break;
+        }
+        case EcmaOpcode::STTHISBYNAME_IMM8_ID16: {
+            uint16_t slotId = READ_INST_8_0();
+            uint16_t stringId = READ_INST_16_1();
+            info.inputs.emplace_back(ICSlotId(slotId));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
+            break;
+        }
+        case EcmaOpcode::STTHISBYNAME_IMM16_ID16: {
+            uint16_t slotId = READ_INST_16_0();
+            uint16_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
             uint32_t v0 = READ_INST_8_3();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
             uint32_t v0 = READ_INST_8_4();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
@@ -1453,7 +1499,9 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
             break;
         }
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16: {
+            uint16_t slotId = READ_INST_16_0();
             uint32_t stringId = READ_INST_16_2();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
@@ -1595,9 +1643,17 @@ BytecodeInfo BytecodeCircuitBuilder::GetBytecodeInfo(const uint8_t *pc)
         case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
         case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
         case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
-        case EcmaOpcode::LDTHISBYVALUE_IMM8:
-        case EcmaOpcode::LDTHISBYVALUE_IMM16:
             break;
+        case EcmaOpcode::LDTHISBYVALUE_IMM8: {
+            uint16_t slotId = READ_INST_8_0();
+            info.inputs.emplace_back(ICSlotId(slotId));
+            break;
+        }
+        case EcmaOpcode::LDTHISBYVALUE_IMM16: {
+            uint16_t slotId = READ_INST_16_0();
+            info.inputs.emplace_back(ICSlotId(slotId));
+            break;
+        }
         case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16: {
             uint16_t index = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(index));
@@ -1912,6 +1968,10 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
         } else if (std::holds_alternative<Immediate>(input)) {
             inList[i + length] = circuit_.GetConstantGate(MachineType::I64,
                                                           std::get<Immediate>(input).GetValue(),
+                                                          GateType::NJSValue());
+        } else if (std::holds_alternative<ICSlotId>(input)) {
+            inList[i + length] = circuit_.GetConstantGate(MachineType::I16,
+                                                          std::get<ICSlotId>(input).GetId(),
                                                           GateType::NJSValue());
         } else {
             ASSERT(std::holds_alternative<VirtualRegister>(input));

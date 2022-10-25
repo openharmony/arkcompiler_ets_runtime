@@ -209,14 +209,15 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::DEPRECATED_LDOBJBYINDEX_PREF_V8_IMM32:
             return InferLdObjByIndex(gate);
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
-        case EcmaOpcode::STTOGLOBALRECORD_IMM16_ID16:
-        case EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM16_ID16:
+            return SetStGlobalBcType(gate, true);
+        case EcmaOpcode::STTOGLOBALRECORD_IMM16_ID16:
+        case EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
         case EcmaOpcode::DEPRECATED_STCONSTTOGLOBALRECORD_PREF_ID32:
         case EcmaOpcode::DEPRECATED_STLETTOGLOBALRECORD_PREF_ID32:
         case EcmaOpcode::DEPRECATED_STCLASSTOGLOBALRECORD_PREF_ID32:
-            return SetStGlobalBcType(gate);
+            return SetStGlobalBcType(gate, false);
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
             return InferLdGlobalVar(gate);
         case EcmaOpcode::RETURNUNDEFINED:
@@ -546,14 +547,26 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
     return false;
 }
 
-bool TypeInfer::SetStGlobalBcType(GateRef gate)
+bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
 {
     auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
-    ASSERT(byteCodeInfo.inputs.size() == 1);
-    auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[0]).GetId();
-    // 2: number of value inputs
-    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
-    auto inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    uint16_t stringId;
+    GateType inValueType;
+    if (hasIC) {
+        // 2: number of value inputs
+        ASSERT(byteCodeInfo.inputs.size() == 2);
+        stringId = std::get<ConstDataId>(byteCodeInfo.inputs[1]).GetId();
+        // 3: number of value inputs
+        ASSERT(gateAccessor_.GetNumValueIn(gate) == 3);
+        // 2: value input
+        inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));
+    } else {
+        ASSERT(byteCodeInfo.inputs.size() == 1);
+        stringId = std::get<ConstDataId>(byteCodeInfo.inputs[0]).GetId();
+        // 2: number of value inputs
+        ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
+        inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    }
     if (stringIdToGateType_.find(stringId) != stringIdToGateType_.end()) {
         stringIdToGateType_[stringId] = inValueType;
     } else {
@@ -565,8 +578,8 @@ bool TypeInfer::SetStGlobalBcType(GateRef gate)
 bool TypeInfer::InferLdGlobalVar(GateRef gate)
 {
     auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
-    ASSERT(byteCodeInfo.inputs.size() == 1);
-    auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[0]).GetId();
+    ASSERT(byteCodeInfo.inputs.size() == 2);  // 2: number of value inputs
+    auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[1]).GetId();
     auto iter = stringIdToGateType_.find(stringId);
     if (iter != stringIdToGateType_.end()) {
         return UpdateType(gate, iter->second);
@@ -589,9 +602,9 @@ bool TypeInfer::InferReturn(GateRef gate)
 
 bool TypeInfer::InferLdObjByName(GateRef gate)
 {
-    // 2: number of value inputs
-    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
-    auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    // 3: number of value inputs
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 3);
+    auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));  // 2: the third parameter is receiver
     if (!objType.IsAnyType()) {
         if (tsManager_->IsArrayTypeKind(objType)) {
             auto builtinGt = GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, TSManager::BUILTIN_ARRAY_ID);
@@ -600,7 +613,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
         }
         // If this object has no gt type, we cannot get its internal property type
         if (ShouldInferWithLdObjByName(objType)) {
-            auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+            auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
             auto thread = tsManager_->GetEcmaVM()->GetJSThread();
             auto name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
             auto type = GetPropType(objType, name);
@@ -654,7 +667,7 @@ bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
 
 bool TypeInfer::InferLdObjByValue(GateRef gate)
 {
-    auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
     // handle array
     if (tsManager_->IsArrayTypeKind(objType)) {
         auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
@@ -662,7 +675,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
     }
     // handle object
     if (ShouldInferWithLdObjByValue(objType)) {
-        auto valueGate = gateAccessor_.GetValueIn(gate, 1);
+        auto valueGate = gateAccessor_.GetValueIn(gate, 2);  // 2: value input slot
         if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
             auto value = gateAccessor_.GetBitField(valueGate);
             auto type = GetPropType(objType, value);
@@ -719,8 +732,8 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
 {
     // todo by hongtao, should consider function of .d.ts
     auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
-    ASSERT(byteCodeInfo.inputs.size() == 1);
-    auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[0]).GetId();
+    ASSERT(byteCodeInfo.inputs.size() == 2);  // 2: number of parameter
+    auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[1]).GetId();
     auto iter = stringIdToGateType_.find(stringId);
     if (iter != stringIdToGateType_.end()) {
         return UpdateType(gate, iter->second);
@@ -839,7 +852,7 @@ void TypeInfer::TypeCheck(GateRef gate) const
         !funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16)) {
         return;
     }
-    auto funcName = gateAccessor_.GetValueIn(func, 0);
+    auto funcName = gateAccessor_.GetValueIn(func, 1);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), gateAccessor_.GetBitField(funcName));
     auto funcNameString = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));

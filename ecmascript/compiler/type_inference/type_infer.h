@@ -79,7 +79,7 @@ private:
     bool InferReturn(GateRef gate);
     bool InferLdObjByName(GateRef gate);
     bool InferNewObject(GateRef gate);
-    bool SetStGlobalBcType(GateRef gate);
+    bool SetStGlobalBcType(GateRef gate, bool hasIC = false);
     bool InferLdStr(GateRef gate);
     bool InferCallFunction(GateRef gate, bool isDeprecated = false);
     bool InferLdObjByValue(GateRef gate);

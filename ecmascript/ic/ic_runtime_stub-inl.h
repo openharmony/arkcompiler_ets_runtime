@@ -35,7 +35,8 @@
 
 namespace panda::ecmascript {
 JSTaggedValue ICRuntimeStub::LoadGlobalICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
-                                                JSTaggedValue globalValue, JSTaggedValue key, uint32_t slotId)
+                                                JSTaggedValue globalValue, JSTaggedValue key, uint32_t slotId,
+                                                bool tryLoad)
 {
     INTERPRETER_TRACE(thread, LoadGlobalICByName);
     JSTaggedValue handler = profileTypeInfo->Get(slotId);
@@ -45,12 +46,13 @@ JSTaggedValue ICRuntimeStub::LoadGlobalICByName(JSThread *thread, ProfileTypeInf
             return result;
         }
     }
-    return LoadMiss(thread, profileTypeInfo, globalValue, key, slotId, ICKind::NamedGlobalLoadIC);
+    ICKind kind = tryLoad ? ICKind::NamedGlobalTryLoadIC : ICKind::NamedGlobalLoadIC;
+    return LoadMiss(thread, profileTypeInfo, globalValue, key, slotId, kind);
 }
 
 JSTaggedValue ICRuntimeStub::StoreGlobalICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
                                                  JSTaggedValue globalValue, JSTaggedValue key,
-                                                 JSTaggedValue value, uint32_t slotId)
+                                                 JSTaggedValue value, uint32_t slotId, bool tryStore)
 {
     INTERPRETER_TRACE(thread, StoreGlobalICByName);
     JSTaggedValue handler = profileTypeInfo->Get(slotId);
@@ -60,7 +62,8 @@ JSTaggedValue ICRuntimeStub::StoreGlobalICByName(JSThread *thread, ProfileTypeIn
             return result;
         }
     }
-    return StoreMiss(thread, profileTypeInfo, globalValue, key, value, slotId, ICKind::NamedGlobalStoreIC);
+    ICKind kind = tryStore ? ICKind::NamedGlobalTryStoreIC : ICKind::NamedGlobalStoreIC;
+    return StoreMiss(thread, profileTypeInfo, globalValue, key, value, slotId, kind);
 }
 
 JSTaggedValue ICRuntimeStub::CheckPolyHClass(JSTaggedValue cachedValue, JSHClass* hclass)

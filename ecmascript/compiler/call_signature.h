@@ -308,14 +308,22 @@ private:
     V(TypeOf)                               \
     V(Equal)                                \
     V(SetPropertyByName)                    \
+    V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \
     V(SetPropertyByValue)                   \
+    V(DeprecatedSetPropertyByValue)         \
+    V(TryLdGlobalByName)                    \
+    V(TryStGlobalByName)                    \
+    V(LdGlobalVar)                          \
+    V(StGlobalVar)                          \
     V(SetPropertyByValueWithOwn)            \
     V(GetPropertyByName)                    \
+    V(DeprecatedGetPropertyByName)          \
     V(GetPropertyByIndex)                   \
     V(SetPropertyByIndex)                   \
     V(SetPropertyByIndexWithOwn)            \
     V(GetPropertyByValue)                   \
+    V(DeprecatedGetPropertyByValue)         \
     V(TryLoadICByName)                      \
     V(TryLoadICByValue)                     \
     V(TryStoreICByName)                     \

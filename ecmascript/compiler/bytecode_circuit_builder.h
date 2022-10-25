@@ -34,6 +34,7 @@
 
 namespace panda::ecmascript::kungfu {
 using VRegIDType = uint32_t;
+using ICSlotIdType = uint16_t;
 using ImmValueType = uint64_t;
 using EcmaOpcode = BytecodeInstruction::Opcode;
 
@@ -95,6 +96,28 @@ public:
 
 private:
     ImmValueType value_;
+};
+
+
+class ICSlotId {
+public:
+    explicit ICSlotId(ICSlotIdType id) : id_(id)
+    {
+    }
+    ~ICSlotId() = default;
+
+    void SetId(ICSlotIdType id)
+    {
+        id_ = id;
+    }
+
+    ICSlotIdType GetId() const
+    {
+        return id_;
+    }
+
+private:
+    ICSlotIdType id_;
 };
 
 class ConstDataId {
@@ -280,7 +303,7 @@ using BytecodeGraph = std::vector<BytecodeRegion>;
 
 struct BytecodeInfo {
     // set of id, immediate and read register
-    std::vector<std::variant<ConstDataId, Immediate, VirtualRegister>> inputs {};
+    std::vector<std::variant<ConstDataId, ICSlotId, Immediate, VirtualRegister>> inputs {};
     std::vector<VRegIDType> vregOut {}; // write register
     bool accIn {false}; // read acc
     bool accOut {false}; // write acc

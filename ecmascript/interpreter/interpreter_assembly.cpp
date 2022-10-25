@@ -2209,7 +2209,7 @@ void InterpreterAssembly::HandleTryldglobalbynameImm8Id16(
         JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                               ProfileTypeInfo::Cast(
                                                                   tmpProfileTypeInfo.GetTaggedObject()),
-                                                              globalObj, prop, slotId);
+                                                              globalObj, prop, slotId, true);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(TRYLDGLOBALBYNAME_IMM8_ID16);
@@ -2263,7 +2263,7 @@ void InterpreterAssembly::HandleTrystglobalbynameImm8Id16(
         JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                ProfileTypeInfo::Cast(
                                                                    tmpProfileTypeInfo.GetTaggedObject()),
-                                                               globalObj, propKey, value, slotId);
+                                                               globalObj, propKey, value, slotId, true);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         RESTORE_ACC();
         DISPATCH(TRYSTGLOBALBYNAME_IMM8_ID16);
@@ -2391,7 +2391,7 @@ void InterpreterAssembly::HandleLdglobalvarImm16Id16(
         JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                               ProfileTypeInfo::Cast(
                                                                   tmpProfileTypeInfo.GetTaggedObject()),
-                                                              globalObj, propKey, slotId);
+                                                              globalObj, propKey, slotId, false);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(LDGLOBALVAR_IMM16_ID16);
@@ -2540,7 +2540,7 @@ void InterpreterAssembly::HandleStglobalvarImm16Id16(
         JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                ProfileTypeInfo::Cast(
                                                                    tmpProfileTypeInfo.GetTaggedObject()),
-                                                               globalObj, prop, value, slotId);
+                                                               globalObj, prop, value, slotId, false);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         RESTORE_ACC();
         DISPATCH(STGLOBALVAR_IMM16_ID16);
@@ -5316,7 +5316,7 @@ void InterpreterAssembly::HandleTrystglobalbynameImm16Id16(
         JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                ProfileTypeInfo::Cast(
                                                                    tmpProfileTypeInfo.GetTaggedObject()),
-                                                               globalObj, propKey, value, slotId);
+                                                               globalObj, propKey, value, slotId, true);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         RESTORE_ACC();
         DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);
@@ -5371,7 +5371,7 @@ void InterpreterAssembly::HandleTryldglobalbynameImm16Id16(
         JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                               ProfileTypeInfo::Cast(
                                                                   tmpProfileTypeInfo.GetTaggedObject()),
-                                                              globalObj, prop, slotId);
+                                                              globalObj, prop, slotId, true);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);

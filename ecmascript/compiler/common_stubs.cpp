@@ -16,6 +16,8 @@
 #include "ecmascript/compiler/common_stubs.h"
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/access_object_stub_builder.h"
+#include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
@@ -116,11 +118,37 @@ void GetPropertyByNameStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
-    GateRef key = TaggedArgument(2); // 2 : 3rd para
-    Return(GetPropertyByName(glue, receiver, key));
+    GateRef prop = TaggedPointerArgument(2); // 2 : 3rd para
+    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef slotId = Int32Argument(4); // 4 : 5th para
+    AccessObjectStubBuilder builder(this);
+    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    Return(builder.LoadObjByName(glue, receiver, prop, info, profileTypeInfo, slotId));
+}
+
+void DeprecatedGetPropertyByNameStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef key = TaggedPointerArgument(2); // 2 : 3rd para
+    AccessObjectStubBuilder builder(this);
+    Return(builder.DeprecatedLoadObjByName(glue, receiver, key));
 }
 
 void SetPropertyByNameStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef prop = TaggedArgument(2); // 2 : 3rd para
+    GateRef value = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef profileTypeInfo = TaggedPointerArgument(4); // 4 : 5th para
+    GateRef slotId = Int32Argument(5); // 5 : 6th para
+    AccessObjectStubBuilder builder(this);
+    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    Return(builder.StoreObjByName(glue, receiver, prop, info, value, profileTypeInfo, slotId));
+}
+
+void DeprecatedSetPropertyByNameStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
@@ -143,10 +171,33 @@ void GetPropertyByValueStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
+    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef slotId = Int32Argument(4); // 4 : 5th para
+    AccessObjectStubBuilder builder(this);
+    Return(builder.LoadObjByValue(glue, receiver, key, profileTypeInfo, slotId));
+}
+
+void DeprecatedGetPropertyByValueStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef key = TaggedArgument(2); // 2 : 3rd para
     Return(GetPropertyByValue(glue, receiver, key));
 }
 
 void SetPropertyByValueStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
+    GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
+    GateRef profileTypeInfo = TaggedPointerArgument(4); /* 4 : 5th parameter is profileTypeInfo */
+    GateRef slotId = Int32Argument(5); /* 5 : 6th parameter is slotId */
+    AccessObjectStubBuilder builder(this);
+    Return(builder.StoreObjByValue(glue, receiver, key, value, profileTypeInfo, slotId));
+}
+
+void DeprecatedSetPropertyByValueStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
@@ -162,6 +213,52 @@ void SetPropertyByValueWithOwnStubBuilder::GenerateCircuit()
     GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
     GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
     Return(SetPropertyByValue(glue, receiver, key, value, true));
+}
+
+void TryLdGlobalByNameStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef prop = TaggedPointerArgument(1);
+    GateRef profileTypeInfo = TaggedPointerArgument(2); // 2 : 3rd para
+    GateRef slotId = Int32Argument(3); // 3 : 4th para
+    AccessObjectStubBuilder builder(this);
+    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    Return(builder.TryLoadGlobalByName(glue, prop, info, profileTypeInfo, slotId));
+}
+
+void TryStGlobalByNameStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef prop = TaggedPointerArgument(1);
+    GateRef value = TaggedArgument(2); // 2 : 3rd para
+    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef slotId = Int32Argument(4);  // 4: 5th para
+    AccessObjectStubBuilder builder(this);
+    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    Return(builder.TryStoreGlobalByName(glue, prop, info, value, profileTypeInfo, slotId));
+}
+
+void LdGlobalVarStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef prop = TaggedPointerArgument(1);
+    GateRef profileTypeInfo = TaggedPointerArgument(2); // 2 : 3rd para
+    GateRef slotId = Int32Argument(3); // 3 : 4th para
+    AccessObjectStubBuilder builder(this);
+    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    Return(builder.LoadGlobalVar(glue, prop, info, profileTypeInfo, slotId));
+}
+
+void StGlobalVarStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef prop = TaggedPointerArgument(1);
+    GateRef value = TaggedArgument(2); // 2 : 3rd para
+    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef slotId = Int32Argument(4);  // 4: 5th para
+    AccessObjectStubBuilder builder(this);
+    StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    Return(builder.StoreGlobalVar(glue, prop, info, value, profileTypeInfo, slotId));
 }
 
 void TryLoadICByNameStubBuilder::GenerateCircuit()
