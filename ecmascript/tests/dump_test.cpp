@@ -1033,7 +1033,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_HASHMAP_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashMapIterator::SIZE, 5U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashMapIterator::SIZE, 4U);
                 JSHandle<JSAPIHashMap> jsHashMap = NewJSAPIHashMap(thread, factory);
                 JSHandle<JSAPIHashMapIterator> jsHashMapIter =
                     factory->NewJSAPIHashMapIterator(jsHashMap, IterationKind::KEY);
@@ -1041,7 +1041,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_HASHSET_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 6U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 5U);
                 JSHandle<JSAPIHashSet> jsHashSet = NewJSAPIHashSet(thread, factory);
                 JSHandle<JSAPIHashSetIterator> jsHashSetIter =
                     factory->NewJSAPIHashSetIterator(jsHashSet, IterationKind::KEY);
@@ -1055,7 +1055,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_LIGHT_WEIGHT_MAP_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPILightWeightMapIterator::SIZE, 3U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPILightWeightMapIterator::SIZE, 2U);
                 JSHandle<JSAPILightWeightMap> jSAPILightWeightMap = NewJSAPILightWeightMap(thread, factory);
                 JSHandle<JSAPILightWeightMapIterator> jSAPILightWeightMapIterator =
                     factory->NewJSAPILightWeightMapIterator(jSAPILightWeightMap, IterationKind::KEY);
@@ -1069,7 +1069,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPILightWeightSetIterator::SIZE, 3U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPILightWeightSetIterator::SIZE, 2U);
                 JSHandle<JSAPILightWeightSetIterator> jSAPILightWeightSetIter =
                     factory->NewJSAPILightWeightSetIterator(NewJSAPILightWeightSet(thread, factory),
                                                             IterationKind::KEY);
@@ -1122,7 +1122,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::JS_API_TREEMAP_ITERATOR: {
                 // 3 : 3 dump fileds number
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPITreeMapIterator::SIZE, 4U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPITreeMapIterator::SIZE, 3U);
                 JSHandle<JSAPITreeMap> jsTreeMap = NewJSAPITreeMap(thread, factory);
                 JSHandle<JSAPITreeMapIterator> jsTreeMapIter =
                     factory->NewJSAPITreeMapIterator(jsTreeMap, IterationKind::KEY);
@@ -1131,7 +1131,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::JS_API_TREESET_ITERATOR: {
                 // 3 : 3 dump fileds number
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPITreeSetIterator::SIZE, 4U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPITreeSetIterator::SIZE, 3U);
                 JSHandle<JSAPITreeSet> jsTreeSet = NewJSAPITreeSet(thread, factory);
                 JSHandle<JSAPITreeSetIterator> jsTreeSetIter =
                     factory->NewJSAPITreeSetIterator(jsTreeSet, IterationKind::KEY);

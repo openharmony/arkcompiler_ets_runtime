@@ -68,11 +68,11 @@ JSTaggedValue JSAPIHashMapIterator::Next(EcmaRuntimeCallInfo *argv)
             if (itemKind == IterationKind::VALUE) {
                 return JSIterator::CreateIterResultObject(thread, valueHandle, false).GetTaggedValue();
             }
-            JSHandle<JSTaggedValue> keyAndValue(thread, iter->GetKeyValueResult());
-            JSHandle<JSTaggedValue> zeroHandle(thread, JSTaggedValue(0));
-            JSHandle<JSTaggedValue> oneHandle(thread, JSTaggedValue(1));
-            JSArray::FastSetPropertyByValue(thread, keyAndValue, zeroHandle, keyHandle);
-            JSArray::FastSetPropertyByValue(thread, keyAndValue, oneHandle, valueHandle);
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<TaggedArray> array = factory->NewTaggedArray(2); // 2 means the length of array
+            array->Set(thread, 0, keyHandle);
+            array->Set(thread, 1, valueHandle);
+            JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
             return JSIterator::CreateIterResultObject(thread, keyAndValue, false).GetTaggedValue();
         }
         index++;
