@@ -34,7 +34,7 @@ class JSPandaFile;
 enum class SnapshotType {
     VM_ROOT,
     BUILTINS,
-    ETSO
+    AI
 };
 
 using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;

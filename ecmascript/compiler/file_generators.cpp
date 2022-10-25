@@ -128,6 +128,6 @@ void AOTFileGenerator::SaveSnapshotFile()
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
     vm_->GetTSManager()->ResolveConstantPoolInfo(methodToEntryIndexMap_);
-    snapshot.Serialize(snapshotPath + ".etso");
+    snapshot.Serialize(snapshotPath + ".ai");
 }
 }  // namespace panda::ecmascript::kungfu
