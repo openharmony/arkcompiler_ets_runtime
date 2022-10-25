@@ -39,6 +39,8 @@ SamplingProcessor::~SamplingProcessor() {}
 
 bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    pthread_t tid = pthread_self();
+    pthread_setname_np(tid, "SamplingThread");
     uint64_t startTime = GetMicrosecondsTimeStamp();
     uint64_t endTime = startTime;
     generator_->SetThreadStartTime(startTime);
@@ -117,6 +119,7 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
     }
     uint64_t stopTime = GetMicrosecondsTimeStamp();
     generator_->SetThreadStopTime(stopTime);
+    pthread_setname_np(tid, "GC_WorkerThread");
     if (generator_->SemPost(1) != 0) {
         LOG_ECMA(ERROR) << "sem_[1] post failed";
         return false;
