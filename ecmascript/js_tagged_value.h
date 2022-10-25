@@ -493,6 +493,7 @@ public:
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
     bool IsConstantPool() const;
+    bool IsAOTLiteralInfo() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;
     bool IsNativePointer() const;

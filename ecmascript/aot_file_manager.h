@@ -149,7 +149,7 @@ public:
     struct FuncEntryDes {
         uint64_t codeAddr_;
         CallSignature::TargetKind kind_;
-        bool isMainFunc_;  
+        bool isMainFunc_;
         uint32_t indexInKindOrMethodId_;
         uint32_t moduleIndex_;
         int fpDeltaPrevFrameSp_;
@@ -392,6 +392,15 @@ private:
     std::vector<int> asmStubTempHolder_ {};
 };
 
+class AOTLiteralInfo : public TaggedArray {
+public:
+    static AOTLiteralInfo *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsTaggedArray());
+        return static_cast<AOTLiteralInfo *>(object);
+    }
+};
+
 class AOTFileManager {
 public:
     explicit AOTFileManager(EcmaVM *vm);
@@ -420,6 +429,8 @@ public:
     void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     bool HasLoaded(const JSPandaFile *jsPandaFile) const;
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
+    void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
+                                   const AOTLiteralInfo *entryIndexes);
     void LoadSnapshotFile([[maybe_unused]]const std::string& filename);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);

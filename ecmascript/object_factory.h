@@ -164,6 +164,7 @@ class ProtoChangeDetails;
 class ProfileTypeInfo;
 class MachineCode;
 class ClassInfoExtractor;
+class AOTLiteralInfo;
 
 enum class CompletionRecordType : uint8_t;
 enum class PrimitiveType : uint8_t;
@@ -558,6 +559,9 @@ public:
 
     // ---------------------------------New objects used internally--------------------------------------
     JSHandle<JSArray> NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements);
+
+    // ---------------------------------AOT snapshot-----------------------------------------------------
+    JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 
 private:
     friend class GlobalEnv;

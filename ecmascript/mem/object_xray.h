@@ -330,6 +330,7 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:
             case JSType::LEXICAL_ENV:
+            case JSType::AOT_LITERAL_INFO:
                 TaggedArray::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::CONSTANT_POOL:

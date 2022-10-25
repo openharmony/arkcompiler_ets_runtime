@@ -468,6 +468,11 @@ inline bool JSTaggedValue::IsConstantPool() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsConstantPool();
 }
 
+inline bool JSTaggedValue::IsAOTLiteralInfo() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAOTLiteralInfo();
+}
+
 inline bool JSTaggedValue::IsLinkedNode() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsLinkedNode();

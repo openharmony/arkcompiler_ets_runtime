@@ -213,6 +213,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "ConstantPool[");
         case JSType::TAGGED_DICTIONARY:
             return GetArrayString(TaggedArray::Cast(entry), "TaggedDict[");
+        case JSType::AOT_LITERAL_INFO:
+            return GetArrayString(TaggedArray::Cast(entry), "AOTLiteralInfo[");
         case JSType::HCLASS:
             return GetString("HiddenClass");
         case JSType::STRING:

@@ -459,6 +459,27 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *met
     method->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
+void AOTFileManager::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
+                                               const AOTLiteralInfo *entryIndexes)
+{
+    size_t elementsLen = literal->GetLength();
+    JSTaggedValue value = JSTaggedValue::Undefined();
+    int pos = 0;
+    for (size_t i = 0; i < elementsLen; i++) {
+        value = literal->Get(i);
+        if (value.IsJSFunction()) {
+            JSTaggedValue index = entryIndexes->Get(pos++);
+            int entryIndex = index.GetInt();
+            // -1 : this jsfunction is a large function
+            if (entryIndex == -1) {
+                continue;
+            }
+            SetAOTFuncEntry(jsPandaFile, JSFunction::Cast(value)->GetCallTarget(),
+                static_cast<uint32_t>(entryIndex));
+        }
+    }
+}
+
 kungfu::ArkStackMapParser* AOTFileManager::GetStackMapParser() const
 {
     return arkStackMapParser_;

@@ -201,7 +201,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length, foundStr.is_ascii,
                                                                MemSpaceType::OLD_SPACE);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), JSTaggedValue(string));
-            vm->GetTSManager()->AddStringIndex(value.GetConstpoolIndex());
+            vm->GetTSManager()->AddIndexOrSkippedMethodID(CacheType::STRING, value.GetConstpoolIndex());
         } else if (value.GetConstpoolType() == ConstPoolType::BASE_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);

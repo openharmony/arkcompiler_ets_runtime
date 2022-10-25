@@ -346,6 +346,7 @@ public:
     inline GateRef TaggedIsFalse(GateRef x);
     inline GateRef TaggedIsNull(GateRef x);
     inline GateRef TaggedIsBoolean(GateRef x);
+    inline GateRef IsAOTLiteralInfo(GateRef x);
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef ToTaggedInt(GateRef x);
     inline GateRef ToTaggedIntPtr(GateRef x);
