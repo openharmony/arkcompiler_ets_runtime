@@ -26,6 +26,7 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -174,6 +175,8 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetAsmOpcodeDisableRange(option.GetAsmOpcodeDisableRange());
     // aot
     runtimeOptions.SetEnableAOT(option.GetEnableAOT());
+    runtimeOptions.SetEnablePGOProfiler(option.GetEnableProfile());
+    runtimeOptions.SetPGOProfilerPath(option.GetProfileDir());
 
     // Dfx
     runtimeOptions.SetLogLevel(option.GetLogLevel());
@@ -190,6 +193,7 @@ EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
             ecmascript::Log::Initialize(options);
             InitializeIcuData(options);
             InitializeMemMapAllocator();
+            InitializePGOProfiler(options);
             initialize_ = true;
         }
     }
@@ -212,6 +216,7 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
     vmCount_--;
     if (vmCount_ <= 0) {
         DestroyMemMapAllocator();
+        DestroyPGOProfiler();
         initialize_ = false;
     }
 }
@@ -642,6 +647,17 @@ void JSNApi::InitializeMemMapAllocator()
 void JSNApi::DestroyMemMapAllocator()
 {
     MemMapAllocator::GetInstance()->Finalize();
+}
+
+void JSNApi::InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options)
+{
+    ecmascript::PGOProfilerManager::GetInstance()->Initialize(
+        options.IsEnablePGOProfiler(), options.GetPGOProfilerPath());
+}
+
+void JSNApi::DestroyPGOProfiler()
+{
+    ecmascript::PGOProfilerManager::GetInstance()->Destroy();
 }
 
 // ----------------------------------- HandleScope -------------------------------------

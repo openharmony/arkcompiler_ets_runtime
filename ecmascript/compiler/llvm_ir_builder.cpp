@@ -1903,8 +1903,8 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     gate2LValue_[gate] = runtimeCall;
 }
 
-LLVMModule::LLVMModule(const std::string &name, const std::string &triple)
-    : cfg_(triple)
+LLVMModule::LLVMModule(const std::string &name, const std::string &triple, bool enablePGOProfiler)
+    : cfg_(triple, enablePGOProfiler)
 {
     module_ = LLVMModuleCreateWithName(name.c_str());
     LLVMSetTarget(module_, triple.c_str());

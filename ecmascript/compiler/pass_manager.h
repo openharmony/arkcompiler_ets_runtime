@@ -18,25 +18,30 @@
 
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_loader.h"
 #include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript::kungfu {
 class PassManager {
 public:
     PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
-                CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, bool enableTypeLowering)
+                CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, bool enableTypeLowering,
+                uint32_t hotnessThreshold)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
-          logList_(logList), maxAotMethodSize_(maxAotMethodSize), enableTypeLowering_(enableTypeLowering) {};
+          logList_(logList), maxAotMethodSize_(maxAotMethodSize), enableTypeLowering_(enableTypeLowering),
+          hotnessThreshold_(hotnessThreshold) {};
     PassManager() = default;
     ~PassManager() = default;
 
-    bool Compile(const std::string &fileName, AOTFileGenerator &generator);
+    bool Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn);
 
 private:
     JSPandaFile *CreateJSPandaFile(const CString &fileName);
     JSPandaFile *ResolveModuleFile(JSPandaFile *jsPandaFile, const std::string &fileName);
     JSHandle<JSTaggedValue> CreateConstPool(const JSPandaFile *jsPandaFile);
     void DecodeTSTypes(const JSPandaFile *jsPandaFile, const std::string &fileName);
+    bool FilterMethod(const JSPandaFile *jsPandaFile, const CString &recordName, MethodLiteral *method,
+        uint32_t methodOffset, MethodPcInfo &methodPCInfo);
 
     bool EnableTypeLowering() const
     {
@@ -52,6 +57,8 @@ private:
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
     bool enableTypeLowering_ {true};
+    uint32_t hotnessThreshold_ {0};
+    PGOProfilerLoader profilerLoader_;
 };
 }
 #endif // ECMASCRIPT_COMPILER_PASS_MANAGER_H

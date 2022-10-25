@@ -4369,6 +4369,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     }
     // 4. call nonNative
     Bind(&methodNotNative);
+    PGOProfiler(glue, func);
     Label funcIsClassConstructor(env);
     Label funcNotClassConstructor(env);
     if (!AssemblerModule::IsCallNew(mode)) {

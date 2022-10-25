@@ -1010,12 +1010,23 @@ public:
 
     void SetEnableAOT(bool value)
     {
-        enableAsmInterpreter_ = value;
+        enableAOT_ = value;
     }
 
     void SetAnDir(const std::string &value)
     {
         anDir_ = value;
+    }
+
+    void SetEnableProfile(bool value)
+    {
+        enableProfile_ = value;
+    }
+
+    // Valid only when SetEnableProfile(true)
+    void SetProfileDir(const std::string &value)
+    {
+        profileDir_ = value;
     }
 
 private:
@@ -1123,6 +1134,16 @@ private:
         return anDir_;
     }
 
+    bool GetEnableProfile() const
+    {
+        return enableProfile_;
+    }
+
+    std::string GetProfileDir() const
+    {
+        return profileDir_;
+    }
+
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
     LOG_LEVEL logLevel_ = LOG_LEVEL::DEBUG;
     uint32_t gcPoolSize_ = ecmascript::DEFAULT_GC_POOL_SIZE;
@@ -1140,6 +1161,8 @@ private:
     std::string asmOpcodeDisableRange_ {""};
     bool enableAOT_ {false};
     std::string anDir_ {};
+    bool enableProfile_ {false};
+    std::string profileDir_ {};
     friend JSNApi;
 };
 
@@ -1212,7 +1235,9 @@ public:
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();
+    static void InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options);
     static void DestroyMemMapAllocator();
+    static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
     static void postFork(EcmaVM *vm);
