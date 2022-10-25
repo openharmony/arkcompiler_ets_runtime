@@ -456,13 +456,15 @@ void JSAPIVector::Clear(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 
 JSHandle<JSAPIVector> JSAPIVector::Clone(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
-    uint32_t capacity = obj->GetCapacity();
+    JSHandle<TaggedArray> srcElements(thread, obj->GetElements());
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIVector> newVector = factory->NewJSAPIVector(0);
+
     int32_t length = obj->GetSize();
-    JSHandle<JSAPIVector> newVector = thread->GetEcmaVM()->GetFactory()->NewJSAPIVector(capacity);
     newVector->SetLength(length);
-    for (int32_t i = 0; i < length; i++) {
-        newVector->Set(thread, i, Get(thread, obj, i)); // set or add
-    }
+
+    JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, length, length);
+    newVector->SetElements(thread, dstElements);
     return newVector;
 }
 

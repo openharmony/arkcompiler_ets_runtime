@@ -398,6 +398,11 @@ inline bool JSTaggedValue::StrictNumberEquals(double x, double y)
     return x == y;
 }
 
+inline bool JSTaggedValue::StrictIntEquals(int x, int y)
+{
+    return x == y;
+}
+
 inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                        const JSHandle<JSTaggedValue> &y)
 {
@@ -406,6 +411,15 @@ inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, 
 
 inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y)
 {
+
+    if (x.IsInt() && y.IsInt()) {
+        return StrictIntEquals(x.GetInt(), y.GetInt());
+    }
+
+    if (x.IsDouble() && y.IsDouble()) {
+        return StrictNumberEquals(x.GetDouble(), y.GetDouble());
+    }
+
     if (x.IsNumber() && y.IsNumber()) {
         return StrictNumberEquals(x.GetNumber(), y.GetNumber());
     }

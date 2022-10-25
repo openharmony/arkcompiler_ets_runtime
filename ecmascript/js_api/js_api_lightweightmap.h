@@ -26,6 +26,14 @@ struct HashParams {
     JSHandle<TaggedArray> keyArray;
     JSTaggedValue *key;
 };
+
+// The status of the KEY in the container, including whether the KEY exists,
+// the HASH corresponding to the KEY, and the INDEX where the KEY is located or will be inserted.
+struct KeyState {
+    bool isExist;
+    int32_t hash;
+    int32_t index;
+};
 class JSAPILightWeightMap : public JSObject {
 public:
     static constexpr int DEFAULT_CAPACITY_LENGTH = 8;
@@ -35,6 +43,10 @@ public:
         ASSERT(JSTaggedValue(object).IsJSAPILightWeightMap());
         return static_cast<JSAPILightWeightMap *>(object);
     }
+    static void InsertValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
+                            int32_t index, const JSHandle<JSTaggedValue> &value, AccossorsKind kind);
+    static void ReplaceValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
+                             int32_t index, const JSHandle<JSTaggedValue> &value, AccossorsKind kind);
     static void Set(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                     const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue Get(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
@@ -47,6 +59,8 @@ public:
                                   const JSHandle<JSTaggedValue> &value);
     static int32_t GetIndexOfKey(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                  const JSHandle<JSTaggedValue> &key);
+    static KeyState GetStateOfKey(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
+                                  const JSHandle<JSTaggedValue> &key);
     static int32_t GetIndexOfValue(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                    const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue GetKeyAt(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap, int32_t index);
@@ -89,8 +103,12 @@ private:
         uint32_t newCapacity = oldCapacity + (oldCapacity >> 1U);
         return newCapacity > DEFAULT_CAPACITY_LENGTH ? newCapacity : DEFAULT_CAPACITY_LENGTH;
     };
-    static JSHandle<TaggedArray> GrowCapacity(const JSThread *thread, const JSHandle<TaggedArray> &oldArray,
+    static JSHandle<TaggedArray> GrowCapacity(const JSThread *thread, JSHandle<TaggedArray> &oldArray,
                                               uint32_t needCapacity);
+    static void SetArrayByKind(const JSThread *thread,
+                               const JSHandle<JSAPILightWeightMap> &lightWeightMap,
+                               const JSHandle<TaggedArray> &array,
+                               AccossorsKind kind);
     static void RemoveValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap, uint32_t index,
                             AccossorsKind kind);
     static void SetValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,

@@ -47,32 +47,23 @@ JSTaggedValue JSAPILightWeightMap::IncreaseCapacityTo(JSThread *thread,
     return JSTaggedValue::True();
 }
 
-void JSAPILightWeightMap::SetValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
-                                   int32_t index, const JSHandle<JSTaggedValue> &value, AccossorsKind kind)
+void JSAPILightWeightMap::InsertValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
+                                      int32_t index, const JSHandle<JSTaggedValue> &value, AccossorsKind kind)
 {
     JSHandle<TaggedArray> array = GetArrayByKind(thread, lightWeightMap, kind);
     int32_t len = lightWeightMap->GetSize();
     JSHandle<TaggedArray> newArray = GrowCapacity(thread, array, len + 1);
-    while (len != index && len > 0) {
-        JSTaggedValue oldValue = newArray->Get(len - 1);
-        newArray->Set(thread, len, oldValue);
-        len--;
-    }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    newArray = factory->InsertElementByIndex(newArray, value, index, len);
+    SetArrayByKind(thread, lightWeightMap, newArray, kind);
+}
 
-    newArray->Set(thread, index, value.GetTaggedValue());
-    switch (kind) {
-        case AccossorsKind::HASH:
-            lightWeightMap->SetHashes(thread, newArray);
-            break;
-        case AccossorsKind::KEY:
-            lightWeightMap->SetKeys(thread, newArray);
-            break;
-        case AccossorsKind::VALUE:
-            lightWeightMap->SetValues(thread, newArray);
-            break;
-        default:
-            UNREACHABLE();
-    }
+void JSAPILightWeightMap::ReplaceValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
+                                       int32_t index, const JSHandle<JSTaggedValue> &value, AccossorsKind kind)
+{
+    JSHandle<TaggedArray> array = GetArrayByKind(thread, lightWeightMap, kind);
+    ASSERT(0 <= index || index < lightWeightMap->GetSize());
+    array->Set(thread, index, value.GetTaggedValue());
 }
 
 void JSAPILightWeightMap::RemoveValue(const JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
@@ -80,44 +71,25 @@ void JSAPILightWeightMap::RemoveValue(const JSThread *thread, const JSHandle<JSA
 {
     JSHandle<TaggedArray> array = GetArrayByKind(thread, lightWeightMap, kind);
     uint32_t len = lightWeightMap->GetLength();
-    uint32_t num = index;
-    ASSERT(num < len);
-    while (num < len - 1) {
-        array->Set(thread, num, array->Get(num + 1));
-        num++;
-    }
-    switch (kind) {
-        case AccossorsKind::HASH:
-            lightWeightMap->SetHashes(thread, array);
-            break;
-        case AccossorsKind::KEY:
-            lightWeightMap->SetKeys(thread, array);
-            break;
-        case AccossorsKind::VALUE:
-            lightWeightMap->SetValues(thread, array);
-            break;
-        default:
-            break;
-    }
+    ASSERT(index < len);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    factory->RemoveElementByIndex(array, index, len);
 }
 
 void JSAPILightWeightMap::Set(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                               const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
-    int32_t hash = Hash(key.GetTaggedValue());
-    JSHandle<JSTaggedValue> hashHandle(thread, JSTaggedValue(hash));
-    int32_t length = lightWeightMap->GetSize();
-    int32_t index = GetHashIndex(thread, lightWeightMap, hash, key.GetTaggedValue(), length);
-    if (GetIndexOfKey(thread, lightWeightMap, key) < 0) {
-        SetValue(thread, lightWeightMap, index, hashHandle, AccossorsKind::HASH);
-        SetValue(thread, lightWeightMap, index, key, AccossorsKind::KEY);
-        SetValue(thread, lightWeightMap, index, value, AccossorsKind::VALUE);
-        lightWeightMap->SetLength(length + 1);
-        return;
+    KeyState keyState = GetStateOfKey(thread, lightWeightMap, key);
+    int32_t index = keyState.index;
+    if (keyState.isExist) {
+        ReplaceValue(thread, lightWeightMap, index, value, AccossorsKind::VALUE);
+    } else {
+        JSHandle<JSTaggedValue> hashHandle(thread, JSTaggedValue(keyState.hash));
+        InsertValue(thread, lightWeightMap, index, hashHandle, AccossorsKind::HASH);
+        InsertValue(thread, lightWeightMap, index, key, AccossorsKind::KEY);
+        InsertValue(thread, lightWeightMap, index, value, AccossorsKind::VALUE);
+        lightWeightMap->SetLength(lightWeightMap->GetLength() + 1);
     }
-    SetValue(thread, lightWeightMap, index, hashHandle, AccossorsKind::HASH);
-    SetValue(thread, lightWeightMap, index, key, AccossorsKind::KEY);
-    SetValue(thread, lightWeightMap, index, value, AccossorsKind::VALUE);
 }
 
 JSTaggedValue JSAPILightWeightMap::Get(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
@@ -169,8 +141,8 @@ JSTaggedValue JSAPILightWeightMap::HasAll(JSThread *thread, const JSHandle<JSAPI
 JSTaggedValue JSAPILightWeightMap::HasKey(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                           const JSHandle<JSTaggedValue> &key)
 {
-    int32_t index = GetIndexOfKey(thread, lightWeightMap, key);
-    return index >= 0 ? JSTaggedValue::True() : JSTaggedValue::False();
+    KeyState keyState = GetStateOfKey(thread, lightWeightMap, key);
+    return keyState.isExist ? JSTaggedValue::True() : JSTaggedValue::False();
 }
 
 JSTaggedValue JSAPILightWeightMap::HasValue(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
@@ -189,6 +161,13 @@ JSTaggedValue JSAPILightWeightMap::HasValue(JSThread *thread, const JSHandle<JSA
 int32_t JSAPILightWeightMap::GetIndexOfKey(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                            const JSHandle<JSTaggedValue> &key)
 {
+    KeyState keyState = GetStateOfKey(thread, lightWeightMap, key);
+    return keyState.isExist ? keyState.index : -1;
+}
+
+KeyState JSAPILightWeightMap::GetStateOfKey(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
+                                            const JSHandle<JSTaggedValue> &key)
+{
     int32_t hash = Hash(key.GetTaggedValue());
     int32_t length = lightWeightMap->GetSize();
     JSHandle<TaggedArray> hashArray = GetArrayByKind(thread, lightWeightMap, AccossorsKind::HASH);
@@ -199,19 +178,20 @@ int32_t JSAPILightWeightMap::GetIndexOfKey(JSThread *thread, const JSHandle<JSAP
         int32_t right = index;
         while ((right < length) && (hashArray->Get(right).GetInt() == hash)) {
             if (JSTaggedValue::SameValue(keyArray->Get(right), key.GetTaggedValue())) {
-                return right;
+                return KeyState {true, hash, right};
             }
             right++;
         }
         int32_t left = index - 1;
         while ((left >= 0) && ((hashArray->Get(left).GetInt() == hash))) {
             if (JSTaggedValue::SameValue(keyArray->Get(left), key.GetTaggedValue())) {
-                return left;
+                return KeyState {true, hash, left};
             }
             left--;
         }
+        return KeyState {false, hash, right}; // first index whose element is bigger than hash
     }
-    return -1;
+    return KeyState {false, hash, index ^ HASH_REBELLION}; // first index whose element is bigger than hash
 }
 
 int32_t JSAPILightWeightMap::GetIndexOfValue(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
@@ -276,25 +256,17 @@ void JSAPILightWeightMap::SetAll(JSThread *thread, const JSHandle<JSAPILightWeig
 JSTaggedValue JSAPILightWeightMap::Remove(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                           const JSHandle<JSTaggedValue> &key)
 {
-    int32_t hash = Hash(key.GetTaggedValue());
-    int32_t length = lightWeightMap->GetSize();
-    int32_t index = GetHashIndex(thread, lightWeightMap, hash, key.GetTaggedValue(), length);
-    if (index < 0 || index >= length) {
+    KeyState keyState = GetStateOfKey(thread, lightWeightMap, key);
+    if (!keyState.isExist) {
         return JSTaggedValue::Undefined();
     }
-    JSTaggedValue value = JSTaggedValue::Undefined();
-    JSHandle<TaggedArray> keyArray = GetArrayByKind(thread, lightWeightMap, AccossorsKind::KEY);
+    int32_t index = keyState.index;
     JSHandle<TaggedArray> valueArray = GetArrayByKind(thread, lightWeightMap, AccossorsKind::VALUE);
-    for (int32_t i = 0; length > i; i++) {
-        if (keyArray->Get(i) == key.GetTaggedValue()) {
-            value = valueArray->Get(index);
-            RemoveValue(thread, lightWeightMap, index, AccossorsKind::HASH);
-            RemoveValue(thread, lightWeightMap, index, AccossorsKind::VALUE);
-            RemoveValue(thread, lightWeightMap, index, AccossorsKind::KEY);
-            lightWeightMap->SetLength(length - 1);
-        }
-    }
-
+    JSTaggedValue value = valueArray->Get(index);
+    RemoveValue(thread, lightWeightMap, index, AccossorsKind::HASH);
+    RemoveValue(thread, lightWeightMap, index, AccossorsKind::VALUE);
+    RemoveValue(thread, lightWeightMap, index, AccossorsKind::KEY);
+    lightWeightMap->SetLength(lightWeightMap->GetLength() - 1);
     return value;
 }
 
@@ -344,7 +316,7 @@ JSTaggedValue JSAPILightWeightMap::SetValueAt(JSThread *thread, const JSHandle<J
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    SetValue(thread, lightWeightMap, index, value, AccossorsKind::VALUE);
+    ReplaceValue(thread, lightWeightMap, index, value, AccossorsKind::VALUE);
     return JSTaggedValue::True();
 }
 
@@ -442,7 +414,7 @@ JSTaggedValue JSAPILightWeightMap::ToString(JSThread *thread, const JSHandle<JSA
     return factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
 }
 
-JSHandle<TaggedArray> JSAPILightWeightMap::GrowCapacity(const JSThread *thread, const JSHandle<TaggedArray> &oldArray,
+JSHandle<TaggedArray> JSAPILightWeightMap::GrowCapacity(const JSThread *thread, JSHandle<TaggedArray> &oldArray,
                                                         uint32_t needCapacity)
 {
     uint32_t oldLength = oldArray->GetLength();
@@ -450,8 +422,29 @@ JSHandle<TaggedArray> JSAPILightWeightMap::GrowCapacity(const JSThread *thread, 
         return oldArray;
     }
     uint32_t newCapacity = ComputeCapacity(needCapacity);
-    JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->CopyArray(oldArray, oldLength, newCapacity);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> newArray = factory->NewAndCopyTaggedArray(oldArray, newCapacity, oldLength);
     return newArray;
+}
+
+void JSAPILightWeightMap::SetArrayByKind(const JSThread *thread,
+                                         const JSHandle<JSAPILightWeightMap> &lightWeightMap,
+                                         const JSHandle<TaggedArray> &array,
+                                         AccossorsKind kind)
+{
+    switch (kind) {
+        case AccossorsKind::HASH:
+            lightWeightMap->SetHashes(thread, array);
+            break;
+        case AccossorsKind::KEY:
+            lightWeightMap->SetKeys(thread, array);
+            break;
+        case AccossorsKind::VALUE:
+            lightWeightMap->SetValues(thread, array);
+            break;
+        default:
+            UNREACHABLE();
+    }
 }
 
 JSHandle<TaggedArray> JSAPILightWeightMap::GetArrayByKind(const JSThread *thread,

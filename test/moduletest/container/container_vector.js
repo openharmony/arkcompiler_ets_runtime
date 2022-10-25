@@ -250,9 +250,9 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test vector toString:", proxy1.toString() == "4,3,1,2,0");
 
     res = true
-    let arr1 = ["a", "b", "c"];
+    let arr1 = [-1, -1, -1, -1, -1];
     proxy1.copyToArray(arr1);
-    let a = ["a", "b", "c", 4, 3, 1, 2, 0];
+    let a = [4, 3, 1, 2, 0];
     for (let i = 0; i < a.length; i++) {
         if (arr1[i] !== a[i]) {
             res = false
