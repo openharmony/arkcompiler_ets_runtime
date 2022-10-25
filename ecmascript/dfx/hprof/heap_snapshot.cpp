@@ -1028,22 +1028,7 @@ CString EntryVisitor::ConvertKey(JSTaggedValue key)
         keyString = EcmaString::Cast(symbol->GetDescription().GetTaggedObject());
     }
     // convert, expensive but safe
-    uint32_t length = 0;
-    if (keyString->IsUtf8()) {
-        length = keyString->GetUtf8Length();
-        std::vector<uint8_t> buffer(length);
-        [[maybe_unused]] size_t size = keyString->CopyDataUtf8(buffer.data(), length);
-        ASSERT(size == length);
-        CString keyCopy(reinterpret_cast<char *>(buffer.data()));
-        return keyCopy;
-    } else {  // NOLINT(readability-else-after-return)
-        length = keyString->GetLength();
-        std::vector<uint16_t> buffer(length);
-        [[maybe_unused]] size_t size = keyString->CopyDataUtf16(buffer.data(), length);
-        ASSERT(size == length);
-        CString keyCopy(reinterpret_cast<char *>(buffer.data()));
-        return keyCopy;
-    }
+    return CString(keyString->GetCString().get());
 }
 
 Node *HeapEntryMap::FindOrInsertNode(Node *node)
