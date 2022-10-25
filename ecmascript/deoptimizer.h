@@ -86,17 +86,16 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
 };
 
 class FrameWriter;
-class Deoptimizier
-{
+class Deoptimizier {
 public:
-    Deoptimizier(JSThread * thread) : thread_(thread) {
+    explicit Deoptimizier(JSThread * thread) : thread_(thread)
+    {
         kungfu::CalleeReg callreg;
-        numCalleeRegs_ = callreg.GetCallRegNum();
+        numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
     }
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
     JSTaggedType ConstructAsmInterpretFrame();
-
 
     JSThread *GetThread() const
     {
@@ -137,7 +136,7 @@ private:
 
     std::unordered_map<kungfu::OffsetType, JSTaggedValue> deoptVregs_;
     struct Context context_ {0, 0, {}};
-    uint32_t pc_;
+    uint32_t pc_ {0};
     JSTaggedValue env_ {JSTaggedValue::Undefined()};
     size_t frameArgc_ {0};
     JSTaggedType *frameArgvs_ {nullptr};

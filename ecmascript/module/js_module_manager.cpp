@@ -635,7 +635,7 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
         for (size_t idx = 0; idx < exportEntriesLen; idx++) {
             ee.Update(localExportEntries->Get(idx));
             if (EcmaStringAccessor(ee->GetExportName()).ToStdString() == key) {
-                index = idx;
+                index = static_cast<int>(idx);
                 break;
             }
         }
