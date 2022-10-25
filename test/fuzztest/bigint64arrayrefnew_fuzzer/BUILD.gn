@@ -16,7 +16,6 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 import("//build/config/features.gni")
 import("//build/ohos.gni")
-import("//build/test.gni")
 
 ##################################fuzztest#####################################
 ohos_fuzztest("BigInt64ArrayRefNewFuzzTest") {
