@@ -600,4 +600,46 @@ DECLARE_BUILTINS(DequeForEach)
     Bind(&exit);
     Return(*res);
 }
+
+DECLARE_BUILTINS(LightWeightMapForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersLightWeightCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::LIGHTWEIGHTMAP_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(LightWeightSetForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersLightWeightCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::LIGHTWEIGHTSET_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
 }  // namespace panda::ecmascript::kungfu
