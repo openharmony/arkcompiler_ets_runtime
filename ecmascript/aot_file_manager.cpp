@@ -363,7 +363,7 @@ void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filena
 {
     Snapshot snapshot(vm_);
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
-    snapshot.Deserialize(SnapshotType::ETSO, filename.c_str());
+    snapshot.Deserialize(SnapshotType::AI, filename.c_str());
 #endif
 }
 

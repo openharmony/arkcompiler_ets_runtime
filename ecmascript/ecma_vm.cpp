@@ -825,8 +825,8 @@ void EcmaVM::LoadAOTFiles()
     std::string anFile = options_.GetAOTOutputFile() + ".an";
     aotFileManager_->LoadAnFile(anFile);
 
-    std::string etsoFile = options_.GetAOTOutputFile() + ".etso";
-    aotFileManager_->LoadSnapshotFile(etsoFile);
+    std::string aiFile = options_.GetAOTOutputFile() + ".ai";
+    aotFileManager_->LoadSnapshotFile(aiFile);
 }
 
 #if !WIN_OR_MAC_OR_IOS_PLATFORM

@@ -1385,7 +1385,7 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
             constSpecialIndex++;
             break;
         }
-        case SnapshotType::ETSO: {
+        case SnapshotType::AI: {
             JSTaggedValue item = JSTaggedValue(rootObjectAddr);
             if (!isRootObjRelocate_ && item.IsTaggedArray()) {
                 TSManager *tsManager = vm_->GetTSManager();
