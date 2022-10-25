@@ -238,7 +238,8 @@ public:
     std::string PUBLIC_API ParseFunctionName() const;
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
-    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET)
+    ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, PROFILE_TYPE_INFO_OFFSET)
+    ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, CALL_FIELD_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     ACCESSORS_NATIVE_FIELD(

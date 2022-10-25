@@ -924,10 +924,11 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     RUNTIME_STUBS_HEADER(UpdateHotnessCounter);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     thread->CheckSafepoint();
-    auto profileTypeInfo = thisFunc->GetProfileTypeInfo();
+    JSHandle<Method> method(thread, thisFunc->GetMethod());
+    auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
-        uint32_t slotSize = thisFunc->GetCallTarget()->GetSlotSize();
-        auto res = RuntimeNotifyInlineCache(thread, thisFunc, slotSize);
+        uint32_t slotSize = method->GetSlotSize();
+        auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
