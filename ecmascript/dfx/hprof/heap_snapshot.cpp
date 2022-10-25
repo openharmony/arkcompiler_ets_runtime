@@ -1033,9 +1033,7 @@ CString EntryVisitor::ConvertKey(JSTaggedValue key)
         keyString = EcmaString::Cast(symbol->GetDescription().GetTaggedObject());
     }
     // convert, expensive but safe
-    auto keyPtr = EcmaStringAccessor(keyString).ToOneByteDataForced();
-    CString keyCopy(reinterpret_cast<char *>(keyPtr.get()));
-    return keyCopy;
+    return EcmaStringAccessor(keyString).ToCString();
 }
 
 Node *HeapEntryMap::FindOrInsertNode(Node *node)
