@@ -803,6 +803,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(dict)
                 break;
             }
+            case JSType::COW_TAGGED_ARRAY: {
+                JSHandle<COWTaggedArray> dict = factory->NewCOWTaggedArray(4);
+                DUMP_FOR_HANDLE(dict)
+                break;
+            }
             case JSType::GLOBAL_ENV: {
                 DUMP_FOR_HANDLE(globalEnv)
                 break;

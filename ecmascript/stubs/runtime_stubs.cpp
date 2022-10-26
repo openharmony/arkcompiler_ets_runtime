@@ -298,6 +298,15 @@ DEF_RUNTIME_STUBS(TaggedArraySetValue)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CheckAndCopyArray)
+{
+    RUNTIME_STUBS_HEADER(CheckAndCopyArray);
+    JSTaggedType argReceiver = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSArray> receiverHandle(thread, reinterpret_cast<JSArray *>(argReceiver));
+    JSArray::CheckAndCopyArray(thread, receiverHandle);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(NewEcmaHClass)
 {
     RUNTIME_STUBS_HEADER(NewEcmaHClass);

@@ -21,6 +21,7 @@
 #include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
+class JSArray;
 class JSObject;
 class JSTaggedNumber;
 template<typename T>
@@ -504,7 +505,9 @@ public:
     bool IsJSGlobalObject() const;
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
+    bool IsCOWArray() const;
     bool IsJSArray() const;
+    bool IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
     bool HasStableElements(JSThread *thread) const;

@@ -577,6 +577,55 @@ HWTEST_F_L0(BuiltinsArrayTest, Reverse)
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
 }
 
+HWTEST_F_L0(BuiltinsArrayTest, COWArrayReverse)
+{
+    JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
+    JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
+    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
+    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(200)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
+    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    JSHandle<JSArray> cloneArray = thread->GetEcmaVM()->GetFactory()->CloneArrayLiteral(JSHandle<JSArray>(obj));
+
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(cloneArray.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::Reverse(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+    JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
+    ASSERT_TRUE(value.IsECMAObject());
+
+    PropertyDescriptor descRes(thread);
+    JSHandle<JSObject> valueHandle(thread, value);
+    EXPECT_EQ(
+        JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle).GetValue()->GetInt(), 3);
+    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
+    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(200));
+    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
+    EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(cloneArray),
+        lengthKeyHandle).GetValue()->GetInt(), 3);
+    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(cloneArray), key0, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
+    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(cloneArray), key1, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(200));
+    JSObject::GetOwnProperty(thread, JSHandle<JSObject>(cloneArray), key2, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
+}
+
 HWTEST_F_L0(BuiltinsArrayTest, Slice)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
@@ -708,6 +757,52 @@ HWTEST_F_L0(BuiltinsArrayTest, Fill)
     ASSERT_TRUE(value.IsECMAObject());
     PropertyDescriptor descRes(thread);
     JSHandle<JSObject> valueHandle(thread, value);
+    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(1));
+    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(0));
+    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(0));
+    JSObject::GetOwnProperty(thread, valueHandle, key3, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(4));
+    JSObject::GetOwnProperty(thread, valueHandle, key4, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(5));
+}
+
+// 22.1.3.6 new Array(1,2,3,4,5).Fill(0,1,3)
+HWTEST_F_L0(BuiltinsArrayTest, COWArrayFill)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<TaggedArray> values(factory->NewTaggedArray(5));
+
+    for (int i = 0; i < 5; i++) {
+        values->Set(thread, i, JSTaggedValue(i + 1));
+    }
+    JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, values));
+    JSHandle<JSArray> cloneArray = factory->CloneArrayLiteral(array);
+
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(cloneArray.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(0)));
+    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(1)));
+    ecmaRuntimeCallInfo1->SetCallArg(2, JSTaggedValue(static_cast<int32_t>(3)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::Fill(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+    JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
+    ASSERT_TRUE(value.IsECMAObject());
+    PropertyDescriptor descRes(thread);
+    JSHandle<JSObject> valueHandle(thread, value);
+    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
+    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
+    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
+
     JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(1));
     JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
@@ -1014,6 +1109,30 @@ HWTEST_F_L0(BuiltinsArrayTest, Pop)
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(3).GetRawData());
 }
 
+// 22.1.3.11 new Array().Pop()
+HWTEST_F_L0(BuiltinsArrayTest, COWArrayPop)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<TaggedArray> values(factory->NewTaggedArray(3));
+
+    for (int i = 0; i < 3; i++) {
+        values->Set(thread, i, JSTaggedValue(i + 1));
+    }
+    JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, values));
+    JSHandle<JSArray> cloneArray = factory->CloneArrayLiteral(array);
+
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(cloneArray.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    auto result = Array::Pop(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue(3).GetRawData());
+}
+
 // 22.1.3.11 new Array(1,2,3).Push(...items)
 HWTEST_F_L0(BuiltinsArrayTest, Push)
 {
@@ -1142,6 +1261,29 @@ HWTEST_F_L0(BuiltinsArrayTest, Shift)
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::Shift(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue(1).GetRawData());
+}
+
+HWTEST_F_L0(BuiltinsArrayTest, COWArrayShift)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<TaggedArray> values(factory->NewTaggedArray(3));
+
+    for (int i = 0; i < 3; i++) {
+        values->Set(thread, i, JSTaggedValue(i + 1));
+    }
+    JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, values));
+    JSHandle<JSArray> cloneArray = factory->CloneArrayLiteral(array);
+
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(cloneArray.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result = Array::Shift(ecmaRuntimeCallInfo1);

@@ -387,21 +387,26 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
     uint32_t elementIndex = static_cast<uint32_t>(index);
     if (handler.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+        JSHandle<JSObject> receiverHandle(thread, receiver);
         if (HandlerBase::IsJSArray(handlerInfo)) {
-            JSArray *arr = JSArray::Cast(receiver);
+            JSTaggedValue receiveValue = receiverHandle.GetTaggedValue();
+            if (receiveValue.IsJSCOWArray()) {
+                // Copy on write array.
+                JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(receiverHandle));
+            }
+            JSArray *arr = JSArray::Cast(*receiverHandle);
             uint32_t oldLength = arr->GetArrayLength();
             if (elementIndex >= oldLength) {
                 arr->SetArrayLength(thread, elementIndex + 1);
             }
         }
-        TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
+        TaggedArray *elements = TaggedArray::Cast(receiverHandle->GetElements().GetTaggedObject());
         uint32_t capacity = elements->GetLength();
         if (elementIndex >= capacity) {
             if (JSObject::ShouldTransToDict(capacity, elementIndex)) {
                 return JSTaggedValue::Hole();
             }
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-            JSHandle<JSObject> receiverHandle(thread, receiver);
             JSHandle<JSTaggedValue> valueHandle(thread, value);
             elements = *JSObject::GrowElementsCapacity(thread, receiverHandle,
                                                        JSObject::ComputeElementCapacity(elementIndex + 1));

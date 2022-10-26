@@ -187,4 +187,44 @@ HWTEST_F_L0(JSArrayTest, Iterator)
         EXPECT_EQ(static_cast<int>(i), JSObject::GetProperty(thread, iter_value, element_key).GetValue()->GetInt());
     }
 }
+
+HWTEST_F_L0(JSArrayTest, COWArray)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> values(factory->NewTaggedArray(5));
+
+    for (int i = 0; i < 5; i++) {
+        values->Set(thread, i, JSTaggedValue(i));
+    }
+    JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, values));
+    JSHandle<JSArray> cloneArray = factory->CloneArrayLiteral(array);
+
+    for (int i = 0; i < 5; i++) {
+        JSTaggedValue value1 = TaggedArray::Cast(cloneArray->GetElements().GetTaggedObject())->Get(i);
+        JSTaggedValue value2 = TaggedArray::Cast(array->GetElements().GetTaggedObject())->Get(i);
+        EXPECT_EQ(value1.GetRawData(), value2.GetRawData());
+    }
+
+#if defined ENABLE_COW_ARRAY
+    // Elements array is shared to use the same array.
+    EXPECT_EQ(cloneArray->GetElements().GetTaggedObject(), array->GetElements().GetTaggedObject());
+#endif
+    JSHandle<JSTaggedValue> lengthKeyHandle(thread->GlobalConstants()->GetHandledLengthString());
+
+    // Change the value and the elements will not be shared.
+    JSArray::FastSetPropertyByValue(thread, JSHandle<JSTaggedValue>(cloneArray), 0, lengthKeyHandle);
+
+    EXPECT_TRUE(TaggedArray::Cast(cloneArray->GetElements().GetTaggedObject())->Get(0) !=
+        TaggedArray::Cast(array->GetElements().GetTaggedObject())->Get(0));
+
+#if defined ENABLE_COW_ARRAY
+    EXPECT_TRUE(cloneArray->GetElements().GetTaggedObject() != array->GetElements().GetTaggedObject());
+#endif
+
+    for (int i = 1; i < 5; i++) {
+        JSTaggedValue value1 = TaggedArray::Cast(cloneArray->GetElements().GetTaggedObject())->Get(i);
+        JSTaggedValue value2 = TaggedArray::Cast(array->GetElements().GetTaggedObject())->Get(i);
+        EXPECT_EQ(value1.GetRawData(), value2.GetRawData());
+    }
+}
 }  // namespace panda::test
