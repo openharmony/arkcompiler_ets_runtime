@@ -112,18 +112,12 @@ void TaggedList<Derived>::Clear(const JSThread *thread)
 template <typename Derived>
 JSTaggedValue TaggedList<Derived>::TaggedListToArray(const JSThread *thread, const JSHandle<Derived> &list)
 {
-    uint32_t length = static_cast<uint32_t>(list->NumberOfNodes());
-    JSHandle<JSArray> array = thread->GetEcmaVM()->GetFactory()->NewJSArray();
-    array->SetArrayLength(thread, length);
-    JSHandle<TaggedArray> arrayElements(thread, array->GetElements());
-    uint32_t oldLength = arrayElements->GetLength();
-    JSHandle<TaggedArray> newElements =
-        thread->GetEcmaVM()->GetFactory()->CopyArray(arrayElements, oldLength, length);
-    int dataIndex = ELEMENTS_START_INDEX;
-    for (uint32_t i = 0; i < length; i++) {
-        dataIndex = list->GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
-        newElements->Set(thread, i, list->GetElement(dataIndex));
-    }
+    uint32_t numberOfNodes = static_cast<uint32_t>(list->NumberOfNodes());
+    
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSArray> array = factory->NewJSArray();
+    array->SetArrayLength(thread, numberOfNodes);
+    JSHandle<TaggedArray> newElements = factory->ConvertListToArray(thread, list, numberOfNodes);
     array->SetElements(thread, newElements);
     return array.GetTaggedValue();
 }

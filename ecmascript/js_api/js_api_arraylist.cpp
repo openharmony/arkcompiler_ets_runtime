@@ -75,17 +75,16 @@ void JSAPIArrayList::Clear(JSThread *thread, const JSHandle<JSAPIArrayList> &arr
 
 JSHandle<JSAPIArrayList> JSAPIArrayList::Clone(JSThread *thread, const JSHandle<JSAPIArrayList> &obj)
 {
+    JSHandle<TaggedArray> srcElements(thread, obj->GetElements());
+    ASSERT(!srcElements->IsDictionaryMode());
+
     int32_t length = obj->GetSize();
-    JSHandle<TaggedArray> elements(thread, obj->GetElements());
-    ASSERT(!elements->IsDictionaryMode());
-    uint32_t capacity = elements->GetLength();
-    JSHandle<JSAPIArrayList> newArrayList = thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(capacity);
-    
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIArrayList> newArrayList = factory->NewJSAPIArrayList(0);
     newArrayList->SetLength(thread, JSTaggedValue(length));
-    for (int32_t i = 0; i < length; i ++) {
-        newArrayList->Set(thread, i, elements->Get(i));
-    }
-    
+
+    JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, length, length);
+    newArrayList->SetElements(thread, dstElements);
     return newArrayList;
 }
 

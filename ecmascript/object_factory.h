@@ -296,7 +296,29 @@ public:
     JSHandle<JSArguments> NewJSArguments();
 
     JSHandle<JSPrimitiveRef> NewJSString(const JSHandle<JSTaggedValue> &str);
+    
+    template <typename Derived>
+    JSHandle<TaggedArray> ConvertListToArray(const JSThread *thread, const JSHandle<Derived> &list,
+                                             uint32_t numberOfNodes)
+    {
+        MemSpaceType spaceType = numberOfNodes < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+        JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(numberOfNodes, spaceType);
+        dstElements->SetLength(numberOfNodes);
+        int dataIndex = Derived::ELEMENTS_START_INDEX;
+        for (uint32_t i = 0; i < numberOfNodes; i++) {
+            dataIndex = list->GetElement(dataIndex + Derived::NEXT_PTR_OFFSET).GetInt();
+            dstElements->Set(thread, i, list->GetElement(dataIndex));
+        }
+        return dstElements;
+    }
 
+    void RemoveElementByIndex(JSHandle<TaggedArray> &srcArray, uint32_t index, uint32_t effectiveLength);
+    JSHandle<TaggedArray> InsertElementByIndex(JSHandle<TaggedArray> &srcArray, const JSHandle<JSTaggedValue> &value,
+                                               uint32_t index, uint32_t effectiveLength);
+    void CopyTaggedArrayElement(JSHandle<TaggedArray> &srcElements, JSHandle<TaggedArray> &dstElements,
+                                uint32_t effectiveLength);
+    JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
+                                                uint32_t oldLength);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, bool nonMovable);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
@@ -580,6 +602,8 @@ private:
     EcmaVM *vm_ {nullptr};
     Heap *heap_ {nullptr};
 
+    static constexpr uint32_t LENGTH_THRESHOLD = 50;
+
     NO_COPY_SEMANTIC(ObjectFactory);
     NO_MOVE_SEMANTIC(ObjectFactory);
 
@@ -587,13 +611,13 @@ private:
 
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type,
-                                       uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     // used for creating jshclass in GlobalEnv, EcmaVM
     JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                       uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSHClass> NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                               uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+                                             uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSHClass> InitClassClass();
 
     // used to create nonmovable js_object
@@ -640,6 +664,7 @@ private:
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
 
     inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);
+    JSHandle<TaggedArray> NewTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
 
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass

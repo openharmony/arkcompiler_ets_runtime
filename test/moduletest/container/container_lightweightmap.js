@@ -91,13 +91,13 @@ if (globalThis["ArkPrivate"] != undefined) {
     // test remove: true
     res.set("test remove:", dProxy.remove("a") == "aa" && dProxy.length == 4);
     // test removeAt: true
-    res.set("test removeAt:", dProxy.removeAt(0) && dProxy.length == 3);
+    res.set("test removeAt:", dProxy.removeAt(dProxy.getIndexOfKey("b")) && dProxy.length == 3);
     // test setValueAt: true
-    res.set("test setValueAt:", dProxy.setValueAt(1, "ee"));
+    res.set("test setValueAt:", dProxy.setValueAt(dProxy.getIndexOfKey("d"), "ee"));
     // test setValueAt: true
-    res.set("test getValueAt:", dProxy.getValueAt(1) === "ee");
+    res.set("test getValueAt:", dProxy.getValueAt(dProxy.getIndexOfKey("d")) === "ee");
     // test toString: true
-    res.set("test toString:", dProxy.toString() === "b:bb,b:ee,c:bb");
+    res.set("test toString:", dProxy.toString() === "c:cc,d:ee,e:ee");
     // test increaseCapacityTo: true
     dProxy.increaseCapacityTo(20)
     res.set("test increaseCapacityTo:", true);

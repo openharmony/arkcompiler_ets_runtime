@@ -184,4 +184,106 @@ HWTEST_F_L0(ObjectFactoryTest, NewJSArray)
     EXPECT_TRUE(*newJSAarray != nullptr);
     EXPECT_TRUE(*newJSArrayCls != nullptr);
 }
+
+HWTEST_F_L0(ObjectFactoryTest, RemoveElementByIndex)
+{
+    constexpr uint32_t ELEMENT_NUMS = 20;
+    constexpr uint32_t REMOVE_INDEX = 0;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> semiTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole(),
+                                                                    MemSpaceType::SEMI_SPACE);
+    JSHandle<TaggedArray> oldTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole(),
+                                                                   MemSpaceType::OLD_SPACE);
+    // init tagggedArray
+    for (uint32_t i = 0; i < ELEMENT_NUMS; i++) {
+        semiTaggedarray->Set(thread, i, JSTaggedValue(i));
+        oldTaggedarray->Set(thread, i, JSTaggedValue(i));
+    }
+    factory->RemoveElementByIndex(semiTaggedarray, REMOVE_INDEX, ELEMENT_NUMS);
+    factory->RemoveElementByIndex(oldTaggedarray, REMOVE_INDEX, ELEMENT_NUMS);
+
+    for (uint32_t i = 0; i < ELEMENT_NUMS - 1; i++) {
+        EXPECT_EQ(semiTaggedarray->Get(thread, i), JSTaggedValue(i + 1));
+        EXPECT_EQ(oldTaggedarray->Get(thread, i), JSTaggedValue(i + 1));
+    }
+    EXPECT_EQ(semiTaggedarray->Get(thread, ELEMENT_NUMS - 1), JSTaggedValue::Hole());
+    EXPECT_EQ(oldTaggedarray->Get(thread, ELEMENT_NUMS - 1), JSTaggedValue::Hole());
+}
+
+HWTEST_F_L0(ObjectFactoryTest, InsertElementByIndex)
+{
+    constexpr uint32_t ELEMENT_NUMS = 20;
+    constexpr uint32_t INSERT_INDEX = 0;
+    JSHandle<JSTaggedValue> insertValue(ELEMENT_NUMS);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> semiTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole(),
+                                                                    MemSpaceType::SEMI_SPACE);
+    JSHandle<TaggedArray> oldTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole(),
+                                                                   MemSpaceType::OLD_SPACE);
+    // init tagggedArray
+    for (uint32_t i = 0; i < ELEMENT_NUMS - 1; i++) {
+        semiTaggedarray->Set(thread, i, JSTaggedValue(i));
+        oldTaggedarray->Set(thread, i, JSTaggedValue(i));
+    }
+    factory->InsertElementByIndex(semiTaggedarray, insertValue, INSERT_INDEX, ELEMENT_NUMS);
+    factory->InsertElementByIndex(oldTaggedarray, insertValue, INSERT_INDEX, ELEMENT_NUMS);
+    // check
+    EXPECT_EQ(semiTaggedarray->Get(thread, 0), insertValue.GetTaggedValue());
+    EXPECT_EQ(oldTaggedarray->Get(thread, 0), insertValue.GetTaggedValue());
+    for (uint32_t i = 1; i < ELEMENT_NUMS; i++) {
+        EXPECT_EQ(semiTaggedarray->Get(thread, i), JSTaggedValue(i - 1));
+        EXPECT_EQ(oldTaggedarray->Get(thread, i), JSTaggedValue(i - 1));
+    }
+}
+
+HWTEST_F_L0(ObjectFactoryTest, NewAndCopyTaggedArray)
+{
+    constexpr uint32_t SHORT_ELEMENT_NUMS = 20;
+    constexpr uint32_t LONG_ELEMENT_NUMS = 100;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> shortTaggedarray = factory->NewTaggedArray(SHORT_ELEMENT_NUMS);
+    // init tagggedArray
+    for (uint32_t i = 0; i < SHORT_ELEMENT_NUMS; i++) {
+        shortTaggedarray->Set(thread, i, JSTaggedValue(i));
+    }
+    JSHandle<TaggedArray> copiedShort = factory->NewAndCopyTaggedArray(shortTaggedarray, SHORT_ELEMENT_NUMS,
+                                                                       SHORT_ELEMENT_NUMS);
+    JSHandle<TaggedArray> copiedLong = factory->NewAndCopyTaggedArray(shortTaggedarray, LONG_ELEMENT_NUMS,
+                                                                       SHORT_ELEMENT_NUMS);
+    // check
+    for (uint32_t i = 0; i < SHORT_ELEMENT_NUMS; i++) {
+        EXPECT_EQ(copiedShort->Get(thread, i), shortTaggedarray->Get(thread, i));
+        EXPECT_EQ(copiedLong->Get(thread, i), shortTaggedarray->Get(thread, i));
+    }
+    for (uint32_t i = SHORT_ELEMENT_NUMS; i < LONG_ELEMENT_NUMS; i++) {
+        EXPECT_EQ(copiedLong->Get(thread, i), JSTaggedValue::Hole());
+    }
+}
+
+HWTEST_F_L0(ObjectFactoryTest, CopyTaggedArrayElement)
+{
+    constexpr uint32_t ELEMENT_NUMS = 20;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> srcSemiTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole(),
+                                                                       MemSpaceType::SEMI_SPACE);
+    JSHandle<TaggedArray> srcOldTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole(),
+                                                                      MemSpaceType::OLD_SPACE);
+    JSHandle<TaggedArray> dstSemiTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS);
+    JSHandle<TaggedArray> dstOldTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS);
+    // init tagggedArray
+    for (uint32_t i = 0; i < ELEMENT_NUMS; i++) {
+        srcSemiTaggedarray->Set(thread, i, JSTaggedValue(i));
+        srcOldTaggedarray->Set(thread, i, JSTaggedValue(i));
+        dstSemiTaggedarray->Set(thread, i, JSTaggedValue(-i));
+        dstOldTaggedarray->Set(thread, i, JSTaggedValue(-i));
+    }
+    factory->CopyTaggedArrayElement(srcSemiTaggedarray, dstSemiTaggedarray, ELEMENT_NUMS);
+    factory->CopyTaggedArrayElement(srcOldTaggedarray, dstOldTaggedarray, ELEMENT_NUMS);
+
+    for (uint32_t i = 0; i < ELEMENT_NUMS; i++) {
+        EXPECT_EQ(srcSemiTaggedarray->Get(thread, i), dstSemiTaggedarray->Get(thread, i));
+        EXPECT_EQ(srcOldTaggedarray->Get(thread, i), dstOldTaggedarray->Get(thread, i));
+    }
+}
+
 }  // namespace panda::test

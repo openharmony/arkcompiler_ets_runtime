@@ -661,6 +661,7 @@ public:
                                     const JSHandle<JSTaggedValue> &y);
     static ComparisonResult StrictNumberCompare(double x, double y);
     static bool StrictNumberEquals(double x, double y);
+    static bool StrictIntEquals(int x, int y);
     static bool StringCompare(EcmaString *xStr, EcmaString *yStr);
 
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);

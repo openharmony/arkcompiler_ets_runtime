@@ -109,6 +109,7 @@
 #include "ecmascript/mem/region.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/object_factory.h"
 #include "ecmascript/record.h"
 #include "ecmascript/require/js_cjs_exports.h"
 #include "ecmascript/require/js_cjs_module.h"
@@ -2095,7 +2096,105 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
     return array;
 }
 
-JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedValue initVal)
+void ObjectFactory::RemoveElementByIndex(JSHandle<TaggedArray> &srcArray,
+                                         uint32_t index,
+                                         uint32_t effectiveLength)
+{
+    ASSERT(0 <= index || index < effectiveLength);
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
+        size_t offset = taggedTypeSize * index;
+        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
+        while (index < effectiveLength - 1) {
+            *addr = *(addr + 1);
+            addr++;
+            index++;
+        }
+    } else {
+        while (index < effectiveLength - 1) {
+            srcArray->Set(thread_, index, srcArray->Get(index + 1));
+            index++;
+        }
+    }
+    srcArray->Set(thread_, effectiveLength - 1, JSTaggedValue::Hole());
+}
+
+JSHandle<TaggedArray> ObjectFactory::InsertElementByIndex(JSHandle<TaggedArray> &srcArray,
+                                                          const JSHandle<JSTaggedValue> &value,
+                                                          uint32_t index,
+                                                          uint32_t effectiveLength)
+{
+    ASSERT(0 <= index || index <= effectiveLength);
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
+        size_t offset = taggedTypeSize * effectiveLength;
+        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
+        while (effectiveLength != index && effectiveLength > 0) {
+            *addr = *(addr - 1);
+            addr--;
+            effectiveLength--;
+        }
+    } else {
+        while (effectiveLength != index && effectiveLength > 0) {
+            JSTaggedValue oldValue = srcArray->Get(effectiveLength - 1);
+            srcArray->Set(thread_, effectiveLength, oldValue);
+            effectiveLength--;
+        }
+    }
+    srcArray->Set(thread_, index, value.GetTaggedValue());
+    return srcArray;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements,
+                                                           uint32_t newLength,
+                                                           uint32_t oldLength)
+{
+    ASSERT(oldLength <= newLength);
+    MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
+    dstElements->SetLength(newLength);
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
+    if (region->InYoungSpace()) {
+        size_t size = oldLength * sizeof(JSTaggedType);
+        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
+            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+    } else {
+        for (uint32_t i = 0; i < oldLength; i++) {
+            dstElements->Set(thread_, i, srcElements->Get(i));
+        }
+    }
+    for (uint32_t i = oldLength; i < newLength; i++) {
+        dstElements->Set(thread_, i, JSTaggedValue::Hole());
+    }
+    return dstElements;
+}
+
+void ObjectFactory::CopyTaggedArrayElement(JSHandle<TaggedArray> &srcElements,
+                                           JSHandle<TaggedArray> &dstElements,
+                                           uint32_t effectiveLength)
+{
+    ASSERT(effectiveLength <= srcElements->GetLength());
+    ASSERT(effectiveLength <= dstElements->GetLength());
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t size = effectiveLength * sizeof(JSTaggedType);
+        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
+            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed" << " size: " << size;
+        }
+    } else {
+        for (uint32_t i = 0; i < effectiveLength; i++) {
+            dstElements->Set(thread_, i, srcElements->Get(i));
+        }
+    }
+}
+
+// private
+JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType)
 {
     NewObjectHook();
     if (length == 0) {
@@ -2103,9 +2202,30 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
     }
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
-    auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+    TaggedObject *header = nullptr;
+    auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    switch (spaceType) {
+        case MemSpaceType::SEMI_SPACE:
+            header = heap_->AllocateYoungOrHugeObject(arrayClass, size);
+            break;
+        case MemSpaceType::OLD_SPACE:
+            header = heap_->AllocateOldOrHugeObject(arrayClass, size);
+            break;
+        default:
+            UNREACHABLE();
+    }
     JSHandle<TaggedArray> array(thread_, header);
+    return array;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    if (length == 0) {
+        return EmptyArray();
+    }
+    MemSpaceType spaceType = length < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, spaceType);
     array->InitializeWithSpecialValue(initVal, length);
     return array;
 }

@@ -641,16 +641,15 @@ JSTaggedValue ContainersArrayList::ConvertToArray(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIArrayList> arrayList = JSHandle<JSAPIArrayList>::Cast(self);
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSArray> array = factory->NewJSArray();
+
     uint32_t length = arrayList->GetLength().GetArrayLength();
-    JSHandle<JSArray> array = thread->GetEcmaVM()->GetFactory()->NewJSArray();
     array->SetArrayLength(thread, length);
-    JSHandle<TaggedArray> arrayListElements(thread, arrayList->GetElements());
 
-    uint32_t arrayListCapacity = arrayListElements->GetLength();
-
-    JSHandle<TaggedArray> newElements =
-        thread->GetEcmaVM()->GetFactory()->CopyArray(arrayListElements, arrayListCapacity, arrayListCapacity);
-    array->SetElements(thread, newElements);
+    JSHandle<TaggedArray> srcElements(thread, arrayList->GetElements());
+    JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, length, length);
+    array->SetElements(thread, dstElements);
     return array.GetTaggedValue();
 }
 

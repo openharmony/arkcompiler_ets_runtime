@@ -51,13 +51,19 @@ void JSAPILinkedList::Clear(JSThread *thread)
 
 JSHandle<JSAPILinkedList> JSAPILinkedList::Clone(JSThread *thread, const JSHandle<JSAPILinkedList> &list)
 {
-    JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
-    int capacity = doubleList->NumberOfNodes();
-    JSHandle<JSAPILinkedList> newLinkedList = thread->GetEcmaVM()->GetFactory()->NewJSAPILinkedList();
-    JSTaggedValue newTaggedList = TaggedDoubleList::Create(thread, capacity);
-    JSHandle<TaggedDoubleList> newDoubleList(thread, newTaggedList);
-    doubleList->CopyArray(thread, newDoubleList);
-    newLinkedList->SetDoubleList(thread, newDoubleList.GetTaggedValue());
+    JSTaggedValue doubleListTaggedValue = list->GetDoubleList();
+    JSHandle<TaggedDoubleList> srcDoubleList(thread, doubleListTaggedValue);
+    JSHandle<TaggedArray> srcTaggedArray(thread, doubleListTaggedValue);
+    ASSERT(!srcDoubleList->IsDictionaryMode());
+    int numberOfNodes = srcDoubleList->NumberOfNodes();
+    int numberOfDeletedNodes = srcDoubleList->NumberOfDeletedNodes();
+    int effectiveCapacity = TaggedDoubleList::ELEMENTS_START_INDEX +
+                            (numberOfNodes + numberOfDeletedNodes + 1) * TaggedDoubleList::ENTRY_SIZE;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPILinkedList> newLinkedList = factory->NewJSAPILinkedList();
+    JSHandle<TaggedArray> dstTaggedArray = factory->NewAndCopyTaggedArray(srcTaggedArray,
+                                                                          effectiveCapacity, effectiveCapacity);
+    newLinkedList->SetDoubleList(thread, dstTaggedArray.GetTaggedValue());
     return newLinkedList;
 }
 

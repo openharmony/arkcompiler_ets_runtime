@@ -218,18 +218,21 @@ bool JSAPIPlainArray::SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArr
 
 JSHandle<JSAPIPlainArray> JSAPIPlainArray::Clone(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj)
 {
-    JSHandle<TaggedArray> keys(thread, obj->GetKeys());
-    JSHandle<TaggedArray> values(thread, obj->GetValues());
-    uint32_t capacity = keys->GetLength();
-    int32_t size = obj->GetLength();
-    JSHandle<JSAPIPlainArray> newPlainArray = thread->GetEcmaVM()->GetFactory()->NewJSAPIPlainArray(capacity);
-    newPlainArray->SetLength(size);
-    TaggedArray *newKeys = TaggedArray::Cast(newPlainArray->GetKeys().GetTaggedObject());
-    TaggedArray *newValues = TaggedArray::Cast(newPlainArray->GetValues().GetTaggedObject());
-    for (int32_t i = 0; i < size; i++) {
-        newKeys->Set(thread, i, keys->Get(i));
-        newValues->Set(thread, i, values->Get(i));
-    }
+    JSHandle<TaggedArray> srckeys(thread, obj->GetKeys());
+    JSHandle<TaggedArray> srcvalues(thread, obj->GetValues());
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIPlainArray> newPlainArray = factory->NewJSAPIPlainArray(0);
+
+    int32_t length = obj->GetLength();
+    newPlainArray->SetLength(length);
+    JSHandle<TaggedArray> srcKeyArray(thread, obj->GetKeys());
+    JSHandle<TaggedArray> srcValueArray(thread, obj->GetValues());
+    
+    JSHandle<TaggedArray> dstKeyArray = factory->NewAndCopyTaggedArray(srcKeyArray, length, length);
+    JSHandle<TaggedArray> dstValueArray = factory->NewAndCopyTaggedArray(srcValueArray, length, length);
+
+    newPlainArray->SetKeys(thread, dstKeyArray);
+    newPlainArray->SetValues(thread, dstValueArray);
     return newPlainArray;
 }
 
