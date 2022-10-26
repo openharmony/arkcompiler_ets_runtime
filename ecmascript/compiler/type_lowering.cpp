@@ -1289,7 +1289,7 @@ GateRef TypeLowering::ChangeInt32ToFloat64(GateRef gate)
 
 GateRef TypeLowering::TruncDoubleToInt(GateRef gate)
 {
-    return builder_.ChangeInt64ToInt32(builder_.TruncFloatToInt64(gate));
+    return builder_.TruncInt64ToInt32(builder_.TruncFloatToInt64(gate));
 }
 
 GateRef TypeLowering::Int32Mod(GateRef left, GateRef right)

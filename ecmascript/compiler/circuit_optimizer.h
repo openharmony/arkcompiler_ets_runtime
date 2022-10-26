@@ -100,6 +100,15 @@ public:
     template<class T>
     double RunFloatingPointArithmetic(T valueA, T valueB, OpCode::Op op);
     uint64_t RunBasicArithmetic(ValueLattice operandA, ValueLattice operandB, OpCode::Op op, MachineType machineType);
+    uint64_t RunFCompareArithmetic(ValueLattice operandA, ValueLattice operandB,
+                                   FCmpCondition cond, MachineType machineType);
+    uint64_t RunICompareArithmetic(ValueLattice operandA, ValueLattice operandB,
+                                   ICmpCondition cond, MachineType machineType);
+    uint64_t RunBoolCompare(bool valueA, bool valueB, ICmpCondition cond);
+    template<class T>
+    uint64_t RunFixedPointCompare(T valueA, T valueB, ICmpCondition cond);
+    template<class T>
+    uint64_t RunFloatingPointCompare(T valueA, T valueB, FCmpCondition cond);
     bool Run(GateRef gate) override;
     bool RunCircuitRoot(GateRef gate);
     bool RunStateEntry(GateRef gate);
@@ -144,17 +153,9 @@ public:
     bool RunConstData(GateRef gate);
     bool RunRelocatableData(GateRef gate);
     bool RunConstant(GateRef gate);
-    bool RunZExtToInt64(GateRef gate);
-    bool RunZExtToInt32(GateRef gate);
-    bool RunZExtToInt16(GateRef gate);
-    bool RunZExtToArch(GateRef gate);
-    bool RunSExtToInt64(GateRef gate);
-    bool RunSExtToInt32(GateRef gate);
-    bool RunSExtToArch(GateRef gate);
-    bool RunTruncToInt32(GateRef gate);
-    bool RunTruncToInt1(GateRef gate);
-    bool RunTruncToInt16(GateRef gate);
-    bool RunTruncToInt8(GateRef gate);
+    bool RunZExtToIntOrArch(GateRef gate);
+    bool RunSExtToIntOrArch(GateRef gate);
+    bool RunTruncToInt(GateRef gate);
     bool RunRev(GateRef gate);
     bool RunAdd(GateRef gate);
     bool RunSub(GateRef gate);
@@ -172,20 +173,8 @@ public:
     bool RunLSL(GateRef gate);
     bool RunLSR(GateRef gate);
     bool RunASR(GateRef gate);
-    bool RunSLT(GateRef gate);
-    bool RunSLE(GateRef gate);
-    bool RunSGT(GateRef gate);
-    bool RunSGE(GateRef gate);
-    bool RunULT(GateRef gate);
-    bool RunULE(GateRef gate);
-    bool RunUGT(GateRef gate);
-    bool RunUGE(GateRef gate);
-    bool RunFLT(GateRef gate);
-    bool RunFLE(GateRef gate);
-    bool RunFGT(GateRef gate);
-    bool RunFGE(GateRef gate);
-    bool RunEQ(GateRef gate);
-    bool RunNE(GateRef gate);
+    bool RunIcmp(GateRef gate);
+    bool RunFcmp(GateRef gate);
     bool RunLoad(GateRef gate);
     bool RunStore(GateRef gate);
     bool RunTaggedToInt64(GateRef gate);

@@ -132,7 +132,7 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
                 GateRef elementAddr = GetPropertiesAddrFromLayoutInfo(layoutInfo);
                 GateRef keyInProperty = Load(VariableType::JS_ANY(),
                                              elementAddr,
-                                             PtrMul(ChangeInt32ToIntPtr(*i),
+                                             PtrMul(ZExtInt32ToPtr(*i),
                                                     IntPtr(sizeof(panda::ecmascript::Properties))));
                 Label equal(env);
                 Label notEqual(env);
@@ -1140,13 +1140,13 @@ GateRef StubBuilder::StringToElementIndex(GateRef string)
                     Bind(&isUtf16A);
                     {
                         // 2 : 2 means utf16 char width is two bytes
-                        auto charOffset = PtrMul(ChangeInt32ToIntPtr(*i),  IntPtr(2));
+                        auto charOffset = PtrMul(ZExtInt32ToPtr(*i),  IntPtr(2));
                         c = ZExtInt16ToInt32(Load(VariableType::INT16(), dataUtf16, charOffset));
                         Jump(&getChar2);
                     }
                     Bind(&notUtf16);
                     {
-                        c = ZExtInt8ToInt32(Load(VariableType::INT8(), dataUtf16, ChangeInt32ToIntPtr(*i)));
+                        c = ZExtInt8ToInt32(Load(VariableType::INT8(), dataUtf16, ZExtInt32ToPtr(*i)));
                         Jump(&getChar2);
                     }
                     Bind(&getChar2);
@@ -1276,7 +1276,7 @@ GateRef StubBuilder::LoadFromField(GateRef receiver, GateRef handlerInfo)
     Branch(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
     Bind(&handlerInfoIsInlinedProps);
     {
-        result = Load(VariableType::JS_ANY(), receiver, PtrMul(ChangeInt32ToIntPtr(index),
+        result = Load(VariableType::JS_ANY(), receiver, PtrMul(ZExtInt32ToPtr(index),
             IntPtr(JSTaggedValue::TaggedTypeSize())));
         Jump(&exit);
     }
@@ -1698,7 +1698,7 @@ void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, Gate
         Store(VariableType::JS_ANY(),
               glue,
               receiver,
-              PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
+              PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
               value);
         Jump(&exit);
     }
@@ -1746,7 +1746,7 @@ void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef va
             Store(VariableType::JS_ANY(),
                   glue,
                   PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET)),
-                  PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
+                  PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
                   value);
             Jump(&exit);
         }
@@ -1854,7 +1854,7 @@ inline void StubBuilder::UpdateValueAndAttributes(GateRef glue, GateRef elements
         Int32Add(arrayIndex, Int32(NameDictionary::ENTRY_DETAILS_INDEX));
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, valueIndex, value);
     GateRef attroffset =
-        PtrMul(ChangeInt32ToIntPtr(attributesIndex), IntPtr(JSTaggedValue::TaggedTypeSize()));
+        PtrMul(ZExtInt32ToPtr(attributesIndex), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(attroffset, IntPtr(TaggedArray::DATA_OFFSET));
     Store(VariableType::INT64(), glue, elements, dataOffset, IntToTaggedInt(attr));
 }
@@ -3975,7 +3975,7 @@ GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right)
         }
         Bind(&notOverflow);
         {
-            result = IntToTaggedPtr(ChangeInt64ToInt32(res));
+            result = IntToTaggedPtr(TruncInt64ToInt32(res));
             Jump(&exit);
         }
         Bind(&exit);
@@ -4249,7 +4249,7 @@ GateRef StubBuilder::DoubleToInt(GateRef glue, GateRef x)
         GateRef xInt64 = CastDoubleToInt64(x);
         // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
         GateRef exp = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-        exp = ChangeInt64ToInt32(Int64LSR(exp, Int64(base::DOUBLE_SIGNIFICAND_SIZE)));
+        exp = TruncInt64ToInt32(Int64LSR(exp, Int64(base::DOUBLE_SIGNIFICAND_SIZE)));
         exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
         GateRef bits = Int32(base::INT32_BITS - 1);
         // exp < 32 - 1
@@ -4696,7 +4696,7 @@ void StubBuilder::CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, G
     auto env = GetEnvironment();
     Label isFastBuiltins(env);
     auto data = std::begin(args);
-    GateRef numArgs = ChangeInt32ToIntPtr(actualNumArgs);
+    GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef isFastBuiltinsMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsFastBuiltinBit::START_BIT);
     Branch(Int64NotEqual(Int64And(callField, isFastBuiltinsMask), Int64(0)),
         &isFastBuiltins, notFastBuiltins);
@@ -4783,7 +4783,7 @@ GateRef StubBuilder::TryStringOrSymbelToElementIndex(GateRef key)
             Branch(Int32UnsignedLessThan(*i, len), &loopHead, &afterLoop);
             LoopBegin(&loopHead);
             {
-                c = ZExtInt8ToInt32(Load(VariableType::INT8(), data, ChangeInt32ToIntPtr(*i)));
+                c = ZExtInt8ToInt32(Load(VariableType::INT8(), data, ZExtInt32ToPtr(*i)));
                 Label isDigit2(env);
                 Label notDigit2(env);
                 Branch(IsDigit(*c), &isDigit2, &notDigit2);

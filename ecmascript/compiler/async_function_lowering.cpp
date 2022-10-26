@@ -78,8 +78,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
     while (true) {
         auto opcode = accessor_.GetOpCode(stateInGate);
         if (opcode == OpCode::STATE_ENTRY) {
-            GateRef condition = circuit_->NewGate(OpCode(OpCode::EQ), 0, {offsetConstantGate, restoreOffsetGate},
-                                                  GateType::NJSValue());
+            GateRef condition = builder_.Equal(offsetConstantGate, restoreOffsetGate);
             GateRef ifBranch = circuit_->NewGate(OpCode(OpCode::IF_BRANCH), 0, { ifFalseCondition, condition },
                                                  GateType::Empty());
             GateRef ifTrue = circuit_->NewGate(OpCode(OpCode::IF_TRUE), 0, {ifBranch}, GateType::Empty());
@@ -121,8 +120,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
                                                         {stateInGate, restoreOffsetGate, emptyOffsetGate},
                                                         GateType::NJSValue());
 
-            GateRef condition = circuit_->NewGate(OpCode(OpCode::EQ), 0, {offsetConstantGate, bcOffsetPhiGate},
-                                                  GateType::NJSValue());
+            GateRef condition = builder_.Equal(offsetConstantGate, bcOffsetPhiGate);
             GateRef ifBranch = circuit_->NewGate(OpCode(OpCode::IF_BRANCH), 0, {stateInGate, condition},
                                                  GateType::Empty());
             GateRef ifTrue = circuit_->NewGate(OpCode(OpCode::IF_TRUE), 0, {ifBranch}, GateType::Empty());

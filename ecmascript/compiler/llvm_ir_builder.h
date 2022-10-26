@@ -311,7 +311,8 @@ private:
         GLUE,
         FIRST_PARAMETER
     };
-
+    LLVMRealPredicate ConvertLLVMPredicateFromFCMP(FCmpCondition cond);
+    LLVMIntPredicate ConvertLLVMPredicateFromICMP(ICmpCondition cond);
     LLVMValueRef GetGlue(const std::vector<GateRef> &inList);
     LLVMValueRef GetRTStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetCoStubOffset(LLVMValueRef glue, int index);
