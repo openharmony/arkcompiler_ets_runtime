@@ -59,11 +59,15 @@ private:
     void LowerTypedDiv(GateRef gate);
     void LowerTypedEq(GateRef gate);
     void LowerTypedNotEq(GateRef gate);
+    void LowerTypedShl(GateRef gate);
+    void LowerTypedShr(GateRef gate);
+    void LowerTypedAshr(GateRef gate);
     void LowerTypedInc(GateRef gate);
     void LowerTypedDec(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
     void LowerConditionJump(GateRef gate);
+    void LowerTypedNot(GateRef gate);
 
     // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;

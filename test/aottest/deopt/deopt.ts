@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+declare function print(arg:any):void;
 
 function tryHello(v: number): void {
     let a: number = 1;

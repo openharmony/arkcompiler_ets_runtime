@@ -77,6 +77,18 @@
 
 #include "os/mutex.h"
 
+#if defined(PANDA_TARGET_IOS)
+namespace OHOS::ArkCompiler::Toolchain {
+using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
+extern "C" {
+    bool StartDebug(const std::string& componentName, void* vm, bool isDebugMode, int32_t instanceId,
+        const DebuggerPostTask& debuggerPostTask);
+    void StopDebug(const std::string& componentName);
+}
+} // namespace OHOS::ArkCompiler::Toolchain
+const std::string DEBUGGER_NAME = "PandaDebugger";
+#endif
+
 namespace panda {
 using ecmascript::ECMAObject;
 using ecmascript::EcmaString;
@@ -247,6 +259,7 @@ void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
 }
 
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+#if !defined(PANDA_TARGET_IOS)
 bool JSNApi::StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId,
     const DebuggerPostTask &debuggerPostTask)
 {
@@ -296,6 +309,27 @@ bool JSNApi::StopDebugger(EcmaVM *vm)
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
 }
+#else
+bool JSNApi::StartDebugger(EcmaVM *vm, bool isDebugMode, int32_t instanceId, const DebuggerPostTask &debuggerPostTask)
+{
+    bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(DEBUGGER_NAME, vm, isDebugMode, instanceId, debuggerPostTask);
+    if (ret) {
+        vm->GetJsDebuggerManager()->SetDebugMode(isDebugMode);
+    }
+    return ret;
+}
+
+bool JSNApi::StopDebugger(EcmaVM *vm)
+{
+    if (vm == nullptr) {
+        return false;
+    }
+
+    OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
+    vm->GetJsDebuggerManager()->SetDebugMode(false);
+    return true;
+}
+#endif
 
 bool JSNApi::IsMixedDebugEnabled(const EcmaVM *vm)
 {
@@ -349,8 +383,19 @@ void JSNApi::preFork(EcmaVM *vm)
     vm->preFork();
 }
 
-void JSNApi::postFork(EcmaVM *vm)
+void JSNApi::postFork(EcmaVM *vm, const RuntimeOption &option)
 {
+    JSRuntimeOptions &jsOption = vm->GetJSOptions();
+    LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
+                    << ", aot: " << jsOption.GetEnableAOT()
+                    << ", an dir: " << option.GetAnDir()
+                    << ", bundle name: " <<  option.GetBundleName();
+
+    if (jsOption.GetEnableAOT() && option.GetAnDir().size()) {
+        jsOption.SetAOTOutputFile(option.GetAnDir() + "entry");
+        vm->LoadAOTFiles();
+    }
+
     vm->postFork();
 }
 
@@ -2576,6 +2621,7 @@ void JSNApi::SetBundle(EcmaVM *vm, bool value)
     vm->SetIsBundlePack(value);
 }
 
+// note: The function SetAssetPath is a generic interface for previewing and physical machines.
 void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 {
     ecmascript::CString path = assetPath.c_str();

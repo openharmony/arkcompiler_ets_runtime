@@ -26,11 +26,10 @@
 
 namespace panda::ecmascript {
 enum class Operate : uint32_t { AND = 0, OR, XOR };
-enum class Comparestr : uint32_t { EQUAL = 0, GREATER, LESS };
+enum class ComparisonResult;
 
 class BigInt : public TaggedObject {
 public:
-    Comparestr static ComString(const CString &a, const CString &b);
     static constexpr uint32_t DATEBITS = sizeof(uint32_t) * 8; // 8 : one-bit number of bytes
     static constexpr uint32_t MAXBITS = 1_MB; // 1 MB : Maximum space that can be opened up
     static constexpr uint32_t MAXSIZE = MAXBITS / DATEBITS; // the maximum value of size
@@ -40,6 +39,9 @@ public:
     static constexpr uint32_t OCTAL = 8; // 8 : octal
     static constexpr uint32_t DECIMAL = 10; // 10 : decimal
     static constexpr uint32_t HEXADECIMAL = 16; // 16 : hexadecimal
+    static constexpr uint32_t HALFDATEBITS = DATEBITS / 2;
+    static constexpr uint32_t HALFUINT32VALUE = 1U << HALFDATEBITS;
+    static constexpr uint32_t HALFDATEMASK = HALFUINT32VALUE - 1;
     CAST_CHECK(BigInt, IsBigInt);
     static JSHandle<BigInt> CreateBigint(JSThread *thread, uint32_t size);
 
@@ -60,7 +62,22 @@ public:
     static JSHandle<BigInt> UnaryMinus(JSThread *thread, JSHandle<BigInt> x);
     static JSHandle<BigInt> BitwiseNOT(JSThread *thread, JSHandle<BigInt> x);
     static JSHandle<BigInt> Exponentiate(JSThread *thread, JSHandle<BigInt> base, JSHandle<BigInt> exponent);
+    static std::tuple<uint32_t, uint32_t> Mul(uint32_t x, uint32_t y);
     static JSHandle<BigInt> Multiply(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
+    static uint32_t DivideAndRemainder(uint32_t highBit, uint32_t lowBit, uint32_t divisor, uint32_t& remainder);
+    static JSHandle<BigInt> FormatLeftShift(JSThread *thread, uint32_t shift, JSHandle<BigInt> bigint,
+                                            bool neeedAddOne);
+    static void UnformattedRightShift(JSHandle<BigInt> bigint, uint32_t shift);
+    static bool SpecialMultiplyAndSub(JSHandle<BigInt> u, JSHandle<BigInt> v, uint32_t q, JSHandle<BigInt> qv,
+                                      uint32_t pos);
+    static uint32_t SpecialAdd(JSHandle<BigInt> u, JSHandle<BigInt> v, uint32_t pos);
+    static uint32_t ImproveAccuracy(uint32_t vHighest, uint32_t vHighestNext, uint32_t UHighest,
+                                    uint32_t UHighestNext, uint32_t q);
+    static JSHandle<BigInt> DivideAndRemainderWithBigintDivisor(JSThread *thread, JSHandle<BigInt> dividend,
+                                                                JSHandle<BigInt> divisor,
+                                                                JSMutableHandle<BigInt> &remainder);
+    static JSHandle<BigInt> DivideAndRemainderWithUint32Divisor(JSThread *thread, JSHandle<BigInt> dividend,
+                                                                uint32_t divisor, JSMutableHandle<BigInt> &remainder);
     static JSHandle<BigInt> Divide(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
     static JSHandle<BigInt> Remainder(JSThread *thread, JSHandle<BigInt> n, JSHandle<BigInt> d);
     static JSHandle<BigInt> BigintAddOne(JSThread *thread, JSHandle<BigInt> x);
@@ -72,6 +89,10 @@ public:
     static bool LessThan(const JSTaggedValue &x, const JSTaggedValue &y);
     static ComparisonResult Compare(const JSTaggedValue &x, const JSTaggedValue &y);
     static JSHandle<BigInt> SignedRightShift(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
+    static JSHandle<BigInt> ReturnIfRightShiftOverMax(JSThread *thread, bool sign);
+    static void RightShift(JSHandle<BigInt> bigint, JSHandle<BigInt> x, uint32_t digitMove, uint32_t bitsMove);
+    static void JudgeRoundDown(JSHandle<BigInt> x, uint32_t digitMove, uint32_t bitsMove, uint32_t &needLen,
+                                bool &roundDown);
     static JSHandle<BigInt> RightShiftHelper(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
     static JSTaggedValue UnsignedRightShift(JSThread *thread);
     static JSHandle<BigInt> LeftShift(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
@@ -81,6 +102,7 @@ public:
 
     static JSTaggedValue NumberToBigInt(JSThread *thread, JSHandle<JSTaggedValue> number);
     static JSHandle<BigInt> Int32ToBigInt(JSThread *thread, const int &number);
+    static JSHandle<BigInt> Uint32ToBigInt(JSThread *thread, const uint32_t &number);
     static JSHandle<BigInt> Int64ToBigInt(JSThread *thread, const int64_t &number);
     static JSHandle<BigInt> Uint64ToBigInt(JSThread *thread, const uint64_t &number);
     int64_t ToInt64();
@@ -146,6 +168,12 @@ public:
 private:
     static bool Equal(const BigInt *x, const BigInt *y);
     static bool LessThan(const BigInt *x, const BigInt *y);
+    static ComparisonResult Compare(const BigInt *x, const BigInt *y);
+    static ComparisonResult AbsolutelyCompare(const BigInt *x, const BigInt *y);
+    inline uint32_t IsUint32() const
+    {
+        return GetLength() == 1;
+    }
 };
 
 class BigIntHelper {
@@ -156,11 +184,7 @@ public:
     static CString GetBinary(const BigInt *bigint);
     static JSHandle<BigInt> RightTruncate(JSThread *thread, JSHandle<BigInt> x);
 
-    static JSHandle<BigInt> DivideImpl(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y);
-    static CString MultiplyImpl(CString &a, CString &b);
     static void DeZero(CString &a);
-    static void Minus(CString &a, CString &b);
-    static CString Divide(CString &a, CString &b);
 
     static uint32_t AddHelper(uint32_t x, uint32_t y, uint32_t &bigintCarry);
     static uint32_t SubHelper(uint32_t x, uint32_t y, uint32_t &bigintCarry);

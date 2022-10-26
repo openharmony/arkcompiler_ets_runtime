@@ -726,20 +726,6 @@ JSTaggedValue RuntimeStubs::RuntimeCloneClassFromTemplate(JSThread *thread, cons
     return cloneClass.GetTaggedValue();
 }
 
-void RuntimeStubs::RuntimeUpdateAotStatus(JSThread *thread,
-                                          const JSTaggedValue constpoolValue,
-                                          const JSTaggedValue methodValue)
-{
-    auto constpool = ConstantPool::Cast(constpoolValue.GetTaggedObject());
-    auto method = Method::Cast(methodValue.GetTaggedObject());
-    // JSPandaFile is in the first index of constpool.
-    auto jsPandaFile = constpool->GetJSPandaFile();
-    AOTFileManager *aotFileManager = thread->GetEcmaVM()->GetAOTFileManager();
-    if (jsPandaFile->IsLoadedAOT()) {
-        aotFileManager->SetAOTFuncEntry(jsPandaFile, method);
-    }
-}
-
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
@@ -760,10 +746,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literalHandle);
-    JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, constpool, lexenv);
+    JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
-    RuntimeUpdateAotStatus(thread, constpool.GetTaggedValue(), method.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return cls.GetTaggedValue();
 }
@@ -792,10 +777,9 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literalHandle);
-    JSHandle<JSFunction> cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, constpool, lexenv, ihclass);
+    JSHandle<JSFunction> cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihclass);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
-    RuntimeUpdateAotStatus(thread, constpool.GetTaggedValue(), method.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return cls.GetTaggedValue();
@@ -1118,6 +1102,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetIterator(JSThread *thread, const JSHandle<
     if (!valuesFunc->IsCallable()) {
         return valuesFunc.GetTaggedValue();
     }
+
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, valuesFunc, obj, undefined, 0);
     return EcmaInterpreter::Execute(info);
@@ -1818,7 +1803,6 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
         default:
             UNREACHABLE();
     }
-    RuntimeUpdateAotStatus(thread, methodHandle->GetConstantPool(), methodHandle.GetTaggedValue());
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     return jsFunc.GetTaggedValue();
 }
@@ -1915,7 +1899,6 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
     JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass);
     jsFunc->SetHomeObject(thread, homeObject);
-    RuntimeUpdateAotStatus(thread, methodHandle->GetConstantPool(), methodHandle.GetTaggedValue());
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     return jsFunc.GetTaggedValue();
 }
@@ -2372,11 +2355,26 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
             values.emplace_back(args->Get(i).GetRawData());
         }
     }
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(size, values.data());
-    JSTaggedValue resultValue = EcmaInterpreter::Execute(info);
+    JSTaggedValue resultValue;
+    Method *method = ctor->GetCallTarget();
+    if (method->IsAotWithCallField()) {
+        uint32_t actualNumArgs = size + NUM_MANDATORY_JSFUNC_ARGS;
+        std::vector<JSTaggedType> argv(actualNumArgs, JSTaggedValue::Undefined().GetRawData());
+        size_t idx = 0;
+        argv[idx++] = ctor.GetTaggedValue().GetRawData();
+        argv[idx++] = newTgt.GetTaggedValue().GetRawData();
+        argv[idx++] = obj.GetTaggedValue().GetRawData();
+        for (uint32_t i = 0; i < size; ++i) {
+            argv[idx++] = values[i];
+        }
+        resultValue = thread->GetEcmaVM()->AotReentry(size, argv.data(), true);
+    } else {
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(size, values.data());
+        resultValue = EcmaInterpreter::Execute(info);
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 9.3.2 [[Construct]] (argumentsList, newTarget)
     if (resultValue.IsECMAObject()) {
@@ -2397,7 +2395,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t ar
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     const size_t firstArgOffset = 1;
-    STACK_ASSERT_SCOPE(thread);
     size_t arrLength = argc - firstArgOffset;
     JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(arrLength);
     for (size_t i = 0; i < arrLength; ++i) {

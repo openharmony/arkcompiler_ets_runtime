@@ -36,6 +36,46 @@ GateRef CircuitBuilder::Undefined()
     return UndefineConstant();
 }
 
+GateRef CircuitBuilder::Equal(GateRef x, GateRef y)
+{
+    auto xType = acc_.GetMachineType(x);
+    switch (xType) {
+        case ARCH:
+        case FLEX:
+        case I1:
+        case I8:
+        case I16:
+        case I32:
+        case I64:
+            return BinaryCmp(OpCode(OpCode::ICMP), x, y, static_cast<BitField>(ICmpCondition::EQ));
+        case F32:
+        case F64:
+            return BinaryCmp(OpCode(OpCode::FCMP), x, y, static_cast<BitField>(FCmpCondition::OEQ));
+        default:
+            UNREACHABLE();
+    }
+}
+
+GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y)
+{
+    auto xType = acc_.GetMachineType(x);
+    switch (xType) {
+        case ARCH:
+        case FLEX:
+        case I1:
+        case I8:
+        case I16:
+        case I32:
+        case I64:
+            return BinaryCmp(OpCode(OpCode::ICMP), x, y, static_cast<BitField>(ICmpCondition::NE));
+        case F32:
+        case F64:
+            return BinaryCmp(OpCode(OpCode::FCMP), x, y, static_cast<BitField>(FCmpCondition::ONE));
+        default:
+            UNREACHABLE();
+    }
+}
+
 // memory
 GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset)
 {
@@ -58,7 +98,7 @@ GateRef CircuitBuilder::GetInt64OfTInt(GateRef x)
 
 GateRef CircuitBuilder::GetInt32OfTInt(GateRef x)
 {
-    return ChangeInt64ToInt32(GetInt64OfTInt(x));
+    return TruncInt64ToInt32(GetInt64OfTInt(x));
 }
 
 GateRef CircuitBuilder::TaggedCastToIntPtr(GateRef x)
@@ -91,37 +131,37 @@ GateRef CircuitBuilder::ChangeUInt32ToFloat64(GateRef x)
 
 GateRef CircuitBuilder::Int8Equal(GateRef x, GateRef y)
 {
-    return BinaryLogic(OpCode(OpCode::EQ), x, y);
+    return Equal(x, y);
 }
 
 GateRef CircuitBuilder::Int32NotEqual(GateRef x, GateRef y)
 {
-    return BinaryLogic(OpCode(OpCode::NE), x, y);
+    return NotEqual(x, y);
 }
 
 GateRef CircuitBuilder::Int64NotEqual(GateRef x, GateRef y)
 {
-    return BinaryLogic(OpCode(OpCode::NE), x, y);
+    return NotEqual(x, y);
 }
 
 GateRef CircuitBuilder::DoubleEqual(GateRef x, GateRef y)
 {
-    return BinaryLogic(OpCode(OpCode::EQ), x, y);
+    return Equal(x, y);
 }
 
 GateRef CircuitBuilder::DoubleNotEqual(GateRef x, GateRef y)
 {
-    return BinaryLogic(OpCode(OpCode::NE), x, y);
+    return NotEqual(x, y);
 }
 
 GateRef CircuitBuilder::Int64Equal(GateRef x, GateRef y)
 {
-    return BinaryLogic(OpCode(OpCode::EQ), x, y);
+    return Equal(x, y);
 }
 
 GateRef CircuitBuilder::Int32Equal(GateRef x, GateRef y)
 {
-    return BinaryLogic(OpCode(OpCode::EQ), x, y);
+    return Equal(x, y);
 }
 
 template<OpCode::Op Op, MachineType Type>
@@ -160,17 +200,17 @@ GateRef CircuitBuilder::ChangeFloat64ToInt32(GateRef x)
 
 GateRef CircuitBuilder::SExtInt16ToInt64(GateRef x)
 {
-    return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
+    return UnaryArithmetic(OpCode(OpCode::SEXT), MachineType::I64, x);
 }
 
 GateRef CircuitBuilder::SExtInt16ToInt32(GateRef x)
 {
-    return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT32), x);
+    return UnaryArithmetic(OpCode(OpCode::SEXT), MachineType::I32, x);
 }
 
 GateRef CircuitBuilder::SExtInt8ToInt64(GateRef x)
 {
-    return UnaryArithmetic(OpCode(OpCode::SEXT_TO_INT64), x);
+    return UnaryArithmetic(OpCode(OpCode::SEXT), MachineType::I64, x);
 }
 
 GateRef CircuitBuilder::Int64ToTaggedPtr(GateRef x)
@@ -195,6 +235,7 @@ GateRef CircuitBuilder::IsSpecial(GateRef x, JSTaggedType type)
 {
     auto specialValue = circuit_->GetConstantGate(
         MachineType::I64, type, GateType::TaggedValue());
+
     return Equal(x, specialValue);
 }
 
@@ -322,6 +363,15 @@ GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
     return BoolOr(TaggedIsFalse(x), TaggedIsTrue(x));
 }
 
+GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef x)
+{
+    GateRef isHeapObj = TaggedIsHeapObject(x);
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isAOTLiteralInfoObj = Equal(objType,
+        Int32(static_cast<int32_t>(JSType::AOT_LITERAL_INFO)));
+    return LogicAnd(isHeapObj, isAOTLiteralInfoObj);
+}
+
 GateRef CircuitBuilder::TaggedGetInt(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
@@ -375,7 +425,7 @@ GateRef CircuitBuilder::TaggedFalse()
 
 GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 {
-    GateRef offset = PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), array, dataOffset);
 }
@@ -383,7 +433,7 @@ GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,
                                            GateRef array, GateRef index, GateRef val)
 {
-    GateRef offset = PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     Store(valType, glue, array, dataOffset, val);
 }

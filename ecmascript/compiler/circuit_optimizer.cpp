@@ -241,10 +241,6 @@ uint64_t LatticeUpdateRuleSCCP::RunBoolArithmetic(bool valueA, bool valueB, OpCo
             return (valueA ^ valueB);
         case OpCode::OR:
             return (valueA | valueB);
-        case OpCode::EQ:
-            return (valueA == valueB ? 1 : 0);
-        case OpCode::NE:
-            return (valueA != valueB ? 1 : 0);
         default:
             LOG_COMPILER(ERROR) << "unexpected op!";
             return 0;
@@ -284,26 +280,6 @@ uint64_t LatticeUpdateRuleSCCP::RunFixedPointArithmetic(T valueA, T valueB, OpCo
             return (valueA >> valueB);
         case OpCode::ASR:
             return (static_cast<make_signed_t>(valueA) >> static_cast<make_signed_t>(valueB));
-        case OpCode::SLT:
-            return (static_cast<make_signed_t>(valueA) < static_cast<make_signed_t>(valueB));
-        case OpCode::ULT:
-            return (valueA < valueB);
-        case OpCode::SLE:
-            return (static_cast<make_signed_t>(valueA) <= static_cast<make_signed_t>(valueB));
-        case OpCode::ULE:
-            return (valueA <= valueB);
-        case OpCode::SGT:
-            return (static_cast<make_signed_t>(valueA) > static_cast<make_signed_t>(valueB));
-        case OpCode::UGT:
-            return (valueA > valueB);
-        case OpCode::SGE:
-            return (static_cast<make_signed_t>(valueA) >= static_cast<make_signed_t>(valueB));
-        case OpCode::UGE:
-            return (valueA >= valueB);
-        case OpCode::EQ:
-            return (valueA == valueB ? 1 : 0);
-        case OpCode::NE:
-            return (valueA != valueB ? 1 : 0);
         default:
             LOG_COMPILER(ERROR) << "unexpected op!";
             return 0;
@@ -325,18 +301,6 @@ double LatticeUpdateRuleSCCP::RunFloatingPointArithmetic(T valueA, T valueB, OpC
             return (valueA / valueB);
         case OpCode::FMOD:
             return fmod(valueA, valueB);
-        case OpCode::FLT:
-            return (valueA < valueB);
-        case OpCode::FLE:
-            return (valueA <= valueB);
-        case OpCode::FGT:
-            return (valueA > valueB);
-        case OpCode::FGE:
-            return (valueA >= valueB);
-        case OpCode::EQ:
-            return (valueA == valueB ? 1 : 0);
-        case OpCode::NE:
-            return (valueA != valueB ? 1 : 0);
         default:
             LOG_COMPILER(ERROR) << "unexpected op!";
             return 0;
@@ -373,6 +337,117 @@ uint64_t LatticeUpdateRuleSCCP::RunBasicArithmetic(ValueLattice operandA, ValueL
         return base::bit_cast<uint64_t>(RunFloatingPointArithmetic(valueA_, valueB_, op));
     } else {
         LOG_COMPILER(ERROR) << "unexpected machineType!";
+    }
+    return 0;
+}
+
+uint64_t LatticeUpdateRuleSCCP::RunFCompareArithmetic(ValueLattice operandA, ValueLattice operandB,
+                                                      FCmpCondition cond, MachineType machineType)
+{
+    auto valueA = operandA.GetValue().value();
+    auto valueB = operandB.GetValue().value();
+    if (machineType == MachineType::F32) {
+        float valueA_ = base::bit_cast<float>(static_cast<uint32_t>(valueA));
+        float valueB_ = base::bit_cast<float>(static_cast<uint32_t>(valueB));
+        return base::bit_cast<uint64_t>(RunFloatingPointCompare(valueA_, valueB_, cond));
+    } else if (machineType == MachineType::F64) {
+        double valueA_ = base::bit_cast<double>(static_cast<uint64_t>(valueA));
+        double valueB_ = base::bit_cast<double>(static_cast<uint64_t>(valueB));
+        return base::bit_cast<uint64_t>(RunFloatingPointCompare(valueA_, valueB_, cond));
+    } else {
+        LOG_COMPILER(ERROR) << "unexpected machineType!";
+    }
+    return 0;
+}
+
+uint64_t LatticeUpdateRuleSCCP::RunICompareArithmetic(ValueLattice operandA, ValueLattice operandB,
+                                                      ICmpCondition cond, MachineType machineType)
+{
+    auto valueA = operandA.GetValue().value();
+    auto valueB = operandB.GetValue().value();
+    if (machineType == MachineType::I1) {
+        return static_cast<bool>(RunBoolCompare(static_cast<bool>(valueA),
+                                                static_cast<bool>(valueB), cond));
+    } else if (machineType == MachineType::I8) {
+        return static_cast<uint8_t>(RunFixedPointCompare(static_cast<uint8_t>(valueA),
+                                                         static_cast<uint8_t>(valueB), cond));
+    } else if (machineType == MachineType::I16) {
+        return static_cast<uint16_t>(RunFixedPointCompare(static_cast<uint16_t>(valueA),
+                                                          static_cast<uint16_t>(valueB), cond));
+    } else if (machineType == MachineType::I32) {
+        return static_cast<uint32_t>(RunFixedPointCompare(static_cast<uint32_t>(valueA),
+                                                          static_cast<uint32_t>(valueB), cond));
+    } else if (machineType == MachineType::I64) {
+        return RunFixedPointCompare(static_cast<uint64_t>(valueA), static_cast<uint64_t>(valueB), cond);
+    } else {
+        LOG_COMPILER(ERROR) << "unexpected machineType!";
+    }
+    return 0;
+}
+
+uint64_t LatticeUpdateRuleSCCP::RunBoolCompare(bool valueA, bool valueB, ICmpCondition cond)
+{
+    switch (cond) {
+        case ICmpCondition::EQ:
+            return (valueA == valueB ? 1 : 0);
+        case ICmpCondition::NE:
+            return (valueA != valueB ? 1 : 0);
+        default:
+            LOG_COMPILER(ERROR) << "unexpected cond!";
+            return 0;
+    }
+}
+
+template<class T>
+uint64_t LatticeUpdateRuleSCCP::RunFixedPointCompare(T valueA, T valueB, ICmpCondition cond)
+{
+    static_assert(std::is_unsigned<T>::value, "T should be an unsigned type");
+    using make_signed_t = typename std::make_signed<T>::type;
+    switch (cond) {
+        case ICmpCondition::SLT:
+            return (static_cast<make_signed_t>(valueA) < static_cast<make_signed_t>(valueB));
+        case ICmpCondition::SLE:
+            return (static_cast<make_signed_t>(valueA) <= static_cast<make_signed_t>(valueB));
+        case ICmpCondition::SGT:
+            return (static_cast<make_signed_t>(valueA) > static_cast<make_signed_t>(valueB));
+        case ICmpCondition::SGE:
+            return (static_cast<make_signed_t>(valueA) >= static_cast<make_signed_t>(valueB));
+        case ICmpCondition::ULT:
+            return (valueA < valueB);
+        case ICmpCondition::ULE:
+            return (valueA <= valueB);
+        case ICmpCondition::UGT:
+            return (valueA > valueB);
+        case ICmpCondition::UGE:
+            return (valueA >= valueB);
+        case ICmpCondition::NE:
+            return (valueA == valueB ? 1 : 0);
+        case ICmpCondition::EQ:
+            return (valueA != valueB ? 1 : 0);
+        default:
+            UNREACHABLE();
+    }
+}
+
+template<class T>
+uint64_t LatticeUpdateRuleSCCP::RunFloatingPointCompare(T valueA, T valueB, FCmpCondition cond)
+{
+    switch (cond) {
+        case FCmpCondition::OLT:
+            return (valueA < valueB);
+        case FCmpCondition::OLE:
+            return (valueA <= valueB);
+        case FCmpCondition::OGT:
+            return (valueA > valueB);
+        case FCmpCondition::OGE:
+            return (valueA >= valueB);
+        case FCmpCondition::ONE:
+            return (valueA != valueB ? 1 : 0);
+        case FCmpCondition::OEQ:
+            return (valueA == valueB ? 1 : 0);
+        default:
+            LOG_COMPILER(ERROR) << "unexpected cond!";
+            return 0;
     }
     return 0;
 }
@@ -423,17 +498,9 @@ bool LatticeUpdateRuleSCCP::Run(GateRef gate)
         {OpCode::CONST_DATA, [&]() -> bool { return RunConstData(gate); }},
         {OpCode::RELOCATABLE_DATA, [&]() -> bool { return RunRelocatableData(gate); }},
         {OpCode::CONSTANT, [&]() -> bool { return RunConstant(gate); }},
-        {OpCode::ZEXT_TO_INT64, [&]() -> bool { return RunZExtToInt64(gate); }},
-        {OpCode::ZEXT_TO_INT32, [&]() -> bool { return RunZExtToInt32(gate); }},
-        {OpCode::ZEXT_TO_INT16, [&]() -> bool { return RunZExtToInt16(gate); }},
-        {OpCode::ZEXT_TO_ARCH, [&]() -> bool { return RunZExtToArch(gate); }},
-        {OpCode::SEXT_TO_INT64, [&]() -> bool { return RunSExtToInt64(gate); }},
-        {OpCode::SEXT_TO_INT32, [&]() -> bool { return RunSExtToInt32(gate); }},
-        {OpCode::SEXT_TO_ARCH, [&]() -> bool { return RunSExtToArch(gate); }},
-        {OpCode::TRUNC_TO_INT32, [&]() -> bool { return RunTruncToInt32(gate); }},
-        {OpCode::TRUNC_TO_INT1, [&]() -> bool { return RunTruncToInt1(gate); }},
-        {OpCode::TRUNC_TO_INT8, [&]() -> bool { return RunTruncToInt8(gate); }},
-        {OpCode::TRUNC_TO_INT16, [&]() -> bool { return RunTruncToInt16(gate); }},
+        {OpCode::ZEXT, [&]() -> bool { return RunZExtToIntOrArch(gate); }},
+        {OpCode::SEXT, [&]() -> bool { return RunSExtToIntOrArch(gate); }},
+        {OpCode::TRUNC, [&]() -> bool { return RunTruncToInt(gate); }},
         {OpCode::REV, [&]() -> bool { return RunRev(gate); }},
         {OpCode::ADD, [&]() -> bool { return RunAdd(gate); }},
         {OpCode::SUB, [&]() -> bool { return RunSub(gate); }},
@@ -451,20 +518,8 @@ bool LatticeUpdateRuleSCCP::Run(GateRef gate)
         {OpCode::LSL, [&]() -> bool { return RunLSL(gate); }},
         {OpCode::LSR, [&]() -> bool { return RunLSR(gate); }},
         {OpCode::ASR, [&]() -> bool { return RunASR(gate); }},
-        {OpCode::SLT, [&]() -> bool { return RunSLT(gate); }},
-        {OpCode::SLE, [&]() -> bool { return RunSLE(gate); }},
-        {OpCode::SGT, [&]() -> bool { return RunSGT(gate); }},
-        {OpCode::SGE, [&]() -> bool { return RunSGE(gate); }},
-        {OpCode::ULT, [&]() -> bool { return RunULT(gate); }},
-        {OpCode::ULE, [&]() -> bool { return RunULE(gate); }},
-        {OpCode::UGT, [&]() -> bool { return RunUGT(gate); }},
-        {OpCode::UGE, [&]() -> bool { return RunUGE(gate); }},
-        {OpCode::FLT, [&]() -> bool { return RunFLT(gate); }},
-        {OpCode::FLE, [&]() -> bool { return RunFLE(gate); }},
-        {OpCode::FGT, [&]() -> bool { return RunFGT(gate); }},
-        {OpCode::FGE, [&]() -> bool { return RunFGE(gate); }},
-        {OpCode::EQ, [&]() -> bool { return RunEQ(gate); }},
-        {OpCode::NE, [&]() -> bool { return RunNE(gate); }},
+        {OpCode::ICMP, [&]() -> bool { return RunIcmp(gate); }},
+        {OpCode::FCMP, [&]() -> bool { return RunFcmp(gate); }},
         {OpCode::LOAD, [&]() -> bool { return RunLoad(gate); }},
         {OpCode::STORE, [&]() -> bool { return RunStore(gate); }},
         {OpCode::TAGGED_TO_INT64, [&]() -> bool { return RunTaggedToInt64(gate); }},
@@ -763,67 +818,19 @@ bool LatticeUpdateRuleSCCP::RunConstant(GateRef gate)
     return UpdateValueLattice(gate, constantValue);
 }
 
-bool LatticeUpdateRuleSCCP::RunZExtToInt64(GateRef gate)
+bool LatticeUpdateRuleSCCP::RunZExtToIntOrArch(GateRef gate)
 {
     const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
-bool LatticeUpdateRuleSCCP::RunZExtToInt32(GateRef gate)
+bool LatticeUpdateRuleSCCP::RunSExtToIntOrArch(GateRef gate)
 {
     const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
 }
 
-bool LatticeUpdateRuleSCCP::RunZExtToInt16(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    return UpdateValueLattice(gate, operandA);
-}
-
-bool LatticeUpdateRuleSCCP::RunZExtToArch(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    return UpdateValueLattice(gate, operandA);
-}
-
-bool LatticeUpdateRuleSCCP::RunSExtToInt64(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    return UpdateValueLattice(gate, operandA);
-}
-
-bool LatticeUpdateRuleSCCP::RunSExtToInt32(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    return UpdateValueLattice(gate, operandA);
-}
-
-bool LatticeUpdateRuleSCCP::RunSExtToArch(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    return UpdateValueLattice(gate, operandA);
-}
-
-bool LatticeUpdateRuleSCCP::RunTruncToInt32(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    return UpdateValueLattice(gate, operandA);
-}
-
-bool LatticeUpdateRuleSCCP::RunTruncToInt1(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    return UpdateValueLattice(gate, operandA);
-}
-
-bool LatticeUpdateRuleSCCP::RunTruncToInt8(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    return UpdateValueLattice(gate, operandA);
-}
-
-bool LatticeUpdateRuleSCCP::RunTruncToInt16(GateRef gate)
+bool LatticeUpdateRuleSCCP::RunTruncToInt(GateRef gate)
 {
     const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     return UpdateValueLattice(gate, operandA);
@@ -1092,10 +1099,11 @@ bool LatticeUpdateRuleSCCP::RunASR(GateRef gate)
     return UpdateValueLattice(gate, ValueLattice(value));
 }
 
-bool LatticeUpdateRuleSCCP::RunSLT(GateRef gate)
+bool LatticeUpdateRuleSCCP::RunIcmp(GateRef gate)
 {
     const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
+    ICmpCondition cond = static_cast<ICmpCondition>(acc_.GetBitField(gate));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1103,14 +1111,15 @@ bool LatticeUpdateRuleSCCP::RunSLT(GateRef gate)
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
     auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SLT, machineType);
+    auto value = RunICompareArithmetic(operandA, operandB, cond, machineType);
     return UpdateValueLattice(gate, ValueLattice(value));
 }
 
-bool LatticeUpdateRuleSCCP::RunSLE(GateRef gate)
+bool LatticeUpdateRuleSCCP::RunFcmp(GateRef gate)
 {
     const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
+    FCmpCondition cond = static_cast<FCmpCondition>(acc_.GetBitField(gate));
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1118,187 +1127,7 @@ bool LatticeUpdateRuleSCCP::RunSLE(GateRef gate)
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
     }
     auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SLE, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunSGT(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SGT, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunSGE(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::SGE, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunULT(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::ULT, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunULE(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::ULE, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunUGT(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::UGT, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunUGE(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::UGE, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunFLT(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FLT, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunFLE(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FLE, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunFGT(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FGT, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunFGE(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::FGE, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunEQ(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::EQ, machineType);
-    return UpdateValueLattice(gate, ValueLattice(value));
-}
-
-bool LatticeUpdateRuleSCCP::RunNE(GateRef gate)
-{
-    const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
-    const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    if (operandA.IsTop() || operandB.IsTop()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
-    }
-    if (operandA.IsBot() || operandB.IsBot()) {
-        return UpdateValueLattice(gate, ValueLattice(LatticeStatus::BOT));
-    }
-    auto machineType = acc_.GetMachineType(gate);
-    auto value = RunBasicArithmetic(operandA, operandB, OpCode::NE, machineType);
+    auto value = RunFCompareArithmetic(operandA, operandB, cond, machineType);
     return UpdateValueLattice(gate, ValueLattice(value));
 }
 

@@ -42,10 +42,10 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIArrayListIterator> iter(input);
     JSHandle<JSTaggedValue> arrayList(thread, iter->GetIteratedArrayList());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     if (arrayList->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
 
     uint32_t index = iter->GetNextIndex();
@@ -56,12 +56,13 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
 
     if (index >= length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedArrayList(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
 
     iter->SetNextIndex(index + 1);
-    JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, arrayList, index).GetValue();
+    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIArrayList>::Cast(arrayList)->Get(thread, index));
 
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }

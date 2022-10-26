@@ -40,20 +40,21 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPILightWeightSetIterator> iter(input);
-    JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> lightWeightSet(thread, iter->GetIteratedLightWeightSet());
     uint32_t index = iter->GetNextIndex();
     IterationKind itemKind = IterationKind(iter->GetIterationKind());
     if (lightWeightSet->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     uint32_t length = 0;
     if (lightWeightSet->IsJSAPILightWeightSet()) {
         length = JSHandle<JSAPILightWeightSet>(lightWeightSet)->GetLength();
     }
     if (index >= length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedLightWeightSet(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
     JSHandle<TaggedArray> valueArray(
@@ -66,7 +67,7 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
         TaggedArray::Cast(JSHandle<JSAPILightWeightSet>(lightWeightSet)->GetHashes().GetTaggedObject());
     JSHandle<JSTaggedValue> keyHandle(thread, hashArray->Get(index));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(2)); // 2 means the length of array
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(2); // 2 means the length of array
     array->Set(thread, 0, keyHandle);
     array->Set(thread, 1, value);
     JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));

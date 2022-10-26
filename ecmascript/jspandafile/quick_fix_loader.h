@@ -34,8 +34,10 @@ public:
     bool UnloadPatch(JSThread *thread, const CString &patchFileName);
 
 private:
-    bool LoadPatchInternal(JSThread *thread);
+    bool LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile, const JSPandaFile *patchFile);
     bool ReplaceMethod(JSThread *thread,
+                       const JSPandaFile *baseFile,
+                       const JSPandaFile *patchFile,
                        const JSHandle<ConstantPool> &baseConstpool,
                        const JSHandle<ConstantPool> &patchConstpool);
     void ReplaceMethodInner(JSThread *thread,
@@ -51,8 +53,8 @@ private:
     CVector<JSHandle<Program>> ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile);
     void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile, JSHandle<ConstantPool> constpool);
 
-    bool ExecutePatchMain(JSThread *thread, const JSHandle<Program> &patchProgram);
-    bool ExecutePatchMain(JSThread *thread, const CVector<JSHandle<Program>> &programs);
+    bool ExecutePatchMain(JSThread *thread, const JSHandle<Program> &patchProgram, const JSPandaFile *patchFile);
+    bool ExecutePatchMain(JSThread *thread, const CVector<JSHandle<Program>> &programs, const JSPandaFile *patchFile);
 
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
 
@@ -61,9 +63,9 @@ private:
         reservedBaseMethodInfo_.clear();
         reservedBaseClassInfo_.clear();
     }
-    void ClearPatchInfo(JSThread *thread) const;
+    bool ClearPatchInfo(JSThread *thread, const CString &patchFileName) const;
 
-    bool CheckIsInvalidPatch(EcmaVM *vm) const;
+    bool CheckIsInvalidPatch(const JSPandaFile *baseFile, const JSPandaFile *patchFile, EcmaVM *vm) const;
     // Check module mismatch
     static bool CheckIsModuleMismatch(JSThread *thread, JSHandle<SourceTextModule> patchModule,
                                       JSHandle<SourceTextModule> baseModule);
@@ -76,8 +78,7 @@ private:
     static bool CheckIndirectExportEntryMismatch(IndirectExportEntry *patch, IndirectExportEntry *base);
     static bool CheckStarExportEntryMismatch(StarExportEntry *patch, StarExportEntry *base);
 
-    const JSPandaFile *baseFile_ {nullptr};
-    const JSPandaFile *patchFile_ {nullptr};
+    CString baseFileName_;
 
     // For method unload patch.
     // key: base constpool index, value: base methodLiteral.

@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
@@ -34,12 +35,11 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef func = TaggedArgument(static_cast<size_t>(BuiltinsArgs::FUNC));                         \
     GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
     GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
-    GateRef argv = PtrArgument(static_cast<size_t>(BuiltinsArgs::ARGV));                            \
     DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(name)) });                                       \
-    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs, argv);                          \
+    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs);                                \
 }                                                                                                   \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
-                                            GateRef thisValue, GateRef numArgs, GateRef argv)
+                                            GateRef thisValue, GateRef numArgs)
 #else
 #define DECLARE_BUILTINS(name)                                                                      \
 void name##StubBuilder::GenerateCircuit()                                                           \
@@ -49,16 +49,22 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef func = TaggedArgument(static_cast<size_t>(BuiltinsArgs::FUNC));                         \
     GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
     GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
-    GateRef argv = PtrArgument(static_cast<size_t>(BuiltinsArgs::ARGV));                            \
-    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs, argv);                          \
+    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs);                                \
 }                                                                                                   \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
-                                            GateRef thisValue, GateRef numArgs, GateRef argv)
+                                            GateRef thisValue, GateRef numArgs)
 #endif
 
+#define BUILDARG()                                                                                  \
+    GateRef arg0 = GetCallArg0();                                                                   \
+    GateRef arg1 = GetCallArg1();                                                                   \
+    GateRef arg2 = GetCallArg2();                                                                   \
+    GateRef newTarget = Undefined();                                                                \
+    GateRef runtimeCallInfoArgs = PtrAdd(numArgs, IntPtr(NUM_MANDATORY_JSFUNC_ARGS))
+
 #define CALLSLOWPATH()                                                                              \
-    CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),                                \
-                  { glue, nativeCode, func, thisValue, numArgs, argv })
+    CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),                                  \
+                   { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1, arg2 })
 
 DECLARE_BUILTINS(CharCodeAt)
 {
@@ -91,7 +97,7 @@ DECLARE_BUILTINS(CharCodeAt)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
-                GateRef posTag = GetCallArg(argv, IntPtr(0));
+                GateRef posTag = GetCallArg0();
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 pos = GetInt32OfTInt(posTag);
@@ -120,6 +126,7 @@ DECLARE_BUILTINS(CharCodeAt)
     }
     Bind(&slowPath);
     {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }
@@ -157,7 +164,7 @@ DECLARE_BUILTINS(IndexOf)
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
-            GateRef searchTag = GetCallArg(argv, IntPtr(0));
+            GateRef searchTag = GetCallArg0();
             Branch(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, &slowPath);
             Bind(&searchTagIsHeapObject);
             Branch(IsString(searchTag), &isSearchString, &slowPath);
@@ -167,7 +174,7 @@ DECLARE_BUILTINS(IndexOf)
                 Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &next, &posTagNotUndefined);
                 Bind(&posTagNotUndefined);
                 {
-                    GateRef posTag = GetCallArg(argv, IntPtr(1));
+                    GateRef posTag = GetCallArg1();
                     Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                     Bind(&posTagIsInt);
                     pos = GetInt32OfTInt(posTag);
@@ -219,6 +226,7 @@ DECLARE_BUILTINS(IndexOf)
     }
     Bind(&slowPath);
     {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }
@@ -275,7 +283,7 @@ DECLARE_BUILTINS(Substring)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &startTagNotUndefined);
             Bind(&startTagNotUndefined);
             {
-                GateRef startTag = GetCallArg(argv, IntPtr(0));
+                GateRef startTag = GetCallArg0();
                 Branch(TaggedIsInt(startTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 start = GetInt32OfTInt(startTag);
@@ -296,7 +304,7 @@ DECLARE_BUILTINS(Substring)
                 }
                 Bind(&endTagNotUndefined);
                 {
-                    GateRef endTag = GetCallArg(argv, IntPtr(1));
+                    GateRef endTag = GetCallArg1();
                     Branch(TaggedIsInt(endTag), &endTagIsInt, &endTagNotInt);
                     Bind(&endTagIsInt);
                     end = GetInt32OfTInt(endTag);
@@ -384,6 +392,7 @@ DECLARE_BUILTINS(Substring)
 
     Bind(&slowPath);
     {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }
@@ -423,7 +432,7 @@ DECLARE_BUILTINS(CharAt)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
-                GateRef posTag = GetCallArg(argv, IntPtr(0));
+                GateRef posTag = GetCallArg0();
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 pos = GetInt32OfTInt(posTag);
@@ -458,6 +467,7 @@ DECLARE_BUILTINS(CharAt)
     }
     Bind(&slowPath);
     {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }
@@ -465,114 +475,125 @@ DECLARE_BUILTINS(CharAt)
     Return(*res);
 }
 
-DECLARE_BUILTINS(ForEach)
+DECLARE_BUILTINS(VectorForEach)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Hole());
-    DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
-    DEFVARIABLE(thisArg, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(key, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(kValue, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(length, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(k, VariableType::INT32(), Int32(0));
-    Label valueIsJSAPIVector(env);
-    Label valueNotJSAPIVector(env);
-    Label objIsJSProxy(env);
-    Label objNotJSProxy(env);
-    Label objIsJSAPIVector(env);
-    Label thisArgUndefined(env);
-    Label thisArgNotUndefined(env);
-    Label callbackUndefined(env);
-    Label callbackNotUndefined(env);
-    Label nextCount(env);
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
     Label exit(env);
     Label slowPath(env);
-    Label afterLoop(env);
-    GateRef callbackFnHandle;
-    Branch(IsJSAPIVector(*thisObj), &valueIsJSAPIVector, &valueNotJSAPIVector);
-    Bind(&valueNotJSAPIVector);
-    {
-        Branch(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
-        Bind(&objIsJSProxy);
-        {
-            GateRef tempObj = GetTarget(*thisObj);
-            Branch(IsJSAPIVector(tempObj), &objIsJSAPIVector, &slowPath);
-            Bind(&objIsJSAPIVector);
-            {
-                thisObj = tempObj;
-                Jump(&valueIsJSAPIVector);
-            }
-        }
-        Bind(&objNotJSProxy);
-        Jump(&slowPath);
-    }
-    Bind(&valueIsJSAPIVector);
-    {
-        Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &callbackUndefined, &callbackNotUndefined);
-        Bind(&callbackUndefined);
-        Jump(&slowPath);
-        Bind(&callbackNotUndefined);
-        {
-            Label isCall(env);
-            Label notCall(env);
-            callbackFnHandle = GetCallArg(argv, IntPtr(0));
-            Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
-            Bind(&notCall);
-            Jump(&slowPath);
-            Bind(&isCall);
-            {
-                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &thisArgUndefined, &thisArgNotUndefined);
-                Bind(&thisArgUndefined);
-                Jump(&nextCount);
-                Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg(argv, IntPtr(1));
-                Jump(&nextCount);
-            }
-        }
-    }
-    ContainersVectorStubBuilder vectorBuilder(this);
-    Bind(&nextCount);
-    {
-        length = vectorBuilder.GetSize(*thisObj);
-        Jump(&loopHead);
-        LoopBegin(&loopHead);
-        {
-            Label lenChange(env);
-            Label hasException(env);
-            Label notHasException(env);
-            Branch(Int32LessThan(*k, *length), &next, &afterLoop);
-            Bind(&next);
-            {
-                kValue = vectorBuilder.Get(*thisObj, *k);
-                key = IntToTaggedInt(*k);
-                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *kValue, *key, *thisObj });
-                Branch(HasPendingException(glue), &hasException, &notHasException);
-                Bind(&hasException);
-                {
-                    res = retValue;
-                    Jump(&exit);
-                }
-                Bind(&notHasException);
-                GateRef tempLen = vectorBuilder.GetSize(*thisObj);
-                Branch(Int32NotEqual(tempLen, *length), &lenChange, &loopEnd);
-                Bind(&lenChange);
-                length = tempLen;
-                Jump(&loopEnd);
-            }
-        }
-        Bind(&loopEnd);
-        k = Int32Add(*k, Int32(1));
-        LoopEnd(&loopHead);
-    }
-    Bind(&afterLoop);
-    res = Undefined();
-    Jump(&exit);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::VECTOR_FOREACH);
     Bind(&slowPath);
     {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(VectorReplaceAllElements)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::VECTOR_REPLACEALLELEMENTS);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(StackForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::STACK_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(PlainArrayForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::PLAINARRAY_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(QueueForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.QueueCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::QUEUE_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(DequeForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.DequeCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::DEQUE_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }

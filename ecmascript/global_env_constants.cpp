@@ -96,9 +96,13 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
     SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_POOL));
+    SetConstant(ConstantIndex::AOT_LITERAL_INFO_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
     InitGlobalConstantSpecial(thread);
     SetConstant(ConstantIndex::DICTIONARY_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_DICTIONARY));
+    SetConstant(ConstantIndex::COW_ARRAY_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::COW_TAGGED_ARRAY));
     SetConstant(ConstantIndex::BIGINT_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, BigInt::SIZE, JSType::BIGINT));
     SetConstant(ConstantIndex::JS_NATIVE_POINTER_CLASS_INDEX,
@@ -206,6 +210,9 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
                 factory->NewEcmaReadOnlyHClass(hClass, TSFunctionType::SIZE, JSType::TS_FUNCTION_TYPE));
     SetConstant(ConstantIndex::TS_ARRAY_TYPE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TSArrayType::SIZE, JSType::TS_ARRAY_TYPE));
+    SetConstant(ConstantIndex::TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, TSIteratorInstanceType::SIZE,
+                JSType::TS_ITERATOR_INSTANCE_TYPE));
     SetConstant(ConstantIndex::JS_REGEXP_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSRegExpIterator::SIZE, JSType::JS_REG_EXP_ITERATOR));
     SetConstant(ConstantIndex::JS_SET_ITERATOR_CLASS_INDEX,
@@ -458,6 +465,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::NARROW_STRING_INDEX, factory->NewFromASCIINonMovable("narrow"));
     SetConstant(ConstantIndex::ALWAYS_STRING_INDEX, factory->NewFromASCIINonMovable("always"));
     SetConstant(ConstantIndex::AUTO_STRING_INDEX, factory->NewFromASCIINonMovable("auto"));
+    SetConstant(ConstantIndex::THROW_STRING_INDEX, factory->NewFromASCIINonMovable("throw"));
     SetConstant(ConstantIndex::UNIT_DISPLAY_INDEX, factory->NewFromASCIINonMovable("unitDisplay"));
     SetConstant(ConstantIndex::NOTATION_INDEX, factory->NewFromASCIINonMovable("notation"));
     SetConstant(ConstantIndex::COMPACT_DISPALY_INDEX, factory->NewFromASCIINonMovable("compactDisplay"));

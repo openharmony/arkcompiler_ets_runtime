@@ -159,9 +159,9 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     auto hdr = *ToNativePtr<const Header>(readFile);
     uintptr_t oldSpaceBegin = readFile + sizeof(Header);
     processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
-                                             hdr.machineCodeObjSize, hdr.snapshotObjSize);
-    uintptr_t stringBegin =
-        oldSpaceBegin + hdr.oldSpaceObjSize + hdr.nonMovableObjSize + hdr.machineCodeObjSize + hdr.snapshotObjSize;
+                                             hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
+    uintptr_t stringBegin = oldSpaceBegin + hdr.oldSpaceObjSize + hdr.nonMovableObjSize +
+        hdr.machineCodeObjSize + hdr.snapshotObjSize + hdr.hugeObjSize;
     uintptr_t stringEnd = stringBegin + hdr.stringSize;
     processor.DeserializeString(stringBegin, stringEnd);
 
@@ -220,8 +220,8 @@ void Snapshot::WriteToFile(std::fstream &writer, const panda_file::File *pf, siz
         totalObjSize += objSize;
     }
     uint32_t pandaFileBegin = RoundUp(totalObjSize + sizeof(Header), Constants::PAGE_SIZE_ALIGN_UP);
-    Header hdr {objSizeVector[0], objSizeVector[1], objSizeVector[2], objSizeVector[3], // 0,1,2,3: index of element
-                totalStringSize, pandaFileBegin, static_cast<uint32_t>(size)};
+    Header hdr {objSizeVector[0], objSizeVector[1], objSizeVector[2], objSizeVector[3], // 0,1,2,3,4: index of element
+                objSizeVector[4], totalStringSize, pandaFileBegin, static_cast<uint32_t>(size)};
     writer.write(reinterpret_cast<char *>(&hdr), sizeof(hdr));
 
     processor.WriteObjectToFile(writer);

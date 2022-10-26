@@ -208,6 +208,10 @@ std::string ICKindToString(ICKind kind)
             return "NamedGlobalLoadIC";
         case ICKind::NamedGlobalStoreIC:
             return "NamedGlobalStoreIC";
+        case ICKind::NamedGlobalTryLoadIC:
+            return "NamedGlobalTryLoadIC";
+        case ICKind::NamedGlobalTryStoreIC:
+            return "NamedGlobalTryStoreIC";
         case ICKind::GlobalLoadIC:
             return "GlobalLoadIC";
         case ICKind::GlobalStoreIC:
@@ -269,6 +273,8 @@ ProfileTypeAccessor::ICState ProfileTypeAccessor::GetICState() const
         }
         case ICKind::NamedGlobalLoadIC:
         case ICKind::NamedGlobalStoreIC:
+        case ICKind::NamedGlobalTryLoadIC:
+        case ICKind::NamedGlobalTryStoreIC:
             ASSERT(profileData.IsPropertyBox());
             return ICState::MONO;
         case ICKind::GlobalLoadIC:

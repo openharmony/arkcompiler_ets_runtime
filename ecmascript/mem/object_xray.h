@@ -330,6 +330,8 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:
             case JSType::LEXICAL_ENV:
+            case JSType::AOT_LITERAL_INFO:
+            case JSType::COW_TAGGED_ARRAY:
                 TaggedArray::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::CONSTANT_POOL:
@@ -480,6 +482,8 @@ public:
                 TSFunctionType::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::TS_ARRAY_TYPE:
+                break;
+            case JSType::TS_ITERATOR_INSTANCE_TYPE:
                 break;
             case JSType::RB_TREENODE:
                 RBTreeNode::Cast(object)->VisitRangeSlot(visitor);

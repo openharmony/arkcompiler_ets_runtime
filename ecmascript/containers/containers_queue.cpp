@@ -153,7 +153,7 @@ JSTaggedValue ContainersQueue::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
 
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    uint32_t index = queue->GetCurrentFront();
+    uint32_t index = 0;
     uint32_t k = 0;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     while (k < len) {

@@ -135,11 +135,12 @@ class ArkTest():
                                 f'{product_dir}/clang_x64/thirdparty/icu/:'
                                 f'{product_dir}/clang_x64/arkcompiler/ets_runtime')
         libs_dir = [[libs_dir_x64_release, libs_dir_x64_debug], [libs_dir_arm64_release, libs_dir_arm64_debug]]
-        bins_dir = [['clang_x64/ark', 'clang_x64/exe.unstripped/clang_x64/ark'], ['ark', 'exe.unstripped/ark']]
+        bins_dir = [['clang_x64/arkcompiler', 'clang_x64/exe.unstripped/clang_x64/arkcompiler'],
+                    ['arkcompiler', 'exe.unstripped/arkcompiler']]
         icu_arg = f'--icu-data-path={self.ohdir}/third_party/icu/ohos_icu4j/data'
         self.libs_dir = libs_dir[args.arm64][args.debug]
-        self.compiler = f'{product_dir}/{bins_dir[0][args.debug]}/ark_js_runtime/ark_aot_compiler'
-        self.jsvm = f'{product_dir}/{bins_dir[args.arm64][args.debug]}/ark_js_runtime/ark_js_vm'
+        self.compiler = f'{product_dir}/{bins_dir[0][args.debug]}/ets_runtime/ark_aot_compiler'
+        self.jsvm = f'{product_dir}/{bins_dir[args.arm64][args.debug]}/ets_runtime/ark_js_vm'
         self.ts2abc = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/build/src/index.js'
         self.aot_args = ''
         self.jsvm_args = icu_arg
@@ -189,15 +190,15 @@ class ArkTest():
                             module_abc_file = ''.join([module_abc_file, f':{abc}'])
         os.system(f'mkdir -p {out_case_dir}')
         cmd_map = {
-            'abc': f'node --expose-gc {self.ts2abc} {file} {module_arg}',
+            'abc': f'node --expose-gc {self.ts2abc} {file} {module_arg} --merge-abc',
             'aot': f'{self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {module_abc_file}',
             'aotd': f'{self.runnerd} {self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {module_abc_file}',
-            'run': f'{self.runner} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} {abc_file}',
-            'rund': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} {abc_file}',
-            'asmint': f'{self.runner} {self.jsvm} {self.jsvm_args} {abc_file}',
-            'asmintd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} {abc_file}',
-            'int': f'{self.runner} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 {abc_file}',
-            'intd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 {abc_file}'}
+            'run': f'{self.runner} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} --entry-point={name} {abc_file}',
+            'rund': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} --entry-point={name} {abc_file}',
+            'asmint': f'{self.runner} {self.jsvm} {self.jsvm_args} --entry-point={name} {abc_file}',
+            'asmintd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --entry-point={name} {abc_file}',
+            'int': f'{self.runner} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 --entry-point={name} {abc_file}',
+            'intd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 --entry-point={name} {abc_file}'}
         if self.args.step:
             # gdb should use the os.system
             cmd = cmd_map[self.args.step]

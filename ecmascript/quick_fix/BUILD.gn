@@ -11,13 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (!defined(ark_standalone_build)) {
-  import("//arkcompiler/ets_runtime/js_runtime_config.gni")
-  import("//build/ohos.gni")
-} else {
-  import("//ets_runtime/js_runtime_config.gni")
-  import("$build_root/ark.gni")
-}
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 source_set("quick_fix_set") {
   sources = [ "main.cpp" ]

@@ -79,14 +79,14 @@ HWTEST_F_L0(ICRuntimeStubTest, LoadGlobalICByName)
     // ProfileTypeInfo get value is HeapObject and then call LoadGlobal function to load
     JSTaggedValue resultValue1 =
         ICRuntimeStub::LoadGlobalICByName(thread, *handleProfileTypeInfo,
-                                          JSTaggedValue::Undefined(), JSTaggedValue::Undefined(), 0);
+                                          JSTaggedValue::Undefined(), JSTaggedValue::Undefined(), 0, true);
     EXPECT_EQ(resultValue1.GetInt(), 2);
     // the globalValue is jsobject then call loadMiss function can find global variable from global record firstly
     // so need store global record.
     SlowRuntimeStub::StGlobalRecord(thread, propKey.GetTaggedValue(), handleValue.GetTaggedValue(), false);
     JSTaggedValue resultValue2 =
         ICRuntimeStub::LoadGlobalICByName(thread, *handleProfileTypeInfo,
-                                          globalValue.GetTaggedValue(), propKey.GetTaggedValue(), 1);
+                                          globalValue.GetTaggedValue(), propKey.GetTaggedValue(), 1, true);
     EXPECT_EQ(resultValue2.GetInt(), 2);
     EXPECT_TRUE(handleProfileTypeInfo->Get(1).IsPropertyBox());
 }
@@ -109,16 +109,16 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
     // ProfileTypeInfo get value is HeapObject and then call LoadGlobal function to load
     JSTaggedValue resultValue1 =
-        ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo,
-                                           JSTaggedValue::Undefined(), JSTaggedValue::Undefined(), handleValue, 0);
+        ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo, JSTaggedValue::Undefined(),
+                                           JSTaggedValue::Undefined(), handleValue, 0, true);
     EXPECT_TRUE(resultValue1.IsUndefined());
     EXPECT_EQ(handleBoxValue->GetValue().GetInt(), 2);
     // the globalValue is jsobject then call storeMiss function can find global variable from global record firstly
     // so need store global record.
     SlowRuntimeStub::StGlobalRecord(thread, propKey.GetTaggedValue(), handleBoxValue.GetTaggedValue(), false);
     JSTaggedValue resultValue2 =
-        ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo,
-                                           globalValue.GetTaggedValue(), propKey.GetTaggedValue(), handleValue, 1);
+        ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo, globalValue.GetTaggedValue(),
+                                           propKey.GetTaggedValue(), handleValue, 1, true);
     EXPECT_TRUE(resultValue2.IsUndefined());
     EXPECT_TRUE(handleProfileTypeInfo->Get(1).IsPropertyBox());
 }

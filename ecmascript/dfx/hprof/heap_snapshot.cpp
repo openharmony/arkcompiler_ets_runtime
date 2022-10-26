@@ -213,6 +213,10 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "ConstantPool[");
         case JSType::TAGGED_DICTIONARY:
             return GetArrayString(TaggedArray::Cast(entry), "TaggedDict[");
+        case JSType::AOT_LITERAL_INFO:
+            return GetArrayString(TaggedArray::Cast(entry), "AOTLiteralInfo[");
+        case JSType::COW_TAGGED_ARRAY:
+            return GetArrayString(TaggedArray::Cast(entry), "COWArray[");
         case JSType::HCLASS:
             return GetString("HiddenClass");
         case JSType::STRING:
@@ -1033,9 +1037,7 @@ CString EntryVisitor::ConvertKey(JSTaggedValue key)
         keyString = EcmaString::Cast(symbol->GetDescription().GetTaggedObject());
     }
     // convert, expensive but safe
-    auto keyPtr = EcmaStringAccessor(keyString).ToOneByteDataForced();
-    CString keyCopy(reinterpret_cast<char *>(keyPtr.get()));
-    return keyCopy;
+    return EcmaStringAccessor(keyString).ToCString();
 }
 
 Node *HeapEntryMap::FindOrInsertNode(Node *node)

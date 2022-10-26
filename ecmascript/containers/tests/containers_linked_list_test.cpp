@@ -110,6 +110,47 @@ protected:
         JSHandle<JSAPILinkedList> linkedlist(thread, result);
         return linkedlist;
     }
+
+    JSTaggedValue LinkedListInsert(JSHandle<JSAPILinkedList> linkedlist, JSTaggedValue index, JSTaggedValue value)
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(linkedlist.GetTaggedValue());
+        callInfo->SetCallArg(0, index);
+        callInfo->SetCallArg(1, value);
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersLinkedList::Insert(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
+
+    JSTaggedValue LinkedListGet(JSHandle<JSAPILinkedList> linkedlist, JSTaggedValue index)
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(linkedlist.GetTaggedValue());
+        callInfo->SetCallArg(0, index);
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersLinkedList::Get(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
+
+    JSTaggedValue LinkedListRemoveByIndex(JSHandle<JSAPILinkedList> linkedlist, JSTaggedValue index)
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(linkedlist.GetTaggedValue());
+        callInfo->SetCallArg(0, index);
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersLinkedList::RemoveByIndex(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
+
 };
 
 HWTEST_F_L0(ContainersLinkedListTest, LinkedListConstructor)
@@ -138,48 +179,53 @@ HWTEST_F_L0(ContainersLinkedListTest, LinkedListConstructor)
 HWTEST_F_L0(ContainersLinkedListTest, InsertAndGet)
 {
     constexpr uint32_t NODE_NUMBERS = 8;
+    JSTaggedValue result = JSTaggedValue::Hole();
     JSHandle<JSAPILinkedList> linkedlist = CreateJSAPILinkedList();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedlist.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(i));
-        callInfo->SetCallArg(1, JSTaggedValue(i));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue result = ContainersLinkedList::Insert(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
+        result = LinkedListInsert(linkedlist, JSTaggedValue(i), JSTaggedValue(5));
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(linkedlist->Length(), static_cast<int>(i + 1));
     }
+    // Insert in position 0(first) with value 10
+    result = LinkedListInsert(linkedlist, JSTaggedValue(0), JSTaggedValue(10));
+    EXPECT_EQ(result, JSTaggedValue::True());
+    EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS + 1));
 
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedlist.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(i));
+    // Insert in position NODE_NUMBERS / 2(middle) with value 10
+    result = LinkedListInsert(linkedlist, JSTaggedValue(NODE_NUMBERS / 2), JSTaggedValue(10));
+    EXPECT_EQ(result, JSTaggedValue::True());
+    EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS + 2));
 
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue result = ContainersLinkedList::Get(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
-        EXPECT_EQ(result, JSTaggedValue(i));
+    // Insert in position NODE_NUMBERS + 2(last) with value 10
+    result = LinkedListInsert(linkedlist, JSTaggedValue(NODE_NUMBERS + 2), JSTaggedValue(10));
+    EXPECT_EQ(result, JSTaggedValue::True());
+    EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS + 3));
+    
+    uint32_t length = static_cast<uint32_t>(linkedlist->Length());
+    for (uint32_t i = 0; i < length; i++) {
+        if (i == 0) {
+            result = LinkedListGet(linkedlist, JSTaggedValue(i));
+            EXPECT_EQ(result, JSTaggedValue(10));
+        } else if (i == NODE_NUMBERS / 2) {
+            result = LinkedListGet(linkedlist, JSTaggedValue(i));
+            EXPECT_EQ(result, JSTaggedValue(10));
+        } else if (i == NODE_NUMBERS + 2) {
+            result = LinkedListGet(linkedlist, JSTaggedValue(i));
+            EXPECT_EQ(result, JSTaggedValue(10));
+        } else {
+            result = LinkedListGet(linkedlist, JSTaggedValue(i));
+            EXPECT_EQ(result, JSTaggedValue(5));
+        }
     }
 }
 
 HWTEST_F_L0(ContainersLinkedListTest, Remove)
 {
     constexpr uint32_t NODE_NUMBERS = 20;
+    JSTaggedValue result = JSTaggedValue::Hole();
     JSHandle<JSAPILinkedList> linkedlist = CreateJSAPILinkedList();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedlist.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(i));
-        callInfo->SetCallArg(1, JSTaggedValue(i));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue result = ContainersLinkedList::Insert(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
+        result = LinkedListInsert(linkedlist, JSTaggedValue(i), JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(linkedlist->Length(), static_cast<int>(i + 1));
     }
@@ -196,35 +242,37 @@ HWTEST_F_L0(ContainersLinkedListTest, Remove)
         EXPECT_EQ(rvalue, JSTaggedValue::True());
         EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS - 1));
     }
+}
 
-    {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedlist.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(6));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue rvalue = ContainersLinkedList::RemoveByIndex(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
-        EXPECT_EQ(rvalue, JSTaggedValue(6));
-        EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS - 2));
+HWTEST_F_L0(ContainersLinkedListTest, RemoveByIndex)
+{
+    constexpr uint32_t NODE_NUMBERS = 20;
+    JSTaggedValue result = JSTaggedValue::Hole();
+    JSHandle<JSAPILinkedList> linkedlist = CreateJSAPILinkedList();
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        result = LinkedListInsert(linkedlist, JSTaggedValue(i), JSTaggedValue(i));
+        EXPECT_EQ(result, JSTaggedValue::True());
+        EXPECT_EQ(linkedlist->Length(), static_cast<int>(i + 1));
     }
+
+    // Remove index > (NODE_NUMBERS / 2)
+    result = LinkedListRemoveByIndex(linkedlist, JSTaggedValue(16));
+    EXPECT_EQ(result, JSTaggedValue(16));
+    EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS - 1));
+
+    // Remove index < (NODE_NUMBERS / 2)
+    result = LinkedListRemoveByIndex(linkedlist, JSTaggedValue(6));
+    EXPECT_EQ(result, JSTaggedValue(6));
+    EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS - 2));    
 }
 
 HWTEST_F_L0(ContainersLinkedListTest, RemoveFirst)
 {
     constexpr uint32_t NODE_NUMBERS = 20;
+    JSTaggedValue result = JSTaggedValue::Hole();
     JSHandle<JSAPILinkedList> linkedlist = CreateJSAPILinkedList();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedlist.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(i));
-        callInfo->SetCallArg(1, JSTaggedValue(i));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue result = ContainersLinkedList::Insert(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
+        result = LinkedListInsert(linkedlist, JSTaggedValue(i), JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(linkedlist->Length(), static_cast<int>(i + 1));
     }
@@ -258,17 +306,10 @@ HWTEST_F_L0(ContainersLinkedListTest, RemoveFirst)
 HWTEST_F_L0(ContainersLinkedListTest, RemoveLast)
 {
     constexpr uint32_t NODE_NUMBERS = 20;
+    JSTaggedValue result = JSTaggedValue::Hole();
     JSHandle<JSAPILinkedList> linkedlist = CreateJSAPILinkedList();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedlist.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(i));
-        callInfo->SetCallArg(1, JSTaggedValue(i));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue result = ContainersLinkedList::Insert(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
+        result = LinkedListInsert(linkedlist, JSTaggedValue(i), JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(linkedlist->Length(), static_cast<int>(i + 1));
     }

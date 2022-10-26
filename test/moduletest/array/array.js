@@ -32,3 +32,29 @@ arr2.fill(0, 2, 4);
 var a1 = arr2.slice(0, 5);
 print(arr2.length);
 print(a1);
+
+var arr3 = [1,2,3,4,5,6];
+arr3.pop();
+print(arr3.length);
+print(arr3);
+
+var arr4 = [1,3,4];
+arr4.splice(1, 0, 2);
+print(arr4.length);
+print(arr4);
+// 1, 2, 3, 4
+var arr4 = [1,2,3,4];
+arr4.splice(3, 1, 3);
+print(arr4.length);
+print(arr4);
+// 1, 2, 3, 3
+
+var arr5 = [1,2,3,4,5,6];
+arr5.shift();
+print(arr5.length);
+print(arr5);
+// 1, 2, 3, 4, 5
+
+var arr6 = [1,2,3,4,5];
+arr6.reverse();
+print(arr6);

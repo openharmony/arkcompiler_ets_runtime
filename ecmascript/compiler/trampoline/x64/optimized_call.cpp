@@ -62,9 +62,8 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     Register argvReg = r8;
     Register codeAddrReg = r9;
 
-    Label lAlign16Bytes;
     Label lCopyExtraAument;
-    Label lCopyArguments;
+    Label updateNumArgs;
     Label lCopyLoop;
     Label lPopFrame;
 
@@ -78,33 +77,31 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
 
     // 16 bytes align check
     __ Movl(expectedNumArgsReg, r14);
+
+    // expectedNumArgs > actualNumArgs
+    __ Movl(expectedNumArgsReg, rbx); // save expectedNumArgs
+    __ Cmpl(actualNumArgsReg, expectedNumArgsReg);
+    __ Jbe(&updateNumArgs);
+    __ Movl(actualNumArgsReg, rax);
+    __ Movl(rbx, expectedNumArgsReg);
     __ Testb(1, r14);
-    __ Je(&lAlign16Bytes);
+    __ Je(&lCopyExtraAument);
     __ Pushq(0); // push zero to align 16 bytes stack
 
-    __ Bind(&lAlign16Bytes);
-    {
-         // expectedNumArgs > actualNumArgs
-        __ Movl(expectedNumArgsReg, rbx); // save expectedNumArgs
-        __ Cmpl(actualNumArgsReg, expectedNumArgsReg);
-        __ Jbe(&lCopyArguments);
-        __ Movl(actualNumArgsReg, rax);
-        __ Movl(rbx, expectedNumArgsReg);
-    }
-
     __ Bind(&lCopyExtraAument); // copy undefined value to stack
-    {
-        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
-        __ Addq(-1, expectedNumArgsReg);
-        __ Cmpq(rax, expectedNumArgsReg);
-        __ Ja(&lCopyExtraAument);
-    }
+    __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+    __ Addq(-1, expectedNumArgsReg);
+    __ Cmpq(rax, expectedNumArgsReg);
+    __ Ja(&lCopyExtraAument);
+    __ Jmp(&lCopyLoop);
 
-    __ Bind(&lCopyArguments);
+    __ Bind(&updateNumArgs);
     {
-        __ Cmpl(actualNumArgsReg, rbx);
-        __ CMovbe(rbx, actualNumArgsReg);
+        __ Movl(actualNumArgsReg, r14);
         __ Movl(actualNumArgsReg, rax); // rax -> actualNumArgsReg
+        __ Testb(1, r14);
+        __ Je(&lCopyLoop);
+        __ Pushq(0); // push zero to align 16 bytes stack
     }
 
     __ Bind(&lCopyLoop);
@@ -137,6 +134,50 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
         __ Movq(prevFpReg, Operand(glueReg, JSThread::GlueData::GetLeaveFrameOffset(false)));
         __ Ret();
     }
+}
+
+void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSFunctionReentry));
+    Register glueReg = rdi;
+    Register argv = rdx;
+    Register prevFpReg = rcx;
+    Register flag = r8;
+    Label lJSCallNewWithArgV;
+    Label lPopFrame;
+
+    __ PushCppCalleeSaveRegisters();
+    __ Pushq(glueReg); // caller save
+    // construct the frame
+    __ Pushq(rbp);
+    __ Movq(rsp, rbp);
+    __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_ENTRY_FRAME));
+    __ Pushq(prevFpReg);
+    __ Movq(flag, r12);
+    __ Movq(argv, rbx);
+    __ Movq(Operand(rbx, 0), rdx);
+    __ Movq(Operand(rbx, FRAME_SLOT_SIZE), rcx);
+    __ Movq(Operand(rbx, DOUBLE_SLOT_SIZE), r8);
+    __ Addq(TRIPLE_SLOT_SIZE, rbx);
+    __ Movq(rbx, r9);
+    __ Cmpl(1, r12);
+    __ Je(&lJSCallNewWithArgV);
+    __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgV), false);
+    __ Jmp(&lPopFrame);
+
+    __ Bind(&lJSCallNewWithArgV);
+    {
+        __ CallAssemblerStub(RTSTUB_ID(JSCallNewWithArgV), false);
+    }
+
+    __ Bind(&lPopFrame);
+    __ Popq(prevFpReg);
+    __ Addq(FRAME_SLOT_SIZE, rsp); // 8: frame type
+    __ Popq(rbp);
+    __ Popq(glueReg); // caller restore
+    __ PopCppCalleeSaveRegisters(); // callee restore
+    __ Movq(prevFpReg, Operand(glueReg, JSThread::GlueData::GetLeaveFrameOffset(false)));
+    __ Ret();
 }
 
 // * uint64_t OptimizedCallOptimized(uintptr_t glue, uint32_t expectedNumArgs, uint32_t actualNumArgs,
@@ -597,10 +638,20 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
 //               |--------------------------|               |
 //               |       lexEnv             |               v
 //               +--------------------------+ ---------------
+void OptimizedCall::JSCallNew(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallNew));
+    GenJSCall(assembler, true);
+}
 
 void OptimizedCall::JSCall(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(JSCall));
+    GenJSCall(assembler, false);
+}
+
+void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
+{
     Label jsCall;
     Label lJSCallStart;
     Label lNotJSFunction;
@@ -651,8 +702,10 @@ void OptimizedCall::JSCall(ExtendedAssembler *assembler)
         __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
         __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
         __ Jb(&lCallNativeMethod);
-        __ Btq(JSHClass::ClassConstructorBit::START_BIT, rax); // is CallConstructor
-        __ Jb(&lCallConstructor);
+        if (!isNew) {
+            __ Btq(JSHClass::ClassConstructorBit::START_BIT, rax); // is CallConstructor
+            __ Jb(&lCallConstructor);
+        }
         __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
@@ -1246,9 +1299,8 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 //               |       lexEnv             |               v
 //               +--------------------------+ ---------------
 
-void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
+void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgV));
     Register sp(rsp);
     Register glue(rdi);
     Register actualNumArgs(rsi);
@@ -1278,12 +1330,28 @@ void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
     __ Movq(Operand(jsfunc, JSFunction::LEXICAL_ENV_OFFSET), rax);
     __ Pushq(rax);
     __ Movq(glue, rax);
-    __ CallAssemblerStub(RTSTUB_ID(JSCall), false);
+    if (isNew) {
+        __ CallAssemblerStub(RTSTUB_ID(JSCallNew), false);
+    } else {
+        __ CallAssemblerStub(RTSTUB_ID(JSCall), false);
+    }
     __ Addq(FRAME_SLOT_SIZE, rsp);
     __ Mov(Operand(sp, 0), actualNumArgs);
     PopJSFunctionArgs(assembler, actualNumArgs);
     PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
+}
+
+void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgV));
+    GenJSCallWithArgV(assembler, false);
+}
+
+void OptimizedCall::JSCallNewWithArgV(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallNewWithArgV));
+    GenJSCallWithArgV(assembler, true);
 }
 
 void OptimizedCall::ConstructorJSCallWithArgV(ExtendedAssembler *assembler)

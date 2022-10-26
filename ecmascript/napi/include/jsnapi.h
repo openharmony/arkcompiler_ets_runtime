@@ -1008,6 +1008,11 @@ public:
         return isWorker_;
     }
 
+    void SetBundleName(const std::string &value)
+    {
+        bundleName_ = value;
+    }
+
     void SetEnableAOT(bool value)
     {
         enableAOT_ = value;
@@ -1124,6 +1129,11 @@ private:
         return asmOpcodeDisableRange_;
     }
 
+    std::string GetBundleName() const
+    {
+        return bundleName_;
+    }
+
     bool GetEnableAOT() const
     {
         return enableAOT_;
@@ -1159,6 +1169,7 @@ private:
     bool enableAsmInterpreter_ {true};
     bool isWorker_ {false};
     std::string asmOpcodeDisableRange_ {""};
+    std::string bundleName_ {};
     bool enableAOT_ {false};
     std::string anDir_ {};
     bool enableProfile_ {false};
@@ -1217,8 +1228,13 @@ public:
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
     static bool HasPendingException(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
+#ifndef PANDA_TARGET_IOS
     static bool StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
+#else
+    static bool StartDebugger(EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
+        const DebuggerPostTask &debuggerPostTask = {});
+#endif
     static bool StopDebugger(EcmaVM *vm);
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
@@ -1240,7 +1256,7 @@ public:
     static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
-    static void postFork(EcmaVM *vm);
+    static void postFork(EcmaVM *vm, const RuntimeOption &option);
     static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
 

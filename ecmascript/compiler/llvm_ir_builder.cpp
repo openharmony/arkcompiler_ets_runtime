@@ -149,17 +149,9 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ARG, &LLVMIRBuilder::HandleParameter},
         {OpCode::CONSTANT, &LLVMIRBuilder::HandleConstant},
         {OpCode::RELOCATABLE_DATA, &LLVMIRBuilder::HandleRelocatableData},
-        {OpCode::ZEXT_TO_INT16, &LLVMIRBuilder::HandleZExtInt},
-        {OpCode::ZEXT_TO_INT32, &LLVMIRBuilder::HandleZExtInt},
-        {OpCode::ZEXT_TO_INT64, &LLVMIRBuilder::HandleZExtInt},
-        {OpCode::ZEXT_TO_ARCH, &LLVMIRBuilder::HandleZExtInt},
-        {OpCode::SEXT_TO_INT32, &LLVMIRBuilder::HandleSExtInt},
-        {OpCode::SEXT_TO_INT64, &LLVMIRBuilder::HandleSExtInt},
-        {OpCode::SEXT_TO_ARCH, &LLVMIRBuilder::HandleSExtInt},
-        {OpCode::TRUNC_TO_INT1, &LLVMIRBuilder::HandleCastIntXToIntY},
-        {OpCode::TRUNC_TO_INT8, &LLVMIRBuilder::HandleCastIntXToIntY},
-        {OpCode::TRUNC_TO_INT32, &LLVMIRBuilder::HandleCastIntXToIntY},
-        {OpCode::TRUNC_TO_INT16, &LLVMIRBuilder::HandleCastIntXToIntY},
+        {OpCode::ZEXT, &LLVMIRBuilder::HandleZExtInt},
+        {OpCode::SEXT, &LLVMIRBuilder::HandleSExtInt},
+        {OpCode::TRUNC, &LLVMIRBuilder::HandleCastIntXToIntY},
         {OpCode::REV, &LLVMIRBuilder::HandleIntRev},
         {OpCode::ADD, &LLVMIRBuilder::HandleAdd},
         {OpCode::SUB, &LLVMIRBuilder::HandleSub},
@@ -172,16 +164,8 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::XOR, &LLVMIRBuilder::HandleIntXor},
         {OpCode::LSR, &LLVMIRBuilder::HandleIntLsr},
         {OpCode::ASR, &LLVMIRBuilder::HandleIntAsr},
-        {OpCode::SLT, &LLVMIRBuilder::HandleCmp},
-        {OpCode::ULT, &LLVMIRBuilder::HandleCmp},
-        {OpCode::SLE, &LLVMIRBuilder::HandleCmp},
-        {OpCode::ULE, &LLVMIRBuilder::HandleCmp},
-        {OpCode::SGT, &LLVMIRBuilder::HandleCmp},
-        {OpCode::UGT, &LLVMIRBuilder::HandleCmp},
-        {OpCode::SGE, &LLVMIRBuilder::HandleCmp},
-        {OpCode::UGE, &LLVMIRBuilder::HandleCmp},
-        {OpCode::NE, &LLVMIRBuilder::HandleCmp},
-        {OpCode::EQ, &LLVMIRBuilder::HandleCmp},
+        {OpCode::ICMP, &LLVMIRBuilder::HandleCmp},
+        {OpCode::FCMP, &LLVMIRBuilder::HandleCmp},
         {OpCode::LOAD, &LLVMIRBuilder::HandleLoad},
         {OpCode::STORE, &LLVMIRBuilder::HandleStore},
         {OpCode::SIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeInt32ToDouble},
@@ -194,6 +178,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::SMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::DEOPT, &LLVMIRBuilder::HandleDeopt},
+        {OpCode::TRUNC_FLOAT_TO_INT64, &LLVMIRBuilder::HandleTruncFloatToInt},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -1392,6 +1377,25 @@ void LLVMIRBuilder::HandleAdd(GateRef gate)
     VisitAdd(gate, g0, g1);
 }
 
+void LLVMIRBuilder::HandleTruncFloatToInt(GateRef gate)
+{
+    auto g0 = acc_.GetIn(gate, 0);
+    VisitTruncFloatToInt(gate, g0);
+}
+
+void LLVMIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    auto machineType = acc_.GetMachineType(e1);
+    LLVMValueRef result = nullptr;
+    if (machineType <= MachineType::F64 && machineType >= MachineType::F32) {
+        result = LLVMBuildFPToSI(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
+    } else {
+        UNREACHABLE();
+    }
+    gate2LValue_[gate] = result;
+}
+
 bool IsAddIntergerType(MachineType machineType)
 {
     switch (machineType) {
@@ -1556,12 +1560,64 @@ void LLVMIRBuilder::HandleCmp(GateRef gate)
     VisitCmp(gate, left, right);
 }
 
+LLVMIntPredicate LLVMIRBuilder::ConvertLLVMPredicateFromICMP(ICmpCondition cond)
+{
+    switch (cond) {
+        case ICmpCondition::SLT:
+            return LLVMIntSLT;
+        case ICmpCondition::SLE:
+            return LLVMIntSLE;
+        case ICmpCondition::SGT:
+            return LLVMIntSGT;
+        case ICmpCondition::SGE:
+            return LLVMIntSGE;
+        case ICmpCondition::ULT:
+            return LLVMIntULT;
+        case ICmpCondition::ULE:
+            return LLVMIntULE;
+        case ICmpCondition::UGT:
+            return LLVMIntUGT;
+        case ICmpCondition::UGE:
+            return LLVMIntUGE;
+        case ICmpCondition::NE:
+            return LLVMIntNE;
+        case ICmpCondition::EQ:
+            return LLVMIntEQ;
+        default:
+            LOG_COMPILER(ERROR) << "unexpected cond!";
+            UNREACHABLE();
+    }
+    return LLVMIntEQ;
+}
+
+LLVMRealPredicate LLVMIRBuilder::ConvertLLVMPredicateFromFCMP(FCmpCondition cond)
+{
+    switch (cond) {
+        case FCmpCondition::OLT:
+            return LLVMRealOLT;
+        case FCmpCondition::OLE:
+            return LLVMRealOLE;
+        case FCmpCondition::OGT:
+            return LLVMRealOGT;
+        case FCmpCondition::OGE:
+            return LLVMRealOGE;
+        case FCmpCondition::ONE:
+            return LLVMRealONE;
+        case FCmpCondition::OEQ:
+            return LLVMRealOEQ;
+        default:
+            LOG_COMPILER(ERROR) << "unexpected cond!";
+            UNREACHABLE();
+    }
+    return LLVMRealOEQ;
+}
+
 void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    auto e1ValCode = acc_.GetMachineType(e1);
+    [[maybe_unused]]auto e1ValCode = acc_.GetMachineType(e1);
     [[maybe_unused]]auto e2ValCode = acc_.GetMachineType(e2);
     ASSERT((e1ValCode == e2ValCode) ||
         (compCfg_->Is32Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I32)) ||
@@ -1570,69 +1626,19 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
         (compCfg_->Is64Bit() && (e2ValCode == MachineType::ARCH) && (e1ValCode == MachineType::I64)));
     LLVMIntPredicate intOpcode = LLVMIntEQ;
     LLVMRealPredicate realOpcode = LLVMRealPredicateFalse;
-    switch (acc_.GetOpCode(gate)) {
-        case OpCode::SLT: {
-            intOpcode = LLVMIntSLT;
-            realOpcode = LLVMRealOLT;
-            break;
-        }
-        case OpCode::ULT: {
-            intOpcode = LLVMIntULT;
-            realOpcode = LLVMRealOLT;
-            break;
-        }
-        case OpCode::SLE: {
-            intOpcode = LLVMIntSLE;
-            realOpcode = LLVMRealOLE;
-            break;
-        }
-        case OpCode::ULE: {
-            intOpcode = LLVMIntULE;
-            realOpcode = LLVMRealOLE;
-            break;
-        }
-        case OpCode::SGT: {
-            intOpcode = LLVMIntSGT;
-            realOpcode = LLVMRealOGT;
-            break;
-        }
-        case OpCode::UGT: {
-            intOpcode = LLVMIntUGT;
-            realOpcode = LLVMRealOGT;
-            break;
-        }
-        case OpCode::SGE: {
-            intOpcode = LLVMIntSGE;
-            realOpcode = LLVMRealOGE;
-            break;
-        }
-        case OpCode::UGE: {
-            intOpcode = LLVMIntUGE;
-            realOpcode = LLVMRealOGE;
-            break;
-        }
-        case OpCode::NE: {
-            intOpcode = LLVMIntNE;
-            realOpcode = LLVMRealONE;
-            break;
-        }
-        case OpCode::EQ: {
-            intOpcode = LLVMIntEQ;
-            realOpcode = LLVMRealOEQ;
-            break;
-        }
-        default: {
-            UNREACHABLE();
-            break;
-        }
-    }
-    if (e1ValCode == MachineType::I32 || e1ValCode == MachineType::I64 || e1ValCode == MachineType::ARCH) {
+    auto op = acc_.GetOpCode(gate);
+    if (op == OpCode::ICMP) {
+        auto cond = static_cast<ICmpCondition>(acc_.GetBitField(gate));
+        intOpcode = ConvertLLVMPredicateFromICMP(cond);
         result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
-    } else if (e1ValCode == MachineType::F64) {
+    } else if (op == OpCode::FCMP) {
+        auto cond = static_cast<FCmpCondition>(acc_.GetBitField(gate));
+        realOpcode = ConvertLLVMPredicateFromFCMP(cond);
         result = LLVMBuildFCmp(builder_, realOpcode, e1Value, e2Value, "");
     } else {
         UNREACHABLE();
     }
+
     gate2LValue_[gate] = result;
 }
 

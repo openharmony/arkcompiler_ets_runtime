@@ -39,6 +39,8 @@ struct EcmaRuntimeCallInfo;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
+using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[], uintptr_t prevFp,
+                                            bool flag);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
     JS_CALL_TRAMPOLINE_LIST(V)               \
@@ -79,7 +81,10 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(ConstructorJSCallWithArgV)             \
     V(JSProxyCallInternalWithArgV)           \
     V(OptimizedCallOptimized)                \
-    V(DeoptHandlerAsm)
+    V(DeoptHandlerAsm)                       \
+    V(JSFunctionReentry)                     \
+    V(JSCallNew)                             \
+    V(JSCallNewWithArgV)
 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
@@ -91,6 +96,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(MarkingBarrier)                          \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
+    V(AotFloatMod)                             \
     V(FloatMod)                                \
     V(FindElementWithCache)                    \
     V(CreateArrayFromList)                     \
@@ -105,6 +111,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
     V(DebugBreak)                         \
+    V(Dump)                               \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \
@@ -114,6 +121,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(NameDictPutIfAbsent)                \
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \
+    V(CheckAndCopyArray)                  \
     V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
     V(NoticeThroughChainAndRefreshUser)   \
@@ -204,12 +212,14 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(LdGlobalRecord)                     \
     V(GetGlobalOwnProperty)               \
     V(TryLdGlobalByName)                  \
+    V(TryLdGlobalICByName)                \
     V(LoadMiss)                           \
     V(StoreMiss)                          \
     V(TryUpdateGlobalRecord)              \
     V(ThrowReferenceError)                \
     V(StGlobalVar)                        \
     V(LdGlobalVar)                        \
+    V(LdGlobalICVar)                      \
     V(ToNumber)                           \
     V(ToBoolean)                          \
     V(NotEq)                              \
@@ -337,6 +347,7 @@ public:
     static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
     static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
+    static JSTaggedType AotFloatMod(double x, double y);
     static JSTaggedType FloatMod(double x, double y);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
@@ -619,9 +630,6 @@ private:
     static inline JSTaggedValue RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);
     static inline JSTaggedType *GetActualArgv(JSThread *thread);
     static inline OptimizedJSFunctionFrame *GetOptimizedJSFunctionFrame(JSThread *thread);
-    static inline void RuntimeUpdateAotStatus(JSThread *thread,
-                                              const JSTaggedValue constpool,
-                                              const JSTaggedValue method);
 
     static JSTaggedValue NewObject(EcmaRuntimeCallInfo *info);
     static void SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContext> context);

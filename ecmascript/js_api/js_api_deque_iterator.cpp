@@ -45,9 +45,9 @@ JSTaggedValue JSAPIDequeIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIDequeIterator> iter(input);
     JSHandle<JSTaggedValue> iteratorDeque(thread, iter->GetIteratedDeque());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratorDeque->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(iteratorDeque);
     uint32_t index = iter->GetNextIndex();
@@ -57,13 +57,14 @@ JSTaggedValue JSAPIDequeIterator::Next(EcmaRuntimeCallInfo *argv)
     uint32_t first = deque->GetFirst();
     uint32_t last = deque->GetLast();
     if (index == last) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedDeque(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     ASSERT(capacity != 0);
     iter->SetNextIndex((index + 1) % capacity);
     uint32_t elementIndex = (index + capacity - first) % capacity;
-    JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, iteratorDeque, elementIndex).GetValue();
+    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIDeque>::Cast(iteratorDeque)->Get(elementIndex));
 
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }

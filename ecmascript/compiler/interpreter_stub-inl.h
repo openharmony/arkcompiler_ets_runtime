@@ -412,7 +412,7 @@ GateRef InterpreterStubBuilder::PushRange(GateRef glue, GateRef sp, GateRef arra
     Label pushArgsEnd(env);
     Branch(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsBegin, &pushArgsEnd);
     LoopBegin(&pushArgsBegin);
-    GateRef arg = GetVregValue(array, ChangeInt32ToIntPtr(*i));
+    GateRef arg = GetVregValue(array, ZExtInt32ToPtr(*i));
     newSp = PushArg(glue, *newSp, arg);
     i = Int32Sub(*i, Int32(1));  // 1 : set as high 1 bits
     Branch(Int32GreaterThanOrEqual(*i, startIndex), &pushArgsAgain, &pushArgsEnd);
@@ -552,7 +552,7 @@ void InterpreterStubBuilder::Dispatch(GateRef glue, GateRef sp, GateRef pc, Gate
 {
     GateRef newPc = PtrAdd(pc, format);
     GateRef opcode = Load(VariableType::INT8(), newPc);
-    GateRef target = PtrMul(ChangeInt32ToIntPtr(ZExtInt8ToInt32(opcode)), IntPtrSize());
+    GateRef target = PtrMul(ZExtInt32ToPtr(ZExtInt8ToInt32(opcode)), IntPtrSize());
     DispatchBase(target, glue, sp, newPc, constpool, profileTypeInfo, acc, hotnessCounter);
     Return();
 }
@@ -569,7 +569,7 @@ void InterpreterStubBuilder::DispatchDebugger(GateRef glue, GateRef sp, GateRef 
                                        GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter)
 {
     GateRef opcode = Load(VariableType::INT8(), pc);
-    GateRef target = PtrMul(ChangeInt32ToIntPtr(ZExtInt8ToInt32(opcode)), IntPtrSize());
+    GateRef target = PtrMul(ZExtInt32ToPtr(ZExtInt8ToInt32(opcode)), IntPtrSize());
     auto args = { glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter };
     GetEnvironment()->GetBuilder()->CallBCDebugger(glue, target, args);
     Return();
@@ -582,11 +582,6 @@ void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, Gate
     auto args = { glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter };
     GetEnvironment()->GetBuilder()->CallBCDebugger(glue, target, args);
     Return();
-}
-
-GateRef InterpreterStubBuilder::GetObjectFromConstPool(GateRef constpool, GateRef index)
-{
-    return GetValueFromTaggedArray(constpool, index);
 }
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
@@ -687,6 +682,48 @@ void InterpreterStubBuilder::CheckExceptionWithJump(GateRef glue, GateRef sp, Ga
     {
         Jump(jump);
     }
+}
+
+GateRef InterpreterToolsStubBuilder::GetStringId(const StringIdInfo &info)
+{
+    GateRef stringId;
+    switch (info.offset) {
+        case StringIdInfo::Offset::BYTE_0: {
+            if (info.length == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_0(info.pc));
+            } else {
+                stringId = 0;
+                std::abort();
+            }
+            break;
+        }
+        case StringIdInfo::Offset::BYTE_1: {
+            if (info.length == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_1(info.pc));
+            } else if (info.length == StringIdInfo::Length::BITS_32) {
+                stringId = ReadInst32_1(info.pc);
+            } else {
+                stringId = 0;
+                std::abort();
+            }
+            break;
+        }
+        case StringIdInfo::Offset::BYTE_2: {
+            if (info.length == StringIdInfo::Length::BITS_16) {
+                stringId = ZExtInt16ToInt32(ReadInst16_2(info.pc));
+            } else {
+                stringId = 0;
+                std::abort();
+            }
+            break;
+        }
+        default: {
+            stringId = 0;
+            std::abort();
+            break;
+        }
+    }
+    return stringId;
 }
 #undef DISPATCH_LAST
 #undef DISPATCH

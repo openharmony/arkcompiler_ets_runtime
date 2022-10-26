@@ -1205,5 +1205,11 @@ HWTEST_F_L0(JSTaggedValueTest, StrictEqual)
     ASSERT_FALSE(JSTaggedValue::StrictEqual(
         thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(std::numeric_limits<double>::quiet_NaN())),
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(std::numeric_limits<double>::quiet_NaN()))));
+    ASSERT_FALSE(JSTaggedValue::StrictEqual(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)),
+                 JSHandle<JSTaggedValue>(thread, JSTaggedValue(2))));
+    ASSERT_FALSE(JSTaggedValue::StrictEqual(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1.0)),
+                 JSHandle<JSTaggedValue>(thread, JSTaggedValue(2.0))));
+    ASSERT_TRUE(JSTaggedValue::StrictEqual(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1.0)),
+                JSHandle<JSTaggedValue>(thread, JSTaggedValue(1))));
 }
 }  // namespace panda::test

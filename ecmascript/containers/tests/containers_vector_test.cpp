@@ -591,7 +591,11 @@ HWTEST_F_L0(ContainersVectorTest, CloneAndConvertToArrayAndCopyToArray)
     }
     // copyToArray
     {
-        JSHandle<JSArray> array = thread->GetEcmaVM()->GetFactory()->NewJSArray();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSArray> array = factory->NewJSArray();
+        JSHandle<TaggedArray> arrayElement = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole());
+        array->SetElements(thread, arrayElement);
+        array->SetArrayLength(thread, static_cast<uint32_t>(ELEMENT_NUMS));
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(vector.GetTaggedValue());
@@ -611,6 +615,43 @@ HWTEST_F_L0(ContainersVectorTest, CloneAndConvertToArrayAndCopyToArray)
             int result = JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(array), i).GetValue()->GetInt();
             TestHelper::TearDownFrame(thread, prev1);
             EXPECT_EQ(result, i);
+        }
+
+        JSHandle<JSArray> longArray = factory->NewJSArray();
+        JSHandle<TaggedArray> longArrayElement = factory->NewTaggedArray(ELEMENT_NUMS * 2, JSTaggedValue::Hole());
+        longArray->SetElements(thread, longArrayElement);
+        longArray->SetArrayLength(thread, static_cast<uint32_t>(ELEMENT_NUMS * 2));
+        auto callInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo2->SetFunction(JSTaggedValue::Undefined());
+        callInfo2->SetThis(vector.GetTaggedValue());
+        callInfo2->SetCallArg(0, longArray.GetTaggedValue());
+
+        [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, callInfo2);
+        ContainersVector::CopyToArray(callInfo2);
+        TestHelper::TearDownFrame(thread, prev2);
+        EXPECT_TRUE(longArray->IsJSArray());
+        for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+            auto callInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+            callInfo3->SetFunction(JSTaggedValue::Undefined());
+            callInfo3->SetThis(longArray.GetTaggedValue());
+            callInfo3->SetCallArg(0, JSTaggedValue(i));
+
+            [[maybe_unused]] auto prev4 = TestHelper::SetupFrame(thread, callInfo3);
+            int result1 = JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(longArray), i).GetValue()->GetInt();
+            TestHelper::TearDownFrame(thread, prev4);
+            EXPECT_EQ(result1, i);
+        }
+        for (int32_t i = ELEMENT_NUMS; i < ELEMENT_NUMS * 2; i++) {
+            auto callInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+            callInfo4->SetFunction(JSTaggedValue::Undefined());
+            callInfo4->SetThis(longArray.GetTaggedValue());
+            callInfo4->SetCallArg(0, JSTaggedValue(i));
+
+            [[maybe_unused]] auto prev5 = TestHelper::SetupFrame(thread, callInfo4);
+            JSHandle<JSTaggedValue> result2 = JSArray::GetProperty(thread,
+                JSHandle<JSTaggedValue>(longArray), i).GetValue();
+            TestHelper::TearDownFrame(thread, prev5);
+            EXPECT_EQ(result2.GetTaggedValue(), JSTaggedValue::Undefined());
         }
     }
 }

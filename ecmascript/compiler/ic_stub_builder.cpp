@@ -181,4 +181,46 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }
 }
+
+void ICStubBuilder::TryLoadGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success)
+{
+    auto env = GetEnvironment();
+    Label tryIC(env);
+
+    SetLabels(tryFastPath, slowPath, success);
+    Branch(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
+    Bind(&tryIC);
+    {
+        GateRef handler = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
+        Label isHeapObject(env);
+        Branch(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
+        Bind(&isHeapObject);
+        {
+            GateRef ret = LoadGlobal(handler);
+            result->WriteVariable(ret);
+            Branch(TaggedIsHole(ret), slowPath_, success_);
+        }
+    }
+}
+
+void ICStubBuilder::TryStoreGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success)
+{
+    auto env = GetEnvironment();
+    Label tryIC(env);
+
+    SetLabels(tryFastPath, slowPath, success);
+    Branch(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
+    Bind(&tryIC);
+    {
+        GateRef handler = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
+        Label isHeapObject(env);
+        Branch(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
+        Bind(&isHeapObject);
+        {
+            GateRef ret = StoreGlobal(glue_, value_, handler);
+            result->WriteVariable(ret);
+            Branch(TaggedIsHole(ret), slowPath_, success_);
+        }
+    }
+}
 }  // namespace panda::ecmascript::kungfu

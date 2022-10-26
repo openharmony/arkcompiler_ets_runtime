@@ -106,8 +106,10 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/space.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/object_factory.h"
 #include "ecmascript/record.h"
 #include "ecmascript/require/js_cjs_exports.h"
 #include "ecmascript/require/js_cjs_module.h"
@@ -122,6 +124,7 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
+#include "ecmascript/aot_file_manager.h"
 
 namespace panda::ecmascript {
 using Error = builtins::BuiltinsError;
@@ -434,12 +437,51 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     cloneObject->SetArrayLength(thread_, object->GetArrayLength());
 
     JSHandle<TaggedArray> elements(thread_, object->GetElements());
-    auto newElements = CopyArray(elements, elements->GetLength(), elements->GetLength());
-    cloneObject->SetElements(thread_, newElements.GetTaggedValue());
+    static constexpr uint8_t MAX_READ_ONLY_ARRAY_LENGTH = 10;
+    uint32_t elementsLength = elements->GetLength();
+    MemSpaceType type = elementsLength > MAX_READ_ONLY_ARRAY_LENGTH ?
+        MemSpaceType::SEMI_SPACE : MemSpaceType::NON_MOVABLE;
+
+#if !defined ENABLE_COW_ARRAY
+    type = MemSpaceType::SEMI_SPACE;
+#endif
+
+    if (type == MemSpaceType::NON_MOVABLE && elements.GetTaggedValue().IsCOWArray()) {
+        // share the same elements array in nonmovable space.
+        cloneObject->SetElements(thread_, elements.GetTaggedValue());
+    } else {
+        auto newElements = CopyArray(elements, elementsLength, elementsLength, JSTaggedValue::Hole(), type);
+        cloneObject->SetElements(thread_, newElements.GetTaggedValue());
+    }
+
+    if (type == MemSpaceType::NON_MOVABLE && !object->GetElements().IsCOWArray()) {
+        ASSERT(!Region::ObjectAddressToRange(object->GetElements().GetTaggedObject())->InNonMovableSpace());
+        // Set the first shared elements into the old object.
+        object->SetElements(thread_, cloneObject->GetElements());
+    }
 
     JSHandle<TaggedArray> properties(thread_, object->GetProperties());
-    auto newProperties = CopyArray(properties, properties->GetLength(), properties->GetLength());
-    cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
+    uint32_t propertiesLength = properties->GetLength();
+    type = propertiesLength > MAX_READ_ONLY_ARRAY_LENGTH ?
+        MemSpaceType::SEMI_SPACE : MemSpaceType::NON_MOVABLE;
+
+#if !defined ENABLE_COW_ARRAY
+    type = MemSpaceType::SEMI_SPACE;
+#endif
+
+    if (type == MemSpaceType::NON_MOVABLE && properties.GetTaggedValue().IsCOWArray()) {
+        // share the same properties array in nonmovable space.
+        cloneObject->SetProperties(thread_, properties.GetTaggedValue());
+    } else {
+        auto newProperties = CopyArray(properties, propertiesLength, propertiesLength, JSTaggedValue::Hole(), type);
+        cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
+    }
+
+    if (type == MemSpaceType::NON_MOVABLE && !object->GetProperties().IsCOWArray()) {
+        ASSERT(!Region::ObjectAddressToRange(object->GetProperties().GetTaggedObject())->InNonMovableSpace());
+        // Set the first shared properties into the old object.
+        object->SetProperties(thread_, cloneObject->GetProperties());
+    }
 
     for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
         cloneObject->SetPropertyInlinedProps(thread_, i, object->GetPropertyInlinedProps(i));
@@ -2054,7 +2096,105 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
     return array;
 }
 
-JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedValue initVal)
+void ObjectFactory::RemoveElementByIndex(JSHandle<TaggedArray> &srcArray,
+                                         uint32_t index,
+                                         uint32_t effectiveLength)
+{
+    ASSERT(0 <= index || index < effectiveLength);
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
+        size_t offset = taggedTypeSize * index;
+        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
+        while (index < effectiveLength - 1) {
+            *addr = *(addr + 1);
+            addr++;
+            index++;
+        }
+    } else {
+        while (index < effectiveLength - 1) {
+            srcArray->Set(thread_, index, srcArray->Get(index + 1));
+            index++;
+        }
+    }
+    srcArray->Set(thread_, effectiveLength - 1, JSTaggedValue::Hole());
+}
+
+JSHandle<TaggedArray> ObjectFactory::InsertElementByIndex(JSHandle<TaggedArray> &srcArray,
+                                                          const JSHandle<JSTaggedValue> &value,
+                                                          uint32_t index,
+                                                          uint32_t effectiveLength)
+{
+    ASSERT(0 <= index || index <= effectiveLength);
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
+        size_t offset = taggedTypeSize * effectiveLength;
+        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
+        while (effectiveLength != index && effectiveLength > 0) {
+            *addr = *(addr - 1);
+            addr--;
+            effectiveLength--;
+        }
+    } else {
+        while (effectiveLength != index && effectiveLength > 0) {
+            JSTaggedValue oldValue = srcArray->Get(effectiveLength - 1);
+            srcArray->Set(thread_, effectiveLength, oldValue);
+            effectiveLength--;
+        }
+    }
+    srcArray->Set(thread_, index, value.GetTaggedValue());
+    return srcArray;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements,
+                                                           uint32_t newLength,
+                                                           uint32_t oldLength)
+{
+    ASSERT(oldLength <= newLength);
+    MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
+    dstElements->SetLength(newLength);
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
+    if (region->InYoungSpace()) {
+        size_t size = oldLength * sizeof(JSTaggedType);
+        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
+            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+        }
+    } else {
+        for (uint32_t i = 0; i < oldLength; i++) {
+            dstElements->Set(thread_, i, srcElements->Get(i));
+        }
+    }
+    for (uint32_t i = oldLength; i < newLength; i++) {
+        dstElements->Set(thread_, i, JSTaggedValue::Hole());
+    }
+    return dstElements;
+}
+
+void ObjectFactory::CopyTaggedArrayElement(JSHandle<TaggedArray> &srcElements,
+                                           JSHandle<TaggedArray> &dstElements,
+                                           uint32_t effectiveLength)
+{
+    ASSERT(effectiveLength <= srcElements->GetLength());
+    ASSERT(effectiveLength <= dstElements->GetLength());
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
+    if (region->InYoungSpace() && !region->IsMarking()) {
+        size_t size = effectiveLength * sizeof(JSTaggedType);
+        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
+            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed" << " size: " << size;
+        }
+    } else {
+        for (uint32_t i = 0; i < effectiveLength; i++) {
+            dstElements->Set(thread_, i, srcElements->Get(i));
+        }
+    }
+}
+
+// private
+JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType)
 {
     NewObjectHook();
     if (length == 0) {
@@ -2062,11 +2202,45 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
     }
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
-    auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+    TaggedObject *header = nullptr;
+    auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    switch (spaceType) {
+        case MemSpaceType::SEMI_SPACE:
+            header = heap_->AllocateYoungOrHugeObject(arrayClass, size);
+            break;
+        case MemSpaceType::OLD_SPACE:
+            header = heap_->AllocateOldOrHugeObject(arrayClass, size);
+            break;
+        default:
+            UNREACHABLE();
+    }
     JSHandle<TaggedArray> array(thread_, header);
+    return array;
+}
+
+JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    if (length == 0) {
+        return EmptyArray();
+    }
+    MemSpaceType spaceType = length < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
+    JSHandle<TaggedArray> array = NewTaggedArrayWithoutInit(length, spaceType);
     array->InitializeWithSpecialValue(initVal, length);
     return array;
+}
+
+JSHandle<COWTaggedArray> ObjectFactory::NewCOWTaggedArray(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    ASSERT(length > 0);
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateNonMovableOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetCOWArrayClass().GetTaggedObject()), size);
+    JSHandle<COWTaggedArray> cowArray(thread_, header);
+    cowArray->InitializeWithSpecialValue(initVal, length);
+    return cowArray;
 }
 
 JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
@@ -2185,11 +2359,18 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     if (newLength > oldLength) {
         return ExtendArray(old, newLength, initVal, type);
     }
-
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
-    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
-    TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
+    TaggedObject *header = nullptr;
+    if (type == MemSpaceType::NON_MOVABLE) {
+        // COW array is shared in nonmovable space.
+        JSHClass *cowArrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetCOWArrayClass().GetTaggedObject());
+        header = AllocObjectWithSpaceType(size, cowArrayClass, type);
+    } else {
+        JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+        header = AllocObjectWithSpaceType(size, arrayClass, type);
+    }
+
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->SetLength(newLength);
     newArray->SetExtraLength(old->GetExtraLength());
@@ -2516,12 +2697,14 @@ JSHandle<JSAPIHashMapIterator> ObjectFactory::NewJSAPIHashMapIterator(const JSHa
                                                                       IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetHashMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetHashMapIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIHashMapIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIHashMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
+    iter->SetCurrentNodeResult(thread_, undefinedHandle);
     iter->SetIteratedHashMap(thread_, hashMap);
     iter->SetNextIndex(0);
     iter->SetTaggedQueue(thread_, JSTaggedValue::Undefined());
@@ -2535,12 +2718,14 @@ JSHandle<JSAPIHashSetIterator> ObjectFactory::NewJSAPIHashSetIterator(const JSHa
                                                                       IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetHashSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetHashSetIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIHashSetIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIHashSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
+    iter->SetCurrentNodeResult(thread_, undefinedHandle);
     iter->SetIteratedHashSet(thread_, hashSet);
     iter->SetNextIndex(0);
     iter->SetTableIndex(0);
@@ -3129,6 +3314,21 @@ JSHandle<TSModuleTable> ObjectFactory::NewTSModuleTable(uint32_t length)
 
     return array;
 }
+
+JSHandle<TSIteratorInstanceType> ObjectFactory::NewTSIteratorInstanceType()
+{
+    NewObjectHook();
+
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetTSIteratorInstanceTypeClass().GetTaggedObject()));
+    JSHandle<TSIteratorInstanceType> iteratorInstanceType(thread_, header);
+
+    iteratorInstanceType->SetGT(GlobalTSTypeRef::Default());
+    iteratorInstanceType->SetKindGT(GlobalTSTypeRef::Default());
+    iteratorInstanceType->SetElementGT(GlobalTSTypeRef::Default());
+
+    return iteratorInstanceType;
+}
 // ----------------------------------- new string ----------------------------------------
 JSHandle<EcmaString> ObjectFactory::NewFromASCII(const CString &data)
 {
@@ -3251,8 +3451,8 @@ JSHandle<JSAPIArrayList> ObjectFactory::NewJSAPIArrayList(uint32_t capacity)
 JSHandle<JSAPIArrayListIterator> ObjectFactory::NewJSAPIArrayListIterator(const JSHandle<JSAPIArrayList> &arrayList)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetArrayListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetArrayListIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIArrayListIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPIArrayListIterator> iter(NewJSObject(hclassHandle));
@@ -3266,8 +3466,8 @@ JSHandle<JSAPILightWeightMapIterator> ObjectFactory::NewJSAPILightWeightMapItera
     const JSHandle<JSAPILightWeightMap> &obj, IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetLightWeightMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetLightWeightMapIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILightWeightMapIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPILightWeightMapIterator> iter(NewJSObject(hclassHandle));
@@ -3282,8 +3482,8 @@ JSHandle<JSAPILightWeightSetIterator> ObjectFactory::NewJSAPILightWeightSetItera
     const JSHandle<JSAPILightWeightSet> &obj, IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetLightWeightSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetLightWeightSetIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILightWeightSetIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPILightWeightSetIterator> iter(NewJSObject(hclassHandle));
@@ -3327,8 +3527,8 @@ JSHandle<JSAPIPlainArrayIterator> ObjectFactory::NewJSAPIPlainArrayIterator(cons
 JSHandle<JSAPIStackIterator> ObjectFactory::NewJSAPIStackIterator(const JSHandle<JSAPIStack> &stack)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetStackIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetStackIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIStackIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPIStackIterator> iter(NewJSObject(hclassHandle));
@@ -3365,8 +3565,8 @@ JSHandle<TaggedArray> ObjectFactory::CopyDeque(const JSHandle<TaggedArray> &old,
 JSHandle<JSAPIDequeIterator> ObjectFactory::NewJSAPIDequeIterator(const JSHandle<JSAPIDeque> &deque)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetDequeIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetDequeIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIDequeIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPIDequeIterator> iter(NewJSObject(hclassHandle));
@@ -3403,8 +3603,8 @@ JSHandle<TaggedArray> ObjectFactory::CopyQueue(const JSHandle<TaggedArray> &old,
 JSHandle<JSAPIQueueIterator> ObjectFactory::NewJSAPIQueueIterator(const JSHandle<JSAPIQueue> &queue)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> protoValue(thread_, thread_->GlobalConstants()->GetQueueIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> protoValue(thread_, globalConst->GetQueueIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIQueueIteratorClass());
     hclassHandle->SetPrototype(thread_, protoValue);
     JSHandle<JSAPIQueueIterator> iter(NewJSObject(hclassHandle));
@@ -3418,8 +3618,8 @@ JSHandle<JSAPITreeMapIterator> ObjectFactory::NewJSAPITreeMapIterator(const JSHa
                                                                       IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetTreeMapIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetTreeMapIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPITreeMapIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPITreeMapIterator> iter(NewJSObject(hclassHandle));
@@ -3435,8 +3635,8 @@ JSHandle<JSAPITreeSetIterator> ObjectFactory::NewJSAPITreeSetIterator(const JSHa
                                                                       IterationKind kind)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetTreeSetIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetTreeSetIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPITreeSetIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPITreeSetIterator> iter(NewJSObject(hclassHandle));
@@ -3462,8 +3662,8 @@ JSHandle<JSAPIVector> ObjectFactory::NewJSAPIVector(uint32_t capacity)
 JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHandle<JSAPIVector> &vector)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetVectorIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetVectorIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIVectorIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIVectorIterator> iter(NewJSObject(hclassHandle));
@@ -3476,28 +3676,32 @@ JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHand
 JSHandle<JSAPILinkedListIterator> ObjectFactory::NewJSAPILinkedListIterator(const JSHandle<JSAPILinkedList> &linkedList)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetLinkedListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetLinkedListIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPILinkedListIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPILinkedListIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedLinkedList(thread_, linkedList->GetDoubleList());
     iter->SetNextIndex(0);
+    const uint32_t linkedListElementStartIndex = 4;
+    iter->SetDataIndex(linkedListElementStartIndex);
     return iter;
 }
 
 JSHandle<JSAPIListIterator> ObjectFactory::NewJSAPIListIterator(const JSHandle<JSAPIList> &List)
 {
     NewObjectHook();
-    JSHandle<JSTaggedValue> proto(thread_, thread_->GlobalConstants()->GetListIteratorPrototype());
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetListIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIListIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIListIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
     iter->SetIteratedList(thread_, List->GetSingleList());
     iter->SetNextIndex(0);
+    const uint32_t linkedListElementStartIndex = 4;
+    iter->SetDataIndex(linkedListElementStartIndex);
     return iter;
 }
 
@@ -3758,5 +3962,17 @@ JSHandle<AsyncGeneratorRequest> ObjectFactory::NewAsyncGeneratorRequest()
     obj->SetCompletion(thread_, JSTaggedValue::Undefined());
     obj->SetCapability(thread_, JSTaggedValue::Undefined());
     return obj;
+}
+
+JSHandle<AOTLiteralInfo> ObjectFactory::NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetAOTLiteralInfoClass().GetTaggedObject()), size);
+
+    JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
+    aotLiteralInfo->InitializeWithSpecialValue(initVal, length);
+    return aotLiteralInfo;
 }
 }  // namespace panda::ecmascript

@@ -26,6 +26,8 @@ namespace panda::ecmascript {
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &filename,
                                                                    std::string_view entryPoint)
 {
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename.c_str();
+
     CString entry = entryPoint.data();
     CString name = filename;
     if (!thread->GetEcmaVM()->IsBundlePack()) {
@@ -34,7 +36,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 #else
         entry = JSPandaFile::ParseOhmUrl(filename);
 #if !WIN_OR_MAC_PLATFORM
-        name = JSPandaFile::MERGE_ABC_PATH;
+        name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
     name = assetPath + "\\modules.abc";
@@ -76,7 +78,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
     JSThread *thread, const void *buffer, size_t size, std::string_view entryPoint, const CString &filename)
 {
-    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename" << filename.c_str();
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename.c_str();
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, entryPoint, buffer, size);
     if (jsPandaFile == nullptr) {
@@ -94,10 +96,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     JSThread *thread, const void *buffer, size_t size, const CString &filename)
 {
-    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename" << filename.c_str();
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename.c_str();
     CString name;
 #if !WIN_OR_MAC_PLATFORM
-    name = JSPandaFile::MERGE_ABC_PATH;
+    name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
     name = assetPath + "\\modules.abc";

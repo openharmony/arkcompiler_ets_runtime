@@ -554,8 +554,10 @@ JSTaggedValue ContainersLinkedList::ForEach(EcmaRuntimeCallInfo *argv)
     int index = 0;
     const uint32_t argsLength = 3; // 3: «kValue, k, O»
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    int valueNode = TaggedDoubleList::ELEMENTS_START_INDEX;
     while (index < length) {
-        JSTaggedValue value = doubleList->Get(index);
+        valueNode = doubleList->GetNextDataIndex(valueNode);
+        JSTaggedValue value = doubleList->GetElement(valueNode);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

@@ -343,7 +343,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
         env->GetAsyncFunctionPrototype());
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
-    thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(env.GetTaggedType()));
 }
 void Builtins::InitializeForSnapshot(JSThread *thread)
 {

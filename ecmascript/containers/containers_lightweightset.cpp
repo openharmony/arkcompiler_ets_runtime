@@ -504,14 +504,15 @@ JSTaggedValue ContainersLightWeightSet::ToArray(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSAPILightWeightSet> lightweightset = JSHandle<JSAPILightWeightSet>::Cast(self);
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSArray> array = factory->NewJSArray();
+
     uint32_t length = lightweightset->GetLength();
-    JSHandle<JSArray> array = thread->GetEcmaVM()->GetFactory()->NewJSArray();
     array->SetArrayLength(thread, length);
-    JSHandle<TaggedArray> valueArray(thread, lightweightset->GetValues());
-    uint32_t capacity = valueArray->GetLength();
-    JSHandle<TaggedArray> newElements =
-        thread->GetEcmaVM()->GetFactory()->CopyArray(valueArray, capacity, capacity);
-    array->SetElements(thread, newElements);
+
+    JSHandle<TaggedArray> srcArray(thread, lightweightset->GetValues());
+    JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcArray, length, length);
+    array->SetElements(thread, dstElements);
     return array.GetTaggedValue();
 }
 

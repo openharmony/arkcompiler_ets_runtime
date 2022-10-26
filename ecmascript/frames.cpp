@@ -48,7 +48,7 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
     return delta;
 }
 
-ModulePackInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
+AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
     auto loader = thread_->GetEcmaVM()->GetAOTFileManager();
     return loader->CalCallSiteInfo(retAddr);

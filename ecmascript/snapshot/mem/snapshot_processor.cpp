@@ -989,6 +989,8 @@ void SnapshotProcessor::Initialize()
     machineCodeLocalSpace_ = new LocalSpace(heap, machineCodeCapacity, machineCodeCapacity);
     size_t snapshotSpaceCapacity = heap->GetSnapshotSpace()->GetMaximumCapacity();
     snapshotLocalSpace_ = new SnapshotSpace(heap, snapshotSpaceCapacity, snapshotSpaceCapacity);
+    hugeObjectLocalSpace_ = new HugeObjectSpace(heap, heap->GetHeapRegionAllocator(),
+                                                oldSpaceCapacity, oldSpaceCapacity);
 }
 
 SnapshotProcessor::~SnapshotProcessor()
@@ -1016,6 +1018,11 @@ SnapshotProcessor::~SnapshotProcessor()
         delete snapshotLocalSpace_;
         snapshotLocalSpace_ = nullptr;
     }
+    if (hugeObjectLocalSpace_ != nullptr) {
+        hugeObjectLocalSpace_->Destroy();
+        delete hugeObjectLocalSpace_;
+        hugeObjectLocalSpace_ = nullptr;
+    }
 }
 
 void SnapshotProcessor::StopAllocate()
@@ -1032,6 +1039,7 @@ void SnapshotProcessor::WriteObjectToFile(std::fstream &writer)
     WriteSpaceObjectToFile(nonMovableLocalSpace_, writer);
     WriteSpaceObjectToFile(machineCodeLocalSpace_, writer);
     WriteSpaceObjectToFile(snapshotLocalSpace_, writer);
+    WriteHugeObjectToFile(hugeObjectLocalSpace_, writer);
 }
 
 void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &writer)
@@ -1069,6 +1077,21 @@ void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &write
     }
 }
 
+void SnapshotProcessor::WriteHugeObjectToFile(HugeObjectSpace* space, std::fstream &writer)
+{
+    size_t alignedRegionObjSize = AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+    size_t hugeRegionHeadSize = AlignUp(alignedRegionObjSize + GCBitset::BYTE_PER_WORD,
+                                        static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    space->EnumerateRegions([&hugeRegionHeadSize, &writer](Region *region) {
+        size_t objSize = hugeRegionHeadSize;
+        uint64_t wasted = region->GetWastedSize();
+        // huge object size is storaged in region param wasted_ high 32 bits
+        objSize += SnapshotHelper::GetHugeObjectSize(wasted);
+        writer.write(reinterpret_cast<char *>(region), objSize);
+        writer.flush();
+    });
+}
+
 std::vector<uint32_t> SnapshotProcessor::StatisticsObjectSize()
 {
     std::vector<uint32_t> objSizeVector;
@@ -1076,6 +1099,7 @@ std::vector<uint32_t> SnapshotProcessor::StatisticsObjectSize()
     objSizeVector.emplace_back(StatisticsSpaceObjectSize(nonMovableLocalSpace_));
     objSizeVector.emplace_back(StatisticsSpaceObjectSize(machineCodeLocalSpace_));
     objSizeVector.emplace_back(StatisticsSpaceObjectSize(snapshotLocalSpace_));
+    objSizeVector.emplace_back(StatisticsHugeObjectSize(hugeObjectLocalSpace_));
     return objSizeVector;
 }
 
@@ -1100,6 +1124,21 @@ uint32_t SnapshotProcessor::StatisticsSpaceObjectSize(Space* space)
     return static_cast<uint32_t>(objSize);
 }
 
+uint32_t SnapshotProcessor::StatisticsHugeObjectSize(HugeObjectSpace* space)
+{
+    size_t objSize = 0U;
+    size_t alignedRegionObjSize = AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+    size_t hugeRegionHeadSize = AlignUp(alignedRegionObjSize + GCBitset::BYTE_PER_WORD,
+                                        static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    space->EnumerateRegions([&objSize, &hugeRegionHeadSize](Region *region) {
+        objSize += hugeRegionHeadSize;
+        uint64_t wasted = region->GetWastedSize();
+        // huge object size is storaged in region param wasted_ high 32 bits
+        objSize += SnapshotHelper::GetHugeObjectSize(wasted);
+    });
+    return static_cast<uint32_t>(objSize);
+}
+
 void SnapshotProcessor::ProcessObjectQueue(CQueue<TaggedObject *> *queue,
                                            std::unordered_map<uint64_t, ObjectEncode> *data)
 {
@@ -1118,16 +1157,22 @@ void SnapshotProcessor::ProcessObjectQueue(CQueue<TaggedObject *> *queue,
 uintptr_t SnapshotProcessor::AllocateObjectToLocalSpace(Space *space, size_t objectSize)
 {
     uintptr_t newObj = 0;
-    if (space->GetSpaceType() != MemSpaceType::SNAPSHOT_SPACE) {
-        newObj = reinterpret_cast<LocalSpace *>(space)->Allocate(objectSize);
-    } else {
+    if (space->GetSpaceType() == MemSpaceType::HUGE_OBJECT_SPACE) {
+        newObj = reinterpret_cast<HugeObjectSpace *>(space)->Allocate(objectSize, vm_->GetAssociatedJSThread());
+    } else if (space->GetSpaceType() == MemSpaceType::SNAPSHOT_SPACE) {
         newObj = reinterpret_cast<SnapshotSpace *>(space)->Allocate(objectSize);
+    } else {
+        newObj = reinterpret_cast<LocalSpace *>(space)->Allocate(objectSize);
     }
     auto current = space->GetCurrentRegion();
     if (newObj == current->GetBegin()) {
-        // region param wasted_ is reused to record regionIndex
+        // region param wasted_ low 32 bits is reused to record regionIndex
         current->ResetWasted();
         current->IncreaseWasted(regionIndex_);
+        if (current->InHugeObjectSpace()) {
+            // region param wasted_ high 32 bits is reused to record huge object size
+            current->IncreaseWasted(SnapshotHelper::EncodeHugeObjectSize(objectSize));
+        }
         regionIndex_++;
     }
     return newObj;
@@ -1140,21 +1185,24 @@ void SnapshotProcessor::SetObjectEncodeField(uintptr_t obj, size_t offset, uint6
 
 void SnapshotProcessor::DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, size_t oldSpaceObjSize,
                                                        size_t nonMovableObjSize, size_t machineCodeObjSize,
-                                                       size_t snapshotObjSize)
+                                                       size_t snapshotObjSize, size_t hugeSpaceObjSize)
 {
     uintptr_t nonMovableBegin = oldSpaceBegin + oldSpaceObjSize;
     uintptr_t machineCodeBegin = nonMovableBegin + nonMovableObjSize;
     uintptr_t snapshotBegin = machineCodeBegin + machineCodeObjSize;
+    uintptr_t hugeObjBegin = snapshotBegin + snapshotObjSize;
     auto heap = vm_->GetHeap();
     auto oldSpace = heap->GetOldSpace();
     auto nonMovableSpace = heap->GetNonMovableSpace();
     auto machineCodeSpace = heap->GetMachineCodeSpace();
     auto snapshotSpace = heap->GetSnapshotSpace();
+    auto hugeObjectSpace = heap->GetHugeObjectSpace();
 
     DeserializeSpaceObject(oldSpaceBegin, oldSpace, oldSpaceObjSize);
     DeserializeSpaceObject(nonMovableBegin, nonMovableSpace, nonMovableObjSize);
     DeserializeSpaceObject(machineCodeBegin, machineCodeSpace, machineCodeObjSize);
     DeserializeSpaceObject(snapshotBegin, snapshotSpace, snapshotObjSize);
+    DeserializeHugeSpaceObject(hugeObjBegin, hugeObjectSpace, hugeSpaceObjSize);
     snapshotSpace->ResetAllocator();
 }
 
@@ -1208,6 +1256,48 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
             snapshotSpace->IncreaseLiveObjectSize(liveObjectSize);
             snapshotSpace->AddRegion(region);
         }
+    }
+}
+
+void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObjectSpace* space, size_t hugeSpaceObjSize)
+{
+    uintptr_t currentAddr = beginAddr;
+    uintptr_t endAddr = beginAddr + hugeSpaceObjSize;
+    while (currentAddr < endAddr) {
+        auto fileRegion = ToNativePtr<Region>(currentAddr);
+        uintptr_t oldMarkGCBitsetAddr =
+        ToUintPtr(fileRegion) + AlignUp(sizeof(Region),  static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        // Retrieve the data beginning address based on the serialized data format.
+        uintptr_t copyFrom = oldMarkGCBitsetAddr +
+        (fileRegion->packedData_.begin_ - ToUintPtr(fileRegion->packedData_.markGCBitset_));
+
+        // region wasted_ is used to record region index for snapshot
+        uint64_t wasted = fileRegion->GetWastedSize();
+        // high 32 bits storage huge object size
+        size_t objSize = SnapshotHelper::GetHugeObjectSize(wasted);
+        size_t alignedHugeRegionSize = AlignUp(objSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
+        Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
+            space, alignedHugeRegionSize, vm_->GetAssociatedJSThread());
+        // low 32 bits storage regionIndex
+        size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(wasted);
+        regionIndexMap_.emplace(regionIndex, region);
+
+        if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
+                     objSize,
+                     ToVoidPtr(copyFrom),
+                     objSize) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+
+        // Other information like aliveObject size, highWaterMark etc. in the region object to restore.
+        region->aliveObject_ = objSize;
+        region->highWaterMark_ = region->packedData_.begin_ + objSize;
+        region->SetGCFlag(RegionGCFlags::NEED_RELOCATE);
+        space->AddRegion(region);
+
+        currentAddr += (fileRegion->packedData_.begin_ - fileRegion->allocateBase_);
+        currentAddr += objSize;
     }
 }
 
@@ -1295,11 +1385,12 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
             constSpecialIndex++;
             break;
         }
-        case SnapshotType::ETSO: {
+        case SnapshotType::AI: {
             JSTaggedValue item = JSTaggedValue(rootObjectAddr);
-            if (item.IsTaggedArray()) {
+            if (!isRootObjRelocate_ && item.IsTaggedArray()) {
                 TSManager *tsManager = vm_->GetTSManager();
                 tsManager->SetConstantPoolInfos(item);
+                isRootObjRelocate_ = true;
             }
             break;
         }
@@ -1357,11 +1448,13 @@ void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFi
     auto nonMovableSpace = heap->GetNonMovableSpace();
     auto machineCodeSpace = heap->GetMachineCodeSpace();
     auto snapshotSpace = heap->GetSnapshotSpace();
+    auto hugeObjectSpace = heap->GetHugeObjectSpace();
 
     RelocateSpaceObject(oldSpace, type, methods, methodNums, rootObjSize);
     RelocateSpaceObject(nonMovableSpace, type, methods, methodNums, rootObjSize);
     RelocateSpaceObject(machineCodeSpace, type, methods, methodNums, rootObjSize);
     RelocateSpaceObject(snapshotSpace, type, methods, methodNums, rootObjSize);
+    RelocateSpaceObject(hugeObjectSpace, type, methods, methodNums, rootObjSize);
 }
 
 void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
@@ -1462,7 +1555,7 @@ uint64_t SnapshotProcessor::SerializeTaggedField(JSTaggedType *tagged, CQueue<Ta
     return encodeBit.GetValue();  // object
 }
 
-void SnapshotProcessor::DeserializeTaggedField(uint64_t *value)
+void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *root)
 {
     EncodeBit encodeBit(*value);
     if (!builtinsDeserialize_ && encodeBit.IsReference() && encodeBit.IsGlobalConstOrBuiltins()) {
@@ -1476,7 +1569,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value)
     }
 
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
-        Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(value));
+        Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(root));
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
         Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
         if (!rootRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
@@ -1517,7 +1610,7 @@ void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)
             if (isNative) {
                 DeserializeNativePointer(encodeBitAddr);
             } else {
-                DeserializeTaggedField(encodeBitAddr);
+                DeserializeTaggedField(encodeBitAddr, root);
             }
         }
     };
@@ -1645,9 +1738,6 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
     }
     queue->emplace(objectHeader);
     size_t objectSize = objectHeader->GetClass()->SizeFromJSHClass(objectHeader);
-    if (objectSize > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        LOG_ECMA_MEM(FATAL) << "It is a huge object. Not Support.";
-    }
 
     if (objectSize == 0) {
         LOG_ECMA_MEM(FATAL) << "It is a zero object. Not Support.";
@@ -1661,8 +1751,10 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
             newObj = AllocateObjectToLocalSpace(oldLocalSpace_, objectSize);
         } else if (region->InMachineCodeSpace()) {
             newObj = AllocateObjectToLocalSpace(machineCodeLocalSpace_, objectSize);
-        } else if (region->InNonMovableSpace()) {
+        } else if (region->InNonMovableSpace() || region->InReadOnlySpace()) {
             newObj = AllocateObjectToLocalSpace(nonMovableLocalSpace_, objectSize);
+        } else if (region->InHugeObjectSpace()) {
+            newObj = AllocateObjectToLocalSpace(hugeObjectLocalSpace_, objectSize);
         } else {
             newObj = AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
         }
@@ -1676,8 +1768,9 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
         UNREACHABLE();
     }
     auto currentRegion = Region::ObjectAddressToRange(newObj);
-    // region wasted_ is used to record region index for snapshot
-    size_t regionIndex = currentRegion->GetWastedSize();
+    // region wasted_ low 32 bits is used to record region index for snapshot
+    uint64_t wasted = currentRegion->GetWastedSize();
+    size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(wasted);
     size_t objOffset = newObj - ToUintPtr(currentRegion);
     EncodeBit encodeBit(static_cast<uint64_t>(regionIndex));
     encodeBit.SetObjectOffsetInRegion(objOffset);

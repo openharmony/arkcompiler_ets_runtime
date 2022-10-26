@@ -77,7 +77,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test stack peek:",  proxy.peek() === 9)
     map.set("test stack locate:",  proxy.locate(5) === 5)
 
-    flag = undefined;
+    let flag = undefined;
     function elements(value, key, map) {
         if (!value) {
             if (!flag) {

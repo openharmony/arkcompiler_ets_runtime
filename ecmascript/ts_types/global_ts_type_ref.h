@@ -20,6 +20,10 @@
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
+/*
+ * To maintain consistency with the frontend, ITERATOR_INSTANCE should always be at
+ * the end of TSTypeKind, because there is no ITERATOR_INSTANCE in the frontend.
+ */
 enum class TSTypeKind : int {
     PRIMITIVE = 0,
     CLASS,
@@ -30,6 +34,7 @@ enum class TSTypeKind : int {
     OBJECT,
     IMPORT,
     INTERFACE_KIND,
+    ITERATOR_INSTANCE,
     UNKNOWN
 };
 
@@ -46,6 +51,16 @@ enum class TSPrimitiveType : int {
     BIG_INT,
     DOUBLE,
     END
+};
+
+/*
+ * Indicates the position of the iterator object in the runtime table.
+ * Position 0 in the runtime table stores the number of existing types, so start from 1.
+ */
+enum class TSRuntimeType : int {
+    ITERATOR_RESULT = 1,
+    ITERATOR_FUNCTION,
+    ITERATOR
 };
 
 class GlobalTSTypeRef {

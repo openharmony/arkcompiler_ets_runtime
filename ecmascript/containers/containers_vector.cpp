@@ -662,21 +662,29 @@ JSTaggedValue ContainersVector::CopyToArray(EcmaRuntimeCallInfo *argv)
             THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIVector", JSTaggedValue::Exception());
         }
     }
-    JSHandle<JSTaggedValue> array(GetCallArg(argv, 0));
-    if (!array->IsJSArray()) {
+    JSHandle<JSTaggedValue> arg0(GetCallArg(argv, 0));
+    if (!arg0->IsJSArray()) {
         return JSTaggedValue::False();
     }
 
     JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(self);
     JSHandle<TaggedArray> vectorElements(thread, vector->GetElements());
-    JSHandle<TaggedArray> arrayElements = JSArray::ToTaggedArray(thread, array);
-    JSHandle<TaggedArray> resultArray = TaggedArray::Append(thread, arrayElements, vectorElements);
+    uint32_t vectorLength = static_cast<uint32_t>(vector->GetSize());
 
-    JSHandle<JSArray> jsArray = JSHandle<JSArray>::Cast(array);
-    uint32_t sumLength = static_cast<uint32_t>(vector->GetSize()) + jsArray->GetArrayLength();
-    jsArray->SetArrayLength(thread, sumLength);
-    jsArray->SetElements(thread, resultArray);
-    
+    JSHandle<JSArray> array = JSHandle<JSArray>::Cast(arg0);
+    JSHandle<TaggedArray> arrayElements(thread, array->GetElements());
+    uint32_t arrayLength = array->GetArrayLength();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    if (vectorLength <= arrayLength) {
+        factory->CopyTaggedArrayElement(vectorElements, arrayElements, vectorLength);
+        for (uint32_t i = vectorLength; i < arrayLength; i++) {
+            arrayElements->Set(thread, i, JSTaggedValue::Undefined());
+        }
+    } else {
+        JSHandle<TaggedArray> newArrayElement = factory->NewAndCopyTaggedArray(vectorElements,
+                                                                               vectorLength, vectorLength);
+        array->SetElements(thread, newArrayElement);
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue::True();
 }
@@ -698,16 +706,16 @@ JSTaggedValue ContainersVector::ConvertToArray(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(self);
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSArray> array = factory->NewJSArray();
+
     int32_t length = vector->GetSize();
-    JSHandle<JSArray> array = thread->GetEcmaVM()->GetFactory()->NewJSArray();
     array->SetArrayLength(thread, length);
-    JSHandle<TaggedArray> vectorElements(thread, vector->GetElements());
-    uint32_t vectorCapacity = vectorElements->GetLength();
 
-    JSHandle<TaggedArray> newElements =
-        thread->GetEcmaVM()->GetFactory()->CopyArray(vectorElements, vectorCapacity, vectorCapacity);
+    JSHandle<TaggedArray> srcElements(thread, vector->GetElements());
+    JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, length, length);
 
-    array->SetElements(thread, newElements);
+    array->SetElements(thread, dstElements);
     return array.GetTaggedValue();
 }
 

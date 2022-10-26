@@ -35,7 +35,8 @@
 
 namespace panda::ecmascript {
 JSTaggedValue ICRuntimeStub::LoadGlobalICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
-                                                JSTaggedValue globalValue, JSTaggedValue key, uint32_t slotId)
+                                                JSTaggedValue globalValue, JSTaggedValue key, uint32_t slotId,
+                                                bool tryLoad)
 {
     INTERPRETER_TRACE(thread, LoadGlobalICByName);
     JSTaggedValue handler = profileTypeInfo->Get(slotId);
@@ -45,12 +46,13 @@ JSTaggedValue ICRuntimeStub::LoadGlobalICByName(JSThread *thread, ProfileTypeInf
             return result;
         }
     }
-    return LoadMiss(thread, profileTypeInfo, globalValue, key, slotId, ICKind::NamedGlobalLoadIC);
+    ICKind kind = tryLoad ? ICKind::NamedGlobalTryLoadIC : ICKind::NamedGlobalLoadIC;
+    return LoadMiss(thread, profileTypeInfo, globalValue, key, slotId, kind);
 }
 
 JSTaggedValue ICRuntimeStub::StoreGlobalICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
                                                  JSTaggedValue globalValue, JSTaggedValue key,
-                                                 JSTaggedValue value, uint32_t slotId)
+                                                 JSTaggedValue value, uint32_t slotId, bool tryStore)
 {
     INTERPRETER_TRACE(thread, StoreGlobalICByName);
     JSTaggedValue handler = profileTypeInfo->Get(slotId);
@@ -60,7 +62,8 @@ JSTaggedValue ICRuntimeStub::StoreGlobalICByName(JSThread *thread, ProfileTypeIn
             return result;
         }
     }
-    return StoreMiss(thread, profileTypeInfo, globalValue, key, value, slotId, ICKind::NamedGlobalStoreIC);
+    ICKind kind = tryStore ? ICKind::NamedGlobalTryStoreIC : ICKind::NamedGlobalStoreIC;
+    return StoreMiss(thread, profileTypeInfo, globalValue, key, value, slotId, kind);
 }
 
 JSTaggedValue ICRuntimeStub::CheckPolyHClass(JSTaggedValue cachedValue, JSHClass* hclass)
@@ -384,21 +387,26 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
     uint32_t elementIndex = static_cast<uint32_t>(index);
     if (handler.IsInt()) {
         auto handlerInfo = static_cast<uint32_t>(handler.GetInt());
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+        JSHandle<JSObject> receiverHandle(thread, receiver);
         if (HandlerBase::IsJSArray(handlerInfo)) {
-            JSArray *arr = JSArray::Cast(receiver);
+            JSTaggedValue receiveValue = receiverHandle.GetTaggedValue();
+            if (receiveValue.IsJSCOWArray()) {
+                // Copy on write array.
+                JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(receiverHandle));
+            }
+            JSArray *arr = JSArray::Cast(*receiverHandle);
             uint32_t oldLength = arr->GetArrayLength();
             if (elementIndex >= oldLength) {
                 arr->SetArrayLength(thread, elementIndex + 1);
             }
         }
-        TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
+        TaggedArray *elements = TaggedArray::Cast(receiverHandle->GetElements().GetTaggedObject());
         uint32_t capacity = elements->GetLength();
         if (elementIndex >= capacity) {
             if (JSObject::ShouldTransToDict(capacity, elementIndex)) {
                 return JSTaggedValue::Hole();
             }
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-            JSHandle<JSObject> receiverHandle(thread, receiver);
             JSHandle<JSTaggedValue> valueHandle(thread, value);
             elements = *JSObject::GrowElementsCapacity(thread, receiverHandle,
                                                        JSObject::ComputeElementCapacity(elementIndex + 1));

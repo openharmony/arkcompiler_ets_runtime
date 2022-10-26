@@ -836,25 +836,20 @@ inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
 }
 
 // cast operation
-inline GateRef StubBuilder::ChangeInt64ToInt32(GateRef val)
+inline GateRef StubBuilder::TruncInt16ToInt8(GateRef val)
 {
-    return env_->GetBuilder()->ChangeInt64ToInt32(val);
-}
-
-inline GateRef StubBuilder::ChangeInt16ToInt8(GateRef val)
-{
-    return env_->GetBuilder()->UnaryArithmetic(OpCode(OpCode::TRUNC_TO_INT8), val);
+    return env_->GetBuilder()->TruncInt16ToInt8(val);
 }
 
 inline GateRef StubBuilder::ChangeInt64ToIntPtr(GateRef val)
 {
     if (env_->IsArch32Bit()) {
-        return ChangeInt64ToInt32(val);
+        return TruncInt64ToInt32(val);
     }
     return val;
 }
 
-inline GateRef StubBuilder::ChangeInt32ToIntPtr(GateRef val)
+inline GateRef StubBuilder::ZExtInt32ToPtr(GateRef val)
 {
     if (env_->IsArch32Bit()) {
         return val;
@@ -867,7 +862,7 @@ inline GateRef StubBuilder::ChangeIntPtrToInt32(GateRef val)
     if (env_->IsArch32Bit()) {
         return val;
     }
-    return ChangeInt64ToInt32(val);
+    return TruncInt64ToInt32(val);
 }
 
 inline GateRef StubBuilder::GetSetterFromAccessor(GateRef accessor)
@@ -1061,10 +1056,47 @@ inline GateRef StubBuilder::IsJSAPIVector(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR)));
 }
 
+inline GateRef StubBuilder::IsJSAPIStack(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_STACK)));
+}
+
+inline GateRef StubBuilder::IsJSAPIPlainArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_PLAIN_ARRAY)));
+}
+
+inline GateRef StubBuilder::IsJSAPIQueue(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE)));
+}
+
+inline GateRef StubBuilder::IsJSAPIDeque(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_DEQUE)));
+}
+
 inline GateRef StubBuilder::GetTarget(GateRef proxyObj)
 {
     GateRef offset = IntPtr(JSProxy::TARGET_OFFSET);
     return Load(VariableType::JS_ANY(), proxyObj, offset);
+}
+
+inline GateRef StubBuilder::IsJsCOWArray(GateRef obj)
+{
+    // Elements of JSArray are shared and properties are not yet.
+    GateRef elements = GetElementsArray(obj);
+    return IsCOWArray(elements);
+}
+
+inline GateRef StubBuilder::IsCOWArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY)));
 }
 
 inline GateRef StubBuilder::IsWritable(GateRef attr)
@@ -1340,7 +1372,7 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
         Int32Add(inlinedPropsStart, attrOffset), Int32(JSTaggedValue::TaggedTypeSize()));
 
     // NOTE: need to translate MarkingBarrier
-    Store(type, glue, obj, ChangeInt32ToIntPtr(propOffset), value);
+    Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
 }
 
 inline GateRef StubBuilder::GetPropertyInlinedProps(GateRef obj, GateRef hClass,
@@ -1394,7 +1426,7 @@ inline GateRef StubBuilder::GetObjectSizeFromHClass(GateRef hClass) // NOTE: che
     GateRef objectSizeInWords = Int32And(Int32LSR(bitfield,
         Int32(JSHClass::ObjectSizeInWordsBits::START_BIT)),
         Int32((1LU << JSHClass::ObjectSizeInWordsBits::SIZE) - 1));
-    return PtrMul(ChangeInt32ToIntPtr(objectSizeInWords),
+    return PtrMul(ZExtInt32ToPtr(objectSizeInWords),
         IntPtr(JSTaggedValue::TaggedTypeSize()));
 }
 
@@ -1410,7 +1442,7 @@ inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glu
 {
     // NOTE: need to translate MarkingBarrier
     GateRef offset =
-        PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+        PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     Store(valType, glue, array, dataOffset, val);
 }
@@ -1418,7 +1450,7 @@ inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glu
 inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 {
     GateRef offset =
-        PtrMul(ChangeInt32ToIntPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+        PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     return Load(VariableType::JS_ANY(), array, dataOffset);
 }
@@ -1480,12 +1512,12 @@ inline GateRef StubBuilder::GetInt64OfTInt(GateRef x)
 
 inline GateRef StubBuilder::GetInt32OfTInt(GateRef x)
 {
-    return ChangeInt64ToInt32(GetInt64OfTInt(x));
+    return TruncInt64ToInt32(GetInt64OfTInt(x));
 }
 
 inline GateRef StubBuilder::TaggedCastToIntPtr(GateRef x)
 {
-    return env_->Is32Bit() ? ChangeInt64ToInt32(GetInt64OfTInt(x)) : GetInt64OfTInt(x);
+    return env_->Is32Bit() ? TruncInt64ToInt32(GetInt64OfTInt(x)) : GetInt64OfTInt(x);
 }
 
 inline GateRef StubBuilder::GetDoubleOfTDouble(GateRef x)
@@ -1631,6 +1663,11 @@ inline GateRef StubBuilder::TruncInt32ToInt1(GateRef x)
     return env_->GetBuilder()->TruncInt32ToInt1(x);
 }
 
+inline GateRef StubBuilder::GetObjectFromConstPool(GateRef constpool, GateRef index)
+{
+    return GetValueFromTaggedArray(constpool, index);
+}
+
 inline GateRef StubBuilder::GetGlobalConstantAddr(GateRef index)
 {
     return Int64Mul(Int64(sizeof(JSTaggedValue)), index);
@@ -1713,6 +1750,7 @@ inline GateRef StubBuilder::GetBitMask(GateRef bitoffset)
 
 inline GateRef StubBuilder::ObjectAddressToRange(GateRef x)
 {
+    // This function may cause GateRef x is not an object. GC may not mark this x object.
     return IntPtrAnd(TaggedCastToIntPtr(x), IntPtr(~panda::ecmascript::DEFAULT_REGION_MASK));
 }
 
@@ -1808,9 +1846,9 @@ inline GateRef StubBuilder::GetEntryIndexOfGlobalDictionary(GateRef entry)
 inline GateRef StubBuilder::GetBoxFromGlobalDictionary(GateRef object, GateRef entry)
 {
     GateRef index = GetEntryIndexOfGlobalDictionary(entry);
-    GateRef offset = PtrAdd(ChangeInt32ToIntPtr(index),
+    GateRef offset = PtrAdd(ZExtInt32ToPtr(index),
         IntPtr(GlobalDictionary::ENTRY_VALUE_INDEX));
-    return Load(VariableType::JS_POINTER(), object, offset);
+    return GetValueFromTaggedArray(object, offset);
 }
 
 inline GateRef StubBuilder::GetValueFromGlobalDictionary(GateRef object, GateRef entry)
@@ -1920,7 +1958,7 @@ inline GateRef StubBuilder::HasPendingException(GateRef glue)
 inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
                                              const std::initializer_list<GateRef>& args)
 {
-    GateRef target = PtrMul(ChangeInt32ToIntPtr(builtinsId), IntPtrSize());
+    GateRef target = PtrMul(ZExtInt32ToPtr(builtinsId), IntPtrSize());
     return env_->GetBuilder()->CallBuiltin(glue, target, args);
 }
 

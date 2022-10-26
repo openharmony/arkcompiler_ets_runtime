@@ -43,10 +43,10 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
     // Let it be [[IteratedMap]].
     JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap());
 
-    // If it is undefined, return CreateIterResultObject(undefined, true).
+    // If it is undefined, return undefinedIteratorResult.
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratedMap->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, globalConst->GetHandledUndefined(), true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     JSHandle<TaggedTreeMap> map(thread, JSHandle<JSAPITreeMap>::Cast(iteratedMap)->GetTreeMap());
     uint32_t elements = static_cast<uint32_t>(map->NumberOfElements());
@@ -79,13 +79,13 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
         JSHandle<TaggedArray> array = factory->NewTaggedArray(2);  // 2 means the length of array
         array->Set(thread, 0, key);
         array->Set(thread, 1, value);
-        JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
+        JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));    
         return JSIterator::CreateIterResultObject(thread, keyAndValue, false).GetTaggedValue();
     }
 
     // Set [[IteratedMap]] to undefined.
     iter->SetIteratedMap(thread, JSTaggedValue::Undefined());
-    return JSIterator::CreateIterResultObject(thread, globalConst->GetHandledUndefined(), true).GetTaggedValue();
+    return globalConst->GetUndefinedIterResult();
 }
 
 JSHandle<JSTaggedValue> JSAPITreeMapIterator::CreateTreeMapIterator(JSThread *thread,

@@ -2453,7 +2453,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
                                                                   profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, prop, slotId);
+                                                                  globalObj, prop, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(TRYLDGLOBALBYNAME_IMM8_ID16);
@@ -2494,7 +2494,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
                                                                   profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, prop, slotId);
+                                                                  globalObj, prop, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(TRYLDGLOBALBYNAME_IMM16_ID16);
@@ -2538,7 +2538,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
                                                                    profileTypeInfo.GetTaggedObject()),
-                                                                   globalObj, propKey, value, slotId);
+                                                                   globalObj, propKey, value, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
             DISPATCH(TRYSTGLOBALBYNAME_IMM8_ID16);
@@ -2656,7 +2656,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::LoadGlobalICByName(thread,
                                                                   ProfileTypeInfo::Cast(
                                                                   profileTypeInfo.GetTaggedObject()),
-                                                                  globalObj, propKey, slotId);
+                                                                  globalObj, propKey, slotId, false);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             SET_ACC(res);
             DISPATCH(LDGLOBALVAR_IMM16_ID16);
@@ -2864,7 +2864,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
                                                                    profileTypeInfo.GetTaggedObject()),
-                                                                   globalObj, prop, value, slotId);
+                                                                   globalObj, prop, value, slotId, false);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
             DISPATCH(STGLOBALVAR_IMM16_ID16);
@@ -5934,7 +5934,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue receiver = GET_ACC();
         LOG_INST() << "intrinsics::ldobjbyname stringId:" << stringId << ", "
                    << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << receiver.GetRawData();
-
         if (LIKELY(receiver.IsHeapObject())) {
             // fast path
             JSTaggedValue res = FastRuntimeStub::GetPropertyByName(thread, receiver, propKey);
@@ -6240,7 +6239,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue res = ICRuntimeStub::StoreGlobalICByName(thread,
                                                                    ProfileTypeInfo::Cast(
                                                                        profileTypeInfo.GetTaggedObject()),
-                                                                   globalObj, propKey, value, slotId);
+                                                                   globalObj, propKey, value, slotId, true);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
             DISPATCH(TRYSTGLOBALBYNAME_IMM16_ID16);

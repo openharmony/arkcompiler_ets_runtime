@@ -79,6 +79,7 @@ class SlowRuntimeStub;
 class RequireManager;
 struct CJSInfo;
 class QuickFixManager;
+class ConstantPool;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -157,7 +158,7 @@ public:
         return thread_;
     }
 
-    const JSRuntimeOptions &GetJSOptions() const
+    JSRuntimeOptions &GetJSOptions()
     {
         return options_;
     }
@@ -377,9 +378,11 @@ public:
         return resolveBufferCallback_;
     }
 
-    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total = 0);
+    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+
+    JSHandle<ConstantPool> FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
 
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {
@@ -490,6 +493,10 @@ public:
     {
         return quickFixManager_;
     }
+
+    JSTaggedValue ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, const JSTaggedType *prevFp,
+                             size_t actualNumArgs, size_t declareNumArgs, std::vector<JSTaggedType> &args);
+    JSTaggedValue AotReentry(size_t actualNumArgs, JSTaggedType *args, bool isNew);
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
@@ -514,7 +521,7 @@ private:
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                          const JSPandaFile *jsPandaFile);
+                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile);
 
@@ -559,7 +566,7 @@ private:
     CString frameworkAbcFileName_;
     JSTaggedValue frameworkProgram_ {JSTaggedValue::Hole()};
     const JSPandaFile *frameworkPandaFile_ {nullptr};
-    CMap<const JSPandaFile *, CVector<JSTaggedValue>> cachedConstpools_ {};
+    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
 
     // VM resources.
     ModuleManager *moduleManager_ {nullptr};

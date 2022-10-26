@@ -378,4 +378,22 @@ HWTEST_F_L0(JSAPILinkedListTest, SetProperty)
         EXPECT_EQ(setPropertyRes, true);
     }
 }
+
+HWTEST_F_L0(JSAPILinkedListTest, Clone)
+{
+    uint32_t elementsNums = 8;
+    JSAPILinkedList *linkedlist = CreateLinkedList();
+    JSHandle<JSAPILinkedList> list(thread, linkedlist);
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPILinkedList::Add(thread, list, value);
+    }
+    JSHandle<JSAPILinkedList> cloneList = JSAPILinkedList::Clone(thread, list);
+
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        EXPECT_EQ(cloneList->Get(i), list->Get(i));
+    }
+    EXPECT_EQ(list->Length(), cloneList->Length());
+}
+
 }  // namespace panda::test

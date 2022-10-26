@@ -27,13 +27,16 @@ enum class ICKind : uint32_t {
     StoreIC,
     NamedGlobalLoadIC,
     NamedGlobalStoreIC,
+    NamedGlobalTryLoadIC,
+    NamedGlobalTryStoreIC,
     GlobalLoadIC,
     GlobalStoreIC,
 };
 
 static inline bool IsNamedGlobalIC(ICKind kind)
 {
-    return (kind == ICKind::NamedGlobalLoadIC) || (kind == ICKind::NamedGlobalStoreIC);
+    return (kind == ICKind::NamedGlobalLoadIC) || (kind == ICKind::NamedGlobalStoreIC) ||
+           (kind == ICKind::NamedGlobalTryLoadIC) || (kind == ICKind::NamedGlobalTryStoreIC);
 }
 
 static inline bool IsValueGlobalIC(ICKind kind)
@@ -63,12 +66,14 @@ static inline bool IsNamedIC(ICKind kind)
 
 static inline bool IsGlobalLoadIC(ICKind kind)
 {
-    return (kind == ICKind::NamedGlobalLoadIC) || (kind == ICKind::GlobalLoadIC);
+    return (kind == ICKind::NamedGlobalLoadIC) || (kind == ICKind::GlobalLoadIC) ||
+           (kind == ICKind::NamedGlobalTryLoadIC);
 }
 
 static inline bool IsGlobalStoreIC(ICKind kind)
 {
-    return (kind == ICKind::NamedGlobalStoreIC) || (kind == ICKind::GlobalStoreIC);
+    return (kind == ICKind::NamedGlobalStoreIC) || (kind == ICKind::GlobalStoreIC) ||
+           (kind == ICKind::NamedGlobalTryStoreIC);
 }
 
 static inline bool IsGlobalIC(ICKind kind)

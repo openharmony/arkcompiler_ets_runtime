@@ -221,4 +221,35 @@ HWTEST_F_L0(JSAPIHashSetTest, JSAPIHashSetIterator)
         EXPECT_EQ(JSTaggedValue::True(), iterValueFlag);
     }
 }
+
+HWTEST_F_L0(JSAPIHashSetTest, JSAPIHashSetIteratorRBTreeTest)
+{
+    constexpr uint32_t NODE_NUMBERS = 11;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIHashSet> hashSet(thread, CreateHashSet());
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
+    std::vector<int> hashCollisionVector = {1224, 1285, 1463, 4307, 5135, 5903, 6603, 6780, 8416, 9401, 9740};
+
+    for (size_t i = 0; i < hashCollisionVector.size(); i++) {
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
+        JSAPIHashSet::Add(thread, hashSet, value);
+    }
+    
+    JSHandle<JSAPIHashSetIterator> hashsetIterator = factory->NewJSAPIHashSetIterator(hashSet, IterationKind::VALUE);
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(hashsetIterator.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPIHashSetIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        JSHandle<JSObject> resultObj(thread, result);
+        if (i <= NODE_NUMBERS - 1U) {
+            EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsInt());
+        }
+    }
+}
 }  // namespace panda::test

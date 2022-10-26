@@ -186,6 +186,7 @@ class ProtoChangeDetails;
         LEXICAL_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         CONSTANT_POOL, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        COW_TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LINKED_NODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RB_TREENODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         FREE_OBJECT_WITH_ONE_FIELD, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -234,7 +235,10 @@ class ProtoChangeDetails;
         TS_CLASS_TYPE,    /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_CLASS_INSTANCE_TYPE,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
-        TYPE_LAST = TS_INTERFACE_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        TS_ITERATOR_INSTANCE_TYPE,    /* //////////////////////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
+        AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        TYPE_LAST = AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         JS_FUNCTION_FIRST = JS_FUNCTION, /* ///////////////////////////////////////////////////////////////-PADDING */ \
         JS_FUNCTION_LAST = JS_ASYNC_AWAIT_STATUS_FUNCTION, /* //////////////////////////////////////////////-PADDING */\
@@ -261,7 +265,7 @@ class ProtoChangeDetails;
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_TYPE_LAST = TS_INTERFACE_TYPE /* ///////////////////////////////////////////////////////////////-PADDING */
+        TS_TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE /* ///////////////////////////////////////////////////////-PADDING */
 
 
 enum class JSType : uint8_t {
@@ -469,6 +473,8 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::LEXICAL_ENV:
             case JSType::CONSTANT_POOL:
+            case JSType::AOT_LITERAL_INFO:
+            case JSType::COW_TAGGED_ARRAY:
                 return true;
             default:
                 return false;
@@ -483,6 +489,12 @@ public:
     inline bool IsDictionary() const
     {
         return GetObjectType() == JSType::TAGGED_DICTIONARY;
+    }
+
+    inline bool IsCOWArray() const
+    {
+        // Copy On Write ARRAY.
+        return GetObjectType() == JSType::COW_TAGGED_ARRAY;
     }
 
     inline bool IsJSNativePointer() const
@@ -1252,6 +1264,16 @@ public:
     inline bool IsTSArrayType() const
     {
         return GetObjectType() == JSType::TS_ARRAY_TYPE;
+    }
+
+    inline bool IsTSIteratorInstanceType() const
+    {
+        return GetObjectType() == JSType::TS_ITERATOR_INSTANCE_TYPE;
+    }
+
+    inline bool IsAOTLiteralInfo() const
+    {
+        return GetObjectType() == JSType::AOT_LITERAL_INFO;
     }
 
     inline bool IsModuleRecord() const

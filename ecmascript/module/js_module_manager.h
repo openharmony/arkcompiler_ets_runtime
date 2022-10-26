@@ -54,8 +54,9 @@ public:
     JSHandle<SourceTextModule> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<SourceTextModule> HostResolveImportedModule(std::string &baseFilename, std::string &moduleFilename);
     JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
-    JSHandle<SourceTextModule> HostResolveImportedModuleWithMerge(const CString &referencingModule,
-                                                                  const CString &recordName);
+    JSHandle<SourceTextModule> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
+                                                                             const CString &recordName);
+
     JSTaggedValue GetCurrentModule();
 
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
@@ -73,8 +74,6 @@ public:
     static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
                                            CString &moduleRecordName, CString &moduleRequestName);
 
-    // use for AOT PassManager
-    PUBLIC_API CString ResolveModuleFileName(const CString &fileName);
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
 private:

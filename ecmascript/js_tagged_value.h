@@ -21,6 +21,7 @@
 #include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
+class JSArray;
 class JSObject;
 class JSTaggedNumber;
 template<typename T>
@@ -493,6 +494,7 @@ public:
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
     bool IsConstantPool() const;
+    bool IsAOTLiteralInfo() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;
     bool IsNativePointer() const;
@@ -503,7 +505,9 @@ public:
     bool IsJSGlobalObject() const;
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
+    bool IsCOWArray() const;
     bool IsJSArray() const;
+    bool IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
     bool HasStableElements(JSThread *thread) const;
@@ -637,6 +641,7 @@ public:
     bool IsTSImportType() const;
     bool IsTSFunctionType() const;
     bool IsTSArrayType() const;
+    bool IsTSIteratorInstanceType() const;
 
     bool IsCjsExports() const;
     bool IsCjsModule() const;
@@ -656,6 +661,7 @@ public:
                                     const JSHandle<JSTaggedValue> &y);
     static ComparisonResult StrictNumberCompare(double x, double y);
     static bool StrictNumberEquals(double x, double y);
+    static bool StrictIntEquals(int x, int y);
     static bool StringCompare(EcmaString *xStr, EcmaString *yStr);
 
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);

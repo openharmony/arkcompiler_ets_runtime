@@ -37,9 +37,7 @@ public:
 
 private:
     JSPandaFile *CreateJSPandaFile(const CString &fileName);
-    JSPandaFile *ResolveModuleFile(JSPandaFile *jsPandaFile, const std::string &fileName);
-    JSHandle<JSTaggedValue> CreateConstPool(const JSPandaFile *jsPandaFile);
-    void DecodeTSTypes(const JSPandaFile *jsPandaFile, const std::string &fileName);
+    JSHandle<JSTaggedValue> ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, const std::string &fileName);
     bool FilterMethod(const JSPandaFile *jsPandaFile, const CString &recordName, MethodLiteral *method,
         uint32_t methodOffset, MethodPcInfo &methodPCInfo);
 

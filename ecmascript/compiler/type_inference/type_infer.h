@@ -79,7 +79,7 @@ private:
     bool InferReturn(GateRef gate);
     bool InferLdObjByName(GateRef gate);
     bool InferNewObject(GateRef gate);
-    bool SetStGlobalBcType(GateRef gate);
+    bool SetStGlobalBcType(GateRef gate, bool hasIC = false);
     bool InferLdStr(GateRef gate);
     bool InferCallFunction(GateRef gate, bool isDeprecated = false);
     bool InferLdObjByValue(GateRef gate);
@@ -89,6 +89,9 @@ private:
     bool InferTryLdGlobalByName(GateRef gate);
     bool InferLdLexVarDyn(GateRef gate);
     bool InferStLexVarDyn(GateRef gate);
+    bool IsNewLexEnv(EcmaOpcode opcode) const;
+    bool InferGetIterator(GateRef gate);
+    bool InferLoopBeginPhiGate(GateRef gate);
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
@@ -100,12 +103,17 @@ private:
         return tsManager_->GetPropType(type, key);
     }
 
-    inline bool IsObjectOrClass(const GateType &type) const
+    inline bool ShouldInferWithLdObjByValue(const GateType &type) const
     {
         auto flag = tsManager_->IsObjectTypeKind(type) ||
                     tsManager_->IsClassTypeKind(type) ||
                     tsManager_->IsClassInstanceTypeKind(type);
         return flag;
+    }
+
+    inline bool ShouldInferWithLdObjByName(const GateType &type) const
+    {
+        return ShouldInferWithLdObjByValue(type) || tsManager_->IsIteratorInstanceTypeKind(type);
     }
 
     void PrintAllByteCodesTypes() const;
@@ -126,6 +134,7 @@ private:
     bool enableLog_ {false};
     std::string methodName_;
     std::map<uint16_t, GateType> stringIdToGateType_;
+    std::map<GateRef, bool> phiState_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H

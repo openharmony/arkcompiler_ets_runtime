@@ -173,52 +173,24 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST) };
             return ps;
         }
-        case ZEXT_TO_INT64: {
-            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+        case ZEXT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
-        case ZEXT_TO_INT32: {
-            static const Properties ps { I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+        case SEXT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
-        case ZEXT_TO_INT16: {
-            static const Properties ps { I16, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
-            return ps;
-        }
-        case ZEXT_TO_ARCH: {
-            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
-            return ps;
-        }
-        case SEXT_TO_INT64: {
-            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
-            return ps;
-        }
-        case SEXT_TO_INT32: {
-            static const Properties ps { I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
-            return ps;
-        }
-        case SEXT_TO_ARCH: {
-            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
-            return ps;
-        }
-        case TRUNC_TO_INT32: {
-            static const Properties ps { I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
-            return ps;
-        }
-        case TRUNC_TO_INT8: {
-            static const Properties ps { I8, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
-            return ps;
-        }
-        case TRUNC_TO_INT1: {
-            static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
-            return ps;
-        }
-        case TRUNC_TO_INT16: {
-            static const Properties ps { I16, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+        case TRUNC: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
         case REV: {
             static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX), NO_ROOT };
+            return ps;
+        }
+        case TRUNC_FLOAT_TO_INT64: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
         case ADD:
@@ -240,20 +212,8 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX, FLEX), NO_ROOT };
             return ps;
         }
-        case SLT:
-        case SLE:
-        case SGT:
-        case SGE:
-        case ULT:
-        case ULE:
-        case UGT:
-        case UGE:
-        case FLT:
-        case FLE:
-        case FGT:
-        case FGE:
-        case EQ:
-        case NE: {
+        case ICMP:
+        case FCMP: {
             static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE, ANYVALUE), NO_ROOT };
             return ps;
         }
@@ -415,18 +375,11 @@ std::string OpCode::Str() const
         {RELOCATABLE_DATA, "RELOCATABLE_DATA"},
         {CONST_DATA, "CONST_DATA"},
         {CONSTANT, "CONSTANT"},
-        {ZEXT_TO_INT64, "ZEXT_TO_INT64"},
-        {ZEXT_TO_INT32, "ZEXT_TO_INT32"},
-        {ZEXT_TO_INT16, "ZEXT_TO_INT16"},
-        {ZEXT_TO_ARCH, "ZEXT_TO_ARCH"},
-        {SEXT_TO_INT64, "SEXT_TO_INT64"},
-        {SEXT_TO_INT32, "SEXT_TO_INT32"},
-        {SEXT_TO_ARCH, "SEXT_TO_ARCH"},
-        {TRUNC_TO_INT32, "TRUNC_TO_INT32"},
-        {TRUNC_TO_INT8, "TRUNC_TO_INT8"},
-        {TRUNC_TO_INT1, "TRUNC_TO_INT1"},
-        {TRUNC_TO_INT16, "TRUNC_TO_INT16"},
+        {ZEXT, "ZEXT"},
+        {SEXT, "SEXT"},
+        {TRUNC, "TRUNC"},
         {REV, "REV"},
+        {TRUNC_FLOAT_TO_INT64, "TRUNC_FLOAT_TO_INT64"},
         {ADD, "ADD"},
         {SUB, "SUB"},
         {MUL, "MUL"},
@@ -443,20 +396,8 @@ std::string OpCode::Str() const
         {LSL, "LSL"},
         {LSR, "LSR"},
         {ASR, "ASR"},
-        {SLT, "SLT"},
-        {SLE, "SLE"},
-        {SGT, "SGT"},
-        {SGE, "SGE"},
-        {ULT, "ULT"},
-        {ULE, "ULE"},
-        {UGT, "UGT"},
-        {UGE, "UGE"},
-        {FLT, "FLT"},
-        {FLE, "FLE"},
-        {FGT, "FGT"},
-        {FGE, "FGE"},
-        {EQ, "EQ"},
-        {NE, "NE"},
+        {ICMP, "ICMP"},
+        {FCMP, "FCMP"},
         {LOAD, "LOAD"},
         {STORE, "STORE"},
         {TAGGED_TO_INT64, "TAGGED_TO_INT64"},

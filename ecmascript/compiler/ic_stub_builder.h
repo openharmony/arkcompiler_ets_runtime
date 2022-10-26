@@ -47,6 +47,8 @@ public:
     void StoreICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
     void LoadICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
     void StoreICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+    void TryLoadGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+    void TryStoreGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
 private:
     void NamedICAccessor(Variable* cachedHandler, Label *tryICHandler);
     void ValuedICAccessor(Variable* cachedHandler, Label *tryICHandler, Label* tryElementIC);
