@@ -322,6 +322,15 @@ GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
     return BoolOr(TaggedIsFalse(x), TaggedIsTrue(x));
 }
 
+GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef x)
+{
+    GateRef isHeapObj = TaggedIsHeapObject(x);
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isAOTLiteralInfoObj = Equal(objType,
+        Int32(static_cast<int32_t>(JSType::AOT_LITERAL_INFO)));
+    return LogicAnd(isHeapObj, isAOTLiteralInfoObj);
+}
+
 GateRef CircuitBuilder::TaggedGetInt(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);

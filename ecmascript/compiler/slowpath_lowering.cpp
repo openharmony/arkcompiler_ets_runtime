@@ -298,14 +298,34 @@ GateRef SlowPathLowering::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, G
     }
     builder_.Bind(&cache);
     {
-        Label isNumber(&builder_);
-        builder_.Branch(builder_.TaggedIsNumber(cacheValue), &isNumber, &exit);
-        builder_.Bind(&isNumber);
-        {
-            if (type == ConstPoolType::METHOD) {
+        if (type == ConstPoolType::METHOD) {
+            Label isNumber(&builder_);
+            builder_.Branch(builder_.TaggedIsNumber(cacheValue), &isNumber, &exit);
+            builder_.Bind(&isNumber);
+            {
                 result = LowerCallRuntime(glue, RTSTUB_ID(GetMethodFromCache),
                     { constPool, builder_.Int32ToTaggedInt(index) }, true);
+                builder_.Jump(&exit);
             }
+        } else if (type == ConstPoolType::ARRAY_LITERAL) {
+            Label isAOTLiteralInfo(&builder_);
+            builder_.Branch(builder_.IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            builder_.Bind(&isAOTLiteralInfo);
+            {
+                result = LowerCallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache),
+                    { constPool, builder_.Int32ToTaggedInt(index), module }, true);
+                builder_.Jump(&exit);
+            }
+        } else if (type == ConstPoolType::OBJECT_LITERAL)  {
+            Label isAOTLiteralInfo(&builder_);
+            builder_.Branch(builder_.IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            builder_.Bind(&isAOTLiteralInfo);
+            {
+                result = LowerCallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache),
+                    { constPool, builder_.Int32ToTaggedInt(index), module }, true);
+                builder_.Jump(&exit);
+            }
+        } else {
             builder_.Jump(&exit);
         }
     }

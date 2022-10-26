@@ -235,7 +235,9 @@ class ProtoChangeDetails;
         TS_CLASS_INSTANCE_TYPE,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_ITERATOR_INSTANCE_TYPE,    /* //////////////////////////////////////////////////////////////////-PADDING */ \
-        TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE, /* /////////////////////////////////////////////////////////-PADDING */ \
+                                                                                                                       \
+        AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        TYPE_LAST = AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         JS_FUNCTION_FIRST = JS_FUNCTION, /* ///////////////////////////////////////////////////////////////-PADDING */ \
         JS_FUNCTION_LAST = JS_ASYNC_AWAIT_STATUS_FUNCTION, /* //////////////////////////////////////////////-PADDING */\
@@ -470,6 +472,7 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::LEXICAL_ENV:
             case JSType::CONSTANT_POOL:
+            case JSType::AOT_LITERAL_INFO:
                 return true;
             default:
                 return false;
@@ -1258,6 +1261,11 @@ public:
     inline bool IsTSIteratorInstanceType() const
     {
         return GetObjectType() == JSType::TS_ITERATOR_INSTANCE_TYPE;
+    }
+
+    inline bool IsAOTLiteralInfo() const
+    {
+        return GetObjectType() == JSType::AOT_LITERAL_INFO;
     }
 
     inline bool IsModuleRecord() const

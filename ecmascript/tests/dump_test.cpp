@@ -787,7 +787,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::TAGGED_ARRAY:
-            case JSType::LEXICAL_ENV: {
+            case JSType::LEXICAL_ENV:
+            case JSType::AOT_LITERAL_INFO: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray)
                 break;

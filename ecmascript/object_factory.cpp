@@ -122,6 +122,7 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
+#include "ecmascript/aot_file_manager.h"
 
 namespace panda::ecmascript {
 using Error = builtins::BuiltinsError;
@@ -3781,5 +3782,17 @@ JSHandle<AsyncGeneratorRequest> ObjectFactory::NewAsyncGeneratorRequest()
     obj->SetCompletion(thread_, JSTaggedValue::Undefined());
     obj->SetCapability(thread_, JSTaggedValue::Undefined());
     return obj;
+}
+
+JSHandle<AOTLiteralInfo> ObjectFactory::NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetAOTLiteralInfoClass().GetTaggedObject()), size);
+
+    JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
+    aotLiteralInfo->InitializeWithSpecialValue(initVal, length);
+    return aotLiteralInfo;
 }
 }  // namespace panda::ecmascript

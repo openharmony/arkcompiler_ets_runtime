@@ -57,7 +57,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
         if (FilterMethod(jsPandaFile, recordName, method, methodOffset, methodPCInfo)) {
             ++skippedMethodNum;
-            tsManager->AddSkippedMethodID(method->GetMethodId().GetOffset());
+            tsManager->AddIndexOrSkippedMethodID(CacheType::SKIPPED_METHOD, method->GetMethodId().GetOffset());
             LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
             return;
         }
@@ -73,7 +73,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
         bool hasTyps = jsPandaFile->HasTSTypes(recordName);
         BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager,
-                                       &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(), fullName);
+                                       &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(), fullName, recordName);
         builder.BytecodeToCircuit();
         PassData data(builder.GetCircuit(), log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);

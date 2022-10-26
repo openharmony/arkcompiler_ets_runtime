@@ -422,6 +422,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "CommonJSRequire";
         case JSType::METHOD:
             return "Method";
+        case JSType::AOT_LITERAL_INFO:
+            return "AOTLiteralInfo";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);

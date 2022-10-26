@@ -170,6 +170,16 @@ public:
         return type_ == ConstDataIDType::ClassLiteralIDType;
     }
 
+    bool IsObjectLiteralID() const
+    {
+        return type_ == ConstDataIDType::ObjectLiteralIDType;
+    }
+
+    bool IsArrayLiteralID() const
+    {
+        return type_ == ConstDataIDType::ArrayLiteralIDType;
+    }
+
     BitField CaculateBitField() const
     {
         return (static_cast<uint8_t>(type_) << TYPE_SHIFT) | id_;
@@ -515,13 +525,14 @@ public:
                                     const CompilationConfig* cconfig,
                                     bool hasTypes,
                                     bool enableLog,
-                                    std::string name)
+                                    std::string name,
+                                    const CString &recordName)
         : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(hasTypes),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
-          frameStateBuilder_(this, &circuit_, methodLiteral), methodName_(name)
+          frameStateBuilder_(this, &circuit_, methodLiteral), methodName_(name), recordName_(recordName)
     {
     }
     ~BytecodeCircuitBuilder() = default;
@@ -704,6 +715,7 @@ private:
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
     FrameStateBuilder frameStateBuilder_;
     std::string methodName_;
+    const CString &recordName_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H
