@@ -35,7 +35,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 #else
         entry = JSPandaFile::ParseOhmUrl(filename.c_str());
 #if !WIN_OR_MAC_PLATFORM
-        name = JSPandaFile::MERGE_ABC_PATH;
+        name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
     name = assetPath + "\\modules.abc";

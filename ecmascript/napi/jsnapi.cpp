@@ -332,7 +332,7 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size,
             return true;
         }
     }
-    
+
     LOG_ECMA(INFO) << "start to execute ark buffer: " << filename;
     JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str())) {
@@ -2542,6 +2542,7 @@ void JSNApi::SetBundle(EcmaVM *vm, bool value)
     vm->SetIsBundlePack(value);
 }
 
+// note: The function SetAssetPath is a generic interface for previewing and physical machines.
 void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 {
     ecmascript::CString path = assetPath.c_str();
