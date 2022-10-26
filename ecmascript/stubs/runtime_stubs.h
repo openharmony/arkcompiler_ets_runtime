@@ -116,6 +116,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(NameDictPutIfAbsent)                \
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \
+    V(CheckAndCopyArray)                  \
     V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
     V(NoticeThroughChainAndRefreshUser)   \

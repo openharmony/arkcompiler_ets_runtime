@@ -938,6 +938,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
+        // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
         GateRef objectRegion = ObjectAddressToRange(obj);
         GateRef valueRegion = ObjectAddressToRange(value);
         GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
@@ -1471,6 +1472,9 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
     Label indexNotLessZero(env);
     Label handerInfoIsJSArray(env);
     Label handerInfoNotJSArray(env);
+    Label isJsCOWArray(env);
+    Label isNotJsCOWArray(env);
+    Label setElementsLength(env);
     Label indexGreaterLength(env);
     Label indexGreaterCapacity(env);
     Label callRuntime(env);
@@ -1500,12 +1504,25 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             Branch(HandlerBaseIsJSArray(handlerInfo), &handerInfoIsJSArray, &handerInfoNotJSArray);
             Bind(&handerInfoIsJSArray);
             {
-                GateRef oldLength = GetArrayLength(receiver);
-                Branch(Int32GreaterThanOrEqual(index, oldLength), &indexGreaterLength, &handerInfoNotJSArray);
-                Bind(&indexGreaterLength);
-                Store(VariableType::INT64(), glue, receiver,
-                      IntPtr(panda::ecmascript::JSArray::LENGTH_OFFSET),
-                      IntToTaggedInt(Int32Add(index, Int32(1))));
+                Branch(IsJsCOWArray(receiver), &isJsCOWArray, &isNotJsCOWArray);
+                Bind(&isJsCOWArray);
+                {
+                    CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), {receiver});
+                    Jump(&setElementsLength);
+                }
+                Bind(&isNotJsCOWArray);
+                {
+                    Jump(&setElementsLength);
+                }
+                Bind(&setElementsLength);
+                {
+                    GateRef oldLength = GetArrayLength(receiver);
+                    Branch(Int32GreaterThanOrEqual(index, oldLength), &indexGreaterLength, &handerInfoNotJSArray);
+                    Bind(&indexGreaterLength);
+                    Store(VariableType::INT64(), glue, receiver,
+                        IntPtr(panda::ecmascript::JSArray::LENGTH_OFFSET),
+                        IntToTaggedInt(Int32Add(index, Int32(1))));
+                }
                 Jump(&handerInfoNotJSArray);
             }
             Bind(&handerInfoNotJSArray);
@@ -2310,6 +2327,9 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     Label loopEnd(env);
     Label loopExit(env);
     Label afterLoop(env);
+    Label isJsCOWArray(env);
+    Label isNotJsCOWArray(env);
+    Label setElementsArray(env);
     if (!useOwn) {
         Jump(&loopHead);
         LoopBegin(&loopHead);
@@ -2369,9 +2389,25 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                     }
                     Bind(&notHole);
                     {
-                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
-                        returnValue = Undefined();
-                        Jump(&exit);
+                        Branch(IsJsCOWArray(*holder), &isJsCOWArray, &isNotJsCOWArray);
+                        Bind(&isJsCOWArray);
+                        {
+                            CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), {*holder});
+                            GateRef newElements = GetElementsArray(*holder);
+                            SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElements, index, value);
+                            returnValue = Undefined();
+                            Jump(&exit);
+                        }
+                        Bind(&isNotJsCOWArray);
+                        {
+                            Jump(&setElementsArray);
+                        }
+                        Bind(&setElementsArray);
+                        {
+                            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
+                            returnValue = Undefined();
+                            Jump(&exit);
+                        }
                     }
                 }
             }

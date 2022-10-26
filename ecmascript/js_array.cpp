@@ -211,6 +211,7 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uin
     uint32_t capacity = element->GetLength();
     if (newLen <= capacity) {
         // judge if need to cut down the array size, else fill the unused tail with holes
+        CheckAndCopyArray(thread, JSHandle<JSArray>(array));
         array->FillElementsWithHoles(thread, newLen, oldLen < capacity ? oldLen : capacity);
     }
     if (JSObject::ShouldTransToDict(oldLen, newLen)) {
@@ -467,5 +468,23 @@ JSHandle<TaggedArray> JSArray::ToTaggedArray(JSThread *thread, const JSHandle<JS
         taggedArray->Set(thread, idx, vv);
     }
     return taggedArray;
+}
+
+void JSArray::CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj)
+{
+    JSHandle<TaggedArray> arr(thread, obj->GetElements());
+    // Check whether array is shared in the nonmovable space before set properties and elements.
+    // If true, then really copy array in the semi space.
+    if (arr.GetTaggedValue().IsCOWArray()) {
+        auto newArray = thread->GetEcmaVM()->GetFactory()->CopyArray(arr, arr->GetLength(), arr->GetLength(),
+            JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        obj->SetElements(thread, newArray.GetTaggedValue());
+    }
+    JSHandle<TaggedArray> prop(thread, obj->GetProperties());
+    if (prop.GetTaggedValue().IsCOWArray()) {
+        auto newProps = thread->GetEcmaVM()->GetFactory()->CopyArray(prop,
+            prop->GetLength(), prop->GetLength(), JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        obj->SetProperties(thread, newProps.GetTaggedValue());
+    }
 }
 }  // namespace panda::ecmascript

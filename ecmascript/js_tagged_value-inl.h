@@ -789,6 +789,11 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
     return false;
 }
 
+inline bool JSTaggedValue::IsCOWArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsCOWArray();
+}
+
 inline bool JSTaggedValue::IsJSArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSArray();

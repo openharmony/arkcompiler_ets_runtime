@@ -186,6 +186,7 @@ class ProtoChangeDetails;
         LEXICAL_ENV,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_DICTIONARY, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         CONSTANT_POOL, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        COW_TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         LINKED_NODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         RB_TREENODE,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         FREE_OBJECT_WITH_ONE_FIELD, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -473,6 +474,7 @@ public:
             case JSType::LEXICAL_ENV:
             case JSType::CONSTANT_POOL:
             case JSType::AOT_LITERAL_INFO:
+            case JSType::COW_TAGGED_ARRAY:
                 return true;
             default:
                 return false;
@@ -487,6 +489,12 @@ public:
     inline bool IsDictionary() const
     {
         return GetObjectType() == JSType::TAGGED_DICTIONARY;
+    }
+
+    inline bool IsCOWArray() const
+    {
+        // Copy On Write ARRAY.
+        return GetObjectType() == JSType::COW_TAGGED_ARRAY;
     }
 
     inline bool IsJSNativePointer() const

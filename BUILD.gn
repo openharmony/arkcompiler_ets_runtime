@@ -295,6 +295,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "RUN_WITH_ASAN" ]
   }
 
+  if (enable_cow_array) {
+    defines += [ "ENABLE_COW_ARRAY" ]
+  }
+
   if (run_with_asan && is_linux &&
       (current_cpu == "x86" || current_cpu == "x64")) {
     cflags_cc += [

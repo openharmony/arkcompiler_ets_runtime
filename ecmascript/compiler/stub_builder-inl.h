@@ -1091,6 +1091,19 @@ inline GateRef StubBuilder::GetTarget(GateRef proxyObj)
     return Load(VariableType::JS_ANY(), proxyObj, offset);
 }
 
+inline GateRef StubBuilder::IsJsCOWArray(GateRef obj)
+{
+    // Elements of JSArray are shared and properties are not yet.
+    GateRef elements = GetElementsArray(obj);
+    return IsCOWArray(elements);
+}
+
+inline GateRef StubBuilder::IsCOWArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY)));
+}
+
 inline GateRef StubBuilder::IsWritable(GateRef attr)
 {
     return Int32NotEqual(
@@ -1742,6 +1755,7 @@ inline GateRef StubBuilder::GetBitMask(GateRef bitoffset)
 
 inline GateRef StubBuilder::ObjectAddressToRange(GateRef x)
 {
+    // This function may cause GateRef x is not an object. GC may not mark this x object.
     return IntPtrAnd(TaggedCastToIntPtr(x), IntPtr(~panda::ecmascript::DEFAULT_REGION_MASK));
 }
 

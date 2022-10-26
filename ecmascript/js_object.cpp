@@ -21,7 +21,6 @@
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/js_array.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"

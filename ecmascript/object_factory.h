@@ -300,6 +300,8 @@ public:
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, bool nonMovable);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
+    // Copy on write array is allocated in nonmovable space by default.
+    JSHandle<COWTaggedArray> NewCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> NewDictionaryArray(uint32_t length);
     JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj);
 

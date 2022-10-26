@@ -572,6 +572,15 @@ JSTaggedValue FastRuntimeStub::SetPropertyByIndex(JSThread *thread, JSTaggedValu
             }
             if (index < elements->GetLength()) {
                 if (!elements->Get(index).IsHole()) {
+                    if (holder.IsJSCOWArray()) {
+                        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                        JSHandle<JSArray> holderHandler(thread, JSArray::Cast(holder.GetTaggedObject()));
+                        JSHandle<JSTaggedValue> valueHandle(thread, value);
+                        // CheckAndCopyArray may cause gc.
+                        JSArray::CheckAndCopyArray(thread, holderHandler);
+                        TaggedArray::Cast(holderHandler->GetElements())->Set(thread, index, valueHandle);
+                        return JSTaggedValue::Undefined();
+                    }
                     elements->Set(thread, index, value);
                     return JSTaggedValue::Undefined();
                 }

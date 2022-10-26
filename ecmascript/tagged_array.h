@@ -91,5 +91,15 @@ private:
 
 static_assert(TaggedArray::LENGTH_OFFSET == sizeof(TaggedObject));
 static_assert((TaggedArray::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+
+// Copy On Write TaggedArray is shared in the nonmovable space.
+class COWTaggedArray : public TaggedArray {
+public:
+    CAST_CHECK(COWTaggedArray, IsCOWArray)
+    DECL_DUMP()
+private:
+    friend class ObjectFactory;
+};
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_ARRAY_H

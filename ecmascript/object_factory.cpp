@@ -106,6 +106,7 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/space.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/record.h"
@@ -435,12 +436,51 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     cloneObject->SetArrayLength(thread_, object->GetArrayLength());
 
     JSHandle<TaggedArray> elements(thread_, object->GetElements());
-    auto newElements = CopyArray(elements, elements->GetLength(), elements->GetLength());
-    cloneObject->SetElements(thread_, newElements.GetTaggedValue());
+    static constexpr uint8_t MAX_READ_ONLY_ARRAY_LENGTH = 10;
+    uint32_t elementsLength = elements->GetLength();
+    MemSpaceType type = elementsLength > MAX_READ_ONLY_ARRAY_LENGTH ?
+        MemSpaceType::SEMI_SPACE : MemSpaceType::NON_MOVABLE;
+
+#if !defined ENABLE_COW_ARRAY
+    type = MemSpaceType::SEMI_SPACE;
+#endif
+
+    if (type == MemSpaceType::NON_MOVABLE && elements.GetTaggedValue().IsCOWArray()) {
+        // share the same elements array in nonmovable space.
+        cloneObject->SetElements(thread_, elements.GetTaggedValue());
+    } else {
+        auto newElements = CopyArray(elements, elementsLength, elementsLength, JSTaggedValue::Hole(), type);
+        cloneObject->SetElements(thread_, newElements.GetTaggedValue());
+    }
+
+    if (type == MemSpaceType::NON_MOVABLE && !object->GetElements().IsCOWArray()) {
+        ASSERT(!Region::ObjectAddressToRange(object->GetElements().GetTaggedObject())->InNonMovableSpace());
+        // Set the first shared elements into the old object.
+        object->SetElements(thread_, cloneObject->GetElements());
+    }
 
     JSHandle<TaggedArray> properties(thread_, object->GetProperties());
-    auto newProperties = CopyArray(properties, properties->GetLength(), properties->GetLength());
-    cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
+    uint32_t propertiesLength = properties->GetLength();
+    type = propertiesLength > MAX_READ_ONLY_ARRAY_LENGTH ?
+        MemSpaceType::SEMI_SPACE : MemSpaceType::NON_MOVABLE;
+
+#if !defined ENABLE_COW_ARRAY
+    type = MemSpaceType::SEMI_SPACE;
+#endif
+
+    if (type == MemSpaceType::NON_MOVABLE && properties.GetTaggedValue().IsCOWArray()) {
+        // share the same properties array in nonmovable space.
+        cloneObject->SetProperties(thread_, properties.GetTaggedValue());
+    } else {
+        auto newProperties = CopyArray(properties, propertiesLength, propertiesLength, JSTaggedValue::Hole(), type);
+        cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
+    }
+
+    if (type == MemSpaceType::NON_MOVABLE && !object->GetProperties().IsCOWArray()) {
+        ASSERT(!Region::ObjectAddressToRange(object->GetProperties().GetTaggedObject())->InNonMovableSpace());
+        // Set the first shared properties into the old object.
+        object->SetProperties(thread_, cloneObject->GetProperties());
+    }
 
     for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
         cloneObject->SetPropertyInlinedProps(thread_, i, object->GetPropertyInlinedProps(i));
@@ -2070,6 +2110,19 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
     return array;
 }
 
+JSHandle<COWTaggedArray> ObjectFactory::NewCOWTaggedArray(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    ASSERT(length > 0);
+
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateNonMovableOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetCOWArrayClass().GetTaggedObject()), size);
+    JSHandle<COWTaggedArray> cowArray(thread_, header);
+    cowArray->InitializeWithSpecialValue(initVal, length);
+    return cowArray;
+}
+
 JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
 {
     if (length == 0) {
@@ -2186,11 +2239,18 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     if (newLength > oldLength) {
         return ExtendArray(old, newLength, initVal, type);
     }
-
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
-    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
-    TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
+    TaggedObject *header = nullptr;
+    if (type == MemSpaceType::NON_MOVABLE) {
+        // COW array is shared in nonmovable space.
+        JSHClass *cowArrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetCOWArrayClass().GetTaggedObject());
+        header = AllocObjectWithSpaceType(size, cowArrayClass, type);
+    } else {
+        JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+        header = AllocObjectWithSpaceType(size, arrayClass, type);
+    }
+
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->SetLength(newLength);
     newArray->SetExtraLength(old->GetExtraLength());

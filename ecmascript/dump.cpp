@@ -140,6 +140,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "TaggedDictionary";
         case JSType::CONSTANT_POOL:
             return "ConstantPool";
+        case JSType::COW_TAGGED_ARRAY:
+            return "COWArray";
         case JSType::STRING:
             return "BaseString";
         case JSType::JS_NATIVE_POINTER:
@@ -567,6 +569,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::TAGGED_DICTIONARY:
         case JSType::TEMPLATE_MAP:
         case JSType::LEXICAL_ENV:
+        case JSType::COW_TAGGED_ARRAY:
             DumpArrayClass(TaggedArray::Cast(obj), os);
             break;
         case JSType::CONSTANT_POOL:
@@ -2129,6 +2132,11 @@ void LexicalEnv::Dump(std::ostream &os) const
     DumpArrayClass(this, os);
 }
 
+void COWTaggedArray::Dump(std::ostream &os) const
+{
+    DumpArrayClass(this, os);
+}
+
 // NOLINTNEXTLINE(readability-function-size)
 void GlobalEnv::Dump(std::ostream &os) const
 {
@@ -3473,6 +3481,7 @@ static void DumpObject(TaggedObject *obj,
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::COW_TAGGED_ARRAY:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
             return;
         case JSType::CONSTANT_POOL:
@@ -4134,6 +4143,11 @@ void Program::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &ve
 }
 
 void ConstantPool::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    DumpArrayClass(this, vec);
+}
+
+void COWTaggedArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     DumpArrayClass(this, vec);
 }

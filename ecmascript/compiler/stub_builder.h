@@ -157,7 +157,7 @@ public:
     GateRef TaggedIsHeapObject(GateRef x);
     GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
-    GateRef InYoungGeneration(GateRef x);
+    GateRef InYoungGeneration(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     GateRef TaggedIsPropertyBox(GateRef x);
@@ -249,6 +249,8 @@ public:
     GateRef IsConstructor(GateRef object);
     GateRef IsBase(GateRef func);
     GateRef IsJsArray(GateRef obj);
+    GateRef IsJsCOWArray(GateRef obj);
+    GateRef IsCOWArray(GateRef obj);
     GateRef IsJSObject(GateRef obj);
     GateRef IsWritable(GateRef attr);
     GateRef IsAccessor(GateRef attr);
