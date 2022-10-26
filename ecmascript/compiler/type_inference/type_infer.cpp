@@ -544,6 +544,12 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
     if (tsManager_->IsTypedArrayType(inValueType)) {
         return UpdateType(gate, GateType::NumberType());
     }
+
+    if (ShouldInferWithLdObjByValue(inValueType)) {
+        auto key = gateAccessor_.GetBitField((gateAccessor_.GetValueIn(gate, 0)));
+        auto type = GetPropType(inValueType, key);
+        return UpdateType(gate, type);
+    }
     return false;
 }
 

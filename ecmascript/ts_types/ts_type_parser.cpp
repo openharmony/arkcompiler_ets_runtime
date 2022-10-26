@@ -137,18 +137,24 @@ JSHandle<TSInterfaceType> TSTypeParser::ParseInterfaceType(const JSHandle<Tagged
     JSHandle<TaggedArray> extendsId = factory_->NewTaggedArray(numExtends);
     JSMutableHandle<JSTaggedValue> extendsType(thread_, JSTaggedValue::Undefined());
     for (uint32_t extendsIndex = 0; extendsIndex < numExtends; extendsIndex++) {
-        extendsType.Update(literal->Get(index++));
+        auto typeId = literal->Get(index++).GetInt();
+        extendsType.Update(JSTaggedValue(CreateGT(typeId).GetType()));
         extendsId->Set(thread_, extendsIndex, extendsType);
     }
     interfaceType->SetExtends(thread_, extendsId);
 
-    // resolve fields of interface
+    // resolve fields and methods of interface
     uint32_t numFields = literal->Get(index++).GetInt();
+    // field takes up 4 spaces and method takes up 2 spaces.
+    uint32_t numMethods = literal->Get(index + numFields * TSInterfaceType::FIELD_LENGTH).GetInt();
+    uint32_t totalFields = numFields + numMethods;
 
-    JSHandle<TSObjectType> fieldsType = factory_->NewTSObjectType(numFields);
+    JSHandle<TSObjectType> fieldsType = factory_->NewTSObjectType(totalFields);
     JSHandle<TSObjLayoutInfo> fieldsTypeInfo(thread_, fieldsType->GetObjLayoutInfo());
-    ASSERT(fieldsTypeInfo->GetPropertiesCapacity() == static_cast<uint32_t>(numFields));
+    ASSERT(fieldsTypeInfo->GetPropertiesCapacity() == static_cast<uint32_t>(totalFields));
     FillPropertyTypes(fieldsTypeInfo, literal, 0, numFields, index, true);
+    index++;  // jmp over numMethod
+    FillPropertyTypesWithoutMethodName(fieldsTypeInfo, literal, numFields, totalFields, index);
     interfaceType->SetFields(thread_, fieldsType);
     return interfaceType;
 }
@@ -256,10 +262,22 @@ void TSTypeParser::FillPropertyTypes(JSHandle<TSObjLayoutInfo> &layOut, const JS
         ASSERT(key->IsString());
         auto gt = CreateGT(literal->Get(index++).GetInt());
         value.Update(JSTaggedValue(gt.GetType()));
-        layOut->SetKey(thread_, fieldIndex, key.GetTaggedValue(), value.GetTaggedValue());
+        layOut->SetKeyAndType(thread_, fieldIndex, key.GetTaggedValue(), value.GetTaggedValue());
         if (isField) {
             index += 2;  // 2: ignore accessFlag and readonly
         }
+    }
+}
+
+void TSTypeParser::FillPropertyTypesWithoutMethodName(JSHandle<TSObjLayoutInfo> &layOut,
+    const JSHandle<TaggedArray> &literal, uint32_t startIndex, uint32_t lastIndex, uint32_t &index)
+{
+    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread_, JSTaggedValue::Undefined());
+    for (uint32_t methodIndex = startIndex; methodIndex < lastIndex; ++methodIndex) {
+        auto gt = CreateGT(literal->Get(index++).GetInt());
+        value.Update(JSTaggedValue(gt.GetType()));
+        layOut->SetKeyAndType(thread_, methodIndex, key.GetTaggedValue(), value.GetTaggedValue());
     }
 }
 }  // namespace panda::ecmascript
