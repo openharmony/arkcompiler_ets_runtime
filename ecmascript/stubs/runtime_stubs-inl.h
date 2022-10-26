@@ -1103,16 +1103,6 @@ JSTaggedValue RuntimeStubs::RuntimeGetIterator(JSThread *thread, const JSHandle<
         return valuesFunc.GetTaggedValue();
     }
 
-    JSHandle<JSFunction> funcHandle = JSHandle<JSFunction>::Cast(valuesFunc);
-    Method *method = funcHandle->GetCallTarget();
-    if (method->IsAotWithCallField()) {
-        size_t argsNum = 4;  // 4: number of args
-        JSTaggedType newTarget = thread->GlobalConstants()->GetUndefined().GetRawData();
-        JSTaggedType thisArg = obj.GetTaggedValue().GetRawData();
-        const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-        auto res = thread->GetEcmaVM()->ExecuteAot(argsNum, funcHandle, newTarget, thisArg, prevFp);
-        return res;
-    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, valuesFunc, obj, undefined, 0);
     return EcmaInterpreter::Execute(info);
@@ -2365,11 +2355,26 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
             values.emplace_back(args->Get(i).GetRawData());
         }
     }
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(size, values.data());
-    JSTaggedValue resultValue = EcmaInterpreter::Execute(info);
+    JSTaggedValue resultValue;
+    Method *method = ctor->GetCallTarget();
+    if (method->IsAotWithCallField()) {
+        uint32_t actualNumArgs = size + NUM_MANDATORY_JSFUNC_ARGS;
+        std::vector<JSTaggedType> argv(actualNumArgs, JSTaggedValue::Undefined().GetRawData());
+        size_t idx = 0;
+        argv[idx++] = ctor.GetTaggedValue().GetRawData();
+        argv[idx++] = newTgt.GetTaggedValue().GetRawData();
+        argv[idx++] = obj.GetTaggedValue().GetRawData();
+        for (uint32_t i = 0; i < size; ++i) {
+            argv[idx++] = values[i];
+        }
+        resultValue = thread->GetEcmaVM()->AotReentry(size, argv.data(), true);
+    } else {
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(size, values.data());
+        resultValue = EcmaInterpreter::Execute(info);
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 9.3.2 [[Construct]] (argumentsList, newTarget)
     if (resultValue.IsECMAObject()) {
@@ -2390,7 +2395,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t ar
     JSHandle<JSTaggedValue> ctor = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     const size_t firstArgOffset = 1;
-    STACK_ASSERT_SCOPE(thread);
     size_t arrLength = argc - firstArgOffset;
     JSHandle<TaggedArray> args = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(arrLength);
     for (size_t i = 0; i < arrLength; ++i) {

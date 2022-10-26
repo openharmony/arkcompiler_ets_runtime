@@ -339,8 +339,19 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
+    JSTaggedValue resultValue;
     info->SetThis(obj.GetTaggedValue());
-    JSTaggedValue resultValue = EcmaInterpreter::Execute(info);
+    Method *method = func->GetCallTarget();
+    if (method->IsAotWithCallField()) {
+        resultValue =
+            thread->GetEcmaVM()->AotReentry(info->GetArgsNumber(), info->GetArgs(), true);
+        const JSTaggedType *curSp = thread->GetCurrentSPFrame();
+        InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
+        JSTaggedType *prevSp = entryState->base.prev;
+        thread->SetCurrentSPFrame(prevSp);
+    } else {
+        resultValue = EcmaInterpreter::Execute(info);
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 9.3.2 [[Construct]] (argumentsList, newTarget)
     if (resultValue.IsECMAObject()) {
