@@ -188,6 +188,40 @@ GlobalTSTypeRef TSClassType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassTyp
     return propTypeGT;
 }
 
+GlobalTSTypeRef TSClassType::GetSuperPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                                JSHandle<EcmaString> propName, PropertyType propType)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
+    GlobalTSTypeRef propTypeGT = GlobalTSTypeRef::Default();
+    GlobalTSTypeRef notExistPropGt = kungfu::GateType::UndefinedType().GetGTRef();
+    GlobalTSTypeRef superClassTypeGT = mutableClassType->GetExtensionGT();
+    if (superClassTypeGT.IsDefault()) {  // end of prototype chain
+        return notExistPropGt;
+    }
+    ASSERT(propType != PropertyType::OTHERS);
+    bool isStatic = propType == PropertyType::STATIC;
+    mutableClassType.Update(tsManager->GetTSType(superClassTypeGT).GetTaggedValue());
+    JSMutableHandle<TSObjectType> mutablePropTypes(thread, isStatic ?
+        mutableClassType->GetConstructorType() : mutableClassType->GetPrototypeType());
+    while (propTypeGT.IsDefault()) {
+        propTypeGT = TSObjectType::GetPropTypeGT(mutablePropTypes, propName);
+        GlobalTSTypeRef classTypeGT = mutableClassType->GetExtensionGT();
+        if (classTypeGT.IsDefault()) {  // end of prototype chain
+            break;
+        }
+        JSTaggedValue tmpType = tsManager->GetTSType(classTypeGT).GetTaggedValue();
+        if (tmpType.IsUndefined()) { // this is for builtin.d.abc
+            return GlobalTSTypeRef::Default();
+        }
+        mutableClassType.Update(tmpType);
+        mutablePropTypes.Update(isStatic ?
+            mutableClassType->GetConstructorType() : mutableClassType->GetPrototypeType());
+    }
+    return propTypeGT.IsDefault() ? notExistPropGt : propTypeGT;
+}
+
 GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
                                                     JSHandle<EcmaString> propName)
 {

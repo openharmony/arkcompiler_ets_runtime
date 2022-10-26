@@ -85,6 +85,8 @@ public:
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
                                          JSHandle<EcmaString> propName);
+    static GlobalTSTypeRef GetSuperPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                              JSHandle<EcmaString> propName, PropertyType propType);
 
     static GlobalTSTypeRef GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
         JSHandle<EcmaString> propName);

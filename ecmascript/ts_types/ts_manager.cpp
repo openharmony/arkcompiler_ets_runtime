@@ -387,9 +387,53 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> 
     }
 }
 
+bool TSManager::IsStaticFunc(GlobalTSTypeRef gt) const
+{
+    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetStatic();
+}
+
+GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> propertyName,
+                                            PropertyType propType) const
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSTaggedValue> type = GetTSType(gt);
+    if (type->IsTSClassType()) {
+        JSHandle<TSClassType> classType(type);
+        return TSClassType::GetSuperPropTypeGT(thread, classType, propertyName, propType);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, const uint64_t key, PropertyType propType) const
+{
+    JSTaggedValue keyValue = JSTaggedValue(key);
+    JSMutableHandle<EcmaString> propertyName(thread_, JSTaggedValue::Undefined());
+    if (keyValue.IsInt()) {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetInt())));
+    } else if (keyValue.IsDouble()) {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetDouble())));
+    } else {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(key).c_str()));
+    }
+    return GetSuperPropType(gt, propertyName, propType);
+}
+
 GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, const uint64_t key) const
 {
-    auto propertyName = factory_->NewFromStdString(std::to_string(key).c_str());
+    JSTaggedValue keyValue = JSTaggedValue(key);
+    JSMutableHandle<EcmaString> propertyName(thread_, JSTaggedValue::Undefined());
+    if (keyValue.IsInt()) {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetInt())));
+    } else if (keyValue.IsDouble()) {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetDouble())));
+    } else {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(key).c_str()));
+    }
     return GetPropType(gt, propertyName);
 }
 

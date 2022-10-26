@@ -280,6 +280,12 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
             return InferSuperCall(gate);
+        case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDSUPERBYNAME_IMM16_ID16:
+            return InferSuperPropertyByName(gate);
+        case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDSUPERBYVALUE_IMM16_V8:
+            return InferSuperPropertyByValue(gate);
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
             return InferTryLdGlobalByName(gate);
@@ -628,14 +634,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
         // If this object has no gt type, we cannot get its internal property type
         if (ShouldInferWithLdObjByName(objType)) {
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
-            auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-            auto name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
-            auto type = GetPropType(objType, name);
-            if (tsManager_->IsGetterSetterFunc(type)) {
-                auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
-                return UpdateType(gate, returnGt);
-            }
-            return UpdateType(gate, type);
+            return GetObjPropWithName(gate, objType, index);
         }
     }
     return false;
@@ -658,6 +657,18 @@ bool TypeInfer::InferLdStr(GateRef gate)
 {
     auto stringType = GateType::StringType();
     return UpdateType(gate, stringType);
+}
+
+bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
+{
+    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    JSTaggedValue name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
+    auto type = GetPropType(objType, name);
+    if (tsManager_->IsGetterSetterFunc(type)) {
+        auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
+        return UpdateType(gate, returnGt);
+    }
+    return UpdateType(gate, type);
 }
 
 bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
@@ -699,6 +710,11 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
             auto type = GetPropType(objType, value);
             return UpdateType(gate, type);
         }
+        if (GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
+            ConstDataId dataId(gateAccessor_.GetBitField(valueGate));
+            auto index = dataId.GetId();
+            return GetObjPropWithName(gate, objType, index);
+        }
     }
     return false;
 }
@@ -724,6 +740,52 @@ bool TypeInfer::InferSuperCall(GateRef gate)
     if (tsManager_->IsClassTypeKind(classType)) {
         auto classInstanceType = tsManager_->CreateClassInstanceType(classType);
         return UpdateType(gate, classInstanceType);
+    }
+    return false;
+}
+
+bool TypeInfer::InferSuperPropertyByName(GateRef gate)
+{
+    auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    return GetSuperProp(gate, index);
+}
+
+bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
+{
+    auto valueGate = gateAccessor_.GetValueIn(gate, 1);
+    if (GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
+        ConstDataId dataId(gateAccessor_.GetBitField(valueGate));
+        auto index = dataId.GetId();
+        return GetSuperProp(gate, index);
+    }
+    if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
+        auto index = gateAccessor_.GetBitField(valueGate);
+
+        return GetSuperProp(gate, index, false);
+    }
+    return false;
+}
+
+bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
+{
+    ArgumentAccessor argAcc(circuit_);
+    auto func = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    auto newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
+    auto funcType = gateAccessor_.GetGateType(func);
+    auto classType = gateAccessor_.GetGateType(newTarget);
+    if (!funcType.IsAnyType() && !classType.IsAnyType()) {
+        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+        GlobalTSTypeRef type = GlobalTSTypeRef::Default();
+        bool isStatic = tsManager_->IsStaticFunc(funcType.GetGTRef());
+        auto propType = isStatic ? PropertyType::STATIC : PropertyType::NORMAL;
+        type = isString ? tsManager_->GetSuperPropType(classType.GetGTRef(),
+            ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index), propType) :
+            tsManager_->GetSuperPropType(classType.GetGTRef(), index, propType);
+        if (tsManager_->IsGetterSetterFunc(type)) {
+            auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
+            return UpdateType(gate, returnGt);
+        }
+        return UpdateType(gate, type);
     }
     return false;
 }

@@ -86,12 +86,16 @@ private:
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);
     bool InferSuperCall(GateRef gate);
+    bool InferSuperPropertyByName(GateRef gate);
+    bool InferSuperPropertyByValue(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
     bool InferLdLexVarDyn(GateRef gate);
     bool InferStLexVarDyn(GateRef gate);
     bool IsNewLexEnv(EcmaOpcode opcode) const;
     bool InferGetIterator(GateRef gate);
     bool InferLoopBeginPhiGate(GateRef gate);
+    bool GetObjPropWithName(GateRef gate, GateType objType, uint64_t index);
+    bool GetSuperProp(GateRef gate, uint64_t index, bool isString = true);
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
