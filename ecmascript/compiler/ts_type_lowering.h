@@ -59,6 +59,9 @@ private:
     void LowerTypedDiv(GateRef gate);
     void LowerTypedEq(GateRef gate);
     void LowerTypedNotEq(GateRef gate);
+    void LowerTypedShl(GateRef gate);
+    void LowerTypedShr(GateRef gate);
+    void LowerTypedAshr(GateRef gate);
     void LowerTypedInc(GateRef gate);
     void LowerTypedDec(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);

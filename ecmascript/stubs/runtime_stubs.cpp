@@ -2074,6 +2074,12 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
     return index;
 }
 
+JSTaggedType RuntimeStubs::AotFloatMod(double x, double y)
+{
+    double result = std::fmod(x, y);
+    return JSTaggedValue(result).GetRawData();
+}
+
 JSTaggedType RuntimeStubs::FloatMod(double x, double y)
 {
     double result = std::fmod(x, y);

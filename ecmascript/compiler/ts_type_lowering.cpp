@@ -94,6 +94,7 @@ void TSTypeLowering::Lower(GateRef gate)
             LowerTypedDiv(gate);
             break;
         case EcmaOpcode::MOD2_IMM8_V8:
+            LowerTypedMod(gate);
             break;
         case EcmaOpcode::LESS_IMM8_V8:
             LowerTypedLess(gate);
@@ -114,13 +115,13 @@ void TSTypeLowering::Lower(GateRef gate)
             LowerTypedNotEq(gate);
             break;
         case EcmaOpcode::SHL2_IMM8_V8:
-            // lower JS_SHL
+            LowerTypedShl(gate);
             break;
         case EcmaOpcode::SHR2_IMM8_V8:
-            // lower JS_SHR
+            LowerTypedShr(gate);
             break;
         case EcmaOpcode::ASHR2_IMM8_V8:
-            // lower JS_ASHR
+            LowerTypedAshr(gate);
             break;
         case EcmaOpcode::AND2_IMM8_V8:
             // lower JS_AND
@@ -383,6 +384,45 @@ void TSTypeLowering::LowerTypedNotEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_NOTEQ>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void TSTypeLowering::LowerTypedShl(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_SHL>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void TSTypeLowering::LowerTypedShr(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_SHR>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void TSTypeLowering::LowerTypedAshr(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_ASHR>(gate);
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }
