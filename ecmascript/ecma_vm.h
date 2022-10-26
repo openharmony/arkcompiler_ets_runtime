@@ -494,8 +494,9 @@ public:
         return quickFixManager_;
     }
 
-    JSTaggedValue ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, JSTaggedType newTarget,
-                             JSTaggedType thisArg, const JSTaggedType *prevFp);
+    JSTaggedValue ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, const JSTaggedType *prevFp,
+                             size_t actualNumArgs, size_t declareNumArgs, std::vector<JSTaggedType> &args);
+    JSTaggedValue AotReentry(size_t actualNumArgs, JSTaggedType *args, bool isNew);
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);

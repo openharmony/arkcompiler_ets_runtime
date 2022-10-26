@@ -39,6 +39,8 @@ struct EcmaRuntimeCallInfo;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
+using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[], uintptr_t prevFp,
+                                            bool flag);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
     JS_CALL_TRAMPOLINE_LIST(V)               \
@@ -79,7 +81,10 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(ConstructorJSCallWithArgV)             \
     V(JSProxyCallInternalWithArgV)           \
     V(OptimizedCallOptimized)                \
-    V(DeoptHandlerAsm)
+    V(DeoptHandlerAsm)                       \
+    V(JSFunctionReentry)                     \
+    V(JSCallNew)                             \
+    V(JSCallNewWithArgV)
 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \

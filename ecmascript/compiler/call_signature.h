@@ -388,6 +388,9 @@ private:
     V(JSObjectGetMethod)                    \
     V(JsProxyCallInternal)                  \
     V(DeoptHandlerAsm)                      \
+    V(JSFunctionReentry)                    \
+    V(JSCallNew)                            \
+    V(JSCallNewWithArgV)                    \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

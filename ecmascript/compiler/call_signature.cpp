@@ -719,6 +719,26 @@ DEF_CALL_SIGNATURE(JSCall)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(JSCallNew)
+{
+    // 6 : 6 input parameters
+    CallSignature jSCallNew("JSCallNew", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = jSCallNew;
+    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),      // lexenv
+        VariableType::INT64(),       // actual argC
+        VariableType::JS_ANY(),      // call target
+        VariableType::JS_ANY(),      // new target
+        VariableType::JS_ANY(),      // thisobj
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::WebKitJSCallConv);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(ConstructorJSCall)
 {
     // 6 : 6 input parameters
@@ -770,6 +790,24 @@ DEF_CALL_SIGNATURE(JSFunctionEntry)
         VariableType::INT64(),              // actualNumArgs
         VariableType::NATIVE_POINTER(),     // argv
         VariableType::NATIVE_POINTER(),     // codeAddr
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(JSFunctionReentry)
+{
+    // 5 : 5 input parameters
+    CallSignature jsCallFunctionReentry("JSFunctionReentry", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = jsCallFunctionReentry;
+    std::array<VariableType, 5> params = {  // 5 : 5 input parameters
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::INT64(),              // argc
+        VariableType::NATIVE_POINTER(),     // argv
+        VariableType::NATIVE_POINTER(),     // prevFp
+        VariableType::BOOL(),               // isNew
     };
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
@@ -995,6 +1033,26 @@ DEF_CALL_SIGNATURE(JSCallWithArgV)
     CallSignature jSCallWithArgV("JSCallWithArgV", 0, 6,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = jSCallWithArgV;
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::INT64(),            // actualNumArgs
+        VariableType::JS_ANY(),           // jsfunc
+        VariableType::JS_ANY(),           // newTarget
+        VariableType::JS_ANY(),           // this
+        VariableType::NATIVE_POINTER(),   // argV
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(JSCallNewWithArgV)
+{
+    // 6 : 6 input parameters
+    CallSignature jsCallNewWithArgV("JSCallNewWithArgV", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = jsCallNewWithArgV;
     // 6 : 6 input parameters
     std::array<VariableType, 6> params = {
         VariableType::NATIVE_POINTER(),   // glue
