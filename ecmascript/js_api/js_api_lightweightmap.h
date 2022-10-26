@@ -30,7 +30,7 @@ struct HashParams {
 // The status of the KEY in the container, including whether the KEY exists,
 // the HASH corresponding to the KEY, and the INDEX where the KEY is located or will be inserted.
 struct KeyState {
-    bool isExist;
+    bool existed;
     int32_t hash;
     int32_t index;
 };
