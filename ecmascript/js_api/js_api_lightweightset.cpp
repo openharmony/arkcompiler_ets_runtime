@@ -329,13 +329,15 @@ JSTaggedValue JSAPILightWeightSet::ForEach(JSThread *thread, const JSHandle<JSTa
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     for (uint32_t k = 0; k < length; k++) {
         JSTaggedValue kValue = lightweightset->GetValueAt(k);
-        JSTaggedValue kHash = lightweightset->GetHashAt(k);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFn, thisArg, undefined, 3); // 3:three args
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-        info->SetCallArg(kValue, kHash, thisHandle.GetTaggedValue());
+        info->SetCallArg(kValue, kValue, thisHandle.GetTaggedValue());
         JSTaggedValue funcResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
+        if (lightweightset->GetSize() != length) {  // prevent length change
+            length = lightweightset->GetSize();
+        }
     }
     return JSTaggedValue::Undefined();
 }

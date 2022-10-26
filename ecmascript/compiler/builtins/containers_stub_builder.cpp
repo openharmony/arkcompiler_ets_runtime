@@ -340,4 +340,108 @@ void ContainersStubBuilder::DequeCommonFuncCall(GateRef glue, GateRef thisValue,
     Bind(&afterLoop);
     Jump(exit);
 }
+
+void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
+    DEFVARIABLE(thisArg, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(key, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(length, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label valueIsJSAPILightWeight(env);
+    Label valueNotJSAPILightWeight(env);
+    Label objIsJSProxy(env);
+    Label objNotJSProxy(env);
+    Label objIsJSAPILightWeight(env);
+    Label thisArgUndefined(env);
+    Label thisArgNotUndefined(env);
+    Label callbackUndefined(env);
+    Label callbackNotUndefined(env);
+    Label nextCount(env);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label afterLoop(env);
+    GateRef callbackFnHandle;
+    Branch(IsContainer(*thisObj, type), &valueIsJSAPILightWeight, &valueNotJSAPILightWeight);
+    Bind(&valueNotJSAPILightWeight);
+    {
+        Branch(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        Bind(&objIsJSProxy);
+        {
+            GateRef tempObj = GetTarget(*thisObj);
+            Branch(IsContainer(tempObj, type), &objIsJSAPILightWeight, slowPath);
+            Bind(&objIsJSAPILightWeight);
+            {
+                thisObj = tempObj;
+                Jump(&valueIsJSAPILightWeight);
+            }
+        }
+        Bind(&objNotJSProxy);
+        Jump(slowPath);
+    }
+    Bind(&valueIsJSAPILightWeight);
+    {
+        Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &callbackUndefined, &callbackNotUndefined);
+        Bind(&callbackUndefined);
+        Jump(slowPath);
+        Bind(&callbackNotUndefined);
+        {
+            Label isCall(env);
+            Label notCall(env);
+            callbackFnHandle = GetCallArg0();
+            Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
+            Bind(&notCall);
+            Jump(slowPath);
+            Bind(&isCall);
+            {
+                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &thisArgUndefined, &thisArgNotUndefined);
+                Bind(&thisArgUndefined);
+                Jump(&nextCount);
+                Bind(&thisArgNotUndefined);
+                thisArg = GetCallArg1();
+                Jump(&nextCount);
+            }
+        }
+    }
+    Bind(&nextCount);
+    {
+        length = ContainerGetSize(*thisObj, type);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label lenChange(env);
+            Label hasException(env);
+            Label notHasException(env);
+            Branch(Int32LessThan(*index, *length), &next, &afterLoop);
+            Bind(&next);
+            {
+                value = ContainerGetValue(*thisObj, *index, type);
+                key = ContainerGetKey(*thisObj, *index, type);
+                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(3), 0,  // 3: numArgs
+                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *value, *key, *thisObj });
+                Branch(HasPendingException(glue), &hasException, &notHasException);
+                Bind(&hasException);
+                {
+                    result->WriteVariable(retValue);
+                    Jump(exit);
+                }
+                Bind(&notHasException);
+                GateRef currentLen = ContainerGetSize(*thisObj, type);
+                Branch(Int32NotEqual(currentLen, *length), &lenChange, &loopEnd);
+                Bind(&lenChange);
+                length = currentLen;
+                Jump(&loopEnd);
+            }
+        }
+        Bind(&loopEnd);
+        index = Int32Add(*index, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&afterLoop);
+    Jump(exit);
+}
 }  // namespace panda::ecmascript::kungfu

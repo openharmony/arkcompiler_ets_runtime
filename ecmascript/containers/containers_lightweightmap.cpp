@@ -540,13 +540,12 @@ JSTaggedValue ContainersLightWeightMap::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPILightWeightMap> tmap = JSHandle<JSAPILightWeightMap>::Cast(self);
     JSMutableHandle<TaggedArray> keys(thread, tmap->GetKeys());
     JSMutableHandle<TaggedArray> values(thread, tmap->GetValues());
-    int elements = tmap->GetSize();
 
     int index = 0;
-    uint32_t length = keys->GetLength();
+    int32_t length = tmap->GetSize();
     const int32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    while (index < elements) {
+    while (index < length) {
         // ignore the hash value is required to determine the true index
         // Let funcResult be Call(callbackfn, T, «e, e, S»).
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisArg, undefined, argsLength);
@@ -556,11 +555,10 @@ JSTaggedValue ContainersLightWeightMap::ForEach(EcmaRuntimeCallInfo *argv)
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ret);
 
         // check entries should be update, size will be update in tmap set or remove.
-        if (tmap->GetLength() != length) {
+        if (tmap->GetSize() != length) {
             keys.Update(tmap->GetKeys());
             values.Update(tmap->GetValues());
-            elements = tmap->GetSize();
-            length = keys->GetLength();
+            length = tmap->GetSize();
         }
         index++;
     }
