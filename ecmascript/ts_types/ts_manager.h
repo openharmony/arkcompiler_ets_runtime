@@ -227,9 +227,15 @@ public:
 
     void PUBLIC_API DecodeTSTypes(const JSPandaFile *jsPandaFile);
 
+    void InitTypeTables(const JSPandaFile *jsPandaFile, const CString &recordName);
+
     void AddTypeTable(JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaString> amiPath);
 
     void Link();
+
+    void LinkTSTypeTable(JSHandle<TSTypeTable> table);
+
+    void LinkInRange(JSHandle<TSModuleTable> moduleTable, int start, int end);
 
     void Dump();
 
@@ -290,6 +296,8 @@ public:
     GlobalTSTypeRef PUBLIC_API CreateClassInstanceType(GlobalTSTypeRef gt);
 
     GlobalTSTypeRef PUBLIC_API GetClassType(GlobalTSTypeRef classInstanceGT) const;
+
+    JSHandle<TSClassType> GetExtendClassType(JSHandle<TSClassType> classType) const;
 
     GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, const uint64_t key) const;
 
@@ -416,7 +424,7 @@ public:
     V(Union, TSTypeKind::UNION)                         \
     V(Array, TSTypeKind::ARRAY)                         \
     V(Object, TSTypeKind::OBJECT)                       \
-    V(ImportT, TSTypeKind::IMPORT)                      \
+    V(Import, TSTypeKind::IMPORT)                       \
     V(Interface, TSTypeKind::INTERFACE_KIND)            \
     V(IteratorInstance, TSTypeKind::ITERATOR_INSTANCE)  \
 
@@ -482,11 +490,12 @@ private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
 
-    void LinkTSTypeTable(JSHandle<TSTypeTable> table);
+    void RecursivelyResolveTargetType(JSHandle<TSImportType> importType);
 
-    void RecursivelyResolveTargetType(JSMutableHandle<TSImportType>& importType);
+    void RecursivelyMergeClassField(JSHandle<TSClassType> classType, JSHandle<TSClassType> extendClassType);
 
-    int GetTypeIndexFromExportTable(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable) const;
+    GlobalTSTypeRef GetExportGTByName(JSHandle<EcmaString> target,
+                                      JSHandle<TaggedArray> &exportTable) const;
 
     GlobalTSTypeRef PUBLIC_API AddTSTypeToInferTable(JSHandle<TSType> type) const;
 

@@ -106,14 +106,6 @@ public:
         const int baseClassTypeExtendsTypeId = 0;
         return extendsTypeId == baseClassTypeExtendsTypeId;
     }
-
-    JSHandle<TSClassType> GetExtendClassType(JSThread *thread) const
-    {
-        GlobalTSTypeRef extensionGT = GetExtensionGT();
-        JSHandle<JSTaggedValue> extendClassType = thread->GetEcmaVM()->GetTSManager()->GetTSType(extensionGT);
-        ASSERT(extendClassType->IsTSClassType());
-        return JSHandle<TSClassType>(extendClassType);
-    }
 };
 
 class TSClassInstanceType : public TSType {
