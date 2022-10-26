@@ -81,7 +81,7 @@ void JSAPILightWeightMap::Set(JSThread *thread, const JSHandle<JSAPILightWeightM
 {
     KeyState keyState = GetStateOfKey(thread, lightWeightMap, key);
     int32_t index = keyState.index;
-    if (keyState.isExist) {
+    if (keyState.existed) {
         ReplaceValue(thread, lightWeightMap, index, value, AccossorsKind::VALUE);
     } else {
         JSHandle<JSTaggedValue> hashHandle(thread, JSTaggedValue(keyState.hash));
@@ -142,7 +142,7 @@ JSTaggedValue JSAPILightWeightMap::HasKey(JSThread *thread, const JSHandle<JSAPI
                                           const JSHandle<JSTaggedValue> &key)
 {
     KeyState keyState = GetStateOfKey(thread, lightWeightMap, key);
-    return keyState.isExist ? JSTaggedValue::True() : JSTaggedValue::False();
+    return keyState.existed ? JSTaggedValue::True() : JSTaggedValue::False();
 }
 
 JSTaggedValue JSAPILightWeightMap::HasValue(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
@@ -162,7 +162,7 @@ int32_t JSAPILightWeightMap::GetIndexOfKey(JSThread *thread, const JSHandle<JSAP
                                            const JSHandle<JSTaggedValue> &key)
 {
     KeyState keyState = GetStateOfKey(thread, lightWeightMap, key);
-    return keyState.isExist ? keyState.index : -1;
+    return keyState.existed ? keyState.index : -1;
 }
 
 KeyState JSAPILightWeightMap::GetStateOfKey(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
@@ -257,7 +257,7 @@ JSTaggedValue JSAPILightWeightMap::Remove(JSThread *thread, const JSHandle<JSAPI
                                           const JSHandle<JSTaggedValue> &key)
 {
     KeyState keyState = GetStateOfKey(thread, lightWeightMap, key);
-    if (!keyState.isExist) {
+    if (!keyState.existed) {
         return JSTaggedValue::Undefined();
     }
     int32_t index = keyState.index;

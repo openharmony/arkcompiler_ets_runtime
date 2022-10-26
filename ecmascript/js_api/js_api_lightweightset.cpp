@@ -367,17 +367,25 @@ JSTaggedValue JSAPILightWeightSet::Remove(JSThread *thread, JSHandle<JSTaggedVal
 
 bool JSAPILightWeightSet::RemoveAt(JSThread *thread, int32_t index)
 {
-    int32_t size = static_cast<int32_t>(GetLength());
-    if (index < 0 || index >= size) {
+    uint32_t size = GetLength();
+    if (index < 0 || index >= static_cast<int32_t>(size)) {
         return false;
     }
     JSHandle<TaggedArray> valueArray(thread, GetValues());
     JSHandle<TaggedArray> hashArray(thread, GetHashes());
-    AdjustArray(thread, hashArray, index + 1, index, false);
-    AdjustArray(thread, valueArray, index + 1, index, false);
-    size--;
-    SetLength(size);
+    RemoveValue(thread, hashArray, static_cast<uint32_t>(index));
+    RemoveValue(thread, valueArray, static_cast<uint32_t>(index));
+    SetLength(size - 1);
     return true;
+}
+
+void JSAPILightWeightSet::RemoveValue(const JSThread *thread, JSHandle<TaggedArray> &taggedArray,
+                                      uint32_t index)
+{
+    uint32_t len = GetLength();
+    ASSERT(index < len);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    factory->RemoveElementByIndex(taggedArray, index, len);
 }
 
 void JSAPILightWeightSet::AdjustArray(JSThread *thread, JSHandle<TaggedArray> srcArray, uint32_t fromIndex,
