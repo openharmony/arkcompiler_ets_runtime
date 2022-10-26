@@ -113,7 +113,8 @@ private:
 
     inline bool ShouldInferWithLdObjByName(const GateType &type) const
     {
-        return ShouldInferWithLdObjByValue(type) || tsManager_->IsIteratorInstanceTypeKind(type);
+        return ShouldInferWithLdObjByValue(type) || tsManager_->IsIteratorInstanceTypeKind(type) ||
+            tsManager_->IsInterfaceTypeKind(type);
     }
 
     void PrintAllByteCodesTypes() const;

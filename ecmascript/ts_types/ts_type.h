@@ -86,6 +86,9 @@ public:
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
                                          JSHandle<EcmaString> propName);
 
+    static GlobalTSTypeRef GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+        JSHandle<EcmaString> propName);
+
     ACCESSORS(InstanceType, INSTANCE_TYPE_OFFSET, CONSTRUCTOR_TYPE_OFFSET);
     ACCESSORS(ConstructorType, CONSTRUCTOR_TYPE_OFFSET, PROTOTYPE_TYPE_OFFSET);
     ACCESSORS(PrototypeType, PROTOTYPE_TYPE_OFFSET, EXTENSION_GT_OFFSET);
@@ -153,6 +156,12 @@ public:
 class TSInterfaceType : public TSType {
 public:
     CAST_CHECK(TSInterfaceType, IsTSInterfaceType);
+
+    // every field record name, typeIndex, accessFlag, readonly
+    static constexpr size_t FIELD_LENGTH = 4;
+
+    static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSInterfaceType> classInstanceType,
+                                         JSHandle<EcmaString> propName);
 
     static constexpr size_t EXTENDS_TYPE_ID_OFFSET = TSType::SIZE;
     ACCESSORS(Extends, EXTENDS_TYPE_ID_OFFSET, KEYS_OFFSET);

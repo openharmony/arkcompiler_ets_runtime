@@ -53,12 +53,16 @@ public:
         return TaggedArray::Get(ELEMENTS_COUNT_INDEX).GetInt();
     }
 
-    inline void SetPropertyInit(const JSThread *thread, int index, const JSTaggedValue &key,
-                                                const JSTaggedValue &tsTypeId)
+    inline void SetKey(const JSThread *thread, int index, const JSTaggedValue &key)
     {
         uint32_t idxInArray = GetKeyIndex(index);
-        TaggedArray::Set(thread, idxInArray + ENTRY_KEY_OFFSET, key);
-        TaggedArray::Set(thread, idxInArray + ENTRY_TYPE_OFFSET, tsTypeId);
+        TaggedArray::Set(thread, idxInArray, key);
+    }
+
+    inline void SetTypeId(const JSThread *thread, int index, const JSTaggedValue &tsTypeId)
+    {
+        uint32_t idxInArray = GetTypeIdIndex(index);
+        TaggedArray::Set(thread, idxInArray, tsTypeId);
     }
 
     inline JSTaggedValue GetKey(int index) const
@@ -73,7 +77,7 @@ public:
         return TaggedArray::Get(idxInArray);
     }
 
-    void SetKey(const JSThread *thread, int index, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
+    void SetKeyAndType(const JSThread *thread, int index, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
 
     inline uint32_t GetLength() const
     {
