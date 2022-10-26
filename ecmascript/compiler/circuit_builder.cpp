@@ -273,6 +273,11 @@ GateRef CircuitBuilder::BinaryLogic(OpCode opcode, GateRef left, GateRef right)
     return GetCircuit()->NewGate(opcode, 0, { left, right }, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::BinaryCmp(OpCode opcode, GateRef left, GateRef right, BitField condition)
+{
+    return GetCircuit()->NewGate(opcode, condition, { left, right }, GateType::NJSValue());
+}
+
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
     const CallSignature *cs = BytecodeStubCSigns::BCHandler();
@@ -632,7 +637,7 @@ void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef 
         Int32((1LU << JSHClass::InlinedPropsStartBits::SIZE) - 1));
     GateRef propOffset = Int32Mul(Int32Add(inlinedPropsStart, attrOffset),
         Int32(JSTaggedValue::TaggedTypeSize()));
-    Store(type, glue, obj, ChangeInt32ToIntPtr(propOffset), value);
+    Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
 }
 
 void CircuitBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value)

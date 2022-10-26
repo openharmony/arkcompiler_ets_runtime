@@ -182,7 +182,7 @@ void SlowPathLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool 
         // exception value
         GateRef exceptionVal = builder_.ExceptionConstant();
         // compare with trampolines result
-        GateRef equal = builder_.BinaryLogic(OpCode(OpCode::EQ), callGate, exceptionVal);
+        GateRef equal = builder_.Equal(callGate, exceptionVal);
         ifBranch = builder_.Branch(stateInGate, equal);
     } else {
         ifBranch = builder_.Branch(stateInGate, builder_.Boolean(false));
@@ -2989,7 +2989,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
         const std::map<GlobalTSTypeRef, uint32_t> &classTypeIhcIndexMap = tsManager_->GetClassTypeIhcIndexMap();
         GateRef ihcIndex = builder_.Int32((classTypeIhcIndexMap.at(gt)));
         GateRef ihclass = GetObjectFromConstPool(glue, jsFunc, ihcIndex, ConstPoolType::CLASS_LITERAL);
-        GateRef offset = builder_.PtrMul(builder_.ChangeInt32ToIntPtr(ihcIndex),
+        GateRef offset = builder_.PtrMul(builder_.ZExtInt32ToPtr(ihcIndex),
                                          builder_.IntPtr(JSTaggedValue::TaggedTypeSize()));
         GateRef dataOffset = builder_.PtrAdd(offset, builder_.IntPtr(TaggedArray::DATA_OFFSET));
         builder_.Store(VariableType::JS_ANY(), glue, constpool, dataOffset, builder_.HoleConstant());
@@ -3229,7 +3229,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate, GateRef glue)
 
 GateRef SlowPathLowering::GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset)
 {
-    GateRef offset = builder_.PtrMul(builder_.ChangeInt32ToIntPtr(indexOffset),
+    GateRef offset = builder_.PtrMul(builder_.ZExtInt32ToPtr(indexOffset),
                                      builder_.IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = builder_.PtrAdd(offset, builder_.IntPtr(TaggedArray::DATA_OFFSET));
     GateRef value = builder_.Load(VariableType::JS_ANY(), arrayGate, dataOffset);

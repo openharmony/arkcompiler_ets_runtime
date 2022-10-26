@@ -87,8 +87,8 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
                               0,
                               {selectorB, constantC},
                               GateType::NJSValue()));
-    auto predicate = circuit.NewGate(OpCode(OpCode::NE),
-                                     0,
+    auto predicate = circuit.NewGate(OpCode(OpCode::ICMP),
+                                     static_cast<uint64_t>(ecmascript::kungfu::ICmpCondition::NE),
                                      {selectorB, constantD},
                                      GateType::NJSValue());
     auto ifBranch = circuit.NewGate(OpCode(OpCode::IF_BRANCH),

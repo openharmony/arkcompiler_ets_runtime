@@ -30,7 +30,7 @@ void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef 
     auto env = GetEnvironment();
 
     auto length = Int32Add(numSlots, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
-    size_ = ComputeTaggedArraySize(ChangeInt32ToIntPtr(length));
+    size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(length));
     Label afterAllocate(env);
     // Be careful. NO GC is allowed when initization is not complete.
     AllocateInYoung(result, &afterAllocate);
@@ -99,7 +99,7 @@ void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
     auto env = GetEnvironment();
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     Label setHClass(env);
-    size_ = ComputeTaggedArraySize(ChangeInt32ToIntPtr(numArgs));
+    size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(numArgs));
     Label afterAllocate(env);
     AllocateInYoung(result, &afterAllocate);
     Bind(&afterAllocate);
@@ -115,7 +115,7 @@ void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
     Label setArgumentsEnd(env);
     Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
     LoopBegin(&setArgumentsBegin);
-    GateRef idx = ChangeInt32ToIntPtr(Int32Add(startIdx, *i));
+    GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
     GateRef argument = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
     SetValueToTaggedArray(VariableType::JS_ANY(), glue_, result->ReadVariable(), *i, argument);
     i = Int32Add(*i, Int32(1));
@@ -213,7 +213,7 @@ void NewObjectStubBuilder::InitializeWithSpeicalValue(Label *exit,
         Branch(Int32UnsignedLessThan(*startOffset, end), &storeValue, exit);
         Bind(&storeValue);
         {
-            Store(VariableType::INT64(), glue_, object, ChangeInt32ToIntPtr(*startOffset), value);
+            Store(VariableType::INT64(), glue_, object, ZExtInt32ToPtr(*startOffset), value);
             startOffset = Int32Add(*startOffset, Int32(JSTaggedValue::TaggedTypeSize()));
             Jump(&endLoop);
         }
@@ -237,10 +237,10 @@ void NewObjectStubBuilder::AllocStringObject(Variable *result, Label *exit, Gate
 {
     auto env = GetEnvironment();
     if (compressed) {
-        size_ = AlignUp(ComputeSizeUtf8(ChangeInt32ToIntPtr(length)),
+        size_ = AlignUp(ComputeSizeUtf8(ZExtInt32ToPtr(length)),
             IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     } else {
-        size_ = AlignUp(ComputeSizeUtf16(ChangeInt32ToIntPtr(length)),
+        size_ = AlignUp(ComputeSizeUtf16(ZExtInt32ToPtr(length)),
             IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
     }
     Label afterAllocate(env);
