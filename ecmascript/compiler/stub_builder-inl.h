@@ -1092,6 +1092,12 @@ inline GateRef StubBuilder::IsJSAPILightWeightSet(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_LIGHT_WEIGHT_SET)));
 }
 
+inline GateRef StubBuilder::IsJSAPIArrayList(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)));
+}
+
 inline GateRef StubBuilder::GetTarget(GateRef proxyObj)
 {
     GateRef offset = IntPtr(JSProxy::TARGET_OFFSET);

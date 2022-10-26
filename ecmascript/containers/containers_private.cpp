@@ -305,12 +305,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeArrayList(JSThread *thread)
     SetFrozenFunction(thread, prototype, "removeByIndex", ContainersArrayList::RemoveByIndex, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "remove", ContainersArrayList::Remove, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "removeByRange", ContainersArrayList::RemoveByRange, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "replaceAllElements",
-                      ContainersArrayList::ReplaceAllElements, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersArrayList::ReplaceAllElements,
+        FuncLength::TWO, static_cast<uint8_t>(BUILTINS_STUB_ID(ArrayListReplaceAllElements)));
     SetFrozenFunction(thread, prototype, "sort", ContainersArrayList::Sort, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "subArrayList", ContainersArrayList::SubArrayList, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "convertToArray", ContainersArrayList::ConvertToArray, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "forEach", ContainersArrayList::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "forEach", ContainersArrayList::ForEach, FuncLength::TWO,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(ArrayListForEach)));
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, prototype, "ArrayList");

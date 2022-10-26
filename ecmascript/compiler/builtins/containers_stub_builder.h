@@ -15,6 +15,7 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STUB_BUILDER_H
+#include "ecmascript/compiler/builtins/containers_arraylist_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_deque_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_lightweightmap_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_lightweightset_stub_builder.h"
@@ -36,6 +37,8 @@ enum class ContainersType : uint8_t {
     DEQUE_FOREACH,
     LIGHTWEIGHTMAP_FOREACH,
     LIGHTWEIGHTSET_FOREACH,
+    ARRAYLIST_FOREACH,
+    ARRAYLIST_REPLACEALLELEMENTS,
 };
 
 class ContainersStubBuilder : public BuiltinsStubBuilder {
@@ -77,6 +80,9 @@ public:
                 return IsJSAPILightWeightMap(obj);
             case ContainersType::LIGHTWEIGHTSET_FOREACH:
                 return IsJSAPILightWeightSet(obj);
+            case ContainersType::ARRAYLIST_FOREACH:
+            case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
+                return IsJSAPIArrayList(obj);
             default:
                 UNREACHABLE();
         }
@@ -91,8 +97,10 @@ public:
             case ContainersType::PLAINARRAY_FOREACH:
             case ContainersType::QUEUE_FOREACH:
             case ContainersType::DEQUE_FOREACH:
+            case ContainersType::ARRAYLIST_FOREACH:
                 return false;
             case ContainersType::VECTOR_REPLACEALLELEMENTS:
+            case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
                 return true;
             default:
                 UNREACHABLE();
@@ -108,6 +116,8 @@ public:
             case ContainersType::VECTOR_REPLACEALLELEMENTS:
             case ContainersType::QUEUE_FOREACH:
             case ContainersType::DEQUE_FOREACH:
+            case ContainersType::ARRAYLIST_FOREACH:
+            case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
                 return false;
             case ContainersType::PLAINARRAY_FOREACH:
                 return true;
@@ -119,11 +129,17 @@ public:
 
     void ContainerSet(GateRef glue, GateRef obj, GateRef index, GateRef value, ContainersType type)
     {
-        ContainersVectorStubBuilder vectorBuilder(this);
         switch (type) {
-            case ContainersType::VECTOR_REPLACEALLELEMENTS:
+            case ContainersType::VECTOR_REPLACEALLELEMENTS: {
+                ContainersVectorStubBuilder vectorBuilder(this);
                 vectorBuilder.Set(glue, obj, index, value);
                 break;
+            }
+            case ContainersType::ARRAYLIST_REPLACEALLELEMENTS: {
+                ContainersArrayListStubBuilder arrayListBuilder(this);
+                arrayListBuilder.Set(glue, obj, index, value);
+                break;
+            }
             default:
                 UNREACHABLE();
         }
@@ -160,6 +176,11 @@ public:
             case ContainersType::LIGHTWEIGHTSET_FOREACH: {
                 ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
                 return lightWeightSetBuilder.GetSize(obj);
+            }
+            case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
+            case ContainersType::ARRAYLIST_FOREACH: {
+                ContainersArrayListStubBuilder arrayListBuilder(this);
+                return arrayListBuilder.GetSize(obj);
             }
             default:
                 UNREACHABLE();
@@ -198,6 +219,11 @@ public:
             case ContainersType::LIGHTWEIGHTSET_FOREACH: {
                 ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
                 return lightWeightSetBuilder.GetValue(obj, index);
+            }
+            case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
+            case ContainersType::ARRAYLIST_FOREACH: {
+                ContainersArrayListStubBuilder arrayListBuilder(this);
+                return arrayListBuilder.Get(obj, index);
             }
             default:
                 UNREACHABLE();
