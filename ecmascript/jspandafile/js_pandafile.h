@@ -50,7 +50,6 @@ public:
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
     static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
-    static constexpr char MERGE_ABC_PATH[] = "/data/storage/el1/bundle/entry/ets/modules.abc";
     static constexpr char NODE_MODULES[] = "node_modules";
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
     static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";

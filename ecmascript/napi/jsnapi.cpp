@@ -2576,6 +2576,7 @@ void JSNApi::SetBundle(EcmaVM *vm, bool value)
     vm->SetIsBundlePack(value);
 }
 
+// note: The function SetAssetPath is a generic interface for previewing and physical machines.
 void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 {
     ecmascript::CString path = assetPath.c_str();
