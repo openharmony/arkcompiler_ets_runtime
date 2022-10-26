@@ -304,10 +304,144 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
             return WriteEcmaString(value);
         case JSType::JS_OBJECT:
             return WritePlainObject(value);
+        case JSType::JS_NATIVE_POINTER:
+            return WriteNativePointer(value);
+        case JSType::JS_FUNCTION:
+            return WriteJSFunction(value);
+        case JSType::JS_FUNCTION_BASE:
+            return WriteJSFunctionBase(value);
+        case JSType::METHOD:
+            return WriteMethod(value);
+        case JSType::CONSTANT_POOL:
+            return WriteConstantPool(value);
+        case JSType::TAGGED_ARRAY:
+            return WriteTaggedArray(value);
         default:
             break;
     }
     return false;
+}
+
+bool JSSerializer::WriteTaggedArray(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<TaggedArray> taggedarray = JSHandle<TaggedArray>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::TAGGED_ARRAY)) {
+        return false;
+    }
+    uint32_t len = taggedarray->GetLength();
+    if (!WriteInt(len)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    for (uint32_t i = 0; i < len; i++) {
+        JSHandle<JSTaggedValue> val(thread_, taggedarray->Get(i));
+        if (val->IsHole()) {
+            WriteType(SerializationUID::JS_NULL);
+        } else {
+            if (!SerializeJSTaggedValue(val)) {
+                bufferSize_ = oldSize;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool JSSerializer::WriteConstantPool(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<ConstantPool> constpool = JSHandle<ConstantPool>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::CONSTANT_POOL)) {
+        return false;
+    }
+    uint32_t len = constpool->GetLength();
+    if (!WriteInt(len)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    uint32_t caccheLen = constpool->GetCacheLength();
+    for (uint32_t i = 0; i < caccheLen; i++) {
+        JSHandle<JSTaggedValue> val(thread_, constpool->Get(i));
+        if (val->IsHole()) {
+            WriteType(SerializationUID::HOLE);
+        } else {
+            if (!SerializeJSTaggedValue(val)) {
+                bufferSize_ = oldSize;
+                return false;
+            }
+        }
+    }
+
+    const JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
+    if (!WriteRawData(&jsPandaFile, sizeof(jsPandaFile))) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    panda_file::File::IndexHeader *indexheader = constpool->GetIndexHeader();
+    if (!WriteRawData(&indexheader, sizeof(indexheader))) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    return true;
+}
+
+bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<Method> method = JSHandle<Method>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::METHOD)) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> constpool(thread_, method->GetConstantPool());
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    if (!WriteRawData(&methodLiteral, sizeof(uintptr_t))) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+
+    if (constpool->IsHole()) {
+        WriteType(SerializationUID::HOLE);
+    } else {
+        if (!SerializeJSTaggedValue(constpool)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool JSSerializer::WriteJSFunctionBase(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<JSFunctionBase> funcbase = JSHandle<JSFunctionBase>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::JS_FUNCTION_BASE)) {
+        return false;
+    }
+    // write method
+    JSHandle<JSTaggedValue> method = JSHandle<JSTaggedValue>(thread_, funcbase->GetMethod());
+    if (method->IsHole()) {
+        WriteType(SerializationUID::HOLE);
+    } else {
+        if (!SerializeJSTaggedValue(method)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
+{
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::JS_FUNCTION)) {
+        return false;
+    }
+    if (!WriteJSFunctionBase(value)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    return true;
 }
 
 bool JSSerializer::WriteJSError(const JSHandle<JSTaggedValue> &value)
@@ -584,10 +718,10 @@ bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, Seria
     return true;
 }
 
-bool JSSerializer::WriteNativeFunctionPointer(const JSHandle<JSTaggedValue> &value)
+bool JSSerializer::WriteNativePointer(const JSHandle<JSTaggedValue> &value)
 {
     size_t oldSize = bufferSize_;
-    if (!WriteType(SerializationUID::NATIVE_FUNCTION_POINTER)) {
+    if (!WriteType(SerializationUID::NATIVE_POINTER)) {
         return false;
     }
     JSTaggedValue pointer = value.GetTaggedValue();
@@ -878,7 +1012,7 @@ SerializationUID JSDeserializer::ReadType()
         return SerializationUID::UNKNOWN;
     }
     uid = static_cast<SerializationUID>(*position_);
-    if (uid < SerializationUID::JS_NULL || uid > SerializationUID::NATIVE_FUNCTION_POINTER) {
+    if (uid < SerializationUID::JS_NULL || uid > SerializationUID::NATIVE_POINTER) {
         return SerializationUID::UNKNOWN;
     }
     position_++;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -1010,16 +1144,105 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
             return ReadJSTypedArray(SerializationUID::JS_BIGINT64_ARRAY);
         case SerializationUID::JS_BIGUINT64_ARRAY:
             return ReadJSTypedArray(SerializationUID::JS_BIGUINT64_ARRAY);
-        case SerializationUID::NATIVE_FUNCTION_POINTER:
-            return ReadNativeFunctionPointer();
+        case SerializationUID::NATIVE_POINTER:
+            return ReadNativePointer();
         case SerializationUID::JS_SHARED_ARRAY_BUFFER:
         case SerializationUID::JS_ARRAY_BUFFER:
             return ReadJSArrayBuffer();
         case SerializationUID::TAGGED_OBJECT_REFERNCE:
             return ReadReference();
+        case SerializationUID::JS_FUNCTION:
+            return ReadJSFunction();
+        case SerializationUID::TAGGED_ARRAY:
+            return ReadTaggedArray();
+        case SerializationUID::METHOD:
+            return ReadMethod();
+        case SerializationUID::CONSTANT_POOL:
+            return ReadConstantPool();
+        case SerializationUID::JS_FUNCTION_BASE:
+            return ReadJSFunctionBase();
         default:
             return JSHandle<JSTaggedValue>();
     }
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadTaggedArray()
+{
+    int32_t len;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&len)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<JSTaggedValue> arrayTag;
+    JSHandle<TaggedArray> taggedarray = factory_->NewTaggedArray(len);
+    for (int32_t i = 0; i < len; i++) {
+        JSHandle<JSTaggedValue> val = DeserializeJSTaggedValue();
+        taggedarray->Set(thread_, i, val.GetTaggedValue());
+    }
+    arrayTag = JSHandle<JSTaggedValue>(taggedarray);
+    referenceMap_.emplace(objectId_++, arrayTag);
+    return arrayTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadConstantPool()
+{
+    int32_t len;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&len)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<ConstantPool> constpool = factory_->NewConstantPool(len);
+    JSHandle<JSTaggedValue> poolval(constpool);
+    for (int32_t i = 0; i < len - 2; i++) { // 2 : RESERVED_POOL_LENGTH
+        JSHandle<JSTaggedValue> val = DeserializeJSTaggedValue();
+        constpool->Set(thread_, i, val.GetTaggedValue());
+    }
+    uintptr_t jspandafile;
+    if (!ReadNativePointer(&jspandafile)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    uintptr_t indexheader;
+    if (!ReadNativePointer(&indexheader)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    if (indexheader != 0) {
+        constpool->SetIndexHeader(reinterpret_cast<panda_file::File::IndexHeader*>(indexheader));
+    }
+    constpool->SetJSPandaFile(reinterpret_cast<void*>(jspandafile));
+    referenceMap_.emplace(objectId_++, poolval);
+    return JSHandle<JSTaggedValue>(constpool);
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
+{
+    uintptr_t methodliteral;
+    if (!ReadNativePointer(&methodliteral)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<JSTaggedValue> constpool = DeserializeJSTaggedValue();
+    JSHandle<JSTaggedValue> methodTag;
+    JSHandle<Method> method = factory_->NewMethod(reinterpret_cast<MethodLiteral*>(methodliteral));
+    method->SetConstantPool(thread_, constpool.GetTaggedValue());
+    methodTag = JSHandle<JSTaggedValue>(method);
+    referenceMap_.emplace(objectId_++, methodTag);
+    return methodTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadJSFunctionBase()
+{
+    JSHandle<JSTaggedValue> methodval = DeserializeJSTaggedValue();
+    JSHandle<Method> method = JSHandle<Method>::Cast(methodval);
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func = factory_->NewJSFunction(env, method);
+    JSHandle<JSTaggedValue> funcTag = JSHandle<JSTaggedValue>::Cast(func);
+    return funcTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadJSFunction()
+{
+    if (!JudgeType(SerializationUID::JS_FUNCTION_BASE)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<JSTaggedValue> funcbase = ReadJSFunctionBase();
+    return funcbase;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
@@ -1368,7 +1591,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
     return objTag;
 }
 
-JSHandle<JSTaggedValue> JSDeserializer::ReadNativeFunctionPointer()
+JSHandle<JSTaggedValue> JSDeserializer::ReadNativePointer()
 {
     JSTaggedValue pointer;
     if (!ReadJSTaggedValue(&pointer)) {

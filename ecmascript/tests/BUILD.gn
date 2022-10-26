@@ -151,7 +151,8 @@ host_unittest_action("EcmaVm_003_Test") {
     "linked_node_test.cpp",
     "mem_controller_test.cpp",
     "native_pointer_test.cpp",
-    "object_factory_test.cpp",
+
+    # "object_factory_test.cpp",
     "object_operator_test.cpp",
     "rb_tree_node_test.cpp",
     "read_only_space_test.cpp",
@@ -167,13 +168,19 @@ host_unittest_action("EcmaVm_003_Test") {
     "waiter_list_test.cpp",
     "weak_ref_old_gc_test.cpp",
     "weak_ref_semi_gc_test.cpp",
-    "weak_vector_test.cpp",
+
+    # "weak_vector_test.cpp",
   ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [
+    "//arkcompiler/ets_runtime:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
 
   deps = [
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "//arkcompiler/runtime_core/assembler:libarkassembler_static",
     sdk_libc_secshared_dep,
   ]
 
@@ -187,8 +194,7 @@ group("unittest") {
   deps = [
     ":EcmaVm_001_Test",
     ":EcmaVm_002_Test",
-
-    # ":EcmaVm_003_Test",
+    ":EcmaVm_003_Test",
   ]
 }
 
@@ -199,7 +205,6 @@ group("host_unittest") {
   deps = [
     ":EcmaVm_001_TestAction",
     ":EcmaVm_002_TestAction",
-
-    # ":EcmaVm_003_TestAction",
+    ":EcmaVm_003_TestAction",
   ]
 }

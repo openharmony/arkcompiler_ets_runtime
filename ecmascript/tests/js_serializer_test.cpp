@@ -15,6 +15,11 @@
 
 #include <thread>
 
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
+#include "libpandabase/utils/utf.h"
+#include "libpandafile/class_data_accessor-inl.h"
+
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -26,7 +31,10 @@
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/mem/c_containers.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -325,9 +333,9 @@ public:
         Init();
         JSHandle<EcmaString> ecmaString = thread->GetEcmaVM()->GetFactory()->NewFromStdString("你好，世界");
         JSHandle<EcmaString> ecmaString1 = thread->GetEcmaVM()->GetFactory()->NewFromStdString("你好，世界");
-        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
+        auto ecmaStringCode1 = EcmaStringAccessor(ecmaString).GetHashcode();
         auto ecmaString1Code = EcmaStringAccessor(ecmaString1).GetHashcode();
-        EXPECT_TRUE(ecmaStringCode == ecmaString1Code) << "Not same HashCode";
+        EXPECT_TRUE(ecmaStringCode1 == ecmaString1Code) << "Not same HashCode";
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *ecmaString1)) << "Not same EcmaString";
 
         JSDeserializer deserializer(thread, data.first, data.second);
@@ -335,9 +343,9 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ecmaString fail";
         EXPECT_TRUE(res->IsString()) << "[NotString] Deserialize ecmaString fail";
         JSHandle<EcmaString> resEcmaString = JSHandle<EcmaString>::Cast(res);
-        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
+        auto ecmaStringCode2 = EcmaStringAccessor(ecmaString).GetHashcode();
         auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode();
-        EXPECT_TRUE(ecmaStringCode == resEcmaStringCode) << "Not same HashCode";
+        EXPECT_TRUE(ecmaStringCode2 == resEcmaStringCode) << "Not same HashCode";
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
         Destroy();
     }
@@ -571,6 +579,75 @@ public:
         for (uint32_t i = 0; i < resTaggedLength; i++) {
             EXPECT_TRUE(static_cast<char *>(resBuffer)[i] == static_cast<char *>(buffer)[i]) << "Not same viewedBuffer";
         }
+        Destroy();
+    }
+    void TaggedArrayTest(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.DeserializeJSTaggedValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize TaggedArray fail";
+        EXPECT_TRUE(res.GetTaggedValue().IsTaggedArray()) << "[NotJSFunction] Deserialize TaggedArray fail";
+
+        // check taggedArray
+        JSHandle<TaggedArray> taggedArray = JSHandle<TaggedArray>::Cast(res);
+        EXPECT_EQ(taggedArray->GetLength(), 4U);
+        EcmaString *str11 = reinterpret_cast<EcmaString *>(taggedArray->Get(0).GetTaggedObject());
+        EcmaString *str22 = reinterpret_cast<EcmaString *>(taggedArray->Get(1).GetTaggedObject());
+        EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString().c_str(), "str11"), 0);
+        EXPECT_EQ(std::strcmp(EcmaStringAccessor(str22).ToCString().c_str(), "str22"), 0);
+        EXPECT_TRUE(taggedArray->Get(2).IsUndefined()); // 2: the second index
+        Destroy();
+    }
+    void ConstantPoolTest(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.DeserializeJSTaggedValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ConstantPool fail";
+        EXPECT_TRUE(res.GetTaggedValue().IsConstantPool()) << "[NotJSFunction] Deserialize ConstantPool fail";
+
+        // check constantPool
+        JSHandle<ConstantPool> constpool = JSHandle<ConstantPool>::Cast(res);
+        EXPECT_TRUE(constpool->GetObjectFromCache(0).IsJSFunction());
+        EXPECT_TRUE(constpool->GetObjectFromCache(1).IsJSFunction());
+        EcmaString *str11 = reinterpret_cast<EcmaString *>(constpool->Get(2).GetTaggedObject());
+        EcmaString *str22 = reinterpret_cast<EcmaString *>(constpool->Get(3).GetTaggedObject());
+        EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString().c_str(), "str11"), 0);
+        EXPECT_EQ(std::strcmp(EcmaStringAccessor(str22).ToCString().c_str(), "str22"), 0);
+        Destroy();
+    }
+    void MethodTest(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.DeserializeJSTaggedValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize Method fail";
+        EXPECT_TRUE(res.GetTaggedValue().IsMethod()) << "[NotJSFunction] Deserialize Method fail";
+        Destroy();
+    }
+    void FunctionTest(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.DeserializeJSTaggedValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize JSFunction fail";
+        EXPECT_TRUE(res->IsJSFunction()) << "[NotJSFunction] Deserialize JSFunction fail";
+        Destroy();
+    }
+    void ObjectWithFunctionTest(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        ObjectFactory *factory = ecmaVm->GetFactory();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.DeserializeJSTaggedValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ObjectWithFunction fail";
+        EXPECT_TRUE(res->IsObject()) << "[NotJSFunction] Deserialize ObjectWithFunction fail";
+
+        JSHandle<JSTaggedValue> key(factory->NewFromASCII("2"));
+        OperationResult result = JSObject::GetProperty(thread, res, key);
+        JSHandle<JSTaggedValue> value = result.GetRawValue();
+        EXPECT_TRUE(value->IsJSFunction());
         Destroy();
     }
 
@@ -1266,12 +1343,112 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray)
     delete serializer;
 };
 
+HWTEST_F_L0(JSSerializerTest, SerializeTaggedArray)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> taggedArray(factory->NewTaggedArray(4));
+    JSHandle<EcmaString> str1 = factory->NewFromASCII("str11");
+    JSHandle<EcmaString> str2 = factory->NewFromASCII("str22");
+    // set value to the taggedarray
+    taggedArray->Set(thread, 0, str1.GetTaggedValue());
+    taggedArray->Set(thread, 1, str2.GetTaggedValue());
+    taggedArray->Set(thread, 2, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(taggedArray));
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::TaggedArrayTest, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+};
+JSPandaFile *CreateJSPandaFile(const char *source, const CString filename)
+{
+    pandasm::Parser parser;
+    const std::string fn = "SRC.pa"; // test file name : "SRC.pa"
+    auto res = parser.Parse(source, fn);
+
+    std::unique_ptr<const panda_file::File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
+    return pf;
+}
+HWTEST_F_L0(JSSerializerTest, SerializeConstantPool)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test.pa";
+    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    EXPECT_TRUE(pf != nullptr);
+
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(6);
+    JSHandle<JSFunction> funcFunc(env->GetFunctionFunction());
+    JSHandle<JSFunction> dateFunc(env->GetDateFunction());
+    JSHandle<EcmaString> str1 = factory->NewFromASCII("str11");
+    JSHandle<EcmaString> str2 = factory->NewFromASCII("str22");
+    constpool->SetObjectToCache(thread, 0, funcFunc.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 1, dateFunc.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 2, str1.GetTaggedValue());
+    constpool->SetObjectToCache(thread, 3, str2.GetTaggedValue());
+    constpool->SetJSPandaFile(pf);
+    EXPECT_TRUE(constpool.GetTaggedValue().IsConstantPool());
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(constpool));
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::ConstantPoolTest, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+};
+static void TestFunc()
+{
+    return;
+}
+HWTEST_F_L0(JSSerializerTest, SerializeMethod)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<Method> method = factory->NewMethodForNativeFunction(reinterpret_cast<void*>(TestFunc));
+    EXPECT_TRUE(method.GetTaggedValue().IsMethod());
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(method));
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::MethodTest, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+};
+HWTEST_F_L0(JSSerializerTest, SerializeFunction)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> jsFunction = factory->NewJSFunction(env);
+    EXPECT_TRUE(jsFunction->IsJSFunction());
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(jsFunction));
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::FunctionTest, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+};
+
 // not support function
 HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> function = env->GetRegExpFunction();
+    JSHandle<JSTaggedValue> function = env->GetFunctionFunction();
     EXPECT_TRUE(function->IsJSFunction());
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("2"));
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
@@ -1279,11 +1456,11 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
 
     JSSerializer *serializer = new JSSerializer(thread);
     bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>(obj));
-    EXPECT_FALSE(success);
+    EXPECT_TRUE(success);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
-    JSDeserializer deserializer(thread, data.first, data.second);
-    JSHandle<JSTaggedValue> ret = deserializer.DeserializeJSTaggedValue();
-    EXPECT_TRUE(ret.IsEmpty());
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::ObjectWithFunctionTest, jsDeserializerTest, data);
+    t1.join();
     delete serializer;
 };
 
