@@ -93,9 +93,9 @@ bool Relocator::RelocateBySymbolId(Elf64_Word symbolId, uintptr_t patchAddr)
     bool ret = false;
     ASSERT(relocateTextInfo_.relaTextSize_ % sizeof(Elf64_Rela) == 0);
     ASSERT(relocateTextInfo_.relaTextAddr_ > 0 && relocateTextInfo_.relaTextSize_ > 0);
-    int n  = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
+    size_t n  = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
     Elf64_Rela *ptr = reinterpret_cast<Elf64_Rela *>(relocateTextInfo_.relaTextAddr_);
-    for (int i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
         Elf64_Rela *cur = ptr + i;
         Elf64_Word id = GetSymbol(cur);
         intptr_t symbolAddr = relocateTextInfo_.textAddr_ + static_cast<uintptr_t>(cur->r_offset);
@@ -128,7 +128,7 @@ void Relocator::DumpRelocateText()
     }
     ASSERT(relocateTextInfo_.relaTextSize_ % sizeof(Elf64_Rela) == 0);
     ASSERT(relocateTextInfo_.relaTextAddr_ > 0 && relocateTextInfo_.relaTextSize_ > 0);
-    int n  = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
+    size_t n  = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
     Elf64_Rela *ptr = reinterpret_cast<Elf64_Rela *>(relocateTextInfo_.relaTextAddr_);
     static constexpr int leftAdjustment = 12;
     LOG_COMPILER(DEBUG) << std::left << std::setw(leftAdjustment) << "symbolId "
@@ -136,7 +136,7 @@ void Relocator::DumpRelocateText()
                    << std::left << std::setw(leftAdjustment) << "Type: "
                    << std::left << std::setw(leftAdjustment) << "r_offset(0x): "
                    << std::left << std::setw(leftAdjustment) << "addend: ";
-    for (int i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
         Elf64_Rela *cur = ptr + i;
         Elf64_Word id = GetSymbol(cur);
         Elf64_Word type = GetType(cur);
@@ -159,7 +159,7 @@ void Relocator::DumpRelocateText()
                 << std::left << std::setw(leftAdjustment) << "Type: "
                 << std::left << std::setw(leftAdjustment) << "st_name: "
                 << std::left << std::setw(leftAdjustment) << "name: ";
-    for (int i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
         Elf64_Sym *cur = symPtr + i;
         const char *name = reinterpret_cast<char *>(symAndStrTabInfo_.strAddr_) + cur->st_name;
         unsigned char binding = GetBinding(cur);
