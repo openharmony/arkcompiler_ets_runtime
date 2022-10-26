@@ -391,7 +391,7 @@ JSTaggedValue TaggedSingleList::ReplaceAllElements(JSThread *thread, const JSHan
     int dataIndex = ELEMENTS_START_INDEX;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     for (int k = 0; k < length; k++) {
-        dataIndex = taggedList->GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
+        dataIndex = taggedList->GetNextDataIndex(dataIndex);
         JSTaggedValue kValue = taggedList->GetElement(dataIndex);
         JSTaggedValue key = JSTaggedValue(k);
         EcmaRuntimeCallInfo *info =
@@ -486,10 +486,14 @@ JSTaggedValue TaggedSingleList::Equal(const JSHandle<TaggedSingleList> &compareL
         return JSTaggedValue::False();
     }
     int nodeSum = 0;
+    int compareNode = ELEMENTS_START_INDEX;
+    int valueNode = ELEMENTS_START_INDEX;
     while (nodeSum < compareListLength) {
-        JSTaggedValue compareValue = compareList->Get(nodeSum);
-        JSTaggedValue value = Get(nodeSum);
-        if (compareValue != value) {
+        compareNode = compareList->GetNextDataIndex(compareNode);
+        valueNode = GetNextDataIndex(valueNode);
+        JSTaggedValue compareValue = compareList->GetElement(compareNode);
+        JSTaggedValue value = GetElement(valueNode);
+        if (!JSTaggedValue::SameValue(compareValue, value)) {
             return JSTaggedValue::False();
         }
         nodeSum++;
@@ -552,19 +556,7 @@ JSTaggedValue TaggedDoubleList::ConvertToArray(const JSThread *thread, const JSH
 JSTaggedValue TaggedDoubleList::Insert(JSThread *thread, const JSHandle<TaggedDoubleList> &taggedList,
                                        const JSHandle<JSTaggedValue> &value, const int index)
 {
-    int prevDataIndex = 0;
-    int len = taggedList->NumberOfNodes();
-    int leftNodeLen = len - 1 - index;
-    if (leftNodeLen == -1) {
-        prevDataIndex = taggedList->GetElement(TAIL_TABLE_INDEX).GetInt();
-    } else {
-        // 2 : 2 MEANS the half
-        if ((len / 2) > index) {
-            prevDataIndex = taggedList->FindPrevNodeByIndex(index);
-        } else {
-            prevDataIndex = taggedList->FindPrevNodeByIndexAtLast(leftNodeLen);
-        }
-    }
+    int prevDataIndex = taggedList->GetPrevNode(index);
     return TaggedList<TaggedDoubleList>::AddNode(thread, taggedList, value, index, prevDataIndex);
 }
 
@@ -602,6 +594,24 @@ JSTaggedValue TaggedDoubleList::Get(const int index)
 std::pair<int, JSTaggedValue> TaggedDoubleList::GetByDataIndex(const int dataIndex)
 {
     return FindElementByDataIndex(dataIndex);
+}
+
+int TaggedDoubleList::GetPrevNode(const int index)
+{
+    int prevDataIndex = 0;
+    int len = NumberOfNodes();
+    // When index < (len / 2), search doubleList from the beginning
+    if ((len / 2) > index) {
+        return FindPrevNodeByIndex(index);
+    } else {
+        int leftNodeLen = len - 1 - index;
+        // When insert at last
+        if (leftNodeLen == -1) {
+            return prevDataIndex = GetElement(TAIL_TABLE_INDEX).GetInt();
+        }
+        // when index >= (len / 2), search doubleList from the end
+        return FindPrevNodeByIndexAtLast(leftNodeLen);
+    }
 }
 
 int TaggedDoubleList::GetIndexOf(const JSTaggedValue &element)
@@ -654,7 +664,11 @@ JSTaggedValue TaggedDoubleList::RemoveLast(JSThread *thread)
 
 JSTaggedValue TaggedDoubleList::RemoveByIndex(JSThread *thread, const int &index)
 {
-    return TaggedList<TaggedDoubleList>::RemoveByIndex(thread, index);
+    int prevDataIndex = GetPrevNode(index);
+    int curDataIndex = GetElement(prevDataIndex + NEXT_PTR_OFFSET).GetInt();
+    JSTaggedValue data = GetElement(curDataIndex);
+    RemoveNode(thread, prevDataIndex);
+    return data;
 }
 
 JSTaggedValue TaggedDoubleList::Remove(JSThread *thread, const JSTaggedValue &element)

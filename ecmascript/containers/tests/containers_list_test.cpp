@@ -110,6 +110,32 @@ protected:
         JSHandle<JSAPIList> list(thread, result);
         return list;
     }
+    
+    JSTaggedValue ListAdd(JSHandle<JSAPIList> list, JSTaggedValue value)
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(list.GetTaggedValue());
+        callInfo->SetCallArg(0, value);
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersList::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
+
+    JSTaggedValue ListEqual(JSHandle<JSAPIList> list, JSHandle<JSAPIList> compareList)
+    {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(list.GetTaggedValue());
+        callInfo->SetCallArg(0, compareList.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersList::Equal(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
 };
 
 HWTEST_F_L0(ContainersListTest, ListConstructor)
@@ -227,45 +253,47 @@ HWTEST_F_L0(ContainersListTest, Remove)
 HWTEST_F_L0(ContainersListTest, Equal)
 {
     constexpr uint32_t NODE_NUMBERS = 8;
+    JSTaggedValue result = JSTaggedValue::Hole();
     JSHandle<JSAPIList> list = CreateJSAPIList();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(list.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(i));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue result = ContainersList::Add(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
+        result = ListAdd(list, JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(list->Length(), static_cast<int>(i + 1));
     }
-
+    // Equal
     JSHandle<JSAPIList> list1 = CreateJSAPIList();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(list1.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(i));
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue result = ContainersList::Add(callInfo);
-        TestHelper::TearDownFrame(thread, prev);
+        result = ListAdd(list1, JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(list1->Length(), static_cast<int>(i + 1));
     }
-
-    {
-        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(list.GetTaggedValue());
-        callInfo->SetCallArg(0, list1.GetTaggedValue());
-
-        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-        JSTaggedValue res = ContainersList::Equal(callInfo);
-        EXPECT_EQ(res, JSTaggedValue::True());
-        TestHelper::TearDownFrame(thread, prev);
+    result = ListEqual(list, list1);
+    EXPECT_EQ(result, JSTaggedValue::True());
+    
+    // Length Not Equal
+    JSHandle<JSAPIList> list2 = CreateJSAPIList();
+    for (uint32_t i = 0; i < NODE_NUMBERS / 2 ; i++) {
+        result = ListAdd(list2, JSTaggedValue(i));
+        EXPECT_EQ(result, JSTaggedValue::True());
+        EXPECT_EQ(result, JSTaggedValue::True());
+        EXPECT_EQ(list2->Length(), static_cast<int>(i + 1));
     }
+    result = ListEqual(list, list2);
+    EXPECT_EQ(result, JSTaggedValue::False());
+
+    // Value Not Equal
+    JSHandle<JSAPIList> list3 = CreateJSAPIList();
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        if(i == (NODE_NUMBERS - 1)) {
+            result = ListAdd(list3, JSTaggedValue(0));
+        } else {
+            result = ListAdd(list3, JSTaggedValue(i));
+        }
+        EXPECT_EQ(result, JSTaggedValue::True());
+        EXPECT_EQ(list3->Length(), static_cast<int>(i + 1));
+    }
+    result = ListEqual(list, list2);
+    EXPECT_EQ(result, JSTaggedValue::False());
 }
 
 HWTEST_F_L0(ContainersListTest, GetSubList)
