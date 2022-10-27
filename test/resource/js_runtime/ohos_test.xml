@@ -307,6 +307,11 @@
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="RequireTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="SnapshotTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
