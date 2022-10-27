@@ -26,7 +26,8 @@ class CommonCall {
 public:
     static constexpr int FRAME_SLOT_SIZE = 8;
     static constexpr int DOUBLE_SLOT_SIZE = 16;
-    static constexpr int SHIFT_OF_FRAMESLOT = 3;
+    static constexpr int TRIPLE_SLOT_SIZE = 24;
+    static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
     enum BuiltinsLeaveFrameArgId : unsigned {CODE_ADDRESS = 0, ENV, ARGC, ARGV};
     static inline int64_t GetStackArgOffSetToFp(unsigned argId)
     {
@@ -72,13 +73,13 @@ public:
 
     static void JSProxyCallInternalWithArgV(ExtendedAssembler *assembler);
 
-    static void JSCall(ExtendedAssembler *assembler, bool isNew = false);
+    static void JSCall(ExtendedAssembler *assembler);
 
     static void ConstructorJSCall(ExtendedAssembler *assembler);
 
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
 
-    static void JSCallWithArgV(ExtendedAssembler *assembler, bool isNew = false);
+    static void JSCallWithArgV(ExtendedAssembler *assembler);
 
     static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
@@ -90,6 +91,9 @@ public:
 
     static void JSCallNewWithArgV(ExtendedAssembler *assembler);
 
+    static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
+
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
@@ -111,7 +115,7 @@ private:
     static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
     static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
-    static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc);
+    static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc, bool isNew = false);
     static void ConstructorJSCallInternal(ExtendedAssembler *assembler, Register jsfunc);
 };
 

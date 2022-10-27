@@ -672,7 +672,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     __ Bind(&dispatch);
     {
         __ Mov(rsp, fp);  // resume rsp
-        __ Add(bcStub, glueRegister, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Add(bcStub, glueRegister, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
         __ Br(bcStub);
     }
@@ -690,7 +690,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Mov(rsp, fp);  // resume rsp
         __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
-        __ Add(bcStub, glueRegister, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Add(bcStub, glueRegister, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
         __ Br(bcStub);
     }
@@ -795,7 +795,7 @@ void AsmInterpreterCall::ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembl
     __ Bind(&dispatch);
     {
         __ Ldrb(opcode, MemoryOperand(pc, 0));
-        __ Add(bcStub, glue, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Add(bcStub, glue, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
         __ Br(bcStub);
     }
@@ -1062,7 +1062,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     Register bcIndexRegister = __ AvailableRegister1();
     Register tempRegister = __ AvailableRegister2();
     __ Ldrb(bcIndexRegister.W(), MemoryOperand(pcRegister, 0));
-    __ Add(tempRegister, glueRegister, Operand(bcIndexRegister.W(), UXTW, SHIFT_OF_FRAMESLOT));
+    __ Add(tempRegister, glueRegister, Operand(bcIndexRegister.W(), UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Ldr(tempRegister, MemoryOperand(tempRegister, JSThread::GlueData::GetBCStubEntriesOffset(false)));
     __ Br(tempRegister);
 }
@@ -1189,7 +1189,7 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newS
     // call the first bytecode handler
     __ Ldrb(temp.W(), MemoryOperand(pc, 0));
     // 3 : 3 means *8
-    __ Add(temp, glue, Operand(temp.W(), UXTW, SHIFT_OF_FRAMESLOT));
+    __ Add(temp, glue, Operand(temp.W(), UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Ldr(temp, MemoryOperand(temp, JSThread::GlueData::GetBCStubEntriesOffset(false)));
     __ Br(temp);
 }
