@@ -37,7 +37,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
 
     // The entry point is not work for merge abc.
     const JSPandaFile *patchFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, patchFileName, JSPandaFile::PATCH_ENTRY_FUNCTION);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, patchFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";
         return false;
@@ -49,7 +49,6 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
 bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, const void *patchBuffer,
                                size_t patchSize, const CString &baseFileName)
 {
-    // Get base constpool.
     const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName);
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
@@ -57,7 +56,7 @@ bool QuickFixLoader::LoadPatch(JSThread *thread, const CString &patchFileName, c
     }
 
     const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-        thread, patchFileName, JSPandaFile::PATCH_ENTRY_FUNCTION, patchBuffer, patchSize);
+        thread, patchFileName, JSPandaFile::ENTRY_MAIN_FUNCTION, patchBuffer, patchSize);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";
         return false;
@@ -118,12 +117,14 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *base
             GenerateConstpoolCache(thread, baseFile, baseConstpool);
         }
 
-        // Get patch constpool.
-        vm->GetModuleManager()->HostResolveImportedModule(patchFile->GetJSPandaFileDesc());
-
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        JSHandle<Program> patchProgram =
-            JSPandaFileManager::GetInstance()->GenerateProgram(vm, patchFile, JSPandaFile::PATCH_ENTRY_FUNCTION);
+        // Get patch constpool.
+        if (patchFile->IsModule()) {
+            vm->GetModuleManager()->HostResolveImportedModule(patchFile->GetJSPandaFileDesc());
+        }
+
+        [[maybe_unused]] JSHandle<Program> patchProgram =
+            JSPandaFileManager::GetInstance()->GenerateProgram(vm, patchFile, JSPandaFile::ENTRY_MAIN_FUNCTION);
         JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, 0);
         if (patchConstpoolValue.IsHole()) {
             LOG_ECMA(ERROR) << "patch constpool is hole";
@@ -138,15 +139,11 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *base
             LOG_ECMA(ERROR) << "replace method failed";
             return false;
         }
-        if (!ExecutePatchMain(thread, patchProgram, patchFile)) {
-            LOG_ECMA(ERROR) << "execute patch main failed";
-            return false;
-        }
     }
 
     vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
-    LOG_ECMA(INFO) << "LoadPatch success!";
     baseFileName_ = baseFile->GetJSPandaFileDesc();
+    LOG_ECMA(INFO) << "LoadPatch success!";
     return true;
 }
 
