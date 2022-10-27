@@ -543,12 +543,19 @@ HWTEST_F_L0(ContainersTreeSetTest, GetLowerValueAndGetHigherValue)
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(tset.GetTaggedValue());
         callInfo->SetCallArg(0, JSTaggedValue(i));
+        if (i == NODE_NUMBERS) {
+            callInfo->SetCallArg(0, JSTaggedValue::Undefined());
+        }
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersTreeSet::GetLowerValue(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         if (i == 0) {
             EXPECT_EQ(result, JSTaggedValue::Undefined());
+        } else if (i == NODE_NUMBERS) {
+            EXPECT_TRUE(thread->HasPendingException());
+            EXPECT_EQ(result, JSTaggedValue::Exception());
+            thread->ClearException();
         } else {
             EXPECT_EQ(result, JSTaggedValue(i - 1));
         }
