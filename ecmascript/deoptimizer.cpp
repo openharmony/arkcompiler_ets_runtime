@@ -14,6 +14,7 @@
  */
 #include "deoptimizer.h"
 #include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_thread.h"
@@ -231,11 +232,14 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
 JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 {
-    ASSERT(thread_ != nullptr);
     JSTaggedValue callTarget = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
+    auto method = GetMethod(callTarget);
+    std::string data = JsStackInfo::BuildMethodTrace(method, pc_);
+    LOG_COMPILER(DEBUG) << "Deoptimize" << data;
+    ASSERT(thread_ != nullptr);
+
     FrameWriter frameWriter(this);
     // Push asm interpreter frame
-    auto method = GetMethod(callTarget);
     if (!CollectVirtualRegisters(method, &frameWriter)) {
         return JSTaggedValue::Exception().GetRawData();
     }

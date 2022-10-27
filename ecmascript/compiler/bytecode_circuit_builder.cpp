@@ -395,16 +395,16 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
     std::vector<size_t> visited(graph_.size(), 0);
     auto basicBlockId = graph_[0].id;
     visited[graph_[0].id] = 1;
-    pendingList.push_back(basicBlockId);
+    pendingList.emplace_back(basicBlockId);
     while (!pendingList.empty()) {
         size_t curBlockId = pendingList.back();
         pendingList.pop_back();
-        basicBlockList.push_back(curBlockId);
+        basicBlockList.emplace_back(curBlockId);
         bbIdToDfsTimestamp[curBlockId] = timestamp++;
         for (const auto &succBlock: graph_[curBlockId].succs) {
             if (visited[succBlock->id] == 0) {
                 visited[succBlock->id] = 1;
-                pendingList.push_back(succBlock->id);
+                pendingList.emplace_back(succBlock->id);
                 dfsFatherIdx[succBlock->id] = bbIdToDfsTimestamp[curBlockId];
             }
         }
@@ -457,7 +457,7 @@ void BytecodeCircuitBuilder::ComputeDominatorTree()
             }
             minIdx[idx] = idx;
             merge(dfsFatherIdx[basicBlockList[idx]], idx);
-            semiDomTree[semiDom[idx]].push_back(idx);
+            semiDomTree[semiDom[idx]].emplace_back(idx);
         }
         for (size_t idx = 1; idx < basicBlockList.size(); idx++) {
             if (immDom[idx] != semiDom[idx]) {
@@ -644,7 +644,7 @@ void BytecodeCircuitBuilder::UpdateCFG()
             if (std::count(bb.catchs.cbegin(), bb.catchs.cend(), succ)) {
                 continue;
             }
-            newSuccs.push_back(succ);
+            newSuccs.emplace_back(succ);
         }
         bb.succs = newSuccs;
     }
@@ -653,10 +653,10 @@ void BytecodeCircuitBuilder::UpdateCFG()
             continue;
         }
         for (auto &succ: bb.succs) {
-            succ->preds.push_back(&bb);
+            succ->preds.emplace_back(&bb);
         }
         for (auto &catchBlock: bb.catchs) {
-            catchBlock->trys.push_back(&bb);
+            catchBlock->trys.emplace_back(&bb);
         }
     }
 }
@@ -968,7 +968,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
 {
     auto &iterator = bb.GetBytecodeIterator();
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
-    auto pc = bytecodeInfo.pc_;
+    auto pc = bytecodeInfo.GetPC();
     size_t numValueInputs = bytecodeInfo.ComputeTotalValueCount();
     GateRef gate = 0;
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo);
@@ -990,7 +990,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
         SetBlockPred(*bbNext, ifException, gate, isLoopBack);
         if (bytecodeInfo.GetOpcode() == EcmaOpcode::CREATEASYNCGENERATOROBJ_V8) {
-            bbNext->expandedPreds.push_back({bb.id, iterator.Index() + 1, true});
+            bbNext->expandedPreds.push_back({bb.id, iterator.Index() + 1, true}); // 1: next pc
         } else {
             bbNext->expandedPreds.push_back({bb.id, iterator.Index(), true});
         }
@@ -1032,7 +1032,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
 {
     auto &iterator = bb.GetBytecodeIterator();
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
-    auto pc = bytecodeInfo.pc_;
+    auto pc = bytecodeInfo.GetPC();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     if (bytecodeInfo.IsCondJump()) {
         GateRef gate = 0;
@@ -1087,7 +1087,7 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, GateRef &state, GateR
     ASSERT(bb.succs.empty());
     auto &iterator = bb.GetBytecodeIterator();
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
-    auto pc = bytecodeInfo.pc_;
+    auto pc = bytecodeInfo.GetPC();
     if (bytecodeInfo.GetOpcode() == EcmaOpcode::RETURN) {
         // handle return.dyn bytecode
         auto gate = circuit_.NewGate(OpCode(OpCode::RETURN), 0,
@@ -1114,7 +1114,7 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, GateRef &state, Gat
 {
     auto &iterator = bb.GetBytecodeIterator();
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
-    auto pc = bytecodeInfo.pc_;
+    auto pc = bytecodeInfo.GetPC();
     if (bytecodeInfo.IsSetConstant()) {
         // handle bytecode command to get constants
         GateRef gate = NewConst(bytecodeInfo);
@@ -1183,7 +1183,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         gateAcc_.NewIn(currentPhi, 0, bb.stateStart);
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
-            gateAcc_.NewIn(currentPhi, i + 1, RenameVariable(predId, predBcIdx, reg, acc));
+            gateAcc_.NewIn(currentPhi, i + 1, ResolveDef(predId, predBcIdx, reg, acc));
         }
     } else {
         // 2: the number of value inputs and it is in accord with LOOP_BEGIN
@@ -1197,7 +1197,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
             if (bb.loopbackBlocks.count(predId)) {
-                gateAcc_.NewIn(loopBackValue, loopBackIndex++, RenameVariable(predId, predBcIdx, reg, acc));
+                gateAcc_.NewIn(loopBackValue, loopBackIndex++, ResolveDef(predId, predBcIdx, reg, acc));
             }
         }
         auto forwardValue = circuit_.NewGate(
@@ -1208,7 +1208,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
             if (!bb.loopbackBlocks.count(predId)) {
-                gateAcc_.NewIn(forwardValue, forwardIndex++, RenameVariable(predId, predBcIdx, reg, acc));
+                gateAcc_.NewIn(forwardValue, forwardIndex++, ResolveDef(predId, predBcIdx, reg, acc));
             }
         }
         gateAcc_.NewIn(currentPhi, 1, forwardValue);   // 1: index of forward value input
@@ -1217,7 +1217,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
 }
 
 // recursive variables renaming algorithm
-GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, int32_t bcId,
+GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId,
                                                const uint16_t reg, const bool acc)
 {
     auto tmpReg = reg;
@@ -1229,7 +1229,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, int32_t bcId,
     auto &iterator = bb.GetBytecodeIterator();
     for (iterator.Goto(bcId); !iterator.Done(); --iterator) {
         const BytecodeInfo& curInfo = iterator.GetBytecodeInfo();
-        auto pcIter = curInfo.pc_;
+        auto pcIter = curInfo.GetPC();
         // original bc use acc as input && current bc use acc as output
         bool isTransByAcc = tmpAcc && curInfo.AccOut();
         // 0 : the index in vreg-out list
@@ -1269,7 +1269,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, int32_t bcId,
         SetExistingRestore(resumeGate, tmpReg, ans);
         gateAcc_.SetDep(resumeGate, ans);
         bcId = iterator.Index();
-        auto saveRegGate = RenameVariable(bbId, iterator.Index() - 1, tmpReg, tmpAcc);
+        auto saveRegGate = ResolveDef(bbId, iterator.Index() - 1, tmpReg, tmpAcc);
         iterator.Goto(bcId);
         auto nextPcIter = iterator.PeekPrevPc(2); // 2: skip 2
         ASSERT(Bytecodes::GetOpcode(nextPcIter) == EcmaOpcode::SUSPENDGENERATOR_V8);
@@ -1315,7 +1315,7 @@ GateRef BytecodeCircuitBuilder::RenameVariable(const size_t bbId, int32_t bcId,
         // recursively find def-site in dominator block
         auto dom = bb.iDominator;
         auto &domIterator = dom->GetBytecodeIterator();
-        return RenameVariable(dom->id, domIterator.GetEndBcIndex(), tmpReg, tmpAcc);
+        return ResolveDef(dom->id, domIterator.GetEndBcIndex(), tmpReg, tmpAcc);
     } else {
         // def-site already found
         return ans;
@@ -1356,7 +1356,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
         const auto &[bbIndex, bcIndex] = it->second;
         const BytecodeInfo& bytecodeInfo = GetBytecodeInfo(bbIndex, bcIndex);
         if (hasTypes_) {
-            auto pc = bytecodeInfo.pc_;
+            auto pc = bytecodeInfo.GetPC();
             auto type = typeRecorder_.GetType(pcToBCOffset_.at(pc) - 1);
             if (!type.IsAnyType()) {
                 gateAcc_.SetGateType(gate, type);
@@ -1375,10 +1375,10 @@ void BytecodeCircuitBuilder::BuildCircuit()
             }
             if (valueIdx < bytecodeInfo.inputs.size()) {
                 auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
-                GateRef defVreg = RenameVariable(bbIndex, bcIndex - 1, vregId, false);
+                GateRef defVreg = ResolveDef(bbIndex, bcIndex - 1, vregId, false);
                 gateAcc_.NewIn(gate, inIdx, defVreg);
             } else {
-                GateRef defAcc = RenameVariable(bbIndex, bcIndex - 1, 0, true);
+                GateRef defAcc = ResolveDef(bbIndex, bcIndex - 1, 0, true);
                 gateAcc_.NewIn(gate, inIdx, defAcc);
             }
         }
@@ -1428,7 +1428,7 @@ void BytecodeCircuitBuilder::PrintGraph(const char* title)
 {
     std::map<const uint8_t *, GateRef> bcToGate;
     for (const auto &[key, value]: jsgateToBytecode_) {
-        auto pc = GetBytecodeInfo(value.first, value.second).pc_;
+        auto pc = GetBytecodeInfo(value.first, value.second).GetPC();
         bcToGate[pc] = key;
     }
 
@@ -1500,9 +1500,10 @@ void BytecodeCircuitBuilder::PrintBytecodeInfo(BytecodeRegion& bb, const std::ma
     }
     LOG_COMPILER(INFO) << "\tBytecode[] = ";
     EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
-        auto pc = bytecodeInfo.pc_;
+        auto &iterator = bb.GetBytecodeIterator();
+        auto pc = bytecodeInfo.GetPC();
         std::string log;
-        log += std::string("\t\t< ") + std::to_string(GetPcOffset(pc)) + ": ";
+        log += std::string("\t\t< ") + std::to_string(iterator.Index()) + ": ";
         log += GetEcmaOpcodeStr(static_cast<EcmaOpcode>(*pc)) + ", " + "In=[";
         if (bytecodeInfo.AccIn()) {
             log += "acc,";
