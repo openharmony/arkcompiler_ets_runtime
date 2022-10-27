@@ -15,6 +15,29 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 import("//build/test.gni")
 
+test_js_path =
+    "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests/quickfix/js/"
+
+test_js_files = [
+  "base",
+  "patch",
+]
+
+foreach(file, test_js_files) {
+  es2abc_gen_abc("gen_${file}_abc") {
+    test_js = "${test_js_path}${file}.js"
+    test_abc = "$target_out_dir/${file}.abc"
+
+    # Only targets in this file can depend on this.
+    extra_visibility = [ ":*" ]
+    src_js = rebase_path(test_js)
+    dst_file = rebase_path(test_abc)
+
+    in_puts = [ test_js ]
+    out_puts = [ test_abc ]
+  }
+}
+
 module_output_path = "arkcompiler/ets_runtime"
 
 host_unittest_action("JSPandaFileTest") {
@@ -26,6 +49,7 @@ host_unittest_action("JSPandaFileTest") {
     "js_pandafile_manager_test.cpp",
     "js_pandafile_test.cpp",
     "panda_file_translator_test.cpp",
+    "quick_fix_test.cpp",
   ]
 
   configs = [
@@ -39,6 +63,13 @@ host_unittest_action("JSPandaFileTest") {
     "//arkcompiler/runtime_core/assembler:libarkassembler_static",
     sdk_libc_secshared_dep,
   ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  test_abc_dir = rebase_path(target_out_dir)
+  defines = [ "QUICKFIX_ABC_PATH=\"${test_abc_dir}/\"" ]
 }
 
 group("unittest") {
