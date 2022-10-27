@@ -86,7 +86,7 @@ private:
     void BuildPostOrderList(size_t size);
     bool ComputeLiveOut(size_t bbId);
     void ComputeLiveState();
-    void ComputeLiveOutBC(const uint8_t * pc);
+    void ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo);
     bool MergeIntoPredBC(const uint8_t* predPc);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
     FrameStateInfo *GetOrOCreateStateInfo(const uint8_t * pc)

@@ -55,7 +55,7 @@ void AsyncFunctionLowering::ProcessJumpTable()
     GateRef firstState = Circuit::NullGate();
     const auto &suspendAndResumeGates = bcBuilder_->GetAsyncRelatedGates();
     for (const auto &gate : suspendAndResumeGates) {
-        auto curInfo = bcBuilder_->GetByteCodeInfo(gate);
+        const BytecodeInfo& curInfo = bcBuilder_->GetByteCodeInfo(gate);
         if (curInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
             RebuildGeneratorCfg(gate, restoreOffsetGate, ifFalseCondition, newTarget, firstState);
         }
