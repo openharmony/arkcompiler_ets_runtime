@@ -90,7 +90,7 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
     std::deque<size_t> pendingList;
     std::vector<bool> visited(size, false);
     auto entryId = 0;
-    pendingList.push_back(entryId);
+    pendingList.emplace_back(entryId);
 
     while (!pendingList.empty()) {
         size_t curBlockId = pendingList.back();
@@ -100,7 +100,7 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
         auto &bb = builder_->GetBasicBlockById(curBlockId);
         for (const auto &succBlock: bb.succs) {
             if (!visited[succBlock->id]) {
-                pendingList.push_back(succBlock->id);
+                pendingList.emplace_back(succBlock->id);
                 change = true;
                 break;
             }
@@ -110,13 +110,13 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
         }
         for (const auto &succBlock: bb.catchs) {
             if (!visited[succBlock->id]) {
-                pendingList.push_back(succBlock->id);
+                pendingList.emplace_back(succBlock->id);
                 change = true;
                 break;
             }
         }
         if (!change) {
-            postOrderList_.push_back(curBlockId);
+            postOrderList_.emplace_back(curBlockId);
             pendingList.pop_back();
         }
     }
@@ -150,7 +150,7 @@ GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *p
         size_t backIndex = 0;
         size_t forwardIndex = 0;
         for (size_t i = 0; i < bb->numOfStatePreds; ++i) {
-            auto predId = std::get<size_t>(bb->expandedPreds.at(i));
+            auto predId = std::get<0>(bb->expandedPreds.at(i));
             if (bb->loopbackBlocks.count(predId)) {
                 if (predId == predBb->id) {
                     return gateAcc_.GetValueIn(loopBackValue, backIndex);
@@ -168,7 +168,7 @@ GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *p
 
     ASSERT(gateAcc_.GetNumValueIn(phi) == bb->numOfStatePreds);
     for (size_t i = 0; i < bb->numOfStatePreds; ++i) {
-        auto predId = std::get<size_t>(bb->expandedPreds.at(i));
+        auto predId = std::get<0>(bb->expandedPreds.at(i));
         if (predId == predBb->id) {
             return gateAcc_.GetValueIn(phi, i);
         }
@@ -272,7 +272,7 @@ void FrameStateBuilder::BuildFrameState()
 
 void FrameStateBuilder::ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo)
 {
-    auto pc = bytecodeInfo.pc_;
+    auto pc = bytecodeInfo.GetPC();
     auto byteCodeToJSGate = builder_->GetBytecodeToGate();
     if (bytecodeInfo.IsMov()) {
         auto gate = Circuit::NullGate();
@@ -332,7 +332,7 @@ void FrameStateBuilder::BindGuard(size_t size)
         builder_->EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.Deopt()) {
                 auto &iterator = bb.GetBytecodeIterator();
-                auto pc = bytecodeInfo.pc_;
+                auto pc = bytecodeInfo.GetPC();
                 auto gate = byteCodeToJSGate.at(pc);
                 auto pcOffset = builder_->GetPcOffset(pc);
                 auto prevPc = iterator.PeekPrevPc(1); // 1: prev pc
