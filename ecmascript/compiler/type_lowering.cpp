@@ -982,7 +982,7 @@ GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
                     builder_.Branch(builder_.Int64Equal(intVal, min), &underflow, &notUnderflow);
                     builder_.Bind(&underflow);
                     {
-                        res = builder_.Double(JSTaggedValue::TAG_INT32_DEC_MIN);
+                        res = builder_.Double(static_cast<double>(JSTaggedValue::TAG_INT32_DEC_MIN));
                         result = DoubleToTaggedDoublePtr(res);
                         builder_.Jump(&exit);
                     }
