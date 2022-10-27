@@ -907,10 +907,10 @@ int32_t StringRef::Utf8Length()
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetUtf8Length();
 }
 
-int StringRef::WriteUtf8(char *buffer, int length)
+int StringRef::WriteUtf8(char *buffer, int length, bool isWriteBuffer)
 {
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
-        .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length);
+        .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length, isWriteBuffer);
 }
 
 // ----------------------------------- SymbolRef -----------------------------------------
