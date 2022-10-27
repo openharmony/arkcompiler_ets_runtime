@@ -90,7 +90,11 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     PGOProfilerLoader loader;
     loader.LoadProfiler("ark-profiler1/profiler.aprof", 2);
     CString expectRecordName = "test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
+#else
+    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
+#endif
     unlink("ark-profiler1/profile.aprof");
     rmdir("ark-profiler1/");
 }
@@ -126,7 +130,11 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     CString expectRecordName = "test";
     CString expectRecordName1 = "test1";
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.Match(expectRecordName1, EntityId(15)));
+#else
+    ASSERT_TRUE(!loader.Match(expectRecordName1, EntityId(15)));
+#endif
     unlink("ark-profiler2/profile.aprof");
     rmdir("ark-profiler2/");
 }
