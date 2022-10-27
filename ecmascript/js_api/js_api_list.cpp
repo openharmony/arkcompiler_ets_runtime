@@ -199,9 +199,10 @@ JSTaggedValue JSAPIList::GetSubList(JSThread *thread, const JSHandle<JSAPIList> 
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    int len = TaggedSingleList::ELEMENTS_START_INDEX + (toIndex - fromIndex) * TaggedSingleList::ENTRY_SIZE;
+    int len = TaggedSingleList::ELEMENTS_START_INDEX + (toIndex - fromIndex + 1) * TaggedSingleList::ENTRY_SIZE;
+    JSHandle<TaggedArray> newElement = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
+    JSHandle<TaggedSingleList> subSingleList = JSHandle<TaggedSingleList>::Cast(newElement);
     JSHandle<JSAPIList> sublist = thread->GetEcmaVM()->GetFactory()->NewJSAPIList();
-    JSHandle<TaggedSingleList> subSingleList(thread, TaggedSingleList::Create(thread, len));
     TaggedSingleList::GetSubList(thread, singleList, fromIndex, toIndex, subSingleList);
     sublist->SetSingleList(thread, subSingleList);
     return sublist.GetTaggedValue();
