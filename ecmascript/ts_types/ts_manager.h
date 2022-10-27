@@ -473,14 +473,16 @@ public:
     {
         uint32_t m = gt.GetModuleId();
         uint32_t l = gt.GetLocalId();
-        return (m == TSModuleTable::RUNTIME_TABLE_ID) && (l == static_cast<int>(TSRuntimeType::ITERATOR));
+        return (m == static_cast<uint32_t>(TSModuleTable::RUNTIME_TABLE_ID)) &&
+               (l == static_cast<uint32_t>(TSRuntimeType::ITERATOR));
     }
 
     bool IsTSIteratorResult(GlobalTSTypeRef gt) const
     {
         uint32_t m = gt.GetModuleId();
         uint32_t l = gt.GetLocalId();
-        return (m == TSModuleTable::RUNTIME_TABLE_ID) && (l == static_cast<int>(TSRuntimeType::ITERATOR_RESULT));
+        return (m == static_cast<uint32_t>(TSModuleTable::RUNTIME_TABLE_ID)) &&
+               (l == static_cast<uint32_t>(TSRuntimeType::ITERATOR_RESULT));
     }
 
 private:

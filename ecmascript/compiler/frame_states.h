@@ -28,8 +28,7 @@ struct BytecodeRegion;
 
 class FrameStateInfo {
 public:
-    explicit FrameStateInfo(size_t numVregs) :
-        values_(numVregs) {}
+    explicit FrameStateInfo(size_t numVregs) : values_(numVregs) {}
 
     void SetValuesAt(size_t index, GateRef gate)
     {

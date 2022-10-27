@@ -187,7 +187,6 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
     const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
 #endif
 
-
     for (const auto &it : constpoolMap) {
         ConstPoolValue value(it.second);
         if (value.GetConstpoolType() == ConstPoolType::STRING) {

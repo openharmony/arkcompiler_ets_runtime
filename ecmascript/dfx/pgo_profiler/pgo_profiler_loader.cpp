@@ -99,9 +99,9 @@ void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::u
         LOG_ECMA(ERROR) << "method info format error";
         return;
     }
-    uint32_t count = atoi(methodCountString[1].c_str());
-    if (count >= hotnessThreshold_) {
-        uint32_t methodId = atoi(methodCountString[0].c_str());
+    int count = atoi(methodCountString[1].c_str());
+    if (count >= static_cast<int>(hotnessThreshold_)) {
+        int methodId = atoi(methodCountString[0].c_str());
         methodIds.emplace(methodId);
     }
 }
