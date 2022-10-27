@@ -315,6 +315,10 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { I64, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
+        case GET_ENV: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         default:
             LOG_COMPILER(ERROR) << "Please complete OpCode properties (OpCode=" << op_ << ")";
             UNREACHABLE();
@@ -417,6 +421,7 @@ std::string OpCode::Str() const
         {TYPE_CONVERT, "TYPE_CONVERT"},
         {TYPED_UNARY_OP, "TYPED_UNARY_OP"},
         {TO_LENGTH, "TO_LENGTH"},
+        {GET_ENV, "GET_ENV"},
         {HEAP_ALLOC, "HEAP_ALLOC"},
         {LOAD_ELEMENT, "LOAD_ELEMENT"},
         {LOAD_PROPERTY, "LOAD_PROPERTY"},

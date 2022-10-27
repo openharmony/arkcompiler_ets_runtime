@@ -4521,7 +4521,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         {
             GateRef newTarget = Undefined();
             GateRef thisValue = Undefined();
-            GateRef lexEnv = env_->GetBuilder()->GetLexicalEnv(func);
+            GateRef lexEnv = env_->GetBuilder()->GetFunctionLexicalEnv(func);
             GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
             switch (mode) {
                 case JSCallMode::CALL_THIS_ARG0:
