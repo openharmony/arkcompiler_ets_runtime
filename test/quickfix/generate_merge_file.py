@@ -32,16 +32,10 @@ def main():
 
     args = parser.parse_args()
 
-    input_file = open(args.input, 'r')
-    output_file = open(args.output, 'w')
-
-    for line in input_file:
-        output_line = args.prefix + line
-        output_file.write(output_line)
-    
-    input_file.close()
-    output_file.close()
-
+    with open(args.input, 'r') as input_file, open(args.output, 'w') as output_file:
+        for line in input_file:
+            output_line = args.prefix + line
+            output_file.write(output_line)
 
 if __name__ == '__main__':
     sys.exit(main())
