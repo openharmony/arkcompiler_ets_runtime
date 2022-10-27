@@ -213,6 +213,7 @@ public:
         TYPE_CONVERT,
         TYPED_UNARY_OP,
         TO_LENGTH,
+        GET_ENV,
         HEAP_ALLOC,
         LOAD_ELEMENT,
         LOAD_PROPERTY,

@@ -153,6 +153,11 @@ GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate)
                                  {gate}, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::GetLexicalEnv(GateRef depend)
+{
+    return GetCircuit()->NewGate(OpCode(OpCode::GET_ENV), MachineType::I64, 0, {depend}, GateType::TaggedValue());
+}
+
 GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                             std::vector<GateRef> inList, GateType gateType)
 {
@@ -617,7 +622,7 @@ void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
-GateRef CircuitBuilder::GetLexicalEnv(GateRef function)
+GateRef CircuitBuilder::GetFunctionLexicalEnv(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }

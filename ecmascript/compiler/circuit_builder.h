@@ -211,6 +211,7 @@ public:
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
+    GateRef GetLexicalEnv(GateRef depend);
     GateRef Arguments(size_t index);
     GateRef Merge(GateRef *in, size_t controlCount);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -428,7 +429,7 @@ public:
     GateRef IsUtf16String(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
-    GateRef GetLexicalEnv(GateRef function);
+    GateRef GetFunctionLexicalEnv(GateRef function);
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type);
