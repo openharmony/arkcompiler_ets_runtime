@@ -143,8 +143,8 @@ public:
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &callbackFn,
                               const JSHandle<TaggedSingleList> &taggedList);
     static JSTaggedValue ConvertToArray(const JSThread *thread, const JSHandle<TaggedSingleList> &taggedList);
-    static JSTaggedValue GetSubList(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
-                                    const int fromIndex, const int toIndex, const JSHandle<TaggedSingleList> &subList);
+    static void GetSubList(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
+                           const int fromIndex, const int toIndex, const JSHandle<TaggedSingleList> &subList);
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList);
     void Clear(const JSThread *thread);
     bool IsEmpty() const;

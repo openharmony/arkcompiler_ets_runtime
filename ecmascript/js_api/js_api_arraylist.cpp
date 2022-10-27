@@ -104,9 +104,9 @@ void JSAPIArrayList::IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPIAr
     int length = arrayList->GetLength().GetInt();
     int oldElementLength = static_cast<int>(elementData->GetLength());
     if (oldElementLength != capacity && length < capacity) {
-        JSHandle<TaggedArray> newElements =
-            thread->GetEcmaVM()->GetFactory()->CopyArray(elementData, length, capacity);
-
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<TaggedArray> newElements = factory->NewAndCopyTaggedArray(elementData,
+            static_cast<uint32_t>(capacity), static_cast<uint32_t>(length));
         arrayList->SetElements(thread, newElements);
     }
 }
@@ -209,11 +209,9 @@ bool JSAPIArrayList::Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
 
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
         ASSERT(!elements->IsDictionaryMode());
-        for (int i = index; i < length - 1; i++) {
-            elements->Set(thread, i, elements->Get(i + 1));
-        }
-        length--;
-        arrayList->SetLength(thread, JSTaggedValue(length));
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        factory->RemoveElementByIndex(elements, index, length);
+        arrayList->SetLength(thread, JSTaggedValue(length - 1));
         return true;
     }
     return false;
