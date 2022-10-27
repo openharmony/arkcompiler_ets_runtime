@@ -642,4 +642,46 @@ DECLARE_BUILTINS(LightWeightSetForEach)
     Bind(&exit);
     Return(*res);
 }
+
+DECLARE_BUILTINS(ArrayListForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::ARRAYLIST_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(ArrayListReplaceAllElements)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
 }  // namespace panda::ecmascript::kungfu

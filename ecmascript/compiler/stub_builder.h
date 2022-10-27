@@ -263,6 +263,7 @@ public:
     GateRef IsJSAPIDeque(GateRef obj);
     GateRef IsJSAPILightWeightMap(GateRef attr);
     GateRef IsJSAPILightWeightSet(GateRef attr);
+    GateRef IsJSAPIArrayList(GateRef obj);
     GateRef GetTarget(GateRef proxyObj);
     GateRef HandlerBaseIsAccessor(GateRef attr);
     GateRef HandlerBaseIsJSArray(GateRef attr);
