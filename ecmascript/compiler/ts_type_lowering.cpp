@@ -28,6 +28,8 @@ void TSTypeLowering::RunTSTypeLowering()
         }
     }
 
+    VerifyGuard();
+
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
@@ -38,6 +40,24 @@ void TSTypeLowering::RunTSTypeLowering()
                            << "\033[0m";
         circuit_->PrintAllGates(*bcBuilder_);
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
+}
+
+void TSTypeLowering::VerifyGuard() const
+{
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (const auto &gate : gateList) {
+        auto op = acc_.GetOpCode(gate);
+        if (op == OpCode::JS_BYTECODE) {
+            auto depend = acc_.GetDep(gate);
+            if (acc_.GetOpCode(depend) == OpCode::GUARD) {
+                std::string bytecodeStr = bcBuilder_->GetBytecodeStr(gate);
+                LOG_COMPILER(ERROR) << "[ts_type_lowering][Error] the depend of ["
+                                    << "id: " << acc_.GetId(gate) << ", JS_BYTECODE: " << bytecodeStr
+                                    << "] should not be GUARD after ts type lowring";
+            }
+        }
     }
 }
 
