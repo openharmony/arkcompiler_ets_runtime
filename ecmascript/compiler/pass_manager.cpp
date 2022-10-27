@@ -15,6 +15,7 @@
 #include "ecmascript/compiler/pass_manager.h"
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -43,6 +44,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
                                                 LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
+    Bytecodes bytecodes;
 
     auto &bytecodeInfo = bcInfoCollector.GetBytecodeInfo();
     auto lexEnvManager = LexEnvManager(bytecodeInfo);
@@ -51,7 +53,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
 
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
-        &cmpCfg, tsManager, &lexEnvManager, &skippedMethodNum]
+        &cmpCfg, tsManager, &bytecodes, &lexEnvManager, &skippedMethodNum]
         (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
@@ -72,7 +74,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
 
         bool hasTyps = jsPandaFile->HasTSTypes(recordName);
-        BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager,
+        BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager, &bytecodes,
                                        &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(), fullName, recordName);
         builder.BytecodeToCircuit();
         PassData data(builder.GetCircuit(), log_, enableMethodLog, fullName);
