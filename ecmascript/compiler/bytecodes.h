@@ -408,8 +408,6 @@ public:
     // set of id, immediate and read register
     std::vector<std::variant<ConstDataId, ICSlotId, Immediate, VirtualRegister>> inputs {};
     std::vector<VRegIDType> vregOut {}; // write register
-    BytecodeMetaData metaData_ { 0 };
-    const uint8_t *pc_ {nullptr};
 
     bool Deopt() const
     {
@@ -521,6 +519,16 @@ public:
     {
         return metaData_.GetOpcode();
     }
+
+    const uint8_t *GetPC() const
+    {
+        return pc_;
+    }
+
+private:
+    BytecodeMetaData metaData_ { 0 };
+    const uint8_t *pc_ {nullptr};
+    friend class BytecodeIterator;
 };
 
 class BytecodeIterator {
@@ -583,19 +591,19 @@ public:
 
     const uint8_t* CurrentPc() const
     {
-        return GetBytecodeInfo().pc_;
+        return GetBytecodeInfo().GetPC();
     }
 
     const uint8_t *PeekNextPc(size_t i) const
     {
         ASSERT((Index() + i) < infoData_.size());
-        return infoData_[index_ + i].pc_;
+        return infoData_[index_ + i].GetPC();
     }
 
     const uint8_t *PeekPrevPc(size_t i) const
     {
         ASSERT((index_ - i) >= 0);
-        return infoData_[index_ - i].pc_;
+        return infoData_[index_ - i].GetPC();
     }
 
     size_t GetEndBcIndex() const

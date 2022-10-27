@@ -208,7 +208,7 @@ public:
 
     [[nodiscard]] const uint8_t* GetJSBytecode(GateRef gate)
     {
-        return GetByteCodeInfo(gate).pc_;
+        return GetByteCodeInfo(gate).GetPC();
     }
 
     [[nodiscard]] EcmaOpcode GetByteCodeOpcode(GateRef gate)
@@ -338,7 +338,7 @@ private:
     void AddBytecodeOffsetInfo(GateRef &gate, const BytecodeInfo &info, size_t bcOffsetIndex, uint8_t *pc);
     void BuildSubCircuit();
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
-    GateRef RenameVariable(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
+    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);

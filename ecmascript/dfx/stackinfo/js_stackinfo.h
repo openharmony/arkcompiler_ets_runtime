@@ -29,6 +29,7 @@ class JsStackInfo {
 public:
     static std::string BuildJsStackTrace(JSThread *thread, bool needNative);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread);
+    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset);
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
