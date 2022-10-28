@@ -35,7 +35,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         entry = JSPandaFile::ParseRecordName(filename);
 #else
         entry = JSPandaFile::ParseOhmUrl(filename);
-#if !WIN_OR_MAC_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
         name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
@@ -98,7 +98,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename.c_str();
     CString name;
-#if !WIN_OR_MAC_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
     name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
