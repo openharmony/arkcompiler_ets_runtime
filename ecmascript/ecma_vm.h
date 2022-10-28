@@ -52,7 +52,7 @@ class EcmaStringTable;
 class SnapshotEnv;
 class SnapshotSerialize;
 class SnapshotProcessor;
-#if !WIN_OR_MAC_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
 #endif
 namespace job {
@@ -449,7 +449,7 @@ public:
         isBundlePack_ = value;
     }
 
-#if !WIN_OR_MAC_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
     void DeleteHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
 #endif
@@ -579,7 +579,7 @@ private:
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
     // merge abc
     bool isBundlePack_ {true}; // isBundle means app compile mode is JSBundle
-#if !WIN_OR_MAC_PLATFORM
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
     CString assetPath_;
