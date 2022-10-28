@@ -67,7 +67,7 @@ bool IsValidUTF8(const std::vector<uint8_t> &data)
     return true;
 }
 
-Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify)
+Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify, bool isWriteBuffer)
 {
     // when first utf16 code is in 0xd800-0xdfff and second utf16 code is 0,
     // means that is a single code point, it needs to be represented by three UTF8 code.
@@ -79,6 +79,9 @@ Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify)
     }
 
     if (d0 == 0) {
+        if (isWriteBuffer) {
+            return {1, {0x00U}};
+        }
         if (modify) {
             // special case for \u0000 ==> C080 - 1100'0000 1000'0000
             return {UtfLength::TWO, {UTF8_2B_FIRST, UTF8_2B_SECOND}};
@@ -152,7 +155,7 @@ size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify)
 }
 
 size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
-                                size_t start, bool modify)
+                                size_t start, bool modify, bool isWriteBuffer)
 {
     size_t utf8Pos = 0;
     if (utf16In == nullptr || utf8Out == nullptr || utf8Len == 0) {
@@ -166,7 +169,7 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
             next16Code = utf16In[i + 1];
         }
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        Utf8Char ch = ConvertUtf16ToUtf8(utf16In[i], next16Code, modify);
+        Utf8Char ch = ConvertUtf16ToUtf8(utf16In[i], next16Code, modify, isWriteBuffer);
         if (utf8Pos + ch.n > utf8Len) {
             break;
         }

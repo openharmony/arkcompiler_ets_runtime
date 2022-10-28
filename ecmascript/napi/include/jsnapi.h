@@ -528,7 +528,7 @@ public:
     std::string ToString();
     int32_t Length();
     int32_t Utf8Length();
-    int WriteUtf8(char *buffer, int length);
+    int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
 };
 
 class PUBLIC_API SymbolRef : public PrimitiveRef {

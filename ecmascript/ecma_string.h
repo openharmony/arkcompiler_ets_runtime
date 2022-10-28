@@ -160,17 +160,18 @@ private:
     }
 
     // It allows user to copy into buffer even if maxLength < length
-    inline size_t WriteUtf8(uint8_t *buf, size_t maxLength) const
+    inline size_t WriteUtf8(uint8_t *buf, size_t maxLength, bool isWriteBuffer = false) const
     {
         if (maxLength == 0) {
             return 1; // maxLength was -1 at napi
         }
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         buf[maxLength - 1] = '\0';
-        return CopyDataRegionUtf8(buf, 0, GetLength(), maxLength) + 1;  // add place for zero in the end
+        return CopyDataRegionUtf8(buf, 0, GetLength(), maxLength, true, isWriteBuffer) + 1;
     }
 
-    size_t CopyDataRegionUtf8(uint8_t *buf, size_t start, size_t length, size_t maxLength, bool modify = true) const
+    size_t CopyDataRegionUtf8(uint8_t *buf, size_t start, size_t length, size_t maxLength,
+                              bool modify = true, bool isWriteBuffer = false) const
     {
         uint32_t len = GetLength();
         if (start + length > len) {
@@ -197,9 +198,11 @@ private:
             return length;
         }
         if (length > maxLength) {
-            return base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf, maxLength, maxLength, start, modify);
+            return base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf, maxLength, maxLength, start,
+                                                              modify, isWriteBuffer);
         }
-        return base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf, length, maxLength, start, modify);
+        return base::utf_helper::ConvertRegionUtf16ToUtf8(GetDataUtf16(), buf, length, maxLength, start,
+                                                          modify, isWriteBuffer);
     }
 
     inline uint32_t CopyDataUtf16(uint16_t *buf, uint32_t maxLength) const
@@ -570,9 +573,9 @@ public:
 
     CString ToCString(StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION);
 
-    uint32_t WriteToFlatUtf8(uint8_t *buf, uint32_t maxLength)
+    uint32_t WriteToFlatUtf8(uint8_t *buf, uint32_t maxLength, bool isWriteBuffer = false)
     {
-        return string_->WriteUtf8(buf, maxLength);
+        return string_->WriteUtf8(buf, maxLength, isWriteBuffer);
     }
 
     uint32_t WriteToFlatUtf16(uint16_t *buf, uint32_t maxLength) const
