@@ -248,6 +248,7 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         int index = HandlerBase::GetOffset(handlerInfo);
         if (index >= capacity) {
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            [[maybe_unused]] EcmaHandleScope handleScope(thread);
             JSHandle<TaggedArray> properties;
             JSHandle<JSObject> objHandle(thread, receiver);
             JSHandle<JSTaggedValue> valueHandle(thread, value);
