@@ -242,12 +242,68 @@ void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType, JSHa
 
     for (index = 0; index < numSelfTypes; index++) {
         JSTaggedValue key = layout->GetKey(index);
+        if (IsDuplicatedKey(extendLayout, key)) {
+            continue;
+        }
         JSTaggedValue type = layout->GetTypeId(index);
         newLayout->SetKey(thread_, numExtendTypes + index, key, type);
     }
 
     field->SetObjLayoutInfo(thread_, newLayout);
     classType->SetHasLinked(true);
+}
+
+bool TSManager::IsDuplicatedKey(JSHandle<TSObjLayoutInfo> extendLayout, JSTaggedValue key)
+{
+    ASSERT_PRINT(key.IsString(), "TS class field key is not a string");
+    EcmaString *keyString = EcmaString::Cast(key.GetTaggedObject());
+
+    uint32_t length = extendLayout->NumberOfElements();
+    for (uint32_t i = 0; i < length; ++i) {
+        JSTaggedValue extendKey = extendLayout->GetKey(i);
+        ASSERT_PRINT(extendKey.IsString(), "TS class field key is not a string");
+        EcmaString *extendKeyString = EcmaString::Cast(extendKey.GetTaggedObject());
+        if (EcmaStringAccessor::StringsAreEqual(keyString, extendKeyString)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int TSManager::GetHClassIndex(const kungfu::GateType &gateType)
+{
+    if (!IsClassInstanceTypeKind(gateType)) {
+        return -1;
+    }
+    GlobalTSTypeRef instanceGT = gateType.GetGTRef();
+    GlobalTSTypeRef classGT = GetClassType(instanceGT);
+    auto it = classTypeIhcIndexMap_.find(classGT);
+    if (it == classTypeIhcIndexMap_.end()) {
+        return -1;
+    } else {
+        return it->second;
+    }
+}
+
+JSTaggedValue TSManager::GetHClassFromCache(uint32_t index)
+{
+    const auto &hclassCache = currentABCInfo_.GetHClassCache();
+    return JSTaggedValue(hclassCache[index]);
+}
+
+int TSManager::GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key)
+{
+    JSHClass *hc = JSHClass::Cast(hclass.GetTaggedObject());
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hc->GetLayout().GetTaggedObject());
+    uint32_t propsNumber = hc->NumberOfProps();
+    int entry = layoutInfo->FindElementWithCache(thread_, hc, key, propsNumber);
+    if (entry == -1) {
+        return entry;
+    }
+
+    int offset = hc->GetInlinedPropertiesOffset(entry);
+    return offset;
 }
 
 GlobalTSTypeRef TSManager::GetExportGTByName(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable) const
@@ -691,6 +747,33 @@ JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
     JSHandle<TSTypeTable> typeTable = mTable->GetTSTypeTable(thread_, moduleId);
     JSHandle<JSTaggedValue> tsType(thread_, typeTable->Get(localId));
     return tsType;
+}
+
+bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
+{
+    if (!IsClassInstanceTypeKind(gateType)) {
+        return false;
+    }
+
+    const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
+    GlobalTSTypeRef classGT = GetClassType(gt);
+    uint32_t m = classGT.GetModuleId();
+    uint32_t l = classGT.GetLocalId();
+    return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
+            (l >= BUILTIN_TYPED_ARRAY_FIRST_ID) && (l <= BUILTIN_TYPED_ARRAY_LAST_ID);
+}
+
+bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
+{
+    if (!IsClassInstanceTypeKind(gateType)) {
+        return false;
+    }
+
+    const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
+    GlobalTSTypeRef classGT = GetClassType(gt);
+    uint32_t m = classGT.GetModuleId();
+    uint32_t l = classGT.GetLocalId();
+    return (m == TSModuleTable::BUILTINS_TABLE_ID) && (l == BUILTIN_FLOAT32_ARRAY_ID);
 }
 
 std::string TSManager::GetTypeStr(kungfu::GateType gateType) const

@@ -552,9 +552,14 @@ JSHandle<JSHClass> JSFunction::GetInstanceJSHClass(JSThread *thread, JSHandle<JS
     if (newTarget->IsJSFunction()) {
         JSHandle<JSFunction> newTargetFunc = JSHandle<JSFunction>::Cast(newTarget);
         if (newTargetFunc->IsDerivedConstructor()) {
-            JSTaggedValue newTargetProto = JSTaggedValue::GetPrototype(thread, newTarget);
-            if (newTargetProto == constructor.GetTaggedValue()) {
-                return GetOrCreateDerivedJSHClass(thread, newTargetFunc, ctorInitialJSHClass);
+            JSMutableHandle<JSTaggedValue> mutableNewTarget(thread, newTarget.GetTaggedValue());
+            JSMutableHandle<JSTaggedValue> mutableNewTargetProto(thread, JSTaggedValue::Undefined());
+            while (!mutableNewTargetProto->IsNull()) {
+                mutableNewTargetProto.Update(JSTaggedValue::GetPrototype(thread, mutableNewTarget));
+                if (mutableNewTargetProto.GetTaggedValue() == constructor.GetTaggedValue()) {
+                    return GetOrCreateDerivedJSHClass(thread, newTargetFunc, ctorInitialJSHClass);
+                }
+                mutableNewTarget.Update(mutableNewTargetProto.GetTaggedValue());
             }
         }
     }

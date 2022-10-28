@@ -30,96 +30,111 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     }
 
     switch (inst.GetOpcode()) {
-    case EcmaOpcode::MOV_V4_V4:
-    case EcmaOpcode::MOV_V8_V8:
-    case EcmaOpcode::MOV_V16_V16:
-    case EcmaOpcode::STA_V8:
-    case EcmaOpcode::LDA_V8:
-        kind = BytecodeKind::MOV;
-        break;
-    case EcmaOpcode::LDNAN:
-    case EcmaOpcode::LDINFINITY:
-    case EcmaOpcode::LDUNDEFINED:
-    case EcmaOpcode::LDNULL:
-    case EcmaOpcode::LDTRUE:
-    case EcmaOpcode::LDFALSE:
-    case EcmaOpcode::LDHOLE:
-    case EcmaOpcode::LDAI_IMM32:
-    case EcmaOpcode::FLDAI_IMM64:
-    case EcmaOpcode::LDFUNCTION:
-    case EcmaOpcode::LDA_STR_ID16:
-        kind = BytecodeKind::SET_CONSTANT;
-        break;
-    case EcmaOpcode::CALLARG0_IMM8:
-    case EcmaOpcode::CALLARG1_IMM8_V8:
-    case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-    case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-    case EcmaOpcode::CALLTHIS0_IMM8_V8:
-    case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-    case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-    case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-    case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-    case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-    case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-    case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-        kind = BytecodeKind::CALL_BC;
-        break;
-    case EcmaOpcode::ADD2_IMM8_V8:
-    case EcmaOpcode::SUB2_IMM8_V8:
-    case EcmaOpcode::MUL2_IMM8_V8:
-    case EcmaOpcode::DIV2_IMM8_V8:
-    case EcmaOpcode::EQ_IMM8_V8:
-    case EcmaOpcode::NOTEQ_IMM8_V8:
-    case EcmaOpcode::LESS_IMM8_V8:
-    case EcmaOpcode::LESSEQ_IMM8_V8:
-    case EcmaOpcode::GREATER_IMM8_V8:
-    case EcmaOpcode::GREATEREQ_IMM8_V8:
-    case EcmaOpcode::TONUMERIC_IMM8:
-    case EcmaOpcode::INC_IMM8:
-    case EcmaOpcode::DEC_IMM8:
-    case EcmaOpcode::NOT_IMM8:
-    case EcmaOpcode::MOD2_IMM8_V8:
-    case EcmaOpcode::SHL2_IMM8_V8:
-    case EcmaOpcode::SHR2_IMM8_V8:
-    case EcmaOpcode::ASHR2_IMM8_V8:
-        flags |= BytecodeFlags::SUPPORT_DEOPT;
-        break;
-    case EcmaOpcode::RETURNUNDEFINED:
-        flags |= BytecodeFlags::ACC_READ;
-        [[fallthrough]];
-    case EcmaOpcode::RETURN:
-        kind = BytecodeKind::RETURN_BC;
-        break;
-    case EcmaOpcode::SUSPENDGENERATOR_V8:
-    case EcmaOpcode::RESUMEGENERATOR:
-        kind = BytecodeKind::GENERATOR;
-        break;
-    case EcmaOpcode::DEBUGGER:
-    case EcmaOpcode::NOP:
-        kind = BytecodeKind::DISCARDED;
-        break;
-    case EcmaOpcode::THROW_PREF_NONE:
-    case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
-    case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
-    case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
-    case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
-        kind = BytecodeKind::THROW_BC;
-        break;
-    case EcmaOpcode::JEQZ_IMM8:
-    case EcmaOpcode::JEQZ_IMM16:
-    case EcmaOpcode::JEQZ_IMM32:
-    case EcmaOpcode::JNEZ_IMM8:
-    case EcmaOpcode::JNEZ_IMM16:
-    case EcmaOpcode::JNEZ_IMM32:
-        kind = BytecodeKind::CONDITIONAL_JUMP;
-        break;
-    case EcmaOpcode::JMP_IMM8:
-    case EcmaOpcode::JMP_IMM16:
-    case EcmaOpcode::JMP_IMM32:
-        kind = BytecodeKind::JUMP_IMM;
-        break;
-    default:
-        break;
+        case EcmaOpcode::MOV_V4_V4:
+        case EcmaOpcode::MOV_V8_V8:
+        case EcmaOpcode::MOV_V16_V16:
+        case EcmaOpcode::STA_V8:
+        case EcmaOpcode::LDA_V8:
+            kind = BytecodeKind::MOV;
+            break;
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::LDUNDEFINED:
+        case EcmaOpcode::LDNULL:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::LDHOLE:
+        case EcmaOpcode::LDAI_IMM32:
+        case EcmaOpcode::FLDAI_IMM64:
+        case EcmaOpcode::LDFUNCTION:
+        case EcmaOpcode::LDA_STR_ID16:
+            kind = BytecodeKind::SET_CONSTANT;
+            break;
+        case EcmaOpcode::CALLARG0_IMM8:
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            kind = BytecodeKind::CALL_BC;
+            break;
+        case EcmaOpcode::ADD2_IMM8_V8:
+        case EcmaOpcode::SUB2_IMM8_V8:
+        case EcmaOpcode::MUL2_IMM8_V8:
+        case EcmaOpcode::DIV2_IMM8_V8:
+        case EcmaOpcode::EQ_IMM8_V8:
+        case EcmaOpcode::NOTEQ_IMM8_V8:
+        case EcmaOpcode::LESS_IMM8_V8:
+        case EcmaOpcode::LESSEQ_IMM8_V8:
+        case EcmaOpcode::GREATER_IMM8_V8:
+        case EcmaOpcode::GREATEREQ_IMM8_V8:
+        case EcmaOpcode::TONUMERIC_IMM8:
+        case EcmaOpcode::INC_IMM8:
+        case EcmaOpcode::DEC_IMM8:
+        case EcmaOpcode::NEG_IMM8:
+        case EcmaOpcode::NOT_IMM8:
+        case EcmaOpcode::MOD2_IMM8_V8:
+        case EcmaOpcode::SHL2_IMM8_V8:
+        case EcmaOpcode::SHR2_IMM8_V8:
+        case EcmaOpcode::ASHR2_IMM8_V8:
+        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
+        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
+        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
+        case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
+        case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
+            flags |= BytecodeFlags::SUPPORT_DEOPT;
+            break;
+        case EcmaOpcode::RETURNUNDEFINED:
+            flags |= BytecodeFlags::ACC_READ;
+            [[fallthrough]];
+        case EcmaOpcode::RETURN:
+            kind = BytecodeKind::RETURN_BC;
+            break;
+        case EcmaOpcode::SUSPENDGENERATOR_V8:
+        case EcmaOpcode::RESUMEGENERATOR:
+            kind = BytecodeKind::GENERATOR;
+            break;
+        case EcmaOpcode::DEBUGGER:
+        case EcmaOpcode::NOP:
+            kind = BytecodeKind::DISCARDED;
+            break;
+        case EcmaOpcode::THROW_PREF_NONE:
+        case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
+        case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
+        case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
+        case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
+            kind = BytecodeKind::THROW_BC;
+            break;
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+        case EcmaOpcode::JNEZ_IMM8:
+        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaOpcode::JNEZ_IMM32:
+            kind = BytecodeKind::CONDITIONAL_JUMP;
+            break;
+        case EcmaOpcode::JMP_IMM8:
+        case EcmaOpcode::JMP_IMM16:
+        case EcmaOpcode::JMP_IMM32:
+            kind = BytecodeKind::JUMP_IMM;
+            break;
+        default:
+            break;
     }
 
     if (kind == BytecodeKind::GENERAL ||

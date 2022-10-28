@@ -674,7 +674,7 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
         argAcc_.NewArg(argIdx);
     }
     argAcc_.CollectArgs();
-    if (hasTypes_) {
+    if (HasTypes()) {
         argAcc_.FillArgsGateType(&typeRecorder_);
     }
 }
@@ -1242,12 +1242,12 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId,
                     ASSERT(curInfo.inputs.size() == 1);
                     tmpReg = std::get<VirtualRegister>(curInfo.inputs.at(0)).GetId();
                 }
-                if (hasTypes_) {
+                if (HasTypes()) {
                     type = typeRecorder_.UpdateType(pcToBCOffset_.at(pcIter) - 1, type);
                 }
             } else {
                 ans = byteCodeToJSGate_.at(pcIter);
-                if (hasTypes_ && !type.IsAnyType()) {
+                if (HasTypes() && !type.IsAnyType()) {
                     gateAcc_.SetGateType(ans, type);
                 }
                 break;
@@ -1355,7 +1355,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
         }
         const auto &[bbIndex, bcIndex] = it->second;
         const BytecodeInfo& bytecodeInfo = GetBytecodeInfo(bbIndex, bcIndex);
-        if (hasTypes_) {
+        if (HasTypes()) {
             auto pc = bytecodeInfo.GetPC();
             auto type = typeRecorder_.GetType(pcToBCOffset_.at(pc) - 1);
             if (!type.IsAnyType()) {
@@ -1383,7 +1383,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
             }
         }
     }
-    if (hasTypes_) {
+    if (HasTypes() && IsTypeLoweringEnabled()) {
         frameStateBuilder_.BuildFrameState();
     }
 
