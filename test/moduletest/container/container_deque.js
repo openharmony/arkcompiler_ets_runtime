@@ -105,6 +105,12 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+    let de = new Deque();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        print(err.name);
+    }
     if (!flag) {
         print("Test Deque success!!!");
     } else {
