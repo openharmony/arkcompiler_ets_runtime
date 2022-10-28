@@ -212,12 +212,13 @@ void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
     PushJSFunctionEntryFrame (assembler, prevFpReg);
     __ Mov(Register(X6), flag);
     __ Mov(tmpArgV, argV);
-    __ Str(X2, MemoryOperand(tmpArgV, 0));
-    __ Str(X3, MemoryOperand(tmpArgV, FRAME_SLOT_SIZE));
-    __ Str(X4, MemoryOperand(tmpArgV, DOUBLE_SLOT_SIZE));
+    __ Mov(Register(X20), glueReg);
+    __ Ldr(Register(X2), MemoryOperand(tmpArgV, 0));
+    __ Ldr(Register(X3), MemoryOperand(tmpArgV, FRAME_SLOT_SIZE));
+    __ Ldr(Register(X4), MemoryOperand(tmpArgV, DOUBLE_SLOT_SIZE));
     __ Add(tmpArgV, tmpArgV, Immediate(TRIPLE_SLOT_SIZE));
-    __ Mov(X5, tmpArgV);
-    __ Cmp(X6, Immediate(1));
+    __ Mov(Register(X5), tmpArgV);
+    __ Cmp(Register(X6), Immediate(1));
     __ B(Condition::EQ, &lJSCallNewWithArgV);
     __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgV), false);
     __ B(&lPopFrame);
@@ -228,7 +229,7 @@ void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
     }
 
     __ Bind(&lPopFrame);
-    PopJSFunctionEntryFrame(assembler, glueReg);
+    PopJSFunctionEntryFrame(assembler, Register(X20));
     __ Ret();
 }
 
