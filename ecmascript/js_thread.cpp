@@ -248,12 +248,12 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
                 // undefind
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
                 auto weakNode = reinterpret_cast<EcmaGlobalStorage::WeakNode *>(node);
-                auto secondPassCallback = weakNode->GetSecondPassCallback();
-                if (secondPassCallback) {
-                    weakNodeSecondPassCallbacks_.push_back(std::make_pair(secondPassCallback,
-                                                                          weakNode->GetReference()));
+                auto nativeFinalizeCallback = weakNode->GetNativeFinalizeCallback();
+                if (nativeFinalizeCallback) {
+                    weakNodeNativeFinalizeCallbacks_.push_back(std::make_pair(nativeFinalizeCallback,
+                                                                              weakNode->GetReference()));
                 }
-                weakNode->CallFirstPassCallback();
+                weakNode->CallFreeGlobalCallback();
             } else if (fwd != object) {
                 // update
                 node->SetObject(JSTaggedValue(fwd).GetRawData());

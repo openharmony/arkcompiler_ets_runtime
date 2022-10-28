@@ -46,8 +46,8 @@ public:
             weakCurrent->IterateUsageGlobal([] (Node *node) {
                 node->SetUsing(false);
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
-                reinterpret_cast<WeakNode *>(node)->CallFirstPassCallback();
-                reinterpret_cast<WeakNode *>(node)->CallSecondPassCallback();
+                reinterpret_cast<WeakNode *>(node)->CallFreeGlobalCallback();
+                reinterpret_cast<WeakNode *>(node)->CallNativeFinalizeCallback();
             });
             allocator_->Delete(weakCurrent);
         }
@@ -209,38 +209,38 @@ public:
             return reference_;
         }
 
-        void SetFirstPassCallback(WeakClearCallback callback)
+        void SetFreeGlobalCallback(WeakClearCallback callback)
         {
-            firstPassCallback_ = callback;
+            freeGlobalCallback_ = callback;
         }
 
-        void SetSecondPassCallback(WeakClearCallback callback)
+        void SetNativeFinalizeCallback(WeakClearCallback callback)
         {
-            secondPassCallback_ = callback;
+            nativeFinalizeCallback_ = callback;
         }
 
-        WeakClearCallback GetSecondPassCallback() const
+        WeakClearCallback GetNativeFinalizeCallback() const
         {
-            return secondPassCallback_;
+            return nativeFinalizeCallback_;
         }
 
-        void CallFirstPassCallback()
+        void CallFreeGlobalCallback()
         {
-            if (firstPassCallback_ != nullptr) {
-                firstPassCallback_(reference_);
+            if (freeGlobalCallback_ != nullptr) {
+                freeGlobalCallback_(reference_);
             }
         }
 
-        void CallSecondPassCallback()
+        void CallNativeFinalizeCallback()
         {
-            if (secondPassCallback_ != nullptr) {
-                secondPassCallback_(reference_);
+            if (nativeFinalizeCallback_ != nullptr) {
+                nativeFinalizeCallback_(reference_);
             }
         }
     private:
         void *reference_ {nullptr};
-        WeakClearCallback firstPassCallback_ {nullptr};
-        WeakClearCallback secondPassCallback_ {nullptr};
+        WeakClearCallback freeGlobalCallback_ {nullptr};
+        WeakClearCallback nativeFinalizeCallback_ {nullptr};
     };
 
     template<typename T>
@@ -304,8 +304,8 @@ public:
             node->Reset(freeList_, JSTaggedValue::Undefined().GetRawData(), false);
             if (node->IsWeak()) {
                 reinterpret_cast<WeakNode *>(node)->SetReference(nullptr);
-                reinterpret_cast<WeakNode *>(node)->SetFirstPassCallback(nullptr);
-                reinterpret_cast<WeakNode *>(node)->SetSecondPassCallback(nullptr);
+                reinterpret_cast<WeakNode *>(node)->SetFreeGlobalCallback(nullptr);
+                reinterpret_cast<WeakNode *>(node)->SetNativeFinalizeCallback(nullptr);
             }
             if (freeList_ != nullptr) {
                 freeList_->SetPrev(node);
@@ -430,16 +430,16 @@ public:
         }
     }
 
-    inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback firstCallback = nullptr,
-                             WeakClearCallback secondCallback = nullptr)
+    inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback freeGlobalCallBack = nullptr,
+                             WeakClearCallback nativeFinalizeCallBack = nullptr)
     {
         auto value = reinterpret_cast<Node *>(nodeAddr)->GetObject();
         DisposeGlobalHandle(nodeAddr);
         uintptr_t addr = NewGlobalHandleImplement<WeakNode>(&lastWeakGlobalNodes_, &weakFreeListNodes_, value);
         WeakNode *node = reinterpret_cast<WeakNode *>(addr);
         node->SetReference(ref);
-        node->SetFirstPassCallback(firstCallback);
-        node->SetSecondPassCallback(secondCallback);
+        node->SetFreeGlobalCallback(freeGlobalCallBack);
+        node->SetNativeFinalizeCallback(nativeFinalizeCallBack);
         return addr;
     }
 
