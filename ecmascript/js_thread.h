@@ -270,9 +270,9 @@ public:
         return handleScopeStorageEnd_;
     }
 
-    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> *GetWeakNodeSecondPassCallbacks()
+    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> *GetWeakNodeNativeFinalizeCallbacks()
     {
-        return &weakNodeSecondPassCallbacks_;
+        return &weakNodeNativeFinalizeCallbacks_;
     }
 
     void SetHandleScopeStorageEnd(JSTaggedType *value)
@@ -720,7 +720,7 @@ private:
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
     EcmaHandleScope *lastHandleScope_ {nullptr};
-    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> weakNodeSecondPassCallbacks_ {};
+    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> weakNodeNativeFinalizeCallbacks_ {};
 
     PropertiesCache *propertiesCache_ {nullptr};
     EcmaGlobalStorage *globalStorage_ {nullptr};
