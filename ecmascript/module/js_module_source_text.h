@@ -38,7 +38,8 @@ public:
                                                                 const JSHandle<SourceTextModule> &module,
                                                                 const JSHandle<JSTaggedValue> &moduleRequest);
     static JSHandle<SourceTextModule> HostResolveImportedModuleWithMerge(
-        JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
+        JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest,
+        CVector<CString> &npmStack, bool &npm);
 
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -51,10 +52,12 @@ public:
 
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-                                        CVector<JSHandle<SourceTextModule>> &stack, int index);
+                                        CVector<JSHandle<SourceTextModule>> &stack, int index,
+                                        CVector<CString> &npmStack, bool npm);
 
     // 15.2.1.16.4.2 ModuleDeclarationEnvironmentSetup ( module )
-    static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                                  CVector<CString> &npmStack);
 
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
