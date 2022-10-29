@@ -57,8 +57,8 @@ public:
     static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot, Register numArgs,
         Register op, Label *stackOverflow);
-    static void PushLeaveFrame(ExtendedAssembler *assembler, Register glue, bool isBuiltin);
-    static void PopLeaveFrame(ExtendedAssembler *assembler, bool isBuiltin);
+    static void PushLeaveFrame(ExtendedAssembler *assembler, Register glue);
+    static void PopLeaveFrame(ExtendedAssembler *assembler);
 };
 
 class OptimizedCall : public CommonCall {
