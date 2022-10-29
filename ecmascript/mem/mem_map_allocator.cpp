@@ -33,6 +33,8 @@ void *mmap(size_t size, int fd, off_t offset)
                                      (DWORD) (size & 0xffffffff),
                                      nullptr);
     if (extra == nullptr) {
+        int errCode = GetLastError();
+        LOG_ECMA(ERROR) << "CreateFileMapping fail, the error code is: " << errCode;
         return nullptr;
     }
 
@@ -40,6 +42,11 @@ void *mmap(size_t size, int fd, off_t offset)
                                (DWORD) ((uint64_t) offset >> 32),
                                (DWORD) (offset & 0xffffffff),
                                size);
+    if (data == nullptr) {
+        int errCode = GetLastError();
+        LOG_ECMA(ERROR) << "MapViewOfFile fail, the error code is: " << errCode;
+        return nullptr;
+    }
     CloseHandle(extra);
     return data;
 }
