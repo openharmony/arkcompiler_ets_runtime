@@ -355,6 +355,7 @@ public:
     inline GateRef ToTaggedInt(GateRef x);
     inline GateRef ToTaggedIntPtr(GateRef x);
     inline GateRef DoubleToTaggedDoublePtr(GateRef x);
+    inline GateRef BooleanToTaggedBooleanPtr(GateRef x);
     inline GateRef Float32ToTaggedDoublePtr(GateRef x);
     inline GateRef TaggedDoublePtrToFloat32(GateRef x);
     inline GateRef TaggedIntPtrToFloat32(GateRef x);
