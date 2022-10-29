@@ -12,16 +12,19 @@
 # limitations under the License.
 
 if (!defined(ark_standalone_build)) {
-  ark_root = "//arkcompiler/runtime_core"
-  js_root = "//arkcompiler/ets_runtime"
-  third_party_gn_path = "//third_party"
-  import("//build/ohos.gni")
+  ark_standalone_build = false
+}
+
+if (!ark_standalone_build) {
+  build_root = "//build"
+  ark_third_party_root = "//third_party"
+  import("$build_root/ohos.gni")
 } else {
-  ark_root = "//runtime_core"
-  js_root = "//ets_runtime"
-  third_party_gn_path = "//toolchain/build/third_party_gn"
+  ark_third_party_root = "//arkcompiler/toolchain/build/third_party_gn"
   import("$build_root/ark.gni")
 }
+ark_root = "//arkcompiler/runtime_core"
+js_root = "//arkcompiler/ets_runtime"
 compile_llvm_online = false
 run_with_asan = false
 enable_leak_check = false
@@ -29,6 +32,7 @@ enable_bytrace = true
 enable_hitrace = true
 enable_hilog = true
 enable_dump_in_faultlog = true
+enable_cow_array = true
 asan_lib_path = "/usr/lib/llvm-10/lib/clang/10.0.0/lib/linux"
 if (is_standard_system) {
   icu_part_name = "icu"
@@ -40,9 +44,9 @@ if (is_standard_system) {
 
 # For OpenHarmony build, always link with the static lib:
 sdk_libc_secshared_dep =
-    "$third_party_gn_path/bounds_checking_function:libsec_static"
+    "$ark_third_party_root/bounds_checking_function:libsec_static"
 sdk_libc_secshared_config =
-    "$third_party_gn_path/bounds_checking_function:libsec_public_config"
+    "$ark_third_party_root/bounds_checking_function:libsec_public_config"
 
 # Generate file for a template and YAML data provided.
 #

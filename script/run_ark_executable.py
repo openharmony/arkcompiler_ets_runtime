@@ -57,9 +57,7 @@ def judge_output(args):
     try:
         out, err = subp.communicate(timeout=timeout_limit)
     except subprocess.TimeoutExpired:
-        print('Run [', cmd, '] timeout, timeout_limit = ', timeout_limit, 's')
-        subp.kill()
-        out, err = subp.communicate()
+        raise RuntimeError('Run [', cmd, '] timeout, timeout_limit = ', timeout_limit, 's')
 
     if args.expect_output:
         returncode = str(subp.returncode)

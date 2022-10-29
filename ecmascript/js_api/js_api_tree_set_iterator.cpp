@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/object_factory.h"
@@ -23,6 +24,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -32,28 +35,30 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
 
     if (!input->IsJSAPITreeSetIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not a tree set iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPITreeSetIterator> iter(input);
     // Let it be [[IteratedSet]].
     JSHandle<JSTaggedValue> iteratedSet(thread, iter->GetIteratedSet());
 
-    // If it is undefined, return CreateIterResultObject(undefined, true).
+    // If it is undefined, return undefinedIteratorResult.
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratedSet->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, globalConst->GetHandledUndefined(), true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     JSHandle<TaggedTreeSet> set(thread, JSHandle<JSAPITreeSet>::Cast(iteratedSet)->GetTreeSet());
-    int elements = set->NumberOfElements();
+    uint32_t elements = static_cast<uint32_t>(set->NumberOfElements());
 
     JSMutableHandle<TaggedArray> entries(thread, iter->GetEntries());
-    if (elements != static_cast<int>(entries->GetLength())) {
+    if ((iter->GetEntries().IsHole()) || (elements != entries->GetLength())) {
         entries.Update(TaggedTreeSet::GetArrayFromSet(thread, set).GetTaggedValue());
         iter->SetEntries(thread, entries);
     }
 
     // Let index be Set.[[NextIndex]].
-    int index = static_cast<int>(iter->GetNextIndex());
+    uint32_t index = static_cast<uint32_t>(iter->GetNextIndex());
     if (index < elements) {
         IterationKind itemKind = IterationKind(iter->GetIterationKind());
 
@@ -75,7 +80,7 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
 
     // Set [[IteratedSet]] to undefined.
     iter->SetIteratedSet(thread, JSTaggedValue::Undefined());
-    return JSIterator::CreateIterResultObject(thread, globalConst->GetHandledUndefined(), true).GetTaggedValue();
+    return globalConst->GetUndefinedIterResult();
 }
 
 JSHandle<JSTaggedValue> JSAPITreeSetIterator::CreateTreeSetIterator(JSThread *thread,
@@ -87,7 +92,10 @@ JSHandle<JSTaggedValue> JSAPITreeSetIterator::CreateTreeSetIterator(JSThread *th
         if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPITreeSet()) {
             obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not TreeSet", thread->GlobalConstants()->GetHandledUndefined());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The Symbol.iterator method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                             JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
         }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPITreeSetIterator(JSHandle<JSAPITreeSet>(obj), kind));

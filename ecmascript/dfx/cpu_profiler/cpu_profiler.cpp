@@ -23,7 +23,7 @@
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 #include "ecmascript/frames.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
 
@@ -46,7 +46,9 @@ CpuProfiler::CpuProfiler(const EcmaVM *vm) : vm_(vm)
 
 void CpuProfiler::StartCpuProfilerForInfo()
 {
+    LOG_ECMA(INFO) << "StartCpuProfilerForInfo enter";
     if (isProfiling_) {
+        LOG_ECMA(ERROR) << "Can not StartCpuProfilerForInfo when CpuProfiler is Profiling";
         return;
     }
     isProfiling_ = true;
@@ -79,7 +81,9 @@ void CpuProfiler::StartCpuProfilerForInfo()
 
 void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 {
+    LOG_ECMA(INFO) << "StartCpuProfilerForFile enter";
     if (isProfiling_) {
+        LOG_ECMA(ERROR) << "Can not StartCpuProfilerForFile when CpuProfiler is Profiling";
         return;
     }
     isProfiling_ = true;
@@ -133,6 +137,7 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 
 std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
 {
+    LOG_ECMA(INFO) << "StopCpuProfilerForInfo enter";
     std::unique_ptr<struct ProfileInfo> profileInfo;
     if (!isProfiling_) {
         LOG_ECMA(ERROR) << "Do not execute stop cpuprofiler twice in a row or didn't execute the start\
@@ -167,6 +172,7 @@ void CpuProfiler::SetCpuSamplingInterval(int interval)
 
 void CpuProfiler::StopCpuProfilerForFile()
 {
+    LOG_ECMA(INFO) << "StopCpuProfilerForFile enter";
     if (!isProfiling_) {
         LOG_ECMA(ERROR) << "Do not execute stop cpuprofiler twice in a row or didn't execute the start\
                                 or the sampling thread is not started";
@@ -250,7 +256,7 @@ void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProces
 
 void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
 {
-    const CMap<Method *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
+    const CMap<void *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->SetGcState(vm_->GetAssociatedJSThread()->GetGcState());
     if (!generator_->GetGcState()) {
         for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
@@ -261,14 +267,15 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
             if (method == nullptr) {
                 continue;
             }
-
-            if (stackInfo.count(method) == 0) {
-                if (UNLIKELY(!ParseMethodInfo(method, frameHandler, false))) {
+            
+            void *methodIdentifier = GetMethodIdentifier(method, frameHandler);
+            if (stackInfo.count(methodIdentifier) == 0) {
+                if (UNLIKELY(!ParseMethodInfo(methodIdentifier, frameHandler, method->GetJSPandaFile(), false))) {
                     generator_->SetIsBreakSampleFlag(true);
                     return;
                 }
             }
-            if (UNLIKELY(!generator_->PushFrameStack(method))) {
+            if (UNLIKELY(!generator_->PushFrameStack(methodIdentifier))) {
                 generator_->SetIsBreakSampleFlag(true);
                 return;
             }
@@ -278,7 +285,7 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
 
 bool CpuProfiler::GetFrameStackCallNapi(FrameHandler &frameHandler)
 {
-    const CMap<Method *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
+    const CMap<void *, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->ClearNapiStack();
     for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
         if (!frameHandler.IsInterpretedFrame()) {
@@ -289,13 +296,14 @@ bool CpuProfiler::GetFrameStackCallNapi(FrameHandler &frameHandler)
             continue;
         }
 
-        if (stackInfo.count(method) == 0) {
-            if (UNLIKELY(!ParseMethodInfo(method, frameHandler, true))) {
+        void *methodIdentifier = GetMethodIdentifier(method, frameHandler);
+        if (stackInfo.count(methodIdentifier) == 0) {
+            if (UNLIKELY(!ParseMethodInfo(methodIdentifier, frameHandler, method->GetJSPandaFile(), true))) {
                 LOG_ECMA(ERROR) << "CpuProfiler ParseMethodInfo fail";
                 return false;
             }
         }
-        if (UNLIKELY(!generator_->PushNapiFrameStack(method))) {
+        if (UNLIKELY(!generator_->PushNapiFrameStack(methodIdentifier))) {
             LOG_ECMA(ERROR) << "CpuProfiler PushNapiFrameStack fail";
             return false;
         }
@@ -303,11 +311,16 @@ bool CpuProfiler::GetFrameStackCallNapi(FrameHandler &frameHandler)
     return true;
 }
 
-bool CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, bool isCallNapi)
+bool CpuProfiler::ParseMethodInfo(void *methodIdentifier,
+                                  FrameHandler &frameHandler,
+                                  const JSPandaFile *jsPandaFile,
+                                  bool isCallNapi)
 {
     struct FrameInfoTemp codeEntry;
-    codeEntry.method = method;
-    if (method != nullptr && method->IsNativeWithCallField()) {
+    codeEntry.methodIdentifier = methodIdentifier;
+    JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (extraInfoValue.IsJSNativePointer() || jsPandaFile == nullptr) {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
             return false;
         }
@@ -316,10 +329,8 @@ bool CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, bo
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
             return false;
         }
-        const char *tempVariable = nullptr;
-        if (method != nullptr) {
-            tempVariable = method->GetMethodName();
-        }
+        const char *tempVariable = MethodLiteral::GetMethodName(jsPandaFile,
+            reinterpret_cast<MethodLiteral *>(methodIdentifier)->GetMethodId());
         uint8_t length = strlen(tempVariable);
         if (length != 0 && tempVariable[0] == '#') {
             uint8_t index = length - 1;
@@ -336,8 +347,9 @@ bool CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, bo
         }
         // source file
         DebugInfoExtractor *debugExtractor =
-            JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
-        const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
+            JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+        const std::string &sourceFile =
+            debugExtractor->GetSourceFile(reinterpret_cast<MethodLiteral *>(methodIdentifier)->GetMethodId());
         if (sourceFile.empty()) {
             tempVariable = "";
         } else {
@@ -346,27 +358,10 @@ bool CpuProfiler::ParseMethodInfo(Method *method, FrameHandler &frameHandler, bo
         if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), tempVariable)) {
             return false;
         }
-        // line number
-        int32_t lineNumber = 0;
-        int32_t columnNumber = 0;
-        auto callbackLineFunc = [&](int32_t line) -> bool {
-            lineNumber = line + 1;
-            return true;
-        };
-        auto callbackColumnFunc = [&](int32_t column) -> bool {
-            columnNumber = column + 1;
-            return true;
-        };
-        panda_file::File::EntityId methodId = method->GetMethodId();
-        uint32_t offset = frameHandler.GetBytecodeOffset();
-        if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
-            !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-            codeEntry.lineNumber = 0;
-            codeEntry.columnNumber = 0;
-        } else {
-            codeEntry.lineNumber = lineNumber;
-            codeEntry.columnNumber = columnNumber;
-        }
+        // line number and clomn number
+        panda_file::File::EntityId methodId = reinterpret_cast<MethodLiteral *>(methodIdentifier)->GetMethodId();
+        codeEntry.lineNumber = debugExtractor->GetFristLine(methodId);
+        codeEntry.columnNumber = debugExtractor->GetFristColumn(methodId);
     }
     if (isCallNapi) {
         return generator_->PushNapiStackInfo(codeEntry);
@@ -530,30 +525,8 @@ bool CpuProfiler::IsAddrAtStub(void *context)
     LOG_ECMA(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
     return true;
 #endif
-    FileLoader *loader = vm_->GetFileLoader();
-    if (loader == nullptr) {
-        return false;
-    }
-    const StubModulePackInfo &stubPackInfo = loader->GetStubPackInfo();
-    uint64_t stubStartAddr = stubPackInfo.GetAsmStubAddr();
-    uint64_t stubEndAddr = stubStartAddr + stubPackInfo.GetAsmStubSize();
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
-    }
-
-    const std::vector<ModuleSectionDes> &des = stubPackInfo.GetCodeUnits();
-    stubStartAddr = des[0].GetSecAddr(ElfSecName::TEXT);
-    stubEndAddr = stubStartAddr + des[0].GetSecSize(ElfSecName::TEXT);
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
-    }
-
-    stubStartAddr = des[1].GetSecAddr(ElfSecName::TEXT);
-    stubEndAddr = stubStartAddr + des[1].GetSecSize(ElfSecName::TEXT);
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
-    }
-    return false;
+    AOTFileManager *loader = vm_->GetAOTFileManager();
+    return loader->InsideStub(pc);
 }
 
 std::string CpuProfiler::GetProfileName() const
@@ -616,5 +589,21 @@ bool CpuProfiler::CheckAndCopy(char *dest, size_t length, const char *src) const
     }
     dest[srcLength] = '\0';
     return true;
+}
+
+void *CpuProfiler::GetMethodIdentifier(Method *method, FrameHandler &frameHandler)
+{
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    if (methodLiteral != nullptr) {
+        return reinterpret_cast<void *>(methodLiteral);
+    }
+
+    JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
+    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    if (extraInfoValue.IsUndefined()) {
+        return const_cast<void *>(method->GetNativePointer());
+    }
+    JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
+    return reinterpret_cast<void *>(extraInfo->GetData());
 }
 } // namespace panda::ecmascript

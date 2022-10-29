@@ -15,4 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_typeinfer_test_action("ldglobalvar") {
   deps = []
+  is_disable_type_lowering = true
 }

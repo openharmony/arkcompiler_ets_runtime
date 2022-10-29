@@ -27,6 +27,7 @@
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 
@@ -37,7 +38,6 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetProfileTypeInfo(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
 
     auto globalConst = thread->GlobalConstants();
@@ -339,8 +339,19 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
+    JSTaggedValue resultValue;
     info->SetThis(obj.GetTaggedValue());
-    JSTaggedValue resultValue = EcmaInterpreter::Execute(info);
+    Method *method = func->GetCallTarget();
+    if (method->IsAotWithCallField()) {
+        resultValue =
+            thread->GetEcmaVM()->AotReentry(info->GetArgsNumber(), info->GetArgs(), true);
+        const JSTaggedType *curSp = thread->GetCurrentSPFrame();
+        InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
+        JSTaggedType *prevSp = entryState->base.prev;
+        thread->SetCurrentSPFrame(prevSp);
+    } else {
+        resultValue = EcmaInterpreter::Execute(info);
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 9.3.2 [[Construct]] (argumentsList, newTarget)
     if (resultValue.IsECMAObject()) {
@@ -541,9 +552,14 @@ JSHandle<JSHClass> JSFunction::GetInstanceJSHClass(JSThread *thread, JSHandle<JS
     if (newTarget->IsJSFunction()) {
         JSHandle<JSFunction> newTargetFunc = JSHandle<JSFunction>::Cast(newTarget);
         if (newTargetFunc->IsDerivedConstructor()) {
-            JSTaggedValue newTargetProto = JSTaggedValue::GetPrototype(thread, newTarget);
-            if (newTargetProto == constructor.GetTaggedValue()) {
-                return GetOrCreateDerivedJSHClass(thread, newTargetFunc, ctorInitialJSHClass);
+            JSMutableHandle<JSTaggedValue> mutableNewTarget(thread, newTarget.GetTaggedValue());
+            JSMutableHandle<JSTaggedValue> mutableNewTargetProto(thread, JSTaggedValue::Undefined());
+            while (!mutableNewTargetProto->IsNull()) {
+                mutableNewTargetProto.Update(JSTaggedValue::GetPrototype(thread, mutableNewTarget));
+                if (mutableNewTargetProto.GetTaggedValue() == constructor.GetTaggedValue()) {
+                    return GetOrCreateDerivedJSHClass(thread, newTargetFunc, ctorInitialJSHClass);
+                }
+                mutableNewTarget.Update(mutableNewTargetProto.GetTaggedValue());
             }
         }
     }
@@ -676,5 +692,23 @@ JSTaggedValue JSFunction::GetFunctionExtraInfo() const
         }
     }
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue JSFunction::GetRecordName() const
+{
+    JSTaggedValue module = GetModule();
+    if (module.IsSourceTextModule()) {
+        JSTaggedValue recordName =  SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
+        if (!recordName.IsString()) {
+            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
+            return JSTaggedValue::Hole();
+        }
+        return recordName;
+    } else if (module.IsString()) {
+        return module;
+    } else {
+        LOG_INTERPRETER(DEBUG) << "record name is undefined";
+        return JSTaggedValue::Hole();
+    }
 }
 }  // namespace panda::ecmascript

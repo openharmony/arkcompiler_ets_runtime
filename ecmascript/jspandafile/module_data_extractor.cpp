@@ -30,13 +30,17 @@ using StringData = panda_file::StringData;
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                          const CString &descriptor, const CString &moduleFilename)
 {
-    int moduleIdx = -1;
-    moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
+    int moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     ASSERT(moduleIdx != -1);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
     panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
-    panda_file::File::EntityId moduleId = lda.GetLiteralArrayId(static_cast<size_t>(moduleIdx));
+    panda_file::File::EntityId moduleId;
+    if (jsPandaFile->IsNewVersion()) {  // new pandafile version use new literal offset mechanism
+        moduleId = panda_file::File::EntityId(static_cast<uint32_t>(moduleIdx));
+    } else {
+        moduleId = lda.GetLiteralArrayId(static_cast<size_t>(moduleIdx));
+    }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
@@ -56,6 +60,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
                                              panda_file::File::EntityId moduleId,
                                              JSHandle<SourceTextModule> &moduleRecord)
 {
+    [[maybe_unused]] EcmaHandleScope scope(thread);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ModuleDataAccessor mda(*pf, moduleId);

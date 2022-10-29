@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_hclass.h"
@@ -25,6 +26,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 // StackIteratorPrototype%.next()
 JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
 {
@@ -34,13 +37,15 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
 
     if (!input->IsJSAPIStackIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an stack iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIStackIterator> iter(input);
     JSHandle<JSTaggedValue> stack(thread, iter->GetIteratedStack());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (stack->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     uint32_t index = iter->GetNextIndex();
 
@@ -49,12 +54,13 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     if (index + 1 > length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedStack(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
     JSHandle<JSTaggedValue> key(thread, JSTaggedValue(index));
-    JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, stack, key).GetValue();
+    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIStack>::Cast(stack)->Get(index));
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }
 }  // namespace panda::ecmascript

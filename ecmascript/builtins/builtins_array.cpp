@@ -817,6 +817,7 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     //   d. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     if (thisHandle->IsStableJSArray(thread)) {
+        JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObjHandle));
         TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
         uint32_t length = srcElements->GetLength();
         if (length >= end) {
@@ -2238,7 +2239,7 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
             middleValue.Update(
                 FastRuntimeStub::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), middleIndex));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            int32_t compareResult = ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
+            double compareResult = ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
                 endIndex = middleIndex;

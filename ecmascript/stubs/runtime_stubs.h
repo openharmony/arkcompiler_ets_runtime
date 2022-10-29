@@ -39,6 +39,8 @@ struct EcmaRuntimeCallInfo;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
                                          uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
+using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[], uintptr_t prevFp,
+                                            bool flag);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
     JS_CALL_TRAMPOLINE_LIST(V)               \
@@ -66,7 +68,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(ResumeCaughtFrameAndDispatch)          \
     V(ResumeUncaughtFrameAndReturn)          \
     V(CallSetter)                            \
-    V(CallGetter)
+    V(CallGetter)                            \
+    V(CallContainersArgs3)
 
 #define JS_CALL_TRAMPOLINE_LIST(V)           \
     V(CallRuntime)                           \
@@ -77,22 +80,28 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(JSCallWithArgV)                        \
     V(ConstructorJSCallWithArgV)             \
     V(JSProxyCallInternalWithArgV)           \
-    V(OptimizedCallOptimized)
+    V(OptimizedCallOptimized)                \
+    V(DeoptHandlerAsm)                       \
+    V(JSFunctionReentry)                     \
+    V(JSCallNew)                             \
+    V(JSCallNewWithArgV)
 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(DebugPrint)                              \
     V(DebugPrintInstruction)                   \
+    V(PGOProfiler)                             \
     V(FatalPrint)                              \
     V(InsertOldToNewRSet)                      \
     V(MarkingBarrier)                          \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
+    V(AotFloatMod)                             \
     V(FloatMod)                                \
     V(FindElementWithCache)                    \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
-    V(BigIntEquals)                            \
+    V(BigIntEquals)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -102,6 +111,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
     V(DebugBreak)                         \
+    V(Dump)                               \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \
@@ -111,6 +121,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(NameDictPutIfAbsent)                \
     V(PropertiesSetValue)                 \
     V(TaggedArraySetValue)                \
+    V(CheckAndCopyArray)                  \
     V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
     V(NoticeThroughChainAndRefreshUser)   \
@@ -201,12 +212,14 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(LdGlobalRecord)                     \
     V(GetGlobalOwnProperty)               \
     V(TryLdGlobalByName)                  \
+    V(TryLdGlobalICByName)                \
     V(LoadMiss)                           \
     V(StoreMiss)                          \
     V(TryUpdateGlobalRecord)              \
     V(ThrowReferenceError)                \
     V(StGlobalVar)                        \
     V(LdGlobalVar)                        \
+    V(LdGlobalICVar)                      \
     V(ToNumber)                           \
     V(ToBoolean)                          \
     V(NotEq)                              \
@@ -278,7 +291,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, 
     V(StringEqual)                        \
     V(LdPatchVar)                         \
     V(StPatchVar)                         \
-    V(LdObjByName)
+    V(LdObjByName)                        \
+    V(DeoptHandler)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -324,6 +338,7 @@ public:
 
     static void DebugPrint(int fmtMessageId, ...);
     static void DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, const uint8_t *pc);
+    static void PGOProfiler(uintptr_t argGlue, uintptr_t func);
     static void FatalPrint(int fmtMessageId, ...);
     static void MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
@@ -332,6 +347,7 @@ public:
     static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
     static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
+    static JSTaggedType AotFloatMod(double x, double y);
     static JSTaggedType FloatMod(double x, double y);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
@@ -422,19 +438,21 @@ private:
                                                              const JSHandle<JSTaggedValue> &base,
                                                              const JSHandle<JSTaggedValue> &lexenv,
                                                              const JSHandle<JSTaggedValue> &constpool,
-                                                             uint16_t methodId, uint16_t literalId);
+                                                             uint16_t methodId, uint16_t literalId,
+                                                             const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeCreateClassWithIHClass(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &base,
                                                               const JSHandle<JSTaggedValue> &lexenv,
                                                               const JSHandle<JSTaggedValue> &constpool,
                                                               const uint16_t methodId, uint16_t literalId,
-                                                              const JSHandle<JSHClass> &ihclass);
+                                                              const JSHandle<JSHClass> &ihclass,
+                                                              const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base);
     static inline JSTaggedValue RuntimeSetClassConstructorLength(JSThread *thread, JSTaggedValue ctor,
                                                                  JSTaggedValue length);
-    static inline JSTaggedValue RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<JSFunction> &func,
+    static inline JSTaggedValue RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<Method> &method,
                                                          uint32_t icSlotSize);
     static inline JSTaggedValue RuntimeStOwnByValueWithNameSet(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                                const JSHandle<JSTaggedValue> &key,

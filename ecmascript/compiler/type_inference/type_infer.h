@@ -25,18 +25,31 @@
 namespace panda::ecmascript::kungfu {
 class TypeInfer {
 public:
-    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, const JSHandle<JSTaggedValue> &constantPool,
-              TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId, bool enableLog)
+    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
+              const JSHandle<JSTaggedValue> &constantPool, TSManager *tsManager,
+              LexEnvManager *lexEnvManager, size_t methodId, bool enableLog,
+              const std::string& name)
         : builder_(builder), circuit_(circuit), constantPool_(constantPool), gateAccessor_(circuit),
-          tsManager_(tsManager), lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog) {}
+          tsManager_(tsManager), lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog),
+          methodName_(name)
+    {
+    }
+
     ~TypeInfer() = default;
+
     NO_COPY_SEMANTIC(TypeInfer);
     NO_MOVE_SEMANTIC(TypeInfer);
+
     void TraverseCircuit();
 
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
     }
 
 private:
@@ -56,13 +69,17 @@ private:
     bool InferThrow(GateRef gate);
     bool InferTypeOf(GateRef gate);
     bool InferAdd2(GateRef gate);
+    bool InferSub2(GateRef gate);
+    bool InferMul2(GateRef gate);
+    bool InferDiv2(GateRef gate);
+    bool InferIncDec(GateRef gate);
     bool InferLdObjByIndex(GateRef gate);
     bool InferLdGlobalVar(GateRef gate);
     bool InferReturnUndefined(GateRef gate);
     bool InferReturn(GateRef gate);
     bool InferLdObjByName(GateRef gate);
     bool InferNewObject(GateRef gate);
-    bool SetStGlobalBcType(GateRef gate);
+    bool SetStGlobalBcType(GateRef gate, bool hasIC = false);
     bool InferLdStr(GateRef gate);
     bool InferCallFunction(GateRef gate, bool isDeprecated = false);
     bool InferLdObjByValue(GateRef gate);
@@ -72,6 +89,9 @@ private:
     bool InferTryLdGlobalByName(GateRef gate);
     bool InferLdLexVarDyn(GateRef gate);
     bool InferStLexVarDyn(GateRef gate);
+    bool IsNewLexEnv(EcmaOpcode opcode) const;
+    bool InferGetIterator(GateRef gate);
+    bool InferLoopBeginPhiGate(GateRef gate);
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
@@ -83,7 +103,7 @@ private:
         return tsManager_->GetPropType(type, key);
     }
 
-    inline bool IsObjectOrClass(const GateType &type) const
+    inline bool ShouldInferWithLdObjByValue(const GateType &type) const
     {
         auto flag = tsManager_->IsObjectTypeKind(type) ||
                     tsManager_->IsClassTypeKind(type) ||
@@ -91,11 +111,12 @@ private:
         return flag;
     }
 
-    // tools used for debug type problems, will be enabled by each option:
-    // --compiler-log && --mlist-for-log
-    // --assert-types
-    // --print-any-types
-    void PrintAllGatesTypes() const;
+    inline bool ShouldInferWithLdObjByName(const GateType &type) const
+    {
+        return ShouldInferWithLdObjByValue(type) || tsManager_->IsIteratorInstanceTypeKind(type);
+    }
+
+    void PrintAllByteCodesTypes() const;
     void Verify() const;
     void TypeCheck(GateRef gate) const;
     void FilterAnyTypeGates() const;
@@ -111,7 +132,9 @@ private:
     LexEnvManager *lexEnvManager_ {nullptr};
     size_t methodId_ {0};
     bool enableLog_ {false};
+    std::string methodName_;
     std::map<uint16_t, GateType> stringIdToGateType_;
+    std::map<GateRef, bool> phiState_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H

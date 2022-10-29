@@ -1,10 +1,10 @@
-# 工具链使用<a name="ZH-CN_TOPIC_0000001128256014"></a>
+# 方舟eTS编译器使用<a name="ZH-CN_TOPIC_0000001128256014"></a>
 
-方舟前端工具采用命令行交互方式，支持将JS代码转换为方舟字节码，使其能够在方舟运行时上运行。支持Windows/Linux/Mac平台。
+方舟前端工具采用命令行交互方式，支持将ArkTS代码转换为方舟字节码，使其能够在方舟运行时上运行。支持Windows/Linux/Mac平台。
 
-## JS字节码编译工具概述
+## ArkTS字节码编译工具概述
 
-使用前端工具将JS文件转换为方舟字节码文件。方舟前端工具在linux平台上可通过全量编译或指定编译前端工具链获取。
+使用前端工具将ArkTS文件转换为方舟字节码文件。方舟前端工具在linux平台上可通过全量编译或指定编译前端工具链获取。
 
 构建编译：
 
@@ -15,7 +15,7 @@ $ ./build.sh --product-name hispark_taurus_standard --build-target ark_ts2abc_bu
 安装`node`和`npm`后, 使用前端工具：
 
 ```
-$ cd out/hispark_taurus/clang_x64/ark/ark/build
+$ cd out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/build
 $ npm install
 $ node --expose-gc src/index.js [选项] file.js
 ```

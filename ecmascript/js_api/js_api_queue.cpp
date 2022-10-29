@@ -15,12 +15,15 @@
 
 #include "ecmascript/js_api/js_api_queue.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 void JSAPIQueue::Add(JSThread *thread, const JSHandle<JSAPIQueue> &queue, const JSHandle<JSTaggedValue> &value)
 {
     uint32_t length = queue->GetLength().GetArrayLength();
@@ -104,7 +107,11 @@ JSTaggedValue JSAPIQueue::Get(JSThread *thread, const uint32_t index)
 {
     uint32_t length = GetSize();
     if (index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Get property index out-of-bounds", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"Get property index\" is out of range. It must be >= 0 && <= "
+            << (length - 1) << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
@@ -118,7 +125,11 @@ JSTaggedValue JSAPIQueue::Get(JSThread *thread, const uint32_t index)
 JSTaggedValue JSAPIQueue::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
     if (index < 0 || index >= GetLength().GetArrayLength()) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Set property index out-of-bounds", JSTaggedValue::Exception());
+        std::ostringstream oss;
+        oss << "The value of \"Set property index\" is out of range. It must be >= 0 && <= "
+            << (GetLength().GetArrayLength() - 1) << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
@@ -162,12 +173,21 @@ bool JSAPIQueue::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &ob
 {
     uint32_t index = 0;
     if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Can not obtain attributes of no-number type", false);
+        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        CString errorMsg =
+            "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
+            + ConvertToString(*result);
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     uint32_t length = obj->GetLength().GetArrayLength();
     if (index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetOwnProperty index out-of-bounds", false);
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
     obj->Get(thread, index);
@@ -181,8 +201,13 @@ OperationResult JSAPIQueue::GetProperty(JSThread *thread, const JSHandle<JSAPIQu
     int length = static_cast<int>(obj->GetLength().GetArrayLength());
     int index = key->GetInt();
     if (index < 0 || index >= length) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "GetProperty index out-of-bounds",
-                                     OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        std::ostringstream oss;
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
+            << ". Received value is: " << index;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, OperationResult(thread,
+                                                                        JSTaggedValue::Exception(),
+                                                                        PropertyMetaData(false)));
     }
     
     return OperationResult(thread, obj->Get(thread, index), PropertyMetaData(false));

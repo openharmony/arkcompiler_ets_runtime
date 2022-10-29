@@ -26,7 +26,8 @@ class CommonCall {
 public:
     static constexpr int FRAME_SLOT_SIZE = 8;
     static constexpr int DOUBLE_SLOT_SIZE = 16;
-    static constexpr int SHIFT_OF_FRAMESLOT = 3;
+    static constexpr int TRIPLE_SLOT_SIZE = 24;
+    static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
     enum BuiltinsLeaveFrameArgId : unsigned {CODE_ADDRESS = 0, ENV, ARGC, ARGV};
     static inline int64_t GetStackArgOffSetToFp(unsigned argId)
     {
@@ -56,8 +57,8 @@ public:
     static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot, Register numArgs,
         Register op, Label *stackOverflow);
-    static void PushLeaveFrame(ExtendedAssembler *assembler, Register glue, bool isBuiltin);
-    static void PopLeaveFrame(ExtendedAssembler *assembler, bool isBuiltin);
+    static void PushLeaveFrame(ExtendedAssembler *assembler, Register glue);
+    static void PopLeaveFrame(ExtendedAssembler *assembler);
 };
 
 class OptimizedCall : public CommonCall {
@@ -82,7 +83,19 @@ public:
 
     static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
+    static void DeoptHandlerAsm(ExtendedAssembler *assembler);
+
+    static void JSFunctionReentry(ExtendedAssembler *assembler);
+
+    static void JSCallNew(ExtendedAssembler *assembler);
+
+    static void JSCallNewWithArgV(ExtendedAssembler *assembler);
+
+    static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
+
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew);
 private:
+    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
                             Label *nonCallable, Label *notJSFunction);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp);
@@ -102,7 +115,7 @@ private:
     static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
     static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
-    static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc);
+    static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc, bool isNew = false);
     static void ConstructorJSCallInternal(ExtendedAssembler *assembler, Register jsfunc);
 };
 
@@ -158,6 +171,8 @@ public:
 
     static void CallSetter(ExtendedAssembler *assembler);
 
+    static void CallContainersArgs3(ExtendedAssembler *assembler);
+
 private:
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
 
@@ -166,7 +181,8 @@ private:
 
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
 
-    static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp);
+    static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp,
+                             Register acc = INVALID_REG);
 
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
 
@@ -201,7 +217,7 @@ private:
         Register &contextRegister, Register &pcRegister, Register &operatorRegister);
 
     static void CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,
-        Register &callTarget, Register &method, Register &pc, Register &temp);
+        Register &method, Register &pc, Register &temp);
 
     static void CallNativeEntry(ExtendedAssembler *assembler);
 

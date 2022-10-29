@@ -72,24 +72,27 @@ struct MethodInfo {
 };
 
 struct BCInfo {
-    uint32_t mainMethodIndex;
+    std::vector<uint32_t> mainMethodIndexes {};
+    std::vector<CString> recordNames {};
     std::vector<MethodPcInfo> methodPcInfos {};
     std::unordered_map<uint32_t, MethodInfo> methodList {};
 
     template <class Callback>
     void EnumerateBCInfo(const Callback &cb)
     {
-        std::queue<uint32_t> methodCompiledOrder;
-        methodCompiledOrder.push(mainMethodIndex);
-        while (!methodCompiledOrder.empty()) {
-            auto compilingMethod = methodCompiledOrder.front();
-            methodCompiledOrder.pop();
-            auto &methodInfo = methodList.at(compilingMethod);
-            auto &methodPcInfo = methodPcInfos[methodInfo.methodPcInfoIndex];
-            cb(compilingMethod, methodPcInfo, methodInfo.methodInfoIndex);
-            auto &innerMethods = methodInfo.innerMethods;
-            for (auto it : innerMethods) {
-                methodCompiledOrder.push(it);
+        for (uint32_t i = 0; i < mainMethodIndexes.size(); i++) {
+            std::queue<uint32_t> methodCompiledOrder;
+            methodCompiledOrder.push(mainMethodIndexes[i]);
+            while (!methodCompiledOrder.empty()) {
+                auto compilingMethod = methodCompiledOrder.front();
+                methodCompiledOrder.pop();
+                auto &methodInfo = methodList.at(compilingMethod);
+                auto &methodPcInfo = methodPcInfos[methodInfo.methodPcInfoIndex];
+                cb(recordNames[i], compilingMethod, methodPcInfo, methodInfo.methodInfoIndex);
+                auto &innerMethods = methodInfo.innerMethods;
+                for (auto it : innerMethods) {
+                    methodCompiledOrder.push(it);
+                }
             }
         }
     }
@@ -111,10 +114,9 @@ private:
 
 class BytecodeInfoCollector {
 public:
-    explicit BytecodeInfoCollector(JSPandaFile *jsPandaFile, std::string entry)
-        : jsPandaFile_(jsPandaFile)
+    explicit BytecodeInfoCollector(JSPandaFile *jsPandaFile) : jsPandaFile_(jsPandaFile)
     {
-        ProcessClasses(GetEntryFunName(entry));
+        ProcessClasses();
     }
     ~BytecodeInfoCollector() = default;
     NO_COPY_SEMANTIC(BytecodeInfoCollector);
@@ -137,8 +139,9 @@ private:
     }
 
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
-    void ProcessClasses(const CString &methodName);
-    void CollectMethodPcs(const uint32_t insSz, const uint8_t *insArr, const MethodLiteral *method);
+    void ProcessClasses();
+    void CollectMethodPcs(const uint32_t insSz, const uint8_t *insArr, const MethodLiteral *method,
+                          const CString &entryPoint = "func_main_0");
     void CollectMethodPcsFromNewBc(const uint32_t insSz, const uint8_t *insArr, const MethodLiteral *method);
     void SetMethodPcInfoIndex(uint32_t methodOffset, size_t index);
     void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset);
@@ -159,7 +162,7 @@ private:
     static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);
 
     // need to remove in the future
-    void TranslateBCIns(const OldBytecodeInst &bcIns, const MethodLiteral *method);
+    void TranslateBCIns(const OldBytecodeInst &bcIns, const MethodLiteral *method, const CString &entryPoint);
 
     // use for new ISA
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);

@@ -448,7 +448,7 @@ declare class Set extends Object {
 
     constructor(iterable?: Iterable | null): Set;
 
-    add(value: any): this;
+    add(value: any): Set;
 
     clear(): void;
 
@@ -472,7 +472,7 @@ declare class WeakSet extends Object {
 
     constructor(iterable: Iterable): WeakSet;
 
-    add(value: any): this;
+    add(value: any): WeakSet;
 
     delete(value: any): boolean;
 
@@ -490,13 +490,13 @@ declare class Array extends Object {
 
     concat(...items: ConcatArray[]): any[];
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Array;
 
     entries(): IterableIterator;
 
     every(predicate: (value: any, index: number, array: any[]) => unknown, thisArg?: any): boolean;
 
-    fill(value: any, start?: number, end?: number): this;
+    fill(value: any, start?: number, end?: number): Array;
 
     filter(predicate: (value: any, index: number, array: any[]) => unknown, thisArg?: any): any[];
 
@@ -532,7 +532,7 @@ declare class Array extends Object {
 
     some(predicate: (value: any, index: number, array: any[]) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: any, b: any) => number): this;
+    sort(compareFn?: (a: any, b: any) => number): Array;
 
     splice(start: number, deleteCount: number, ...items: any[]): any[];
 
@@ -726,7 +726,7 @@ declare class WeakRef extends Object {
     // 1. [Symbol.toStringTag]: "WeakRef";
 }
 
-declare class Uint8ClampedArray extends Object { 
+declare class Uint8ClampedArray extends Object {
     BYTES_PER_ELEMENT: number;
 
     buffer: ArrayBufferLike;
@@ -757,11 +757,11 @@ declare class Uint8ClampedArray extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Uint8ClampedArray;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Uint8ClampedArray;
 
     every(predicate: (value: number, index: number, array: Uint8ClampedArray) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Uint8ClampedArray;
 
     filter(predicate: (value: number, index: number, array: Uint8ClampedArray) => any, thisArg?: any): Uint8ClampedArray;
 
@@ -791,7 +791,7 @@ declare class Uint8ClampedArray extends Object {
 
     some(predicate: (value: number, index: number, array: Uint8ClampedArray) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Uint8ClampedArray;
 
     subarray(begin?: number, end?: number): Uint8ClampedArray;
 
@@ -814,7 +814,7 @@ declare class Uint8ClampedArray extends Object {
     //3.[Symbol.toStringTag]: "Uint8ClampedArray";
 }
 
-declare class Uint8Array extends Object { 
+declare class Uint8Array extends Object {
     BYTES_PER_ELEMENT: number;
 
     buffer: ArrayBufferLike;
@@ -845,11 +845,11 @@ declare class Uint8Array extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Uint8Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Uint8Array;
 
     every(predicate: (value: number, index: number, array: Uint8Array) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Uint8Array;
 
     filter(predicate: (value: number, index: number, array: Uint8Array) => any, thisArg?: any): Uint8Array;
 
@@ -879,7 +879,7 @@ declare class Uint8Array extends Object {
 
     some(predicate: (value: number, index: number, array: Uint8Array) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Uint8Array;
 
     subarray(begin?: number, end?: number): Uint8Array;
 
@@ -933,11 +933,11 @@ declare class Int8Array extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Int8Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Int8Array;
 
     every(predicate: (value: number, index: number, array: Int8Array) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Int8Array;
 
     filter(predicate: (value: number, index: number, array: Int8Array) => any, thisArg?: any): Int8Array;
 
@@ -967,7 +967,7 @@ declare class Int8Array extends Object {
 
     some(predicate: (value: number, index: number, array: Int8Array) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Int8Array;
 
     subarray(begin?: number, end?: number): Int8Array;
 
@@ -1021,11 +1021,11 @@ declare class Uint16Array extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Uint16Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Uint16Array;
 
     every(predicate: (value: number, index: number, array: Uint16Array) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Uint16Array;
 
     filter(predicate: (value: number, index: number, array: Uint16Array) => any, thisArg?: any): Uint16Array;
 
@@ -1055,7 +1055,7 @@ declare class Uint16Array extends Object {
 
     some(predicate: (value: number, index: number, array: Uint16Array) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Uint16Array;
 
     subarray(begin?: number, end?: number): Uint16Array;
 
@@ -1109,11 +1109,11 @@ declare class Uint32Array extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Uint32Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Uint32Array;
 
     every(predicate: (value: number, index: number, array: Uint32Array) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Uint32Array;
 
     filter(predicate: (value: number, index: number, array: Uint32Array) => any, thisArg?: any): Uint32Array;
 
@@ -1143,7 +1143,7 @@ declare class Uint32Array extends Object {
 
     some(predicate: (value: number, index: number, array: Uint32Array) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Uint32Array;
 
     subarray(begin?: number, end?: number): Uint32Array;
 
@@ -1197,11 +1197,11 @@ declare class Int16Array extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Int16Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Int16Array;
 
     every(predicate: (value: number, index: number, array: Int16Array) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Int16Array;
 
     filter(predicate: (value: number, index: number, array: Int16Array) => any, thisArg?: any): Int16Array;
 
@@ -1231,7 +1231,7 @@ declare class Int16Array extends Object {
 
     some(predicate: (value: number, index: number, array: Int16Array) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Int16Array;
 
     subarray(begin?: number, end?: number): Int16Array;
 
@@ -1285,11 +1285,11 @@ declare class Int32Array extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Int32Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Int32Array;
 
     every(predicate: (value: number, index: number, array: Int32Array) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Int32Array;
 
     filter(predicate: (value: number, index: number, array: Int32Array) => any, thisArg?: any): Int32Array;
 
@@ -1319,7 +1319,7 @@ declare class Int32Array extends Object {
 
     some(predicate: (value: number, index: number, array: Int32Array) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Int32Array;
 
     subarray(begin?: number, end?: number): Int32Array;
 
@@ -1373,11 +1373,11 @@ declare class Float32Array extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Float32Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Float32Array;
 
     every(predicate: (value: number, index: number, array: Float32Array) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Float32Array;
 
     filter(predicate: (value: number, index: number, array: Float32Array) => any, thisArg?: any): Float32Array;
 
@@ -1407,7 +1407,7 @@ declare class Float32Array extends Object {
 
     some(predicate: (value: number, index: number, array: Float32Array) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Float32Array;
 
     subarray(begin?: number, end?: number): Float32Array;
 
@@ -1461,11 +1461,11 @@ declare class Float64Array extends Object {
 
     static from(arrayLike: Iterable<number>, mapfn?: (v: number, k: number) => number, thisArg?: any): Float64Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): Float64Array;
 
     every(predicate: (value: number, index: number, array: Float64Array) => unknown, thisArg?: any): boolean;
 
-    fill(value: number, start?: number, end?: number): this;
+    fill(value: number, start?: number, end?: number): Float64Array;
 
     filter(predicate: (value: number, index: number, array: Float64Array) => any, thisArg?: any): Float64Array;
 
@@ -1495,7 +1495,7 @@ declare class Float64Array extends Object {
 
     some(predicate: (value: number, index: number, array: Float64Array) => unknown, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: number, b: number) => number): this;
+    sort(compareFn?: (a: number, b: number) => number): Float64Array;
 
     subarray(begin?: number, end?: number): Float64Array;
 
@@ -1543,13 +1543,13 @@ declare class BigInt64Array extends Object {
 
     static from<U>(arrayLike: ArrayLike<U>, mapfn: (v: U, k: number) => bigint, thisArg?: any): BigInt64Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): BigInt64Array;
 
     entries(): IterableIterator<[number, bigint]>;
 
     every(predicate: (value: bigint, index: number, array: BigInt64Array) => boolean, thisArg?: any): boolean;
 
-    fill(value: bigint, start?: number, end?: number): this;
+    fill(value: bigint, start?: number, end?: number): BigInt64Array;
 
     filter(predicate: (value: bigint, index: number, array: BigInt64Array) => any, thisArg?: any): BigInt64Array;
 
@@ -1579,7 +1579,7 @@ declare class BigInt64Array extends Object {
 
     reduceRight<U>(callbackfn: (previousValue: U, currentValue: bigint, currentIndex: number, array: BigInt64Array) => U, initialValue: U): U;
 
-    reverse(): this;
+    reverse(): BigInt64Array;
 
     set(array: ArrayLike<bigint>, offset?: number): void;
 
@@ -1587,7 +1587,7 @@ declare class BigInt64Array extends Object {
 
     some(predicate: (value: bigint, index: number, array: BigInt64Array) => boolean, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: bigint, b: bigint) => number | bigint): this;
+    sort(compareFn?: (a: bigint, b: bigint) => number | bigint): BigInt64Array;
 
     subarray(begin?: number, end?: number): BigInt64Array;
 
@@ -1629,13 +1629,13 @@ declare class BigUint64Array extends Object {
 
     static from<U>(arrayLike: ArrayLike<U>, mapfn: (v: U, k: number) => bigint, thisArg?: any): BigUint64Array;
 
-    copyWithin(target: number, start: number, end?: number): this;
+    copyWithin(target: number, start: number, end?: number): BigUint64Array;
 
     entries(): IterableIterator<[number, bigint]>;
 
     every(predicate: (value: bigint, index: number, array: BigUint64Array) => boolean, thisArg?: any): boolean;
 
-    fill(value: bigint, start?: number, end?: number): this;
+    fill(value: bigint, start?: number, end?: number): BigUint64Array;
 
     filter(predicate: (value: bigint, index: number, array: BigUint64Array) => any, thisArg?: any): BigUint64Array;
 
@@ -1662,10 +1662,10 @@ declare class BigUint64Array extends Object {
     reduce<U>(callbackfn: (previousValue: U, currentValue: bigint, currentIndex: number, array: BigUint64Array) => U, initialValue: U): U;
 
     reduceRight(callbackfn: (previousValue: bigint, currentValue: bigint, currentIndex: number, array: BigUint64Array) => bigint): bigint;
-    
+
     reduceRight<U>(callbackfn: (previousValue: U, currentValue: bigint, currentIndex: number, array: BigUint64Array) => U, initialValue: U): U;
 
-    reverse(): this;
+    reverse(): BigUint64Array;
 
     set(array: ArrayLike<bigint>, offset?: number): void;
 
@@ -1673,7 +1673,7 @@ declare class BigUint64Array extends Object {
 
     some(predicate: (value: bigint, index: number, array: BigUint64Array) => boolean, thisArg?: any): boolean;
 
-    sort(compareFn?: (a: bigint, b: bigint) => number | bigint): this;
+    sort(compareFn?: (a: bigint, b: bigint) => number | bigint): BigUint64Array;
 
     subarray(begin?: number, end?: number): BigUint64Array;
 
@@ -1778,7 +1778,7 @@ declare class Map extends Object {
     prototype: Map;
 
     size: number;
-    
+
     constructor(): Map;
 
     constructor(entries?: readonly (readonly [any, any])[] | null): Map;
@@ -1795,7 +1795,7 @@ declare class Map extends Object {
 
     has(key: any): boolean;
 
-    set(key: any, value: any): this;
+    set(key: any, value: any): Map;
 
     entries(): IterableIterator<[any, any]>;
 

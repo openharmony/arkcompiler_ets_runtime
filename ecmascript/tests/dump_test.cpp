@@ -432,9 +432,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::METHOD: {
 #ifdef PANDA_TARGET_64
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 6U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 7U);
 #else
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 5U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), Method::SIZE, 6U);
 #endif
                 break;
             }
@@ -443,7 +443,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_FUNCTION: {
-                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 5U);
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSFunction::SIZE, 4U);
                 JSHandle<JSTaggedValue> jsFunc = globalEnv->GetFunctionFunction();
                 DUMP_FOR_HANDLE(jsFunc)
                 break;
@@ -765,12 +765,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(globalObject)
                 break;
             }
-            case JSType::GLOBAL_PATCH: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, GlobalPatch::SIZE, 0U);
-                JSHandle<JSTaggedValue> globalPatch = globalEnv->GetGlobalPatch();
-                DUMP_FOR_HANDLE(globalPatch)
-                break;
-            }
             case JSType::JS_PROXY: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSProxy::SIZE, 3U);
                 JSHandle<JSTaggedValue> emptyObj(thread, NewJSObject(thread, factory, globalEnv).GetTaggedValue());
@@ -793,7 +787,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::TAGGED_ARRAY:
-            case JSType::LEXICAL_ENV: {
+            case JSType::LEXICAL_ENV:
+            case JSType::AOT_LITERAL_INFO: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray)
                 break;
@@ -811,6 +806,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::BYTE_ARRAY: {
                 JSHandle<ByteArray> byteArray = factory->NewByteArray(4, 8);
                 DUMP_FOR_HANDLE(byteArray)
+                break;
+            }
+            case JSType::COW_TAGGED_ARRAY: {
+                JSHandle<COWTaggedArray> dict = factory->NewCOWTaggedArray(4);
+                DUMP_FOR_HANDLE(dict)
                 break;
             }
             case JSType::GLOBAL_ENV: {
@@ -948,7 +948,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::CLASS_INFO_EXTRACTOR: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 10U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassInfoExtractor::SIZE, 8U);
                 JSHandle<ClassInfoExtractor> classInfoExtractor = factory->NewClassInfoExtractor(
                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
                 DUMP_FOR_HANDLE(classInfoExtractor)
@@ -1002,6 +1002,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(arrayType)
                 break;
             }
+            case JSType::TS_ITERATOR_INSTANCE_TYPE: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSIteratorInstanceType::SIZE, 2U);
+                JSHandle<TSIteratorInstanceType> iteratorInstanceType = factory->NewTSIteratorInstanceType();
+                DUMP_FOR_HANDLE(iteratorInstanceType)
+                break;
+            }
             case JSType::JS_API_ARRAY_LIST: {
                 // 1 : 1 dump fileds number
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIArrayList::SIZE, 1U);
@@ -1038,7 +1044,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_HASHMAP_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashMapIterator::SIZE, 3U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashMapIterator::SIZE, 4U);
                 JSHandle<JSAPIHashMap> jsHashMap = NewJSAPIHashMap(thread, factory);
                 JSHandle<JSAPIHashMapIterator> jsHashMapIter =
                     factory->NewJSAPIHashMapIterator(jsHashMap, IterationKind::KEY);
@@ -1046,7 +1052,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_HASHSET_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 4U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 5U);
                 JSHandle<JSAPIHashSet> jsHashSet = NewJSAPIHashSet(thread, factory);
                 JSHandle<JSAPIHashSetIterator> jsHashSetIter =
                     factory->NewJSAPIHashSetIterator(jsHashSet, IterationKind::KEY);
@@ -1206,7 +1212,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::JS_API_LINKED_LIST_ITERATOR: {
                 // 2 : 2 dump fileds number
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIListIterator::SIZE, 2U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPILinkedListIterator::SIZE, 2U);
                 JSHandle<JSAPILinkedList> jsAPILinkedList = NewJSAPILinkedList(thread, factory);
                 JSHandle<JSAPILinkedListIterator> jsAPILinkedListIter =
                     factory->NewJSAPILinkedListIterator(jsAPILinkedList);

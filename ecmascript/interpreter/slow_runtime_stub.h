@@ -150,7 +150,7 @@ public:
     static JSTaggedValue LdSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue thisFunc);
     static JSTaggedValue StSuperByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue key, JSTaggedValue value,
                                         JSTaggedValue thisFunc);
-    static JSTaggedValue NotifyInlineCache(JSThread *thread, JSFunction *func, Method *method);
+    static JSTaggedValue NotifyInlineCache(JSThread *thread, Method *method);
     static JSTaggedValue ThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);
 
     static JSTaggedValue ResolveClass(JSThread *thread, JSTaggedValue ctor, TaggedArray *literal, JSTaggedValue base,
@@ -159,7 +159,7 @@ public:
                                                 JSTaggedValue lexenv);
     static JSTaggedValue CreateClassWithBuffer(JSThread *thread, JSTaggedValue base,
                                                JSTaggedValue lexenv, JSTaggedValue constpool,
-                                               uint16_t methodId, uint16_t literalId);
+                                               uint16_t methodId, uint16_t literalId, JSTaggedValue module);
     static JSTaggedValue SetClassConstructorLength(JSThread *thread, JSTaggedValue ctor, JSTaggedValue length);
     static JSTaggedValue GetModuleNamespace(JSThread *thread, JSTaggedValue localName);
     static JSTaggedValue GetModuleNamespace(JSThread *thread, int32_t index);

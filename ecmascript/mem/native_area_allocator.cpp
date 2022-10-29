@@ -15,7 +15,7 @@
 
 #include "ecmascript/mem/native_area_allocator.h"
 
-#ifndef PANDA_TARGET_MACOS
+#if !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <malloc.h>
 #else
 #include <malloc/malloc.h>
@@ -123,7 +123,7 @@ void NativeAreaAllocator::FreeBuffer(void *mem)
     }
 #if defined(PANDA_TARGET_WINDOWS)
     DecreaseNativeMemoryUsage(_msize(mem));
-#elif defined(PANDA_TARGET_MACOS)
+#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
     DecreaseNativeMemoryUsage(malloc_size(mem));
 #else
     DecreaseNativeMemoryUsage(malloc_usable_size(mem));

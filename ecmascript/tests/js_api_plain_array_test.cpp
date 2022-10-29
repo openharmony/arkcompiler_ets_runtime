@@ -247,7 +247,7 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_RemvoeAnrRemvoeAtAndSetValueAtAndGetValueAt)
     value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
     array->SetValueAt(thread, JSTaggedValue(3), value.GetTaggedValue()); // 3 means the value
     int32_t lvalue = 3; // 3 means the value
-    taggedValue = array->GetValueAt(lvalue);
+    taggedValue = array->GetValueAt(thread, lvalue);
     EXPECT_TRUE(JSTaggedValue::Equal(thread, value, JSHandle<JSTaggedValue>(thread, taggedValue)));
 }
 

@@ -26,6 +26,7 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/interpreter/frame_handler.h"
@@ -77,6 +78,12 @@ public:
     {
         return name_;
     }
+
+    void SetName(CString *name)
+    {
+        name_ = name;
+    }
+
     NodeType GetType() const
     {
         return type_;
@@ -365,8 +372,9 @@ public:
     bool FinishSnapshot();
     void PushHeapStat(Stream* stream);
     int AddTraceNode(int sequenceId, int size);
-    void AddMethodInfo(Method *method, const FrameHandler &frameHandler, int sequenceId);
-    void AddTraceNodeId(Method *method);
+    void AddMethodInfo(MethodLiteral *methodLiteral, const FrameHandler &frameHandler,
+                       const JSPandaFile *jsPandaFile, int sequenceId);
+    void AddTraceNodeId(MethodLiteral *methodLiteral);
 
     const CVector<TimeStamp> &GetTimeStamps() const
     {
@@ -399,7 +407,7 @@ public:
     {
         return &nodes_;
     }
-    const CVector<Edge *> *GetEdges() const
+    const CList<Edge *> *GetEdges() const
     {
         return &edges_;
     }
@@ -462,7 +470,7 @@ private:
 
     StringHashMap stringTable_;
     CList<Node *> nodes_ {};
-    CVector<Edge *> edges_ {};
+    CList<Edge *> edges_ {};
     CVector<TimeStamp> timeStamps_ {};
     std::atomic_int sequenceId_ {1};  // 1 Reversed for SyntheticRoot
     int nodeCount_ {0};
@@ -476,10 +484,10 @@ private:
     Node* privateStringNode_ {nullptr};
     bool trackAllocations_ {false};
     CVector<FunctionInfo> traceInfoStack_ {};
-    CMap<Method *, struct FunctionInfo> stackInfo_;
+    CMap<MethodLiteral *, struct FunctionInfo> stackInfo_;
     CMap<std::string, int> scriptIdMap_;
     TraceTree traceTree_;
-    CMap<Method *, uint32_t> methodToTraceNodeId_;
+    CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
 };
 

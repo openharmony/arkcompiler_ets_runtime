@@ -33,30 +33,39 @@ public:
         bool hasParsedLiteralConstPool {false};
         int moduleRecordIdx {-1};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
+        bool hasTSTypes {false};
+        uint32_t typeSummaryOffset {0};
+
+        bool HasTSTypes () const
+        {
+            return hasTSTypes;
+        }
+
+        uint32_t GetTypeSummaryOffset() const
+        {
+            return typeSummaryOffset;
+        }
     };
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
     static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
     static constexpr char PATCH_FUNCTION_NAME_0[] = "patch_main_0";
     static constexpr char PATCH_FUNCTION_NAME_1[] = "patch_main_1";
-    static constexpr char PATCH_RECORD_PREFIX[] = "Patch.";
 
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
-    static constexpr char TS_TYPES_CLASS[] = "L_ESTypeInfoRecord;";
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char TYPE_FLAG[] = "typeFlag";
-    static constexpr char TYPE_SUMMARY_INDEX[] = "typeSummaryIndex";
+    static constexpr char TYPE_SUMMARY_OFFSET[] = "typeSummaryOffset";
 
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
     static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
-    static constexpr char MERGE_ABC_PATH[] = "/data/storage/el1/bundle/entry/ets/modules.abc";
     static constexpr char NODE_MODULES[] = "node_modules";
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
     static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
 
-    JSPandaFile(const panda_file::File *pf, const CString &descriptor, bool isPatch);
+    JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
 
     const CString &GetJSPandaFileDesc() const
@@ -67,6 +76,11 @@ public:
     const panda_file::File *GetPandaFile() const
     {
         return pf_;
+    }
+
+    std::string GetFileName() const
+    {
+        return pf_->GetFilename();
     }
 
     MethodLiteral* GetMethodLiterals() const
@@ -114,7 +128,7 @@ public:
         if (info != jsRecordInfo_.end()) {
             return &info->second.constpoolMap;
         }
-        LOG_FULL(FATAL) << "find entryPoint fail " << recordName;
+        LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
         UNREACHABLE();
     }
 
@@ -167,11 +181,6 @@ public:
         return isBundlePack_;
     }
 
-    bool HasTSTypes() const
-    {
-        return hasTSTypes_;
-    }
-
     void SetLoadedAOTStatus(bool status)
     {
         isLoadedAOT_ = status;
@@ -180,11 +189,6 @@ public:
     bool IsLoadedAOT() const
     {
         return isLoadedAOT_;
-    }
-
-    uint32_t GetTypeSummaryIndex() const
-    {
-        return typeSummaryIndex_;
     }
 
     uint32_t GetFileUniqId() const
@@ -206,6 +210,26 @@ public:
         return false;
     }
 
+    JSRecordInfo FindRecordInfo(const CString &recordName) const
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info == jsRecordInfo_.end()) {
+            LOG_FULL(FATAL) << "find recordName failed: " << recordName;
+            UNREACHABLE();
+        }
+        return info->second;
+    }
+
+    void UpdateHasParsedLiteralConstpool(const CString &recordName)
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info == jsRecordInfo_.end()) {
+            LOG_FULL(FATAL) << "find recordName failed: " << recordName;
+            UNREACHABLE();
+        }
+        info->second.hasParsedLiteralConstPool = true;
+    }
+
     // note : it only uses in TDD
     void InsertJSRecordInfo(const CString &recordName)
     {
@@ -213,46 +237,62 @@ public:
         jsRecordInfo_.insert({recordName, info});
     }
 
-    bool HasParsedLiteralConstPool(const CString &recordName) const
-    {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info == jsRecordInfo_.end()) {
-            LOG_FULL(FATAL) << "find recordName fail " << recordName;
-            UNREACHABLE();
-        }
-        return info->second.hasParsedLiteralConstPool;
-    }
-
-    void UpdateJSRecordInfo(const CString &recordName)
-    {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info == jsRecordInfo_.end()) {
-            LOG_FULL(FATAL) << "find recordName fail " << recordName;
-            UNREACHABLE();
-        }
-        info->second.hasParsedLiteralConstPool = true;
-    }
-
     const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
     }
+
     CString ParseEntryPoint(const CString &recordName) const
     {
-        CString record = recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
-        if (isPatch_) {
-            record = PATCH_RECORD_PREFIX + record;
-        }
-        return record;
+        return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
     }
 
-    void checkIsBundlePack();
+    void CheckIsBundlePack();
 
-    CString FindrecordName(const CString &record) const;
+    CString FindEntryPoint(const CString &record) const;
 
-    static std::string ParseOhmUrl(std::string fileName);
+    static CString ParseOhmUrl(const CString &fileName);
     // For local merge abc, get record name from file name.
-    static std::string PUBLIC_API ParseRecordName(const std::string &fileName);
+    static CString PUBLIC_API ParseRecordName(const CString &fileName);
+
+    bool IsSystemLib() const
+    {
+        return false;
+    }
+
+    uint32_t GetAOTFileInfoIndex() const
+    {
+        return anFileInfoIndex_;
+    }
+
+    // If the system library is loaded, aotFileInfos has two elements
+    // 0: system library, 1: application
+    // Note: There is no system library currently, so the anFileInfoIndex_ is 0
+    void SetAOTFileInfoIndex()
+    {
+        if (IsSystemLib()) {
+            anFileInfoIndex_ = 0;
+        } else {
+            anFileInfoIndex_ = 1;
+        }
+    }
+
+    static bool IsEntryOrPatch(const CString &name)
+    {
+        return (name == PATCH_FUNCTION_NAME_0) || (name == ENTRY_FUNCTION_NAME);
+    }
+
+    bool HasTSTypes(const CString &recordName) const
+    {
+        JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
+        return recordInfo.HasTSTypes();
+    }
+
+    uint32_t GetTypeSummaryOffset(const CString &recordName) const
+    {
+        JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
+        return recordInfo.GetTypeSummaryOffset();
+    }
 
 private:
     void InitializeUnMergedPF();
@@ -268,11 +308,9 @@ private:
     MethodLiteral *methodLiterals_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     CString desc_;
-    bool hasTSTypes_ {false};
     bool isLoadedAOT_ {false};
-    uint32_t typeSummaryIndex_ {0};
+    uint32_t anFileInfoIndex_ {0};
     bool isNewVersion_ {false};
-    bool isPatch_ {false};
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle

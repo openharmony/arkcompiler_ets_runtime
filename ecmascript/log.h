@@ -101,6 +101,7 @@ public:
 private:
     static void SetLogLevelFromString(const std::string& level);
     static void SetLogComponentFromString(const std::vector<std::string>& components);
+    static int32_t PrintLogger(int32_t, int32_t level, const char *, const char *, const char *message);
 
     static Level level_;
     static ComponentMark components_;
@@ -143,12 +144,12 @@ private:
     std::ostringstream stream_;
 };
 #elif defined(PANDA_TARGET_ANDROID)  // PANDA_TARGET_ANDROID
-template<Level level, Component component>
+template<Level level>
 class PUBLIC_API AndroidLog {
 public:
     AndroidLog()
     {
-        std::string str = Log::GetComponentStr(component);
+        std::string str = "[default] ";
         stream_ << str;
     }
     ~AndroidLog();
@@ -174,7 +175,15 @@ public:
     }
     ~StdLog()
     {
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
         std::cerr << stream_.str().c_str() << std::endl;
+#else
+        if constexpr (level == FATAL || level == ERROR) {
+            std::cerr << stream_.str().c_str() << std::endl;
+        } else {
+            std::cout << stream_.str().c_str() << std::endl;
+        }
+#endif
         if constexpr (level == FATAL) {
             std::abort();
         }
@@ -196,7 +205,7 @@ private:
 #define ARK_LOG(level, component) panda::ecmascript::LOGGABLE_##level && \
                                   panda::ecmascript::HiLog<LOG_##level, (component)>()
 #elif defined(PANDA_TARGET_ANDROID)
-#define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level), (component)>()
+#define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level)>()
 #else
 #define ARK_LOG(level, component) panda::ecmascript::Log::LogIsLoggable(level, component) && \
                                   panda::ecmascript::StdLog<(level), (component)>()

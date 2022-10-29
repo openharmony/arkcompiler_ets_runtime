@@ -248,12 +248,12 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
                 // undefind
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
                 auto weakNode = reinterpret_cast<EcmaGlobalStorage::WeakNode *>(node);
-                auto secondPassCallback = weakNode->GetSecondPassCallback();
-                if (secondPassCallback) {
-                    weakNodeSecondPassCallbacks_.push_back(std::make_pair(secondPassCallback,
-                                                                          weakNode->GetReference()));
+                auto nativeFinalizeCallback = weakNode->GetNativeFinalizeCallback();
+                if (nativeFinalizeCallback) {
+                    weakNodeNativeFinalizeCallbacks_.push_back(std::make_pair(nativeFinalizeCallback,
+                                                                              weakNode->GetReference()));
                 }
-                weakNode->CallFirstPassCallback();
+                weakNode->CallFreeGlobalCallback();
             } else if (fwd != object) {
                 // update
                 node->SetObject(JSTaggedValue(fwd).GetRawData());
@@ -405,7 +405,7 @@ void JSThread::CollectBCOffsetInfo()
 // static
 size_t JSThread::GetAsmStackLimit()
 {
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     // js stack limit
     size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
     pthread_attr_t attr;
@@ -432,9 +432,10 @@ size_t JSThread::GetAsmStackLimit()
     }
 
     uintptr_t threadStackStart = threadStackLimit + size;
-    LOG_ECMA(INFO) << "Current thread stack start:" << threadStackStart
-                   << " Used stack before js stack start:" << (threadStackStart - GetCurrentStackPosition())
-                   << " Current thread asm stack limit:" << result;
+    LOG_INTERPRETER(INFO) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
+    LOG_INTERPRETER(INFO) << "Used stack before js stack start: "
+                          << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
+    LOG_INTERPRETER(INFO) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
     ret = pthread_attr_destroy(&attr);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Destroy current thread attr failed";

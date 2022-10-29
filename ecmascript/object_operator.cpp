@@ -333,9 +333,6 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
         JSTaggedValue value;
         if (attr.IsInlinedProps()) {
             value = obj->GetPropertyInlinedProps(entry);
-            if (value.IsHole()) {  // properties from ts type are all inlined
-                return;
-            }
         } else {
             entry -= static_cast<int>(jshclass->GetInlinedProperties());
             value = array->Get(entry);
@@ -409,6 +406,12 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
     if (IsElement()) {
         TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
         if (!elements->IsDictionaryMode()) {
+            if (receiver.GetTaggedValue().IsJSCOWArray()) {
+                JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
+                TaggedArray::Cast(JSHandle<JSArray>(receiver)->GetElements())->Set(thread_,
+                    GetIndex(), value.GetTaggedValue());
+                return true;
+            }
             elements->Set(thread_, GetIndex(), value.GetTaggedValue());
             return true;
         }
@@ -439,6 +442,12 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
         if (attr.IsInlinedProps()) {
             receiver->SetPropertyInlinedProps(thread_, GetIndex(), value.GetTaggedValue());
         } else {
+            if (receiver.GetTaggedValue().IsJSCOWArray()) {
+                JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
+                TaggedArray::Cast(JSHandle<JSArray>(receiver)->GetProperties())->Set(thread_,
+                    GetIndex(), value.GetTaggedValue());
+                return true;
+            }
             properties->Set(thread_, GetIndex(), value.GetTaggedValue());
         }
     } else {

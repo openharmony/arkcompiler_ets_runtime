@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/circuit_builder.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -75,6 +76,12 @@ void GateAccessor::Print(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     gatePtr->Print();
+}
+
+void GateAccessor::ShortPrint(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    gatePtr->ShortPrint();
 }
 
 GateId GateAccessor::GetId(GateRef gate) const
@@ -210,14 +217,19 @@ bool GateAccessor::IsState(GateRef gate) const
     return GetOpCode(gate).IsState();
 }
 
+bool GateAccessor::IsConstant(GateRef gate) const
+{
+    return GetOpCode(gate).IsConstant();
+}
+
+bool GateAccessor::IsTypedOperator(GateRef gate) const
+{
+    return GetOpCode(gate).IsTypedOperator();
+}
+
 bool GateAccessor::IsSchedulable(GateRef gate) const
 {
     return GetOpCode(gate).IsSchedulable();
-}
-
-bool GateAccessor::IsTypedGate(GateRef gate) const
-{
-    return GetOpCode(gate).IsTypedGate();
 }
 
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
@@ -300,6 +312,12 @@ void GateAccessor::DecreaseIn(const UseIterator &useIt)
 {
     size_t idx = useIt.GetIndex();
     circuit_->DecreaseIn(*useIt, idx);
+}
+
+
+void GateAccessor::DecreaseIn(GateRef gate, size_t index)
+{
+    circuit_->DecreaseIn(gate, index);
 }
 
 void GateAccessor::NewIn(GateRef gate, size_t idx, GateRef in)
@@ -427,5 +445,48 @@ bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
     size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
     size_t valueEndIndex = valueStartIndex + GetInValueCount(gate);
     return (index >= valueStartIndex && index < valueEndIndex);
+}
+
+void GateAccessor::DeleteGuardAndFrameState(GateRef gate)
+{
+    GateRef guard = GetDep(gate);
+    if (GetOpCode(guard) == OpCode::GUARD) {
+        GateRef dep = GetDep(guard);
+        ReplaceDependIn(gate, dep);
+        GateRef frameState = GetValueIn(guard, 1);
+        DeleteGate(frameState);
+        DeleteGate(guard);
+    }
+}
+
+void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value)
+{
+    auto uses = Uses(gate);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (IsStateIn(useIt)) {
+            useIt = ReplaceIn(useIt, state);
+        } else if (IsDependIn(useIt)) {
+            useIt = ReplaceIn(useIt, depend);
+        } else if (IsValueIn(useIt)) {
+            useIt = ReplaceIn(useIt, value);
+        } else {
+            UNREACHABLE();
+        }
+    }
+    DeleteGate(gate);
+}
+
+GateType GateAccessor::GetLeftType(GateRef gate) const
+{
+    auto operandTypes = GetBitField(gate);
+    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
+    return GateType(static_cast<uint32_t>(temp));
+}
+
+GateType GateAccessor::GetRightType(GateRef gate) const
+{
+    auto operandTypes = GetBitField(gate);
+    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
+    return GateType(static_cast<uint32_t>(operandTypes ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS)));
 }
 }  // namespace panda::ecmascript::kungfu

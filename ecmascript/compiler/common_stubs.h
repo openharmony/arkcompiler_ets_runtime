@@ -29,13 +29,21 @@ namespace panda::ecmascript::kungfu {
     V(Equal)                          \
     V(TypeOf)                         \
     V(GetPropertyByName)              \
+    V(DeprecatedGetPropertyByName)    \
     V(SetPropertyByName)              \
+    V(DeprecatedSetPropertyByName)    \
     V(SetPropertyByNameWithOwn)       \
     V(GetPropertyByIndex)             \
     V(SetPropertyByIndex)             \
     V(SetPropertyByIndexWithOwn)      \
     V(GetPropertyByValue)             \
+    V(DeprecatedGetPropertyByValue)   \
     V(SetPropertyByValue)             \
+    V(DeprecatedSetPropertyByValue)   \
+    V(TryLdGlobalByName)              \
+    V(TryStGlobalByName)              \
+    V(LdGlobalVar)                    \
+    V(StGlobalVar)                    \
     V(SetPropertyByValueWithOwn)      \
     V(TryLoadICByName)                \
     V(TryLoadICByValue)               \

@@ -23,24 +23,20 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
-JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, bool isPatch)
-    : pf_(pf), desc_(descriptor), isPatch_(isPatch)
+JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
+    : pf_(pf), desc_(descriptor)
 {
     ASSERT(pf_ != nullptr);
-#if ECMASCRIPT_ENABLE_MERGE_ABC
-    checkIsBundlePack();
+    CheckIsBundlePack();
     if (isBundlePack_) {
         InitializeUnMergedPF();
     } else {
         InitializeMergedPF();
     }
-#else
-    InitializeUnMergedPF();
-#endif
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 
-void JSPandaFile::checkIsBundlePack()
+void JSPandaFile::CheckIsBundlePack()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     for (const uint32_t index : classIndexes) {
@@ -127,20 +123,6 @@ void JSPandaFile::InitializeUnMergedPF()
         if (!info.isCjs && std::strcmp(COMMONJS_CLASS, desc) == 0) {
             info.isCjs = true;
         }
-
-        if (!HasTSTypes() && std::strcmp(TS_TYPES_CLASS, desc) == 0) {
-            cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
-                panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
-                const char *fieldName = utf::Mutf8AsCString(sd.data);
-                if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
-                    hasTSTypes_ = fieldAccessor.GetValue<uint8_t>().value() != 0;
-                }
-                if (std::strcmp(TYPE_SUMMARY_INDEX, fieldName) == 0) {
-                    typeSummaryIndex_ = fieldAccessor.GetValue<uint32_t>().value();
-                }
-            });
-        }
     }
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
     methodLiterals_ =
@@ -158,20 +140,6 @@ void JSPandaFile::InitializeMergedPF()
         panda_file::ClassDataAccessor cda(*pf_, classId);
         numMethods_ += cda.GetMethodsNumber();
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (!HasTSTypes() && std::strcmp(TS_TYPES_CLASS, desc.c_str()) == 0) {
-            cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
-                panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
-                const char *fieldName = utf::Mutf8AsCString(sd.data);
-                if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
-                    hasTSTypes_ = fieldAccessor.GetValue<uint8_t>().value() != 0;
-                }
-                if (std::strcmp(TYPE_SUMMARY_INDEX, fieldName) == 0) {
-                    typeSummaryIndex_ = fieldAccessor.GetValue<uint32_t>().value();
-                }
-            });
-            continue;
-        }
         // get record info
         JSRecordInfo info;
         bool hasCjsFiled = false;
@@ -182,10 +150,12 @@ void JSPandaFile::InitializeMergedPF()
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0) {
                 hasCjsFiled = true;
                 info.isCjs = fieldAccessor.GetValue<bool>().value();
-            } else {
-                if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
-                    info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
-                }
+            } else if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
+                info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
+            } else if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
+                info.hasTSTypes = fieldAccessor.GetValue<uint8_t>().value() != 0;
+            } else if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
+                info.typeSummaryOffset = fieldAccessor.GetValue<uint32_t>().value();
             }
         });
         if (hasCjsFiled) {
@@ -229,10 +199,10 @@ bool JSPandaFile::IsCjs(const CString &recordName) const
     return false;
 }
 
-CString JSPandaFile::FindrecordName(const CString &recordName) const
+CString JSPandaFile::FindEntryPoint(const CString &recordName) const
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
-    CString name = "";
+    CString entryPoint;
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -244,33 +214,33 @@ CString JSPandaFile::FindrecordName(const CString &recordName) const
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
-                const char *fieldName = utf::Mutf8AsCString(sd.data);
+                CString fieldName = utf::Mutf8AsCString(sd.data);
                 if (HasRecord(fieldName)) {
-                    name = fieldName;
+                    entryPoint = fieldName;
                 }
             });
         }
-        if (!name.empty()) {
-            return name;
+        if (!entryPoint.empty()) {
+            return entryPoint;
         }
     }
-    return name;
+    return entryPoint;
 }
 
-std::string JSPandaFile::ParseOhmUrl(std::string fileName)
+CString JSPandaFile::ParseOhmUrl(const CString &fileName)
 {
-    std::string bundleInstallName(BUNDLE_INSTALL_PATH);
-    size_t startStrLen =  bundleInstallName.length();
-    size_t pos = std::string::npos;
+    CString bundleInstallName(BUNDLE_INSTALL_PATH);
+    size_t startStrLen = bundleInstallName.length();
+    size_t pos = CString::npos;
 
     if (fileName.length() > startStrLen && fileName.compare(0, startStrLen, bundleInstallName) == 0) {
         pos = startStrLen;
     }
-    std::string result = fileName;
-    if (pos != std::string::npos) {
+    CString result = fileName;
+    if (pos != CString::npos) {
         result = fileName.substr(pos);
         pos = result.find('/');
-        if (pos != std::string::npos) {
+        if (pos != CString::npos) {
             result = result.substr(pos + 1);
         }
     } else {
@@ -278,14 +248,14 @@ std::string JSPandaFile::ParseOhmUrl(std::string fileName)
         result = MODULE_DEFAULE_ETS + result;
     }
     pos = result.find_last_of(".");
-    if (pos != std::string::npos) {
+    if (pos != CString::npos) {
         result = result.substr(0, pos);
     }
 
     return result;
 }
 
-std::string JSPandaFile::ParseRecordName(const std::string &fileName)
+CString JSPandaFile::ParseRecordName(const CString &fileName)
 {
     size_t begin = fileName.find_last_of("/");
     ASSERT(begin != std::string::npos);

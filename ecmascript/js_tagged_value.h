@@ -21,6 +21,7 @@
 #include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
+class JSArray;
 class JSObject;
 class JSTaggedNumber;
 template<typename T>
@@ -77,6 +78,8 @@ public:
     static constexpr JSTaggedType TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
     // int tag
     static constexpr JSTaggedType TAG_INT = TAG_MARK;
+    static constexpr JSTaggedType TAG_INT32_INC_MAX = INT32_MAX + 1ULL;
+    static constexpr JSTaggedType TAG_INT32_DEC_MIN = INT32_MIN - 1ULL;
     // object tag
     static constexpr JSTaggedType TAG_OBJECT = 0x0000ULL << TAG_BITS_SHIFT;
     // weak object tag
@@ -492,6 +495,7 @@ public:
     bool IsTaggedArray() const;
     bool IsByteArray() const;
     bool IsConstantPool() const;
+    bool IsAOTLiteralInfo() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;
     bool IsNativePointer() const;
@@ -500,10 +504,11 @@ public:
     bool IsSymbol() const;
     bool IsJSObject() const;
     bool IsJSGlobalObject() const;
-    bool IsGlobalPatch() const;
     bool IsJSError() const;
     bool IsArray(JSThread *thread) const;
+    bool IsCOWArray() const;
     bool IsJSArray() const;
+    bool IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
     bool HasStableElements(JSThread *thread) const;
@@ -637,6 +642,7 @@ public:
     bool IsTSImportType() const;
     bool IsTSFunctionType() const;
     bool IsTSArrayType() const;
+    bool IsTSIteratorInstanceType() const;
 
     bool IsCjsExports() const;
     bool IsCjsModule() const;
@@ -656,6 +662,7 @@ public:
                                     const JSHandle<JSTaggedValue> &y);
     static ComparisonResult StrictNumberCompare(double x, double y);
     static bool StrictNumberEquals(double x, double y);
+    static bool StrictIntEquals(int x, int y);
     static bool StringCompare(EcmaString *xStr, EcmaString *yStr);
 
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);

@@ -18,4 +18,16 @@ declare function AssertType(value:any, type:string):void;
     let arr : string[] = ['1'];
     let ans = arr[0];
     AssertType(ans, "string");
+
+    class C {
+        _array: Float32Array;
+        constructor() {
+            this._array = new Float32Array(2);
+        }
+    }
+
+    function test(c:C) {
+        AssertType(c._array[0], "number");
+        AssertType(c._array[1], "number");
+    }
 }

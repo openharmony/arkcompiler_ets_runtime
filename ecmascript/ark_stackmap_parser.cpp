@@ -15,7 +15,8 @@
 #include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/deoptimizer.h"
+#include "ecmascript/aot_file_manager.h"
 
 namespace panda::ecmascript::kungfu {
 // implement simple binary-search is improve performance. if use std api, it'll trigger copy CallsiteHead.
@@ -40,13 +41,14 @@ int ArkStackMapParser::BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsi
 }
 
 void ArkStackMapParser::GetArkDeopt(uint8_t *stackmapAddr, uint32_t length,
-    const CallsiteHead& callsiteHead, std::vector<ARKDeopt> &deopts) const
+    const CallsiteHead& callsiteHead, std::vector<kungfu::ARKDeopt> &deopts) const
 {
     BinaryBufferParser binBufparser(stackmapAddr, length);
     ParseArkDeopt(callsiteHead, binBufparser, stackmapAddr, deopts);
 }
 
-void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr, ConstInfo &info, uint8_t *stackmapAddr) const
+void ArkStackMapParser::GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAddr,
+    std::vector<kungfu::ARKDeopt> &deopts) const
 {
     StackMapSecHead *head = reinterpret_cast<StackMapSecHead *>(stackmapAddr);
     ASSERT(head != nullptr);
@@ -60,8 +62,16 @@ void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr, ConstInfo &info, ui
         return;
     }
     CallsiteHead *found = callsiteHead + mid;
-    std::vector<ARKDeopt> deopts;
     GetArkDeopt(stackmapAddr, length, *found, deopts);
+}
+
+void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr, ConstInfo &info, uint8_t *stackmapAddr) const
+{
+    std::vector<kungfu::ARKDeopt> deopts;
+    GetArkDeopt(callSiteAddr, stackmapAddr, deopts);
+    if (deopts.empty()) {
+        return;
+    }
 
     ARKDeopt target;
     OffsetType id = static_cast<OffsetType>(SpecVregIndex::BC_OFFSET_INDEX);

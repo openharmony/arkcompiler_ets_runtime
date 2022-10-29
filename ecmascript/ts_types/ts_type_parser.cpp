@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/ts_types/ts_type_parser.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> TSTypeParser::ParseType(JSHandle<TaggedArray> &literal)
@@ -71,7 +72,7 @@ JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSHandle<TaggedArray> &
     if (TSClassType::IsBaseClassType(extendsTypeId)) {
         classType->SetHasLinked(true);
     } else {
-        classType->SetExtensionGT(CreateGT(moduleId_, extendsTypeId));
+        classType->SetExtensionGT(CreateGT(extendsTypeId));
     }
 
     // ignore implement
@@ -120,7 +121,7 @@ JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSHandl
                                    TSTypeKind::CLASS_INSTANCE);
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
     int32_t classTypeId = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
-    classInstanceType->SetClassGT(CreateGT(moduleId_, classTypeId));
+    classInstanceType->SetClassGT(CreateGT(classTypeId));
     return classInstanceType;
 }
 
@@ -156,8 +157,9 @@ JSHandle<TSImportType> TSTypeParser::ParseImportType(const JSHandle<TaggedArray>
 {
     JSHandle<EcmaString> importVarNamePath(thread_,
                                            literal->Get(TSImportType::IMPORT_PATH_OFFSET_IN_LITERAL)); // #A#./A
+    JSHandle<EcmaString> fileName = factory_->NewFromUtf8(jsPandaFile_->GetJSPandaFileDesc());
     JSHandle<EcmaString> targetAndPathEcmaStr = TSTypeTable::GenerateVarNameAndPath(thread_, importVarNamePath,
-                                                                                    fileName_, recordImportModules_);
+                                                                                    fileName, recordImportModules_);
     JSHandle<TSImportType> importType = factory_->NewTSImportType();
     importType->SetImportPath(thread_, targetAndPathEcmaStr);
     return importType;
@@ -174,7 +176,7 @@ JSHandle<TSUnionType> TSTypeParser::ParseUnionType(const JSHandle<TaggedArray> &
     JSHandle<TaggedArray> components(thread_, unionType->GetComponents());
     for (uint32_t index = 0; index < numOfUnionMembers; ++index) {
         uint32_t componentTypeId = literal->Get(literalIndex++).GetInt();
-        components->Set(thread_, index, JSTaggedValue(CreateGT(moduleId_, componentTypeId).GetType()));
+        components->Set(thread_, index, JSTaggedValue(CreateGT(componentTypeId).GetType()));
     }
     unionType->SetComponents(thread_, components);
     return unionType;
@@ -201,18 +203,18 @@ JSHandle<TSFunctionType> TSTypeParser::ParseFunctionType(const JSHandle<TaggedAr
     JSMutableHandle<JSTaggedValue> parameterTypeRef(thread_, JSTaggedValue::Undefined());
     for (int32_t i = 0; i < length; ++i) {
         auto typeId = literal->Get(index++).GetInt();
-        parameterTypeRef.Update(JSTaggedValue(CreateGT(moduleId_, typeId).GetType()));
+        parameterTypeRef.Update(JSTaggedValue(CreateGT(typeId).GetType()));
         parameterTypes->Set(thread_, i, parameterTypeRef);
     }
     int32_t returntypeId = literal->Get(index++).GetInt();
 
     functionType->SetName(thread_, functionName);
     if (hasThisType) {
-        functionType->SetThisGT(CreateGT(moduleId_, thisTypeId));
+        functionType->SetThisGT(CreateGT(thisTypeId));
     }
 
     functionType->SetParameterTypes(thread_, parameterTypes);
-    functionType->SetReturnGT(CreateGT(moduleId_, returntypeId));
+    functionType->SetReturnGT(CreateGT(returntypeId));
     functionType->SetBitField(bitField);
 
     return functionType;
@@ -226,7 +228,7 @@ JSHandle<TSArrayType> TSTypeParser::ParseArrayType(const JSHandle<TaggedArray> &
     JSHandle<JSTaggedValue> elementTypeId(thread_, literal->Get(index++));
     ASSERT(elementTypeId->IsInt());
     JSHandle<TSArrayType> arrayType = factory_->NewTSArrayType();
-    arrayType->SetElementGT(CreateGT(moduleId_, elementTypeId->GetInt()));
+    arrayType->SetElementGT(CreateGT(elementTypeId->GetInt()));
     return arrayType;
 }
 
@@ -252,7 +254,7 @@ void TSTypeParser::FillPropertyTypes(JSHandle<TSObjLayoutInfo> &layOut, const JS
     for (uint32_t fieldIndex = startIndex; fieldIndex < lastIndex; ++fieldIndex) {
         key.Update(literal->Get(index++));
         ASSERT(key->IsString());
-        auto gt = CreateGT(moduleId_, literal->Get(index++).GetInt());
+        auto gt = CreateGT(literal->Get(index++).GetInt());
         value.Update(JSTaggedValue(gt.GetType()));
         layOut->SetKey(thread_, fieldIndex, key.GetTaggedValue(), value.GetTaggedValue());
         if (isField) {

@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_hashset_iterator.h"
 
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/object_factory.h"
@@ -24,21 +25,25 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
-
     if (!input->IsJSAPIHashSetIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not a hashset iterator", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                          "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIHashSetIterator> iter = JSHandle<JSAPIHashSetIterator>::Cast(input);
     JSHandle<JSTaggedValue> iteratedHashSet(thread, iter->GetIteratedHashSet());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratedHashSet->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     JSHandle<JSAPIHashSet> hashSet = JSHandle<JSAPIHashSet>::Cast(iteratedHashSet);
     JSHandle<TaggedHashArray> tableArr(thread, hashSet->GetTable());
@@ -46,33 +51,59 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
     uint32_t tableIndex = iter->GetTableIndex();
     uint32_t index = iter->GetNextIndex();
     uint32_t size = hashSet->GetSize();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<TaggedQueue> queue(thread, iter->GetTaggedQueue());
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<TaggedNode> currentNode(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<TaggedArray> array(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> keyAndValue(thread, JSTaggedValue::Undefined());
     IterationKind itemKind = iter->GetIterationKind();
     while (tableIndex < tableLength && index < size) {
-        currentNode.Update(GetCurrentNode(thread, iter, queue, tableArr));
-        if (!currentNode.GetTaggedValue().IsHole()) {
+        currentNode.Update(FastGetCurrentNode(thread, iter, queue, tableArr));
+        if (!currentNode.GetTaggedValue().IsHole() && !currentNode.GetTaggedValue().IsUndefined()) {
             iter->SetNextIndex(++index);
             valueHandle.Update(currentNode->GetKey());
             if (itemKind == IterationKind::VALUE) {
                 return JSIterator::CreateIterResultObject(thread, valueHandle, false).GetTaggedValue();
             }
-
-            array.Update(factory->NewTaggedArray(2));  // 2 means the length of array
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<TaggedArray> array = factory->NewTaggedArray(2); // 2 means the length of array
             array->Set(thread, 0, JSTaggedValue(--index));
             array->Set(thread, 1, valueHandle);
-            keyAndValue.Update(JSArray::CreateArrayFromList(thread, array));
+            JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
             return JSIterator::CreateIterResultObject(thread, keyAndValue, false).GetTaggedValue();
         }
         tableIndex++;
+        if (!currentNode.GetTaggedValue().IsRBTreeNode()) {
+            iter->SetTableIndex(tableIndex);
+        }
     }
     // Set O.[[IteratedMap]] to undefined.
     iter->SetIteratedHashSet(thread, JSTaggedValue::Undefined());
-    return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+    return globalConst->GetUndefinedIterResult();
+}
+
+JSHandle<JSTaggedValue> JSAPIHashSetIterator::FastGetCurrentNode(JSThread *thread,
+                                                                 JSHandle<JSAPIHashSetIterator> &iter,
+                                                                 JSMutableHandle<TaggedQueue> &queue,
+                                                                 JSHandle<TaggedHashArray> &tableArr)
+{
+    JSHandle<JSTaggedValue> rootValue(thread, JSTaggedValue::Undefined());
+    uint32_t index = iter->GetTableIndex();
+    JSHandle<JSTaggedValue> prevNodeValue(thread, iter->GetCurrentNodeResult());
+    if (prevNodeValue->IsRBTreeNode()) {
+        return GetCurrentNode(thread, iter, queue, tableArr);
+    }
+    if (prevNodeValue->IsUndefined() || prevNodeValue->IsHole()) {
+        rootValue = JSHandle<JSTaggedValue>(thread, tableArr->Get(index));
+        iter->SetCurrentNodeResult(thread, rootValue);
+        return rootValue;
+    }
+    JSHandle<LinkedNode> prevNode = JSHandle<LinkedNode>::Cast(prevNodeValue);
+    if (!prevNode->GetNext().IsHole()) {
+        JSHandle<JSTaggedValue> next(thread, prevNode->GetNext());
+        iter->SetCurrentNodeResult(thread, next);
+        return next;
+    }
+    iter->SetCurrentNodeResult(thread, JSTaggedValue::Undefined());
+    return rootValue;
 }
 
 // level traversal
@@ -101,12 +132,6 @@ JSHandle<JSTaggedValue> JSAPIHashSetIterator::GetCurrentNode(JSThread *thread, J
             JSHandle<JSTaggedValue> right(thread, root->GetRight());
             queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, right)));
         }
-    } else { // linkedNode
-        JSHandle<LinkedNode> root = JSHandle<LinkedNode>::Cast(rootValue);
-        if (!root->GetNext().IsHole()) {
-            JSHandle<JSTaggedValue> next(thread, root->GetNext());
-            queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, next)));
-        }
     }
     iter->SetTaggedQueue(thread, queue.GetTaggedValue());
     if (queue->Empty()) {
@@ -121,8 +146,9 @@ JSHandle<JSTaggedValue> JSAPIHashSetIterator::CreateHashSetIterator(JSThread *th
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!obj->IsJSAPIHashSet()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPIHashSet",
-                                    thread->GlobalConstants()->GetHandledUndefined());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPIHashSetIterator(JSHandle<JSAPIHashSet>(obj), kind));
     return iter;

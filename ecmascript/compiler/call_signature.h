@@ -41,6 +41,7 @@ public:
         RUNTIME_STUB,
         RUNTIME_STUB_VARARGS,
         RUNTIME_STUB_NO_GC,
+        DEOPT_STUB,
         BYTECODE_HANDLER,
         BYTECODE_DEBUGGER_HANDLER,
         BYTECODE_HELPER_HANDLER,
@@ -160,6 +161,11 @@ public:
     bool IsBCHandlerStub() const
     {
         return (GetTargetKind() == TargetKind::BYTECODE_HANDLER);
+    }
+
+    bool IsDeoptStub() const
+    {
+        return (GetTargetKind() == TargetKind::DEOPT_STUB);
     }
 
     void SetParameters(VariableType *paramsType)
@@ -302,14 +308,22 @@ private:
     V(TypeOf)                               \
     V(Equal)                                \
     V(SetPropertyByName)                    \
+    V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \
     V(SetPropertyByValue)                   \
+    V(DeprecatedSetPropertyByValue)         \
+    V(TryLdGlobalByName)                    \
+    V(TryStGlobalByName)                    \
+    V(LdGlobalVar)                          \
+    V(StGlobalVar)                          \
     V(SetPropertyByValueWithOwn)            \
     V(GetPropertyByName)                    \
+    V(DeprecatedGetPropertyByName)          \
     V(GetPropertyByIndex)                   \
     V(SetPropertyByIndex)                   \
     V(SetPropertyByIndexWithOwn)            \
     V(GetPropertyByValue)                   \
+    V(DeprecatedGetPropertyByValue)         \
     V(TryLoadICByName)                      \
     V(TryLoadICByValue)                     \
     V(TryStoreICByName)                     \
@@ -340,6 +354,7 @@ private:
     V(PushCallNewAndDispatch)               \
     V(CallGetter)                           \
     V(CallSetter)                           \
+    V(CallContainersArgs3)                  \
     V(JSCallWithArgV)                       \
     V(ConstructorJSCallWithArgV)            \
     V(ResumeRspAndDispatch)                 \
@@ -350,9 +365,11 @@ private:
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
     V(DebugPrintInstruction)                \
+    V(PGOProfiler)                          \
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
+    V(AotFloatMod)                          \
     V(FloatMod)                             \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
@@ -370,6 +387,10 @@ private:
     V(CreateArrayFromList)                  \
     V(JSObjectGetMethod)                    \
     V(JsProxyCallInternal)                  \
+    V(DeoptHandlerAsm)                      \
+    V(JSFunctionReentry)                    \
+    V(JSCallNew)                            \
+    V(JSCallNewWithArgV)                    \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

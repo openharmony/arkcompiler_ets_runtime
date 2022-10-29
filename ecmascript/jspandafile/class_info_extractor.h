@@ -17,12 +17,14 @@
 #define ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
 
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript {
 // ClassInfoExtractor will analyze and extract the contents from class literal to keys, properties and elements(both
 // non-static and static), later generate the complete hclass (both prototype and constructor) based on keys.
 // Attention: keys accessor stores the property key and properties accessor stores the property value, but elements
 // accessor stores the key-value pair abuttally.
+using EntityId = panda_file::File::EntityId;
 class ClassInfoExtractor : public TaggedObject {
 public:
     static constexpr uint8_t NON_STATIC_RESERVED_LENGTH = 1;
@@ -37,7 +39,7 @@ public:
         uint32_t extractBegin;
         uint32_t extractEnd;
         uint8_t fillStartLoc;
-        Method *method;
+        MethodLiteral *methodLiteral;
     };
 
     CAST_CHECK(ClassInfoExtractor, IsClassInfoExtractor);
@@ -45,19 +47,19 @@ public:
     static void BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
                                                    const JSHandle<TaggedArray> &literal);
 
-    static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+    static JSHandle<JSHClass> CreatePrototypeHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                    JSHandle<TaggedArray> &keys,
                                                     JSHandle<TaggedArray> &properties);
 
-    static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, JSHandle<TaggedArray> &keys,
+    static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                      JSHandle<TaggedArray> &keys,
                                                       JSHandle<TaggedArray> &properties);
 
     static constexpr size_t PROTOTYPE_HCLASS_OFFSET = TaggedObjectSize();
-    ACCESSORS(PrototypeHClass, PROTOTYPE_HCLASS_OFFSET, NON_STATIC_KEYS_OFFSET)
-    ACCESSORS(NonStaticKeys, NON_STATIC_KEYS_OFFSET, NON_STATIC_PROPERTIES_OFFSET)
+    ACCESSORS(NonStaticKeys, PROTOTYPE_HCLASS_OFFSET, NON_STATIC_PROPERTIES_OFFSET)
     ACCESSORS(NonStaticProperties, NON_STATIC_PROPERTIES_OFFSET, NON_STATIC_ELEMENTS_OFFSET)
     ACCESSORS(NonStaticElements, NON_STATIC_ELEMENTS_OFFSET, CONSTRUCTOR_HCLASS_OFFSET)
-    ACCESSORS(ConstructorHClass, CONSTRUCTOR_HCLASS_OFFSET, STATIC_KEYS_OFFSET)
-    ACCESSORS(StaticKeys, STATIC_KEYS_OFFSET, STATIC_PROPERTIES_OFFSET)
+    ACCESSORS(StaticKeys, CONSTRUCTOR_HCLASS_OFFSET, STATIC_PROPERTIES_OFFSET)
     ACCESSORS(StaticProperties, STATIC_PROPERTIES_OFFSET, STATIC_ELEMENTS_OFFSET)
     ACCESSORS(StaticElements, STATIC_ELEMENTS_OFFSET, CONSTRUCTOR_METHOD_OFFSET)
     ACCESSORS(ConstructorMethod, CONSTRUCTOR_METHOD_OFFSET, BIT_FIELD_OFFSET)
@@ -78,19 +80,20 @@ private:
     static bool ExtractAndReturnWhetherWithElements(JSThread *thread, const JSHandle<TaggedArray> &literal,
                                                     const ExtractContentsDetail &detail,
                                                     JSHandle<TaggedArray> &keys, JSHandle<TaggedArray> &properties,
-                                                    JSHandle<TaggedArray> &elements);
+                                                    JSHandle<TaggedArray> &elements,
+                                                    const JSPandaFile *jsPandaFile);
 };
 
 enum class ClassPropertyType : uint8_t { NON_STATIC = 0, STATIC };
 
 class ClassHelper {
 public:
-    static JSHandle<JSFunction> DefineClassFromExtractor(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                         const JSHandle<JSTaggedValue> &constpool,
+    static JSHandle<JSFunction> DefineClassFromExtractor(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                         JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
-    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                       const JSHandle<JSTaggedValue> &constpool,
+    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+                                                       JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
                                                        const JSHandle<JSHClass> &ihclass);
 
@@ -98,10 +101,10 @@ private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,
                                                               JSHandle<TaggedArray> &properties, ClassPropertyType type,
-                                                              const JSHandle<ConstantPool> &constantpool);
+                                                              const JSHandle<JSTaggedValue> &lexenv);
 
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
-                                         JSHandle<TaggedArray> &elements, const JSHandle<ConstantPool> &constantpool);
+                                         JSHandle<TaggedArray> &elements);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

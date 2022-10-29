@@ -61,6 +61,7 @@
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
@@ -75,6 +76,12 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
     if (!JSTaggedValue::ToElementIndex(argv.GetTaggedValue(), &tag) || tag >= ContainerTag::END) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Incorrect input parameters", JSTaggedValue::Exception());
     }
+
+    // Lazy set an undefinedIteratorResult to global constants
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<JSObject> undefinedIteratorResult = JSIterator::CreateIterResultObject(thread, undefinedHandle, true);
+    globalConst->SetConstant(ConstantIndex::UNDEFINED_INTERATOR_RESULT_INDEX, undefinedIteratorResult.GetTaggedValue());
 
     JSTaggedValue res = JSTaggedValue::Undefined();
     switch (tag) {
@@ -182,11 +189,11 @@ JSHandle<JSFunction> ContainersPrivate::NewContainerConstructor(JSThread *thread
 }
 
 void ContainersPrivate::SetFrozenFunction(JSThread *thread, const JSHandle<JSObject> &obj, const char *key,
-                                          EcmaEntrypoint func, int length)
+                                          EcmaEntrypoint func, int length, uint8_t builtinId)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> keyString(factory->NewFromASCII(key));
-    JSHandle<JSFunction> function = NewFunction(thread, keyString, func, length);
+    JSHandle<JSFunction> function = NewFunction(thread, keyString, func, length, builtinId);
     PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>(function), false, false, false);
     JSObject::DefineOwnProperty(thread, obj, keyString, descriptor);
 }
@@ -202,11 +209,12 @@ void ContainersPrivate::SetFrozenConstructor(JSThread *thread, const JSHandle<JS
 }
 
 JSHandle<JSFunction> ContainersPrivate::NewFunction(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                                                    EcmaEntrypoint func, int length)
+                                                    EcmaEntrypoint func, int length, uint8_t builtinId)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> function =
-        factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(), reinterpret_cast<void *>(func));
+        factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(), reinterpret_cast<void *>(func),
+                               FunctionKind::NORMAL_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSFunction::SetFunctionName(thread, baseFunction, key, thread->GlobalConstants()->GetHandledUndefined());
@@ -297,12 +305,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeArrayList(JSThread *thread)
     SetFrozenFunction(thread, prototype, "removeByIndex", ContainersArrayList::RemoveByIndex, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "remove", ContainersArrayList::Remove, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "removeByRange", ContainersArrayList::RemoveByRange, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "replaceAllElements",
-                      ContainersArrayList::ReplaceAllElements, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersArrayList::ReplaceAllElements,
+        FuncLength::TWO, static_cast<uint8_t>(BUILTINS_STUB_ID(ArrayListReplaceAllElements)));
     SetFrozenFunction(thread, prototype, "sort", ContainersArrayList::Sort, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "subArrayList", ContainersArrayList::SubArrayList, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "convertToArray", ContainersArrayList::ConvertToArray, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "forEach", ContainersArrayList::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "forEach", ContainersArrayList::ForEach, FuncLength::TWO,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(ArrayListForEach)));
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, prototype, "ArrayList");
@@ -373,7 +382,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
     SetFrozenFunction(thread, funcPrototype, "removeAt", ContainersLightWeightMap::RemoveAt, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "clear", ContainersLightWeightMap::Clear, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "setValueAt", ContainersLightWeightMap::SetValueAt, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightMap::ForEach, FuncLength::ONE);
+    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightMap::ForEach, FuncLength::ONE,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(LightWeightMapForEach)));
     SetFrozenFunction(thread, funcPrototype, "toString", ContainersLightWeightMap::ToString, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "getValueAt", ContainersLightWeightMap::GetValueAt, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "values", ContainersLightWeightMap::Values, FuncLength::ONE);
@@ -433,7 +443,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
     SetFrozenFunction(thread, funcPrototype, "equal", ContainersLightWeightSet::Equal, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "increaseCapacityTo",
                       ContainersLightWeightSet::IncreaseCapacityTo, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightSet::ForEach, FuncLength::ONE);
+    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightSet::ForEach, FuncLength::ONE,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(LightWeightSetForEach)));
     SetFrozenFunction(thread, funcPrototype, "getIndexOf", ContainersLightWeightSet::GetIndexOf, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "remove", ContainersLightWeightSet::Remove, FuncLength::ZERO);
     SetFrozenFunction(thread, funcPrototype, "removeAt", ContainersLightWeightSet::RemoveAt, FuncLength::ZERO);
@@ -643,7 +654,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
     SetFrozenFunction(thread, plainArrayFuncPrototype, "clone", ContainersPlainArray::Clone, FuncLength::ONE);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "has", ContainersPlainArray::Has, FuncLength::ONE);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "get", ContainersPlainArray::Get, FuncLength::ONE);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "forEach", ContainersPlainArray::ForEach, FuncLength::ONE);
+    SetFrozenFunction(thread, plainArrayFuncPrototype, "forEach", ContainersPlainArray::ForEach, FuncLength::ONE,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(PlainArrayForEach)));
     SetFrozenFunction(thread, plainArrayFuncPrototype, "toString", ContainersPlainArray::ToString,
                       FuncLength::ZERO);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "getIndexOfKey", ContainersPlainArray::GetIndexOfKey,
@@ -721,8 +733,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
     // Stack.prototype.search()
     SetFrozenFunction(thread, stackFuncPrototype, "locate", ContainersStack::Locate, FuncLength::ONE);
     // Stack.prototype.forEach()
-    SetFrozenFunction(thread, stackFuncPrototype, "forEach", ContainersStack::ForEach, FuncLength::ONE);
-
+    SetFrozenFunction(thread, stackFuncPrototype, "forEach", ContainersStack::ForEach, FuncLength::ONE,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(StackForEach)));
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, stackFuncPrototype, "Stack");
 
@@ -787,8 +799,10 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     SetFrozenFunction(thread, prototype, "set", ContainersVector::Set, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "subVector", ContainersVector::SubVector, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "toString", ContainersVector::ToString, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "forEach", ContainersVector::ForEach, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersVector::ReplaceAllElements, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "forEach", ContainersVector::ForEach, FuncLength::TWO,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(VectorForEach)));
+    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersVector::ReplaceAllElements, FuncLength::TWO,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(VectorReplaceAllElements)));
     SetFrozenFunction(thread, prototype, "has", ContainersVector::Has, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "sort", ContainersVector::Sort, FuncLength::ZERO);
     SetFrozenFunction(thread, prototype, "clear", ContainersVector::Clear, FuncLength::ZERO);
@@ -851,7 +865,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
     SetFrozenFunction(thread, queueFuncPrototype, "add", ContainersQueue::Add, FuncLength::ONE);
     SetFrozenFunction(thread, queueFuncPrototype, "getFirst", ContainersQueue::GetFirst, FuncLength::ZERO);
     SetFrozenFunction(thread, queueFuncPrototype, "pop", ContainersQueue::Pop, FuncLength::ZERO);
-    SetFrozenFunction(thread, queueFuncPrototype, "forEach", ContainersQueue::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, queueFuncPrototype, "forEach", ContainersQueue::ForEach, FuncLength::TWO,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(QueueForEach)));
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, queueFuncPrototype, "Queue");
@@ -907,7 +922,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
     SetFrozenFunction(thread, dequeFuncPrototype, "has", ContainersDeque::Has, FuncLength::ONE);
     SetFrozenFunction(thread, dequeFuncPrototype, "popFirst", ContainersDeque::PopFirst, FuncLength::ZERO);
     SetFrozenFunction(thread, dequeFuncPrototype, "popLast", ContainersDeque::PopLast, FuncLength::ZERO);
-    SetFrozenFunction(thread, dequeFuncPrototype, "forEach", ContainersDeque::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, dequeFuncPrototype, "forEach", ContainersDeque::ForEach, FuncLength::TWO,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(DequeForEach)));
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, dequeFuncPrototype, "Deque");

@@ -309,7 +309,8 @@ public:
 
     void SetWeak();
 
-    void SetWeakCallback(void *ref, WeakRefClearCallBack firstCallback, WeakRefClearCallBack secondCallback);
+    void SetWeakCallback(void *ref, WeakRefClearCallBack freeGlobalCallBack,
+                         WeakRefClearCallBack nativeFinalizeCallback);
 
     void ClearWeak();
 
@@ -527,7 +528,7 @@ public:
     std::string ToString();
     int32_t Length();
     int32_t Utf8Length();
-    int WriteUtf8(char *buffer, int length);
+    int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
 };
 
 class PUBLIC_API SymbolRef : public PrimitiveRef {
@@ -1007,6 +1008,33 @@ public:
     {
         return isWorker_;
     }
+
+    void SetBundleName(const std::string &value)
+    {
+        bundleName_ = value;
+    }
+
+    void SetEnableAOT(bool value)
+    {
+        enableAOT_ = value;
+    }
+
+    void SetAnDir(const std::string &value)
+    {
+        anDir_ = value;
+    }
+
+    void SetEnableProfile(bool value)
+    {
+        enableProfile_ = value;
+    }
+
+    // Valid only when SetEnableProfile(true)
+    void SetProfileDir(const std::string &value)
+    {
+        profileDir_ = value;
+    }
+
 private:
     std::string GetGcType() const
     {
@@ -1102,6 +1130,31 @@ private:
         return asmOpcodeDisableRange_;
     }
 
+    std::string GetBundleName() const
+    {
+        return bundleName_;
+    }
+
+    bool GetEnableAOT() const
+    {
+        return enableAOT_;
+    }
+
+    std::string GetAnDir() const
+    {
+        return anDir_;
+    }
+
+    bool GetEnableProfile() const
+    {
+        return enableProfile_;
+    }
+
+    std::string GetProfileDir() const
+    {
+        return profileDir_;
+    }
+
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
     LOG_LEVEL logLevel_ = LOG_LEVEL::DEBUG;
     uint32_t gcPoolSize_ = ecmascript::DEFAULT_GC_POOL_SIZE;
@@ -1117,6 +1170,11 @@ private:
     bool enableAsmInterpreter_ {true};
     bool isWorker_ {false};
     std::string asmOpcodeDisableRange_ {""};
+    std::string bundleName_ {};
+    bool enableAOT_ {false};
+    std::string anDir_ {};
+    bool enableProfile_ {false};
+    std::string profileDir_ {};
     friend JSNApi;
 };
 
@@ -1152,6 +1210,8 @@ public:
     static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                         const std::string &filename = "");
+    // merge abc, execute module buffer
+    static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "");
     static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
@@ -1169,8 +1229,13 @@ public:
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
     static bool HasPendingException(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
+#ifndef PANDA_TARGET_IOS
     static bool StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
+#else
+    static bool StartDebugger(EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
+        const DebuggerPostTask &debuggerPostTask = {});
+#endif
     static bool StopDebugger(EcmaVM *vm);
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
@@ -1187,10 +1252,12 @@ public:
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();
+    static void InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options);
     static void DestroyMemMapAllocator();
+    static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void preFork(EcmaVM *vm);
-    static void postFork(EcmaVM *vm);
+    static void postFork(EcmaVM *vm, const RuntimeOption &option);
     static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
 
@@ -1216,7 +1283,8 @@ private:
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeak(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref,
-                                     WeakRefClearCallBack firstCallback, WeakRefClearCallBack secondCallback);
+                                     WeakRefClearCallBack freeGlobalCallBack,
+                                     WeakRefClearCallBack nativeFinalizeCallback);
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
@@ -1420,9 +1488,10 @@ void Global<T>::SetWeak()
 }
 
 template <typename T>
-void Global<T>::SetWeakCallback(void *ref, WeakRefClearCallBack firstCallback, WeakRefClearCallBack secondCallback)
+void Global<T>::SetWeakCallback(void *ref, WeakRefClearCallBack freeGlobalCallBack,
+                                WeakRefClearCallBack nativeFinalizeCallback)
 {
-    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, firstCallback, secondCallback);
+    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, freeGlobalCallBack, nativeFinalizeCallback);
 }
 
 template<typename T>

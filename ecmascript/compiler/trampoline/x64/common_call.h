@@ -32,6 +32,11 @@ public:
     static void PushAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register argc);
+    static void GetArgvAtStack(ExtendedAssembler *assembler);
+    static void PushArgsWithArgvAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
+        Register op1, Register op2, Label *stackOverflow);
+    static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs, Register op1,
+        Register op2, Label *stackOverflow);
 };
 
 class OptimizedCall : public CommonCall {
@@ -56,7 +61,19 @@ public:
 
     static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
+    static void DeoptHandlerAsm(ExtendedAssembler *assembler);
+
+    static void JSFunctionReentry(ExtendedAssembler *assembler);
+
+    static void JSCallNew(ExtendedAssembler *assembler);
+
+    static void JSCallNewWithArgV(ExtendedAssembler *assembler);
+
+    static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
+
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew);
 private:
+    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
                             Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register glueReg);
@@ -123,6 +140,8 @@ public:
 
     static void CallSetter(ExtendedAssembler *assembler);
 
+    static void CallContainersArgs3(ExtendedAssembler *assembler);
+
     static void ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembler);
 
     static void ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembler);
@@ -136,17 +155,11 @@ private:
         Register contextRegister, Register pcRegister, Register operatorRegister);
     static void PushAsmInterpEntryFrame(ExtendedAssembler *assembler);
     static void PopAsmInterpEntryFrame(ExtendedAssembler *assembler);
-    static void CallBCStub(ExtendedAssembler *assembler, Register newSpRegister, Register glueRegister,
-        Register callTargetRegister, Register methodRegister, Register pcRegister);
     static void GetDeclaredNumArgsFromCallField(ExtendedAssembler *assembler, Register callFieldRegister,
         Register declaredNumArgsRegister);
     static void GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callFieldRegister,
         Register numVregsRegister);
     static void PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,
-        Register op1, Register op2, Label *stackOverflow);
-    static void PushArgsWithArgvAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
-        Register op1, Register op2, Label *stackOverflow);
-    static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs,
         Register op1, Register op2, Label *stackOverflow);
     static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
         Register op);
@@ -155,7 +168,8 @@ private:
     static Register GetThisRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow);
-    static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister);
+    static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
+                             Register methodRegister, Register accRegister = rInvalid);
     static void CallNativeEntry(ExtendedAssembler *assemblSer);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);

@@ -45,7 +45,7 @@ namespace OHOS {
         }
         bool isVmMode = true;
         bool isPrivate = false;
-        std::string path((char*)data);
+        std::string path(data, data + size);
         FileStream stream(path);
         Progress *progress = nullptr;
         DFXJSNApi::DumpHeapSnapshot(vm, input, &stream, progress, isVmMode, isPrivate);

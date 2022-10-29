@@ -25,6 +25,8 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinsStubBuilder : public StubBuilder {
 public:
+    explicit BuiltinsStubBuilder(StubBuilder *parent)
+        :StubBuilder(parent) {}
     BuiltinsStubBuilder(CallSignature *callSignature, Environment *env)
         : StubBuilder(callSignature, env) {}
     ~BuiltinsStubBuilder() = default;
@@ -62,9 +64,19 @@ public:
         return Load(VariableType::JS_ANY(), info, thisOffset);
     }
 
-    inline GateRef GetCallArg(GateRef argv, GateRef index)
+    inline GateRef GetCallArg0()
     {
-        return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(sizeof(JSTaggedType))));
+        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0));
+    }
+
+    inline GateRef GetCallArg1()
+    {
+        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
+    }
+
+    inline GateRef GetCallArg2()
+    {
+        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
     }
 };
 
@@ -80,7 +92,7 @@ public:
                                                                                                     \
     private:                                                                                        \
         void GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, \
-                                 GateRef numArgs, GateRef argv);                                    \
+                                 GateRef numArgs);                                                  \
     };
     BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS)
 #undef DECLARE_BUILTINS_STUB_CLASS

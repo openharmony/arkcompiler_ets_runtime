@@ -25,12 +25,17 @@
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/dyn_chunk.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using panda::JSValueRef;
 namespace panda::ecmascript {
+class JSPandaFile;
+class ConstantPool;
+
 typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
 typedef Local<JSValueRef> (*AttachFunc)(void *enginePointer, void *buffer, void *hint, void *attachData);
 
@@ -88,8 +93,14 @@ enum class SerializationUID : uint8_t {
     OOM_ERROR,
     ERROR_MESSAGE_BEGIN,
     ERROR_MESSAGE_END,
-    // NativeFunctionPointer
-    NATIVE_FUNCTION_POINTER,
+    // Function
+    JS_FUNCTION,
+    JS_FUNCTION_BASE,
+    METHOD,
+    CONSTANT_POOL,
+    TAGGED_ARRAY,
+    // NativePointer
+    NATIVE_POINTER,
     UNKNOWN
 };
 
@@ -103,6 +114,11 @@ public:
     std::pair<uint8_t *, size_t> ReleaseBuffer();
 
 private:
+    bool WriteJSFunctionBase(const JSHandle<JSTaggedValue> &value);
+    bool WriteJSFunction(const JSHandle<JSTaggedValue> &value);
+    bool WriteMethod(const JSHandle<JSTaggedValue> &value);
+    bool WriteConstantPool(const JSHandle<JSTaggedValue> &value);
+    bool WriteTaggedArray(const JSHandle<JSTaggedValue> &value);
     bool WriteTaggedObject(const JSHandle<JSTaggedValue> &value);
     bool WritePrimitiveValue(const JSHandle<JSTaggedValue> &value);
     bool WriteInt(int32_t value);
@@ -124,7 +140,7 @@ private:
     bool WriteAllKeys(const JSHandle<JSTaggedValue> &value);
     bool WritePlainObject(const JSHandle<JSTaggedValue> &value);
     bool WriteNativeBindingObject(const JSHandle<JSTaggedValue> &value);
-    bool WriteNativeFunctionPointer(const JSHandle<JSTaggedValue> &value);
+    bool WriteNativePointer(const JSHandle<JSTaggedValue> &value);
     bool WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value);
     bool WriteDesc(const PropertyDescriptor &desc);
     bool IsNativeBindingObject(std::vector<JSTaggedValue> keyVector);
@@ -162,6 +178,11 @@ private:
     bool ReadObjectId(uint64_t *objectId);
     bool ReadDouble(double *value);
     SerializationUID ReadType();
+    JSHandle<JSTaggedValue> ReadJSFunctionBase();
+    JSHandle<JSTaggedValue> ReadJSFunction();
+    JSHandle<JSTaggedValue> ReadTaggedArray();
+    JSHandle<JSTaggedValue> ReadMethod();
+    JSHandle<JSTaggedValue> ReadConstantPool();
     JSHandle<JSTaggedValue> ReadJSError(SerializationUID uid);
     JSHandle<JSTaggedValue> ReadJSDate();
     JSHandle<JSTaggedValue> ReadJSArray();
@@ -171,7 +192,7 @@ private:
     JSHandle<JSTaggedValue> ReadJSSet();
     JSHandle<JSTaggedValue> ReadJSRegExp();
     JSHandle<JSTaggedValue> ReadJSTypedArray(SerializationUID uid);
-    JSHandle<JSTaggedValue> ReadNativeFunctionPointer();
+    JSHandle<JSTaggedValue> ReadNativePointer();
     JSHandle<JSTaggedValue> ReadJSArrayBuffer();
     JSHandle<JSTaggedValue> ReadReference();
     JSHandle<JSTaggedValue> ReadNativeBindingObject();

@@ -17,12 +17,12 @@
 
 #include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/interpreter/frame_handler.h"
 
-#if defined(PANDA_TARGET_UNIX) && !defined(PANDA_TARGET_MACOS)
+#if defined(PANDA_TARGET_UNIX) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/ptrace.h>
 #else
 #define ptrace(PTRACE_PEEKTEXT, pid, addr, NULL) static_cast<long>(-1)
@@ -32,7 +32,7 @@ namespace panda::ecmascript {
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
-        arkStackMapParser_ = thread->GetEcmaVM()->GetFileLoader()->GetStackMapParser();
+        arkStackMapParser_ = thread->GetEcmaVM()->GetAOTFileManager()->GetStackMapParser();
     }
 }
 
@@ -48,25 +48,10 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
     return delta;
 }
 
-std::tuple<uint64_t, uint8_t *, int> FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
+AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    auto loader = thread_->GetEcmaVM()->GetFileLoader();
-    const std::vector<AOTModulePackInfo>& aotPackInfos = loader->GetPackInfos();
-    std::tuple<uint64_t, uint8_t *, int> callsiteInfo;
-
-    StubModulePackInfo stubInfo = loader->GetStubPackInfo();
-    bool ans = stubInfo.CalCallSiteInfo(retAddr, callsiteInfo);
-    if (ans) {
-        return callsiteInfo;
-    }
-    // aot
-    for (auto &info : aotPackInfos) {
-        ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
-        if (ans) {
-            return callsiteInfo;
-        }
-    }
-    return callsiteInfo;
+    auto loader = thread_->GetEcmaVM()->GetAOTFileManager();
+    return loader->CalCallSiteInfo(retAddr);
 }
 
 template <GCVisitedFlag GCVisit>
@@ -242,7 +227,7 @@ void FrameIterator::Advance()
             return;
         }
         uint64_t textStart;
-        std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_) = CalCallSiteInfo(optimizedReturnAddr_);
+        std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_, calleeRegInfo_) = CalCallSiteInfo(optimizedReturnAddr_);
         ASSERT(optimizedReturnAddr_ >= textStart);
         optimizedReturnAddr_ = optimizedReturnAddr_ - textStart;
     }
@@ -365,6 +350,11 @@ void FrameIterator::CollectBCOffsetInfo(kungfu::ConstInfo &info) const
     arkStackMapParser_->GetConstInfo(optimizedReturnAddr_, info, stackMapAddr_);
 }
 
+void FrameIterator::CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const
+{
+    arkStackMapParser_->GetArkDeopt(optimizedReturnAddr_, stackMapAddr_, deopts);
+}
+
 ARK_INLINE JSTaggedType* OptimizedJSFunctionFrame::GetArgv(const FrameIterator &it) const
 {
     uintptr_t *preFrameSp = ComputePrevFrameSp(it);
@@ -413,6 +403,17 @@ ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
         LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
 #endif
     }
+}
+
+void OptimizedJSFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const
+{
+    it.CollectArkDeopt(deopts);
+}
+
+void OptimizedJSFunctionFrame::GetFuncCalleeRegAndOffset(
+    const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const
+{
+    it.GetCalleeRegAndOffsetVec(ret);
 }
 
 ARK_INLINE void AsmInterpretedFrame::GCIterate(const FrameIterator &it,

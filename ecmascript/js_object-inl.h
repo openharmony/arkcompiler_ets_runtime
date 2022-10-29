@@ -63,11 +63,6 @@ inline bool JSObject::IsJSGlobalObject() const
     return GetJSHClass()->IsJSGlobalObject();
 }
 
-inline bool JSObject::IsGlobalPatch() const
-{
-    return GetJSHClass()->IsGlobalPatch();
-}
-
 inline bool JSObject::IsConstructor() const
 {
     return GetJSHClass()->IsConstructor();

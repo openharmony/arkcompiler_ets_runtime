@@ -19,7 +19,6 @@
 using namespace panda;
 using namespace panda::ecmascript;
 namespace OHOS {
-    // staic constexpr auto PANDA_MAIN_PATH = "pandastdlib/pandastdlib.bin";
     static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 
     void ExecuteFuzzTest(const uint8_t* data, size_t size)
@@ -32,8 +31,8 @@ namespace OHOS {
             return;
         }
         Local<StringRef> entry = StringRef::NewFromUtf8(vm, PANDA_MAIN_FUNCTION);
-        std::string a = entry->StringRef::ToString();
-        JSNApi::Execute(vm, data, size, a);
+        std::string entryStr = entry->ToString();
+        JSNApi::Execute(vm, data, size, entryStr);
         JSNApi::DestroyJSVM(vm);
     }
 }

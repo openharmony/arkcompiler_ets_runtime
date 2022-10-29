@@ -448,7 +448,7 @@ private:
     void IncreaseTaskCount();
     void ReduceTaskCount();
     void WaitClearTaskFinished();
-    void InvokeWeakNodeSecondPassCallback();
+    void InvokeWeakNodeNativeFinalizeCallback();
     inline void ReclaimRegions(TriggerGCType gcType);
 
     class ParallelGCTask : public Task {
@@ -550,7 +550,7 @@ private:
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
     bool shouldThrowOOMError_ {false};
-    bool runningSecondPassCallbacks_ {false};
+    bool runningNativeFinalizeCallbacks_ {false};
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};

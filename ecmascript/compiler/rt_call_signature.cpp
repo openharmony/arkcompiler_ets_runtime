@@ -24,21 +24,26 @@ CallSignature RuntimeStubCSigns::callSigns_[RuntimeStubCSigns::NUM_OF_RTSTUBS_WI
 
 void RuntimeStubCSigns::Initialize()
 {
-#define INIT_SIGNATURES(name)                                 \
-    name##CallSignature::Initialize(&callSigns_[ID_##name]);  \
-    callSigns_[ID_##name].SetID(ID_##name);                   \
-    assert(callSigns_[ID_##name].IsRuntimeNGCStub() ||        \
-           callSigns_[ID_##name].IsRuntimeStub() ||           \
+#define INIT_SIGNATURES(name)                                        \
+    name##CallSignature::Initialize(&callSigns_[ID_##name]);         \
+    callSigns_[ID_##name].SetName(std::string("RTStub_") + #name);   \
+    callSigns_[ID_##name].SetID(ID_##name);                          \
+    assert(callSigns_[ID_##name].IsRuntimeNGCStub() ||               \
+           callSigns_[ID_##name].IsRuntimeStub() ||                  \
+           callSigns_[ID_##name].IsDeoptStub()   ||                  \
            callSigns_[ID_##name].IsRuntimeVAStub());
+
     RUNTIME_STUB_WITHOUT_GC_LIST(INIT_SIGNATURES)
     RUNTIME_ASM_STUB_LIST(INIT_SIGNATURES)
 #undef INIT_SIGNATURES
 
-#define INIT_ASM_SIGNATURES(name)                             \
-    callSigns_[RuntimeStubCSigns::ID_##name].SetConstructor(  \
-        []([[maybe_unused]]void* arg) {                       \
-            return static_cast<void*>(new name##Stub());      \
+#define INIT_ASM_SIGNATURES(name)                                                     \
+    callSigns_[RuntimeStubCSigns::ID_##name].SetName(std::string("RTStub_") + #name); \
+    callSigns_[RuntimeStubCSigns::ID_##name].SetConstructor(                          \
+        []([[maybe_unused]]void* arg) {                                               \
+            return static_cast<void*>(new name##Stub());                              \
     });
+
     RUNTIME_ASM_STUB_LIST(INIT_ASM_SIGNATURES)
 #undef INIT_ASM_SIGNATURES
 }

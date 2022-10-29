@@ -16,7 +16,6 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 import("//build/config/features.gni")
 import("//build/ohos.gni")
-import("//build/test.gni")
 
 ##################################fuzztest#####################################
 ohos_fuzztest("StartHeapTrackingFuzzTest") {
@@ -33,7 +32,6 @@ ohos_fuzztest("StartHeapTrackingFuzzTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog",
     sdk_libc_secshared_dep,

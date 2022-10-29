@@ -49,6 +49,11 @@ if (globalThis["ArkPrivate"] != undefined) {
     // // test set, clone
     vec.set(2, 8);
     map.set("test set:", vec.get(2) == 8 && vec.length == 6);
+    // trimToCurrentLength
+    vec.trimToCurrentLength();
+    map.set("test trimToCurrentLength1:", vec.getCapacity() === 6);
+    vec.trimToCurrentLength();
+    map.set("test trimToCurrentLength2:", vec.getCapacity() === 6);
     // test subvector
     let subVec = vec.subVector(0, 3);
     map.set("test subVector and tostring:", subVec.toString());
@@ -245,9 +250,9 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test vector toString:", proxy1.toString() == "4,3,1,2,0");
 
     res = true
-    let arr1 = ["a", "b", "c"];
+    let arr1 = [-1, -1, -1, -1, -1];
     proxy1.copyToArray(arr1);
-    let a = ["a", "b", "c", 4, 3, 1, 2, 0];
+    let a = [4, 3, 1, 2, 0];
     for (let i = 0; i < a.length; i++) {
         if (arr1[i] !== a[i]) {
             res = false

@@ -59,13 +59,13 @@ private:
     void CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
         std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap, std::vector<intptr_t> &callsitePcs);
 
-    void GenArkCallsitePackInfo(std::vector<Pc2CallSiteInfo> &pc2stackMaps,
-        std::vector<Pc2Deopt>& pc2DeoptVec, ARKCallsitePackInfo &result);
-    void SaveArkDeopt(const ARKCallsitePackInfo& info, BinaryBufferWriter& writer);
-    void SaveArkStackMap(const ARKCallsitePackInfo& info, BinaryBufferWriter& writer);
-    void SaveArkCallsitePackInfo(uint8_t *ptr, uint32_t length, const ARKCallsitePackInfo& info);
+    void GenArkCallsiteAOTFileInfo(std::vector<Pc2CallSiteInfo> &pc2stackMaps,
+        std::vector<Pc2Deopt>& pc2DeoptVec, ARKCallsiteAOTFileInfo &result);
+    void SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer);
+    void SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer);
+    void SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length, const ARKCallsiteAOTFileInfo& info);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
-    void GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint32_t, std::vector<ARKDeopt>> &sizeAndArkDeopt);
+    void GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint32_t, std::vector<kungfu::ARKDeopt>> &sizeAndArkDeopt);
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_BUILD_H

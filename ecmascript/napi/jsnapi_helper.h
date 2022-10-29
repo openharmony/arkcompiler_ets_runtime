@@ -92,13 +92,13 @@ public:
     {
         obj_.FreeGlobalHandleAddr();
     }
-    static void FirstPassCallBack(void* ref)
+    static void FreeGlobalCallBack(void* ref)
     {
         auto that = reinterpret_cast<NativeReferenceHelper*>(ref);
         that->obj_.FreeGlobalHandleAddr();
     }
 
-    static void SecondPassCallBack(void* ref)
+    static void NativeFinalizeCallBack(void* ref)
     {
         auto that = reinterpret_cast<NativeReferenceHelper*>(ref);
         if (that->callback_ != nullptr) {
@@ -109,7 +109,7 @@ public:
 
     void SetWeakCallback()
     {
-        obj_.SetWeakCallback(this, FirstPassCallBack, SecondPassCallBack);
+        obj_.SetWeakCallback(this, FreeGlobalCallBack, NativeFinalizeCallBack);
     }
 
 private:

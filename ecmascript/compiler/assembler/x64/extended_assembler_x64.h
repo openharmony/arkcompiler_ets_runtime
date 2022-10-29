@@ -24,6 +24,7 @@ namespace panda::ecmascript::x64 {
 // ExtendedAssembler implements frequently-used assembler macros with some extended usages.
 class ExtendedAssembler : public AssemblerX64 {
 public:
+    static constexpr int FRAME_SLOT_SIZE = 8;
     explicit ExtendedAssembler(Chunk *chunk, kungfu::AssemblerModule *module)
         : AssemblerX64(chunk), module_(module)
     {
@@ -34,6 +35,7 @@ public:
     void PopAlignBytes();
     void PushCppCalleeSaveRegisters();
     void PopCppCalleeSaveRegisters();
+    void UpdateCalleeSaveRegisters();
     void PushGhcCalleeSaveRegisters();
     void PopGhcCalleeSaveRegisters();
     void PushArgsWithArgv(Register argc, Register argv, Register operatorRegister);
@@ -58,6 +60,14 @@ public:
     {
         // r11 is neither callee saved reegister nor argument register
         return r11;
+    }
+    Register CppJSCallAvailableRegister1() const
+    {
+        return r13;
+    }
+    Register CppJSCallAvailableRegister2() const
+    {
+        return r14;
     }
     Register CallDispatcherArgument(kungfu::CallDispatchInputs index)
     {

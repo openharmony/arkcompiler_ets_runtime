@@ -19,18 +19,24 @@
 #include "ecmascript/compiler/circuit.h"
 
 namespace panda::ecmascript::kungfu {
-using ControlFlowGraph = std::vector<std::vector<GateRef>>;
 class Scheduler {
 public:
+    using ControlFlowGraph = std::vector<std::vector<GateRef>>;
+
     static std::tuple<std::vector<GateRef>, std::unordered_map<GateRef, size_t>, std::vector<size_t>>
     CalculateDominatorTree(const Circuit *circuit);
-    static ControlFlowGraph Run(const Circuit *circuit, bool enableLog = false);
+
+    static ControlFlowGraph Run(const Circuit *circuit, [[maybe_unused]] const std::string& methodName = "",
+                                bool enableLog = false);
+
     static std::optional<std::unordered_map<GateRef, size_t>> CalculateSchedulingUpperBound(const Circuit *circuit,
         const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
         const std::function<bool(size_t, size_t)> &isAncestor, const std::vector<GateRef> &schedulableGatesList);
+
     static std::optional<std::unordered_map<GateRef, size_t>> CalculateSchedulingLowerBound(const Circuit *circuit,
         const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
         const std::function<size_t(size_t, size_t)> &lowestCommonAncestor, std::vector<GateRef> *order = nullptr);
+
     static void Print(const ControlFlowGraph *cfg, const Circuit *circuit);
 };
 };  // namespace panda::ecmascript::kungfu

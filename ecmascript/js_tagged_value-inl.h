@@ -326,6 +326,10 @@ inline bool JSTaggedValue::SameValue(const JSTaggedValue &x, const JSTaggedValue
     if (x == y) {
         return true;
     }
+    if (x.IsInt() && y.IsInt()) {
+        // same value should be returned above
+        return false;
+    }
     if (x.IsNumber() && y.IsNumber()) {
         return SameValueNumberic(x, y);
     }
@@ -394,6 +398,11 @@ inline bool JSTaggedValue::StrictNumberEquals(double x, double y)
     return x == y;
 }
 
+inline bool JSTaggedValue::StrictIntEquals(int x, int y)
+{
+    return x == y;
+}
+
 inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                        const JSHandle<JSTaggedValue> &y)
 {
@@ -402,8 +411,16 @@ inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, 
 
 inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y)
 {
+    if (x.IsInt() && y.IsInt()) {
+        return StrictIntEquals(x.GetInt(), y.GetInt());
+    }
+
+    if (x.IsDouble() && y.IsDouble()) {
+        return StrictNumberEquals(x.GetDouble(), y.GetDouble());
+    }
+
     if (x.IsNumber() && y.IsNumber()) {
-        return StrictNumberEquals(x.ExtractNumber(), y.ExtractNumber());
+        return StrictNumberEquals(x.GetNumber(), y.GetNumber());
     }
 
     if (x == y) {
@@ -467,6 +484,11 @@ inline bool JSTaggedValue::IsByteArray() const
 inline bool JSTaggedValue::IsConstantPool() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsConstantPool();
+}
+
+inline bool JSTaggedValue::IsAOTLiteralInfo() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsAOTLiteralInfo();
 }
 
 inline bool JSTaggedValue::IsLinkedNode() const
@@ -783,6 +805,11 @@ inline bool JSTaggedValue::IsArray(JSThread *thread) const
         return JSProxy::Cast(GetTaggedObject())->IsArray(thread);
     }
     return false;
+}
+
+inline bool JSTaggedValue::IsCOWArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsCOWArray();
 }
 
 inline bool JSTaggedValue::IsJSArray() const
@@ -1167,11 +1194,6 @@ inline bool JSTaggedValue::IsJSGlobalObject() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSGlobalObject();
 }
 
-inline bool JSTaggedValue::IsGlobalPatch() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsGlobalPatch();
-}
-
 inline bool JSTaggedValue::IsMachineCodeObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsMachineCodeObject();
@@ -1240,6 +1262,11 @@ inline bool JSTaggedValue::IsTSFunctionType() const
 inline bool JSTaggedValue::IsTSArrayType() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSArrayType();
+}
+
+inline bool JSTaggedValue::IsTSIteratorInstanceType() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSIteratorInstanceType();
 }
 
 inline bool JSTaggedValue::IsModuleRecord() const

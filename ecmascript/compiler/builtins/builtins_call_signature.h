@@ -20,13 +20,21 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 
 namespace panda::ecmascript::kungfu {
-#define IGNORE_BC_STUB(...)
-// V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define BUILTINS_STUB_LIST(V)                       \
     V(CharCodeAt)                                   \
     V(IndexOf)                                      \
     V(Substring)                                    \
     V(CharAt)                                       \
+    V(VectorForEach)                                \
+    V(VectorReplaceAllElements)                     \
+    V(StackForEach)                                 \
+    V(PlainArrayForEach)                            \
+    V(QueueForEach)                                 \
+    V(DequeForEach)                                 \
+    V(LightWeightMapForEach)                        \
+    V(LightWeightSetForEach)                        \
+    V(ArrayListForEach)                             \
+    V(ArrayListReplaceAllElements)                  \
 
 class BuiltinsStubCSigns {
 public:
@@ -62,7 +70,9 @@ enum class BuiltinsArgs : size_t {
     FUNC,
     THISVALUE,
     NUMARGS,
-    ARGV,
+    ARG0,
+    ARG1,
+    ARG2,
     NUM_OF_INPUTS,
 };
 

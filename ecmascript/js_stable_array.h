@@ -19,6 +19,8 @@
 #include <limits>
 
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_dataview.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript {
@@ -50,6 +52,9 @@ public:
                                  JSHandle<JSTaggedValue> thisHandle, int64_t &lower, uint32_t len);
     static JSTaggedValue Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,
                                 JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &n);
+    static JSTaggedValue FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &target,
+                                                       DataViewType targetType, uint32_t targetOffset,
+                                                       uint32_t srcLength, JSHandle<TaggedArray> &elements);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

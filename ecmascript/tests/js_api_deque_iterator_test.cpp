@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/containers/containers_private.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/global_env.h"
@@ -49,19 +50,30 @@ public:
     JSThread *thread {nullptr};
 
 protected:
-    static JSHandle<JSAPIDeque> CreateJSApiDeque(JSThread *thread)
+    JSAPIDeque *CreateJSApiDeque()
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
-        JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
-        JSHandle<JSHClass> dequeClass = factory->NewEcmaHClass(JSAPIDeque::SIZE, JSType::JS_API_DEQUE, proto);
-        JSHandle<JSAPIDeque> jsDeque = JSHandle<JSAPIDeque>::Cast(factory->NewJSObject(dequeClass));
+        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
+        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
+        JSHandle<JSTaggedValue> value =
+            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+
+        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        objCallInfo->SetFunction(JSTaggedValue::Undefined());
+        objCallInfo->SetThis(value.GetTaggedValue());
+        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::Deque)));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+        JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        JSHandle<JSTaggedValue> constructor(thread, result);
+        JSHandle<JSAPIDeque> deque(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
         JSHandle<TaggedArray> newElements = factory->NewTaggedArray(JSAPIDeque::DEFAULT_CAPACITY_LENGTH);
-        jsDeque->SetFirst(0);
-        jsDeque->SetLast(0);
-        jsDeque->SetElements(thread, newElements);
-        return jsDeque;
+        deque->SetElements(thread, newElements);
+        return *deque;
     }
 };
 
@@ -76,7 +88,7 @@ HWTEST_F_L0(JSAPIDequeIteratorTest, Next)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAPIDeque> jsDeque = CreateJSApiDeque(thread);
+    JSHandle<JSAPIDeque> jsDeque(thread, CreateJSApiDeque());
     EXPECT_TRUE(*jsDeque != nullptr);
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
@@ -120,8 +132,8 @@ HWTEST_F_L0(JSAPIDequeIteratorTest, SetIteratedDeque)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAPIDeque> jsDeque1 = CreateJSApiDeque(thread);
-    JSHandle<JSAPIDeque> jsDeque2 = CreateJSApiDeque(thread);
+    JSHandle<JSAPIDeque> jsDeque1(thread, CreateJSApiDeque());
+    JSHandle<JSAPIDeque> jsDeque2(thread, CreateJSApiDeque());
     EXPECT_TRUE(*jsDeque1 != nullptr);
     EXPECT_TRUE(*jsDeque2 != nullptr);
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
@@ -156,7 +168,7 @@ HWTEST_F_L0(JSAPIDequeIteratorTest, SetNextIndex)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAPIDeque> jsDeque = CreateJSApiDeque(thread);
+    JSHandle<JSAPIDeque> jsDeque(thread, CreateJSApiDeque());
     EXPECT_TRUE(*jsDeque != nullptr);
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     // insert value

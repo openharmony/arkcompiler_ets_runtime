@@ -18,6 +18,7 @@
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_array.h"
@@ -26,6 +27,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPILinkedListIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -33,23 +36,29 @@ JSTaggedValue JSAPILinkedListIterator::Next(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
     if (!input->IsJSAPILinkedListIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an linkedList iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPILinkedListIterator> iter(input);
     JSHandle<JSTaggedValue> linkedList(thread, iter->GetIteratedLinkedList());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<TaggedDoubleList> list(linkedList);
     if (linkedList->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     int index = static_cast<int>(iter->GetNextIndex());
     int length = list->Length();
     if (index >= length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedLinkedList(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
-    JSHandle<JSTaggedValue> value(thread, list->Get(index));
+    int dataIndex = static_cast<int>(iter->GetDataIndex());
+    std::pair<int, JSTaggedValue> resultPair = list->GetByDataIndex(dataIndex);
+    iter->SetDataIndex(resultPair.first);
+    JSHandle<JSTaggedValue> value(thread, resultPair.second);
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }
 
@@ -61,8 +70,10 @@ JSHandle<JSTaggedValue> JSAPILinkedListIterator::CreateLinkedListIterator(JSThre
         if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPILinkedList()) {
             obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSAPILinkedList",
-                                        thread->GlobalConstants()->GetHandledUndefined());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The Symbol.iterator method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                             JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
         }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPILinkedListIterator(JSHandle<JSAPILinkedList>(obj)));

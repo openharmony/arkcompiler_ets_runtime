@@ -50,7 +50,7 @@ public:
     JSTaggedValue GetIndexOfKey(int32_t key);
     JSTaggedValue GetIndexOfValue(JSTaggedValue value);
     JSTaggedValue GetKeyAt(int32_t index);
-    JSTaggedValue GetValueAt(int32_t index);
+    JSTaggedValue GetValueAt(JSThread *thread, int32_t index);
     JSTaggedValue Get(const JSTaggedValue key);
     JSTaggedValue Remove(JSThread *thread, JSTaggedValue key);
     JSTaggedValue RemoveRangeFrom(JSThread *thread, int32_t index, int32_t batchSize);

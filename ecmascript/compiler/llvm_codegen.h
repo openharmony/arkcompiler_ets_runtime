@@ -33,10 +33,12 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
 #include "ecmascript/mem/machine_code.h"
@@ -69,9 +71,6 @@ struct CodeInfo {
         if (reqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
             reqSecs_ = nullptr;
         }
-        // align machineCode for aarch64
-        reqSecs_ += MachineCode::DATA_OFFSET +
-            AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
         unreqSecs_ = static_cast<uint8_t *>(mmap(nullptr, UNREQUIRED_SECS_LIMIT, protRWX, flags, -1, 0));
         if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
             unreqSecs_ = nullptr;
@@ -82,8 +81,6 @@ struct CodeInfo {
     {
         Reset();
         if (reqSecs_ != nullptr) {
-            reqSecs_ -= MachineCode::DATA_OFFSET +
-                AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
             munmap(reqSecs_, REQUIRED_SECS_LIMIT);
         }
         reqSecs_ = nullptr;
@@ -93,9 +90,9 @@ struct CodeInfo {
         unreqSecs_ = nullptr;
     }
 
-    uint8_t *AllocaInReqSecBuffer(uintptr_t size)
+    uint8_t *AllocaInReqSecBuffer(uintptr_t size, bool alignFlag = true)
     {
-        return Alloca(size, reqSecs_, reqBufPos_);
+        return Alloca(size, reqSecs_, reqBufPos_, alignFlag);
     }
 
     uint8_t *AllocaInNotReqSecBuffer(uintptr_t size)
@@ -105,7 +102,8 @@ struct CodeInfo {
 
     uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName)
     {
-        uint8_t *addr = AllocaInReqSecBuffer(size);
+        // if have got section, don't use align.
+        uint8_t *addr = AllocaInReqSecBuffer(size, false);
         auto curSec = ElfSection(sectionName);
         codeInfo_.push_back({addr, size});
         if (curSec.isValidAOTSec()) {
@@ -167,8 +165,8 @@ struct CodeInfo {
     }
 
 private:
-    static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 28);  // 256M
-    static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 27);  // 128M
+    static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
+    static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
     static constexpr int protRWX = PROT_READ | PROT_WRITE | PROT_EXEC;  // NOLINT(hicpp-signed-bitwise)
     static constexpr int protRW = PROT_READ | PROT_WRITE;               // NOLINT(hicpp-signed-bitwise)
     static constexpr int flags = MAP_ANONYMOUS | MAP_SHARED;            // NOLINT(hicpp-signed-bitwise)
@@ -181,10 +179,12 @@ private:
     std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
 
-    uint8_t *Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos)
+    uint8_t *Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos, bool alignFlag = true)
     {
         // align up for rodata section
-        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        if (alignFlag) {
+            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        }
         uint8_t *addr = nullptr;
         size_t limit = (bufBegin == reqSecs_) ? REQUIRED_SECS_LIMIT : UNREQUIRED_SECS_LIMIT;
         if (curPos + size > limit) {
@@ -219,6 +219,7 @@ public:
     void Disassemble(const std::map<uintptr_t, std::string> &addr2name,
         const CompilerLog &log, const MethodLogList &logList) const;
     static int GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log);
+    static kungfu::CalleeRegAndOffsetVec GetCalleeReg2Offset(LLVMValueRef fn, const CompilerLog &log);
     static void Disassemble(uint8_t *buf, size_t size);
 
     uintptr_t GetSectionAddr(ElfSecName sec) const

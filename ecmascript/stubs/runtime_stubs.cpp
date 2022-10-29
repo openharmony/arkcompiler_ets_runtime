@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/number_helper.h"
@@ -20,6 +21,8 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/deoptimizer.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
@@ -42,12 +45,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/ts_types/ts_manager.h"
-
-#ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
-#else
-#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
-#endif
 
 namespace panda::ecmascript {
 #if defined(__clang__)
@@ -124,6 +122,15 @@ DEF_RUNTIME_STUBS(CallInternalSetter)
 DEF_RUNTIME_STUBS(DebugBreak)
 {
     RUNTIME_STUBS_HEADER(DebugBreak);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(Dump)
+{
+    RUNTIME_STUBS_HEADER(Dump);
+    JSTaggedValue value = GetArg(argv, argc, 0);
+    value.D();
+    std::cout << "======================================================" << std::endl;
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -291,6 +298,15 @@ DEF_RUNTIME_STUBS(TaggedArraySetValue)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CheckAndCopyArray)
+{
+    RUNTIME_STUBS_HEADER(CheckAndCopyArray);
+    JSTaggedType argReceiver = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSArray> receiverHandle(thread, reinterpret_cast<JSArray *>(argReceiver));
+    JSArray::CheckAndCopyArray(thread, receiverHandle);
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(NewEcmaHClass)
 {
     RUNTIME_STUBS_HEADER(NewEcmaHClass);
@@ -347,6 +363,12 @@ void RuntimeStubs::DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, cons
 {
     BytecodeInstruction inst(pc);
     LOG_INTERPRETER(DEBUG) << inst;
+}
+
+void RuntimeStubs::PGOProfiler(uintptr_t argGlue, uintptr_t func)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetPGOProfiler()->Sample(func);
 }
 
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
@@ -622,12 +644,14 @@ DEF_RUNTIME_STUBS(LoadICByValue)
     RUNTIME_STUBS_HEADER(LoadICByValue);
     JSHandle<JSTaggedValue> profileTypeInfo = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> propKey = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue slotId = GetArg(argv, argc, 3);  // 3: means the third parameter
 
     if (profileTypeInfo->IsUndefined()) {
-        return RuntimeLdObjByValue(thread, receiver, propKey, false, JSTaggedValue::Undefined()).GetRawData();
+        return RuntimeLdObjByValue(thread, receiver, key, false, JSTaggedValue::Undefined()).GetRawData();
     }
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     LoadICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(), ICKind::LoadIC);
     return icRuntime.LoadMiss(receiver, propKey).GetRawData();
 }
@@ -637,13 +661,15 @@ DEF_RUNTIME_STUBS(StoreICByValue)
     RUNTIME_STUBS_HEADER(StoreICByValue);
     JSHandle<JSTaggedValue> profileTypeInfo = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> propKey = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue slotId = GetArg(argv, argc, 4);   // 4: means the fourth parameter
 
     if (profileTypeInfo->IsUndefined()) {
-        return RuntimeStObjByValue(thread, receiver, propKey, value).GetRawData();
+        return RuntimeStObjByValue(thread, receiver, key, value).GetRawData();
     }
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     StoreICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(),
                              ICKind::StoreIC);
     return icRuntime.StoreMiss(receiver, propKey, value).GetRawData();
@@ -722,8 +748,9 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
     RUNTIME_STUBS_HEADER(GetObjectLiteralFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+        thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
@@ -731,8 +758,9 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
     RUNTIME_STUBS_HEADER(GetArrayLiteralFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
-        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+        thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LdObjByIndex)
@@ -883,9 +911,10 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
+    JSHandle<JSTaggedValue> module =  GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
     return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
                                         static_cast<uint16_t>(methodId.GetInt()),
-                                        static_cast<uint16_t>(literalId.GetInt())).GetRawData();
+                                        static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateClassWithIHClass)
@@ -897,10 +926,11 @@ DEF_RUNTIME_STUBS(CreateClassWithIHClass)
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
     JSHandle<JSHClass> ihclass = GetHArg<JSHClass>(argv, argc, 5);  // 5: means the fifth parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the sixth parameter
     return RuntimeCreateClassWithIHClass(thread, base, lexenv, constpool,
                                          static_cast<uint16_t>(methodId.GetInt()),
                                          static_cast<uint16_t>(literalId.GetInt()),
-                                         ihclass).GetRawData();
+                                         ihclass, module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
@@ -917,10 +947,11 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     RUNTIME_STUBS_HEADER(UpdateHotnessCounter);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     thread->CheckSafepoint();
-    auto profileTypeInfo = thisFunc->GetProfileTypeInfo();
+    JSHandle<Method> method(thread, thisFunc->GetMethod());
+    auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
-        uint32_t slotSize = thisFunc->GetCallTarget()->GetSlotSize();
-        auto res = RuntimeNotifyInlineCache(thread, thisFunc, slotSize);
+        uint32_t slotSize = method->GetSlotSize();
+        auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
@@ -942,6 +973,26 @@ DEF_RUNTIME_STUBS(LoadICByName)
     LoadICRuntime icRuntime(
         thread, JSHandle<ProfileTypeInfo>::Cast(profileHandle), slotId.GetInt(), ICKind::NamedLoadIC);
     return icRuntime.LoadMiss(receiverHandle, keyHandle).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TryLdGlobalICByName)
+{
+    RUNTIME_STUBS_HEADER(TryLdGlobalICByName);
+    JSHandle<JSTaggedValue> profileHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedValue slotId = GetArg(argv, argc, 2);  // 2: means the third parameter
+
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> globalObj(thread, globalEnv->GetGlobalObject());
+    if (profileHandle->IsUndefined()) {
+        auto res = RuntimeTryLdGlobalByName(thread, globalObj, keyHandle);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        return res.GetRawData();
+    }
+    LoadICRuntime icRuntime(
+        thread, JSHandle<ProfileTypeInfo>::Cast(profileHandle), slotId.GetInt(), ICKind::NamedGlobalTryLoadIC);
+    return icRuntime.LoadMiss(globalObj, keyHandle).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StoreICByName)
@@ -1063,15 +1114,9 @@ DEF_RUNTIME_STUBS(GetModuleNamespace)
 DEF_RUNTIME_STUBS(GetModuleNamespaceOnJSFunc)
 {
     RUNTIME_STUBS_HEADER(GetModuleNamespaceOnJSFunc);
+    JSTaggedValue localName = GetArg(argv, argc, 0);
     JSTaggedValue jsFunc = GetArg(argv, argc, 1);
-    JSTaggedValue isDeprecated = GetArg(argv, argc, 2); // 2: means the second parameter
-    if (isDeprecated.IsTrue()) {
-        JSTaggedValue localName = GetArg(argv, argc, 0);
-        return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
-    } else {
-        JSTaggedValue index = GetArg(argv, argc, 0);
-        return RuntimeGetModuleNamespace(thread, index.GetInt(), jsFunc).GetRawData();
-    }
+    return RuntimeGetModuleNamespace(thread, localName, jsFunc).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StModuleVarByIndex)
@@ -1085,7 +1130,7 @@ DEF_RUNTIME_STUBS(StModuleVarByIndex)
 
 DEF_RUNTIME_STUBS(StModuleVarByIndexOnJSFunc)
 {
-    RUNTIME_STUBS_HEADER(StModuleVarOnJSFunc);
+    RUNTIME_STUBS_HEADER(StModuleVarByIndexOnJSFunc);
     JSTaggedValue index = GetArg(argv, argc, 0);
     JSTaggedValue value = GetArg(argv, argc, 1);
     JSTaggedValue jsFunc = GetArg(argv, argc, 2);
@@ -1316,6 +1361,22 @@ DEF_RUNTIME_STUBS(LdGlobalVar)
     JSHandle<JSTaggedValue> global = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeLdGlobalVarFromProto(thread, global, prop).GetRawData(); // After checked global itself.
+}
+
+DEF_RUNTIME_STUBS(LdGlobalICVar)
+{
+    RUNTIME_STUBS_HEADER(LdGlobalICVar);
+    JSHandle<JSTaggedValue> global = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> profileHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue slotId = GetArg(argv, argc, 3);  // 3: means the third parameter
+
+    if (profileHandle->IsUndefined()) {
+        return RuntimeLdGlobalVarFromProto(thread, global, prop).GetRawData();
+    }
+    LoadICRuntime icRuntime(
+        thread, JSHandle<ProfileTypeInfo>::Cast(profileHandle), slotId.GetInt(), ICKind::NamedGlobalLoadIC);
+    return icRuntime.LoadMiss(global, prop).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StGlobalVar)
@@ -2022,6 +2083,12 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
     return index;
 }
 
+JSTaggedType RuntimeStubs::AotFloatMod(double x, double y)
+{
+    double result = std::fmod(x, y);
+    return JSTaggedValue(result).GetRawData();
+}
+
 JSTaggedType RuntimeStubs::FloatMod(double x, double y)
 {
     double result = std::fmod(x, y);
@@ -2156,6 +2223,18 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
         runtimeInfo->SetCallArg(argsLength, boundLength, info, 0);
     }
     return EcmaInterpreter::Execute(runtimeInfo);
+}
+
+DEF_RUNTIME_STUBS(DeoptHandler)
+{
+    RUNTIME_STUBS_HEADER(DeoptHandler);
+
+    Deoptimizier deopt(thread);
+    std::vector<kungfu::ARKDeopt> deoptBundle;
+    deopt.CollectDeoptBundleVec(deoptBundle);
+    ASSERT(!deoptBundle.empty());
+    deopt.CollectVregs(deoptBundle);
+    return deopt.ConstructAsmInterpretFrame();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

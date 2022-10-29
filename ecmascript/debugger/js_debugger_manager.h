@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUGGER_MANAGER_H
 #define ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUGGER_MANAGER_H
 
+#include "ecmascript/debugger/hot_reload_manager.h"
 #include "ecmascript/debugger/notification_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
@@ -33,24 +34,23 @@ public:
         std::function<void(const FrameHandler *, std::string_view, Local<JSValueRef>)>;
     using SingleStepperFunc = std::function<void()>;
 
-    JsDebuggerManager() = default;
-    ~JsDebuggerManager()
+    JsDebuggerManager(const EcmaVM *vm) : hotReloadManager_(vm)
     {
-        delete notificationManager_;
+        jsThread_ = vm->GetJSThread();
     }
+    ~JsDebuggerManager() = default;
 
     NO_COPY_SEMANTIC(JsDebuggerManager);
     NO_MOVE_SEMANTIC(JsDebuggerManager);
 
-    void Initialize(const EcmaVM *vm)
-    {
-        notificationManager_ = new NotificationManager();
-        jsThread_ = vm->GetJSThread();
-    }
-
     NotificationManager *GetNotificationManager() const
     {
-        return notificationManager_;
+        return const_cast<NotificationManager *>(&notificationManager_);
+    }
+
+    HotReloadManager *GetHotReloadManager() const
+    {
+        return const_cast<HotReloadManager *>(&hotReloadManager_);
     }
 
     void SetDebugMode(bool isDebugMode)
@@ -139,11 +139,13 @@ private:
     bool isMixedDebugEnabled_ { false };
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
-    NotificationManager *notificationManager_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};
     SingleStepperFunc *stepperFunc_ {nullptr};
     JSThread *jsThread_ {nullptr};
     std::shared_ptr<FrameHandler> frameHandler_;
+
+    NotificationManager notificationManager_;
+    HotReloadManager hotReloadManager_;
 };
 }  // panda::ecmascript::tooling
 

@@ -280,6 +280,9 @@ std::vector<GateRef> Circuit::GetInVector(GateRef gate) const
 GateRef Circuit::GetIn(GateRef gate, size_t idx) const
 {
     ASSERT(idx < LoadGatePtrConst(gate)->GetNumIns());
+    if (IsInGateNull(gate, idx)) {
+        return NullGate();
+    }
     const Gate *curGate = LoadGatePtrConst(gate);
     return GetGateRef(curGate->GetInGateConst(idx));
 }
@@ -450,6 +453,18 @@ GateRef Circuit::GetConstantGate(MachineType bitValue, BitField bitfield,
     auto gate = NewGate(OpCode(OpCode::CONSTANT), bitValue, bitfield,
                         {GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))}, type);
     constantCache_[{bitValue, bitfield, type}] = gate;
+    return gate;
+}
+
+GateRef Circuit::GetConstantDataGate(BitField bitfield, GateType type)
+{
+    auto search = constantDataCache_.find(bitfield);
+    if (search != constantDataCache_.end()) {
+        return constantDataCache_.at(bitfield);
+    }
+    auto gate = NewGate(OpCode(OpCode::CONST_DATA), bitfield,
+                        {GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))}, type);
+    constantDataCache_[bitfield] = gate;
     return gate;
 }
 

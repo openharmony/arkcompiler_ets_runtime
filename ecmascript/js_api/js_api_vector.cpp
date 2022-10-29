@@ -265,7 +265,6 @@ JSTaggedValue JSAPIVector::ToString(JSThread *thread, const JSHandle<JSAPIVector
 
     int32_t length = vector->GetSize();
     std::u16string concatStr;
-    std::u16string concatStrNew;
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
     for (int32_t k = 0; k < length; k++) {
         std::u16string nextStr;
@@ -276,11 +275,11 @@ JSTaggedValue JSAPIVector::ToString(JSThread *thread, const JSHandle<JSAPIVector
             nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
         }
         if (k > 0) {
-            concatStrNew = base::StringHelper::Append(concatStr, sepHandle);
-            concatStr = base::StringHelper::Append(concatStrNew, nextStr);
+            concatStr.append(sepHandle);
+            concatStr.append(nextStr);
             continue;
         }
-        concatStr = base::StringHelper::Append(concatStr, nextStr);
+        concatStr.append(nextStr);
     }
 
     char16_t *char16tData = concatStr.data();
@@ -436,25 +435,36 @@ bool JSAPIVector::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIVector> &
 void JSAPIVector::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
     int32_t length = obj->GetSize();
+    uint32_t capacity = obj->GetCapacity();
     TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
-    elements->Trim(thread, length);
+    if (capacity > static_cast<uint32_t>(length)) {
+        elements->Trim(thread, length);
+    }
 }
 
-void JSAPIVector::Clear(const JSHandle<JSAPIVector> &obj)
+void JSAPIVector::Clear(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
+    int length = obj->GetLength();
+    JSHandle<TaggedArray> elements(thread, obj->GetElements());
+    ASSERT(!elements->IsDictionaryMode());
+    for (int i = 0; i <= length; ++i) {
+        elements->Set(thread, i, JSTaggedValue::Hole());
+    }
     obj->SetLength(0);
 }
 
 JSHandle<JSAPIVector> JSAPIVector::Clone(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
-    uint32_t capacity = obj->GetCapacity();
+    JSHandle<TaggedArray> srcElements(thread, obj->GetElements());
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIVector> newVector = factory->NewJSAPIVector(0);
+
     int32_t length = obj->GetSize();
-    JSHandle<JSAPIVector> newVector = thread->GetEcmaVM()->GetFactory()->NewJSAPIVector(capacity);
     newVector->SetLength(length);
-    for (int32_t i = 0; i < length; i++) {
-        newVector->Set(thread, i, Get(thread, obj, i)); // set or add
-    }
+
+    JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, length, length);
+    newVector->SetElements(thread, dstElements);
     return newVector;
 }
 

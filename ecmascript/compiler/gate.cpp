@@ -20,7 +20,7 @@ constexpr size_t ONE_DEPEND = 1;
 constexpr size_t MANY_DEPEND = 2;
 constexpr size_t NO_DEPEND = 0;
 // NOLINTNEXTLINE(readability-function-size)
-Properties OpCode::GetProperties() const
+const Properties& OpCode::GetProperties() const
 {
 // general schema: [STATE]s + [DEPEND]s + [VALUE]s + [ROOT]
 // GENERAL_STATE for any opcode match in
@@ -44,8 +44,10 @@ Properties OpCode::GetProperties() const
     switch (op_) {
         // SHARED
         case NOP:
-        case CIRCUIT_ROOT:
-            return {NOVALUE, NO_STATE, NO_DEPEND, NO_VALUE, NO_ROOT};
+        case CIRCUIT_ROOT: {
+            static const Properties ps { NOVALUE, NO_STATE, NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         case STATE_ENTRY:
         case DEPEND_ENTRY:
         case FRAMESTATE_ENTRY:
@@ -53,92 +55,152 @@ Properties OpCode::GetProperties() const
         case THROW_LIST:
         case CONSTANT_LIST:
         case ALLOCA_LIST:
-        case ARG_LIST:
-            return {NOVALUE, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CIRCUIT_ROOT)};
-        case RETURN:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), OpCode(RETURN_LIST)};
-        case RETURN_VOID:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, OpCode(RETURN_LIST)};
-        case THROW:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(JSMachineType()), OpCode(THROW_LIST)};
-        case ORDINARY_BLOCK:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case IF_BRANCH:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, VALUE(I1), NO_ROOT};
-        case SWITCH_BRANCH:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case ARG_LIST: {
+            static const Properties ps { NOVALUE, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CIRCUIT_ROOT) };
+            return ps;
+        }
+        case RETURN: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE), OpCode(RETURN_LIST) };
+            return ps;
+        }
+        case RETURN_VOID: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE,
+                                         OpCode(RETURN_LIST) };
+            return ps;
+        }
+        case THROW: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(JSMachineType()),
+                                         OpCode(THROW_LIST) };
+            return ps;
+        }
+        case ORDINARY_BLOCK: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case IF_BRANCH: {
+            static const Properties ps{ NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, VALUE(I1), NO_ROOT };
+            return ps;
+        }
+        case SWITCH_BRANCH: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case IF_TRUE:
-        case IF_FALSE:
-            return {NOVALUE, STATE(OpCode(IF_BRANCH)), NO_DEPEND, NO_VALUE, NO_ROOT};
+        case IF_FALSE: {
+            static const Properties ps { NOVALUE, STATE(OpCode(IF_BRANCH)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         case SWITCH_CASE:
-        case DEFAULT_CASE:
-            return {NOVALUE, STATE(OpCode(SWITCH_BRANCH)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case MERGE:
-            return {NOVALUE, MANY_STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case LOOP_BEGIN:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE), OpCode(LOOP_BACK)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case LOOP_BACK:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case VALUE_SELECTOR:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, MANY_VALUE(FLEX), NO_ROOT};
-        case DEPEND_SELECTOR:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), MANY_DEPEND, NO_VALUE, NO_ROOT};
-        case DEPEND_RELAY:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, NO_ROOT};
-        case DEPEND_AND:
-            return {NOVALUE, NO_STATE, MANY_DEPEND, NO_VALUE, NO_ROOT};
+        case DEFAULT_CASE: {
+            static const Properties ps { NOVALUE, STATE(OpCode(SWITCH_BRANCH)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case MERGE: {
+            static const Properties ps { NOVALUE, MANY_STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case LOOP_BEGIN: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE), OpCode(LOOP_BACK)), NO_DEPEND,
+                                         NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case LOOP_BACK: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case VALUE_SELECTOR: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, MANY_VALUE(FLEX), NO_ROOT };
+            return ps;
+        }
+        case DEPEND_SELECTOR: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), MANY_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case DEPEND_RELAY: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case DEPEND_AND: {
+            static const Properties ps { NOVALUE, NO_STATE, MANY_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         // High Level IR
-        case JS_BYTECODE:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT};
+        case JS_BYTECODE: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case IF_SUCCESS:
-        case IF_EXCEPTION:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT};
-        case GET_EXCEPTION:
-            return {I64, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT};
+        case IF_EXCEPTION: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), NO_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case GET_EXCEPTION: {
+            static const Properties ps { I64, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         // Middle Level IR
+
         case RUNTIME_CALL:
         case NOGC_RUNTIME_CALL:
         case BYTECODE_CALL:
         case DEBUGGER_BYTECODE_CALL:
         case BUILTINS_CALL:
         case CALL:
-        case RUNTIME_CALL_WITH_ARGV:
-            return {FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
-        case ALLOCA:
-            return {ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(ALLOCA_LIST)};
-        case ARG:
-            return {FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(ARG_LIST)};
+        case RUNTIME_CALL_WITH_ARGV: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case ALLOCA: {
+            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(ALLOCA_LIST) };
+            return ps;
+        }
+        case ARG: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(ARG_LIST) };
+            return ps;
+        }
         case MUTABLE_DATA:
-        case CONST_DATA:
-            return {ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST)};
-        case RELOCATABLE_DATA:
-            return {ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST)};
-        case CONSTANT:
-            return {FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST)};
-        case ZEXT_TO_INT64:
-            return {I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case ZEXT_TO_INT32:
-            return {I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case ZEXT_TO_INT16:
-            return {I16, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case ZEXT_TO_ARCH:
-            return {ARCH, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case SEXT_TO_INT64:
-            return {I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case SEXT_TO_INT32:
-            return {I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case SEXT_TO_ARCH:
-            return {ARCH, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TRUNC_TO_INT32:
-            return {I32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TRUNC_TO_INT8:
-            return {I8, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TRUNC_TO_INT1:
-            return {I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TRUNC_TO_INT16:
-            return {I16, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case REV:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX), NO_ROOT};
+        case CONST_DATA: {
+            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST) };
+            return ps;
+        }
+        case RELOCATABLE_DATA: {
+            static const Properties ps { ARCH, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST) };
+            return ps;
+        }
+        case CONSTANT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, NO_VALUE, OpCode(CONSTANT_LIST) };
+            return ps;
+        }
+        case ZEXT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case SEXT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TRUNC: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case FEXT: {
+            static const Properties ps { F64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case FTRUNC: {
+            static const Properties ps { F32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case REV: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX), NO_ROOT };
+            return ps;
+        }
+        case TRUNC_FLOAT_TO_INT64: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case ADD:
         case SUB:
         case MUL:
@@ -154,65 +216,122 @@ Properties OpCode::GetProperties() const
         case OR:
         case LSL:
         case LSR:
-        case ASR:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX, FLEX), NO_ROOT};
-        case SLT:
-        case SLE:
-        case SGT:
-        case SGE:
-        case ULT:
-        case ULE:
-        case UGT:
-        case UGE:
-        case FLT:
-        case FLE:
-        case FGT:
-        case FGE:
-        case EQ:
-        case NE:
-            return {I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
-        case LOAD:
-            return {FLEX, NO_STATE, ONE_DEPEND, VALUE(ARCH), NO_ROOT};
-        case STORE:
-            return {NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE, ARCH), NO_ROOT};
-        case TAGGED_TO_INT64:
-            return {I64, NO_STATE, NO_DEPEND, VALUE(I64), NO_ROOT};
-        case INT64_TO_TAGGED:
-            return {I64, NO_STATE, NO_DEPEND, VALUE(I64), NO_ROOT};
+        case ASR: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX, FLEX), NO_ROOT };
+            return ps;
+        }
+        case ICMP:
+        case FCMP: {
+            static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE, ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case LOAD: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, VALUE(ARCH), NO_ROOT };
+            return ps;
+        }
+        case STORE: {
+            static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE, ARCH), NO_ROOT };
+            return ps;
+        }
+        case TAGGED_TO_INT64: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(I64), NO_ROOT };
+            return ps;
+        }
+        case INT64_TO_TAGGED: {
+            static const Properties ps { I64, NO_STATE, NO_DEPEND, VALUE(I64), NO_ROOT };
+            return ps;
+        }
         case SIGNED_INT_TO_FLOAT:
-        case UNSIGNED_INT_TO_FLOAT:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case UNSIGNED_INT_TO_FLOAT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case FLOAT_TO_SIGNED_INT:
-        case UNSIGNED_FLOAT_TO_INT:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case BITCAST:
-            return {FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case UNSIGNED_FLOAT_TO_INT: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case BITCAST: {
+            static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        // Deopt relate IR
+        case GUARD: {
+            static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case DEOPT: {
+            static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case FRAME_STATE: {
+            static const Properties ps { NOVALUE, NO_STATE, NO_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         // suspend relate HIR
-        case RESTORE_REGISTER:
-            return {FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT};
-        case SAVE_REGISTER:
-            return {NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case RESTORE_REGISTER: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case SAVE_REGISTER: {
+            static const Properties ps { NOVALUE, NO_STATE, ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         // ts type lowering relate IR
-        case TYPE_CHECK:
-            return {I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TYPED_BINARY_OP:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE, I8), NO_ROOT};
-        case TYPE_CONVERT:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case TYPED_UNARY_OP:
-            return {FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
-        case HEAP_ALLOC:
-            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(I64), NO_ROOT};
-        case LOAD_ELEMENT:
-            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, I64), NO_ROOT};
-        case LOAD_PROPERTY:
-            return {ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE), NO_ROOT};
-        case STORE_ELEMENT:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, I64, ANYVALUE), NO_ROOT};
-        case STORE_PROPERTY:
-            return {NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE, ANYVALUE), NO_ROOT};
-        case TO_LENGTH:
-            return {I64, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT};
+        case TYPE_CHECK: {
+            static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TYPED_BINARY_OP: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, ANYVALUE, I8), NO_ROOT };
+            return ps;
+        }
+        case TYPE_CONVERT: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TYPED_UNARY_OP: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case OBJECT_TYPE_CHECK: {
+            static const Properties ps { I1, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, I64), NO_ROOT };
+            return ps;
+        }
+        case HEAP_ALLOC: {
+            static const Properties ps { ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(I64), NO_ROOT };
+            return ps;
+        }
+        case LOAD_ELEMENT: {
+            static const Properties ps { ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, I64), NO_ROOT };
+            return ps;
+        }
+        case LOAD_PROPERTY: {
+            static const Properties ps { ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE, ANYVALUE),
+                                         NO_ROOT };
+            return ps;
+        }
+        case STORE_ELEMENT: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, I64, ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case STORE_PROPERTY: {
+            static const Properties ps { NOVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, ANYVALUE, ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case TO_LENGTH: {
+            static const Properties ps { I64, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case GET_ENV: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
         default:
             LOG_COMPILER(ERROR) << "Please complete OpCode properties (OpCode=" << op_ << ")";
             UNREACHABLE();
@@ -273,18 +392,13 @@ std::string OpCode::Str() const
         {RELOCATABLE_DATA, "RELOCATABLE_DATA"},
         {CONST_DATA, "CONST_DATA"},
         {CONSTANT, "CONSTANT"},
-        {ZEXT_TO_INT64, "ZEXT_TO_INT64"},
-        {ZEXT_TO_INT32, "ZEXT_TO_INT32"},
-        {ZEXT_TO_INT16, "ZEXT_TO_INT16"},
-        {ZEXT_TO_ARCH, "ZEXT_TO_ARCH"},
-        {SEXT_TO_INT64, "SEXT_TO_INT64"},
-        {SEXT_TO_INT32, "SEXT_TO_INT32"},
-        {SEXT_TO_ARCH, "SEXT_TO_ARCH"},
-        {TRUNC_TO_INT32, "TRUNC_TO_INT32"},
-        {TRUNC_TO_INT8, "TRUNC_TO_INT8"},
-        {TRUNC_TO_INT1, "TRUNC_TO_INT1"},
-        {TRUNC_TO_INT16, "TRUNC_TO_INT16"},
+        {ZEXT, "ZEXT"},
+        {SEXT, "SEXT"},
+        {TRUNC, "TRUNC"},
+        {FEXT, "FEXT"},
+        {FTRUNC, "FTRUNC"},
         {REV, "REV"},
+        {TRUNC_FLOAT_TO_INT64, "TRUNC_FLOAT_TO_INT64"},
         {ADD, "ADD"},
         {SUB, "SUB"},
         {MUL, "MUL"},
@@ -301,20 +415,8 @@ std::string OpCode::Str() const
         {LSL, "LSL"},
         {LSR, "LSR"},
         {ASR, "ASR"},
-        {SLT, "SLT"},
-        {SLE, "SLE"},
-        {SGT, "SGT"},
-        {SGE, "SGE"},
-        {ULT, "ULT"},
-        {ULE, "ULE"},
-        {UGT, "UGT"},
-        {UGE, "UGE"},
-        {FLT, "FLT"},
-        {FLE, "FLE"},
-        {FGT, "FGT"},
-        {FGE, "FGE"},
-        {EQ, "EQ"},
-        {NE, "NE"},
+        {ICMP, "ICMP"},
+        {FCMP, "FCMP"},
         {LOAD, "LOAD"},
         {STORE, "STORE"},
         {TAGGED_TO_INT64, "TAGGED_TO_INT64"},
@@ -324,13 +426,18 @@ std::string OpCode::Str() const
         {FLOAT_TO_SIGNED_INT, "FLOAT_TO_SIGNED_INT"},
         {UNSIGNED_FLOAT_TO_INT, "UNSIGNED_FLOAT_TO_INT"},
         {BITCAST, "BITCAST"},
+        {GUARD, "GUARD"},
+        {DEOPT, "DEOPT"},
+        {FRAME_STATE, "FRAME_STATE"},
         {RESTORE_REGISTER, "RESTORE_REGISTER"},
         {SAVE_REGISTER, "SAVE_REGISTER"},
+        {OBJECT_TYPE_CHECK, "OBJECT_TYPE_CHECK"},
         {TYPE_CHECK, "TYPE_CHECK"},
         {TYPED_BINARY_OP, "TYPED_BINARY_OP"},
         {TYPE_CONVERT, "TYPE_CONVERT"},
         {TYPED_UNARY_OP, "TYPED_UNARY_OP"},
         {TO_LENGTH, "TO_LENGTH"},
+        {GET_ENV, "GET_ENV"},
         {HEAP_ALLOC, "HEAP_ALLOC"},
         {LOAD_ELEMENT, "LOAD_ELEMENT"},
         {LOAD_PROPERTY, "LOAD_PROPERTY"},
@@ -533,6 +640,7 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckStateOutput() const
             expected = 1;
         }
         if (needCheck && cnt != expected) {
+            curGate->Print();
             return std::make_pair("Number of state out branches is not valid (expected:" + std::to_string(expected) +
                     " actual:" + std::to_string(cnt) + ")",
                 -1);
@@ -833,7 +941,7 @@ bool In::IsGateNull() const
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 Gate::Gate(GateId id, OpCode opcode, MachineType bitValue, BitField bitfield, Gate *inList[], GateType type,
            MarkCode mark)
-    : id_(id), opcode_(opcode), bitValue_(bitValue), type_(type), stamp_(1), mark_(mark), bitfield_(bitfield),
+    : id_(id), type_(type), opcode_(opcode), bitValue_(bitValue), stamp_(1), mark_(mark), bitfield_(bitfield),
     firstOut_(0)
 {
     auto numIns = GetNumIns();
@@ -851,7 +959,7 @@ Gate::Gate(GateId id, OpCode opcode, MachineType bitValue, BitField bitfield, Ga
 }
 
 Gate::Gate(GateId id, OpCode opcode, BitField bitfield, Gate *inList[], GateType type, MarkCode mark)
-    : id_(id), opcode_(opcode), type_(type), stamp_(1), mark_(mark), bitfield_(bitfield), firstOut_(0)
+    : id_(id), type_(type), opcode_(opcode), stamp_(1), mark_(mark), bitfield_(bitfield), firstOut_(0)
 {
     auto numIns = GetNumIns();
     for (size_t idx = 0; idx < numIns; idx++) {
@@ -1106,7 +1214,7 @@ std::string Gate::MachineTypeStr(MachineType machineType) const
 
 std::string Gate::GateTypeStr(GateType gateType) const
 {
-    const std::map<GateType, const char *> strMap = {
+    static const std::map<GateType, const char *> strMap = {
         {GateType::NJSValue(), "NJS_VALUE"},
         {GateType::TaggedValue(), "TAGGED_VALUE"},
         {GateType::TaggedPointer(), "TAGGED_POINTER"},
@@ -1115,24 +1223,75 @@ std::string Gate::GateTypeStr(GateType gateType) const
         {GateType::AnyType(), "ANY_TYPE"},
     };
 
+    std::string name = "";
     if (strMap.count(gateType) > 0) {
-        return strMap.at(gateType);
+        name = strMap.at(gateType);
     }
-    return "GateType-" + std::to_string(gateType.GetType());
+    GlobalTSTypeRef r = gateType.GetGTRef();
+    uint32_t m = r.GetModuleId();
+    uint32_t l = r.GetLocalId();
+    return name + std::string("-GT(M=") + std::to_string(m) +
+           std::string(", L=") + std::to_string(l) + std::string(")");
 }
 
 void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) const
 {
     if (GetOpCode() != OpCode::NOP) {
-        std::string log("(id=" + std::to_string(id_) + ", op=" + GetOpCode().Str() + ", ");
-        log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
-        log += ((bytecode.compare("") == 0) ? "" : ", ");
-        log += "machineType=" + MachineTypeStr(GetMachineType()) + ", ";
-        log += "bitfield=" + std::to_string(bitfield_) + ", ";
+        std::string log("{\"id\":" + std::to_string(id_) + ", \"op\":\"" + GetOpCode().Str() + "\", ");
+        log += ((bytecode.compare("") == 0) ? "" : "\"bytecode\":\"") + bytecode;
+        log += ((bytecode.compare("") == 0) ? "" : "\", ");
+        log += "\"MType\":\"" + MachineTypeStr(GetMachineType()) + ", ";
+        std::stringstream buf;
+        buf << std::hex << bitfield_;
+        log += "bitfield=" + buf.str() + ", ";
         log += "type=" + GateTypeStr(type_) + ", ";
         log += "stamp=" + std::to_string(static_cast<uint32_t>(stamp_)) + ", ";
         log += "mark=" + std::to_string(static_cast<uint32_t>(mark_)) + ", ";
-        log += "in=[";
+        log += "\",\"in\":[";
+
+        size_t idx = 0;
+        auto stateSize = GetStateCount();
+        auto dependSize = GetDependCount();
+        auto valueSize = GetInValueCount();
+        auto rootSize = GetRootCount();
+        idx = PrintInGate(stateSize, idx, 0, inListPreview, highlightIdx, log);
+        idx = PrintInGate(stateSize + dependSize, idx, stateSize, inListPreview, highlightIdx, log);
+        idx = PrintInGate(stateSize + dependSize + valueSize, idx, stateSize + dependSize,
+                          inListPreview, highlightIdx, log);
+        PrintInGate(stateSize + dependSize + valueSize + rootSize, idx, stateSize + dependSize + valueSize,
+                    inListPreview, highlightIdx, log, true);
+
+        log += "], \"out\":[";
+
+        if (!IsFirstOutNull()) {
+            const Out *curOut = GetFirstOutConst();
+            log += std::to_string(curOut->GetGateConst()->GetId()) +
+                    (inListPreview ? std::string(":" + curOut->GetGateConst()->GetOpCode().Str()) : std::string(""));
+
+            while (!curOut->IsNextOutNull()) {
+                curOut = curOut->GetNextOutConst();
+                log += ", " +  std::to_string(curOut->GetGateConst()->GetId()) +
+                       (inListPreview ? std::string(":" + curOut->GetGateConst()->GetOpCode().Str())
+                                       : std::string(""));
+            }
+        }
+        log += "]},";
+        LOG_COMPILER(INFO) << std::dec << log;
+    }
+}
+
+void Gate::ShortPrint(std::string bytecode, bool inListPreview, size_t highlightIdx) const
+{
+    if (GetOpCode() != OpCode::NOP) {
+        std::string log("(\"id\"=" + std::to_string(id_) + ", \"op\"=\"" + GetOpCode().Str() + "\", ");
+        log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
+        log += ((bytecode.compare("") == 0) ? "" : ", ");
+        log += "\"MType\"=\"" + MachineTypeStr(GetMachineType()) + ", ";
+        std::stringstream buf;
+        buf << std::hex << bitfield_;
+        log += "bitfield=" + buf.str() + ", ";
+        log += "type=" + GateTypeStr(type_) + ", ";
+        log += "\", in=[";
 
         size_t idx = 0;
         auto stateSize = GetStateCount();
@@ -1151,17 +1310,16 @@ void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) 
         if (!IsFirstOutNull()) {
             const Out *curOut = GetFirstOutConst();
             log += std::to_string(curOut->GetGateConst()->GetId()) +
-                    (inListPreview ? std::string(":" + curOut->GetGateConst()->GetOpCode().Str()) : std::string(""));
+                   (inListPreview ? std::string(":" + curOut->GetGateConst()->GetOpCode().Str()) : std::string(""));
 
             while (!curOut->IsNextOutNull()) {
                 curOut = curOut->GetNextOutConst();
-                log += " " +  std::to_string(curOut->GetGateConst()->GetId()) +
+                log += ", " +  std::to_string(curOut->GetGateConst()->GetId()) +
                        (inListPreview ? std::string(":" + curOut->GetGateConst()->GetOpCode().Str())
-                                       : std::string(""));
+                                      : std::string(""));
             }
         }
         log += "])";
-        log += "\n";
         LOG_COMPILER(INFO) << std::dec << log;
     }
 }
@@ -1171,13 +1329,13 @@ size_t Gate::PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPrev
 {
     log += "[";
     for (; idx < numIns; idx++) {
-        log += ((idx == size) ? "" : " ");
+        log += ((idx == size) ? "" : ", ");
         log += ((idx == highlightIdx) ? "\033[4;31m" : "");
         log += ((IsInGateNull(idx)
-                       ? "N"
-                       : (std::to_string(GetInGateConst(idx)->GetId()) +
-                          (inListPreview ? std::string(":" + GetInGateConst(idx)->GetOpCode().Str())
-                                         : std::string("")))));
+                ? "N"
+                : (std::to_string(GetInGateConst(idx)->GetId()) +
+                    (inListPreview ? std::string(":" + GetInGateConst(idx)->GetOpCode().Str())
+                                   : std::string("")))));
         log += ((idx == highlightIdx) ? "\033[0m" : "");
     }
     log += "]";
@@ -1238,11 +1396,6 @@ bool OpCode::IsGeneralState() const
             (op_ == OpCode::STORE_ELEMENT) || (op_ == OpCode::STORE_PROPERTY));
 }
 
-bool OpCode::IsTypedGate() const
-{
-    return ((op_ == OpCode::TYPE_CHECK) || (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT));
-}
-
 bool OpCode::IsTerminalState() const
 {
     return ((op_ == OpCode::RETURN) || (op_ == OpCode::THROW) || (op_ == OpCode::RETURN_VOID));
@@ -1268,5 +1421,15 @@ bool OpCode::IsLoopHead() const
 bool OpCode::IsNop() const
 {
     return (op_ == OpCode::NOP);
+}
+
+bool OpCode::IsConstant() const
+{
+    return (op_ == OpCode::CONSTANT || op_ == OpCode::CONST_DATA);
+}
+
+bool OpCode::IsTypedOperator() const
+{
+    return (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT) || (op_ == OpCode::TYPED_UNARY_OP);
 }
 }  // namespace panda::ecmascript::kungfu

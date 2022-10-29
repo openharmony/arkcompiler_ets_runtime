@@ -112,7 +112,7 @@ struct BasicBlockImpl {
 
 class LLVMModule {
 public:
-    LLVMModule(const std::string &name, const std::string &triple);
+    LLVMModule(const std::string &name, const std::string &triple, bool enablePGOProfiler = false);
     ~LLVMModule();
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
@@ -198,6 +198,8 @@ private:
     V(RelocatableData, (GateRef gate, uint64_t value))                                    \
     V(ZExtInt, (GateRef gate, GateRef e1))                                                \
     V(SExtInt, (GateRef gate, GateRef e1))                                                \
+    V(FPExt, (GateRef gate, GateRef e1))                                                  \
+    V(FPTrunc, (GateRef gate, GateRef e1))                                                \
     V(Load, (GateRef gate, GateRef base))                                                 \
     V(Store, (GateRef gate, GateRef base, GateRef value))                                 \
     V(IntRev, (GateRef gate, GateRef e1))                                                 \
@@ -228,7 +230,10 @@ private:
     V(IntLsl, (GateRef gate, GateRef e1, GateRef e2))                                     \
     V(Mod, (GateRef gate, GateRef e1, GateRef e2))                                        \
     V(ChangeTaggedPointerToInt64, (GateRef gate, GateRef e1))                             \
-    V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))
+    V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))                                    \
+    V(Deopt, (GateRef gate))                                                              \
+    V(TruncFloatToInt, (GateRef gate, GateRef e1))                                        \
+    V(GetEnv, (GateRef gate))                                                             \
 
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
@@ -292,7 +297,8 @@ private:
     {
         return enableLog_;
     }
-    LLVMValueRef GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset) const;
+    LLVMValueRef GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset,
+                             const std::string &realName = "") const;
     LLVMValueRef GetFunctionFromGlobalValue(LLVMValueRef glue, const CallSignature *signature,
         LLVMValueRef reloc) const;
     bool IsInterpreted();
@@ -308,7 +314,8 @@ private:
         GLUE,
         FIRST_PARAMETER
     };
-
+    LLVMRealPredicate ConvertLLVMPredicateFromFCMP(FCmpCondition cond);
+    LLVMIntPredicate ConvertLLVMPredicateFromICMP(ICmpCondition cond);
     LLVMValueRef GetGlue(const std::vector<GateRef> &inList);
     LLVMValueRef GetRTStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetCoStubOffset(LLVMValueRef glue, int index);
@@ -320,6 +327,8 @@ private:
     void ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueRef &bcOffset, const std::vector<GateRef> &inList,
                                     OpCode op);
     void SaveLexicalEnvOnFrame(LLVMValueRef value);
+    LLVMTypeRef GetExperimentalDeoptTy();
+    LLVMValueRef GetExperimentalDeopt(LLVMModuleRef &module);
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
     const Circuit *circuit_ {nullptr};

@@ -61,12 +61,12 @@ uint32_t UTF16Decode(uint16_t lead, uint16_t trail);
 
 bool IsValidUTF8(const std::vector<uint8_t> &data);
 
-Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify);
+Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify, bool isWriteBuffer = false);
 
 size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify = true);
 
 size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
-                                size_t start, bool modify = true);
+                                size_t start, bool modify = true, bool isWriteBuffer = false);
 
 std::pair<uint32_t, size_t> ConvertUtf8ToUtf16Pair(const uint8_t *data, bool combine = false);
 

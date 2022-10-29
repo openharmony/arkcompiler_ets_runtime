@@ -51,7 +51,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     builder.Return(entry, depend, check);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypeCheckFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -67,11 +67,11 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
     auto arg1 = builder.Arguments(1);
     auto nadd = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
                                             GateType::NumberType(), GateType::NumberType(),
-                                            {entry, depend, arg0, arg1});
+                                            {entry, depend, arg0, arg1}, GateType::NumberType());
     builder.Return(nadd, nadd, nadd);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypedBinaryOperatorAddFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -87,11 +87,11 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
     auto arg1 = builder.Arguments(1);
     auto nless = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
                                             GateType::NumberType(), GateType::NumberType(),
-                                            {entry, depend, arg0, arg1});
+                                            {entry, depend, arg0, arg1}, GateType::BooleanType());
     builder.Return(nless, nless, nless);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypedBinaryOperatorLessFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -109,7 +109,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
     builder.Return(convert, convert, convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypeConvertFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -126,7 +126,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     Label exit(&builder);
     VariableType arg1Type(MachineType::I64, GateType::BooleanType());
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false);
+    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypeOpCodeFramework");
 
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);

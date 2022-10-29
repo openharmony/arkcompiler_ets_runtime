@@ -213,11 +213,13 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("test arraylist clear and add:", res)
 
+    proxy1.insert(50, 0);
+    map.set("test arraylist insert index === 0:", proxy1[0] === 50)
     proxy1.increaseCapacityTo(20)
     map.set("test arraylist increaseCapacityTo:", proxy1.getCapacity() === 20)
 
     proxy1.trimToCurrentLength()
-    map.set("test arraylist trimToCurrentLength:", proxy1.getCapacity() === 5)
+    map.set("test arraylist trimToCurrentLength:", proxy1.getCapacity() === 6)
 
     let flag = undefined;
     function elements(value, key, map) {

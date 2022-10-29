@@ -59,7 +59,6 @@ const std::string STUB_HELP_HEAD_MSG =
     "optional arguments:\n";
 
 const std::string HELP_OPTION_MSG =
-    "--abc-list-file: abc's list file.\n"
     "--aot-file: Path (file suffix not needed) to AOT output file. Default: \"aot_file\"\n"
     "--ark-properties: set ark properties\n"
     "--asm-interpreter: Enable asm interpreter. Default: true\n"
@@ -72,6 +71,7 @@ const std::string HELP_OPTION_MSG =
     "       \"allcir or all0\": print cir info for all methods,\n"
     "       \"allllir or all1\": print llir info for all methods,\n"
     "       \"allasm or all2\": print asm log for all methods,\n"
+    "       \"alltype or all3\": print type infer log for all methods,\n"
     "       \"cerllircirasm or cer0112\": print llIR file, CIR log and asm log for certain method defined "
                                           "in 'mlist-for-log',\n"
     "       \"cercir or cer0\": print cir info for certain method illustrated in 'mlist-for-log',\n"
@@ -119,7 +119,12 @@ const std::string HELP_OPTION_MSG =
     "--snapshot-file: snapshot file. Default: \"/system/etc/snapshot\"\n"
     "--startup-time: Print the start time of command execution. Default: false\n"
     "--stub-file: Path of file includes common stubs module compiled by stub compiler. Default: \"stub.an\"\n"
+    "--enable-pgo-profiler: Enable pgo profiler to sample jsfunction call and output to file. Default: false\n"
+    "--pgo-hotness-threshold: set hotness threshold for pgo in aot compiler. Default: 2\n"
+    "--pgo-profiler-path: The pgo sampling profiler file output dir for application or ark_js_vm runtime,"
+        "or the sampling profiler file input dir for AOT PGO compiler. Default: ""\n"
     "--target-triple: target triple for aot compiler or stub compiler.\n"
+    "--enable-print-execute-time: enable print execute pandafile spent time\"\n"
     "       Possible values: [\"x86_64-unknown-linux-gnu\", \"arm-unknown-linux-gnu\", "
                              "\"aarch64-unknown-linux-gnu\"].\n"
     "       Default: \"x86_64-unknown-linux-gnu\"\n";
@@ -168,12 +173,15 @@ enum CommandValues {
     OPTION_LOG_FATAL,
     OPTION_LOG_COMPONENTS,
     OPTION_MAX_AOTMETHODSIZE,
-    OPTION_ABC_FILES_LIST,
     OPTION_ENTRY_POINT,
     OPTION_MERGE_ABC,
     OPTION_ENABLE_TYPE_LOWERING,
     OPTION_HELP,
-    OPTION_OPTIONS
+    OPTION_PGO_PROFILER_PATH,
+    OPTION_PGO_HOTNESS_THRESHOLD,
+    OPTION_ENABLE_PGO_PROFILER,
+    OPTION_OPTIONS,
+    OPTION_PRINT_EXECUTE_TIME
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -229,6 +237,16 @@ public:
     bool WasStubFileSet() const
     {
         return WasOptionSet(OPTION_STUB_FILE);
+    }
+
+    void SetEnableAOT(bool value)
+    {
+        enableAOT_ = value;
+    }
+
+    bool GetEnableAOT() const
+    {
+        return enableAOT_;
     }
 
     std::string GetAOTOutputFile() const
@@ -335,7 +353,8 @@ public:
 
     int GetDefaultProperties()
     {
-        return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP;
+        return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP
+            | ArkProperties::ENABLE_ARKTOOLS;
     }
 
     int GetArkProperties()
@@ -385,7 +404,7 @@ public:
 
     bool EnableSnapshotDeserialize() const
     {
-        if (WIN_OR_MAC_PLATFORM) {
+        if (WIN_OR_MAC_OR_IOS_PLATFORM) {
             return false;
         }
 
@@ -759,21 +778,6 @@ public:
         maxAotMethodSize_ = value;
     }
 
-    std::string GetAbcListFile() const
-    {
-        return abcFilelist_;
-    }
-
-    void SetAbcListFile(std::string value)
-    {
-        abcFilelist_ = std::move(value);
-    }
-
-    bool WasSetAbcListFile() const
-    {
-        return WasOptionSet(OPTION_ABC_FILES_LIST);
-    }
-
     std::string GetEntryPoint() const
     {
         return entryPoint_;
@@ -799,19 +803,44 @@ public:
         mergeAbc_ = value;
     }
 
-    void ParseAbcListFile(std::vector<std::string> &moduleList) const
+    void SetEnablePrintExecuteTime(bool value)
     {
-        std::ifstream moduleFile(abcFilelist_);
-        if (moduleFile.is_open()) {
-            char moduleName[FILENAME_MAX];
-            while (!moduleFile.eof()) {
-                moduleFile.getline(moduleName, FILENAME_MAX);
-                if (moduleName[0] != '\0') {
-                    moduleList.emplace_back(std::string(moduleName));
-                }
-            }
-            moduleFile.close();
-        }
+        enablePrintExecuteTime_ = value;
+    }
+
+    bool IsEnablePrintExecuteTime()
+    {
+        return enablePrintExecuteTime_;
+    }
+
+    void SetEnablePGOProfiler(bool value)
+    {
+        enablePGOProfiler_ = value;
+    }
+
+    bool IsEnablePGOProfiler() const
+    {
+        return enablePGOProfiler_;
+    }
+
+    uint32_t GetPGOHotnessThreshold() const
+    {
+        return pgoHotnessThreshold_;
+    }
+
+    void SetPGOHotnessThreshold(uint32_t threshold)
+    {
+        pgoHotnessThreshold_ = threshold;
+    }
+
+    std::string GetPGOProfilerPath() const
+    {
+        return pgoProfilerPath_;
+    }
+
+    void SetPGOProfilerPath(std::string value)
+    {
+        pgoProfilerPath_ = std::move(value);
     }
 
     void SetEnableTypeLowering(bool value)
@@ -845,7 +874,7 @@ private:
     bool ParseUint64Param(const std::string &option, uint64_t *argUInt64);
     void ParseListArgParam(const std::string &option, arg_list_t *argListStr, std::string delimiter);
 
-    bool enableArkTools_ {false};
+    bool enableArkTools_ {true};
     bool enableCpuprofiler_ {false};
     std::string stubFile_ {"stub.an"};
     bool enableForceGc_ {true};
@@ -883,12 +912,16 @@ private:
     arg_list_t logError_ {{"all"}};
     arg_list_t logFatal_ {{"all"}};
     arg_list_t logComponents_ {{"all"}};
+    bool enableAOT_ {false};
     uint32_t maxAotMethodSize_ {32_KB};
-    std::string abcFilelist_ {"none"};
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};
     uint64_t wasSet_ {0};
+    bool enablePrintExecuteTime_ {false};
+    bool enablePGOProfiler_ {false};
+    uint32_t pgoHotnessThreshold_ {2};
+    std::string pgoProfilerPath_ {""};
 };
 }  // namespace panda::ecmascript
 

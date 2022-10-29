@@ -233,6 +233,33 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_002)
     ASSERT_EQ(res, test);
 }
 
+HWTEST_F_L0(JSNApiTests, StringUtf8_003)
+{
+    LocalScope scope(vm_);
+    std::string str1 = "a";
+    std::string str2 = "b";
+    std::string test = str1 + '\0' + str2;
+
+    // isWriteBuffer == false, \u0000 ==> C080
+    Local<StringRef> testString1 = StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
+    EXPECT_EQ(testString1->Utf8Length(), 5);
+    char buffer1[4];
+    testString1->WriteUtf8(buffer1, 4, false);
+    EXPECT_EQ(buffer1[0], 'a');
+    EXPECT_EQ(buffer1[1], '\xC0');
+    EXPECT_EQ(buffer1[2], '\x80');
+    EXPECT_EQ(buffer1[3], 'b');
+
+    // isWriteBuffer == true, \u0000 ==> 0x00U
+    Local<StringRef> testString2 = StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
+    EXPECT_EQ(testString2->Utf8Length(), 5);
+    char buffer2[4];
+    testString2->WriteUtf8(buffer2, 4, true);
+    EXPECT_EQ(buffer2[0], 'a');
+    EXPECT_EQ(buffer2[1], '\0');
+    EXPECT_EQ(buffer2[2], 'b');
+}
+
 HWTEST_F_L0(JSNApiTests, ToType)
 {
     LocalScope scope(vm_);

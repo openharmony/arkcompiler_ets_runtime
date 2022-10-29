@@ -17,7 +17,7 @@
 
 #if defined(PANDA_TARGET_WINDOWS)
 #include <sysinfoapi.h>
-#elif defined(PANDA_TARGET_MACOS)
+#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
 #include "sys/sysctl.h"
 #else
 #include "sys/sysinfo.h"
@@ -61,11 +61,12 @@ uint32_t Taskpool::TheMostSuitableThreadNum(uint32_t threadNum) const
     SYSTEM_INFO info;
     GetSystemInfo(&info);
     uint32_t numOfCpuCore = info.dwNumberOfProcessors;
-#elif PANDA_TARGET_MACOS
+#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
     uint32_t numOfCpuCore = MAC_MAX_THREADS_NUM;
 #else
-    uint32_t numOfCpuCore = static_cast<uint32_t>(get_nprocs() - 1);
+    uint32_t numOfCpuCore = static_cast<uint32_t>(get_nprocs() / 2);
 #endif
-    return std::min<uint32_t>(numOfCpuCore, MAX_TASKPOOL_THREAD_NUM);
+    uint32_t numOfThreads = std::min<uint32_t>(numOfCpuCore, MAX_TASKPOOL_THREAD_NUM);
+    return std::max<uint32_t>(numOfThreads, MIN_TASKPOOL_THREAD_NUM);
 }
 }  // namespace panda::ecmascript

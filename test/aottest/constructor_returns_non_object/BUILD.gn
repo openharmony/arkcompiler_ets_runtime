@@ -15,4 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_aot_js_test_action("constructor_returns_non_object") {
   deps = []
+  is_disable_type_lowering = true
 }

@@ -18,12 +18,15 @@
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 // ArrayListIteratorPrototype%.next ( )
 JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
 {
@@ -33,14 +36,16 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
     if (!input->IsJSAPIArrayListIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an arrayList iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPIArrayListIterator> iter(input);
     JSHandle<JSTaggedValue> arrayList(thread, iter->GetIteratedArrayList());
-    JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     if (arrayList->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
 
     uint32_t index = iter->GetNextIndex();
@@ -51,12 +56,13 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
 
     if (index >= length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedArrayList(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
 
     iter->SetNextIndex(index + 1);
-    JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, arrayList, index).GetValue();
+    JSHandle<JSTaggedValue> value(thread, JSHandle<JSAPIArrayList>::Cast(arrayList)->Get(thread, index));
 
     return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
 }

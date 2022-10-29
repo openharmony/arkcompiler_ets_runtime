@@ -221,14 +221,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     JSHandle<JSObject> globalObject = factory_->NewNonMovableJSObject(globalObjFuncClass);
     env->SetJSGlobalObject(thread_, globalObject);
 
-    // GLobalPatch.prototype_or_dynclass
-    JSHandle<JSHClass> globalPatchFuncHClass =
-        factory_->NewEcmaHClass(JSObject::SIZE, JSType::GLOBAL_PATCH, 0);
-    globalPatchFuncHClass->SetPrototype(thread_, objFuncPrototypeVal.GetTaggedValue());
-    globalPatchFuncHClass->SetIsDictionaryMode(true);
-
     // init global patch
-    JSHandle<JSObject> globalPatch = factory_->NewNonMovableJSObject(globalPatchFuncHClass);
+    JSHandle<TaggedArray> globalPatch = factory_->EmptyArray();
     env->SetGlobalPatch(thread, globalPatch);
 
     // initialize Function, forbidden change order
@@ -349,7 +343,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
         env->GetAsyncFunctionPrototype());
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
-    thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(env.GetTaggedType()));
 }
 void Builtins::InitializeForSnapshot(JSThread *thread)
 {
@@ -3417,6 +3410,7 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
     SetFunction(env, tools, "dumpHClass", builtins::BuiltinsArkTools::DumpHClass, FunctionLength::ONE);
     SetFunction(env, tools, "isTSHClass", builtins::BuiltinsArkTools::IsTSHClass, FunctionLength::ONE);
     SetFunction(env, tools, "getHClass", builtins::BuiltinsArkTools::GetHClass, FunctionLength::ONE);
+    SetFunction(env, tools, "forceFullGC", builtins::BuiltinsArkTools::ForceFullGC, FunctionLength::ZERO);
     return tools;
 }
 

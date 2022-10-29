@@ -271,15 +271,15 @@ HWTEST_F_L0(JSAPILinkedListTest, Clear)
 
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
     JSHandle<JSAPILinkedList> list(thread, linkedlist);
-    linkedlist->Add(thread, list, value);
+    JSAPILinkedList::Add(thread, list, value);
 
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(2));
-    linkedlist->Insert(thread, list, value1, 0);
+    JSAPILinkedList::Insert(thread, list, value1, 0);
 
-    linkedlist->Clear(thread);
+    list->Clear(thread);
 
-    EXPECT_EQ(linkedlist->Length(), 0);
-    EXPECT_TRUE(linkedlist->GetFirst() == JSTaggedValue::Undefined());
+    EXPECT_EQ(list->Length(), 0);
+    EXPECT_TRUE(list->GetFirst() == JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, Set)
@@ -378,4 +378,22 @@ HWTEST_F_L0(JSAPILinkedListTest, SetProperty)
         EXPECT_EQ(setPropertyRes, true);
     }
 }
+
+HWTEST_F_L0(JSAPILinkedListTest, Clone)
+{
+    uint32_t elementsNums = 8;
+    JSAPILinkedList *linkedlist = CreateLinkedList();
+    JSHandle<JSAPILinkedList> list(thread, linkedlist);
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPILinkedList::Add(thread, list, value);
+    }
+    JSHandle<JSAPILinkedList> cloneList = JSAPILinkedList::Clone(thread, list);
+
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        EXPECT_EQ(cloneList->Get(i), list->Get(i));
+    }
+    EXPECT_EQ(list->Length(), cloneList->Length());
+}
+
 }  // namespace panda::test

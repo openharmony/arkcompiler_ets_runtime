@@ -24,114 +24,16 @@
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
+#include "ecmascript/compiler/frame_states.h"
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript::kungfu {
-using VRegIDType = uint32_t;
-using ImmValueType = uint64_t;
-using StringIdType = uint16_t;
-using MethodIdType = uint16_t;
-using EcmaOpcode = BytecodeInstruction::Opcode;
-
-class VirtualRegister {
-public:
-    explicit VirtualRegister(VRegIDType id) : id_(id)
-    {
-    }
-    ~VirtualRegister() = default;
-
-    void SetId(VRegIDType id)
-    {
-        id_ = id;
-    }
-
-    VRegIDType GetId() const
-    {
-        return id_;
-    }
-
-private:
-    VRegIDType id_;
-};
-
-class Immediate {
-public:
-    explicit Immediate(ImmValueType value) : value_(value)
-    {
-    }
-    ~Immediate() = default;
-
-    void SetValue(ImmValueType value)
-    {
-        value_ = value;
-    }
-
-    ImmValueType ToJSTaggedValueInt() const
-    {
-        return value_ | JSTaggedValue::TAG_INT;
-    }
-
-    ImmValueType ToJSTaggedValueDouble() const
-    {
-        return JSTaggedValue(bit_cast<double>(value_)).GetRawData();
-    }
-
-    ImmValueType GetValue() const
-    {
-        return value_;
-    }
-
-private:
-    ImmValueType value_;
-};
-
-class StringId {
-public:
-    explicit StringId(StringIdType id) : id_(id)
-    {
-    }
-    ~StringId() = default;
-
-    void SetId(StringIdType id)
-    {
-        id_ = id;
-    }
-
-    StringIdType GetId() const
-    {
-        return id_;
-    }
-
-private:
-    StringIdType id_;
-};
-
-class MethodId {
-public:
-    explicit MethodId(MethodIdType id) : id_(id)
-    {
-    }
-    ~MethodId() = default;
-
-    void SetId(MethodIdType id)
-    {
-        id_ = id;
-    }
-
-    MethodIdType GetId() const
-    {
-        return id_;
-    }
-
-private:
-    MethodIdType id_;
-};
-
 enum class SplitKind : uint8_t {
     DEFAULT,
     START,
@@ -186,7 +88,7 @@ struct BytecodeRegion {
     size_t statePredIndex {0};
     size_t forwardIndex {0};
     size_t loopBackIndex {0};
-    std::vector<std::tuple<size_t, const uint8_t *, bool>> expandedPreds {};
+    std::vector<std::tuple<size_t, size_t, bool>> expandedPreds {};
     GateRef stateStart {Circuit::NullGate()};
     GateRef dependStart {Circuit::NullGate()};
     GateRef mergeForwardEdges {Circuit::NullGate()};
@@ -195,6 +97,11 @@ struct BytecodeRegion {
     GateRef depLoopBack {Circuit::NullGate()};
     std::map<uint16_t, GateRef> vregToValSelectorGate {}; // corresponding ValueSelector gates of vregs
     GateRef valueSelectorAccGate {Circuit::NullGate()};
+    BytecodeIterator bytecodeIterator_ {};
+
+    BytecodeIterator &GetBytecodeIterator() {
+        return bytecodeIterator_;
+    }
 
     bool operator <(const BytecodeRegion &target) const
     {
@@ -252,219 +159,26 @@ private:
 
 using BytecodeGraph = std::vector<BytecodeRegion>;
 
-struct BytecodeInfo {
-    // set of id, immediate and read register
-    std::vector<std::variant<StringId, MethodId, Immediate, VirtualRegister>> inputs {};
-    std::vector<VRegIDType> vregOut {}; // write register
-    bool accIn {false}; // read acc
-    bool accOut {false}; // write acc
-    EcmaOpcode opcode {0};
-    uint16_t offset {0};
-
-    bool IsOut(VRegIDType reg, uint32_t index) const
-    {
-        bool isDefined = (!vregOut.empty() && (reg == vregOut.at(index)));
-        return isDefined;
-    }
-
-    bool IsMov() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::MOV_V4_V4:
-            case EcmaOpcode::MOV_V8_V8:
-            case EcmaOpcode::MOV_V16_V16:
-            case EcmaOpcode::LDA_V8:
-            case EcmaOpcode::STA_V8:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool IsJump() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::JMP_IMM8:
-            case EcmaOpcode::JMP_IMM16:
-            case EcmaOpcode::JMP_IMM32:
-            case EcmaOpcode::JEQZ_IMM8:
-            case EcmaOpcode::JEQZ_IMM16:
-            case EcmaOpcode::JEQZ_IMM32:
-            case EcmaOpcode::JNEZ_IMM8:
-            case EcmaOpcode::JNEZ_IMM16:
-            case EcmaOpcode::JNEZ_IMM32:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool IsCondJump() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::JEQZ_IMM8:
-            case EcmaOpcode::JEQZ_IMM16:
-            case EcmaOpcode::JEQZ_IMM32:
-            case EcmaOpcode::JNEZ_IMM8:
-            case EcmaOpcode::JNEZ_IMM16:
-            case EcmaOpcode::JNEZ_IMM32:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool IsReturn() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::RETURN:
-            case EcmaOpcode::RETURNUNDEFINED:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool IsThrow() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::THROW_PREF_NONE:
-            case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
-            case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
-            case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
-            case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool IsDiscarded() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::DEBUGGER:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool IsSetConstant() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::LDNAN:
-            case EcmaOpcode::LDINFINITY:
-            case EcmaOpcode::LDUNDEFINED:
-            case EcmaOpcode::LDNULL:
-            case EcmaOpcode::LDTRUE:
-            case EcmaOpcode::LDFALSE:
-            case EcmaOpcode::LDHOLE:
-            case EcmaOpcode::LDAI_IMM32:
-            case EcmaOpcode::FLDAI_IMM64:
-            case EcmaOpcode::LDFUNCTION:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool IsGeneral() const
-    {
-        return !IsMov() && !IsJump() && !IsReturn() && !IsSetConstant() && !IsDiscarded();
-    }
-
-    bool IsCall() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::CALLARG0_IMM8:
-            case EcmaOpcode::DEPRECATED_CALLARG0_PREF_V8:
-            case EcmaOpcode::CALLARG1_IMM8_V8:
-            case EcmaOpcode::DEPRECATED_CALLARG1_PREF_V8_V8:
-            case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-            case EcmaOpcode::DEPRECATED_CALLARGS2_PREF_V8_V8_V8:
-            case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-            case EcmaOpcode::DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8:
-            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::CALLTHIS0_IMM8_V8:
-            case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-            case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-            case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-            case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-            case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::DEPRECATED_CALLRANGE_PREF_IMM16_V8:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    size_t ComputeBCOffsetInputCount() const
-    {
-        return IsCall() ? 1 : 0;
-    }
-
-    size_t ComputeValueInputCount() const
-    {
-        return (accIn ? 1 : 0) + inputs.size();
-    }
-
-    size_t ComputeOutCount() const
-    {
-        return accOut ? 1 : 0;
-    }
-
-    size_t ComputeTotalValueCount() const
-    {
-        return ComputeValueInputCount() + ComputeBCOffsetInputCount();
-    }
-
-    bool IsGeneratorRelative() const
-    {
-        switch (opcode) {
-            case EcmaOpcode::SUSPENDGENERATOR_V8:
-            case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
-            case EcmaOpcode::RESUMEGENERATOR:
-            case EcmaOpcode::DEPRECATED_RESUMEGENERATOR_PREF_V8:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    bool IsBc(EcmaOpcode ecmaOpcode) const
-    {
-        return opcode == ecmaOpcode;
-    }
-};
-
-enum BytecodeOffset {
-    ONE = 1,
-    TWO,
-    THREE,
-    FOUR,
-    FIVE,
-    SIX,
-    SEVEN,
-    EIGHT,
-    NINE,
-    TEN
-};
-
 class BytecodeCircuitBuilder {
 public:
     explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
                                     const MethodLiteral *methodLiteral,
                                     MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
+                                    Bytecodes *bytecodes,
                                     const CompilationConfig* cconfig,
-                                    bool enableLog)
+                                    bool hasTypes,
+                                    bool enableLog,
+                                    bool enableTypeLowering,
+                                    std::string name,
+                                    const CString &recordName)
         : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
-          method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
-          typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
-          enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
-          byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos)
+          method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_),
+          typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(hasTypes),
+          enableLog_(enableLog), enableTypeLowering_(enableTypeLowering), pcToBCOffset_(methodPCInfo.pcToBCOffset),
+          byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
+          frameStateBuilder_(this, &circuit_, methodLiteral), methodName_(name), recordName_(recordName),
+          bytecodes_(bytecodes)
     {
     }
     ~BytecodeCircuitBuilder() = default;
@@ -478,7 +192,7 @@ public:
         return &circuit_;
     }
 
-    [[nodiscard]] const std::map<GateRef, std::pair<size_t, const uint8_t *>>& GetGateToBytecode() const
+    [[nodiscard]] const std::map<GateRef, std::pair<size_t, size_t>>& GetGateToBytecode() const
     {
         return jsgateToBytecode_;
     }
@@ -490,26 +204,24 @@ public:
 
     [[nodiscard]] EcmaOpcode PcToOpcode(const uint8_t *pc) const
     {
-        BytecodeInstruction inst(pc);
-        return inst.GetOpcode();
+        return Bytecodes::GetOpcode(pc);
     }
 
-    [[nodiscard]] std::string GetBytecodeStr(GateRef gate) const
+    [[nodiscard]] const uint8_t* GetJSBytecode(GateRef gate)
     {
-        auto pc = jsgateToBytecode_.at(gate).second;
-        auto opcode = PcToOpcode(pc);
-        return GetEcmaOpcodeStr(opcode);
+        return GetByteCodeInfo(gate).GetPC();
     }
 
-    [[nodiscard]] EcmaOpcode GetByteCodeOpcode(GateRef gate) const
+    [[nodiscard]] EcmaOpcode GetByteCodeOpcode(GateRef gate)
     {
-        auto pc = jsgateToBytecode_.at(gate).second;
+        auto pc = GetJSBytecode(gate);
         return PcToOpcode(pc);
     }
 
-    [[nodiscard]] const uint8_t* GetJSBytecode(GateRef gate) const
+    [[nodiscard]] std::string GetBytecodeStr(GateRef gate)
     {
-        return jsgateToBytecode_.at(gate).second;
+        auto opcode = GetByteCodeOpcode(gate);
+        return GetEcmaOpcodeStr(opcode);
     }
 
     [[nodiscard]] const MethodLiteral* GetMethod() const
@@ -522,17 +234,34 @@ public:
         return file_;
     }
 
-    BytecodeInfo GetBytecodeInfo(const uint8_t *pc);
-    // for external users, circuit must be built
-    BytecodeInfo GetByteCodeInfo(const GateRef gate)
+    const std::string& GetMethodName() const
     {
-        auto pc = jsgateToBytecode_.at(gate).second;
-        return GetBytecodeInfo(pc);
+        return methodName_;
+    }
+
+
+    const BytecodeInfo &GetBytecodeInfo(size_t bbIndex, size_t bcIndex)
+    {
+        auto &bb = graph_[bbIndex];
+        auto &iterator = bb.GetBytecodeIterator();
+        iterator.Goto(static_cast<int32_t>(bcIndex));
+        return iterator.GetBytecodeInfo();
+    }
+    // for external users, circuit must be built
+    const BytecodeInfo &GetByteCodeInfo(const GateRef gate)
+    {
+        const auto &[bbIndex, bcIndex] = jsgateToBytecode_.at(gate);
+        return GetBytecodeInfo(bbIndex, bcIndex);
     }
 
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    bool IsTypeLoweringEnabled() const
+    {
+        return enableTypeLowering_;
     }
 
     [[nodiscard]] const std::vector<GateRef>& GetAsyncRelatedGates() const
@@ -548,17 +277,45 @@ public:
     template <class Callback>
     void EnumerateBlock(BytecodeRegion &bb, const Callback &cb)
     {
-        auto pc = bb.start;
-        while (pc <= bb.end) {
-            auto bytecodeInfo = GetBytecodeInfo(pc);
-            bool ret = cb(pc, bytecodeInfo);
+        auto &iterator = bb.GetBytecodeIterator();
+        for (iterator.GotoStart(); !iterator.Done(); ++iterator) {
+            auto &bytecodeInfo = iterator.GetBytecodeInfo();
+            bool ret = cb(bytecodeInfo);
             if (!ret) {
                 break;
             }
-            pc += bytecodeInfo.offset;
         }
     }
 
+    const std::map<const uint8_t *, int32_t> &GetPcToBCOffset() const
+    {
+        return pcToBCOffset_;
+    }
+
+    BytecodeRegion &GetBasicBlockById(size_t id)
+    {
+        return graph_[id];
+    }
+
+    size_t GetBasicBlockCount() const
+    {
+        return graph_.size();
+    }
+
+    size_t GetPcOffset(const uint8_t* pc) const
+    {
+        return static_cast<size_t>(pc - method_->GetBytecodeArray());
+    }
+
+    size_t GetNumberVRegs() const
+    {
+        return static_cast<size_t>(method_->GetNumberVRegs());
+    }
+
+    Bytecodes *GetBytecodes() const
+    {
+        return bytecodes_;
+    }
 private:
     void CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
     void CompleteBytecodeBlockInfo();
@@ -566,7 +323,7 @@ private:
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
-    void RemoveDeadRegions(const std::map<size_t, size_t> &dfsTimestamp);
+    void RemoveDeadRegions(const std::map<size_t, size_t> &bbIdToDfsTimestamp);
     void InsertPhi();
     void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
@@ -580,21 +337,21 @@ private:
     std::vector<GateRef> CreateGateInList(const BytecodeInfo &info);
     void SetBlockPred(BytecodeRegion &bbNext, const GateRef &state, const GateRef &depend, bool isLoopBack);
     GateRef NewConst(const BytecodeInfo &info);
-    void NewJSGate(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend);
-    void NewJump(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend);
-    void NewReturn(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend);
-    void NewByteCode(BytecodeRegion &bb, const uint8_t *pc, GateRef &state, GateRef &depend);
+    void NewJSGate(BytecodeRegion &bb, GateRef &state, GateRef &depend);
+    void NewJump(BytecodeRegion &bb, GateRef &state, GateRef &depend);
+    void NewReturn(BytecodeRegion &bb,  GateRef &state, GateRef &depend);
+    void NewByteCode(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     void AddBytecodeOffsetInfo(GateRef &gate, const BytecodeInfo &info, size_t bcOffsetIndex, uint8_t *pc);
     void BuildSubCircuit();
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
-    GateRef RenameVariable(const size_t bbId, const uint8_t *end, const uint16_t reg, const bool acc);
+    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
-    void PrintCollectBlockInfo(std::vector<CfgInfo> &bytecodeBlockInfos);
     void PrintGraph();
-    void PrintBytecodeInfo();
     void PrintBBInfo();
+    void PrintGraph(const char* title);
+    void PrintBytecodeInfo(BytecodeRegion& region, const std::map<const uint8_t *, GateRef>& bcToGate);
     void PrintDefsitesInfo(const std::map<uint16_t, std::set<size_t>> &defsitesInfo);
 
     inline bool IsEntryBlock(const size_t bbId) const
@@ -604,7 +361,7 @@ private:
 
     TSManager *tsManager_;
     Circuit circuit_;
-    std::map<GateRef, std::pair<size_t, const uint8_t *>> jsgateToBytecode_;
+    std::map<GateRef, std::pair<size_t, size_t>> jsgateToBytecode_;
     std::map<const uint8_t *, GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
     const JSPandaFile *file_ {nullptr};
@@ -615,11 +372,16 @@ private:
     TypeRecorder typeRecorder_;
     bool hasTypes_ {false};
     bool enableLog_ {false};
+    bool enableTypeLowering_ {false};
     std::vector<GateRef> suspendAndResumeGates_ {};
     const std::map<const uint8_t *, int32_t> &pcToBCOffset_;
     const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
     std::vector<CfgInfo> &bytecodeBlockInfos_;
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
+    FrameStateBuilder frameStateBuilder_;
+    std::string methodName_;
+    const CString &recordName_;
+    Bytecodes *bytecodes_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

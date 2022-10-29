@@ -30,7 +30,6 @@ using EntityId = panda_file::File::EntityId;
 struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
                                                         base::AlignedUint64,
                                                         base::AlignedPointer,
-                                                        base::AlignedPointer,
                                                         base::AlignedUint64,
                                                         base::AlignedUint64> {
 public:
@@ -115,6 +114,11 @@ public:
             HaveNewTargetWithCallField() + HaveThisWithCallField();
     }
 
+    uint32_t GetNumberVRegs() const
+    {
+        return GetNumVregsWithCallField() + GetNumArgs();
+    }
+
     static uint64_t SetNumArgsWithCallField(uint64_t callField, uint32_t numargs)
     {
         return NumArgsBits::Update(callField, numargs);
@@ -178,6 +182,11 @@ public:
     static uint32_t GetNumVregsWithCallField(uint64_t callField)
     {
         return NumVregsBits::Decode(callField);
+    }
+
+    uint32_t GetNumVregsWithCallField() const
+    {
+        return NumVregsBits::Decode(callField_);
     }
 
     static uint32_t GetNumArgsWithCallField(uint64_t callField)
@@ -314,16 +323,6 @@ public:
         return nativePointerOrBytecodeArray_;
     }
 
-    void SetCodeEntry(uintptr_t codeEntry)
-    {
-        codeEntry_ = codeEntry;
-    }
-
-    uintptr_t GetCodeEntry() const
-    {
-        return codeEntry_;
-    }
-
     uint64_t GetLiteralInfo() const
     {
         return literalInfo_;
@@ -338,7 +337,6 @@ private:
     enum class Index : size_t {
         CALL_FIELD_INDEX = 0,
         NATIVE_POINTER_OR_BYTECODE_ARRAY_INDEX,
-        CODE_ENTRY_INDEX,
         LITERAL_INFO_INDEX,
         EXTRA_LITERAL_INFO_INDEX,
         NUM_OF_MEMBERS
@@ -350,7 +348,6 @@ private:
     alignas(EAS) uint64_t callField_ {0ULL};
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     alignas(EAS) const void *nativePointerOrBytecodeArray_ {nullptr};
-    alignas(EAS) uintptr_t codeEntry_ {0};
     // hotnessCounter, methodId and slotSize are encoded in literalInfo_.
     alignas(EAS) uint64_t literalInfo_ {0ULL};
     // BuiltinId, FunctionKind are encoded in extraLiteralInfo_.

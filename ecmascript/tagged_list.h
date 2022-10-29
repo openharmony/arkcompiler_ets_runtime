@@ -44,9 +44,11 @@ public:
     void CopyArray(const JSThread *thread, JSHandle<Derived> &taggedList);
     void Clear(const JSThread *thread);
     JSTaggedValue FindElementByIndex(int index) const;
+    std::pair<int, JSTaggedValue> FindElementByDataIndex(int dataindex) const;
     int FindIndexByElement(const JSTaggedValue &element);
     int FindLastIndexByElement(const JSTaggedValue &element);
     int FindDataIndexByNodeIndex(int index) const;
+    void MapNodeIndexToDataIndex(int* nodeIndexMapToDataIndex, int length);
     void RemoveNode(JSThread *thread, int prevDataIndex);
     int FindPrevNodeByIndex(int index) const;
     int FindPrevNodeByValue(const JSTaggedValue &element);
@@ -108,6 +110,15 @@ public:
     {
         Set(thread, NUMBER_OF_NODE_INDEX, JSTaggedValue(nof));
     }
+
+    int GetNextDataIndex(int dataIndex) const
+    {
+        dataIndex = GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
+        if (dataIndex != ELEMENTS_START_INDEX) {
+            return dataIndex;
+        }
+        return -1;
+    }
 };
 
 class TaggedSingleList : public TaggedList<TaggedSingleList> {
@@ -132,13 +143,14 @@ public:
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &callbackFn,
                               const JSHandle<TaggedSingleList> &taggedList);
     static JSTaggedValue ConvertToArray(const JSThread *thread, const JSHandle<TaggedSingleList> &taggedList);
-    static JSTaggedValue GetSubList(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
-                                    const int fromIndex, const int toIndex, const JSHandle<TaggedSingleList> &subList);
+    static void GetSubList(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
+                           const int fromIndex, const int toIndex, const JSHandle<TaggedSingleList> &subList);
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList);
     void Clear(const JSThread *thread);
     bool IsEmpty() const;
     bool Has(const JSTaggedValue &value);
     JSTaggedValue Get(const int index);
+    std::pair<int, JSTaggedValue> GetByDataIndex(const int dataIndex);
     int GetIndexOf(const JSTaggedValue &value);
     int GetLastIndexOf(const JSTaggedValue &value);
     void InsertNode(const JSThread *thread, const JSHandle<JSTaggedValue> &value, const int prevDataIndex,
@@ -174,6 +186,8 @@ public:
                                          const JSTaggedValue &element);
     void Clear(const JSThread *thread);
     JSTaggedValue Get(const int index);
+    std::pair<int, JSTaggedValue> GetByDataIndex(const int dataIndex);
+    int GetPrevNode(const int index);
     bool Has(const JSTaggedValue &value);
     void InsertNode(const JSThread *thread, const JSHandle<JSTaggedValue> &value, const int prevDataIndex,
                     const int finalDataIndex);

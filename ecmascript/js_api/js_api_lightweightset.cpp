@@ -15,6 +15,7 @@
  
 #include "ecmascript/js_api/js_api_lightweightset.h"
 
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_lightweightset_iterator.h"
 #include "ecmascript/js_array.h"
@@ -23,6 +24,8 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 bool JSAPILightWeightSet::Add(JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
                               const JSHandle<JSTaggedValue> &value)
 {
@@ -31,9 +34,10 @@ bool JSAPILightWeightSet::Add(JSThread *thread, const JSHandle<JSAPILightWeightS
     JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
     int32_t size = static_cast<int32_t>(obj->GetLength());
     int32_t index = obj->GetHashIndex(value, size);
-    if (index < 0) {
-        index ^= JSAPILightWeightSet::HASH_REBELLION;
+    if (index >= 0) {
+        return false;
     }
+    index ^= JSAPILightWeightSet::HASH_REBELLION;
     if (index < size) {
         obj->AdjustArray(thread, hashArray, index, size, true);
         obj->AdjustArray(thread, valueArray, index, size, true);
@@ -146,7 +150,7 @@ bool JSAPILightWeightSet::AddAll(JSThread *thread, const JSHandle<JSAPILightWeig
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < srcSize; i++) {
         element.Update(srcLightWeightSet->GetValueAt(i));
-        changed = JSAPILightWeightSet::Add(thread, obj, element);
+        changed |= JSAPILightWeightSet::Add(thread, obj, element);
     }
     return changed;
 }
@@ -298,7 +302,11 @@ void JSAPILightWeightSet::IncreaseCapacityTo(JSThread *thread, const JSHandle<JS
     uint32_t capacity = TaggedArray::Cast(obj->GetValues().GetTaggedObject())->GetLength();
     int32_t intCapacity = static_cast<int32_t>(capacity);
     if (minCapacity <= 0 || intCapacity >= minCapacity) {
-        THROW_TYPE_ERROR(thread, "the index is not integer");
+        std::ostringstream oss;
+        oss << "The value of \"minimumCapacity\" is out of range. It must be > " << intCapacity
+            << ". Received value is: " << minCapacity;
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     obj->SizeCopy(thread, obj, intCapacity, minCapacity);
 }
@@ -321,13 +329,15 @@ JSTaggedValue JSAPILightWeightSet::ForEach(JSThread *thread, const JSHandle<JSTa
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     for (uint32_t k = 0; k < length; k++) {
         JSTaggedValue kValue = lightweightset->GetValueAt(k);
-        JSTaggedValue kHash = lightweightset->GetHashAt(k);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFn, thisArg, undefined, 3); // 3:three args
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-        info->SetCallArg(kValue, kHash, thisHandle.GetTaggedValue());
+        info->SetCallArg(kValue, kValue, thisHandle.GetTaggedValue());
         JSTaggedValue funcResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
+        if (lightweightset->GetSize() != length) {  // prevent length change
+            length = lightweightset->GetSize();
+        }
     }
     return JSTaggedValue::Undefined();
 }
@@ -357,17 +367,25 @@ JSTaggedValue JSAPILightWeightSet::Remove(JSThread *thread, JSHandle<JSTaggedVal
 
 bool JSAPILightWeightSet::RemoveAt(JSThread *thread, int32_t index)
 {
-    int32_t size = static_cast<int32_t>(GetLength());
-    if (index < 0 || index >= size) {
+    uint32_t size = GetLength();
+    if (index < 0 || index >= static_cast<int32_t>(size)) {
         return false;
     }
     JSHandle<TaggedArray> valueArray(thread, GetValues());
     JSHandle<TaggedArray> hashArray(thread, GetHashes());
-    AdjustArray(thread, hashArray, index + 1, index, false);
-    AdjustArray(thread, valueArray, index + 1, index, false);
-    size--;
-    SetLength(size);
+    RemoveValue(thread, hashArray, static_cast<uint32_t>(index));
+    RemoveValue(thread, valueArray, static_cast<uint32_t>(index));
+    SetLength(size - 1);
     return true;
+}
+
+void JSAPILightWeightSet::RemoveValue(const JSThread *thread, JSHandle<TaggedArray> &taggedArray,
+                                      uint32_t index)
+{
+    uint32_t len = GetLength();
+    ASSERT(index < len);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    factory->RemoveElementByIndex(taggedArray, index, len);
 }
 
 void JSAPILightWeightSet::AdjustArray(JSThread *thread, JSHandle<TaggedArray> srcArray, uint32_t fromIndex,
@@ -403,7 +421,6 @@ JSTaggedValue JSAPILightWeightSet::ToString(JSThread *thread, const JSHandle<JSA
     uint32_t length = obj->GetSize();
     JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
     std::u16string concatStr;
-    std::u16string concatStrNew;
     JSMutableHandle<JSTaggedValue> values(thread, JSTaggedValue::Undefined());
     for (uint32_t k = 0; k < length; k++) {
         std::u16string nextStr;
@@ -414,11 +431,11 @@ JSTaggedValue JSAPILightWeightSet::ToString(JSThread *thread, const JSHandle<JSA
             nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
         }
         if (k > 0) {
-            concatStrNew = base::StringHelper::Append(concatStr, sepStr);
-            concatStr = base::StringHelper::Append(concatStrNew, nextStr);
+            concatStr.append(sepStr);
+            concatStr.append(nextStr);
             continue;
         }
-        concatStr = base::StringHelper::Append(concatStr, nextStr);
+        concatStr.append(nextStr);
     }
     char16_t *char16tData = concatStr.data();
     auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);

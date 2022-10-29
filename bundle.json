@@ -11,8 +11,8 @@
         "destPath": "arkcompiler/ets_runtime"
     },
     "component": {
-        "name": "ark_js_runtime",
-        "subsystem": "ark",
+        "name": "ets_runtime",
+        "subsystem": "arkcompiler",
         "syscap": [],
         "features": [],
         "adapted_system_type": [

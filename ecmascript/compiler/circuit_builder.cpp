@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
 
@@ -147,39 +148,57 @@ GateRef CircuitBuilder::Arguments(size_t index)
                                  GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto guard = currentLabel->GetDepend();
+    auto currentDepend = acc_.GetDep(guard);
+    GateRef ret = GetCircuit()->NewGate(OpCode(OpCode::OBJECT_TYPE_CHECK), static_cast<uint64_t>(type.Value()),
+                                        {currentControl, currentDepend, gate, index}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate)
 {
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CHECK), static_cast<uint64_t>(type.GetType()),
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CHECK), static_cast<uint64_t>(type.Value()),
                                  {gate}, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::GetLexicalEnv(GateRef depend)
+{
+    return GetCircuit()->NewGate(OpCode(OpCode::GET_ENV), MachineType::I64, 0, {depend}, GateType::TaggedValue());
+}
+
 GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
-                                            std::vector<GateRef> inList)
+                                            std::vector<GateRef> inList, GateType gateType)
 {
     // get BinaryOpCode from a constant gate
     auto bin = Int8(static_cast<int8_t>(binOp));
     inList.emplace_back(bin);
     // merge two expected types of valueIns
-    uint64_t operandTypes = (static_cast<uint64_t>(typeLeft.GetType()) << OPRAND_TYPE_BITS) |
-                          static_cast<uint64_t>(typeRight.GetType());
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, operandTypes, inList, GateType::AnyType());
+    uint64_t operandTypes = (static_cast<uint64_t>(typeLeft.Value()) << OPRAND_TYPE_BITS) |
+                          static_cast<uint64_t>(typeRight.Value());
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, operandTypes, inList, gateType);
 }
 
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
                                     const std::vector<GateRef>& inList)
 {
     // merge types of valueIns before and after convertion
-    uint64_t operandTypes = (static_cast<uint64_t>(typeFrom.GetType()) << OPRAND_TYPE_BITS) |
-                          static_cast<uint64_t>(typeTo.GetType());
+    uint64_t operandTypes = (static_cast<uint64_t>(typeFrom.Value()) << OPRAND_TYPE_BITS) |
+                          static_cast<uint64_t>(typeTo.Value());
     return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CONVERT), type, operandTypes, inList, GateType::AnyType());
 }
 
-GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnaryOp unaryOp, GateType typleVal,
-                                           const std::vector<GateRef>& inList)
+GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
+                                           const std::vector<GateRef>& inList, GateType gateType)
 {
     auto unaryOpIdx = static_cast<uint64_t>(unaryOp);
-    uint64_t bitfield = (static_cast<uint64_t>(typleVal.GetType()) << OPRAND_TYPE_BITS) | unaryOpIdx;
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_UNARY_OP), type, bitfield, inList, GateType::AnyType());
+    uint64_t bitfield = (static_cast<uint64_t>(typeVal.Value()) << OPRAND_TYPE_BITS) | unaryOpIdx;
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_UNARY_OP), type, bitfield, inList, gateType);
 }
 
 GateRef CircuitBuilder::Int8(int8_t val)
@@ -271,6 +290,11 @@ GateRef CircuitBuilder::UnaryArithmetic(OpCode opcode, GateRef value)
 GateRef CircuitBuilder::BinaryLogic(OpCode opcode, GateRef left, GateRef right)
 {
     return GetCircuit()->NewGate(opcode, 0, { left, right }, GateType::NJSValue());
+}
+
+GateRef CircuitBuilder::BinaryCmp(OpCode opcode, GateRef left, GateRef right, BitField condition)
+{
+    return GetCircuit()->NewGate(opcode, condition, { left, right }, GateType::NJSValue());
 }
 
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args)
@@ -455,25 +479,25 @@ GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef va
     return ret;
 }
 
-GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef key)
+GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef offset)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_PROPERTY), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, key }, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, offset }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef key, GateRef value)
+GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef offset, GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_PROPERTY), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, key, value }, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, offset, value }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -576,7 +600,7 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
-        hashcode = TaggedCastToInt32(CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }));
+        hashcode = GetInt32OfTInt(CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }));
         Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }
@@ -612,7 +636,7 @@ void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
-GateRef CircuitBuilder::GetLexicalEnv(GateRef function)
+GateRef CircuitBuilder::GetFunctionLexicalEnv(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
@@ -632,13 +656,19 @@ void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef 
         Int32((1LU << JSHClass::InlinedPropsStartBits::SIZE) - 1));
     GateRef propOffset = Int32Mul(Int32Add(inlinedPropsStart, attrOffset),
         Int32(JSTaggedValue::TaggedTypeSize()));
-    Store(type, glue, obj, ChangeInt32ToIntPtr(propOffset), value);
+    Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
 }
 
 void CircuitBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)
+{
+    auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
+    return Load(type, env, valueIndex);
 }
 
 Environment::Environment(size_t arguments, CircuitBuilder *builder)

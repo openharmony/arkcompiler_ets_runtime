@@ -42,13 +42,13 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
             pendingList.pop_back();
             bbGatesList.push_back(curGate);
             if (acc.GetOpCode(curGate) != OpCode::LOOP_BACK) {
-                std::vector<GateRef> succGates;
-                acc.GetOutStateVector(curGate, succGates);
-                for (const auto &succGate : succGates) {
-                    if (acc.GetOpCode(succGate).IsState() && acc.GetMark(succGate) == MarkCode::NO_MARK) {
-                        acc.SetMark(succGate, MarkCode::VISITED);
-                        pendingList.push_back(succGate);
-                        dfsFatherIdx[succGate] = dfsTimestamp[curGate];
+                auto uses = acc.Uses(curGate);
+                for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+                    if (useIt.GetIndex() < acc.GetStateCount(*useIt) &&
+                        acc.IsState(*useIt) && acc.GetMark(*useIt) == MarkCode::NO_MARK) {
+                        acc.SetMark(*useIt, MarkCode::VISITED);
+                        pendingList.push_back(*useIt);
+                        dfsFatherIdx[*useIt] = dfsTimestamp[curGate];
                     }
                 }
             }
@@ -114,10 +114,12 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
     return {bbGatesList, bbGatesAddrToIdx, immDom};
 }
 
-std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit, [[maybe_unused]] bool enableLog)
+std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
+                                                 [[maybe_unused]] const std::string& methodName,
+                                                 [[maybe_unused]] bool enableLog)
 {
 #ifndef NDEBUG
-    if (!Verifier::Run(circuit, enableLog)) {
+    if (!Verifier::Run(circuit, methodName, enableLog)) {
         UNREACHABLE();
     }
 #endif
@@ -218,6 +220,9 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit, [[maybe
                 }
             }
         }
+    }
+    if (enableLog) {
+        Print(&result, circuit);
     }
     return result;
 }
@@ -435,9 +440,9 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
     std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit);
-    LOG_COMPILER(INFO) << "==========================================================================";
+    LOG_COMPILER(INFO) << "==================================== Scheduling ==================================";
     for (size_t bbIdx = 0; bbIdx < cfg->size(); bbIdx++) {
-        LOG_COMPILER(INFO) << "BB_" << bbIdx << "_" << acc.GetOpCode((*cfg)[bbIdx].front()).Str() << ":"
+        LOG_COMPILER(INFO) << "B" << bbIdx << "_" << acc.GetOpCode((*cfg)[bbIdx].front()).Str() << ":"
                            << "  immDom=" << immDom[bbIdx];
         LOG_COMPILER(INFO) << "  pred=[";
         bool isFirst = true;
@@ -464,6 +469,6 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
             acc.Print((*cfg)[bbIdx][instIdx - 1]);
         }
     }
-    LOG_COMPILER(INFO) << "==========================================================================";
+    LOG_COMPILER(INFO) << "==================================== Scheduling ==================================";
 }
 }  // namespace panda::ecmascript::kungfu

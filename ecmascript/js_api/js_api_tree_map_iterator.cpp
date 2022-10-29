@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/tagged_tree.h"
@@ -23,6 +24,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -32,22 +35,24 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
 
     if (!input->IsJSAPITreeMapIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not a tree map iterator", JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPITreeMapIterator> iter(input);
     // Let it be [[IteratedMap]].
     JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap());
 
-    // If it is undefined, return CreateIterResultObject(undefined, true).
+    // If it is undefined, return undefinedIteratorResult.
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratedMap->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, globalConst->GetHandledUndefined(), true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     JSHandle<TaggedTreeMap> map(thread, JSHandle<JSAPITreeMap>::Cast(iteratedMap)->GetTreeMap());
     uint32_t elements = static_cast<uint32_t>(map->NumberOfElements());
 
     JSMutableHandle<TaggedArray> entries(thread, iter->GetEntries());
-    if (elements != entries->GetLength()) {
+    if ((iter->GetEntries().IsHole()) || (elements != entries->GetLength())) {
         entries.Update(TaggedTreeMap::GetArrayFromMap(thread, map).GetTaggedValue());
         iter->SetEntries(thread, entries);
     }
@@ -74,13 +79,13 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
         JSHandle<TaggedArray> array = factory->NewTaggedArray(2);  // 2 means the length of array
         array->Set(thread, 0, key);
         array->Set(thread, 1, value);
-        JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
+        JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));    
         return JSIterator::CreateIterResultObject(thread, keyAndValue, false).GetTaggedValue();
     }
 
     // Set [[IteratedMap]] to undefined.
     iter->SetIteratedMap(thread, JSTaggedValue::Undefined());
-    return JSIterator::CreateIterResultObject(thread, globalConst->GetHandledUndefined(), true).GetTaggedValue();
+    return globalConst->GetUndefinedIterResult();
 }
 
 JSHandle<JSTaggedValue> JSAPITreeMapIterator::CreateTreeMapIterator(JSThread *thread,
@@ -92,7 +97,10 @@ JSHandle<JSTaggedValue> JSAPITreeMapIterator::CreateTreeMapIterator(JSThread *th
         if (obj->IsJSProxy() && JSHandle<JSProxy>::Cast(obj)->GetTarget().IsJSAPITreeMap()) {
             obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
         } else {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not TreeMap", thread->GlobalConstants()->GetHandledUndefined());
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The Symbol.iterator method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                             JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
         }
     }
     JSHandle<JSTaggedValue> iter(factory->NewJSAPITreeMapIterator(JSHandle<JSAPITreeMap>(obj), kind));

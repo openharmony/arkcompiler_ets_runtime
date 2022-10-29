@@ -15,4 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_aot_test_action("try_catch_finally") {
   deps = []
+  is_disable_type_lowering = true
 }

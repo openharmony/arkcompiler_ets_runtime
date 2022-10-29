@@ -572,6 +572,15 @@ JSTaggedValue FastRuntimeStub::SetPropertyByIndex(JSThread *thread, JSTaggedValu
             }
             if (index < elements->GetLength()) {
                 if (!elements->Get(index).IsHole()) {
+                    if (holder.IsJSCOWArray()) {
+                        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                        JSHandle<JSArray> holderHandler(thread, JSArray::Cast(holder.GetTaggedObject()));
+                        JSHandle<JSTaggedValue> valueHandle(thread, value);
+                        // CheckAndCopyArray may cause gc.
+                        JSArray::CheckAndCopyArray(thread, holderHandler);
+                        TaggedArray::Cast(holderHandler->GetElements())->Set(thread, index, valueHandle);
+                        return JSTaggedValue::Undefined();
+                    }
                     elements->Set(thread, index, value);
                     return JSTaggedValue::Undefined();
                 }
@@ -846,9 +855,10 @@ JSTaggedValue FastRuntimeStub::NewThisObject(JSThread *thread, JSTaggedValue cto
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctorHandle, newTargetHandle);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
+    Method *method = Method::Cast(ctorHandle->GetMethod().GetTaggedObject());
     state->function = ctorHandle.GetTaggedValue();
-    state->constpool = Method::Cast(ctorHandle->GetMethod().GetTaggedObject())->GetConstantPool();
-    state->profileTypeInfo = ctorHandle->GetProfileTypeInfo();
+    state->constpool = method->GetConstantPool();
+    state->profileTypeInfo = method->GetProfileTypeInfo();
     state->env = ctorHandle->GetLexicalEnv();
 
     return obj.GetTaggedValue();

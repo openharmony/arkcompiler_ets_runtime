@@ -38,14 +38,14 @@ void Module::CollectStackMapDes(ModuleSectionDes& des) const
     std::shared_ptr<uint8_t> ptr = nullptr;
     uint32_t size = 0;
     ArkStackMapBuilder builder;
-    std::tie(ptr, size) =  builder.Run(std::move(stackmapPtr), textAddr);
+    std::tie(ptr, size) = builder.Run(std::move(stackmapPtr), textAddr);
     des.EraseSec(ElfSecName::LLVM_STACKMAP);
     des.SetArkStackMapPtr(ptr);
     des.SetArkStackMapSize(size);
 }
 
 void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name,
-    uint32_t bridgeModuleIdx)
+                                               uint32_t bridgeModuleIdx)
 {
     uint32_t funSize = 0;
     for (size_t i = 0; i < asmModule_.GetFunctionCount(); i++) {
@@ -57,7 +57,7 @@ void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> 
         } else {
             funSize = asmModule_.GetBufferSize() - entryOffset;
         }
-        stubInfo_.AddStubEntry(cs->GetTargetKind(), cs->GetID(), entryOffset, bridgeModuleIdx, 0, funSize);
+        stubInfo_.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entryOffset, bridgeModuleIdx, 0, funSize);
         ASSERT(!cs->GetName().empty());
         auto curSecBegin = asmModule_.GetBuffer();
         uintptr_t entry = reinterpret_cast<uintptr_t>(curSecBegin) + entryOffset;
@@ -71,7 +71,7 @@ void StubFileGenerator::CollectCodeInfo()
     for (size_t i = 0; i < modulePackage_.size(); i++) {
         modulePackage_[i].CollectFuncEntryInfo(addr2name, stubInfo_, i, GetLog());
         ModuleSectionDes des;
-        modulePackage_[i].CollectModuleSectionDes(des);
+        modulePackage_[i].CollectModuleSectionDes(des, true);
         stubInfo_.AddModuleDes(des);
     }
     // idx for bridge module is the one after last module in modulePackage
@@ -86,12 +86,9 @@ void AOTFileGenerator::CollectCodeInfo()
         modulePackage_[i].CollectFuncEntryInfo(addr2name, aotInfo_, i, GetLog());
         ModuleSectionDes des;
         modulePackage_[i].CollectModuleSectionDes(des);
-        aotInfo_.AddModuleDes(des, aotfileHashs_[i]);
+        aotInfo_.AddModuleDes(des);
     }
-
-#ifndef NDEBUG
     DisassembleEachFunc(addr2name);
-#endif
 }
 
 void StubFileGenerator::RunAsmAssembler()
@@ -121,6 +118,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
 {
     RunLLVMAssembler();
     CollectCodeInfo();
+    GenerateMethodToEntryIndexMap();
     aotInfo_.Save(filename);
     DestoryModule();
 }
@@ -129,6 +127,7 @@ void AOTFileGenerator::SaveSnapshotFile()
 {
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
-    snapshot.Serialize(snapshotPath + ".etso");
+    vm_->GetTSManager()->ResolveConstantPoolInfo(methodToEntryIndexMap_);
+    snapshot.Serialize(snapshotPath + ".ai");
 }
 }  // namespace panda::ecmascript::kungfu

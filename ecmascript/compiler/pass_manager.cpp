@@ -15,6 +15,7 @@
 #include "ecmascript/compiler/pass_manager.h"
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -23,7 +24,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
-bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator)
+bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
     JSPandaFile *jsPandaFile = CreateJSPandaFile(fileName.c_str());
@@ -31,30 +32,34 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         LOG_COMPILER(ERROR) << "Cannot execute panda file '" << fileName << "'";
         return false;
     }
-    auto bcInfoCollector = BytecodeInfoCollector(jsPandaFile, entry_);
-    jsPandaFile = ResolveModuleFile(jsPandaFile, fileName);
-    auto constantPool = CreateConstPool(jsPandaFile);
-    DecodeTSTypes(jsPandaFile, fileName);
 
-    auto aotModule = new LLVMModule("aot_" + fileName, triple_);
+    auto bcInfoCollector = BytecodeInfoCollector(jsPandaFile);
+    auto constantPool = ResolveModuleAndConstPool(jsPandaFile, fileName);
+
+    // ts type system
+    TSManager *tsManager = vm_->GetTSManager();
+    tsManager->DecodeTSTypes(jsPandaFile);
+
+    auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
                                                 LOptions(optLevel_, true, relocMode_));
-    CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
-    TSManager *tsManager = vm_->GetTSManager();
+    CompilationConfig cmpCfg(triple_, false, log_->IsEnableByteCodeTrace());
+    Bytecodes bytecodes;
 
     auto &bytecodeInfo = bcInfoCollector.GetBytecodeInfo();
     auto lexEnvManager = LexEnvManager(bytecodeInfo);
     bool enableMethodLog = !log_->NoneMethod();
     uint32_t skippedMethodNum = 0;
+    profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
 
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
-        &cmpCfg, tsManager, &lexEnvManager, &skippedMethodNum]
-        (uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
-            auto method = jsPandaFile->FindMethodLiteral(methodOffset);
+        &cmpCfg, tsManager, &bytecodes, &lexEnvManager, &skippedMethodNum]
+        (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
+        auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
-        if (methodPCInfo.methodsSize > maxAotMethodSize_ &&
-            methodOffset != jsPandaFile->GetMainMethodIndex()) {
+        if (FilterMethod(jsPandaFile, recordName, method, methodOffset, methodPCInfo)) {
             ++skippedMethodNum;
+            tsManager->AddIndexOrSkippedMethodID(CacheType::SKIPPED_METHOD, method->GetMethodId().GetOffset());
             LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
             return;
         }
@@ -63,20 +68,24 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             enableMethodLog = logList_->IncludesMethod(fileName, methodName);
         }
 
+        std::string fullName = methodName + "@" + fileName;
         if (enableMethodLog) {
-            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fileName << ":"
-                            << methodName << "] log:" << "\033[0m";
+            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName << "] log:" << "\033[0m";
         }
 
-        BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager,
-                                       &cmpCfg, enableMethodLog && log_->OutputCIR());
+        bool hasTyps = jsPandaFile->HasTSTypes(recordName);
+        BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager, &bytecodes,
+                                       &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(),
+                                       EnableTypeLowering(), fullName, recordName);
         builder.BytecodeToCircuit();
-        PassData data(builder.GetCircuit(), log_, enableMethodLog);
+        PassData data(builder.GetCircuit(), log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
         if (EnableTypeLowering()) {
-            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);
+            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager, constantPool);
+            pipeline.RunPass<GuardEliminatingPass>(&builder, &cmpCfg);
+            pipeline.RunPass<GuardLoweringPass>(&builder, &cmpCfg);
             pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
         }
         pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg, tsManager);
@@ -84,6 +93,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
     });
+    LOG_COMPILER(INFO) << " ";
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
     generator.AddModule(aotModule, aotModuleAssembler, jsPandaFile);
     return true;
@@ -102,35 +112,37 @@ JSPandaFile *PassManager::CreateJSPandaFile(const CString &fileName)
     return jsPandaFile;
 }
 
-JSPandaFile *PassManager::ResolveModuleFile(JSPandaFile *jsPandaFile, const std::string &fileName)
-{
-    if (jsPandaFile->IsModule()) {
-        JSThread *thread = vm_->GetJSThread();
-        ModuleManager *moduleManager = vm_->GetModuleManager();
-        CString moduleFileName = moduleManager->ResolveModuleFileName(fileName.c_str());
-        return const_cast<JSPandaFile *>(JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName,
-                                                                                            entry_));
-    }
-    return jsPandaFile;
-}
-
-JSHandle<JSTaggedValue> PassManager::CreateConstPool(const JSPandaFile *jsPandaFile)
+JSHandle<JSTaggedValue> PassManager::ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile,
+                                                               const std::string &fileName)
 {
     JSThread *thread = vm_->GetJSThread();
 
-    auto program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile, JSPandaFile::ENTRY_FUNCTION_NAME);
+    JSHandle<Program> program;
+    const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
+    ModuleManager *moduleManager = vm_->GetModuleManager();
+    for (auto info: recordInfo) {
+        auto recordName = info.first;
+        if (jsPandaFile->IsModule(recordName)) {
+            moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(), recordName);
+        }
+        program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile, recordName);
+    }
+
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
     JSHandle<Method> method(thread, mainFunc->GetMethod());
     JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());
     return constPool;
 }
 
-void PassManager::DecodeTSTypes(const JSPandaFile *jsPandaFile, const std::string &fileName)
+bool PassManager::FilterMethod(const JSPandaFile *jsPandaFile, const CString &recordName, MethodLiteral *method,
+    uint32_t methodOffset, MethodPcInfo &methodPCInfo)
 {
-    if (jsPandaFile->HasTSTypes()) {
-        vm_->GetTSManager()->DecodeTSTypes(jsPandaFile);
-    } else {
-        LOG_COMPILER(INFO) << fileName << " has no type info";
+    if (methodOffset != jsPandaFile->GetMainMethodIndex(recordName)) {
+        if (methodPCInfo.methodsSize > maxAotMethodSize_ ||
+            !profilerLoader_.Match(recordName, method->GetMethodId())) {
+            return true;
+        }
     }
+    return false;
 }
 } // namespace panda::ecmascript::kungfu

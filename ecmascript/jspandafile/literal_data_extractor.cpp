@@ -34,7 +34,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                                               JSHandle<JSTaggedValue> constpool,
                                               const CString &entryPoint)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
 
     LOG_ECMA(VERBOSE) << "Panda File" << jsPandaFile->GetJSPandaFileDesc();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -50,7 +51,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile, pf,
+        index, [elements, properties, &epos, &ppos, vm, factory, thread, jsPandaFile, pf,
         &methodId, &kind, &constpool, &entryPoint]
         (const LiteralValue &value, const LiteralTag &tag) {
         JSTaggedValue jt = JSTaggedValue::Null();
@@ -96,7 +97,13 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 methodLiteral->SetFunctionKind(kind);
 
                 JSHandle<Method> method = factory->NewMethod(methodLiteral);
-                method->SetConstantPool(thread, constpool.GetTaggedValue());
+                if (jsPandaFile->IsNewVersion()) {
+                    JSHandle<ConstantPool> newConstpool =
+                        vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(methodId));
+                    method->SetConstantPool(thread, newConstpool);
+                } else {
+                    method->SetConstantPool(thread, constpool);
+                }
                 JSHandle<JSFunction> jsFunc =
                     DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entryPoint);
                 jt = jsFunc.GetTaggedValue();
@@ -154,14 +161,15 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
 JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
     const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool, const CString &entryPoint)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
     uint32_t num = lda.GetLiteralValsNum(index) / 2;  // 2: half
     JSHandle<TaggedArray> literals = factory->NewOldSpaceTaggedArray(num);
     uint32_t pos = 0;
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [literals, &pos, factory, thread, jsPandaFile, &methodId, &kind, &constpool, &entryPoint]
+        index, [literals, &pos, vm, factory, thread, jsPandaFile, &methodId, &kind, &constpool, &entryPoint]
         (const panda_file::LiteralDataAccessor::LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -201,7 +209,13 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                     ASSERT(methodLiteral != nullptr);
 
                     JSHandle<Method> method = factory->NewMethod(methodLiteral);
-                    method->SetConstantPool(thread, constpool.GetTaggedValue());
+                    if (jsPandaFile->IsNewVersion()) {
+                        JSHandle<ConstantPool> newConstpool =
+                            vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(methodId));
+                        method->SetConstantPool(thread, newConstpool);
+                    } else {
+                        method->SetConstantPool(thread, constpool);
+                    }
                     JSHandle<JSFunction> jsFunc =
                         DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entryPoint);
                     jt = jsFunc.GetTaggedValue();
@@ -243,8 +257,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     } else {
         functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
     }
-    JSHandle<JSFunction> jsFunc =
-        factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
+    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
 
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
     CString moduleName = jsPandaFile->GetJSPandaFileDesc();
@@ -252,6 +265,13 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     if (!entryPoint.empty()) {
         moduleName = entryPoint;
         entry = entryPoint;
+    } else {
+#if defined(PANDA_TARGET_LINUX)
+        if (!jsPandaFile->IsBundlePack()) {
+            entry = JSPandaFile::ParseRecordName(moduleName);
+            moduleName = entry;
+        }
+#endif
     }
     if (jsPandaFile->IsModule(entry)) {
         EcmaVM *vm = thread->GetEcmaVM();
@@ -307,14 +327,14 @@ void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, pand
         });
 }
 
-#ifdef NEW_INSTRUCTION_DEFINE
 void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile,
                                               panda_file::File::EntityId index,
                                               JSMutableHandle<TaggedArray> elements,
                                               JSMutableHandle<TaggedArray> properties,
-                                              JSHandle<JSTaggedValue> constpool)
+                                              JSHandle<JSTaggedValue> constpool, const CString &entry)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
 
     LOG_ECMA(VERBOSE) << "Panda File" << jsPandaFile->GetJSPandaFileDesc();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -330,7 +350,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile, pf, &methodId, &kind, &constpool]
+        index, [elements, properties, &epos, &ppos, vm, factory, thread, jsPandaFile,
+                pf, &methodId, &kind, &constpool, &entry]
         (const LiteralValue &value, const LiteralTag &tag) {
         JSTaggedValue jt = JSTaggedValue::Null();
         bool flag = false;
@@ -376,8 +397,14 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 methodLiteral->SetFunctionKind(kind);
 
                 JSHandle<Method> method = factory->NewMethod(methodLiteral);
-                method->SetConstantPool(thread, constpool.GetTaggedValue());
-                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length);
+                if (jsPandaFile->IsNewVersion()) {
+                    JSHandle<ConstantPool> newConstpool =
+                        vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(methodId));
+                    method->SetConstantPool(thread, newConstpool);
+                } else {
+                    method->SetConstantPool(thread, constpool);
+                }
+                JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entry);
                 jt = jsFunc.GetTaggedValue();
                 break;
             }
@@ -409,7 +436,8 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                                                                JSHandle<JSTaggedValue> constpool,
                                                                const CString &entryPoint)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
 
     LOG_ECMA(VERBOSE) << "Panda File" << jsPandaFile->GetJSPandaFileDesc();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -422,7 +450,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     uint32_t methodId;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        index, [literals, &pos, factory, thread, jsPandaFile, &methodId, &kind, &constpool, &entryPoint]
+        index, [literals, &pos, vm, factory, thread, jsPandaFile, &methodId, &kind, &constpool, &entryPoint]
         (const panda_file::LiteralDataAccessor::LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -462,7 +490,13 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     ASSERT(methodLiteral != nullptr);
 
                     JSHandle<Method> method = factory->NewMethod(methodLiteral);
-                    method->SetConstantPool(thread, constpool.GetTaggedValue());
+                    if (jsPandaFile->IsNewVersion()) {
+                        JSHandle<ConstantPool> newConstpool =
+                            vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(methodId));
+                        method->SetConstantPool(thread, newConstpool);
+                    } else {
+                        method->SetConstantPool(thread, constpool);
+                    }
                     JSHandle<JSFunction> jsFunc =
                         DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entryPoint);
                     jt = jsFunc.GetTaggedValue();
@@ -490,5 +524,51 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
         });
     return literals;
 }
-#endif
+
+// use for parsing specific literal which record TS type info
+JSHandle<TaggedArray> LiteralDataExtractor::GetTypeLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                           panda_file::File::EntityId offset)
+{
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
+    panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t num = lda.GetLiteralValsNum(offset) / 2;  // 2: half
+    JSHandle<TaggedArray> literals = factory->NewOldSpaceTaggedArray(num);
+    uint32_t pos = 0;
+    lda.EnumerateLiteralVals(
+        offset, [literals, &pos, factory, thread, pf]
+        (const panda_file::LiteralDataAccessor::LiteralValue &value, const LiteralTag &tag) {
+            JSTaggedValue jt = JSTaggedValue::Null();
+            switch (tag) {
+                case LiteralTag::INTEGER: {
+                    jt = JSTaggedValue(bit_cast<int32_t>(std::get<uint32_t>(value)));
+                    break;
+                }
+                case LiteralTag::LITERALARRAY: {
+                    ASSERT(std::get<uint32_t>(value) > LITERALARRAY_VALUE_LOW_BOUNDARY);
+                    jt = JSTaggedValue(std::get<uint32_t>(value));
+                    break;
+                }
+                case LiteralTag::BUILTINTYPEINDEX: {
+                    jt = JSTaggedValue(std::get<uint8_t>(value));
+                    break;
+                }
+                case LiteralTag::STRING: {
+                    StringData sd = pf->GetStringData(panda_file::File::EntityId(std::get<uint32_t>(value)));
+                    EcmaString *str = factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii,
+                                                                           MemSpaceType::OLD_SPACE);
+                    jt = JSTaggedValue(str);
+                    break;
+                }
+                default: {
+                    LOG_ECMA(FATAL) << "type literal should not exist LiteralTag: " << static_cast<uint8_t>(tag);
+                    break;
+                }
+            }
+            literals->Set(thread, pos++, jt);
+        });
+    return literals;
+}
 }  // namespace panda::ecmascript

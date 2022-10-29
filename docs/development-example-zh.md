@@ -55,20 +55,20 @@
 1.  通过方舟前端生成hello-world.abc文件，编译命令：
 
     ```
-    node --expose-gc /your code path/out/hispark_taurus/clang_x64/ark/ark/build/src/index.js hello-world.js
+    node --expose-gc /your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/build/src/index.js hello-world.js
     ```
 
 2.  执行hello-world.abc文件：
     1.  设置搜索路径：
 
         ```
-        export LD_LIBRARY_PATH= /your code path/out/hispark_taurus/clang_x64/ark/ark:/your code path/out/hispark_taurus/clang_x64/ark/ark_js_runtime:/your code path/out/hispark_taurus/clang_x64/global/i18n_standard:/your code path/prebuilts/clang/ohos/linux-x86_64/llvm/lib
+        export LD_LIBRARY_PATH= /your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_runtime:/your code path/out/hispark_taurus/clang_x64/global/i18n_standard:/your code path/prebuilts/clang/ohos/linux-x86_64/llvm/lib
         ```
 
     2.  执行ark\_js\_vm：
 
         ```
-        /your code path/out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm hello-world.abc
+        /your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_runtime/ark_js_vm hello-world.abc
         ```
 
         执行结果如下：
@@ -92,7 +92,7 @@
 执行如下命令，结果输出到output.pa文件中：
 
 ```
-./your code path/out/hispark_taurus/clang_x64/ark/ark/ark_disasm hello-world.abc output.pa
+./your code path/out/hispark_taurus/clang_x64/arkcompiler/runtime_core/ark_disasm hello-world.abc output.pa
 ```
 
 hello-world.abc反汇编结果如下：
@@ -309,7 +309,7 @@ node
         test262/harness/bin/run.js
         --hostType=panda
         --hostPath=python3
-        --hostArgs='-B test262/run_sunspider.py --ark-tool=/your code path/out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm --ark-frontend-tool=/your code path/out/hispark_taurus/clang_x64/ark/ark/build/src/index.js --libs-dir=/your code path/out/hispark_taurus/clang_x64/ark/ark:/your code path/out/hispark_taurus/clang_x64/global/i18n:/your code path/prebuilts/clang/ohos/linux-x86_64/llvm/lib/ --ark-frontend=ts2panda'
+        --hostArgs='-B test262/run_sunspider.py --ark-tool=/your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_runtime/ark_js_vm --ark-frontend-tool=/your code path/out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/build/src/index.js --libs-dir=/your code path/out/hispark_taurus/clang_x64/global/i18n:/your code path/prebuilts/clang/ohos/linux-x86_64/llvm/lib/ --ark-frontend=ts2panda'
         --threads=15
         --mode=only strict mode
         --timeout=60000

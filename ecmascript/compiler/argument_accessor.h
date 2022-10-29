@@ -29,17 +29,16 @@ enum class CommonArgIdx : uint8_t {
     ACTUAL_ARGC,
     FUNC,
     NEW_TARGET,
-    THIS,
+    THIS_OBJECT,
     NUM_OF_ARGS,
 };
 
 class ArgumentAccessor {
 public:
     explicit ArgumentAccessor(
-        Circuit *circuit, const MethodLiteral *methodLiteral = nullptr, const JSPandaFile *jsPandaFile = nullptr)
+        Circuit *circuit, const MethodLiteral *methodLiteral = nullptr)
         : circuit_(circuit),
           method_(methodLiteral),
-          jsPandaFile_(jsPandaFile),
           argRoot_(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))),
           args_(0)
     {
@@ -54,6 +53,10 @@ public:
     // method must be set
     GateRef GetArgGate(const size_t currentVreg) const;
     GateRef GetCommonArgGate(const CommonArgIdx arg) const;
+    GateRef ArgsAt(const size_t index) const
+    {
+        return args_.at(index);
+    }
     void FillArgsGateType(const TypeRecorder *typeRecorder);
     void CollectArgs();
     static size_t GetFixArgsNum()
@@ -67,7 +70,6 @@ private:
 
     Circuit *circuit_ {nullptr};
     const MethodLiteral *method_ {nullptr};
-    const JSPandaFile *jsPandaFile_ {nullptr};
     GateRef argRoot_;
     std::vector<GateRef> args_;
 };

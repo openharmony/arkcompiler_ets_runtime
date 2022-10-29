@@ -18,6 +18,8 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
@@ -33,12 +35,11 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef func = TaggedArgument(static_cast<size_t>(BuiltinsArgs::FUNC));                         \
     GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
     GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
-    GateRef argv = PtrArgument(static_cast<size_t>(BuiltinsArgs::ARGV));                            \
     DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(name)) });                                       \
-    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs, argv);                          \
+    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs);                                \
 }                                                                                                   \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
-                                            GateRef thisValue, GateRef numArgs, GateRef argv)
+                                            GateRef thisValue, GateRef numArgs)
 #else
 #define DECLARE_BUILTINS(name)                                                                      \
 void name##StubBuilder::GenerateCircuit()                                                           \
@@ -48,16 +49,22 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef func = TaggedArgument(static_cast<size_t>(BuiltinsArgs::FUNC));                         \
     GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
     GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
-    GateRef argv = PtrArgument(static_cast<size_t>(BuiltinsArgs::ARGV));                            \
-    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs, argv);                          \
+    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs);                                \
 }                                                                                                   \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
-                                            GateRef thisValue, GateRef numArgs, GateRef argv)
+                                            GateRef thisValue, GateRef numArgs)
 #endif
 
+#define BUILDARG()                                                                                  \
+    GateRef arg0 = GetCallArg0();                                                                   \
+    GateRef arg1 = GetCallArg1();                                                                   \
+    GateRef arg2 = GetCallArg2();                                                                   \
+    GateRef newTarget = Undefined();                                                                \
+    GateRef runtimeCallInfoArgs = PtrAdd(numArgs, IntPtr(NUM_MANDATORY_JSFUNC_ARGS))
+
 #define CALLSLOWPATH()                                                                              \
-    CallNGCRuntime(glue, RTSTUB_ID(PushCallRangeAndDispatchNative),                                \
-                  { glue, nativeCode, func, thisValue, numArgs, argv })
+    CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),                                  \
+                   { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1, arg2 })
 
 DECLARE_BUILTINS(CharCodeAt)
 {
@@ -90,15 +97,15 @@ DECLARE_BUILTINS(CharCodeAt)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
-                GateRef posTag = GetCallArg(argv, IntPtr(0));
+                GateRef posTag = GetCallArg0();
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
-                pos = TaggedCastToInt32(posTag);
+                pos = GetInt32OfTInt(posTag);
                 Jump(&next);
                 Bind(&posTagNotInt);
                 Branch(TaggedIsDouble(posTag), &posTagIsDouble, &slowPath);
                 Bind(&posTagIsDouble);
-                pos = DoubleToInt(glue, TaggedCastToDouble(posTag));
+                pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                 Jump(&next);
             }
             Bind(&next);
@@ -119,6 +126,7 @@ DECLARE_BUILTINS(CharCodeAt)
     }
     Bind(&slowPath);
     {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }
@@ -156,7 +164,7 @@ DECLARE_BUILTINS(IndexOf)
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
-            GateRef searchTag = GetCallArg(argv, IntPtr(0));
+            GateRef searchTag = GetCallArg0();
             Branch(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, &slowPath);
             Bind(&searchTagIsHeapObject);
             Branch(IsString(searchTag), &isSearchString, &slowPath);
@@ -166,15 +174,15 @@ DECLARE_BUILTINS(IndexOf)
                 Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &next, &posTagNotUndefined);
                 Bind(&posTagNotUndefined);
                 {
-                    GateRef posTag = GetCallArg(argv, IntPtr(1));
+                    GateRef posTag = GetCallArg1();
                     Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                     Bind(&posTagIsInt);
-                    pos = TaggedCastToInt32(posTag);
+                    pos = GetInt32OfTInt(posTag);
                     Jump(&next);
                     Bind(&posTagNotInt);
                     Branch(TaggedIsDouble(posTag), &posTagIsDouble, &slowPath);
                     Bind(&posTagIsDouble);
-                    pos = DoubleToInt(glue, TaggedCastToDouble(posTag));
+                    pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                     Jump(&next);
                 }
                 Bind(&next);
@@ -218,6 +226,7 @@ DECLARE_BUILTINS(IndexOf)
     }
     Bind(&slowPath);
     {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }
@@ -274,15 +283,15 @@ DECLARE_BUILTINS(Substring)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &startTagNotUndefined);
             Bind(&startTagNotUndefined);
             {
-                GateRef startTag = GetCallArg(argv, IntPtr(0));
+                GateRef startTag = GetCallArg0();
                 Branch(TaggedIsInt(startTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
-                start = TaggedCastToInt32(startTag);
+                start = GetInt32OfTInt(startTag);
                 Jump(&next);
                 Bind(&posTagNotInt);
                 Branch(TaggedIsDouble(startTag), &posTagIsDouble, &slowPath);
                 Bind(&posTagIsDouble);
-                start = DoubleToInt(glue, TaggedCastToDouble(startTag));
+                start = DoubleToInt(glue, GetDoubleOfTDouble(startTag));
                 Jump(&next);
             }
             Bind(&next);
@@ -295,15 +304,15 @@ DECLARE_BUILTINS(Substring)
                 }
                 Bind(&endTagNotUndefined);
                 {
-                    GateRef endTag = GetCallArg(argv, IntPtr(1));
+                    GateRef endTag = GetCallArg1();
                     Branch(TaggedIsInt(endTag), &endTagIsInt, &endTagNotInt);
                     Bind(&endTagIsInt);
-                    end = TaggedCastToInt32(endTag);
+                    end = GetInt32OfTInt(endTag);
                     Jump(&countStart);
                     Bind(&endTagNotInt);
                     Branch(TaggedIsDouble(endTag), &endTagIsDouble, &slowPath);
                     Bind(&endTagIsDouble);
-                    end = DoubleToInt(glue, TaggedCastToDouble(endTag));
+                    end = DoubleToInt(glue, GetDoubleOfTDouble(endTag));
                     Jump(&countStart);
                 }
             }
@@ -383,6 +392,7 @@ DECLARE_BUILTINS(Substring)
 
     Bind(&slowPath);
     {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }
@@ -422,15 +432,15 @@ DECLARE_BUILTINS(CharAt)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
-                GateRef posTag = GetCallArg(argv, IntPtr(0));
+                GateRef posTag = GetCallArg0();
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
-                pos = TaggedCastToInt32(posTag);
+                pos = GetInt32OfTInt(posTag);
                 Jump(&next);
                 Bind(&posTagNotInt);
                 Branch(TaggedIsDouble(posTag), &posTagIsDouble, &slowPath);
                 Bind(&posTagIsDouble);
-                pos = DoubleToInt(glue, TaggedCastToDouble(posTag));
+                pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                 Jump(&next);
             }
             Bind(&next);
@@ -457,6 +467,217 @@ DECLARE_BUILTINS(CharAt)
     }
     Bind(&slowPath);
     {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(VectorForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::VECTOR_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(VectorReplaceAllElements)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::VECTOR_REPLACEALLELEMENTS);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(StackForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::STACK_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(PlainArrayForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::PLAINARRAY_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(QueueForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.QueueCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::QUEUE_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(DequeForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.DequeCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::DEQUE_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(LightWeightMapForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersLightWeightCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::LIGHTWEIGHTMAP_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(LightWeightSetForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersLightWeightCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::LIGHTWEIGHTSET_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(ArrayListForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::ARRAYLIST_FOREACH);
+    Bind(&slowPath);
+    {
+        BUILDARG();
+        res = CALLSLOWPATH();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(ArrayListReplaceAllElements)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
+    Bind(&slowPath);
+    {
+        BUILDARG();
         res = CALLSLOWPATH();
         Jump(&exit);
     }

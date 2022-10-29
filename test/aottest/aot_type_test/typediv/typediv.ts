@@ -19,6 +19,7 @@ let b:number = 2;
 let c:number = a / b;
 print(c);
 
+
 function foo(arg0:number, arg1:number) {
     print(arg0 / arg1);
 }

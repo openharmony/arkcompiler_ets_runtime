@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/deoptimizer.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
@@ -31,36 +32,30 @@ namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;
 #define __ assembler->
 
-// uint64_t CallRuntime(uintptr_t glue, uint64_t runtime_id, uint64_t argc, ...)
-// webkit_jscc calling convention call runtime_id's runtion function(c-abi)
-// JSTaggedType (*)(uintptr_t argGlue, uint64_t argc, JSTaggedType argv[])
-// Input:        %x0 - glue
-// stack layout: sp + N*8 argvN
-//               ........
-//               sp + 24: argv1
-//               sp + 16: argv0
-// sp + 8:       argc
-// sp:           runtime_id
-// construct Leave Frame
-//               +--------------------------+
-//               |       argv[argc-1]       |
-//               +--------------------------+
-//               |       ..........         |
-//               +--------------------------+
-//               |       argv[1]            |
-//               +--------------------------+
-//               |       argv[0]            |
-//               +--------------------------+ ---
-//               |       argc               |   ^
-//               |--------------------------|  Fixed
-//               |       RuntimeId          | OptimizedLeaveFrame
-//               |--------------------------|   |
-//               |       returnAddr         |   |
-//               |--------------------------|   |
-//               |       callsiteFp         |   |
-//               |--------------------------|   |
-//               |       frameType          |   v
-//               +--------------------------+ ---
+// * uint64_t CallRuntime(uintptr_t glue, uint64_t runtime_id, uint64_t argc, uintptr_t arg0, ...)
+// * webkit_jscc calling convention call runtime_id's runtime function(c-abi)
+// * Arguments:
+//         %x0 - glue
+//
+// * Optimized-leaved-frame layout as the following:
+//         +--------------------------+
+//         |       argv[N-1]          |
+//         |--------------------------|
+//         |       . . . . .          |
+//         |--------------------------|
+//         |       argv[0]            |
+//         +--------------------------+-------------
+//         |       argc               |            ^
+//         |--------------------------|            |
+//         |       RuntimeId          |            |
+//  sp --> |--------------------------|   OptimizedLeaveFrame
+//         |       ret-addr           |            |
+//         |--------------------------|            |
+//         |       prevFp             |            |
+//         |--------------------------|            |
+//         |       frameType          |            v
+//         +--------------------------+-------------
+
 void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
 {
     Register glue(X0);
@@ -108,36 +103,37 @@ void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Regi
     __ Mov(currentSp, sp);
     // add extra aguments, env and numArgs
     __ Add(argc, argc, Immediate(static_cast<int64_t>(CommonArgIdx::ACTUAL_ARGC)));
-    __ Sub(currentSp, currentSp, Operand(argc, UXTW, SHIFT_OF_FRAMESLOT));
+    __ Sub(currentSp, currentSp, Operand(argc, UXTW, FRAME_SLOT_SIZE_LOG2));
     Label aligned;
     __ Tst(currentSp, LogicalImmediate::Create(0xf, RegXSize));  // 0xf: 0x1111
     __ B(Condition::EQ, &aligned);
     __ Sub(currentSp, currentSp, Immediate(FRAME_SLOT_SIZE));
     __ Bind(&aligned);
     __ Mov(sp, currentSp);
-    __ Add(currentSp, currentSp, Operand(argc, UXTW, SHIFT_OF_FRAMESLOT));
+    __ Add(currentSp, currentSp, Operand(argc, UXTW, FRAME_SLOT_SIZE_LOG2));
 }
 
-// uint64_t JSFunctionEntry(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
-//                                uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr)
-// Input: %x0 - glue
+// * uint64_t JSFunctionEntry(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
+//                            uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr)
+// * Arguments:
+//        %x0 - glue
 //        %x1 - prevFp
 //        %x2 - expectedNumArgs
 //        %x3 - actualNumArgs
-//        %x4 - argV
-//        %x5 - codeAddr
-// construct Entry Frame
-//        +--------------------------+
-//        |   returnaddress      |   ^
-//        |----------------------|   |
-//        |calleesave registers  | Fixed
-//        |----------------------| OptimizedEntryFrame
-//        |      prevFp          |   |
-//        |----------------------|   |
-//        |      frameType       |   |
-//        |----------------------|   |
-//        |  prevLeaveFrameFp    |   v
-//        +--------------------------+
+//        %x4  - argV
+//        %x5  - codeAddr
+//
+// * The JSFunctionEntry Frame's structure is illustrated as the following:
+//          +--------------------------+
+//          |      . . . . . .         |
+//  sp ---> +--------------------------+ -----------------
+//          |        prevFP            |                 ^
+//          |--------------------------|                 |
+//          |       frameType          |      JSFunctionEntryFrame
+//          |--------------------------|                 |
+//          |    preLeaveFrameFp       |                 v
+//          +--------------------------+ -----------------
+
 void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
 {
     Register glue(X0);
@@ -183,7 +179,7 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
         Register env = __ TempRegister1();
         __ Mov(Register(X19), expectedNumArgs);
         __ Mov(Register(X20), glue);
-        __ Ldr(env, MemoryOperand(argV, actualNumArgs, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Ldr(env, MemoryOperand(argV, actualNumArgs, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Str(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
         // 0 : 0 restore size
         __ Str(env, MemoryOperand(sp, 0));
@@ -201,26 +197,69 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Ret();
 }
 
-// extern "C" JSTaggedType OptimizedCallOptimized(uintptr_t glue, uint32_t expectedNumArgs,
-//                                  uint32_t actualNumArgs, uintptr_t codeAddr, uintptr_t argv)
-// Input:  %x0 - glue
-//         %w1 - expectedNumArgs
-//         %w2 - actualNumArgs
-//         %x3 - codeAddr
-//         %x4 - argv
-//         %x5 - env
+void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSFunctionReentry));
+    Register glueReg(X0);
+    Register argV(X2);
+    Register prevFpReg(X3);
+    Register flag(X4);
+    Register sp(SP);
+    Register tmpArgV(X7);
+    Label lJSCallNewWithArgV;
+    Label lPopFrame;
 
-//         sp[0 * 8]  -  argc
-//         sp[1 * 8]  -  argv[0]
-//         sp[2 * 8]  -  argv[1]
-//         .....
-//         sp[(N -3) * 8] - argv[N - 1]
-// Output: stack as followsn from high address to lowAdress
-//         sp       -      argv[N - 1]
-//         sp[-8]    -      argv[N -2]
-//         ...........................
-//         sp[- 8(N - 1)] - arg[0]
-//         sp[- 8(N)]     - argc
+    PushJSFunctionEntryFrame (assembler, prevFpReg);
+    __ Mov(Register(X6), flag);
+    __ Mov(tmpArgV, argV);
+    __ Mov(Register(X20), glueReg);
+    __ Ldr(Register(X2), MemoryOperand(tmpArgV, 0));
+    __ Ldr(Register(X3), MemoryOperand(tmpArgV, FRAME_SLOT_SIZE));
+    __ Ldr(Register(X4), MemoryOperand(tmpArgV, DOUBLE_SLOT_SIZE));
+    __ Add(tmpArgV, tmpArgV, Immediate(TRIPLE_SLOT_SIZE));
+    __ Mov(Register(X5), tmpArgV);
+    __ Cmp(Register(X6), Immediate(1));
+    __ B(Condition::EQ, &lJSCallNewWithArgV);
+    __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgV), false);
+    __ B(&lPopFrame);
+
+    __ Bind(&lJSCallNewWithArgV);
+    {
+        __ CallAssemblerStub(RTSTUB_ID(JSCallNewWithArgV), false);
+    }
+
+    __ Bind(&lPopFrame);
+    PopJSFunctionEntryFrame(assembler, Register(X20));
+    __ Ret();
+}
+
+// * uint64_t OptimizedCallOptimized(uintptr_t glue, uint32_t expectedNumArgs, uint32_t actualNumArgs,
+//                                   uintptr_t codeAddr, uintptr_t argv, uintptr_t lexEnv)
+// * Arguments wil CC calling convention:
+//         %x0 - glue
+//         %x1 - codeAddr
+//         %x2 - actualNumArgs
+//         %x3 - expectedNumArgs
+//         %x4  - argv
+//         %x5  - lexEnv
+//
+// * The OptimizedJSFunctionArgsConfig Frame's structure is illustrated as the following:
+//          +--------------------------+
+//          |         arg[N-1]         |
+//          +--------------------------+
+//          |         . . . .          |
+//          +--------------------------+
+//          |         arg[0]           |
+//          +--------------------------+
+//          |         argC             |
+//  sp ---> +--------------------------+ -----------------
+//          |                          |                 ^
+//          |        prevFP            |                 |
+//          |--------------------------|    OptimizedJSFunctionArgsConfigFrame
+//          |       frameType          |                 |
+//          |                          |                 V
+//          +--------------------------+ -----------------
+
 void OptimizedCall::OptimizedCallOptimized(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(OptimizedCallOptimized));
@@ -290,94 +329,110 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
     }
 }
 
-// uint64_t CallBuiltinTrampoline(uintptr_t glue, uintptr_t codeAddress, uint32_t argc, ...)
-// webkit_jscc calling convention call runtime_id's runtion function(c-abi)
-// Input:        %x0 - glue
-// stack layout: sp + N*8 argvN
-//               ........
-//               sp + 24: argv0
-//               sp + 16: actualArgc
-//               sp + 8:  env
-//               sp:      codeAddress
-// construct Native Leave Frame
-//               +--------------------------+
-//               |       argv0              | calltarget , newtARGET, this, ....
-//               +--------------------------+ ---
-//               |       argc               |   ^
-//               |--------------------------|   |
-//               |       env | thread       |   |
-//               |--------------------------|  Fixed
-//               |       codeAddress        | OptimizedBuiltinLeaveFrame
-//               |--------------------------|   |
-//               |       returnAddr         |   |
-//               |--------------------------|   |
-//               |       callsiteFp         |   |
-//               |--------------------------|   |
-//               |       frameType          |   v
-//               +--------------------------+ ---
-
-// Output:       sp - 8 : pc
-//               sp - 16: rbp <---------current rbp & current sp
-//               current sp - 8:        type
+// * uint64_t CallBuiltinTrampoline(uintptr_t glue, uintptr_t codeAddress, uint32_t argc, ...)
+// * webkit_jscc calling convention call runtime_id's runtime function(c-abi)
+// * Argument:
+//           %x0: glue
+//
+// * Construct Native Leave Frame Layout:
+//          +--------------------------+
+//          |       argv[N-1]          |
+//          +--------------------------+
+//          |      . . . . . .         |
+//          +--------------------------+
+//          |      argv[3]=a0          |
+//          +--------------------------+
+//          |      argv[2]=this        |
+//          +--------------------------+
+//          |   argv[1]=new-target     |
+//          +--------------------------+
+//          |   argv[0]=call-target    |
+//          +--------------------------+ -----------------
+//          |       argc               |                 ^
+//          |--------------------------|                 |
+//          |       env or thread      |                 |
+//          |--------------------------|                 |
+//          |       returnAddr         |    OptimizedBuiltinLeaveFrame
+//  sp ---> |--------------------------|                 |
+//          |       callsiteFp         |                 |
+//          |--------------------------|                 |
+//          |       frameType          |                 |
+//          |--------------------------|                 |
+//          |       align byte         |                 v
+//          +--------------------------+ -----------------
 
 void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
 {
-    Register fp(X29);
     Register glue(X0);
     Register sp(SP);
     Register nativeFuncAddr(X4);
+    Register glueTemp(X2);
+    Register temp(X1);
+    Register zero(Zero);
 
-    PushLeaveFrame(assembler, glue, true);
+    __ Mov(glueTemp, glue);
+    __ Str(glue, MemoryOperand(sp, 0)); // thread (instead of env)
+    __ Add(Register(X0), sp, Immediate(0));
+    AsmInterpreterCall::PushBuiltinFrame(assembler, glueTemp, FrameType::BUILTIN_CALL_LEAVE_FRAME, temp, zero);
 
-    __ Str(glue, MemoryOperand(fp, GetStackArgOffSetToFp(BuiltinsLeaveFrameArgId::ENV))); // thread (instead of env)
-    __ Add(Register(X0), fp, Immediate(GetStackArgOffSetToFp(BuiltinsLeaveFrameArgId::ENV)));
-    __ Blr(nativeFuncAddr);
-
-    // descontruct leave frame and callee save register
-    PopLeaveFrame(assembler, true);
-    __ Add(sp, sp, Immediate(FRAME_SLOT_SIZE)); // skip native code address
+    AsmInterpreterCall::CallNativeInternal(assembler, nativeFuncAddr);
     __ Ret();
 }
 
-// uint64_t JSCall(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, JSTaggedType new, JSTaggedType this, ...)
-// webkit_jscc calling convention call js function()
-// %x0 - glue
-// stack layout
-// sp + N*8 argvN
-// ........
-// sp + 24: argc
-// sp + 16: this
-// sp + 8:  new
-// sp:      jsfunc
-//   +--------------------------+
-//   |       ...                |
-//   +--------------------------+
-//   |       arg0               |
-//   +--------------------------+
-//   |       this               |
-//   +--------------------------+
-//   |       new                |
-//   +--------------------------+ ---
-//   |       jsfunction         |   ^
-//   |--------------------------|  Fixed
-//   |       argc               | OptimizedFrame
-//   |--------------------------|   |
-//   |       returnAddr         |   |
-//   |--------------------------|   |
-//   |       callsiteFp         |   |
-//   |--------------------------|   |
-//   |       frameType          |   v
-//   +--------------------------+ ---
-void OptimizedCall::JSCall(ExtendedAssembler *assembler)
+// * uint64_t JSCall(uintptr_t glue, JSTaggedType env, uint32_t argc, JSTaggedType calltarget, JSTaggedType new,
+//                   JSTaggedType this, arg[0], arg[1], arg[2], ..., arg[N-1])
+// * webkit_jscc calling convention call js function()
+//
+// * OptimizedJSFunctionFrame layout description as the following:
+//               +--------------------------+
+//               |        arg[N-1]          |
+//               +--------------------------+
+//               |       ...                |
+//               +--------------------------+
+//               |       arg[1]             |
+//               +--------------------------+
+//               |       arg[0]             |
+//               +--------------------------+
+//               |       this               |
+//               +--------------------------+
+//               |       new-target         |
+//               +--------------------------+
+//               |       call-target        |
+//               |--------------------------|
+//               |       argc               |
+//               |--------------------------|
+//               |       lexEnv             |
+//      sp ----> |--------------------------| ---------------
+//               |       returnAddr         |               ^
+//               |--------------------------|               |
+//               |       callsiteFp         |               |
+//               |--------------------------|   OptimizedJSFunctionFrame
+//               |       frameType          |               |
+//               |--------------------------|               |
+//               |       lexEnv             |               v
+//               +--------------------------+ ---------------
+
+void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSCall));
     Register jsfunc(X1);
     Register sp(SP);
     __ Ldr(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE * 2)); // 2: skip env and argc
-    JSCallInternal(assembler, jsfunc);
+    JSCallInternal(assembler, jsfunc, isNew);
 }
 
-void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc)
+void OptimizedCall::JSCallNew(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallNew));
+    GenJSCall(assembler, true);
+}
+
+void OptimizedCall::JSCall(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCall));
+    GenJSCall(assembler, false);
+}
+
+void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc, bool isNew)
 {
     Register sp(SP);
     Register glue(X0);
@@ -400,7 +455,9 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Ldr(actualArgC, MemoryOperand(sp, FRAME_SLOT_SIZE));
     __ Ldr(callField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
     __ Tbnz(callField, MethodLiteral::IsNativeBit::START_BIT, &callNativeMethod);
-    __ Tbnz(Register(X5), JSHClass::ClassConstructorBit::START_BIT, &lCallConstructor);
+    if (!isNew) {
+        __ Tbnz(Register(X5), JSHClass::ClassConstructorBit::START_BIT, &lCallConstructor);
+    }
     __ Tbnz(callField, MethodLiteral::IsAotCodeBit::START_BIT, &callOptimizedMethod);
     {
         Register argV(X5);
@@ -416,8 +473,6 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     {
         Register nativeFuncAddr(X4);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-        // -8 : -8 means sp increase step
-        __ Str(nativeFuncAddr, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
     }
 
@@ -456,9 +511,8 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         Register frameType(X6);
         __ SaveFpAndLr();
         __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)));
-        __ Mov(Register(X5), Immediate(0));
         // 2 : 2 means pair
-        __ Stp(Register(X5), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Stp(Register(Zero), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         Register argC(X5);
         Register runtimeId(X6);
         __ Mov(argC, Immediate(0));
@@ -518,8 +572,6 @@ void OptimizedCall::ConstructorJSCallInternal(ExtendedAssembler *assembler, Regi
     {
         Register nativeFuncAddr(X4);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-        // -8 : -8 means sp increase step
-        __ Str(nativeFuncAddr, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
     }
 
@@ -718,9 +770,17 @@ void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register s
     __ Mov(baseAddress, Immediate(JSThread::GlueData::GetCOStubEntriesOffset(false)));
     __ Mov(proxyCallInternalId, Immediate(CommonStubCSigns::JsProxyCallInternal));
     __ Add(codeAddress, X0, baseAddress);
-    __ Ldr(codeAddress, MemoryOperand(codeAddress, proxyCallInternalId, UXTW, SHIFT_OF_FRAMESLOT));
+    __ Ldr(codeAddress, MemoryOperand(codeAddress, proxyCallInternalId, UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Br(codeAddress);
 }
+
+// * uint64_t JSProxyCallInternalWithArgV(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
+// * c++ calling convention call js function
+// * Arguments:
+//        %x0 - glue
+//        %x1 - argc
+//        %x2 - calltarget
+//        %x3 - argV[] = { calltarget, newtarget, thisObj, arg[0], arg[1], ..., arg[N-1])
 
 void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
 {
@@ -731,6 +791,29 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     __ Str(jsfunc, MemoryOperand(argv, 0));
     JSCallInternal(assembler, jsfunc);
 }
+
+// * uint64_t CallRuntimeWithArgv(uintptr_t glue, uint64_t runtime_id, uint64_t argc, uintptr_t argv)
+// * cc calling convention call runtime_id's runtion function(c-abi)
+// * Arguments:
+//         %x0 - glue
+//         %x1 - runtime_id
+//         %x2 - argc
+//         %x3 - argv
+//
+// * Optimized-leaved-frame-with-argv layout as the following:
+//         +--------------------------+
+//         |       argv[]             |
+//         +--------------------------+-------------
+//         |       argc               |            ^
+//         |--------------------------|            |
+//         |       RuntimeId          |   OptimizedWithArgvLeaveFrame
+//  sp --> |--------------------------|            |
+//         |       returnAddr         |            |
+//         |--------------------------|            |
+//         |       callsiteFp         |            |
+//         |--------------------------|            |
+//         |       frameType          |            v
+//         +--------------------------+-------------
 
 void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
 {
@@ -785,9 +868,9 @@ void OptimizedCall::PopJSFunctionArgs(ExtendedAssembler *assembler, Register exp
         Register tmp = __ TempRegister1();
         __ Cmp(expectedNumArgs, actualNumArgs);
         __ CMov(tmp, expectedNumArgs, actualNumArgs, Condition::HI);
-        __ Add(sp, sp, Operand(tmp, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Add(sp, sp, Operand(tmp, UXTW, FRAME_SLOT_SIZE_LOG2));
     } else {
-        __ Add(sp, sp, Operand(expectedNumArgs, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Add(sp, sp, Operand(expectedNumArgs, UXTW, FRAME_SLOT_SIZE_LOG2));
     }
     __ Add(sp, sp, Immediate(argoffsetSlot * FRAME_SLOT_SIZE));
     __ Mov(fp, sp);
@@ -850,6 +933,28 @@ void OptimizedCall::PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler)
     __ RestoreFpAndLr();
 }
 
+// * uint64_t PushOptimizedUnfoldArgVFrame(uintptr_t glue, uint32_t argc, JSTaggedType calltarget,
+//                                         JSTaggedType new, JSTaggedType this, JSTaggedType argV[])
+// * cc calling convention call js function()
+// * arguments:
+//              %x0 - glue
+//              %x1 - argc
+//              %x2 - call-target
+//              %x3 - new-target
+//              %x4 - this
+//              %x5 - argv
+//
+// * OptimizedUnfoldArgVFrame layout description as the following:
+//      sp ----> |--------------------------| ---------------
+//               |       returnAddr         |               ^
+//  currentFp--> |--------------------------|               |
+//               |       prevFp             |               |
+//               |--------------------------|   OptimizedUnfoldArgVFrame
+//               |       frameType          |               |
+//               |--------------------------|               |
+//               |       currentFp          |               v
+//               +--------------------------+ ---------------
+
 void OptimizedCall::PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp)
 {
     Register sp(SP);
@@ -870,9 +975,44 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
     __ RestoreFpAndLr();
 }
 
-void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
+// * uint64_t JSCallWithArgV(uintptr_t glue, uint32_t argc, JSTaggedType calltarget,
+//                          JSTaggedType new, JSTaggedType this, argV)
+// * cc calling convention call js function()
+// * arguments:
+//              %x0 - glue
+//              %x1 - argc
+//              %x2 - call-target
+//              %x3 - new-target
+//              %x4 - this
+//              %x5 - argV[]
+//
+// * OptimizedJSFunctionFrame layout description as the following:
+//               +--------------------------+
+//               |        arg[N-1]          |
+//               +--------------------------+
+//               |        . . . . .         |
+//               +--------------------------+
+//               |        arg[0]            |
+//               +--------------------------+
+//               |       this               |
+//               +--------------------------+
+//               |       new-target         |
+//               +--------------------------+
+//               |       call-target        |
+//               |--------------------------|
+//               |       argc               |
+//      sp ----> |--------------------------| ---------------
+//               |       returnAddr         |               ^
+//               |--------------------------|               |
+//               |       callsiteFp         |               |
+//               |--------------------------|  OptimizedJSFunctionFrame
+//               |       frameType          |               |
+//               |--------------------------|               |
+//               |       lexEnv             |               v
+//               +--------------------------+ ---------------
+
+void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgV));
     Register sp(SP);
     Register glue(X0);
     Register actualNumArgs(X1);
@@ -905,12 +1045,28 @@ void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
     __ Ldr(env, MemoryOperand(jsfunc, JSFunction::LEXICAL_ENV_OFFSET));
     __ Str(env, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
 
-    __ CallAssemblerStub(RTSTUB_ID(JSCall), false);
+    if (isNew) {
+        __ CallAssemblerStub(RTSTUB_ID(JSCallNew), false);
+    } else {
+        __ CallAssemblerStub(RTSTUB_ID(JSCall), false);
+    }
 
     __ Ldr(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
     PopJSFunctionArgs(assembler, actualNumArgs, actualNumArgs);
     PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
+}
+
+void OptimizedCall::JSCallNewWithArgV(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallNewWithArgV));
+    GenJSCallWithArgV(assembler, true);
+}
+
+void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgV));
+    GenJSCallWithArgV(assembler, false);
 }
 
 void OptimizedCall::ConstructorJSCallWithArgV([[maybe_unused]]ExtendedAssembler *assembler)
@@ -954,6 +1110,109 @@ void OptimizedCall::ConstructorJSCallWithArgV([[maybe_unused]]ExtendedAssembler 
     PopJSFunctionArgs(assembler, actualNumArgs, actualNumArgs);
     PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
+}
+
+void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
+{
+    // rdi
+    Register glueRegister = __ GlueRegister();
+    Register context(X2);
+    Register opRegister(X9);
+    Register outputCount(X10);
+    Register frameStateBase(X11);
+    Register currentSlotRegister(X12);
+    Register sp(SP);
+
+    __ PushFpAndLr();
+
+    __ Mov(currentSlotRegister, sp);
+    __ Ldr(outputCount, MemoryOperand(context, AsmStackContext::GetOutputCountOffset(false)));
+    __ Add(frameStateBase, context, Immediate(AsmStackContext::GetSize(false)));
+
+    Label stackOverflow;
+    // update fp
+    __ Str(currentSlotRegister, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
+    PushArgsWithArgv(assembler, glueRegister, outputCount, frameStateBase, opRegister,
+                     currentSlotRegister, nullptr, &stackOverflow);
+
+    Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
+    Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
+    {
+        // X19, fp, x20, x21,      x22,     x23,  x24
+        // glue sp   pc  constpool  profile  acc   hotness
+        __ Ldr(callTargetRegister, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFunctionOffset(false)));
+        __ Ldr(Register(X20), MemoryOperand(frameStateBase, AsmInterpretedFrame::GetPcOffset(false)));
+        __ Ldr(Register(X23), MemoryOperand(frameStateBase, AsmInterpretedFrame::GetAccOffset(false)));
+        __ Ldr(methodRegister, MemoryOperand(callTargetRegister, JSFunctionBase::METHOD_OFFSET));
+
+        __ Add(opRegister, currentSlotRegister, Immediate(AsmInterpretedFrame::GetSize(false)));
+
+        __ Align16(currentSlotRegister);
+        __ Mov(Register(SP), currentSlotRegister);
+        AsmInterpreterCall::DispatchCall(assembler, Register(X20), opRegister, Register(X23));
+    }
+    __ Bind(&stackOverflow);
+    {
+        Register temp(X1);
+        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(
+            assembler, glueRegister, sp, temp);
+    }
+}
+
+void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(DeoptHandlerAsm));
+    __ PushFpAndLr();
+    Register sp(SP);
+    Register fp(FP);
+    Register frameType(X1);
+    Register glueReg(X0);
+
+    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME)));
+    __ Stp(glueReg, frameType, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Add(fp, sp, Immediate(DOUBLE_SLOT_SIZE));
+    __ CalleeSave();
+
+    Register runtimeId(X2);
+    __ Mov(runtimeId, Immediate(RTSTUB_ID(DeoptHandler)));
+    __ Stp(runtimeId, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
+    __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE)); // 2: skip runtimeId argc
+
+    __ CalleeRestore();
+    Register context(X2);
+    __ Mov(context, Register(X0));
+    __ Ldr(glueReg, MemoryOperand(sp, 0));
+
+    Register ret(X0);
+    Label stackOverflow;
+    __ Cmp(ret, Immediate(JSTaggedValue::VALUE_EXCEPTION));
+    __ B(Condition::EQ, &stackOverflow);
+
+    Label target;
+    Register temp(X1);
+    __ Ldr(fp, MemoryOperand(context, AsmStackContext::GetCallerFpOffset(false)));
+    __ Ldr(temp, MemoryOperand(context, AsmStackContext::GetCallFrameTopOffset(false)));
+    __ Mov(sp, temp);
+    __ Ldr(Register(X30), MemoryOperand(context, AsmStackContext::GetReturnAddressOffset(false)));
+
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    DeoptEnterAsmInterp(assembler);
+
+    __ Bind(&stackOverflow);
+    {
+        __ Mov(runtimeId, Immediate(RTSTUB_ID(ThrowStackOverflowException)));
+        // 2 : 2 means pair
+        __ Stp(runtimeId, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
+        __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 2: skip runtimeId&argc glue&type
+        __ RestoreFpAndLr();
+        __ Ret();
+    }
 }
 #undef __
 }  // panda::ecmascript::aarch64

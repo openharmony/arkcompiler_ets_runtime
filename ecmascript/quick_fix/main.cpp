@@ -60,15 +60,15 @@ int Main(const int argc, const char **argv)
     BlockSignals();
 
     if (argc < 2) { // 2: at least have two arguments
-        std::cerr << GetHelper();
+        std::cout << GetHelper();
         return -1;
     }
 
     int newArgc = argc;
     std::string files = argv[argc - 1];
     if (!base::StringHelper::EndsWith(files, ".abc")) {
-        std::cerr << "The last argument must be abc file" << std::endl;
-        std::cerr << GetHelper();
+        std::cout << "The last argument must be abc file" << std::endl;
+        std::cout << GetHelper();
         return 1;
     }
 
@@ -76,7 +76,7 @@ int Main(const int argc, const char **argv)
     JSRuntimeOptions runtimeOptions;
     bool retOpt = runtimeOptions.ParseCommand(newArgc, argv);
     if (!retOpt) {
-        std::cerr << GetHelper();
+        std::cout << GetHelper();
         return 1;
     }
 
@@ -86,12 +86,12 @@ int Main(const int argc, const char **argv)
     }
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
-        std::cerr << "Cannot Create vm" << std::endl;
+        std::cout << "Cannot Create vm" << std::endl;
         return -1;
     }
 
     {
-        std::cout << "QuickFix Test start!" << std::endl;
+        std::cout << "QuickFix Execute start" << std::endl;
         LocalScope scope(vm);
         std::string entry = runtimeOptions.GetEntryPoint();
 
@@ -102,59 +102,63 @@ int Main(const int argc, const char **argv)
 #endif
         uint32_t len = fileNames.size();
         if (len < 4) {  // 4: four abc file
-            std::cerr << "Must include base.abc, patch.abc, test1.abc, test2.abc absolute path" << std::endl;
+            std::cout << "Must include base.abc, patch.abc, test1.abc, test2.abc absolute path" << std::endl;
             return -1;
         }
         std::string baseFileName = fileNames[0];
-        std::string patchFileName = fileNames[1];  // 1: second file, patch.abc
-        std::string testLoadFileName = fileNames[2];  // 2: third file, test loadpatch abc file.
-        std::string testUnloadFileName = fileNames[3]; // 3: fourth file, test unloadpatch abc file.
-
-        JSNApi::EnableUserUncaughtErrorHandler(vm);
-
         bool isMergeAbc = runtimeOptions.GetMergeAbc();
         JSNApi::SetBundle(vm, !isMergeAbc);
         auto res = JSNApi::Execute(vm, baseFileName, entry);
         if (!res) {
-            std::cerr << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;
+            std::cout << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;
             return -1;
         }
+        JSNApi::EnableUserUncaughtErrorHandler(vm);
 
-        res = JSNApi::LoadPatch(vm, patchFileName, baseFileName);
-        if (!res) {
-            std::cerr << "LoadPatch failed!"<< std::endl;
-            return -1;
+        std::string testLoadFileName = fileNames[1];
+        std::string testUnloadFileName = fileNames[2]; // 2: third file, test unloadpatch abc file.
+        for (uint32_t i = 3; i < len; i++) { // 3: patch file, test unloadpatch abc file.
+            std::string patchFileName = fileNames[i];
+            std::cout << "QuickFix start load patch" << std::endl;
+            res = JSNApi::LoadPatch(vm, patchFileName, baseFileName);
+            if (!res) {
+                std::cout << "LoadPatch failed"<< std::endl;
+                return -1;
+            }
+            std::cout << "QuickFix load patch success" << std::endl;
+
+            res = JSNApi::Execute(vm, testLoadFileName, entry);
+            if (!res) {
+                std::cout << "Cannot execute panda file '" << testLoadFileName
+                        << "' with entry '" << entry << "'" << std::endl;
+                return -1;
+            }
+
+            std::cout << "QuickFix start check exception" << std::endl;
+            Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm);
+            res = JSNApi::IsQuickFixCausedException(vm, exception, patchFileName);
+            if (res) {
+                std::cout << "QuickFix have exception." << std::endl;
+            } else {
+                std::cout << "QuickFix have no exception" << std::endl;
+            }
+
+            std::cout << "QuickFix start unload patch" << std::endl;
+            res = JSNApi::UnloadPatch(vm, patchFileName);
+            if (!res) {
+                std::cout << "UnloadPatch failed!" << std::endl;
+                return -1;
+            }
+            std::cout << "QuickFix unload patch success" << std::endl;
+
+            res = JSNApi::Execute(vm, testUnloadFileName, entry);
+            if (!res) {
+                std::cout << "Cannot execute panda file '" << testUnloadFileName
+                        << "' with entry '" << entry << "'" << std::endl;
+                return -1;
+            }
         }
-
-        res = JSNApi::Execute(vm, testLoadFileName, entry);
-        if (!res) {
-            std::cerr << "Cannot execute panda file '" << testLoadFileName
-                      << "' with entry '" << entry << "'" << std::endl;
-            return -1;
-        }
-
-        Local<ObjectRef> exception = JSNApi::GetUncaughtException(vm);
-        res = JSNApi::IsQuickFixCausedException(vm, exception, patchFileName);
-        if (res) {
-            std::cout << "Patch have exception." << std::endl;
-        } else {
-            std::cout << "-------------------------------------------" << std::endl;
-        }
-
-        res = JSNApi::UnloadPatch(vm, patchFileName);
-        if (!res) {
-            std::cerr << "UnloadPatch failed!" << std::endl;
-            return -1;
-        }
-
-        res = JSNApi::Execute(vm, testUnloadFileName, entry);
-        if (!res) {
-            std::cerr << "Cannot execute panda file '" << testUnloadFileName
-                      << "' with entry '" << entry << "'" << std::endl;
-            return -1;
-        }
-
-        std::cout << "QuickFix Test end!" << std::endl;
+        std::cout << "QuickFix Execute end" << std::endl;
     }
 
     JSNApi::DestroyJSVM(vm);

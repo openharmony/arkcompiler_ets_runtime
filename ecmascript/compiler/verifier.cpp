@@ -422,11 +422,11 @@ std::vector<GateRef> Verifier::FindFixedGates(const Circuit *circuit, const std:
     return fixedGatesList;
 }
 
-bool Verifier::Run(const Circuit *circuit, bool enableLog)
+bool Verifier::Run(const Circuit *circuit, const std::string& methodName, bool enableLog)
 {
     if (!RunDataIntegrityCheck(circuit)) {
         if (enableLog) {
-            LOG_COMPILER(ERROR) << "[Verifier][Fail] Circuit data integrity verifier failed";
+            LOG_COMPILER(ERROR) << "[Verifier][Fail] Circuit data integrity verifier failed, " << methodName;
         }
         return false;
     }

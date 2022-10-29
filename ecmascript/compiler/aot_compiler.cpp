@@ -79,7 +79,6 @@ int Main(const int argc, const char **argv)
     {
         LocalScope scope(vm);
         arg_list_t pandaFileNames = base::StringHelper::SplitString(files, ":");
-        runtimeOptions.ParseAbcListFile(pandaFileNames);
         std::string triple = runtimeOptions.GetTargetTriple();
         std::string outputFileName = runtimeOptions.GetAOTOutputFile();
         size_t optLevel = runtimeOptions.GetOptLevel();
@@ -89,6 +88,7 @@ int Main(const int argc, const char **argv)
         bool isEnableBcTrace = runtimeOptions.IsEnableByteCodeTrace();
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
+        uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         BytecodeStubCSigns::Initialize();
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
@@ -96,14 +96,15 @@ int Main(const int argc, const char **argv)
         CompilerLog log(logOption, isEnableBcTrace);
         AotMethodLogList logList(logMethodsList);
         AOTFileGenerator generator(&log, &logList, vm, pandaFileNames.size());
+        std::string profilerIn(runtimeOptions.GetPGOProfilerPath());
         if (runtimeOptions.WasSetEntryPoint()) {
             entrypoint = runtimeOptions.GetEntryPoint();
         }
         PassManager passManager(vm, entrypoint, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
-                                isEnableTypeLowering);
+                                isEnableTypeLowering, hotnessThreshold);
         for (const auto &fileName : pandaFileNames) {
             LOG_COMPILER(INFO) << "AOT compile: " << fileName;
-            if (passManager.Compile(fileName, generator) == false) {
+            if (passManager.Compile(fileName, generator, profilerIn) == false) {
                 ret = false;
                 continue;
             }

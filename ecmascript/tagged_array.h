@@ -83,6 +83,7 @@ public:
     static constexpr size_t DATA_OFFSET = SIZE;  // DATA_OFFSET equal to Empty Array size
 
     DECL_VISIT_ARRAY(DATA_OFFSET, GetLength());
+    DECL_DUMP()
 
 private:
     friend class ObjectFactory;
@@ -90,5 +91,15 @@ private:
 
 static_assert(TaggedArray::LENGTH_OFFSET == sizeof(TaggedObject));
 static_assert((TaggedArray::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+
+// Copy On Write TaggedArray is shared in the nonmovable space.
+class COWTaggedArray : public TaggedArray {
+public:
+    CAST_CHECK(COWTaggedArray, IsCOWArray)
+    DECL_DUMP()
+private:
+    friend class ObjectFactory;
+};
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_ARRAY_H

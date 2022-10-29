@@ -23,6 +23,7 @@
 #include <semaphore.h>
 
 #include "ecmascript/js_thread.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
@@ -65,14 +66,15 @@ struct FrameInfoTemp {
     int lineNumber = 0;
     int scriptId = 0;
     char url[500] = {0}; // 500:the maximum size of the url
-    Method *method = nullptr;
+    void *methodIdentifier = nullptr;
 };
 struct MethodKey {
-    Method *method = nullptr;
+    void *methodIdentifier = nullptr;
     int parentId = 0;
     bool operator< (const MethodKey &methodKey) const
     {
-        return parentId < methodKey.parentId || (parentId == methodKey.parentId && method < methodKey.method);
+        return parentId < methodKey.parentId ||
+               (parentId == methodKey.parentId && methodIdentifier < methodKey.methodIdentifier);
     }
 };
 
@@ -106,9 +108,9 @@ public:
     int SemPost(int index);
     int SemWait(int index);
     int SemDestroy(int index);
-    const CMap<Method *, struct FrameInfo> &GetStackInfo() const;
-    void InsertStackInfo(Method *method, struct FrameInfo &codeEntry);
-    bool PushFrameStack(Method *method);
+    const CMap<void *, struct FrameInfo> &GetStackInfo() const;
+    void InsertStackInfo(void *methodIdentifier, struct FrameInfo &codeEntry);
+    bool PushFrameStack(void *methodIdentifier);
     bool PushStackInfo(const FrameInfoTemp &frameInfoTemp);
     bool GetBeforeGetCallNapiStackFlag();
     void SetBeforeGetCallNapiStackFlag(bool flag);
@@ -116,7 +118,7 @@ public:
     void SetAfterGetCallNapiStackFlag(bool flag);
     bool GetCallNapiFlag();
     void SetCallNapiFlag(bool flag);
-    bool PushNapiFrameStack(Method *method);
+    bool PushNapiFrameStack(void *methodIdentifier);
     bool PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp);
     int GetNapiFrameStackLength();
     void ClearNapiStack();
@@ -125,7 +127,7 @@ public:
 private:
     void WriteAddNodes();
     void WriteAddSamples();
-    struct FrameInfo GetMethodInfo(Method *method);
+    struct FrameInfo GetMethodInfo(void *methodIdentifier);
     struct FrameInfo GetGcInfo();
     void FrameInfoTempToMap();
     void NapiFrameInfoTempToMap();
@@ -146,14 +148,14 @@ private:
     std::string sampleData_ = "";
     std::string fileName_ = "";
     sem_t sem_[3]; // 3 : sem_ size is three.
-    CMap<Method *, struct FrameInfo> stackInfoMap_;
-    Method *frameStack_[MAX_ARRAY_COUNT] = {};
+    CMap<void *, struct FrameInfo> stackInfoMap_;
+    void *frameStack_[MAX_ARRAY_COUNT] = {};
     int frameStackLength_ = 0;
     CMap<std::string, int> scriptIdMap_;
     FrameInfoTemp frameInfoTemps_[MAX_ARRAY_COUNT] = {};
     int frameInfoTempLength_ = 0;
     // napi stack
-    CVector<Method *> napiFrameStack_;
+    CVector<void *> napiFrameStack_;
     CVector<FrameInfoTemp> napiFrameInfoTemps_;
 };
 } // namespace panda::ecmascript

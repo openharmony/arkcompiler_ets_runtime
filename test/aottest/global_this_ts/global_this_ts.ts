@@ -15,5 +15,5 @@
 
 declare function print(str:any):string;
 
-var global = this;
+var global = globalThis;
 print(typeof global);

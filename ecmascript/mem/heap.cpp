@@ -37,7 +37,7 @@
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
 
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/sysinfo.h>
 #endif
 
@@ -98,14 +98,14 @@ void Heap::Initialize()
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
 
-    LOG_GC(INFO) << "heap initialize: heap size = " << maxHeapSize
-        << ", semispace capacity = " << minSemiSpaceCapacity
-        << ", nonmovablespace capacity = " << nonmovableSpaceCapacity
-        << ", snapshotspace capacity = " << snapshotSpaceCapacity
-        << ", machinecodespace capacity = " << machineCodeSpaceCapacity
-        << ", oldspace capacity = " << oldSpaceCapacity
-        << ", globallimit = " << globalSpaceAllocLimit_
-        << ", gcThreadNum = " << maxMarkTaskCount_;
+    LOG_GC(INFO) << "heap initialize: heap size = " << (maxHeapSize / 1_MB) << "MB"
+                 << ", semispace capacity = " << (minSemiSpaceCapacity / 1_MB) << "MB"
+                 << ", nonmovablespace capacity = " << (nonmovableSpaceCapacity / 1_MB) << "MB"
+                 << ", snapshotspace capacity = " << (snapshotSpaceCapacity / 1_MB) << "MB"
+                 << ", machinecodespace capacity = " << (machineCodeSpaceCapacity / 1_MB) << "MB"
+                 << ", oldspace capacity = " << (oldSpaceCapacity / 1_MB) << "MB"
+                 << ", globallimit = " << (globalSpaceAllocLimit_ / 1_MB) << "MB"
+                 << ", gcThreadNum = " << maxMarkTaskCount_;
     parallelGC_ = ecmaVm_->GetJSOptions().EnableParallelGC();
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
     markType_ = MarkType::MARK_YOUNG;
@@ -408,9 +408,9 @@ void Heap::CollectGarbage(TriggerGCType gcType)
 # if ECMASCRIPT_ENABLE_GC_LOG
     ecmaVm_->GetEcmaGCStats()->PrintStatisticResult();
 #endif
-    // weak node secondPassCallback may execute JS and change the weakNodeList status,
+    // weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
-    InvokeWeakNodeSecondPassCallback();
+    InvokeWeakNodeNativeFinalizeCallback();
 
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     // post gc heap verify
@@ -936,22 +936,22 @@ bool Heap::ContainObject(TaggedObject *object) const
     return region->InHeapSpace();
 }
 
-void Heap::InvokeWeakNodeSecondPassCallback()
+void Heap::InvokeWeakNodeNativeFinalizeCallback()
 {
     // the second callback may lead to another GC, if this, return directly;
-    if (runningSecondPassCallbacks_) {
+    if (runningNativeFinalizeCallbacks_) {
         return;
     }
-    runningSecondPassCallbacks_ = true;
-    auto weakNodesSecondCallbacks = thread_->GetWeakNodeSecondPassCallbacks();
-    while (!weakNodesSecondCallbacks->empty()) {
-        auto callbackPair = weakNodesSecondCallbacks->back();
-        weakNodesSecondCallbacks->pop_back();
+    runningNativeFinalizeCallbacks_ = true;
+    auto weakNodeNativeFinalizeCallBacks = thread_->GetWeakNodeNativeFinalizeCallbacks();
+    while (!weakNodeNativeFinalizeCallBacks->empty()) {
+        auto callbackPair = weakNodeNativeFinalizeCallBacks->back();
+        weakNodeNativeFinalizeCallBacks->pop_back();
         ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
         auto callback = callbackPair.first;
         callback(callbackPair.second);
     }
-    runningSecondPassCallbacks_ = false;
+    runningNativeFinalizeCallbacks_ = false;
 }
 
 void Heap::StatisticHeapObject(TriggerGCType gcType) const

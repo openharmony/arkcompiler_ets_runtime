@@ -14,7 +14,7 @@
  */
 #include "ecmascript/module/js_module_manager.h"
 
-#include "ecmascript/file_loader.h"
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
@@ -256,7 +256,13 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModuleWithMerge(con
         UNREACHABLE();
     }
 
-    return ResolveModuleWithMerge(thread, jsPandaFile, recordName);
+    JSHandle<SourceTextModule> moduleRecord = ResolveModuleWithMerge(thread, jsPandaFile, recordName);
+    JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
+    resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
+                                           JSHandle<JSTaggedValue>(moduleRecord), PropertyAttributes::Default())
+                                           .GetTaggedValue();
+
+    return moduleRecord;
 }
 
 JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CString &referencingModule)
@@ -267,7 +273,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
     JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(referencingModule);
     CString moduleFileName = referencingModule;
     if (!vm_->GetResolvePathCallback()) {
-        if (FileLoader::GetAbsolutePath(referencingModule, moduleFileName)) {
+        if (AOTFileManager::GetAbsolutePath(referencingModule, moduleFileName)) {
             referencingHandle = factory->NewFromUtf8(moduleFileName);
         } else {
             LOG_ECMA(FATAL) << "absolute " << referencingModule << " path error";
@@ -354,10 +360,6 @@ JSHandle<SourceTextModule> ModuleManager::ResolveModuleWithMerge(
 
     JSHandle<JSTaggedValue> recordNameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recordName));
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHandle);
-    JSHandle<NameDictionary> dict(thread, resolvedModules_);
-    resolvedModules_ =
-        NameDictionary::Put(thread, dict, recordNameHandle, moduleRecord, PropertyAttributes::Default())
-        .GetTaggedValue();
     return JSHandle<SourceTextModule>::Cast(moduleRecord);
 }
 
@@ -542,12 +544,6 @@ void ModuleManager::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&resolvedModules_)));
 }
 
-CString ModuleManager::ResolveModuleFileName(const CString &fileName)
-{
-    JSHandle<SourceTextModule> sourceTextModule = HostResolveImportedModule(fileName);
-    return ConvertToString(sourceTextModule->GetEcmaModuleFilename());
-}
-
 CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
                                                CString &moduleRecordName, CString &moduleRequestName)
 {
@@ -592,19 +588,55 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         CString key = "";
         if (pos != CString::npos) {
             key = moduleRecordName + "/" + JSPandaFile::NODE_MODULES + "/" + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
+            entryPoint = jsPandaFile->FindEntryPoint(key);
         }
 
         if (entryPoint.empty()) {
             key = JSPandaFile::NODE_MODULES_ZERO + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
+            entryPoint = jsPandaFile->FindEntryPoint(key);
         }
 
         if (entryPoint.empty()) {
             key = JSPandaFile::NODE_MODULES_ONE + moduleRequestName;
-            entryPoint = jsPandaFile->FindrecordName(key);
+            entryPoint = jsPandaFile->FindEntryPoint(key);
         }
     }
     return entryPoint;
+}
+
+CString ModuleManager::GetRecordName(JSTaggedValue module)
+{
+    CString entry = "";
+    if (module.IsString()) {
+        entry = ConvertToString(module);
+    }
+    if (module.IsSourceTextModule()) {
+        SourceTextModule *sourceTextModule = SourceTextModule::Cast(module.GetTaggedObject());
+        if (sourceTextModule->GetEcmaModuleRecordName().IsString()) {
+            entry = ConvertToString(sourceTextModule->GetEcmaModuleRecordName());
+        }
+    }
+    return entry;
+}
+
+int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule,
+                                        const std::string &key)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<TaggedArray> localExportEntries = JSHandle<TaggedArray>(thread, ecmaModule->GetLocalExportEntries());
+    size_t exportEntriesLen = localExportEntries->GetLength();
+    // 0: There's only one export value "default"
+    int index = 0;
+    JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
+    if (exportEntriesLen > 1) { // 1:  The number of export objects exceeds 1
+        for (size_t idx = 0; idx < exportEntriesLen; idx++) {
+            ee.Update(localExportEntries->Get(idx));
+            if (EcmaStringAccessor(ee->GetExportName()).ToStdString() == key) {
+                index = static_cast<int>(idx);
+                break;
+            }
+        }
+    }
+    return index;
 }
 } // namespace panda::ecmascript

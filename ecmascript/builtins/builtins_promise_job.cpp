@@ -21,6 +21,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -134,21 +135,38 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     JSHandle<JSPromiseReactionsFunction> reject(GetCallArg(argv, 1)); // 1 : first argument
     JSHandle<EcmaString> dirPath(GetCallArg(argv, 2)); // 2: second argument
     JSHandle<EcmaString> specifier(GetCallArg(argv, 3)); // 3 : third argument
+    JSHandle<JSTaggedValue> recordName(GetCallArg(argv, 4)); // 4 : fourth recordName
 
-    // dirPath + specifier ----> fileName
-    JSHandle<EcmaString> fileName = CjsModule::ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
-                                                                         specifier.GetTaggedValue());
-    CString moduleName = ConvertToString(fileName.GetTaggedValue());
+    JSHandle<EcmaString> moduleName;
+    CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
+    CString fileNameStr = "";
+    if (recordName->IsUndefined()) {
+        // dirPath + specifier ----> fileName
+        moduleName =
+            CjsModule::ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(), specifier.GetTaggedValue());
+        fileNameStr = ConvertToString(moduleName.GetTaggedValue());
+    } else {
+        CString baseFilename = ConvertToString(dirPath.GetTaggedValue());
+        CString moduleRecordName = ConvertToString(recordName.GetTaggedValue());
+        CString moduleRequestName = ConvertToString(specifier.GetTaggedValue());
+        const JSPandaFile *jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName.c_str());
+        entryPoint =
+            ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+        fileNameStr = baseFilename;
+        moduleName = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(entryPoint);
+    }
 
     // std::string entry = "_GLOBAL::func_main_0";
-    if (!vm->GetModuleManager()->IsImportedModuleLoaded(fileName.GetTaggedValue())) {
-        if (!JSPandaFileExecutor::ExecuteFromFile(thread, moduleName.c_str(), "_GLOBAL::func_main_0")) {
+    if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
+        if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str())) {
             LOG_FULL(FATAL) << "Cannot execute dynamic-imported panda file : ";
         }
     }
 
     // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
-    JSHandle<SourceTextModule> moduleRecord = vm->GetModuleManager()->HostGetImportedModule(fileName.GetTaggedValue());
+    JSHandle<SourceTextModule> moduleRecord =
+        vm->GetModuleManager()->HostGetImportedModule(moduleName.GetTaggedValue());
 
     // d. Let namespace be ? GetModuleNamespace(moduleRecord).
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, moduleRecord);

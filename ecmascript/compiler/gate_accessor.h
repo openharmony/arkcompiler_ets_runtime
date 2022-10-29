@@ -310,6 +310,7 @@ public:
     BitField GetBitField(GateRef gate) const;
     void SetBitField(GateRef gate, BitField bitField);
     void Print(GateRef gate) const;
+    void ShortPrint(GateRef gate) const;
     GateId GetId(GateRef gate) const;
     GateRef GetValueIn(GateRef gate, size_t idx = 0) const;
     size_t GetNumValueIn(GateRef gate) const;
@@ -326,6 +327,7 @@ public:
     void DeleteIn(GateRef gate, size_t idx);
     UseIterator DeleteGate(const UseIterator &useIt);
     void DecreaseIn(const UseIterator &useIt);
+    void DecreaseIn(GateRef gate, size_t index);
     void NewIn(GateRef gate, size_t idx, GateRef in);
     size_t GetStateCount(GateRef gate) const;
     size_t GetDependCount(GateRef gate) const;
@@ -345,8 +347,9 @@ public:
     bool IsLoopHead(GateRef gate) const;
     bool IsLoopBack(GateRef gate) const;
     bool IsState(GateRef gate) const;
+    bool IsConstant(GateRef gate) const;
+    bool IsTypedOperator(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
-    bool IsTypedGate(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark);
     bool IsFinished(GateRef gate) const;
@@ -360,6 +363,10 @@ public:
     bool IsExceptionState(const UseIterator &useIt) const;
     bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
+    void DeleteGuardAndFrameState(GateRef gate);
+    void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
+    GateType GetLeftType(GateRef gate) const;
+    GateType GetRightType(GateRef gate) const;
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const

@@ -11,18 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (defined(ark_standalone_build)) {
-  import("//ets_runtime/js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
+if (ark_standalone_build) {
   import("$build_root/ark.gni")
 } else {
-  import("//arkcompiler/ets_runtime/js_runtime_config.gni")
   import("//build/ohos.gni")
+}
 
-  action("build_llvm_libs") {
-    script = "compile_llvm_lib.sh"
-    sources = [ "$js_root/ecmascript/compiler/compile_llvm_lib.sh" ]
-    outputs = [ "${root_out_dir}/llvm" ]
-  }
+action("build_llvm_libs") {
+  script = "compile_llvm_lib.sh"
+  sources = [ "$js_root/ecmascript/compiler/compile_llvm_lib.sh" ]
+  outputs = [ "${root_out_dir}/llvm" ]
 }
 
 config("include_llvm") {
@@ -41,6 +41,7 @@ config("include_llvm") {
 
 source_set("libark_jsoptimizer_set") {
   sources = [
+    "access_object_stub_builder.cpp",
     "argument_accessor.cpp",
     "assembler/aarch64/assembler_aarch64.cpp",
     "assembler/aarch64/extend_assembler.cpp",
@@ -52,23 +53,30 @@ source_set("libark_jsoptimizer_set") {
     "builtins/builtins_call_signature.cpp",
     "builtins/builtins_string_stub_builder.cpp",
     "builtins/builtins_stubs.cpp",
+    "builtins/containers_stub_builder.cpp",
     "bytecode_circuit_builder.cpp",
     "bytecode_info_collector.cpp",
+    "bytecodes.cpp",
     "call_signature.cpp",
     "circuit.cpp",
     "circuit_builder.cpp",
     "circuit_optimizer.cpp",
     "common_stubs.cpp",
     "file_generators.cpp",
+    "frame_states.cpp",
     "gate.cpp",
     "gate_accessor.cpp",
+    "guard_eliminating.cpp",
+    "guard_lowering.cpp",
     "ic_stub_builder.cpp",
     "interpreter_stub.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
     "new_object_stub_builder.cpp",
+    "pass_manager.cpp",
     "rt_call_signature.cpp",
     "scheduler.cpp",
+    "slowpath_lowering.cpp",
     "stub.cpp",
     "stub_builder.cpp",
     "test_stubs.cpp",
@@ -79,8 +87,10 @@ source_set("libark_jsoptimizer_set") {
     "trampoline/x64/asm_interpreter_call.cpp",
     "trampoline/x64/common_call.cpp",
     "trampoline/x64/optimized_call.cpp",
+    "ts_type_lowering.cpp",
     "type.cpp",
     "type_inference/type_infer.cpp",
+    "type_lowering.cpp",
     "type_recorder.cpp",
     "verifier.cpp",
   ]
@@ -186,13 +196,7 @@ source_set("ark_stub_compiler_set") {
 }
 
 source_set("ark_aot_compiler_set") {
-  sources = [
-    "aot_compiler.cpp",
-    "pass_manager.cpp",
-    "slowpath_lowering.cpp",
-    "ts_type_lowering.cpp",
-    "type_lowering.cpp",
-  ]
+  sources = [ "aot_compiler.cpp" ]
 
   public_configs = [
     ":include_llvm",
@@ -239,8 +243,8 @@ ohos_shared_library("libark_jsoptimizer") {
   install_enable = false
 
   output_extension = "so"
-  part_name = "ark_js_runtime"
-  subsystem_name = "ark"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_shared_library("libark_jsoptimizer_test") {
@@ -249,7 +253,7 @@ ohos_shared_library("libark_jsoptimizer_test") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
   ]
-  if (!defined(ark_standalone_build)) {
+  if (!ark_standalone_build) {
     ldflags = [ "-Wl,--lto-O0" ]
   }
   install_enable = false
@@ -264,7 +268,7 @@ ohos_executable("ark_stub_compiler") {
     "$ark_root/libpandafile:libarkfile_static",
   ]
 
-  if (!defined(ark_standalone_build)) {
+  if (!ark_standalone_build) {
     ldflags = [ "-Wl,--lto-O0" ]
   }
   install_enable = false
@@ -273,20 +277,32 @@ ohos_executable("ark_stub_compiler") {
     defines = [ "RUN_WITH_ASAN" ]
   }
 
-  part_name = "ark_js_runtime"
-  subsystem_name = "ark"
+  if (target_os == "ios") {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:static_icui18n",
+      "$ark_third_party_root/icu/icu4c:static_icuuc",
+    ]
+  } else {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:shared_icui18n",
+      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    ]
+  }
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_executable("ark_aot_compiler") {
   deps = [ ":ark_aot_compiler_set" ]
 
-  if (defined(ark_standalone_build)) {
+  if (ark_standalone_build) {
     ldflags = [ "-shared" ]
   }
   install_enable = false
 
-  part_name = "ark_js_runtime"
-  subsystem_name = "ark"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 action("gen_stub_file") {
@@ -298,17 +314,19 @@ action("gen_stub_file") {
   root_out_dir_with_host_toolchain =
       get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
-  if (current_toolchain == host_toolchain || defined(ark_standalone_build)) {
-    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an"
+  if (current_toolchain == host_toolchain || ark_standalone_build) {
+    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
+                  "/stub.an" + " --enable-pgo-profiler=false"
   } else {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
-                  "/stub.an" + " --target-triple=aarch64-unknown-linux-gnu"
+                  "/stub.an" + " --target-triple=aarch64-unknown-linux-gnu" +
+                  " --enable-pgo-profiler=false"
   }
 
   args = [
     "--script-file",
     rebase_path(root_out_dir_with_host_toolchain) +
-        "/ark/ark_js_runtime/ark_stub_compiler",
+        "/arkcompiler/ets_runtime/ark_stub_compiler",
     "--script-options",
     stub_option,
     "--expect-output",
@@ -316,8 +334,8 @@ action("gen_stub_file") {
     "--timeout-limit",
     "300",
     "--env-path",
-    rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark:" +
-        rebase_path(root_out_dir_with_host_toolchain) + "/ark/ark_js_runtime:" +
+    rebase_path(root_out_dir_with_host_toolchain) +
+        "/arkcompiler/ets_runtime:" +
         rebase_path(root_out_dir_with_host_toolchain) +
         "/${icu_subsystem_name}/${icu_part_name}:" +
         rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),

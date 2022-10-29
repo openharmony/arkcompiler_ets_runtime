@@ -25,7 +25,6 @@ namespace panda::ecmascript {
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
     const struct option longOptions[] = {
-        {"abc-list-file", required_argument, nullptr, OPTION_ABC_FILES_LIST},
         {"aot-file", required_argument, nullptr, OPTION_AOT_FILE},
         {"ark-properties", required_argument, nullptr, OPTION_ARK_PROPERTIES},
         {"asm-interpreter", required_argument, nullptr, OPTION_ENABLE_ASM_INTERPRETER},
@@ -69,6 +68,10 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
         {"stub-file", required_argument, nullptr, OPTION_STUB_FILE},
         {"target-triple", required_argument, nullptr, OPTION_TARGET_TRIPLE},
+        {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
+        {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
+        {"pgo-profiler-path", required_argument, nullptr, OPTION_PGO_PROFILER_PATH},
+        {"pgo-hotness-threshold", required_argument, nullptr, OPTION_PGO_HOTNESS_THRESHOLD},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -110,9 +113,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 
         WasSet(option);
         switch (option) {
-            case OPTION_ABC_FILES_LIST:
-                SetAbcListFile(optarg);
-                break;
             case OPTION_AOT_FILE:
                 SetAOTOutputFile(optarg);
                 break;
@@ -303,6 +303,33 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetPrintAnyTypes(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_PRINT_EXECUTE_TIME:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnablePrintExecuteTime(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_PGO_PROFILER:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnablePGOProfiler(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_PGO_PROFILER_PATH:
+                SetPGOProfilerPath(optarg);
+                break;
+            case OPTION_PGO_HOTNESS_THRESHOLD:
+                ret = ParseUint32Param("pgo-hotness-threshold", &argUint32);
+                if (ret) {
+                    SetPGOHotnessThreshold(argUint32);
                 } else {
                     return false;
                 }

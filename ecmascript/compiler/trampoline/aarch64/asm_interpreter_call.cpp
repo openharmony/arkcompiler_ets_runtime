@@ -136,14 +136,6 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         __ Mov(Register(SP), tempRegister);
     }
 
-    if (kungfu::AssemblerModule::IsCallNew(mode)) {
-        Register thisRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
-        [[maybe_unused]] TempRegister1Scope scope(assembler);
-        Register tempArgcRegister = __ TempRegister1();
-        __ PushArgc(argcRegister, tempArgcRegister, currentSlotRegister);
-        __ Str(thisRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    }
-
     Register declaredNumArgsRegister = __ AvailableRegister2();
     GetDeclaredNumArgsFromCallField(assembler, callFieldRegister, declaredNumArgsRegister);
 
@@ -181,7 +173,7 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         __ Mov(temp, callTargetRegister);
         __ Ldr(Register(X20), MemoryOperand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // Reload constpool and profileInfo to make sure gc map work normally
-        __ Ldr(Register(X22), MemoryOperand(temp, JSFunction::PROFILE_TYPE_INFO_OFFSET));
+        __ Ldr(Register(X22), MemoryOperand(methodRegister, Method::PROFILE_TYPE_INFO_OFFSET));
         __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
 
         __ Mov(temp, kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException);
@@ -330,6 +322,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         case JSCallMode::CALL_THIS_WITH_ARGV:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG3);
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_ENTRY: {
@@ -557,18 +550,27 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
 //               sp:      thread
 // construct Native Leave Frame
 //               +--------------------------+
-//               |       argv0              | calltarget , newTarget, this, ....
-//               +--------------------------+ ---
-//               |       argc               |   ^
-//               |--------------------------|  Fixed
-//               |       thread             | BuiltinFrame
-//               |--------------------------|   |
-//               |       returnAddr         |   |
-//               |--------------------------|   |
-//               |       callsiteFp         |   |
-//               |--------------------------|   |
-//               |       frameType          |   v
-//               +--------------------------+ ---
+//               |     argV[N - 1]          |
+//               |--------------------------|
+//               |       . . . .            |
+//               |--------------------------+
+//               |     argV[2]=this         |
+//               +--------------------------+
+//               |     argV[1]=new-target   |
+//               +--------------------------+
+//               |     argV[0]=call-target  |
+//               +--------------------------+ ---------
+//               |       argc               |         ^
+//               |--------------------------|         |
+//               |       thread             |         |
+//               |--------------------------|         |
+//               |       returnAddr         |     BuiltinFrame
+//               |--------------------------|         |
+//               |       callsiteFp         |         |
+//               |--------------------------|         |
+//               |       frameType          |         v
+//               +--------------------------+ ---------
+
 void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArgsAndDispatchNative));
@@ -604,7 +606,7 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
-    } else if (type == FrameType::BUILTIN_ENTRY_FRAME) {
+    } else if (type == FrameType::BUILTIN_ENTRY_FRAME || type == FrameType::BUILTIN_CALL_LEAVE_FRAME) {
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
@@ -670,7 +672,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
     __ Bind(&dispatch);
     {
         __ Mov(rsp, fp);  // resume rsp
-        __ Add(bcStub, glueRegister, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Add(bcStub, glueRegister, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
         __ Br(bcStub);
     }
@@ -688,7 +690,7 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ Mov(rsp, fp);  // resume rsp
         __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
-        __ Add(bcStub, glueRegister, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Add(bcStub, glueRegister, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
         __ Br(bcStub);
     }
@@ -793,7 +795,7 @@ void AsmInterpreterCall::ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembl
     __ Bind(&dispatch);
     {
         __ Ldrb(opcode, MemoryOperand(pc, 0));
-        __ Add(bcStub, glue, Operand(opcode, UXTW, SHIFT_OF_FRAMESLOT));
+        __ Add(bcStub, glue, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
         __ Br(bcStub);
     }
@@ -854,6 +856,20 @@ void AsmInterpreterCall::CallSetter(ExtendedAssembler *assembler)
     __ Bind(&target);
     {
         JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs3));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
     }
 }
 
@@ -918,7 +934,7 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     __ Align16(currentSlotRegister);
     __ Mov(Register(SP), currentSlotRegister);
     // call bc stub
-    CallBCStub(assembler, newSp, glue, callTarget, method, pc, temp);
+    CallBCStub(assembler, newSp, glue, method, pc, temp);
 
     __ Bind(&stackOverflow);
     {
@@ -1023,18 +1039,22 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler, Label *stackOve
 //        FP - sp
 //        X20 - callTarget
 //        X21 - method
-void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister)
+void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcRegister,
+    Register newSpRegister, Register accRegister)
 {
     Register glueRegister = __ GlueRegister();
-    Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
 
     if (glueRegister.GetId() != X19) {
         __ Mov(Register(X19), glueRegister);
     }
     __ Ldrh(Register(X24, W), MemoryOperand(methodRegister, Method::LITERAL_INFO_OFFSET));
-    __ Mov(Register(X23), Immediate(JSTaggedValue::VALUE_HOLE));
-    __ Ldr(Register(X22), MemoryOperand(callTargetRegister, JSFunction::PROFILE_TYPE_INFO_OFFSET));
+    if (accRegister == INVALID_REG) {
+        __ Mov(Register(X23), Immediate(JSTaggedValue::VALUE_HOLE));
+    } else {
+        ASSERT(accRegister == Register(X23));
+    }
+    __ Ldr(Register(X22), MemoryOperand(methodRegister, Method::PROFILE_TYPE_INFO_OFFSET));
     __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
     __ Mov(Register(X20), pcRegister);
     __ Mov(Register(FP), newSpRegister);
@@ -1042,7 +1062,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     Register bcIndexRegister = __ AvailableRegister1();
     Register tempRegister = __ AvailableRegister2();
     __ Ldrb(bcIndexRegister.W(), MemoryOperand(pcRegister, 0));
-    __ Add(tempRegister, glueRegister, Operand(bcIndexRegister.W(), UXTW, SHIFT_OF_FRAMESLOT));
+    __ Add(tempRegister, glueRegister, Operand(bcIndexRegister.W(), UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Ldr(tempRegister, MemoryOperand(tempRegister, JSThread::GlueData::GetBCStubEntriesOffset(false)));
     __ Br(tempRegister);
 }
@@ -1155,21 +1175,21 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
 }
 
 void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,
-    Register &callTarget, Register &method, Register &pc, Register &temp)
+    Register &method, Register &pc, Register &temp)
 {
     // prepare call entry
     __ Mov(Register(X19), glue);    // X19 - glue
     __ Mov(Register(FP), newSp);    // FP - sp
     __ Mov(Register(X20), pc);      // X20 - pc
     __ Ldr(Register(X21), MemoryOperand(method, Method::CONSTANT_POOL_OFFSET));   // X21 - constantpool
-    __ Ldr(Register(X22), MemoryOperand(callTarget, JSFunction::PROFILE_TYPE_INFO_OFFSET)); // X22 - profileTypeInfo
+    __ Ldr(Register(X22), MemoryOperand(method, Method::PROFILE_TYPE_INFO_OFFSET)); // X22 - profileTypeInfo
     __ Mov(Register(X23), Immediate(JSTaggedValue::Hole().GetRawData()));                   // X23 - acc
     __ Ldr(Register(X24), MemoryOperand(method, Method::LITERAL_INFO_OFFSET)); // X24 - hotnessCounter
 
     // call the first bytecode handler
     __ Ldrb(temp.W(), MemoryOperand(pc, 0));
     // 3 : 3 means *8
-    __ Add(temp, glue, Operand(temp.W(), UXTW, SHIFT_OF_FRAMESLOT));
+    __ Add(temp, glue, Operand(temp.W(), UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Ldr(temp, MemoryOperand(temp, JSThread::GlueData::GetBCStubEntriesOffset(false)));
     __ Br(temp);
 }
@@ -1203,7 +1223,9 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue,
     Register fp, Register op)
 {
-    __ Mov(Register(SP), fp);
+    if (fp != Register(SP)) {
+        __ Mov(Register(SP), fp);
+    }
     __ Mov(op, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException));
     // 3 : 3 means *8
     __ Add(op, glue, Operand(op, LSL, 3));

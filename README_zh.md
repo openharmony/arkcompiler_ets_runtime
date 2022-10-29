@@ -1,6 +1,6 @@
-# 方舟编译器JS运行时部件<a name="ZH-CN_TOPIC_0000001183610495"></a>
+# 方舟eTS运行时部件<a name="ZH-CN_TOPIC_0000001183610495"></a>
 
-- [方舟JS运行时部件<a name="ZH-CN_TOPIC_0000001183610495"></a>](#方舟js运行时部件)
+- [方舟eTS运行时部件<a name="ZH-CN_TOPIC_0000001183610495"></a>](#方舟eTS运行时部件)
     - [简介<a name="section190813718209"></a>](#简介)
   - [目录<a name="section161941989596"></a>](#目录)
   - [约束<a name="section119744591305"></a>](#约束)
@@ -11,27 +11,27 @@
 
 ### 简介<a name="section190813718209"></a>
 
-方舟编译器JS运行时（ArkCompiler JavaScript Runtime）是OpenHarmony上默认的JavaScript语言运行时。支持Ecmascript规范定义的标准库和高效container容器库，提供完备的C++交互JSNAPI和各种高性能的垃圾回收器，驱动着万物互联时代的OpenHarmony应用程序。
+方舟eTS运行时是OpenHarmony上默认的ArkTS语言运行时。支持Ecmascript规范定义的标准库和高效container容器库，提供完备的C++交互ArkTS NAPI和各种高性能的垃圾回收器，驱动着万物互联时代的OpenHarmony应用程序。
 
 更多信息请参考：[方舟运行时子系统](https://gitee.com/openharmony/docs/blob/master/zh-cn/readme/ARK-Runtime-Subsystem-zh.md)
 
-**图1** 方舟JS运行时部件架构图：
+**图1** 方舟eTS运行时部件架构图：
 
-![](/docs/figures/zh-cn_image_ark-js-arch.png)
+![](/docs/figures/zh-cn_image_ark-ts-arch.png)
 
 ## 目录<a name="section161941989596"></a>
 
 ```
 /arkcompiler/ets_runtime
-├─ ecmascript             # 方舟JS运行时实现，包括ECMAScript标准库、解释器、内存管理等
+├─ ecmascript             # 方舟ArkTS运行时实现，包括ECMAScript标准库、解释器、内存管理等
 │   ├─ base               # 基础帮助类
 │   ├─ builtins           # ECMAScript标准库
-│   ├─ compiler           # JS编译器
+│   ├─ compiler           # 编译器
 │   ├─ containers         # 非ECMAScript标准容器类库
-│   ├─ debugger           # JS调试器
+│   ├─ debugger           # 调试器
 │   ├─ dfx                # 内存与性能分析工具
 │   ├─ ic                 # 内联缓存模块
-│   ├─ interpreter        # JS解释器
+│   ├─ interpreter        # 解释器
 │   ├─ jobs               # 微任务队列
 │   ├─ js_api             # 非ECMA标准对象模型
 │   ├─ js_vm              # 命令行工具
@@ -53,7 +53,7 @@
 
 ## 约束<a name="section119744591305"></a>
 
-* 仅支持运行方舟JS前端工具链\(ts2abc\)生成的方舟字节码文件
+* 仅支持运行方舟eTS编译器\(ts2abc或es2abc\)生成的方舟字节码文件
 * 只支持ES2015标准和严格模式（use strict)
 * 不支持通过字符串动态创建函数(比如new Function("console.log(1);"))
 
@@ -69,11 +69,11 @@ NAPI接口说明参考[NAPI部件](https://gitee.com/openharmony/ace_napi/blob/m
 
 ### 使用说明<a name="section129654513264"></a>
 
-JS生成字节码参考[工具链使用](docs/using-the-toolchain-zh.md)
+ArkTS生成字节码参考[方舟eTS编译器](docs/using-the-toolchain-zh.md)
 
 字节码执行：
 ```
-LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/ark/ark:out/hispark_taurus/clang_x64/ark/ark_js_runtime:out/hispark_taurus/clang_x64/thirdparty/icu:prebuilts/clang/ohos/linux-x86_64/llvm/lib ./out/hispark_taurus/clang_x64/ark/ark_js_runtime/ark_js_vm helloworld.abc
+LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/arkcompiler/ets_runtime:out/hispark_taurus/clang_x64/thirdparty/icu:prebuilts/clang/ohos/linux-x86_64/llvm/lib ./out/hispark_taurus/clang_x64/arkcompiler/ets_runtime/ark_js_vm helloworld.abc
 
 ```
 

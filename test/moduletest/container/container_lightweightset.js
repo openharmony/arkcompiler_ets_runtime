@@ -97,6 +97,7 @@ if (globalThis["ArkPrivate"] != undefined) {
         flag = true;
     }
     res.set("test map throw error", flag);
+
     flag = undefined;
     function elements(value, key, res) {
         if (!value) {

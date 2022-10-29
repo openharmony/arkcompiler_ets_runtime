@@ -23,12 +23,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/method.h"
 #include "ecmascript/require/js_cjs_module.h"
-
-#ifdef NEW_INSTRUCTION_DEFINE
 #include "libpandafile/bytecode_instruction-inl.h"
-#else
-#include "ecmascript/jspandafile/bytecode_inst/new_instruction.h"
-#endif
 
 namespace panda::ecmascript {
 class ConstantPool;
@@ -58,6 +53,7 @@ public:
 
     static inline JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);
     static inline JSTaggedValue GetConstantPool(JSTaggedType *sp);
+    static inline JSTaggedValue GetEcmaModule(JSTaggedType *sp);
     static inline bool UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset);
     static inline void NotifyBytecodePcChanged(JSThread *thread);
     static inline const JSPandaFile *GetNativeCallPandafile(JSThread *thread);
@@ -68,6 +64,9 @@ public:
     static inline bool IsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
     static inline int16_t GetHotnessCounter(uint32_t codeSize);
+    static inline JSTaggedType *GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp);
+
+
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_INTERPRETER_H

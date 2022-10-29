@@ -18,6 +18,7 @@
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/js_array.h"
@@ -25,6 +26,8 @@
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
+using ContainerError = containers::ContainerError;
+using ErrorFlag = containers::ErrorFlag;
 JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -32,24 +35,26 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
     if (!input->IsJSAPILightWeightSetIterator()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "this value is not an lightweightset iterator",
-                                    JSTaggedValue::Exception());
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                            "The Symbol.iterator method cannot be bound");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPILightWeightSetIterator> iter(input);
-    JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> lightWeightSet(thread, iter->GetIteratedLightWeightSet());
     uint32_t index = iter->GetNextIndex();
     IterationKind itemKind = IterationKind(iter->GetIterationKind());
     if (lightWeightSet->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     uint32_t length = 0;
     if (lightWeightSet->IsJSAPILightWeightSet()) {
         length = JSHandle<JSAPILightWeightSet>(lightWeightSet)->GetLength();
     }
     if (index >= length) {
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedLightWeightSet(thread, undefinedHandle);
-        return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     iter->SetNextIndex(index + 1);
     JSHandle<TaggedArray> valueArray(
@@ -62,7 +67,7 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
         TaggedArray::Cast(JSHandle<JSAPILightWeightSet>(lightWeightSet)->GetHashes().GetTaggedObject());
     JSHandle<JSTaggedValue> keyHandle(thread, hashArray->Get(index));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(2)); // 2 means the length of array
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(2); // 2 means the length of array
     array->Set(thread, 0, keyHandle);
     array->Set(thread, 1, value);
     JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
