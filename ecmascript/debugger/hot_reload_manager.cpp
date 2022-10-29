@@ -30,7 +30,7 @@ void HotReloadManager::NotifyPatchLoaded(const JSPandaFile *baseFile, const JSPa
     ExtractPatch(patchFile);
 }
 
-void HotReloadManager::NotifyPatchUnloaded([[maybe_unused]] const JSPandaFile *baseFile, const JSPandaFile *patchFile)
+void HotReloadManager::NotifyPatchUnloaded(const JSPandaFile *patchFile)
 {
     if (vm_->GetJsDebuggerManager()->GetDebuggerHandler() == nullptr) {
         return;
