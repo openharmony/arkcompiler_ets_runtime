@@ -229,7 +229,8 @@ void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
     }
 
     __ Bind(&lPopFrame);
-    PopJSFunctionEntryFrame(assembler, Register(X20));
+    __ Mov(Register(X2), Register(X20));
+    PopJSFunctionEntryFrame(assembler, Register(X2));
     __ Ret();
 }
 
