@@ -66,51 +66,33 @@ void CommonCall::PopAsmInterpBridgeFrame(ExtendedAssembler *assembler)
 }
 
 
-void CommonCall::PushLeaveFrame(ExtendedAssembler *assembler, Register glue, bool isBuiltin)
+void CommonCall::PushLeaveFrame(ExtendedAssembler *assembler, Register glue)
 {
     TempRegister2Scope temp2Scope(assembler);
     Register frameType = __ TempRegister2();
     Register currentSp(X6);
     Register sp(SP);
     Register prevfp(X29);
-    
+
     // construct leave frame
-    if (isBuiltin) {
-        __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME)));
-        // current sp is not 16bytes aligned because native code address has pushed.
-        __ Mov(currentSp, sp);
-        __ Sub(sp, sp, Immediate(3 * FRAME_SLOT_SIZE));   // 3 : 3 for 16bytes align
-        // 2 : 2 means pairs
-        __ Stp(prevfp, Register(X30), MemoryOperand(currentSp, -2 * FRAME_SLOT_SIZE, PREINDEX));
-        __ Str(frameType, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-        __ Add(prevfp, sp, Immediate(FRAME_SLOT_SIZE));
-    } else {
-        __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME)));
-        __ SaveFpAndLr();
-        // 2 : 2 means pairs
-        __ Stp(Register(X19), frameType, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    }
+    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME)));
+    __ SaveFpAndLr();
+    // 2 : 2 means pairs
+    __ Stp(Register(X19), frameType, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // save to thread currentLeaveFrame_;
     __ Str(prevfp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 }
 
 
-void CommonCall::PopLeaveFrame(ExtendedAssembler *assembler, bool isBuiltin)
+void CommonCall::PopLeaveFrame(ExtendedAssembler *assembler)
 {
     Register sp(SP);
     Register currentSp(X6);
     TempRegister2Scope temp2Scope(assembler);
     Register frameType = __ TempRegister2();
-    if (isBuiltin) {
-        __ Add(currentSp, sp, Immediate(FRAME_SLOT_SIZE));  // skip frame type
-        __ Add(sp, sp, Immediate(3 * FRAME_SLOT_SIZE));  // 3 : 3 means for 16bytes align
-        // 2 : 2 means pairs
-        __ Ldp(Register(X29), Register(X30), MemoryOperand(currentSp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
-    } else {
-        // 2 : 2 means pairs
-        __ Ldp(Register(X19), frameType, MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
-        __ RestoreFpAndLr();
-    }
+    // 2 : 2 means pairs
+    __ Ldp(Register(X19), frameType, MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ RestoreFpAndLr();
 }
 
 void CommonCall::PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, Register argc,

@@ -606,7 +606,7 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
-    } else if (type == FrameType::BUILTIN_ENTRY_FRAME) {
+    } else if (type == FrameType::BUILTIN_ENTRY_FRAME || type == FrameType::BUILTIN_CALL_LEAVE_FRAME) {
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type

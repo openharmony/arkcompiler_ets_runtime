@@ -314,44 +314,26 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
 //          |--------------------------|                 |
 //          |       env or thread      |                 |
 //          |--------------------------|                 |
-//          |       codeAddress        |    OptimizedBuiltinLeaveFrame
+//          |       returnAddr         |    OptimizedBuiltinLeaveFrame
 //  sp ---> |--------------------------|                 |
-//          |       returnAddr         |                 |
-//          |--------------------------|                 |
 //          |       callsiteFp         |                 |
 //          |--------------------------|                 |
-//          |       frameType          |                 v
+//          |       frameType          |                 |
+//          |--------------------------|                 |
+//          |       align byte         |                 v
 //          +--------------------------+ -----------------
 
 void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
 {
     Register glueReg = rax;
-    __ Pushq(rbp);
-    __ Movq(rsp, rbp);
-    __ Movq(rbp, Operand(glueReg, JSThread::GlueData::GetLeaveFrameOffset(false))); // save to thread->leaveFrame_
-    __ Pushq(static_cast<int32_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME));
+    Register nativeCode = rsi;
 
-    // callee save
-    __ Pushq(r10);
-    __ Pushq(rbx);
+    __ Movq(glueReg, Operand(rsp, FRAME_SLOT_SIZE)); // thread (instead of env)
 
-    __ Movq(rbp, rdx);
-    __ Addq(2 * FRAME_SLOT_SIZE, rdx); // 16 : for rbp & return address
-    // load native pointer address
-    __ Movq(Operand(rdx, 0), r10);
-    __ Movq(glueReg, Operand(rdx, FRAME_SLOT_SIZE)); // thread (instead of env)
-    // EcmaRuntimeCallInfo
-    __ Leaq(Operand(rdx, FRAME_SLOT_SIZE), rdi);
-    __ Callq(r10);
-
-    __ Popq(rbx);
-    __ Pop(r10);
-    __ Addq(FRAME_SLOT_SIZE, rsp); // 8: sp + 8
-    __ Popq(rbp);
-    Register pcReg = rdx;
-    __ Popq(pcReg); // load pc
-    __ Addq(FRAME_SLOT_SIZE, rsp); // 8: skip code address
-    __ Pushq(pcReg); // save pc
+    AsmInterpreterCall::PushBuiltinFrame(assembler, glueReg, FrameType::BUILTIN_CALL_LEAVE_FRAME);
+    __ Leaq(Operand(rbp, 2 * FRAME_SLOT_SIZE), rdi); // 16: skip argc & env
+    __ PushAlignBytes();
+    AsmInterpreterCall::CallNativeInternal(assembler, nativeCode);
     __ Ret();
 }
 
@@ -501,12 +483,9 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
 
     __ Bind(&lCallNativeMethod);
     {
-        __ Pop(rax); // pc
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // Get MethodLiteral
         Register nativePointer = rsi;
         __ Mov(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativePointer); // native pointer
-        __ Push(nativePointer); // native code address
-        __ Push(rax); // pc
         __ Movq(glueReg, rax);
         CallBuiltinTrampoline(assembler);
     }
@@ -742,12 +721,9 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
 
     __ Bind(&lCallNativeMethod);
     {
-        __ Pop(rax); // pc
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // Get MethodLiteral
         Register nativePointer = rsi;
         __ Mov(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativePointer); // native pointer
-        __ Push(nativePointer); // native code address
-        __ Push(rax); // pc
         __ Movq(glueReg, rax);
         CallBuiltinTrampoline(assembler);
     }
@@ -831,12 +807,9 @@ void OptimizedCall::ConstructorJSCall(ExtendedAssembler *assembler)
 
     __ Bind(&lCallNativeMethod);
     {
-        __ Pop(rax); // pc
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // Get MethodLiteral
         Register nativePointer = rsi;
         __ Mov(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativePointer); // native pointer
-        __ Push(nativePointer); // native code address
-        __ Push(rax); // pc
         __ Movq(glueReg, rax);
         CallBuiltinTrampoline(assembler);
     }

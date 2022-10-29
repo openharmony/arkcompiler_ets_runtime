@@ -1056,13 +1056,13 @@ struct OptimizedWithArgvLeaveFrame {
 //         |--------------------------|            |
 //         |       env                |            |
 //         +--------------------------+            |
-//         |       RuntimeId          |            |
-//  sp --> |--------------------------|   OptimizedBuiltinLeaveFrame
 //         |       ret-addr           |            |
-//         |--------------------------|            |
+//  sp --> |--------------------------|   OptimizedBuiltinLeaveFrame
 //         |       prevFp             |            |
 //         |--------------------------|            |
-//         |       frameType          |            v
+//         |       frameType          |            |
+//         |--------------------------|            |
+//         |       align byte         |            v
 //         +--------------------------+-------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
@@ -1075,7 +1075,7 @@ public:
     }
     uintptr_t GetCallSiteSp() const
     {
-        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, argRuntimeId);
+        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, thread);
     }
     inline JSTaggedType* GetPrevFrameFp() const
     {
@@ -1099,8 +1099,7 @@ private:
     [[maybe_unused]] FrameType type;
     uintptr_t callsiteFp; // thread sp set here
     uintptr_t returnAddr;
-    [[maybe_unused]] uint64_t argRuntimeId;
-    JSTaggedValue env;
+    JSTaggedValue thread;
     uint64_t argc;
     // argv[0]...argv[argc-1] dynamic according to agc
 };
