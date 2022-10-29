@@ -308,7 +308,8 @@ void InterpreterAssembly::HandleLdaStrId16(
 {
     uint16_t stringId = READ_INST_16_0();
     LOG_INST() << "lda.str " << std::hex << stringId;
-    SET_ACC(ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId));
+    constpool = GetConstantPool(sp);
+    SET_ACC(ConstantPool::GetStringFromCache(thread, constpool, stringId));
     DISPATCH(LDA_STR_ID16);
 }
 
@@ -622,6 +623,7 @@ void InterpreterAssembly::HandleGetunmappedargs(
     uint32_t startIdx = 0;
     uint32_t actualNumArgs = GetNumArgs(sp, 0, startIdx);
 
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::GetUnmapedArgs(thread, sp, actualNumArgs, startIdx);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -633,6 +635,7 @@ void InterpreterAssembly::HandleAsyncfunctionenter(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::asyncfunctionenter";
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::AsyncFunctionEnter(thread);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -650,6 +653,7 @@ void InterpreterAssembly::HandleTonumberImm8(
         SET_ACC(value);
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::ToNumber(thread, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -673,6 +677,7 @@ void InterpreterAssembly::HandleNegImm8(
     } else if (value.IsDouble()) {
         SET_ACC(JSTaggedValue(-value.GetDouble()));
     } else {  // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Neg(thread, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -696,6 +701,7 @@ void InterpreterAssembly::HandleNotImm8(
         SET_ACC(JSTaggedValue(~number));  // NOLINT(hicpp-signed-bitwise);
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Not(thread, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -722,6 +728,7 @@ void InterpreterAssembly::HandleIncImm8(
         SET_ACC(JSTaggedValue(value.GetDouble() + 1.0));
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Inc(thread, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -748,6 +755,7 @@ void InterpreterAssembly::HandleDecImm8(
         SET_ACC(JSTaggedValue(value.GetDouble() - 1.0));
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Dec(thread, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -760,6 +768,7 @@ void InterpreterAssembly::HandleThrow(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::throw";
+    SAVE_PC();
     SlowRuntimeStub::Throw(thread, GET_ACC());
     INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
@@ -779,6 +788,7 @@ void InterpreterAssembly::HandleGetpropiterator(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::getpropiterator";
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::GetPropIterator(thread, GET_ACC());
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -824,6 +834,7 @@ void InterpreterAssembly::HandleGetiteratorImm8(
     LOG_INST() << "intrinsics::getiterator";
     JSTaggedValue obj = GET_ACC();
     // slow path
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -837,6 +848,7 @@ void InterpreterAssembly::HandleThrowConstassignmentPrefV8(
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "throwconstassignment"
                 << " v" << v0;
+    SAVE_PC();
     SlowRuntimeStub::ThrowConstAssignment(thread, GET_VREG_VALUE(v0));
     INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
@@ -847,6 +859,7 @@ void InterpreterAssembly::HandleThrowPatternnoncoerciblePrefNone(
 {
     LOG_INST() << "throwpatternnoncoercible";
 
+    SAVE_PC();
     SlowRuntimeStub::ThrowPatternNonCoercible(thread);
     INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
@@ -865,6 +878,7 @@ void InterpreterAssembly::HandleThrowIfnotobjectPrefV8(
     }
 
     // slow path
+    SAVE_PC();
     SlowRuntimeStub::ThrowIfNotObject(thread);
     INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
@@ -876,6 +890,7 @@ void InterpreterAssembly::HandleCloseiteratorImm8V8(
     uint16_t v0 = READ_INST_8_1();
     LOG_INST() << "intrinsics::closeiterator"
                << " v" << v0;
+    SAVE_PC();
     JSTaggedValue iter = GET_VREG_VALUE(v0);
     JSTaggedValue res = SlowRuntimeStub::CloseIterator(thread, iter);
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -911,6 +926,7 @@ void InterpreterAssembly::HandleAdd2Imm8V8(
         SET_ACC(JSTaggedValue(ret));
     } else {
         // one or both are not number, slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Add2(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -945,6 +961,7 @@ void InterpreterAssembly::HandleSub2Imm8V8(
         SET_ACC(JSTaggedValue(ret));
     } else {
         // one or both are not number, slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Sub2(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -965,6 +982,7 @@ void InterpreterAssembly::HandleMul2Imm8V8(
         SET_ACC(value);
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Mul2(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -987,6 +1005,7 @@ void InterpreterAssembly::HandleDiv2Imm8V8(
         SET_ACC(res);
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue slowRes = SlowRuntimeStub::Div2(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(slowRes);
         SET_ACC(slowRes);
@@ -1009,6 +1028,7 @@ void InterpreterAssembly::HandleMod2Imm8V8(
         SET_ACC(res);
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue slowRes = SlowRuntimeStub::Mod2(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(slowRes);
         SET_ACC(slowRes);
@@ -1031,6 +1051,7 @@ void InterpreterAssembly::HandleEqImm8V8(
         SET_ACC(res);
     } else {
         // slow path
+        SAVE_PC();
         res = SlowRuntimeStub::Eq(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -1056,6 +1077,7 @@ void InterpreterAssembly::HandleNoteqImm8V8(
         SET_ACC(res);
     } else {
         // slow path
+        SAVE_PC();
         res = SlowRuntimeStub::NotEq(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -1088,6 +1110,7 @@ void InterpreterAssembly::HandleLessImm8V8(
         SET_ACC(JSTaggedValue(result));
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Less(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -1119,6 +1142,7 @@ void InterpreterAssembly::HandleLesseqImm8V8(
         SET_ACC(JSTaggedValue(result));
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::LessEq(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -1151,6 +1175,7 @@ void InterpreterAssembly::HandleGreaterImm8V8(
         SET_ACC(JSTaggedValue(result));
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Greater(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -1183,6 +1208,7 @@ void InterpreterAssembly::HandleGreatereqImm8V8(
         SET_ACC(JSTaggedValue(result));
     }  else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::GreaterEq(thread, left, right);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -1422,6 +1448,7 @@ void InterpreterAssembly::HandleDelobjpropV8(
 
     JSTaggedValue obj = GET_VREG_VALUE(v0);
     JSTaggedValue prop = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::DelObjProp(thread, obj, prop);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1445,11 +1472,13 @@ void InterpreterAssembly::HandleExpImm8V8(
         if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
             SET_ACC(JSTaggedValue(base::NAN_VALUE));
         }
-        if ((doubleBase == 0 &&
-            ((bit_cast<uint64_t>(doubleBase)) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK) &&
-            std::isfinite(doubleExponent) && base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent &&
-            base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF ==  // 2 : half
-            (doubleExponent / 2)) {  // 2 : half
+        bool baseZero = doubleBase == 0 &&
+            (bit_cast<uint64_t>(doubleBase) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK;
+        bool isFinite = std::isfinite(doubleExponent);
+        bool truncEqual = base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent;
+        bool halfTruncEqual = (base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF) ==
+                                (doubleExponent / 2);
+        if (baseZero && isFinite && truncEqual && halfTruncEqual) {
             if (doubleExponent > 0) {
                 SET_ACC(JSTaggedValue(-0.0));
             }
@@ -1460,6 +1489,7 @@ void InterpreterAssembly::HandleExpImm8V8(
         SET_ACC(JSTaggedValue(std::pow(doubleBase, doubleExponent)));
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::Exp(thread, base, exponent);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -1476,6 +1506,7 @@ void InterpreterAssembly::HandleIsinImm8V8(
                << " v" << v0;
     JSTaggedValue prop = GET_VREG_VALUE(v0);
     JSTaggedValue obj = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::IsIn(thread, prop, obj);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1491,6 +1522,7 @@ void InterpreterAssembly::HandleInstanceofImm8V8(
                << " v" << v0;
     JSTaggedValue obj = GET_VREG_VALUE(v0);
     JSTaggedValue target = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::Instanceof(thread, obj, target);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1673,6 +1705,7 @@ void InterpreterAssembly::HandleCreateiterresultobjV8V8(
                << " v" << v0 << " v" << v1;
     JSTaggedValue value = GET_VREG_VALUE(v0);
     JSTaggedValue flag = GET_VREG_VALUE(v1);
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::CreateIterResultObj(thread, value, flag);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1726,6 +1759,7 @@ void InterpreterAssembly::HandleAsyncfunctionawaituncaughtV8(
                << " v" << v0;
     JSTaggedValue asyncFuncObj = GET_VREG_VALUE(v0);
     JSTaggedValue value = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::AsyncFunctionAwaitUncaught(thread, asyncFuncObj, value);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1775,6 +1809,7 @@ void InterpreterAssembly::HandleNewobjapplyImm8V8(
                << " v" << v0;
     JSTaggedValue func = GET_VREG_VALUE(v0);
     JSTaggedValue array = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::NewObjApply(thread, func, array);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1795,6 +1830,7 @@ void InterpreterAssembly::HandleThrowUndefinedifholePrefV8V8(
     }
     JSTaggedValue obj = GET_VREG_VALUE(v1);
     ASSERT(obj.IsString());
+    SAVE_PC();
     SlowRuntimeStub::ThrowUndefinedIfHole(thread, obj);
     INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
@@ -1844,6 +1880,7 @@ void InterpreterAssembly::HandleCreateemptyarrayImm8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::createemptyarray";
+    SAVE_PC();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -1857,6 +1894,7 @@ void InterpreterAssembly::HandleCreateemptyobject(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::createemptyobject";
+    SAVE_PC();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -1875,6 +1913,7 @@ void InterpreterAssembly::HandleSetobjectwithprotoImm8V8(
     JSTaggedValue proto = GET_VREG_VALUE(v0);
     JSTaggedValue obj = GET_ACC();
     SAVE_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::SetObjectWithProto(thread, proto, obj);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     RESTORE_ACC();
@@ -1906,6 +1945,7 @@ void InterpreterAssembly::HandleGettemplateobjectImm8(
     LOG_INST() << "intrinsic::gettemplateobject";
 
     JSTaggedValue literal = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::GetTemplateObject(thread, literal);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1920,6 +1960,7 @@ void InterpreterAssembly::HandleGetnextpropnameV8(
     LOG_INST() << "intrinsic::getnextpropname"
                 << " v" << v0;
     JSTaggedValue iter = GET_VREG_VALUE(v0);
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::GetNextPropName(thread, iter);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1935,6 +1976,7 @@ void InterpreterAssembly::HandleCopydatapropertiesV8(
                << " v" << v0;
     JSTaggedValue dst = GET_VREG_VALUE(v0);
     JSTaggedValue src = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::CopyDataProperties(thread, dst, src);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -1967,6 +2009,7 @@ void InterpreterAssembly::HandleStownbyindexImm8V8Imm16(
     SAVE_ACC();
     receiver = GET_VREG_VALUE(v0);  // Maybe moved by GC
     auto value = GET_ACC();         // Maybe moved by GC
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::StOwnByIndex(thread, receiver, index, value);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     RESTORE_ACC();
@@ -2006,6 +2049,7 @@ void InterpreterAssembly::HandleStownbyvalueImm8V8V8(
     receiver = GET_VREG_VALUE(v0);      // Maybe moved by GC
     auto propKey = GET_VREG_VALUE(v1);  // Maybe moved by GC
     auto value = GET_ACC();             // Maybe moved by GC
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::StOwnByValue(thread, receiver, propKey, value);
     RESTORE_ACC();
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -2023,6 +2067,7 @@ void InterpreterAssembly::HandleCreateobjectwithexcludedkeysImm8V8V8(
 
     JSTaggedValue obj = GET_VREG_VALUE(v0);
 
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::CreateObjectWithExcludedKeys(thread, numKeys, obj, firstArgRegIdx);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -2071,6 +2116,7 @@ void InterpreterAssembly::HandleDefinegettersetterbyvalueV8V8V8V8(
     JSTaggedValue getter = GET_VREG_VALUE(v2);
     JSTaggedValue setter = GET_VREG_VALUE(v3);
     JSTaggedValue flag = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res =
         SlowRuntimeStub::DefineGetterSetterByValue(thread, obj, prop, getter, setter, flag.ToBoolean());
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -2102,6 +2148,7 @@ void InterpreterAssembly::HandleStobjbyindexImm8V8Imm16(
     }
     // slow path
     SAVE_ACC();
+    SAVE_PC();
     receiver = GET_VREG_VALUE(v0);    // Maybe moved by GC
     JSTaggedValue value = GET_ACC();  // Maybe moved by GC
     JSTaggedValue res = SlowRuntimeStub::StObjByIndex(thread, receiver, index, value);
@@ -2165,6 +2212,7 @@ void InterpreterAssembly::HandleStobjbyvalueImm8V8V8(
     {
         // slow path
         SAVE_ACC();
+        SAVE_PC();
         receiver = GET_VREG_VALUE(v0);  // Maybe moved by GC
         JSTaggedValue propKey = GET_VREG_VALUE(v1);   // Maybe moved by GC
         JSTaggedValue value = GET_ACC();              // Maybe moved by GC
@@ -2190,6 +2238,7 @@ void InterpreterAssembly::HandleStsuperbyvalueImm8V8V8(
 
     // slow path
     SAVE_ACC();
+    SAVE_PC();
     JSTaggedValue thisFunc = GetFunction(sp);
     JSTaggedValue res = SlowRuntimeStub::StSuperByValue(thread, receiver, propKey, value, thisFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -2336,6 +2385,7 @@ void InterpreterAssembly::HandleStownbyvaluewithnamesetImm8V8V8(
 
     // slow path
     SAVE_ACC();
+    SAVE_PC();
     receiver = GET_VREG_VALUE(v0);      // Maybe moved by GC
     auto propKey = GET_VREG_VALUE(v1);  // Maybe moved by GC
     auto value = GET_ACC();             // Maybe moved by GC
@@ -2356,7 +2406,10 @@ void InterpreterAssembly::HandleStownbynamewithnamesetImm8Id16V8(
 
     JSTaggedValue receiver = GET_VREG_VALUE(v0);
     if (receiver.IsJSObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
+        SAVE_ACC();
+        constpool = GetConstantPool(sp);
         JSTaggedValue propKey = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
+        RESTORE_ACC();
         JSTaggedValue value = GET_ACC();
         // fast path
         SAVE_ACC();
@@ -2371,8 +2424,11 @@ void InterpreterAssembly::HandleStownbynamewithnamesetImm8Id16V8(
     }
 
     SAVE_ACC();
-    receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
+    SAVE_PC();
+    receiver = GET_VREG_VALUE(v0);
+    constpool = GetConstantPool(sp);                           // Maybe moved by GC
     auto propKey = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);  // Maybe moved by GC
+    RESTORE_ACC();
     auto value = GET_ACC();                                  // Maybe moved by GC
     JSTaggedValue res = SlowRuntimeStub::StOwnByNameWithNameSet(thread, receiver, propKey, value);
     RESTORE_ACC();
@@ -2572,6 +2628,7 @@ void InterpreterAssembly::HandleCreategeneratorobjV8(
     uint16_t v0 = READ_INST_8_0();
     LOG_INST() << "intrinsics::creategeneratorobj"
                << " v" << v0;
+    SAVE_PC();
     JSTaggedValue genFunc = GET_VREG_VALUE(v0);
     JSTaggedValue res = SlowRuntimeStub::CreateGeneratorObj(thread, genFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -2586,6 +2643,7 @@ void InterpreterAssembly::HandleCreateasyncgeneratorobjV8(
     uint16_t v0 = READ_INST_8_0();
     LOG_INST() << "intrinsics::createasyncgeneratorobj"
                << " v" << v0;
+    SAVE_PC();
     JSTaggedValue genFunc = GET_VREG_VALUE(v0);
     JSTaggedValue res = SlowRuntimeStub::CreateAsyncGeneratorObj(thread, genFunc);
     INTERPRETER_RETURN_IF_ABRUPT(res);
@@ -2621,6 +2679,7 @@ void InterpreterAssembly::HandleAsyncgeneratorrejectV8(
                << " v" << v0;
     JSTaggedValue asyncGenerator = GET_VREG_VALUE(v0);
     JSTaggedValue value = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorReject(thread, asyncGenerator, value);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -2655,6 +2714,7 @@ void InterpreterAssembly::HandleStarrayspreadV8V8(
     JSTaggedValue dst = GET_VREG_VALUE(v0);
     JSTaggedValue index = GET_VREG_VALUE(v1);
     JSTaggedValue src = GET_ACC();
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::StArraySpread(thread, dst, index, src);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -2676,6 +2736,8 @@ void InterpreterAssembly::HandleLdbigintId16(
 {
     uint16_t stringId = READ_INST_16_0();
     LOG_INST() << "intrinsic::ldbigint";
+    SAVE_ACC();
+    constpool = GetConstantPool(sp);
     JSTaggedValue numberBigInt = ConstantPool::Cast(constpool.GetTaggedObject())->GetObjectFromCache(stringId);
     SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::LdBigInt(thread, numberBigInt);
@@ -2695,6 +2757,7 @@ void InterpreterAssembly::HandleTonumericImm8(
         SET_ACC(value);
     } else {
         // slow path
+        SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::ToNumeric(thread, value);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
@@ -2714,6 +2777,7 @@ void InterpreterAssembly::HandleSupercallspreadImm8V8(
     JSTaggedValue newTarget = GetNewTarget(sp);
     JSTaggedValue array = GET_VREG_VALUE(v0);
 
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::SuperCallSpread(thread, thisFunc, newTarget, array);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
@@ -2728,6 +2792,7 @@ void InterpreterAssembly::HandleThrowIfsupernotcorrectcallPrefImm16(
     JSTaggedValue thisValue = GET_ACC();
     LOG_INST() << "intrinsic::throwifsupernotcorrectcall"
                << " imm:" << imm;
+    SAVE_PC();
     JSTaggedValue res = SlowRuntimeStub::ThrowIfSuperNotCorrectCall(thread, imm, thisValue);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     DISPATCH(THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16);
@@ -2739,6 +2804,7 @@ void InterpreterAssembly::HandleThrowDeletesuperpropertyPrefNone(
 {
     LOG_INST() << "throwdeletesuperproperty";
 
+    SAVE_PC();
     SlowRuntimeStub::ThrowDeleteSuperProperty(thread);
     INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
@@ -2792,6 +2858,7 @@ void InterpreterAssembly::HandleCreateemptyarrayImm16(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::createemptyarray";
+    SAVE_PC();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -2818,14 +2885,14 @@ void InterpreterAssembly::HandleGettemplateobjectImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    LOG_INST() << "intrinsics::getiterator";
+    LOG_INST() << "intrinsics::gettemplateobject";
     JSTaggedValue obj = GET_ACC();
     // slow path
     SAVE_PC();
-    JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
+    JSTaggedValue res = SlowRuntimeStub::GetTemplateObject(thread, obj);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
-    DISPATCH(GETITERATOR_IMM16);
+    DISPATCH(GETTEMPLATEOBJECT_IMM16);
 }
 
 void InterpreterAssembly::HandleCloseiteratorImm16V8(
