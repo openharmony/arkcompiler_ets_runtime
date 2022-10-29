@@ -208,6 +208,11 @@ bool StubFileInfo::Load(EcmaVM *vm)
     return true;
 }
 
+void AnFileInfo::Iterate(const RootVisitor &v)
+{
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&snapshotConstantPool_)));
+}
+
 void AnFileInfo::Save(const std::string &filename)
 {
     if (!VerifyFilePath(filename, true)) {
@@ -549,6 +554,21 @@ bool AOTFileManager::RewriteDataSection(uintptr_t dataSec, size_t size,
         return false;
     }
     return true;
+}
+
+void AOTFileManager::AddSnapshotConstantPool(JSTaggedValue snapshotConstantPool)
+{
+    // There is no system library currently, so the length of anFileInfos_ should be 1
+    ASSERT(anFileInfos_.size() == 1);
+    AnFileInfo &anFileInfo = anFileInfos_.back();
+    anFileInfo.SetSnapshotConstantPool(snapshotConstantPool);
+}
+
+JSHandle<JSTaggedValue> AOTFileManager::GetSnapshotConstantPool(const JSPandaFile *jsPandaFile)
+{
+    uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
+    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
+    return anFileInfo.GetSnapshotConstantPool();
 }
 
 AOTFileManager::~AOTFileManager()

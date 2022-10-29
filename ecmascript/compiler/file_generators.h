@@ -228,19 +228,13 @@ protected:
 class AOTFileGenerator : public FileGenerator {
 public:
     AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList,
-        EcmaVM* vm, size_t pandaFileNums) : FileGenerator(log, logList), vm_(vm)
-    {
-        vm->GetTSManager()->CreateConstantPoolInfos(pandaFileNums);
-    }
+        EcmaVM* vm) : FileGenerator(log, logList), vm_(vm) {}
 
     ~AOTFileGenerator() override = default;
 
-    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, const JSPandaFile *jsPandaFile)
+    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler)
     {
         modulePackage_.emplace_back(Module(llvmModule, assembler));
-        // Process and clean caches in tsmanager that needs to be serialized
-        vm_->GetTSManager()->CollectConstantPoolInfo(jsPandaFile);
-        vm_->GetTSManager()->ClearCaches();
     }
 
     void GenerateMethodToEntryIndexMap()
@@ -249,7 +243,7 @@ public:
         uint32_t entriesSize = entries.size();
         for (uint32_t i = 0; i < entriesSize; ++i) {
             const AOTFileInfo::FuncEntryDes &entry = entries[i];
-            methodToEntryIndexMap_[std::make_pair(entry.moduleIndex_, entry.indexInKindOrMethodId_)] = i;
+            methodToEntryIndexMap_[entry.indexInKindOrMethodId_] = i;
         }
     }
 
@@ -259,8 +253,8 @@ public:
 private:
     AnFileInfo aotInfo_;
     EcmaVM* vm_;
-    // (moduleIndex, MethodID)->EntryIndex
-    std::map<std::pair<uint32_t, uint32_t>, uint32_t> methodToEntryIndexMap_ {};
+    // MethodID->EntryIndex
+    std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
 
     // collect aot component info
     void CollectCodeInfo();
