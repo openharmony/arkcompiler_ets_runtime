@@ -352,31 +352,30 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
 //          |--------------------------|                 |
 //          |       env or thread      |                 |
 //          |--------------------------|                 |
-//          |       codeAddress        |    OptimizedBuiltinLeaveFrame
+//          |       returnAddr         |    OptimizedBuiltinLeaveFrame
 //  sp ---> |--------------------------|                 |
-//          |       returnAddr         |                 |
-//          |--------------------------|                 |
 //          |       callsiteFp         |                 |
 //          |--------------------------|                 |
-//          |       frameType          |                 v
+//          |       frameType          |                 |
+//          |--------------------------|                 |
+//          |       align byte         |                 v
 //          +--------------------------+ -----------------
 
 void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
 {
-    Register fp(X29);
     Register glue(X0);
     Register sp(SP);
     Register nativeFuncAddr(X4);
+    Register glueTemp(X2);
+    Register temp(X1);
+    Register zero(Zero);
 
-    PushLeaveFrame(assembler, glue, true);
+    __ Mov(glueTemp, glue);
+    __ Str(glue, MemoryOperand(sp, 0)); // thread (instead of env)
+    __ Add(Register(X0), sp, Immediate(0));
+    AsmInterpreterCall::PushBuiltinFrame(assembler, glueTemp, FrameType::BUILTIN_CALL_LEAVE_FRAME, temp, zero);
 
-    __ Str(glue, MemoryOperand(fp, GetStackArgOffSetToFp(BuiltinsLeaveFrameArgId::ENV))); // thread (instead of env)
-    __ Add(Register(X0), fp, Immediate(GetStackArgOffSetToFp(BuiltinsLeaveFrameArgId::ENV)));
-    __ Blr(nativeFuncAddr);
-
-    // descontruct leave frame and callee save register
-    PopLeaveFrame(assembler, true);
-    __ Add(sp, sp, Immediate(FRAME_SLOT_SIZE)); // skip native code address
+    AsmInterpreterCall::CallNativeInternal(assembler, nativeFuncAddr);
     __ Ret();
 }
 
@@ -474,8 +473,6 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     {
         Register nativeFuncAddr(X4);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-        // -8 : -8 means sp increase step
-        __ Str(nativeFuncAddr, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
     }
 
@@ -575,8 +572,6 @@ void OptimizedCall::ConstructorJSCallInternal(ExtendedAssembler *assembler, Regi
     {
         Register nativeFuncAddr(X4);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-        // -8 : -8 means sp increase step
-        __ Str(nativeFuncAddr, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
     }
 

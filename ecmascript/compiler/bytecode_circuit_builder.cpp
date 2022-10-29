@@ -1218,7 +1218,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
 
 // recursive variables renaming algorithm
 GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId,
-                                               const uint16_t reg, const bool acc)
+                                           const uint16_t reg, const bool acc)
 {
     auto tmpReg = reg;
     // find def-site in bytecodes of basic block
