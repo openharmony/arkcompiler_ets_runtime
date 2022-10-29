@@ -173,6 +173,12 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::DEC_IMM8:
             LowerTypedDec(gate);
             break;
+        case EcmaOpcode::ISTRUE:
+            LowerTypedIsTrueOrFalse(gate, true);
+            break;
+        case EcmaOpcode::ISFALSE:
+            LowerTypedIsTrueOrFalse(gate, false);
+            break;
         case EcmaOpcode::JEQZ_IMM8:
         case EcmaOpcode::JEQZ_IMM16:
         case EcmaOpcode::JEQZ_IMM32:
@@ -843,6 +849,39 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
 
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, Circuit::NullGate(), builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
+void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    auto value = acc_.GetValueIn(gate, 0);
+    auto valueType = acc_.GetGateType(value);
+    if ((!valueType.IsNumberType()) && (!valueType.IsBooleanType())) {
+        acc_.DeleteGuardAndFrameState(gate);
+        return;
+    }
+    auto check = Circuit::NullGate();
+    if (IsTrustedType(value)) {
+        acc_.DeleteGuardAndFrameState(gate);
+        builder_.SetDepend(acc_.GetDep(gate));
+    } else {
+        check = builder_.TypeCheck(valueType, value);
+    }
+
+    // guard maybe not a GUARD
+    auto guard = acc_.GetDep(gate);
+    if (check != Circuit::NullGate()) {
+        ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+        acc_.ReplaceIn(guard, 1, check);
+    }
+    auto toBool = builder_.TypedUnaryOp<TypedUnOp::TYPED_TOBOOL>(value, valueType, GateType::NJSValue());
+    if (!flag) {
+        toBool = builder_.BoolNot(toBool);
+    }
+    auto result = builder_.BooleanToTaggedBooleanPtr(toBool);
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
 }
 }  // namespace panda::ecmascript

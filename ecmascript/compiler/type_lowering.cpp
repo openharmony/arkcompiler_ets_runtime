@@ -129,6 +129,8 @@ void TypeLowering::LowerTypeCheck(GateRef gate)
         LowerDoubleCheck(gate);
     } else if (type.IsNumberType()) {
         LowerNumberCheck(gate);
+    } else if (type.IsBooleanType()) {
+        LowerBooleanCheck(gate);
     } else {
         UNREACHABLE();
     }
@@ -319,6 +321,14 @@ void TypeLowering::LowerNumberCheck(GateRef gate)
     acc_.DeleteGate(gate);
 }
 
+void TypeLowering::LowerBooleanCheck(GateRef gate)
+{
+    auto value = acc_.GetValueIn(gate, 0);
+    auto typeCheck = builder_.TaggedIsBoolean(value);
+    acc_.UpdateAllUses(gate, typeCheck);
+    acc_.DeleteGate(gate);
+}
+
 void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -406,6 +416,9 @@ void TypeLowering::LowerTypedUnaryOp(GateRef gate)
             break;
         case TypedUnOp::TYPED_DEC:
             LowerTypedDec(gate);
+            break;
+        case TypedUnOp::TYPED_TOBOOL:
+            LowerTypedToBool(gate);
             break;
         default:
             break;
@@ -607,6 +620,19 @@ void TypeLowering::LowerTypedNeg(GateRef gate)
     auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
         LowerNumberNeg(gate);
+    } else {
+        UNREACHABLE();
+    }
+    return;
+}
+
+void TypeLowering::LowerTypedToBool(GateRef gate)
+{
+    auto value = acc_.GetLeftType(gate);
+    if (value.IsNumberType()) {
+        LowerNumberToBool(gate);
+    } else if (value.IsBooleanType()) {
+        LowerBooleanToBool(gate);
     } else {
         UNREACHABLE();
     }
@@ -847,6 +873,53 @@ void TypeLowering::LowerNumberNeg(GateRef gate)
         builder_.Bind(&exit);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberToBool(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = acc_.GetLeftType(gate);
+    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.HoleConstant());
+    if (valueType.IsIntType()) {
+        // value is int
+        GateRef intVal = builder_.GetInt64OfTInt(value);
+        result = builder_.BoolNot(builder_.Equal(intVal, builder_.Int64(0)));
+    } else if (valueType.IsDoubleType()) {
+        // value is double
+        GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
+        GateRef doubleNotZero = builder_.BoolNot(builder_.Equal(doubleVal, builder_.Double(0)));
+        GateRef doubleNotNAN = builder_.BoolNot(builder_.DoubleIsNAN(doubleVal));
+        result = builder_.BoolAnd(doubleNotZero, doubleNotNAN);
+    } else {
+        // value is number and need typecheck in runtime
+        Label valueIsInt(&builder_);
+        Label valueIsDouble(&builder_);
+        Label exit(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+        builder_.Bind(&valueIsInt);
+        {
+            GateRef intVal = builder_.GetInt64OfTInt(value);
+            result = builder_.BoolNot(builder_.Equal(intVal, builder_.Int64(0)));
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&valueIsDouble);
+        {
+            GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
+            GateRef doubleNotZero = builder_.BoolNot(builder_.Equal(doubleVal, builder_.Double(0)));
+            GateRef doubleNotNAN = builder_.BoolNot(builder_.DoubleIsNAN(doubleVal));
+            result = builder_.BoolAnd(doubleNotZero, doubleNotNAN);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&exit);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerBooleanToBool(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.TaggedIsTrue(value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypeLowering::LowerNumberNot(GateRef gate)

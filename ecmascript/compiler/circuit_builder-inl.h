@@ -404,6 +404,12 @@ GateRef CircuitBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
+GateRef CircuitBuilder::BooleanToTaggedBooleanPtr(GateRef x)
+{
+    auto val = ZExtInt1ToInt64(x);
+    return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_BOOLEAN_MASK)));
+}
+
 GateRef CircuitBuilder::Float32ToTaggedDoublePtr(GateRef x)
 {
     GateRef val = ExtFloat32ToDouble(x);
@@ -626,7 +632,8 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto numberUnaryOp = TypedUnaryOperator(MachineType::I64, Op, xType, {currentControl, currentDepend, x}, gateType);
+    auto machineType = (Op == TypedUnOp::TYPED_TOBOOL) ? MachineType::I1 : MachineType::I64;
+    auto numberUnaryOp = TypedUnaryOperator(machineType, Op, xType, {currentControl, currentDepend, x}, gateType);
     currentLabel->SetControl(numberUnaryOp);
     currentLabel->SetDepend(numberUnaryOp);
     return numberUnaryOp;
