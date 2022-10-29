@@ -831,22 +831,22 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
         auto &input = info.inputs[i];
         if (std::holds_alternative<ConstDataId>(input)) {
             if (std::get<ConstDataId>(input).IsStringId()) {
-                tsManager_->AddIndexOrSkippedMethodID(CacheType::STRING,
+                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::STRING,
                     std::get<ConstDataId>(input).GetId());
                 inList[i + length] = circuit_.GetConstantDataGate(std::get<ConstDataId>(input).CaculateBitField(),
                                                                   GateType::StringType());
                 continue;
             } else if (std::get<ConstDataId>(input).IsMethodId()) {
-                tsManager_->AddIndexOrSkippedMethodID(CacheType::METHOD,
+                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::METHOD,
                     std::get<ConstDataId>(input).GetId());
             } else if (std::get<ConstDataId>(input).IsClassLiteraId()) {
-                tsManager_->AddIndexOrSkippedMethodID(CacheType::CLASS_LITERAL,
+                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::CLASS_LITERAL,
                     std::get<ConstDataId>(input).GetId(), recordName_);
             } else if (std::get<ConstDataId>(input).IsObjectLiteralID()) {
-                tsManager_->AddIndexOrSkippedMethodID(CacheType::OBJECT_LITERAL,
+                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::OBJECT_LITERAL,
                     std::get<ConstDataId>(input).GetId(), recordName_);
             } else if (std::get<ConstDataId>(input).IsArrayLiteralID()) {
-                tsManager_->AddIndexOrSkippedMethodID(CacheType::ARRAY_LITERAL,
+                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::ARRAY_LITERAL,
                     std::get<ConstDataId>(input).GetId(), recordName_);
             }
             inList[i + length] = circuit_.GetConstantGate(MachineType::I64,
@@ -953,7 +953,7 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
         case EcmaOpcode::LDA_STR_ID16: {
             auto input = std::get<ConstDataId>(info.inputs.at(0));
             if (input.IsStringId()) {
-                tsManager_->AddIndexOrSkippedMethodID(CacheType::STRING, input.GetId());
+                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::STRING, input.GetId());
             }
             gate = circuit_.GetConstantDataGate(input.CaculateBitField(), GateType::StringType());
             break;
