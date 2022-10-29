@@ -2031,6 +2031,7 @@ void SlowPathLowering::LowerSuperCallSpread(GateRef gate, GateRef glue, GateRef 
 void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag)
 {
     DebugPrintBC(gate, glue);
+    Label slowpath(&builder_);
     Label isTrue(&builder_);
     Label isFalse(&builder_);
     Label successExit(&builder_);
@@ -2038,10 +2039,15 @@ void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, GateRef glue, bool flag)
     std::vector<GateRef> exceptionControl;
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), acc_.GetValueIn(gate, 0));
-    GateRef callResult = LowerCallRuntime(glue, RTSTUB_ID(ToBoolean), { *result }, true);
-    builder_.Branch(builder_.IsSpecial(callResult, JSTaggedValue::VALUE_TRUE),
-        &isTrue, &isFalse);
+    auto value = acc_.GetValueIn(gate, 0);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), value);
+    auto condition = builder_.TaggedIsUndefinedOrNull(value);
+    builder_.Branch(condition, &isFalse, &slowpath);
+    builder_.Bind(&slowpath);
+    {
+        GateRef callResult = LowerCallRuntime(glue, RTSTUB_ID(ToBoolean), { value }, true);
+        builder_.Branch(builder_.IsSpecial(callResult, JSTaggedValue::VALUE_TRUE), &isTrue, &isFalse);
+    }
     builder_.Bind(&isTrue);
     {
         auto trueResult = flag ? builder_.TaggedTrue() : builder_.TaggedFalse();
