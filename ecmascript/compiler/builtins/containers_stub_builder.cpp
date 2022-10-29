@@ -69,7 +69,10 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
         {
             Label isCall(env);
             Label notCall(env);
+            Label isHeapObj(env);
             callbackFnHandle = GetCallArg0();
+            Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
+            Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
@@ -184,7 +187,10 @@ void ContainersStubBuilder::QueueCommonFuncCall(GateRef glue, GateRef thisValue,
         {
             Label isCall(env);
             Label notCall(env);
+            Label isHeapObj(env);
             callbackFnHandle = GetCallArg0();
+            Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
+            Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
@@ -287,7 +293,10 @@ void ContainersStubBuilder::DequeCommonFuncCall(GateRef glue, GateRef thisValue,
         {
             Label isCall(env);
             Label notCall(env);
+            Label isHeapObj(env);
             callbackFnHandle = GetCallArg0();
+            Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
+            Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
@@ -392,7 +401,10 @@ void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef this
         {
             Label isCall(env);
             Label notCall(env);
+            Label isHeapObj(env);
             callbackFnHandle = GetCallArg0();
+            Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
+            Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
