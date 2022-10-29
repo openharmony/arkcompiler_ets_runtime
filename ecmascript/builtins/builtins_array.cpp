@@ -716,6 +716,7 @@ JSTaggedValue BuiltinsArray::Every(EcmaRuntimeCallInfo *argv)
     JSTaggedValue callResult = GetTaggedBoolean(true);
     if (thisObjVal->IsStableJSArray(thread)) {
         callResult = JSStableArray::HandleEveryOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!callResult.ToBoolean()) {
             return GetTaggedBoolean(false);
         }
