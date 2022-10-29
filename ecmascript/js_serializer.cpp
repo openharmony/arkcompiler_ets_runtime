@@ -334,8 +334,9 @@ bool JSSerializer::WriteTaggedArray(const JSHandle<JSTaggedValue> &value)
         bufferSize_ = oldSize;
         return false;
     }
+    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < len; i++) {
-        JSHandle<JSTaggedValue> val(thread_, taggedarray->Get(i));
+        val.Update(taggedarray->Get(i));
         if (val->IsHole()) {
             WriteType(SerializationUID::JS_NULL);
         } else {
@@ -361,8 +362,9 @@ bool JSSerializer::WriteConstantPool(const JSHandle<JSTaggedValue> &value)
         return false;
     }
     uint32_t caccheLen = constpool->GetCacheLength();
+    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < caccheLen; i++) {
-        JSHandle<JSTaggedValue> val(thread_, constpool->Get(i));
+        val.Update(constpool->Get(i));
         if (val->IsHole()) {
             WriteType(SerializationUID::HOLE);
         } else {
@@ -588,13 +590,15 @@ bool JSSerializer::WriteJSMap(const JSHandle<JSTaggedValue> &value)
         bufferSize_ = oldSize;
         return false;
     }
+    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (int i = 0; i < size; i++) {
-        JSHandle<JSTaggedValue> key(thread_, map->GetKey(i));
+        key.Update(map->GetKey(i));
         if (!SerializeJSTaggedValue(key)) {
             bufferSize_ = oldSize;
             return false;
         }
-        JSHandle<JSTaggedValue> val(thread_, map->GetValue(i));
+        val.Update(map->GetValue(i));
         if (!SerializeJSTaggedValue(val)) {
             bufferSize_ = oldSize;
             return false;
@@ -619,8 +623,9 @@ bool JSSerializer::WriteJSSet(const JSHandle<JSTaggedValue> &value)
         bufferSize_ = oldSize;
         return false;
     }
+    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (int i = 0; i < size; i++) {
-        JSHandle<JSTaggedValue> val(thread_, set->GetValue(i));
+        val.Update(set->GetValue(i));
         if (!SerializeJSTaggedValue(val)) {
             bufferSize_ = oldSize;
             return false;
@@ -798,14 +803,17 @@ bool JSSerializer::IsNativeBindingObject(std::vector<JSTaggedValue> keyVector)
     if (keyVector.size() < 2) { // 2:detachSymbol, attachSymbol
         return false;
     }
-    [[maybe_unused]] JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> detach = env->GetDetachSymbol();
+    JSHandle<JSTaggedValue> attach = env->GetAttachSymbol();
+    JSMutableHandle<JSTaggedValue> detachKey(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> attachKey(thread_, JSTaggedValue::Undefined());
     uint32_t keyLength = keyVector.size();
     for (uint32_t i = 0; i < keyLength - 1; i++) {
         if (keyVector[i].IsSymbol() && keyVector[i + 1].IsSymbol()) {
-            JSHandle<JSTaggedValue> detach = env->GetDetachSymbol();
-            JSHandle<JSTaggedValue> attach = env->GetAttachSymbol();
-            if (JSTaggedValue::Equal(thread_, detach, JSHandle<JSTaggedValue>(thread_, keyVector[i])) ||
-                JSTaggedValue::Equal(thread_, attach, JSHandle<JSTaggedValue>(thread_, keyVector[i + 1]))) {
+            detachKey.Update(keyVector[i]);
+            attachKey.Update(keyVector[i + 1]);
+            if (JSTaggedValue::Equal(thread_, detach, detachKey) || JSTaggedValue::Equal(thread_, attach, attachKey)) {
                 return true;
             }
         }
@@ -841,14 +849,15 @@ bool JSSerializer::WriteAllKeys(const JSHandle<JSTaggedValue> &objValue)
         bufferSize_ = oldSize;
         return false;
     }
+    JSMutableHandle<JSTaggedValue> elementKey(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < elementsLength; i++) {
-        JSHandle<JSTaggedValue> key(thread_, keyVector[i]);
-        if (!SerializeJSTaggedValue(key)) {
+        elementKey.Update(keyVector[i]);
+        if (!SerializeJSTaggedValue(elementKey)) {
             bufferSize_ = oldSize;
             return false;
         }
         PropertyDescriptor desc(thread_);
-        JSObject::OrdinaryGetOwnProperty(thread_, obj, key, desc);
+        JSObject::OrdinaryGetOwnProperty(thread_, obj, elementKey, desc);
         if (!WriteDesc(desc)) {
             bufferSize_ = oldSize;
             return false;
@@ -872,18 +881,19 @@ bool JSSerializer::WriteAllKeys(const JSHandle<JSTaggedValue> &objValue)
         return false;
     }
     // Write keys' description attributes and related values
+    JSMutableHandle<JSTaggedValue> propertyKey(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < propertiesLength; i++) {
         if (keyVector.empty()) {
             bufferSize_ = oldSize;
             return false;
         }
-        JSHandle<JSTaggedValue> key(thread_, keyVector[i]);
-        if (!SerializeJSTaggedValue(key)) {
+        propertyKey.Update(keyVector[i]);
+        if (!SerializeJSTaggedValue(propertyKey)) {
             bufferSize_ = oldSize;
             return false;
         }
         PropertyDescriptor desc(thread_);
-        JSObject::OrdinaryGetOwnProperty(thread_, obj, key, desc);
+        JSObject::OrdinaryGetOwnProperty(thread_, obj, propertyKey, desc);
         if (!WriteDesc(desc)) {
             bufferSize_ = oldSize;
             return false;
