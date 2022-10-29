@@ -112,6 +112,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
+#include "ecmascript/aot_file_manager.h"
 
 namespace panda::ecmascript {
 using Number = builtins::BuiltinsNumber;
@@ -1387,9 +1388,8 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
         }
         case SnapshotType::AI: {
             JSTaggedValue item = JSTaggedValue(rootObjectAddr);
-            if (!isRootObjRelocate_ && item.IsTaggedArray()) {
-                TSManager *tsManager = vm_->GetTSManager();
-                tsManager->SetConstantPoolInfos(item);
+            if (!isRootObjRelocate_ && item.IsConstantPool()) {
+                vm_->GetAOTFileManager()->AddSnapshotConstantPool(item);
                 isRootObjRelocate_ = true;
             }
             break;
