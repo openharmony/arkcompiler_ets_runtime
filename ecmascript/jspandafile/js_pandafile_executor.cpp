@@ -39,10 +39,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
-    name = assetPath + "\\modules.abc";
+    name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
 #else
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
-    name = assetPath + "/modules.abc";
+    name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
 #endif
     }
@@ -102,10 +102,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
-    name = assetPath + "\\modules.abc";
+    name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
 #else
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
-    name = assetPath + "/modules.abc";
+    name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
     CString entry = JSPandaFile::ParseOhmUrl(filename);
     const JSPandaFile *jsPandaFile =
