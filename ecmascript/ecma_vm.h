@@ -25,6 +25,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/waiter_list.h"
+#include <mutex>
 
 namespace panda {
 class JSNApi;
@@ -401,13 +402,12 @@ public:
 
     void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
     {
+        os::memory::LockHolder lock(mutex_);
         auto thread = workerVm->GetJSThread();
         if (thread != nullptr) {
             auto tid = thread->GetThreadId();
-            if (tid != 0) {
-                if (hostVm != nullptr && workerVm != nullptr) {
-                    WorkerList_.emplace(tid, workerVm);
-                }
+            if (tid != 0 && hostVm != nullptr && workerVm != nullptr) {
+                WorkerList_.emplace(tid, workerVm);
             }
         }
     }
@@ -426,6 +426,7 @@ public:
 
     bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
     {
+        os::memory::LockHolder lock(mutex_);
         if (hostVm != nullptr && workerVm != nullptr) {
             auto tid = workerVm->GetJSThread()->GetThreadId();
             if (tid == 0) {return false;}
@@ -623,6 +624,7 @@ private:
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
     CMap<uint32_t, EcmaVM *> WorkerList_ {};
+    os::memory::Mutex mutex_;
 };
 }  // namespace ecmascript
 }  // namespace panda
