@@ -33,6 +33,7 @@ enable_hitrace = true
 enable_hilog = true
 enable_dump_in_faultlog = true
 enable_cow_array = true
+enable_coverage = false
 asan_lib_path = "/usr/lib/llvm-10/lib/clang/10.0.0/lib/linux"
 if (is_standard_system) {
   icu_part_name = "icu"
