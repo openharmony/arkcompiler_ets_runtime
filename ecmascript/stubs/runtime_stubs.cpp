@@ -18,6 +18,7 @@
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
@@ -44,6 +45,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
+#include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
@@ -2053,6 +2055,44 @@ DEF_RUNTIME_STUBS(LdObjByName)
     bool callGetter = GetArg(argv, argc, 2).IsTrue();
     JSTaggedValue undefined = GetArg(argv, argc, 3);
     return RuntimeLdObjByName(thread, receiver, propKey, callGetter, undefined).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
+{
+    RUNTIME_STUBS_HEADER(ContainerRBTreeForEach);
+    JSHandle<JSTaggedValue> node = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: param index
+    JSHandle<JSTaggedValue> callbackFnHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: param index
+    JSHandle<JSTaggedValue> thisArgHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: param index
+    JSHandle<JSTaggedValue> thisHandle = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: param index
+    JSHandle<JSTaggedValue> type = GetHArg<JSTaggedValue>(argv, argc, 4);  // 4: param index
+
+    ASSERT(node->IsRBTreeNode());
+    ASSERT(callbackFnHandle->IsCallable());
+    ASSERT(type->IsInt());
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    auto containersType = static_cast<kungfu::ContainersType>(type->GetInt());
+    JSMutableHandle<TaggedQueue> queue(thread, thread->GetEcmaVM()->GetFactory()->NewTaggedQueue(0));
+    JSMutableHandle<RBTreeNode> treeNode(thread, JSTaggedValue::Undefined());
+    queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, node)));
+    while (!queue->Empty()) {
+        treeNode.Update(queue->Pop(thread));
+        EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle,
+                                                                        undefined, 3); // 3: three args
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        info->SetCallArg(containersType == kungfu::ContainersType::HASHSET_FOREACH ?
+                         treeNode->GetKey() : treeNode->GetValue(), treeNode->GetKey(), thisHandle.GetTaggedValue());
+        JSTaggedValue funcResult = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult.GetRawData());
+        if (!treeNode->GetLeft().IsHole()) {
+            JSHandle<JSTaggedValue> left(thread, treeNode->GetLeft());
+            queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, left)));
+        }
+        if (!treeNode->GetRight().IsHole()) {
+            JSHandle<JSTaggedValue> right(thread, treeNode->GetRight());
+            queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, right)));
+        }
+    }
+    return JSTaggedValue::True().GetRawData();
 }
 
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
