@@ -358,7 +358,9 @@ public:
         }
         if (pos > strIndex) {
             std::string subStr = str.substr(strIndex, pos - strIndex);
-            value.push_back(std::move(subStr));
+            if (!subStr.empty()) {
+                value.push_back(std::move(subStr));
+            }
         }
         return value;
     }
