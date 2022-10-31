@@ -38,8 +38,7 @@ public:
                                                                 const JSHandle<SourceTextModule> &module,
                                                                 const JSHandle<JSTaggedValue> &moduleRequest);
     static JSHandle<SourceTextModule> HostResolveImportedModuleWithMerge(
-        JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest,
-        CVector<CString> &npmStack, bool &npm);
+        JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
 
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -52,12 +51,10 @@ public:
 
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-                                        CVector<JSHandle<SourceTextModule>> &stack, int index,
-                                        CVector<CString> &npmStack, bool npm);
+                                        CVector<JSHandle<SourceTextModule>> &stack, int index);
 
     // 15.2.1.16.4.2 ModuleDeclarationEnvironmentSetup ( module )
-    static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                                  CVector<CString> &npmStack);
+    static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
@@ -83,7 +80,8 @@ public:
     ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);
     ACCESSORS(EcmaModuleFilename, ECMA_MODULE_FILENAME, ECMA_MODULE_RECORDNAME);
     ACCESSORS(EcmaModuleRecordName, ECMA_MODULE_RECORDNAME, REQUESTED_MODULES_OFFSET);
-    ACCESSORS(RequestedModules, REQUESTED_MODULES_OFFSET, IMPORT_ENTRIES_OFFSET);
+    ACCESSORS(NpmKey, REQUESTED_MODULES_OFFSET, NPM_KEY_OFFSET);
+    ACCESSORS(RequestedModules, NPM_KEY_OFFSET, IMPORT_ENTRIES_OFFSET);
     ACCESSORS(ImportEntries, IMPORT_ENTRIES_OFFSET, LOCAL_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(LocalExportEntries, LOCAL_EXPORT_ENTTRIES_OFFSET, INDIRECT_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(IndirectExportEntries, INDIRECT_EXPORT_ENTTRIES_OFFSET, START_EXPORT_ENTTRIES_OFFSET);
