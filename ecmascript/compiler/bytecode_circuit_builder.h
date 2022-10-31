@@ -34,6 +34,7 @@
 
 namespace panda::ecmascript::kungfu {
 using VRegIDType = uint32_t;
+using ICSlotIdType = uint16_t;
 using ImmValueType = uint64_t;
 using EcmaOpcode = BytecodeInstruction::Opcode;
 
@@ -97,6 +98,28 @@ private:
     ImmValueType value_;
 };
 
+
+class ICSlotId {
+public:
+    explicit ICSlotId(ICSlotIdType id) : id_(id)
+    {
+    }
+    ~ICSlotId() = default;
+
+    void SetId(ICSlotIdType id)
+    {
+        id_ = id;
+    }
+
+    ICSlotIdType GetId() const
+    {
+        return id_;
+    }
+
+private:
+    ICSlotIdType id_;
+};
+
 class ConstDataId {
 public:
     explicit ConstDataId(ConstDataIDType type, uint16_t id)
@@ -145,6 +168,16 @@ public:
     bool IsClassLiteraId() const
     {
         return type_ == ConstDataIDType::ClassLiteralIDType;
+    }
+
+    bool IsObjectLiteralID() const
+    {
+        return type_ == ConstDataIDType::ObjectLiteralIDType;
+    }
+
+    bool IsArrayLiteralID() const
+    {
+        return type_ == ConstDataIDType::ArrayLiteralIDType;
     }
 
     BitField CaculateBitField() const
@@ -280,7 +313,7 @@ using BytecodeGraph = std::vector<BytecodeRegion>;
 
 struct BytecodeInfo {
     // set of id, immediate and read register
-    std::vector<std::variant<ConstDataId, Immediate, VirtualRegister>> inputs {};
+    std::vector<std::variant<ConstDataId, ICSlotId, Immediate, VirtualRegister>> inputs {};
     std::vector<VRegIDType> vregOut {}; // write register
     bool accIn {false}; // read acc
     bool accOut {false}; // write acc
@@ -490,14 +523,16 @@ public:
                                     MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
                                     const CompilationConfig* cconfig,
+                                    bool hasTypes,
                                     bool enableLog,
-                                    std::string name)
+                                    std::string name,
+                                    const CString &recordName)
         : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_, jsPandaFile),
-          typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(file_->HasTSTypes()),
+          typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(hasTypes),
           enableLog_(enableLog), pcToBCOffset_(methodPCInfo.pcToBCOffset),
           byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
-          frameStateBuilder_(&circuit_, methodLiteral), methodName_(name)
+          frameStateBuilder_(this, &circuit_, methodLiteral), methodName_(name), recordName_(recordName)
     {
     }
     ~BytecodeCircuitBuilder() = default;
@@ -597,26 +632,24 @@ public:
         }
     }
 
-    template <class Callback>
-    void ReverseEnumerateBlock(BytecodeRegion &bb, const Callback &cb)
-    {
-        auto pc = bb.end;
-        while (true) {
-            auto bytecodeInfo = GetBytecodeInfo(pc);
-            bool ret = cb(pc, bytecodeInfo);
-            if (!ret) {
-                break;
-            }
-            pc = byteCodeCurPrePc_.at(pc);
-            if (pc <= bb.start || pc >= bb.end) {
-                break;
-            }
-        }
-    }
-
     const std::map<const uint8_t *, int32_t> &GetPcToBCOffset() const
     {
         return pcToBCOffset_;
+    }
+
+    const BytecodeRegion &GetBasicBlockById(size_t id) const
+    {
+        return graph_[id];
+    }
+
+    size_t GetBasicBlockCount() const
+    {
+        return graph_.size();
+    }
+
+    const std::map<uint8_t *, uint8_t *> &GetByteCodeCurPrePc() const
+    {
+        return byteCodeCurPrePc_;
     }
 
 private:
@@ -649,9 +682,6 @@ private:
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
     GateRef RenameVariable(const size_t bbId, const uint8_t *end, const uint16_t reg, const bool acc);
     void BuildCircuit();
-    void BuildDfsList();
-    void FrameStateReplacePhi(GateRef phi, size_t reg);
-    void BuildFrameState();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
     void PrintGraph();
@@ -685,7 +715,7 @@ private:
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
     FrameStateBuilder frameStateBuilder_;
     std::string methodName_;
-    std::vector<size_t> bbDfsList_;
+    const CString &recordName_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

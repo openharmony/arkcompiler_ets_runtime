@@ -56,7 +56,7 @@ struct ARKCallsite {
     uint32_t CalStackMapSize() const;
 };
 
-struct ARKCallsitePackInfo {
+struct ARKCallsiteAOTFileInfo {
     StackMapSecHead secHead;
     std::vector<ARKCallsite> callsites;
 };

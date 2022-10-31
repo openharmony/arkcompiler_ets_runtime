@@ -458,11 +458,11 @@ public:
     {
         wasted_ = 0;
     }
-    void IncreaseWasted(size_t size)
+    void IncreaseWasted(uint64_t size)
     {
         wasted_ += size;
     }
-    size_t GetWastedSize()
+    uint64_t GetWastedSize()
     {
         return wasted_;
     }
@@ -567,7 +567,7 @@ private:
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingRSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
-    size_t wasted_;
+    uint64_t wasted_;
     os::memory::Mutex lock_;
 
     friend class Snapshot;

@@ -63,6 +63,15 @@ public:
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
+    static void JSFunctionReentry(ExtendedAssembler *assembler);
+
+    static void JSCallNew(ExtendedAssembler *assembler);
+
+    static void JSCallNewWithArgV(ExtendedAssembler *assembler);
+
+    static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
+
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,

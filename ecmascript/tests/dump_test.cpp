@@ -787,7 +787,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::TAGGED_ARRAY:
-            case JSType::LEXICAL_ENV: {
+            case JSType::LEXICAL_ENV:
+            case JSType::AOT_LITERAL_INFO: {
                 JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(4);
                 DUMP_FOR_HANDLE(taggedArray)
                 break;
@@ -799,6 +800,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::TAGGED_DICTIONARY: {
                 JSHandle<TaggedArray> dict = factory->NewDictionaryArray(4);
+                DUMP_FOR_HANDLE(dict)
+                break;
+            }
+            case JSType::COW_TAGGED_ARRAY: {
+                JSHandle<COWTaggedArray> dict = factory->NewCOWTaggedArray(4);
                 DUMP_FOR_HANDLE(dict)
                 break;
             }
@@ -991,6 +997,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(arrayType)
                 break;
             }
+            case JSType::TS_ITERATOR_INSTANCE_TYPE: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSIteratorInstanceType::SIZE, 2U);
+                JSHandle<TSIteratorInstanceType> iteratorInstanceType = factory->NewTSIteratorInstanceType();
+                DUMP_FOR_HANDLE(iteratorInstanceType)
+                break;
+            }
             case JSType::JS_API_ARRAY_LIST: {
                 // 1 : 1 dump fileds number
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIArrayList::SIZE, 1U);
@@ -1027,7 +1039,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_HASHMAP_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashMapIterator::SIZE, 3U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashMapIterator::SIZE, 4U);
                 JSHandle<JSAPIHashMap> jsHashMap = NewJSAPIHashMap(thread, factory);
                 JSHandle<JSAPIHashMapIterator> jsHashMapIter =
                     factory->NewJSAPIHashMapIterator(jsHashMap, IterationKind::KEY);
@@ -1035,7 +1047,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_HASHSET_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 4U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 5U);
                 JSHandle<JSAPIHashSet> jsHashSet = NewJSAPIHashSet(thread, factory);
                 JSHandle<JSAPIHashSetIterator> jsHashSetIter =
                     factory->NewJSAPIHashSetIterator(jsHashSet, IterationKind::KEY);
@@ -1195,7 +1207,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::JS_API_LINKED_LIST_ITERATOR: {
                 // 2 : 2 dump fileds number
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIListIterator::SIZE, 2U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPILinkedListIterator::SIZE, 2U);
                 JSHandle<JSAPILinkedList> jsAPILinkedList = NewJSAPILinkedList(thread, factory);
                 JSHandle<JSAPILinkedListIterator> jsAPILinkedListIter =
                     factory->NewJSAPILinkedListIterator(jsAPILinkedList);

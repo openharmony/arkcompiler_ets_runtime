@@ -34,10 +34,15 @@ public:
     static JSHandle<JSTaggedValue> GetCurrentNode(JSThread *thread, JSHandle<JSAPIHashMapIterator> &iter,
                                                   JSMutableHandle<TaggedQueue> &queue,
                                                   JSHandle<TaggedHashArray> &tableArr);
+    static JSHandle<JSTaggedValue> FastGetCurrentNode(JSThread *thread,
+                                                      JSHandle<JSAPIHashMapIterator> &iter,
+                                                      JSMutableHandle<TaggedQueue> &queue,
+                                                      JSHandle<TaggedHashArray> &tableArr);
 
     static constexpr size_t ITERATED_HASHMAP_OFFSET = JSObject::SIZE;
     ACCESSORS(IteratedHashMap, ITERATED_HASHMAP_OFFSET, TAGGED_QUEUE_OFFSET);
-    ACCESSORS(TaggedQueue, TAGGED_QUEUE_OFFSET, NEXT_INDEX_OFFSET);
+    ACCESSORS(TaggedQueue, TAGGED_QUEUE_OFFSET, CURRENT_NODE_RESULT);
+    ACCESSORS(CurrentNodeResult, CURRENT_NODE_RESULT, NEXT_INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(NextIndex, uint32_t, NEXT_INDEX_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);

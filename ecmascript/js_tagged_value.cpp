@@ -93,6 +93,12 @@ bool JSTaggedValue::IsInteger() const
     return true;
 }
 
+bool JSTaggedValue::IsJSCOWArray() const
+{
+    // Elements of JSArray are shared and properties are not yet.
+    return IsJSArray() && JSArray::Cast(GetTaggedObject())->GetElements().IsCOWArray();
+}
+
 bool JSTaggedValue::WithinInt32() const
 {
     if (!IsNumber()) {

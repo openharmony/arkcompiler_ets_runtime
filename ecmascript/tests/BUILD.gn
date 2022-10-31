@@ -13,7 +13,6 @@
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
-import("//build/test.gni")
 
 module_output_path = "arkcompiler/ets_runtime"
 
@@ -123,8 +122,8 @@ host_unittest_action("EcmaVm_002_Test") {
   ]
 
   deps = [
-    "$third_party_gn_path/icu/icu4c:shared_icui18n",
-    "$third_party_gn_path/icu/icu4c:shared_icuuc",
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]

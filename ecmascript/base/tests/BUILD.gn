@@ -13,7 +13,6 @@
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
-import("//build/test.gni")
 
 module_output_path = "arkcompiler/ets_runtime"
 
@@ -30,13 +29,19 @@ host_unittest_action("BaseTest") {
     "json_parser_test.cpp",
     "json_stringifier_test.cpp",
     "number_helper_test.cpp",
+    "string_helper_test.cpp",
     "typed_array_helper_test.cpp",
     "utf_helper_test.cpp",
   ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [
+    "//arkcompiler/ets_runtime:ecma_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]

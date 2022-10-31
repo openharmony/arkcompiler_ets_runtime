@@ -155,8 +155,9 @@ public:
     GateRef TaggedIsException(GateRef x);
     GateRef TaggedIsSpecial(GateRef x);
     GateRef TaggedIsHeapObject(GateRef x);
+    GateRef TaggedIsAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
-    GateRef InYoungGeneration(GateRef x);
+    GateRef InYoungGeneration(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     GateRef TaggedIsPropertyBox(GateRef x);
@@ -210,9 +211,8 @@ public:
     GateRef Int64UnsignedLessThanOrEqual(GateRef x, GateRef y);
     GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     // cast operation
-    GateRef ChangeInt64ToInt32(GateRef val);
     GateRef ChangeInt64ToIntPtr(GateRef val);
-    GateRef ChangeInt32ToIntPtr(GateRef val);
+    GateRef ZExtInt32ToPtr(GateRef val);
     GateRef ChangeIntPtrToInt32(GateRef val);
     // math operation
     GateRef Sqrt(GateRef x);
@@ -248,6 +248,8 @@ public:
     GateRef IsConstructor(GateRef object);
     GateRef IsBase(GateRef func);
     GateRef IsJsArray(GateRef obj);
+    GateRef IsJsCOWArray(GateRef obj);
+    GateRef IsCOWArray(GateRef obj);
     GateRef IsJSObject(GateRef obj);
     GateRef IsWritable(GateRef attr);
     GateRef IsAccessor(GateRef attr);
@@ -255,6 +257,10 @@ public:
     GateRef IsField(GateRef attr);
     GateRef IsNonExist(GateRef attr);
     GateRef IsJSAPIVector(GateRef attr);
+    GateRef IsJSAPIStack(GateRef obj);
+    GateRef IsJSAPIPlainArray(GateRef obj);
+    GateRef IsJSAPIQueue(GateRef obj);
+    GateRef IsJSAPIDeque(GateRef obj);
     GateRef GetTarget(GateRef proxyObj);
     GateRef HandlerBaseIsAccessor(GateRef attr);
     GateRef HandlerBaseIsJSArray(GateRef attr);
@@ -344,6 +350,7 @@ public:
     GateRef ComputePropertyCapacityInJSObj(GateRef oldLength);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
     GateRef TaggedToRepresentation(GateRef value);
+    GateRef LdGlobalRecord(GateRef glue, GateRef key);
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef cell);
     GateRef LoadElement(GateRef receiver, GateRef key);
@@ -370,7 +377,7 @@ public:
     GateRef ChangeFloat64ToInt32(GateRef x);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
     GateRef Int64ToTaggedPtr(GateRef x);
-    GateRef ChangeInt16ToInt8(GateRef x);
+    GateRef TruncInt16ToInt8(GateRef x);
     GateRef CastInt64ToFloat64(GateRef x);
     GateRef SExtInt32ToInt64(GateRef x);
     GateRef SExtInt16ToInt64(GateRef x);
@@ -427,6 +434,10 @@ public:
     template<OpCode::Op Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key);
+
+    inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);
+
     // fast path
     GateRef FastEqual(GateRef left, GateRef right);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
@@ -478,6 +489,9 @@ public:
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
+    void CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, GateRef actualNumArgs,
+                      GateRef callField, GateRef method, Label* notFastBuiltins, Label* exit, Variable* result,
+                      std::initializer_list<GateRef> args, JSCallMode mode);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
     inline void PGOProfiler(GateRef glue, GateRef func);

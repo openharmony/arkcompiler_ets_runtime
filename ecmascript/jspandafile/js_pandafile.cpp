@@ -123,20 +123,6 @@ void JSPandaFile::InitializeUnMergedPF()
         if (!info.isCjs && std::strcmp(COMMONJS_CLASS, desc) == 0) {
             info.isCjs = true;
         }
-
-        if (!HasTSTypes() && std::strcmp(TS_TYPES_CLASS, desc) == 0) {
-            cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
-                panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
-                const char *fieldName = utf::Mutf8AsCString(sd.data);
-                if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
-                    hasTSTypes_ = fieldAccessor.GetValue<uint8_t>().value() != 0;
-                }
-                if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
-                    typeSummaryOffset_ = fieldAccessor.GetValue<uint32_t>().value();
-                }
-            });
-        }
     }
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
     methodLiterals_ =
@@ -154,20 +140,6 @@ void JSPandaFile::InitializeMergedPF()
         panda_file::ClassDataAccessor cda(*pf_, classId);
         numMethods_ += cda.GetMethodsNumber();
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (!HasTSTypes() && std::strcmp(TS_TYPES_CLASS, desc.c_str()) == 0) {
-            cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
-                panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
-                const char *fieldName = utf::Mutf8AsCString(sd.data);
-                if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
-                    hasTSTypes_ = fieldAccessor.GetValue<uint8_t>().value() != 0;
-                }
-                if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
-                    typeSummaryOffset_ = fieldAccessor.GetValue<uint32_t>().value();
-                }
-            });
-            continue;
-        }
         // get record info
         JSRecordInfo info;
         bool hasCjsFiled = false;
@@ -178,10 +150,12 @@ void JSPandaFile::InitializeMergedPF()
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0) {
                 hasCjsFiled = true;
                 info.isCjs = fieldAccessor.GetValue<bool>().value();
-            } else {
-                if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
-                    info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
-                }
+            } else if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
+                info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
+            } else if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
+                info.hasTSTypes = fieldAccessor.GetValue<uint8_t>().value() != 0;
+            } else if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
+                info.typeSummaryOffset = fieldAccessor.GetValue<uint32_t>().value();
             }
         });
         if (hasCjsFiled) {

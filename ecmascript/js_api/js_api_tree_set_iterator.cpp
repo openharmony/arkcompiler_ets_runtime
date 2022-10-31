@@ -43,10 +43,10 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
     // Let it be [[IteratedSet]].
     JSHandle<JSTaggedValue> iteratedSet(thread, iter->GetIteratedSet());
 
-    // If it is undefined, return CreateIterResultObject(undefined, true).
+    // If it is undefined, return undefinedIteratorResult.
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratedSet->IsUndefined()) {
-        return JSIterator::CreateIterResultObject(thread, globalConst->GetHandledUndefined(), true).GetTaggedValue();
+        return globalConst->GetUndefinedIterResult();
     }
     JSHandle<TaggedTreeSet> set(thread, JSHandle<JSAPITreeSet>::Cast(iteratedSet)->GetTreeSet());
     uint32_t elements = static_cast<uint32_t>(set->NumberOfElements());
@@ -80,7 +80,7 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
 
     // Set [[IteratedSet]] to undefined.
     iter->SetIteratedSet(thread, JSTaggedValue::Undefined());
-    return JSIterator::CreateIterResultObject(thread, globalConst->GetHandledUndefined(), true).GetTaggedValue();
+    return globalConst->GetUndefinedIterResult();
 }
 
 JSHandle<JSTaggedValue> JSAPITreeSetIterator::CreateTreeSetIterator(JSThread *thread,

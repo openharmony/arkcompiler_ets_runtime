@@ -140,6 +140,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "TaggedDictionary";
         case JSType::CONSTANT_POOL:
             return "ConstantPool";
+        case JSType::COW_TAGGED_ARRAY:
+            return "COWArray";
         case JSType::STRING:
             return "BaseString";
         case JSType::JS_NATIVE_POINTER:
@@ -354,6 +356,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "TSFunctionType";
         case JSType::TS_ARRAY_TYPE:
             return "TSArrayType";
+        case JSType::TS_ITERATOR_INSTANCE_TYPE:
+            return "TSIteratorInstanceType";
         case JSType::JS_API_ARRAYLIST_ITERATOR:
             return "JSArraylistIterator";
         case JSType::LINKED_NODE:
@@ -420,6 +424,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "CommonJSRequire";
         case JSType::METHOD:
             return "Method";
+        case JSType::AOT_LITERAL_INFO:
+            return "AOTLiteralInfo";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);
@@ -563,6 +569,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::TAGGED_DICTIONARY:
         case JSType::TEMPLATE_MAP:
         case JSType::LEXICAL_ENV:
+        case JSType::COW_TAGGED_ARRAY:
             DumpArrayClass(TaggedArray::Cast(obj), os);
             break;
         case JSType::CONSTANT_POOL:
@@ -868,6 +875,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::TS_ARRAY_TYPE:
             TSArrayType::Cast(obj)->Dump(os);
+            break;
+        case JSType::TS_ITERATOR_INSTANCE_TYPE:
+            TSIteratorInstanceType::Cast(obj)->Dump(os);
             break;
         case JSType::LINKED_NODE:
         case JSType::RB_TREENODE:
@@ -2122,6 +2132,11 @@ void LexicalEnv::Dump(std::ostream &os) const
     DumpArrayClass(this, os);
 }
 
+void COWTaggedArray::Dump(std::ostream &os) const
+{
+    DumpArrayClass(this, os);
+}
+
 // NOLINTNEXTLINE(readability-function-size)
 void GlobalEnv::Dump(std::ostream &os) const
 {
@@ -3184,6 +3199,32 @@ void TSArrayType::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void TSIteratorInstanceType::Dump(std::ostream &os) const
+{
+    os << " - Dump IteratorInstance Type - " << "\n";
+    os << " - TSIteratorInstanceType globalTSTypeRef: ";
+    GlobalTSTypeRef gt = GetGT();
+    uint64_t globalTSTypeRef = gt.GetType();
+    os << globalTSTypeRef;
+    os << "\n";
+    os << " - TSIteratorInstanceType moduleId: ";
+    uint32_t moduleId = gt.GetModuleId();
+    os << moduleId;
+    os << "\n";
+    os << " - TSIteratorInstanceType localTypeId: ";
+    uint32_t localTypeId = gt.GetLocalId();
+    os << localTypeId;
+    os << "\n";
+
+    os << " - TSIteratorInstanceType KindGT: ";
+    os << GetKindGT().GetType();
+    os << "\n";
+
+    os << " - TSIteratorInstanceType ElementGT: ";
+    os << GetElementGT().GetType();
+    os << "\n";
+}
+
 void SourceTextModule::Dump(std::ostream &os) const
 {
     os << " - Environment: ";
@@ -3440,6 +3481,7 @@ static void DumpObject(TaggedObject *obj,
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::COW_TAGGED_ARRAY:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
             return;
         case JSType::CONSTANT_POOL:
@@ -3841,6 +3883,9 @@ static void DumpObject(TaggedObject *obj,
             case JSType::TS_ARRAY_TYPE:
                 TSArrayType::Cast(obj)->DumpForSnapshot(vec);
                 return;
+            case JSType::TS_ITERATOR_INSTANCE_TYPE:
+                TSIteratorInstanceType::Cast(obj)->DumpForSnapshot(vec);
+                return;
             case JSType::METHOD:
                 Method::Cast(obj)->DumpForSnapshot(vec);
                 return;
@@ -4098,6 +4143,11 @@ void Program::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &ve
 }
 
 void ConstantPool::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    DumpArrayClass(this, vec);
+}
+
+void COWTaggedArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     DumpArrayClass(this, vec);
 }
@@ -4954,6 +5004,12 @@ void TSFunctionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValu
 void TSArrayType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("ParameterTypeRef"), JSTaggedValue(GetElementGT().GetType())));
+}
+
+void TSIteratorInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("kindGT"), JSTaggedValue(GetKindGT().GetType())));
+    vec.push_back(std::make_pair(CString("elementGT"), JSTaggedValue(GetElementGT().GetType())));
 }
 
 void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

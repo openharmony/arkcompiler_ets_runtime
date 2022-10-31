@@ -148,8 +148,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     snapshotFileName_ = options_.GetSnapshotFile().c_str();
     frameworkAbcFileName_ = options_.GetFrameworkAbcFile().c_str();
     options_.ParseAsmInterOption();
-
-    debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>();
 }
 
 bool EcmaVM::Initialize()
@@ -171,6 +169,7 @@ bool EcmaVM::Initialize()
         LOG_FULL(FATAL) << "alloc factory_ failed";
         UNREACHABLE();
     }
+    debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
 
     if (!options_.EnableSnapshotDeserialize()) {
@@ -184,6 +183,7 @@ bool EcmaVM::Initialize()
         JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
         globalEnv->Init(thread_);
         globalEnv_ = globalEnv.GetTaggedValue();
+        thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(globalEnv.GetTaggedType()));
         Builtins builtins;
         builtins.Initialize(globalEnv, thread_);
         if (!WIN_OR_MAC_OR_IOS_PLATFORM && options_.EnableSnapshotSerialize()) {
@@ -208,7 +208,6 @@ bool EcmaVM::Initialize()
     GenerateInternalNativeMethods();
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
-    debuggerManager_->Initialize(this);
     tsManager_ = new TSManager(this);
     tsManager_->Initialize();
     quickFixManager_ = new QuickFixManager();
@@ -408,23 +407,49 @@ bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
 }
 
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                              const JSPandaFile *jsPandaFile)
+                                              const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
-    aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile);
-    std::vector<JSTaggedType> args(7, JSTaggedValue::Undefined().GetRawData()); // 7: number of para
+    aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile, entryPoint);
+    size_t argsNum = 7; // 7: number of para
+    size_t declareNumArgs = argsNum - 1;
+    size_t actualNumArgs = argsNum - 1;
+    std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
     args[0] = mainFunc.GetTaggedValue().GetRawData();
-    args[2] = thisArg.GetTaggedValue().GetRawData();  // 2: parameter of this
+    args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
+    const JSTaggedType *prevFp = thread_->GetCurrentSPFrame();
+    JSTaggedValue res = ExecuteAot(argsNum, mainFunc, prevFp, actualNumArgs, declareNumArgs, args);
+    return res;
+}
+
+JSTaggedValue EcmaVM::ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, const JSTaggedType *prevFp,
+                                 size_t actualNumArgs, size_t declareNumArgs, std::vector<JSTaggedType> &args)
+{
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    JSTaggedValue env = mainFunc->GetLexicalEnv();
-    Method *method = mainFunc->GetCallTarget();
-    args[6] = env.GetRawData(); // 6: last arg is env.
+    JSTaggedValue env = callTarget->GetLexicalEnv();
+    Method *method = callTarget->GetCallTarget();
+    args[argsNum - 1] = env.GetRawData();
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
-                                                            reinterpret_cast<uintptr_t>(thread_->GetCurrentSPFrame()),
-                                                            static_cast<uint32_t>(args.size()) - 1,
-                                                            static_cast<uint32_t>(args.size()) - 1,
+                                                            reinterpret_cast<uintptr_t>(prevFp),
+                                                            declareNumArgs,
+                                                            actualNumArgs,
                                                             args.data(),
                                                             method->GetCodeEntryOrLiteral());
+    if (thread_->HasPendingException()) {
+        return thread_->GetException();
+    }
     return JSTaggedValue(res);
+}
+
+JSTaggedValue EcmaVM::AotReentry(size_t actualNumArgs, JSTaggedType *args, bool isNew)
+{
+    const JSTaggedType *prevFp = thread_->GetLastLeaveFrame();
+    auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionReentry);
+    auto res = reinterpret_cast<JSFunctionReentry>(entry)(thread_->GetGlueAddr(),
+                                                          actualNumArgs,
+                                                          args,
+                                                          reinterpret_cast<uintptr_t>(prevFp),
+                                                          isNew);
+    return res;
 }
 
 Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint)
@@ -456,6 +481,8 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
     } else {
+        // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
+        // which can avoid the problem of larger memory caused by the new slot
         JSHandle<EcmaString> recordName =  factory_->NewFromUtf8(entryPoint.data());
         func->SetModule(thread_, recordName);
     }
@@ -463,7 +490,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     if (jsPandaFile->IsLoadedAOT()) {
         thread_->SetPrintBCOffset(true);
         EcmaRuntimeStatScope runtimeStatScope(this);
-        result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile);
+        result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
     } else {
         if (jsPandaFile->IsCjs(entryPoint.data())) {
             CJSExecution(func, global, jsPandaFile);
@@ -494,7 +521,25 @@ JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t inde
     if (iter == cachedConstpools_.end()) {
         return JSTaggedValue::Hole();
     }
-    return iter->second[index];
+    auto constpoolIter = iter->second.find(index);
+    if (constpoolIter == iter->second.end()) {
+        return JSTaggedValue::Hole();
+    }
+    return constpoolIter->second;
+}
+
+JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
+{
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+    JSTaggedValue constpool = FindConstpool(jsPandaFile, index);
+    if (constpool.IsHole()) {
+        JSHandle<ConstantPool> newConstpool = ConstantPool::CreateConstPool(this, jsPandaFile, id);
+        AddConstpool(jsPandaFile, newConstpool.GetTaggedValue(), index);
+        return newConstpool;
+    }
+
+    return JSHandle<ConstantPool>(thread_, constpool);
 }
 
 void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile)
@@ -535,15 +580,16 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     return;
 }
 
-void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index, int32_t total)
+void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index)
 {
     ASSERT(constpool.IsConstantPool());
     if (cachedConstpools_.find(jsPandaFile) == cachedConstpools_.end()) {
-        cachedConstpools_[jsPandaFile] = CVector<JSTaggedValue>(total);
-        cachedConstpools_[jsPandaFile].reserve(total);
+        cachedConstpools_[jsPandaFile] = CMap<int32_t, JSTaggedValue>();
     }
+    auto &constpoolMap = cachedConstpools_[jsPandaFile];
+    ASSERT(constpoolMap.find(index) == constpoolMap.end());
 
-    cachedConstpools_[jsPandaFile][index] = constpool;
+    constpoolMap.insert({index, constpool});
 }
 
 JSHandle<JSTaggedValue> EcmaVM::GetAndClearEcmaUncaughtException() const
@@ -622,19 +668,25 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
     auto iterator = cachedConstpools_.begin();
     while (iterator != cachedConstpools_.end()) {
         auto &constpools = iterator->second;
-        auto size = constpools.size();
-        for (uint32_t i = 0; i < size; i++) {
-            if (constpools[i].IsHeapObject()) {
-                TaggedObject *obj = constpools[i].GetTaggedObject();
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                TaggedObject *obj = constpoolVal.GetTaggedObject();
                 auto fwd = visitor(obj);
                 if (fwd == nullptr) {
-                    auto constantPool = ConstantPool::Cast(obj);
-                    JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
-                    constpools[i] = JSTaggedValue::Hole();
+                    constpoolIter = constpools.erase(constpoolIter);
+                    continue;
                 }
             }
+            ++constpoolIter;
         }
-        ++iterator;
+        if (constpools.size() == 0) {
+            JSPandaFileManager::RemoveJSPandaFile(const_cast<JSPandaFile *>(iterator->first));
+            iterator = cachedConstpools_.erase(iterator);
+        } else {
+            ++iterator;
+        }
     }
 }
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
@@ -644,7 +696,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     }
     heap_->ResetNativeBindingSize();
     // array buffer
-    for (auto iter = nativePointerList_.begin(); iter != nativePointerList_.end();) {
+    auto iter = nativePointerList_.begin();
+    while (iter != nativePointerList_.end()) {
         JSNativePointer *object = *iter;
         auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
         if (fwd == nullptr) {
@@ -660,23 +713,30 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     }
 
     // program maps
-    for (auto iter = cachedConstpools_.begin(); iter != cachedConstpools_.end();) {
-        auto &constpools = iter->second;
-        auto size = constpools.size();
-        for (uint32_t i = 0; i < size; i++) {
-            if (constpools[i].IsHeapObject()) {
-                TaggedObject *obj = constpools[i].GetTaggedObject();
+    auto iterator = cachedConstpools_.begin();
+    while (iterator != cachedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                TaggedObject *obj = constpoolVal.GetTaggedObject();
                 auto fwd = visitor(obj);
                 if (fwd == nullptr) {
-                    auto constantPool = ConstantPool::Cast(obj);
-                    JSPandaFileManager::RemoveJSPandaFile(constantPool->GetJSPandaFile());
-                    constpools[i] = JSTaggedValue::Hole();
+                    constpoolIter = constpools.erase(constpoolIter);
+                    continue;
                 } else if (fwd != obj) {
-                    constpools[i] = JSTaggedValue(fwd);
+                    constpoolIter->second = JSTaggedValue(fwd);
                 }
             }
+            ++constpoolIter;
         }
-        ++iter;
+        if (constpools.size() == 0) {
+            JSPandaFileManager::RemoveJSPandaFile(const_cast<JSPandaFile *>(iterator->first));
+            iterator = cachedConstpools_.erase(iterator);
+        } else {
+            ++iterator;
+        }
     }
 }
 
@@ -780,8 +840,8 @@ void EcmaVM::LoadAOTFiles()
     std::string anFile = options_.GetAOTOutputFile() + ".an";
     aotFileManager_->LoadAnFile(anFile);
 
-    std::string etsoFile = options_.GetAOTOutputFile() + ".etso";
-    aotFileManager_->LoadSnapshotFile(etsoFile);
+    std::string aiFile = options_.GetAOTOutputFile() + ".ai";
+    aotFileManager_->LoadSnapshotFile(aiFile);
 }
 
 #if !WIN_OR_MAC_OR_IOS_PLATFORM

@@ -27,27 +27,12 @@ static T *InitializeMemory(T *mem, Args... args)
     return new (mem) T(std::forward<Args>(args)...);
 }
 
-const CString BytecodeInfoCollector::GetEntryFunName(const std::string_view &entryPoint) const
-{
-    CString methodName;
-    auto pos = entryPoint.find_last_of("::");
-    if (pos != std::string_view::npos) {
-        methodName = entryPoint.substr(pos + 1);
-    } else {
-        // default use func_main_0 as entryPoint
-        methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
-    }
-    return methodName;
-}
-
-void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
+void BytecodeInfoCollector::ProcessClasses()
 {
     ASSERT(jsPandaFile_ != nullptr && jsPandaFile_->GetMethodLiterals() != nullptr);
     MethodLiteral *methods = jsPandaFile_->GetMethodLiterals();
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     size_t methodIdx = 0;
-    panda_file::File::StringData sd = {static_cast<uint32_t>(methodName.size()),
-                                       reinterpret_cast<const uint8_t *>(methodName.c_str())};
     std::map<const uint8_t *, size_t> processedInsns;
     Span<const uint32_t> classIndexes = jsPandaFile_->GetClasses();
 
@@ -57,7 +42,8 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns, &sd, methodName]
+        CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
+        cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns, &desc]
             (panda_file::MethodDataAccessor &mda) {
             auto codeId = mda.GetCodeId();
             auto methodId = mda.GetMethodId();
@@ -67,11 +53,12 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
             panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
             auto methodOffset = methodId.GetOffset();
-
-            uint32_t mainMethodIndex = jsPandaFile_->GetMainMethodIndex();
-            if (mainMethodIndex == 0 && pf->GetStringData(mda.GetNameId()) == sd) {
-                jsPandaFile_->UpdateMainMethodIndex(methodOffset, methodName);
-                bytecodeInfo_.mainMethodIndex = methodOffset;
+            CString name = reinterpret_cast<const char *>(pf->GetStringData(mda.GetNameId()).data);
+            if (JSPandaFile::IsEntryOrPatch(name)) {
+                const CString recordName = jsPandaFile_->ParseEntryPoint(desc);
+                jsPandaFile_->UpdateMainMethodIndex(methodOffset, recordName);
+                bytecodeInfo_.mainMethodIndexes.emplace_back(methodOffset);
+                bytecodeInfo_.recordNames.emplace_back(recordName);
             }
 
             InitializeMemory(methodLiteral, jsPandaFile_, methodId);
@@ -113,7 +100,7 @@ void BytecodeInfoCollector::ProcessClasses(const CString &methodName)
                 if (jsPandaFile_->IsNewVersion()) {
                     CollectMethodPcsFromNewBc(codeSize, insns, methodLiteral);
                 } else {
-                    CollectMethodPcs(codeSize, insns, methodLiteral);
+                    CollectMethodPcs(codeSize, insns, methodLiteral, jsPandaFile_->ParseEntryPoint(desc));
                 }
                 processedInsns[insns] = bytecodeInfo_.methodPcInfos.size() - 1;
             }
@@ -168,7 +155,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromNewBc(const uint32_t insSz, cons
 }
 
 void BytecodeInfoCollector::CollectMethodPcs(const uint32_t insSz, const uint8_t *insArr,
-                                             const MethodLiteral *method)
+                                             const MethodLiteral *method, const CString &entryPoint)
 {
     [[maybe_unused]]bool isNewVersion = jsPandaFile_->IsNewVersion();
     auto bcIns = OldBytecodeInst(insArr);
@@ -180,7 +167,7 @@ void BytecodeInfoCollector::CollectMethodPcs(const uint32_t insSz, const uint8_t
     uint8_t *curPc = nullptr;
     uint8_t *prePc = nullptr;
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-        TranslateBCIns(bcIns, method);
+        TranslateBCIns(bcIns, method, entryPoint);
         auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
         auto nextInst = bcIns.GetNext();
         FixOpcode(const_cast<MethodLiteral *>(method), bcIns);
@@ -1406,9 +1393,11 @@ void BytecodeInfoCollector::FixInstructionId32(const OldBytecodeInst &inst, uint
     }
 }
 
-void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const MethodLiteral *method)
+void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const MethodLiteral *method,
+                                           const CString &entryPoint)
 {
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
+    const CUnorderedMap<uint32_t, uint64_t> *constpoolMap = jsPandaFile_->GetConstpoolMapByReocrd(entryPoint);
     if (bcIns.HasFlag(OldBytecodeInst::Flags::STRING_ID) &&
         OldBytecodeInst::HasId(OldBytecodeInst::GetFormat(bcIns.GetOpcode()), 0)) {
         auto index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::STRING, bcIns.GetId());
@@ -1421,19 +1410,20 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
             case OldBytecodeInst::Opcode::ECMA_DEFINEFUNCDYN_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
                 CollectInnerMethods(method, methodId);
-                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::BASE_FUNCTION, methodId);
+                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::BASE_FUNCTION, methodId, constpoolMap);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINENCFUNCDYN_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
                 CollectInnerMethods(method, methodId);
-                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::NC_FUNCTION, methodId);
+                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::NC_FUNCTION, methodId, constpoolMap);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINEGENERATORFUNC_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
                 CollectInnerMethods(method, methodId);
-                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId);
+                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::GENERATOR_FUNCTION, methodId,
+                                                              constpoolMap);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCGENERATORFUNC_PREF_ID16_IMM16_V8:
@@ -1445,13 +1435,13 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
             case OldBytecodeInst::Opcode::ECMA_DEFINEASYNCFUNC_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
                 CollectInnerMethods(method, methodId);
-                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::ASYNC_FUNCTION, methodId);
+                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::ASYNC_FUNCTION, methodId, constpoolMap);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_DEFINEMETHOD_PREF_ID16_IMM16_V8:
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
                 CollectInnerMethods(method, methodId);
-                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId);
+                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId, constpoolMap);
                 FixInstructionId32(bcIns, index);
                 break;
             case OldBytecodeInst::Opcode::ECMA_CREATEOBJECTWITHBUFFER_PREF_IMM16:
@@ -1459,7 +1449,7 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
                 auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_IMM16>();
                 CollectInnerMethodsFromLiteral(method, imm);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::OBJECT_LITERAL,
-                    static_cast<uint16_t>(imm));
+                    static_cast<uint16_t>(imm), constpoolMap);
                 FixInstructionId32(bcIns, index);
                 break;
             }
@@ -1467,19 +1457,19 @@ void BytecodeInfoCollector::TranslateBCIns(const OldBytecodeInst &bcIns, const M
                 auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_IMM16>();
                 CollectInnerMethodsFromLiteral(method, imm);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::ARRAY_LITERAL,
-                    static_cast<uint16_t>(imm));
+                    static_cast<uint16_t>(imm), constpoolMap);
                 FixInstructionId32(bcIns, index);
                 break;
             }
             case OldBytecodeInst::Opcode::ECMA_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8: {
                 methodId = pf->ResolveMethodIndex(method->GetMethodId(), bcIns.GetId()).GetOffset();
-                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::CLASS_FUNCTION, methodId);
+                index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::CLASS_FUNCTION, methodId, constpoolMap);
                 FixInstructionId32(bcIns, index);
                 auto imm = bcIns.GetImm<OldBytecodeInst::Format::PREF_ID16_IMM16_IMM16_V8_V8>();
                 CollectInnerMethods(method, methodId);
                 CollectInnerMethodsFromLiteral(method, imm);
                 index = jsPandaFile_->GetOrInsertConstantPool(ConstPoolType::CLASS_LITERAL,
-                    static_cast<uint16_t>(imm));
+                    static_cast<uint16_t>(imm), constpoolMap);
                 FixInstructionId32(bcIns, index, 1);
                 break;
             }

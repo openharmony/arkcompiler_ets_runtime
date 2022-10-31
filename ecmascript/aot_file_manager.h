@@ -40,7 +40,7 @@ private:
 
 struct ModuleSectionDes {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
-    uint32_t startIndex_ {static_cast<uint32_t>(-1)}; // record current module first function index in PackInfo
+    uint32_t startIndex_ {static_cast<uint32_t>(-1)}; // record current module first function index in AOTFileInfo
     uint32_t funcCount_ {0};
     std::shared_ptr<uint8_t> arkStackMapPtr_ {nullptr};
     uint32_t arkStackMapSize_ {0};
@@ -139,17 +139,18 @@ struct ModuleSectionDes {
     void LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset);
 };
 
-class PUBLIC_API ModulePackInfo {
+class PUBLIC_API AOTFileInfo {
 public:
     using CallSignature = kungfu::CallSignature;
-    ModulePackInfo() = default;
-    virtual ~ModulePackInfo() = default;
+    AOTFileInfo() = default;
+    virtual ~AOTFileInfo() = default;
     bool VerifyFilePath([[maybe_unused]] const std::string &filePath, [[maybe_unused]] bool toGenerate = false) const;
 
     struct FuncEntryDes {
         uint64_t codeAddr_;
         CallSignature::TargetKind kind_;
-        uint32_t indexInKind_;
+        bool isMainFunc_;
+        uint32_t indexInKindOrMethodId_;
         uint32_t moduleIndex_;
         int fpDeltaPrevFrameSp_;
         uint32_t funcSize_;
@@ -235,7 +236,7 @@ public:
         entryNum_ = n;
     }
 
-    void AddStubEntry(CallSignature::TargetKind kind, int indexInKind, uint64_t offset,
+    void AddEntry(CallSignature::TargetKind kind, bool isMainFunc, int indexInKind, uint64_t offset,
                       uint32_t moduleIndex, int delta, uint32_t size, kungfu::CalleeRegAndOffsetVec info = {})
     {
         FuncEntryDes des;
@@ -244,7 +245,8 @@ public:
             return;
         }
         des.kind_ = kind;
-        des.indexInKind_ = static_cast<uint32_t>(indexInKind);
+        des.isMainFunc_ = isMainFunc;
+        des.indexInKindOrMethodId_ = static_cast<uint32_t>(indexInKind);
         des.codeAddr_ = offset;
         des.moduleIndex_ = moduleIndex;
         des.fpDeltaPrevFrameSp_ = delta;
@@ -290,13 +292,13 @@ protected:
     JSTaggedValue machineCodeObj_ {JSTaggedValue::Hole()};
 };
 
-class PUBLIC_API AOTModulePackInfo : public ModulePackInfo {
+class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
-    AOTModulePackInfo() = default;
-    ~AOTModulePackInfo() override = default;
+    AnFileInfo() = default;
+    ~AnFileInfo() override = default;
     void Save(const std::string &filename);
     bool Load(EcmaVM *vm, const std::string &filename);
-    void AddModuleDes(ModuleSectionDes &moduleDes, uint32_t hash)
+    void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
         for (auto &s : moduleDes.sectionsInfo_) {
@@ -306,18 +308,33 @@ public:
             }
         }
         accumulateTotalSize(moduleDes.GetArkStackMapSize());
-        aotFileHashs_.emplace_back(hash);
     }
+
+    uintptr_t GetMainFuncEntry(uint32_t methodId) const
+    {
+        auto it = mainEntryMap_.find(methodId);
+        if (it == mainEntryMap_.end()) {
+            return 0;
+        }
+        return static_cast<uintptr_t>(it->second);
+    }
+
+    bool HasLoaded() const
+    {
+        return !mainEntryMap_.empty();
+    }
+
     void RewriteRelcateDeoptHandler(EcmaVM *vm);
+
 private:
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
-    std::vector<uint32_t> aotFileHashs_ {};
+    std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
 };
 
-class PUBLIC_API StubModulePackInfo : public ModulePackInfo {
+class PUBLIC_API StubFileInfo : public AOTFileInfo {
 public:
-    StubModulePackInfo() = default;
-    ~StubModulePackInfo() override = default;
+    StubFileInfo() = default;
+    ~StubFileInfo() override = default;
     void Save(const std::string &filename);
     bool Load(EcmaVM *vm);
 
@@ -375,6 +392,15 @@ private:
     std::vector<int> asmStubTempHolder_ {};
 };
 
+class AOTLiteralInfo : public TaggedArray {
+public:
+    static AOTLiteralInfo *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsTaggedArray());
+        return static_cast<AOTLiteralInfo *>(object);
+    }
+};
+
 class AOTFileManager {
 public:
     explicit AOTFileManager(EcmaVM *vm);
@@ -385,30 +411,26 @@ public:
 
     void LoadStubFile();
     void LoadAnFile(const std::string &fileName);
-    ModulePackInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
+    AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool InsideStub(uint64_t pc) const;
 
     void Iterate(const RootVisitor &v)
     {
-        if (!stubPackInfo_.isCodeHole()) {
-            stubPackInfo_.Iterate(v);
+        if (!stubFileInfo_.isCodeHole()) {
+            stubFileInfo_.Iterate(v);
         }
-        if (aotPackInfos_.size() != 0) {
-            for (auto &packInfo : aotPackInfos_) {
-                packInfo.Iterate(v);
+        if (anFileInfos_.size() != 0) {
+            for (auto &info : anFileInfos_) {
+                info.Iterate(v);
             }
         }
     }
 
-    void SaveAOTFuncEntry(uint32_t hash, uint32_t methodId, uint64_t funcEntry)
-    {
-        hashToEntryMap_[hash][methodId] = funcEntry;
-    }
-
-    void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile);
-    bool hasLoaded(const JSPandaFile *jsPandaFile);
-    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method);
-    void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj);
+    void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
+    bool HasLoaded(const JSPandaFile *jsPandaFile) const;
+    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
+    void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
+                                   const AOTLiteralInfo *entryIndexes);
     void LoadSnapshotFile([[maybe_unused]]const std::string& filename);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
@@ -427,46 +449,36 @@ private:
         stubAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
     }
 
-    const StubModulePackInfo& GetStubPackInfo() const
+    const StubFileInfo& GetStubFileInfo() const
     {
-        return stubPackInfo_;
+        return stubFileInfo_;
     }
 
-    void AddAOTPackInfo(AOTModulePackInfo packInfo)
+    void AddAnFileInfo(AnFileInfo anFileInfo)
     {
-        aotPackInfos_.emplace_back(packInfo);
+        anFileInfos_.emplace_back(anFileInfo);
     }
 
-    void RewriteRelcateDeoptHandler(EcmaVM *vm, AOTModulePackInfo packInfo)
+    void RewriteRelcateDeoptHandler(EcmaVM *vm, AnFileInfo AOTFileInfo)
     {
-        packInfo.RewriteRelcateDeoptHandler(vm);
+        AOTFileInfo.RewriteRelcateDeoptHandler(vm);
     }
 
-    uintptr_t GetAOTFuncEntry(uint32_t hash, uint32_t methodId)
-    {
-        auto m = hashToEntryMap_[hash];
-        auto it = m.find(methodId);
-        if (it == m.end()) {
-            return 0;
-        }
-        return static_cast<uintptr_t>(it->second);
-    }
     void PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry);
-    void InitializeStubEntries(const std::vector<AOTModulePackInfo::FuncEntryDes>& stubs);
-    void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<ModulePackInfo::FuncEntryDes> &stubs,
+    void InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs);
+    void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
                                             const AsmInterParsedOption &asmInterOpt);
 
     std::vector<std::pair<void *, size_t>> aotAddrs_;
     std::vector<std::pair<void *, size_t>> stubAddrs_;
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    StubModulePackInfo stubPackInfo_ {};
-    std::vector<AOTModulePackInfo> aotPackInfos_ {};
-    std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint64_t>> hashToEntryMap_ {};
+    StubFileInfo stubFileInfo_ {};
+    std::vector<AnFileInfo> anFileInfos_ {};
     kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 
-    friend class AOTModulePackInfo;
-    friend class StubModulePackInfo;
+    friend class AnFileInfo;
+    friend class StubFileInfo;
 };
 }
 #endif // ECMASCRIPT_AOT_FILE_MANAGER_H

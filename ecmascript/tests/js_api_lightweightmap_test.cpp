@@ -109,10 +109,8 @@ HWTEST_F_L0(JSAPILightWeightMapTest, SetHasKeyGetHasValue)
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(2));
     JSHandle<JSAPILightWeightMap> lwm(thread, lightWeightMap);
     JSAPILightWeightMap::Set(thread, lwm, key, value);
-    EXPECT_TRUE(JSTaggedValue::Equal(thread,
-                                     JSHandle<JSTaggedValue>(thread,
-                                                             JSAPILightWeightMap::Get(thread, lwm, key)),
-                                                             value));
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread,
+        JSAPILightWeightMap::Get(thread, lwm, key)), value));
 
     JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(2));
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(3));
@@ -128,10 +126,21 @@ HWTEST_F_L0(JSAPILightWeightMapTest, SetHasKeyGetHasValue)
     JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(5));
     JSAPILightWeightMap::Set(thread, lwm, key3, value3);
 
-    EXPECT_TRUE(JSTaggedValue::Equal(thread,
-                                     JSHandle<JSTaggedValue>(thread,
-                                                             JSAPILightWeightMap::Get(thread, lwm, key)),
-                                                             value));
+    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(10));
+    JSHandle<JSTaggedValue> value4(thread, JSTaggedValue(10));
+    JSAPILightWeightMap::Set(thread, lwm, key4, value4);
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread,
+        JSAPILightWeightMap::Get(thread, lwm, key4)), value4));
+
+    // change value on Existed key
+    JSHandle<JSTaggedValue> value5(thread, JSTaggedValue(100));
+    JSAPILightWeightMap::Set(thread, lwm, key4, value5);
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread,
+        JSAPILightWeightMap::Get(thread, lwm, key4)), value5));
+
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread,
+        JSAPILightWeightMap::Get(thread, lwm, key)), value));
+
     EXPECT_EQ(JSAPILightWeightMap::HasKey(thread, lwm, key1), JSTaggedValue::True());
     EXPECT_EQ(JSAPILightWeightMap::HasKey(thread, lwm, key), JSTaggedValue::True());
     EXPECT_EQ(JSAPILightWeightMap::HasKey(thread, lwm, key3), JSTaggedValue::True());
@@ -195,7 +204,39 @@ HWTEST_F_L0(JSAPILightWeightMapTest, IsEmptyGetKeyAtGetValue)
     EXPECT_EQ(lwm->IsEmpty(), JSTaggedValue::True());
 }
 
-HWTEST_F_L0(JSAPILightWeightMapTest, RemoveRemoveAt)
+HWTEST_F_L0(JSAPILightWeightMapTest, Remove)
+{
+    JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
+    JSHandle<TaggedArray> valueArray(thread,
+                                     JSTaggedValue(TaggedArray::Cast(lwm->GetValues().GetTaggedObject())));
+
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(2));
+    JSAPILightWeightMap::Set(thread, lwm, key, value);
+
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(2));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(3));
+    JSAPILightWeightMap::Set(thread, lwm, key1, value1);
+
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(3));
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(4));
+    JSAPILightWeightMap::Set(thread, lwm, key2, value2);
+
+    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(4));
+    
+    JSHandle<JSTaggedValue> result =
+        JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::Remove(thread, lwm, key2));
+    JSHandle<JSTaggedValue> resultNoExist =
+        JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::Remove(thread, lwm, key3));
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, result, value2));
+    bool isKeyExist = true;
+    if (resultNoExist->IsUndefined()) {
+        isKeyExist = false;
+    }
+    EXPECT_FALSE(isKeyExist);
+}
+
+HWTEST_F_L0(JSAPILightWeightMapTest, RemoveAt)
 {
     JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
     JSHandle<TaggedArray> valueArray(thread,
@@ -213,14 +254,75 @@ HWTEST_F_L0(JSAPILightWeightMapTest, RemoveRemoveAt)
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(4));
     JSAPILightWeightMap::Set(thread, lwm, key2, value2);
     
-    JSHandle<JSTaggedValue> result =
-        JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::Remove(thread, lwm, key2));
-    EXPECT_TRUE(JSTaggedValue::Equal(thread, result, value2));
-    EXPECT_EQ(JSAPILightWeightMap::RemoveAt(thread, lwm, 0), JSTaggedValue::True());
-    result = JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::GetValueAt(thread, lwm, 0));
-    EXPECT_TRUE(JSTaggedValue::Equal(thread, result, value1));
-    result = JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::GetKeyAt(thread, lwm, 0));
-    EXPECT_TRUE(JSTaggedValue::Equal(thread, result, key1));
+    int32_t removeIndex = JSAPILightWeightMap::GetIndexOfKey(thread, lwm, key1);
+    EXPECT_EQ(JSAPILightWeightMap::RemoveAt(thread, lwm, removeIndex), JSTaggedValue::True());
+    JSHandle<JSTaggedValue> result(thread, JSAPILightWeightMap::Get(thread, lwm, key1));
+    bool isSuccessRemove = false;
+    if (result->IsUndefined()) {
+        isSuccessRemove = true;
+    }
+    EXPECT_TRUE(isSuccessRemove);
+    EXPECT_EQ(JSAPILightWeightMap::HasValue(thread, lwm, value1), JSTaggedValue::False());
+    EXPECT_TRUE(lwm->GetLength() == 2);
+}
+
+HWTEST_F_L0(JSAPILightWeightMapTest, SetValueAt)
+{
+    JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
+
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(2));
+    JSAPILightWeightMap::Set(thread, lwm, key, value);
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread,
+        JSAPILightWeightMap::Get(thread, lwm, key)), value));
+    
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(2));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(3));
+    JSAPILightWeightMap::Set(thread, lwm, key1, value1);
+
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(3));
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(4));
+    JSAPILightWeightMap::Set(thread, lwm, key2, value2);
+
+    JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(5));
+
+    int32_t index = JSAPILightWeightMap::GetIndexOfKey(thread, lwm, key);
+    JSAPILightWeightMap::SetValueAt(thread, lwm, index, value3);
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread,
+        JSAPILightWeightMap::Get(thread, lwm, key)), value3));
+}
+
+HWTEST_F_L0(JSAPILightWeightMapTest, GetStateOfKey)
+{
+    JSHandle<JSAPILightWeightMap> lwm(thread, CreateLightWeightMap());
+
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
+    JSAPILightWeightMap::Set(thread, lwm, key1, value1);
+    KeyState keyState1 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key1);
+    EXPECT_TRUE(keyState1.isExist);
+
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
+    KeyState keyState2 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key2);
+    EXPECT_FALSE(keyState2.isExist);
+
+    // hash Collision
+    std::vector<double> hashCollisionVector = {1224.0, 1285.0, 1463.0, 4307.0, 5135.0, 5903.0,
+                                               6603.0, 6780.0, 8416.0, 9401.0, 9740.0};
+    for (uint32_t i = 0; i < hashCollisionVector.size() - 1; i++) {
+        JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(hashCollisionVector[i]));
+        JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(hashCollisionVector[i]));
+        JSAPILightWeightMap::Set(thread, lwm, key3, value3);
+    }
+    // check
+    for (uint32_t i = 0; i < hashCollisionVector.size() - 1; i++) {
+        JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(hashCollisionVector[i]));
+        KeyState keyState4 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key4);
+        EXPECT_TRUE(keyState4.isExist);
+    }
+    JSHandle<JSTaggedValue> key5(thread, JSTaggedValue(hashCollisionVector[hashCollisionVector.size() - 1]));
+    KeyState keyState5 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key5);
+    EXPECT_FALSE(keyState5.isExist);
 }
 
 HWTEST_F_L0(JSAPILightWeightMapTest, IncreaseCapacityTo)

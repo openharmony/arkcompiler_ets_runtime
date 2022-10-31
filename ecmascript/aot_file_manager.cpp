@@ -140,7 +140,7 @@ void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
     LoadStackMapSection(file, secBegin, curUnitOffset);
 }
 
-void StubModulePackInfo::Save(const std::string &filename)
+void StubFileInfo::Save(const std::string &filename)
 {
     if (!VerifyFilePath(filename, true)) {
         return;
@@ -163,7 +163,7 @@ void StubModulePackInfo::Save(const std::string &filename)
     file.close();
 }
 
-bool StubModulePackInfo::Load(EcmaVM *vm)
+bool StubFileInfo::Load(EcmaVM *vm)
 {
     //  now MachineCode is non movable, code and stackmap sperately is saved to MachineCode
     // by calling NewMachineCodeObject.
@@ -208,7 +208,7 @@ bool StubModulePackInfo::Load(EcmaVM *vm)
     return true;
 }
 
-void AOTModulePackInfo::Save(const std::string &filename)
+void AnFileInfo::Save(const std::string &filename)
 {
     if (!VerifyFilePath(filename, true)) {
         return;
@@ -222,7 +222,6 @@ void AOTModulePackInfo::Save(const std::string &filename)
     uint32_t moduleNum = GetCodeUnitsNum();
     file.write(reinterpret_cast<char *>(&moduleNum), sizeof(moduleNum_));
     file.write(reinterpret_cast<char *>(&totalCodeSize_), sizeof(totalCodeSize_));
-    file.write(reinterpret_cast<char *>(aotFileHashs_.data()), sizeof(uint32_t) * moduleNum);
     for (size_t i = 0; i < moduleNum; i++) {
         des_[i].SaveSectionsInfo(file);
     }
@@ -230,7 +229,7 @@ void AOTModulePackInfo::Save(const std::string &filename)
 }
 
 
-void AOTModulePackInfo::RewriteRelcateDeoptHandler([[maybe_unused]] EcmaVM *vm)
+void AnFileInfo::RewriteRelcateDeoptHandler([[maybe_unused]] EcmaVM *vm)
 {
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
     JSThread *thread = vm->GetJSThread();
@@ -239,7 +238,7 @@ void AOTModulePackInfo::RewriteRelcateDeoptHandler([[maybe_unused]] EcmaVM *vm)
 #endif
 }
 
-void AOTModulePackInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
+void AnFileInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
     [[maybe_unused]] uintptr_t patchAddr)
 {
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -264,7 +263,7 @@ void AOTModulePackInfo::RewriteRelcateTextSection([[maybe_unused]] const char* s
 #endif
 }
 
-bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
+bool AnFileInfo::Load(EcmaVM *vm, const std::string &filename)
 {
     if (!VerifyFilePath(filename)) {
         LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
@@ -290,7 +289,6 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
     file.read(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
     file.read(reinterpret_cast<char *>(&moduleNum_), sizeof(moduleNum_));
     des_.resize(moduleNum_);
-    aotFileHashs_.resize(moduleNum_);
     uint32_t totalCodeSize = 0;
     file.read(reinterpret_cast<char *>(&totalCodeSize), sizeof(totalCodeSize_));
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetAssociatedJSThread());
@@ -298,7 +296,6 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
     auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(totalCodeSize, 256_KB), 0, false, prot);
     vm->GetAOTFileManager()->SetAOTmmap(pool.GetMem(), pool.GetSize());
     uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
-    file.read(reinterpret_cast<char *>(aotFileHashs_.data()), sizeof(uint32_t) * moduleNum_);
     uint32_t curUnitOffset = 0;
     for (size_t i = 0; i < moduleNum_; i++) {
         des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
@@ -307,21 +304,21 @@ bool AOTModulePackInfo::Load(EcmaVM *vm, const std::string &filename)
         FuncEntryDes& funcDes = entries_[i];
         auto moduleDes = des_[funcDes.moduleIndex_];
         funcDes.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
-        auto curFileHash = aotFileHashs_[funcDes.moduleIndex_];
-        auto curMethodId = funcDes.indexInKind_;
-        vm->GetAOTFileManager()->SaveAOTFuncEntry(curFileHash, curMethodId, funcDes.codeAddr_);
+        if (funcDes.isMainFunc_) {
+            mainEntryMap_[funcDes.indexInKindOrMethodId_] = funcDes.codeAddr_;
+        }
     }
     file.close();
     LOG_COMPILER(INFO) << "loaded aot file: " << filename.c_str();
     return true;
 }
 
-void ModulePackInfo::Iterate(const RootVisitor &v)
+void AOTFileInfo::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&machineCodeObj_)));
 }
 
-bool ModulePackInfo::VerifyFilePath([[maybe_unused]] const std::string &filePath,
+bool AOTFileInfo::VerifyFilePath([[maybe_unused]] const std::string &filePath,
     [[maybe_unused]] bool toGenerate) const
 {
 #ifndef PANDA_TARGET_WINDOWS
@@ -345,43 +342,49 @@ bool ModulePackInfo::VerifyFilePath([[maybe_unused]] const std::string &filePath
 
 void AOTFileManager::LoadStubFile()
 {
-    if (!stubPackInfo_.Load(vm_)) {
+    if (!stubFileInfo_.Load(vm_)) {
         return;
     }
-    auto stubs = stubPackInfo_.GetStubs();
+    auto stubs = stubFileInfo_.GetStubs();
     InitializeStubEntries(stubs);
 }
 
 void AOTFileManager::LoadAnFile(const std::string &fileName)
 {
-    AOTModulePackInfo aotPackInfo_;
-    if (!aotPackInfo_.Load(vm_, fileName)) {
+    AnFileInfo anFileInfo_;
+    if (!anFileInfo_.Load(vm_, fileName)) {
         return;
     }
-    AddAOTPackInfo(aotPackInfo_);
-    aotPackInfo_.RewriteRelcateDeoptHandler(vm_);
+    AddAnFileInfo(anFileInfo_);
+    anFileInfo_.RewriteRelcateDeoptHandler(vm_);
 }
 
 void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filename)
 {
     Snapshot snapshot(vm_);
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
-    snapshot.Deserialize(SnapshotType::ETSO, filename.c_str());
+    snapshot.Deserialize(SnapshotType::AI, filename.c_str());
 #endif
 }
 
-bool AOTFileManager::hasLoaded(const JSPandaFile *jsPandaFile)
+bool AOTFileManager::HasLoaded(const JSPandaFile *jsPandaFile) const
 {
-    auto fileHash = jsPandaFile->GetFileUniqId();
-    return hashToEntryMap_.find(fileHash) != hashToEntryMap_.end();
+    uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
+    if (anFileInfoIndex >= anFileInfos_.size()) {
+        return false;
+    }
+    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
+    return anFileInfo.HasLoaded();
 }
 
-void AOTFileManager::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile)
+void AOTFileManager::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
+                                     std::string_view entryPoint)
 {
+    uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
+    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
     // get main func method
-    auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex();
-    auto fileHash = jsPandaFile->GetFileUniqId();
-    auto mainEntry = GetAOTFuncEntry(fileHash, mainFuncMethodId);
+    auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex(entryPoint.data());
+    auto mainEntry = anFileInfo.GetMainFuncEntry(mainFuncMethodId);
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
@@ -394,13 +397,13 @@ void AOTFileManager::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPand
 
 bool AOTFileManager::InsideStub(uint64_t pc) const
 {
-    uint64_t stubStartAddr = stubPackInfo_.GetAsmStubAddr();
-    uint64_t stubEndAddr = stubStartAddr + stubPackInfo_.GetAsmStubSize();
+    uint64_t stubStartAddr = stubFileInfo_.GetAsmStubAddr();
+    uint64_t stubEndAddr = stubStartAddr + stubFileInfo_.GetAsmStubSize();
     if (pc >= stubStartAddr && pc <= stubEndAddr) {
         return true;
     }
 
-    const std::vector<ModuleSectionDes> &des = stubPackInfo_.GetCodeUnits();
+    const std::vector<ModuleSectionDes> &des = stubFileInfo_.GetCodeUnits();
     stubStartAddr = des[0].GetSecAddr(ElfSecName::TEXT);
     stubEndAddr = stubStartAddr + des[0].GetSecSize(ElfSecName::TEXT);
     if (pc >= stubStartAddr && pc <= stubEndAddr) {
@@ -415,15 +418,15 @@ bool AOTFileManager::InsideStub(uint64_t pc) const
     return false;
 }
 
-ModulePackInfo::CallSiteInfo AOTFileManager::CalCallSiteInfo(uintptr_t retAddr) const
+AOTFileInfo::CallSiteInfo AOTFileManager::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    ModulePackInfo::CallSiteInfo callsiteInfo;
-    bool ans = stubPackInfo_.CalCallSiteInfo(retAddr, callsiteInfo);
+    AOTFileInfo::CallSiteInfo callsiteInfo;
+    bool ans = stubFileInfo_.CalCallSiteInfo(retAddr, callsiteInfo);
     if (ans) {
         return callsiteInfo;
     }
     // aot
-    for (auto &info : aotPackInfos_) {
+    for (auto &info : anFileInfos_) {
         ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
         if (ans) {
             return callsiteInfo;
@@ -441,10 +444,12 @@ void AOTFileManager::PrintAOTEntry(const JSPandaFile *file, const Method *method
                        << " -> AOT-Entry = " << reinterpret_cast<void*>(entry);
 }
 
-void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method)
+void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex)
 {
-    uint32_t methodId = method->GetMethodId().GetOffset();
-    auto codeEntry = GetAOTFuncEntry(jsPandaFile->GetFileUniqId(), methodId);
+    uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
+    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
+    const AOTFileInfo::FuncEntryDes &entry = anFileInfo.GetStubDes(entryIndex);
+    uint64_t codeEntry = entry.codeAddr_;
 #ifndef NDEBUG
     PrintAOTEntry(jsPandaFile, method, codeEntry);
 #endif
@@ -454,15 +459,23 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *met
     method->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
-void AOTFileManager::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const JSHandle<TaggedArray> &obj)
+void AOTFileManager::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
+                                               const AOTLiteralInfo *entryIndexes)
 {
-    JSThread *thread = vm_->GetJSThread();
-    JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
-    size_t elementsLen = obj->GetLength();
+    size_t elementsLen = literal->GetLength();
+    JSTaggedValue value = JSTaggedValue::Undefined();
+    int pos = 0;
     for (size_t i = 0; i < elementsLen; i++) {
-        valueHandle.Update(obj->Get(i));
-        if (valueHandle->IsJSFunction()) {
-            SetAOTFuncEntry(jsPandaFile, JSHandle<JSFunction>(valueHandle)->GetCallTarget());
+        value = literal->Get(i);
+        if (value.IsJSFunction()) {
+            JSTaggedValue index = entryIndexes->Get(pos++);
+            int entryIndex = index.GetInt();
+            // -1 : this jsfunction is a large function
+            if (entryIndex == -1) {
+                continue;
+            }
+            SetAOTFuncEntry(jsPandaFile, JSFunction::Cast(value)->GetCallTarget(),
+                static_cast<uint32_t>(entryIndex));
         }
     }
 }
@@ -473,7 +486,7 @@ kungfu::ArkStackMapParser* AOTFileManager::GetStackMapParser() const
 }
 
 void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
-    const std::vector<ModulePackInfo::FuncEntryDes> &stubs,
+    const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
     const AsmInterParsedOption &asmInterOpt)
 {
     auto defaultBCStubDes = stubs[BytecodeStubCSigns::SingleStepDebugging];
@@ -498,27 +511,27 @@ void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
     }
 }
 
-void AOTFileManager::InitializeStubEntries(const std::vector<AOTModulePackInfo::FuncEntryDes>& stubs)
+void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs)
 {
     auto thread = vm_->GetAssociatedJSThread();
     for (size_t i = 0; i < stubs.size(); i++) {
         auto des = stubs[i];
         if (des.IsCommonStub()) {
-            thread->SetFastStubEntry(des.indexInKind_, des.codeAddr_);
+            thread->SetFastStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
         } else if (des.IsBCStub()) {
-            thread->SetBCStubEntry(des.indexInKind_, des.codeAddr_);
+            thread->SetBCStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
             auto start = MessageString::ASM_INTERPRETER_START;
-            std::string format = MessageString::GetMessageString(des.indexInKind_ + start);
-            LOG_ECMA(DEBUG) << "bytecode-" << des.indexInKind_ << " :" << format
+            std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start);
+            LOG_ECMA(DEBUG) << "bytecode-" << des.indexInKindOrMethodId_ << " :" << format
                 << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         } else if (des.IsBuiltinsStub()) {
-            thread->SetBuiltinStubEntry(des.indexInKind_, des.codeAddr_);
+            thread->SetBuiltinStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
         } else {
-            thread->RegisterRTInterface(des.indexInKind_, des.codeAddr_);
+            thread->RegisterRTInterface(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-                LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKind_
+                LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKindOrMethodId_
                     << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         }
@@ -628,7 +641,7 @@ void BinaryBufferParser::ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src)
     }
 }
 
-bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr,
+bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>& ret) const
 {
     uint64_t textStart = 0;
@@ -637,7 +650,7 @@ bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr,
     auto& des = GetCodeUnits();
     auto& funcEntryDes = GetStubs();
 
-    auto cmp = [](const ModulePackInfo::FuncEntryDes &a, const ModulePackInfo::FuncEntryDes &b) {
+    auto cmp = [](const AOTFileInfo::FuncEntryDes &a, const AOTFileInfo::FuncEntryDes &b) {
                     return a.codeAddr_ < b.codeAddr_;
                 };
     for (size_t i = 0; i < des.size(); i++) {
@@ -654,7 +667,7 @@ bool ModulePackInfo::CalCallSiteInfo(uintptr_t retAddr,
         auto funcCount = d.GetFuncCount();
         auto s = funcEntryDes.begin() + startIndex;
         auto t = funcEntryDes.begin() + startIndex + funcCount;
-        ModulePackInfo::FuncEntryDes target;
+        AOTFileInfo::FuncEntryDes target;
         target.codeAddr_ = retAddr;
         auto it = std::upper_bound(s, t, target, cmp);
         --it;

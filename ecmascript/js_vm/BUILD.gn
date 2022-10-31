@@ -11,13 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (!defined(ark_standalone_build)) {
-  import("//arkcompiler/ets_runtime/js_runtime_config.gni")
-  import("//build/ohos.gni")
-} else {
-  import("//ets_runtime/js_runtime_config.gni")
-  import("$build_root/ark.gni")
-}
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 source_set("ark_js_vm_set") {
   sources = [ "main.cpp" ]
@@ -26,15 +20,14 @@ source_set("ark_js_vm_set") {
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
   ]
-
-  deps = [
-    "$ark_root/libpandabase:libarkbase_static",
-    "$js_root:libark_jsruntime",
-  ]
+  deps = [ "$ark_root/libpandabase:libarkbase_static" ]
 }
 
 ohos_executable("ark_js_vm") {
-  deps = [ ":ark_js_vm_set" ]
+  deps = [
+    ":ark_js_vm_set",
+    "$js_root:libark_jsruntime",
+  ]
 
   install_enable = false
 

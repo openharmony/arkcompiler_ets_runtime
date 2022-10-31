@@ -229,7 +229,8 @@ private:
     V(Mod, (GateRef gate, GateRef e1, GateRef e2))                                        \
     V(ChangeTaggedPointerToInt64, (GateRef gate, GateRef e1))                             \
     V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))                                    \
-    V(Deopt, (GateRef gate))
+    V(Deopt, (GateRef gate))                                                              \
+    V(TruncFloatToInt, (GateRef gate, GateRef e1))                                                 \
 
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
@@ -310,7 +311,8 @@ private:
         GLUE,
         FIRST_PARAMETER
     };
-
+    LLVMRealPredicate ConvertLLVMPredicateFromFCMP(FCmpCondition cond);
+    LLVMIntPredicate ConvertLLVMPredicateFromICMP(ICmpCondition cond);
     LLVMValueRef GetGlue(const std::vector<GateRef> &inList);
     LLVMValueRef GetRTStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetCoStubOffset(LLVMValueRef glue, int index);

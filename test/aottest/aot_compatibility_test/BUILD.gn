@@ -14,8 +14,8 @@
 group("aot_compatibility_test") {
   testonly = true
   deps = [
-    "base_verification:base_verificationAotAction",
+    # "base_verification:base_verificationAotAction",
     "builtins_api:builtins_apiAotAction",
-    "property_operation:property_operationAotAction",
+    # "property_operation:property_operationAotAction",
   ]
 }

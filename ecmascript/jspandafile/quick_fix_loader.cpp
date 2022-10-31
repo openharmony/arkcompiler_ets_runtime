@@ -156,28 +156,29 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(vm->GetGlobalEnv()->GetFunctionClassWithProto());
 
-    bool isNewVersion = jsPandaFile->IsNewVersion();
-    JSHandle<ConstantPool> constpool;
-    JSTaggedValue constpoolValue = vm->FindConstpool(jsPandaFile, 0);
-    if (constpoolValue.IsHole()) {
-        if (isNewVersion) {
-            const CString &filename = jsPandaFile->GetJSPandaFileDesc();
+    const CString &filename = jsPandaFile->GetJSPandaFileDesc();
 #if defined(PANDA_TARGET_LINUX)
-                CString entry = JSPandaFile::ParseRecordName(filename);
+    CString entry = JSPandaFile::ParseRecordName(filename);
 #else
-                CString entry = JSPandaFile::ParseOhmUrl(filename);
+    CString entry = JSPandaFile::ParseOhmUrl(filename);
 #endif
-            uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entry);
-            ASSERT(mainMethodIndex != 0);
-            constpool = ConstantPool::CreateConstPool(vm, jsPandaFile, mainMethodIndex);
-        } else {
-            constpool = PandaFileTranslator::ParseConstPool(vm, jsPandaFile);
-        }
-        int32_t index = 0;
-        int32_t total = 1;
-        vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index, total);
+    uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entry);
+    ASSERT(mainMethodIndex != 0);
+
+    JSHandle<ConstantPool> constpool;
+    bool isNewVersion = jsPandaFile->IsNewVersion();
+    if (isNewVersion) {
+        constpool = vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(mainMethodIndex));
+        GenerateConstpoolCache(thread, jsPandaFile, constpool);
     } else {
-        constpool = JSHandle<ConstantPool>(thread, constpoolValue);
+        JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, 0);
+        if (constpoolVal.IsHole()) {
+            constpool = PandaFileTranslator::ParseConstPool(vm, jsPandaFile);
+            // 1: old version dont support multi constpool
+            vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue());
+        } else {
+            constpool = JSHandle<ConstantPool>(thread, constpoolVal);
+        }
     }
 
     CVector<JSHandle<Program>> programs;

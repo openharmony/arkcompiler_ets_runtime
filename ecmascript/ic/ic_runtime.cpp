@@ -143,8 +143,9 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         return JSTaggedValue::GetProperty(thread_, receiver, key).GetValue().GetTaggedValue();
     }
 
+    ICKind kind = GetICKind();
     // global variable find from global record firstly
-    if (GetICKind() == ICKind::NamedGlobalLoadIC) {
+    if (kind == ICKind::NamedGlobalLoadIC || kind == ICKind::NamedGlobalTryLoadIC) {
         JSTaggedValue box = SlowRuntimeStub::LdGlobalRecord(thread_, key.GetTaggedValue());
         if (!box.IsUndefined()) {
             ASSERT(box.IsPropertyBox());
@@ -157,7 +158,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
-    if (!op.IsFound() && GetICKind() == ICKind::NamedGlobalLoadIC) {
+    if (!op.IsFound() && kind == ICKind::NamedGlobalTryLoadIC) {
         return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not definded");
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
@@ -186,8 +187,9 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
 
+    ICKind kind = GetICKind();
     // global variable find from global record firstly
-    if (GetICKind() == ICKind::NamedGlobalStoreIC) {
+    if (kind == ICKind::NamedGlobalStoreIC || kind == ICKind::NamedGlobalTryStoreIC) {
         JSTaggedValue box = SlowRuntimeStub::LdGlobalRecord(thread_, key.GetTaggedValue());
         if (!box.IsUndefined()) {
             ASSERT(box.IsPropertyBox());
@@ -202,10 +204,15 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
 
     ObjectOperator op(GetThread(), receiver, key);
-    bool success = JSObject::SetProperty(&op, value, true);
-    if (!success && GetICKind() == ICKind::NamedGlobalStoreIC) {
-        return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not defined");
+    if (!op.IsFound()) {
+        if (kind == ICKind::NamedGlobalStoreIC) {
+            PropertyAttributes attr = PropertyAttributes::Default(true, true, false);
+            op.SetAttr(attr);
+        } else if (kind == ICKind::NamedGlobalTryStoreIC) {
+            return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not defined");
+        }
     }
+    bool success = JSObject::SetProperty(&op, value, true);
     // ic-switch
     if (!GetThread()->GetEcmaVM()->ICEnabled()) {
         icAccessor_.SetAsMega();

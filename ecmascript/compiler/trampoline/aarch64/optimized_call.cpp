@@ -197,6 +197,12 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Ret();
 }
 
+void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSFunctionReentry));
+    __ Ret();
+}
+
 // * uint64_t OptimizedCallOptimized(uintptr_t glue, uint32_t expectedNumArgs, uint32_t actualNumArgs,
 //                                   uintptr_t codeAddr, uintptr_t argv, uintptr_t lexEnv)
 // * Arguments wil CC calling convention:
@@ -377,13 +383,21 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
 //               |       lexEnv             |               v
 //               +--------------------------+ ---------------
 
-void OptimizedCall::JSCall(ExtendedAssembler *assembler)
+void OptimizedCall::JSCall(ExtendedAssembler *assembler, bool isNew)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSCall));
+    if (!isNew) {
+        __ BindAssemblerStub(RTSTUB_ID(JSCall));
+    }
     Register jsfunc(X1);
     Register sp(SP);
     __ Ldr(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE * 2)); // 2: skip env and argc
     JSCallInternal(assembler, jsfunc);
+}
+
+void OptimizedCall::JSCallNew(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallNew));
+    JSCall(assembler, true);
 }
 
 void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc)
@@ -967,9 +981,11 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 //               |       lexEnv             |               v
 //               +--------------------------+ ---------------
 
-void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
+void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler, bool isNew)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgV));
+    if (!isNew) {
+        __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgV));
+    }
     Register sp(SP);
     Register glue(X0);
     Register actualNumArgs(X1);
@@ -1008,6 +1024,12 @@ void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
     PopJSFunctionArgs(assembler, actualNumArgs, actualNumArgs);
     PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
+}
+
+void OptimizedCall::JSCallNewWithArgV(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallNewWithArgV));
+    JSCallWithArgV(assembler, true);
 }
 
 void OptimizedCall::ConstructorJSCallWithArgV([[maybe_unused]]ExtendedAssembler *assembler)

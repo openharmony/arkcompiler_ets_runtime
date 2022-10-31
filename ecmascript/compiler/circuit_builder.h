@@ -73,57 +73,54 @@ class Variable;
     V(Int64LSR, OpCode::LSR, MachineType::I64)                                    \
     V(Int32ASR, OpCode::ASR, MachineType::I32)
 
-#define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                             \
-    V(BoolNot, OpCode::REV, MachineType::I1)                                      \
-    V(Int32Not, OpCode::REV, MachineType::I32)                                    \
-    V(Int64Not, OpCode::REV, MachineType::I64)                                    \
-    V(CastDoubleToInt64, OpCode::BITCAST, MachineType::I64)                       \
-    V(CastInt64ToFloat64, OpCode::BITCAST, MachineType::F64)
+#define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                          \
+    V(BoolNot, OpCode::REV, MachineType::I1)                                   \
+    V(Int32Not, OpCode::REV, MachineType::I32)                                 \
+    V(Int64Not, OpCode::REV, MachineType::I64)                                 \
+    V(CastDoubleToInt64, OpCode::BITCAST, MachineType::I64)                    \
+    V(CastInt64ToFloat64, OpCode::BITCAST, MachineType::F64)                   \
+    V(SExtInt32ToInt64, OpCode::SEXT, MachineType::I64)                        \
+    V(SExtInt1ToInt64, OpCode::SEXT, MachineType::I64)                         \
+    V(SExtInt1ToInt32, OpCode::SEXT, MachineType::I32)                         \
+    V(ZExtInt8ToInt16, OpCode::ZEXT, MachineType::I16)                         \
+    V(ZExtInt32ToInt64, OpCode::ZEXT, MachineType::I64)                        \
+    V(ZExtInt1ToInt64, OpCode::ZEXT, MachineType::I64)                         \
+    V(ZExtInt1ToInt32, OpCode::ZEXT, MachineType::I32)                         \
+    V(ZExtInt8ToInt32, OpCode::ZEXT, MachineType::I32)                         \
+    V(ZExtInt8ToInt64, OpCode::ZEXT, MachineType::I64)                         \
+    V(ZExtInt8ToPtr, OpCode::ZEXT, MachineType::ARCH)                          \
+    V(ZExtInt16ToPtr, OpCode::ZEXT, MachineType::ARCH)                         \
+    V(ZExtInt32ToPtr, OpCode::ZEXT, MachineType::ARCH)                         \
+    V(SExtInt32ToPtr, OpCode::SEXT, MachineType::ARCH)                         \
+    V(ZExtInt16ToInt32, OpCode::ZEXT, MachineType::I32)                        \
+    V(ZExtInt16ToInt64, OpCode::ZEXT, MachineType::I64)                        \
+    V(TruncInt16ToInt8, OpCode::TRUNC, MachineType::I8)                        \
+    V(TruncInt64ToInt32, OpCode::TRUNC, MachineType::I32)                      \
+    V(TruncPtrToInt32, OpCode::TRUNC, MachineType::I32)                        \
+    V(TruncInt64ToInt1, OpCode::TRUNC, MachineType::I1)                        \
+    V(TruncInt64ToInt16, OpCode::TRUNC, MachineType::I16)                      \
+    V(TruncInt32ToInt1, OpCode::TRUNC, MachineType::I1)
 
-#define UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(V)                          \
-    V(SExtInt32ToInt64, OpCode::SEXT_TO_INT64)                                    \
-    V(SExtInt1ToInt64, OpCode::SEXT_TO_INT64)                                     \
-    V(SExtInt1ToInt32, OpCode::SEXT_TO_INT32)                                     \
-    V(ZExtInt8ToInt16, OpCode::ZEXT_TO_INT16)                                     \
-    V(ZExtInt32ToInt64, OpCode::ZEXT_TO_INT64)                                    \
-    V(ZExtInt1ToInt64, OpCode::ZEXT_TO_INT64)                                     \
-    V(ZExtInt1ToInt32, OpCode::ZEXT_TO_INT32)                                     \
-    V(ZExtInt8ToInt32, OpCode::ZEXT_TO_INT32)                                     \
-    V(ZExtInt8ToInt64, OpCode::ZEXT_TO_INT64)                                     \
-    V(ZExtInt8ToPtr, OpCode::ZEXT_TO_ARCH)                                        \
-    V(ZExtInt16ToPtr, OpCode::ZEXT_TO_ARCH)                                       \
-    V(ZExtInt32ToPtr, OpCode::ZEXT_TO_ARCH)                                       \
-    V(SExtInt32ToPtr, OpCode::SEXT_TO_ARCH)                                       \
-    V(ZExtInt16ToInt32, OpCode::ZEXT_TO_INT32)                                    \
-    V(ZExtInt16ToInt64, OpCode::ZEXT_TO_INT64)                                    \
-    V(ChangeInt64ToInt32, OpCode::TRUNC_TO_INT32)                                 \
-    V(ChangeInt16ToInt8, OpCode::TRUNC_TO_INT8)                                   \
-    V(ChangeInt32ToIntPtr, OpCode::ZEXT_TO_ARCH)                                  \
-    V(TruncInt64ToInt32, OpCode::TRUNC_TO_INT32)                                  \
-    V(TruncPtrToInt32, OpCode::TRUNC_TO_INT32)                                    \
-    V(TruncInt64ToInt1, OpCode::TRUNC_TO_INT1)                                    \
-    V(TruncInt64ToInt16, OpCode::TRUNC_TO_INT16)                                  \
-    V(TruncInt32ToInt1, OpCode::TRUNC_TO_INT1)
+#define UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(V)                        \
+    V(TruncFloatToInt64, OpCode::TRUNC_FLOAT_TO_INT64)
 
-#define BINARY_LOGIC_METHOD_LIST_WITHOUT_BITWIDTH(V)                              \
-    V(Equal, OpCode::EQ)                                                          \
-    V(NotEqual, OpCode::NE)                                                       \
-    V(DoubleLessThan, OpCode::SLT)                                                \
-    V(DoubleLessThanOrEqual, OpCode::SLE)                                         \
-    V(DoubleGreaterThan, OpCode::SGT)                                             \
-    V(DoubleGreaterThanOrEqual, OpCode::SGE)                                      \
-    V(Int32LessThan, OpCode::SLT)                                                 \
-    V(Int32LessThanOrEqual, OpCode::SLE)                                          \
-    V(Int32GreaterThan, OpCode::SGT)                                              \
-    V(Int32GreaterThanOrEqual, OpCode::SGE)                                       \
-    V(Int32UnsignedLessThan, OpCode::ULT)                                         \
-    V(Int32UnsignedGreaterThan, OpCode::UGT)                                      \
-    V(Int32UnsignedGreaterThanOrEqual, OpCode::UGE)                               \
-    V(Int64LessThan, OpCode::SLT)                                                 \
-    V(Int64LessThanOrEqual, OpCode::SLE)                                          \
-    V(Int64GreaterThan, OpCode::SGT)                                              \
-    V(Int64GreaterThanOrEqual, OpCode::SGE)                                       \
-    V(Int64UnsignedLessThanOrEqual, OpCode::ULE)
+#define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                              \
+    V(DoubleLessThan, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OLT))                  \
+    V(DoubleLessThanOrEqual, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OLE))           \
+    V(DoubleGreaterThan, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OGT))               \
+    V(DoubleGreaterThanOrEqual, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OGE))        \
+    V(Int32LessThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SLT))                   \
+    V(Int32LessThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SLE))            \
+    V(Int32GreaterThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SGT))                \
+    V(Int32GreaterThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SGE))         \
+    V(Int32UnsignedLessThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::ULT))           \
+    V(Int32UnsignedGreaterThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::UGT))        \
+    V(Int32UnsignedGreaterThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::UGE)) \
+    V(Int64LessThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SLT))                   \
+    V(Int64LessThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SLE))            \
+    V(Int64GreaterThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SGT))                \
+    V(Int64GreaterThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SGE))         \
+    V(Int64UnsignedLessThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::ULE))
 
 class CompilationConfig {
 public:
@@ -251,6 +248,7 @@ public:
     GateRef UnaryArithmetic(OpCode opcode, MachineType machineType, GateRef value);
     GateRef UnaryArithmetic(OpCode opcode, GateRef value);
     GateRef BinaryLogic(OpCode opcode, GateRef left, GateRef right);
+    GateRef BinaryCmp(OpCode opcode, GateRef left, GateRef right, BitField condition);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
     Circuit *GetCircuit() const
     {
@@ -303,14 +301,17 @@ public:
     UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(ARITHMETIC_UNARY_OP_WITHOUT_BITWIDTH)
 #undef ARITHMETIC_UNARY_OP_WITHOUT_BITWIDTH
 
-#define LOGIC_BINARY_OP_WITHOUT_BITWIDTH(NAME, OPCODEID)                                  \
+#define CMP_BINARY_OP_WITHOUT_BITWIDTH(NAME, OPCODEID, CONDITION)                         \
     inline GateRef NAME(GateRef x, GateRef y)                                             \
     {                                                                                     \
-        return BinaryLogic(OpCode(OPCODEID), x, y);                                       \
+        return BinaryCmp(OpCode(OPCODEID), x, y, CONDITION);                              \
     }
 
-    BINARY_LOGIC_METHOD_LIST_WITHOUT_BITWIDTH(LOGIC_BINARY_OP_WITHOUT_BITWIDTH)
-#undef LOGIC_BINARY_OP_WITHOUT_BITWIDTH
+    BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(CMP_BINARY_OP_WITHOUT_BITWIDTH)
+#undef CMP_BINARY_OP_WITHOUT_BITWIDTH
+
+    inline GateRef Equal(GateRef x, GateRef y);
+    inline GateRef NotEqual(GateRef x, GateRef y);
 
     // js world
     // cast operation
@@ -345,6 +346,7 @@ public:
     inline GateRef TaggedIsFalse(GateRef x);
     inline GateRef TaggedIsNull(GateRef x);
     inline GateRef TaggedIsBoolean(GateRef x);
+    inline GateRef IsAOTLiteralInfo(GateRef x);
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef ToTaggedInt(GateRef x);
     inline GateRef ToTaggedIntPtr(GateRef x);

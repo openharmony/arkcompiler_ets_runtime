@@ -106,16 +106,15 @@ void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::u
     }
 }
 
-bool PGOProfilerLoader::Match([[maybe_unused]] const CString &recordName, EntityId methodId)
+bool PGOProfilerLoader::Match(const CString &recordName, EntityId methodId)
 {
     if (!isLoaded_) {
         return true;
     }
-    for (auto hotnessMethodSet : hotnessMethods_) {
-        if (hotnessMethodSet.second.find(methodId) != hotnessMethodSet.second.end()) {
-            return true;
-        }
+    auto hotnessMethodSet = hotnessMethods_.find(recordName);
+    if (hotnessMethodSet == hotnessMethods_.end()) {
+        return false;
     }
-    return false;
+    return hotnessMethodSet->second.find(methodId) != hotnessMethodSet->second.end();
 }
 } // namespace panda::ecmascript

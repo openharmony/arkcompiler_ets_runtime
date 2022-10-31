@@ -308,14 +308,22 @@ private:
     V(TypeOf)                               \
     V(Equal)                                \
     V(SetPropertyByName)                    \
+    V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \
     V(SetPropertyByValue)                   \
+    V(DeprecatedSetPropertyByValue)         \
+    V(TryLdGlobalByName)                    \
+    V(TryStGlobalByName)                    \
+    V(LdGlobalVar)                          \
+    V(StGlobalVar)                          \
     V(SetPropertyByValueWithOwn)            \
     V(GetPropertyByName)                    \
+    V(DeprecatedGetPropertyByName)          \
     V(GetPropertyByIndex)                   \
     V(SetPropertyByIndex)                   \
     V(SetPropertyByIndexWithOwn)            \
     V(GetPropertyByValue)                   \
+    V(DeprecatedGetPropertyByValue)         \
     V(TryLoadICByName)                      \
     V(TryLoadICByValue)                     \
     V(TryStoreICByName)                     \
@@ -361,6 +369,7 @@ private:
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
+    V(AotFloatMod)                          \
     V(FloatMod)                             \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
@@ -379,6 +388,9 @@ private:
     V(JSObjectGetMethod)                    \
     V(JsProxyCallInternal)                  \
     V(DeoptHandlerAsm)                      \
+    V(JSFunctionReentry)                    \
+    V(JSCallNew)                            \
+    V(JSCallNewWithArgV)                    \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

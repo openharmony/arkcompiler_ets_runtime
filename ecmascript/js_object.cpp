@@ -21,7 +21,6 @@
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/js_array.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"
@@ -645,12 +644,10 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
                 }
                 return false;
             }
-            if (LIKELY(!hasReceiver)) {
-                return op->AddProperty(JSHandle<JSObject>(receiver), value, op->GetAttr());
+            if (hasReceiver || isInternalAccessor) {
+                return op->AddProperty(JSHandle<JSObject>(receiver), value, PropertyAttributes::Default());
             } else {
-                PropertyAttributes attr;
-                attr.SetDefaultAttributes();
-                return op->AddProperty(JSHandle<JSObject>(receiver), value, attr);
+                return op->AddProperty(JSHandle<JSObject>(receiver), value, op->GetAttr());
             }
         }
         return isSuccess;

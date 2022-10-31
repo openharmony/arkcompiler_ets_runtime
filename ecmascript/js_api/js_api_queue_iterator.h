@@ -30,7 +30,7 @@ public:
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);
 
     static constexpr size_t ITERATED_QUEUE_OFFSET = JSObject::SIZE;
-    ACCESSORS(IteratedQueue, ITERATED_QUEUE_OFFSET, NEXT_INDEX_OFFSET)
+    ACCESSORS(IteratedQueue, ITERATED_QUEUE_OFFSET, NEXT_INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(NextIndex, uint32_t, NEXT_INDEX_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 

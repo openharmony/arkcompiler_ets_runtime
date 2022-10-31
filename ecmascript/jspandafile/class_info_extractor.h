@@ -90,12 +90,10 @@ class ClassHelper {
 public:
     static JSHandle<JSFunction> DefineClassFromExtractor(JSThread *thread, const JSHandle<JSTaggedValue> &base,
                                                          JSHandle<ClassInfoExtractor> &extractor,
-                                                         const JSHandle<JSTaggedValue> &constpool,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
     static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
                                                        JSHandle<ClassInfoExtractor> &extractor,
-                                                       const JSHandle<JSTaggedValue> &constpool,
                                                        const JSHandle<JSTaggedValue> &lexenv,
                                                        const JSHandle<JSHClass> &ihclass);
 
@@ -103,11 +101,10 @@ private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,
                                                               JSHandle<TaggedArray> &properties, ClassPropertyType type,
-                                                              const JSHandle<ConstantPool> &constantpool,
                                                               const JSHandle<JSTaggedValue> &lexenv);
 
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
-                                         JSHandle<TaggedArray> &elements, const JSHandle<ConstantPool> &constantpool);
+                                         JSHandle<TaggedArray> &elements);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

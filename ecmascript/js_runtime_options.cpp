@@ -25,7 +25,6 @@ namespace panda::ecmascript {
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
     const struct option longOptions[] = {
-        {"abc-list-file", required_argument, nullptr, OPTION_ABC_FILES_LIST},
         {"aot-file", required_argument, nullptr, OPTION_AOT_FILE},
         {"ark-properties", required_argument, nullptr, OPTION_ARK_PROPERTIES},
         {"asm-interpreter", required_argument, nullptr, OPTION_ENABLE_ASM_INTERPRETER},
@@ -114,9 +113,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 
         WasSet(option);
         switch (option) {
-            case OPTION_ABC_FILES_LIST:
-                SetAbcListFile(optarg);
-                break;
             case OPTION_AOT_FILE:
                 SetAOTOutputFile(optarg);
                 break;

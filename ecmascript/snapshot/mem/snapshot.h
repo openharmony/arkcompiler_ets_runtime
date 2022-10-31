@@ -46,6 +46,7 @@ private:
         uint32_t nonMovableObjSize;
         uint32_t machineCodeObjSize;
         uint32_t snapshotObjSize;
+        uint32_t hugeObjSize;
         uint32_t stringSize;
         uint32_t pandaFileBegin;
         uint32_t rootObjectSize;

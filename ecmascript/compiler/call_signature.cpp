@@ -161,8 +161,26 @@ DEF_CALL_SIGNATURE(Equal)
 
 DEF_CALL_SIGNATURE(SetPropertyByName)
 {
+    // 6 : 6 input parameters
+    CallSignature setPropertyByName("SetPropertyByName", 0, 6, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = setPropertyByName;
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_ANY(),           // receiver
+        VariableType::JS_POINTER(),       // key
+        VariableType::JS_ANY(),           // value
+        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::INT32(),            // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(DeprecatedSetPropertyByName)
+{
     // 4 : 4 input parameters
-    CallSignature setPropertyByName("SetPropertyByName", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+    CallSignature setPropertyByName("DeprecatedSetPropertyByName", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
         VariableType::JS_ANY());
     *callSign = setPropertyByName;
     // 4 : 4 input parameters
@@ -195,8 +213,27 @@ DEF_CALL_SIGNATURE(SetPropertyByNameWithOwn)
 
 DEF_CALL_SIGNATURE(SetPropertyByValue)
 {
+    // 6 : 6 input parameters
+    CallSignature setPropertyByName("SetPropertyByValue", 0, 6, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
+    *callSign = setPropertyByName;
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(DeprecatedSetPropertyByValue)
+{
     // 4 : 4 input parameters
-    CallSignature setPropertyByName("SetPropertyByValue", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+    CallSignature setPropertyByName("DeprecatedSetPropertyByValue", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
         VariableType::JS_ANY());
     *callSign = setPropertyByName;
     // 4 : 4 input parameters
@@ -229,14 +266,98 @@ DEF_CALL_SIGNATURE(SetPropertyByValueWithOwn)
 
 DEF_CALL_SIGNATURE(GetPropertyByName)
 {
+    // 5 : 5 input parameters
+    CallSignature getPropertyByName("GetPropertyByName", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = getPropertyByName;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_ANY(),           // receiver
+        VariableType::JS_POINTER(),       // key
+        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::INT32(),            // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(DeprecatedGetPropertyByName)
+{
     // 3 : 3 input parameters
-    CallSignature getPropertyByName("GetPropertyByName", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    CallSignature getPropertyByName("DeprecatedGetPropertyByName", 0, 3, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
     *callSign = getPropertyByName;
     // 3 : 3 input parameters
     std::array<VariableType, 3> params = {
         VariableType::NATIVE_POINTER(), // glue
         VariableType::JS_ANY(),         // receiver
-        VariableType::JS_POINTER(), // key
+        VariableType::JS_POINTER(),     // key
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(TryLdGlobalByName)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("TryLdGlobalByName", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_POINTER(),       // key
+        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::INT32(),            // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(TryStGlobalByName)
+{
+    // 5 : 5 input parameters
+    CallSignature signature("TryStGlobalByName", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_POINTER(),       // key
+        VariableType::JS_ANY(),           // value
+        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::INT32(),            // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(LdGlobalVar)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("LdGlobalVar", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_POINTER(),       // key
+        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::INT32(),            // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(StGlobalVar)
+{
+    // 5 : 5 input parameters
+    CallSignature signature("StGlobalVar", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_POINTER(),       // key
+        VariableType::JS_ANY(),           // value
+        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -294,8 +415,26 @@ DEF_CALL_SIGNATURE(SetPropertyByIndexWithOwn)
 
 DEF_CALL_SIGNATURE(GetPropertyByValue)
 {
+    // 5 : 5 input parameters
+    CallSignature getPropertyByValue("GetPropertyByValue", 0, 5, ArgumentsOrder::DEFAULT_ORDER,
+                                      VariableType::JS_ANY());
+    *callSign = getPropertyByValue;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::JS_POINTER(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(DeprecatedGetPropertyByValue)
+{
     // 3 : 3 input parameters
-    CallSignature getPropertyByValue("GetPropertyByValue", 0, 3, ArgumentsOrder::DEFAULT_ORDER,
+    CallSignature getPropertyByValue("DeprecatedGetPropertyByValue", 0, 3, ArgumentsOrder::DEFAULT_ORDER,
                                       VariableType::JS_ANY());
     *callSign = getPropertyByValue;
     // 3 : 3 input parameters
@@ -415,18 +554,21 @@ DEF_CALL_SIGNATURE(GetTaggedArrayPtrTest)
 
 DEF_CALL_SIGNATURE(Builtins)
 {
-    // 6 : 6 input parameters
-    CallSignature builtins("Builtins", 0, 6,
+    // 8 : 8 input parameters
+    CallSignature builtins("Builtins", 0, 8,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = builtins;
-    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+    std::array<VariableType, 8> params = { // 8 : 8 input parameters
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
         VariableType::JS_ANY(),
         VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
     };
+    callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::BUILTINS_STUB);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -577,6 +719,26 @@ DEF_CALL_SIGNATURE(JSCall)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(JSCallNew)
+{
+    // 6 : 6 input parameters
+    CallSignature jSCallNew("JSCallNew", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = jSCallNew;
+    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),      // lexenv
+        VariableType::INT64(),       // actual argC
+        VariableType::JS_ANY(),      // call target
+        VariableType::JS_ANY(),      // new target
+        VariableType::JS_ANY(),      // thisobj
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::WebKitJSCallConv);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(ConstructorJSCall)
 {
     // 6 : 6 input parameters
@@ -628,6 +790,24 @@ DEF_CALL_SIGNATURE(JSFunctionEntry)
         VariableType::INT64(),              // actualNumArgs
         VariableType::NATIVE_POINTER(),     // argv
         VariableType::NATIVE_POINTER(),     // codeAddr
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(JSFunctionReentry)
+{
+    // 5 : 5 input parameters
+    CallSignature jsCallFunctionReentry("JSFunctionReentry", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = jsCallFunctionReentry;
+    std::array<VariableType, 5> params = {  // 5 : 5 input parameters
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::INT64(),              // argc
+        VariableType::NATIVE_POINTER(),     // argv
+        VariableType::NATIVE_POINTER(),     // prevFp
+        VariableType::BOOL(),               // isNew
     };
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
@@ -867,6 +1047,26 @@ DEF_CALL_SIGNATURE(JSCallWithArgV)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(JSCallNewWithArgV)
+{
+    // 6 : 6 input parameters
+    CallSignature jsCallNewWithArgV("JSCallNewWithArgV", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = jsCallNewWithArgV;
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::INT64(),            // actualNumArgs
+        VariableType::JS_ANY(),           // jsfunc
+        VariableType::JS_ANY(),           // newTarget
+        VariableType::JS_ANY(),           // this
+        VariableType::NATIVE_POINTER(),   // argV
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(ConstructorJSCallWithArgV)
 {
     // 6 : 6 input parameters
@@ -965,6 +1165,21 @@ DEF_CALL_SIGNATURE(InsertOldToNewRSet)
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(AotFloatMod)
+{
+    // 2 : 2 input parameters
+    CallSignature index("AotFloatMod", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::FLOAT64(),
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(false);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 

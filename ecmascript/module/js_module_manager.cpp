@@ -544,12 +544,6 @@ void ModuleManager::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&resolvedModules_)));
 }
 
-CString ModuleManager::ResolveModuleFileName(const CString &fileName)
-{
-    JSHandle<SourceTextModule> sourceTextModule = HostResolveImportedModule(fileName);
-    return ConvertToString(sourceTextModule->GetEcmaModuleFilename());
-}
-
 CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
                                                CString &moduleRecordName, CString &moduleRequestName)
 {
@@ -613,6 +607,9 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
 CString ModuleManager::GetRecordName(JSTaggedValue module)
 {
     CString entry = "";
+    if (module.IsString()) {
+        entry = ConvertToString(module);
+    }
     if (module.IsSourceTextModule()) {
         SourceTextModule *sourceTextModule = SourceTextModule::Cast(module.GetTaggedObject());
         if (sourceTextModule->GetEcmaModuleRecordName().IsString()) {

@@ -22,6 +22,30 @@
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
+struct StringIdInfo {
+    enum class Offset : uint8_t {
+        BYTE_0,
+        BYTE_1,
+        BYTE_2,
+        INVALID,
+    };
+    enum class Length : uint8_t {
+        BITS_16,
+        BITS_32,
+        INVALID,
+    };
+
+    GateRef constpool { 0 };
+    GateRef pc { 0 };
+    Offset offset { Offset::INVALID };
+    Length length { Length::INVALID };
+
+    bool IsValid() const
+    {
+        return (constpool != 0) && (pc != 0) && (offset != Offset::INVALID) && (length != Length::INVALID);
+    }
+};
+
 class InterpreterStubBuilder : public StubBuilder {
 public:
     InterpreterStubBuilder(CallSignature *callSignature, Environment *env)
@@ -122,8 +146,6 @@ public:
                                  GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
     inline void DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
-    inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
-    GateRef GetStringFromConstPool(GateRef constpool, GateRef index);
     GateRef GetMethodFromConstPool(GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef constpool, GateRef index, GateRef module);
@@ -132,6 +154,18 @@ public:
 private:
     template<typename... Args>
     void DispatchBase(GateRef target, GateRef glue, Args... args);
+};
+
+class InterpreterToolsStubBuilder : private InterpreterStubBuilder {
+public:
+    explicit InterpreterToolsStubBuilder(CallSignature *callSignature, Environment *env)
+        : InterpreterStubBuilder(callSignature, env) {}
+    ~InterpreterToolsStubBuilder() = default;
+    NO_MOVE_SEMANTIC(InterpreterToolsStubBuilder);
+    NO_COPY_SEMANTIC(InterpreterToolsStubBuilder);
+    void GenerateCircuit() override {}
+
+    inline GateRef GetStringId(const StringIdInfo &info);
 };
 
 #define DECLARE_HANDLE_STUB_CLASS(name)                                                         \

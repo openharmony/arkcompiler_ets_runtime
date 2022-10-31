@@ -50,21 +50,35 @@ public:
 };
 
 /**
- * @tc.name: ComString
+ * @tc.name: Compare
  * @tc.desc:
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(JSBigintTest, ComString)
+HWTEST_F_L0(JSBigintTest, Compare)
 {
     CString str1 = "9007199254740991012345";
     CString str2 = "9007199254740991012345 ";
     CString str3 = "-9007199254740991012345";
-    EXPECT_EQ(BigInt::ComString(str1, str1), Comparestr::EQUAL);
-    EXPECT_EQ(BigInt::ComString(str3, str2), Comparestr::LESS);
-    EXPECT_EQ(BigInt::ComString(str1, str2), Comparestr::LESS);
-    EXPECT_EQ(BigInt::ComString(str2, str1), Comparestr::GREATER);
-    EXPECT_EQ(BigInt::ComString(str2, str3), Comparestr::GREATER);
+    CString str4 = "-9007199254740991012";
+    JSHandle<BigInt> bigint1 = BigIntHelper::SetBigInt(thread, str1);
+    JSHandle<BigInt> bigint2 = BigIntHelper::SetBigInt(thread, str2);
+    JSHandle<BigInt> bigint3 = BigIntHelper::SetBigInt(thread, str3);
+    JSHandle<BigInt> bigint4 = BigIntHelper::SetBigInt(thread, str4);
+    EXPECT_EQ(BigInt::Compare(bigint1.GetTaggedValue(), bigint1.GetTaggedValue()), ComparisonResult::EQUAL);
+    EXPECT_EQ(BigInt::Compare(bigint3.GetTaggedValue(), bigint2.GetTaggedValue()), ComparisonResult::LESS);
+    EXPECT_EQ(BigInt::Compare(bigint1.GetTaggedValue(), bigint2.GetTaggedValue()), ComparisonResult::LESS);
+    EXPECT_EQ(BigInt::Compare(bigint2.GetTaggedValue(), bigint1.GetTaggedValue()), ComparisonResult::GREAT);
+    EXPECT_EQ(BigInt::Compare(bigint2.GetTaggedValue(), bigint3.GetTaggedValue()), ComparisonResult::GREAT);
+    EXPECT_EQ(BigInt::Compare(bigint3.GetTaggedValue(), bigint4.GetTaggedValue()), ComparisonResult::LESS);
+    EXPECT_EQ(BigInt::Compare(bigint4.GetTaggedValue(), bigint3.GetTaggedValue()), ComparisonResult::GREAT);
+
+    JSHandle<BigInt> zero = BigInt::Uint32ToBigInt(thread, 0);
+    EXPECT_EQ(BigInt::Compare(zero.GetTaggedValue(), bigint1.GetTaggedValue()), ComparisonResult::LESS);
+    EXPECT_EQ(BigInt::Compare(bigint1.GetTaggedValue(), zero.GetTaggedValue()), ComparisonResult::GREAT);
+    EXPECT_EQ(BigInt::Compare(zero.GetTaggedValue(), zero.GetTaggedValue()), ComparisonResult::EQUAL);
+    EXPECT_EQ(BigInt::Compare(zero.GetTaggedValue(), bigint3.GetTaggedValue()), ComparisonResult::GREAT);
+    EXPECT_EQ(BigInt::Compare(bigint3.GetTaggedValue(), zero.GetTaggedValue()), ComparisonResult::LESS);
 }
 
 /**
@@ -168,15 +182,46 @@ HWTEST_F_L0(JSBigintTest, Bitwise_AND_XOR_OR_NOT_SubOne_AddOne)
     CString maxSafeIntStr = "11111111111111111111111111111111111111111111111111111"; // Binary: 2 ^ 53 - 1
     CString maxSafeIntPlusOneStr = "100000000000000000000000000000000000000000000000000000"; // Binary: 2 ^ 53
     CString bigintStr1 = "111111111111111111111111111111111111111111111111111111"; // Binary: 2 ^ 54 - 1
+    CString bigintStr2 = "11011100";
     JSHandle<BigInt> maxSafeInt = BigIntHelper::SetBigInt(thread, maxSafeIntStr, BigInt::BINARY);
     JSHandle<BigInt> maxSafeIntPlusOne = BigIntHelper::SetBigInt(thread, maxSafeIntPlusOneStr, BigInt::BINARY);
     JSHandle<BigInt> bigint1 = BigIntHelper::SetBigInt(thread, bigintStr1, BigInt::BINARY);
-
+    JSHandle<BigInt> bigint2 = BigIntHelper::SetBigInt(thread, bigintStr2, BigInt::BINARY);
+    JSHandle<BigInt> bigint3 = BigInt::UnaryMinus(thread, bigint2);
+    JSHandle<BigInt> bigint4 = BigInt::UnaryMinus(thread, bigint1);
     // Bitwise AND operation
     JSHandle<BigInt> addOpRes = BigInt::BitwiseOp(thread, Operate::AND, maxSafeIntPlusOne, bigint1);
     JSHandle<BigInt> andRes = BigInt::BitwiseAND(thread, maxSafeIntPlusOne, bigint1);
     EXPECT_TRUE(BigInt::Equal(addOpRes.GetTaggedValue(), maxSafeIntPlusOne.GetTaggedValue()));
     EXPECT_TRUE(BigInt::Equal(andRes.GetTaggedValue(), maxSafeIntPlusOne.GetTaggedValue()));
+
+    JSHandle<BigInt> addOpRes1 = BigInt::BitwiseOp(thread, Operate::AND, bigint1, bigint2);
+    JSHandle<BigInt> andRes1 = BigInt::BitwiseAND(thread, bigint1, bigint2);
+    EXPECT_TRUE(BigInt::Equal(addOpRes1.GetTaggedValue(), bigint2.GetTaggedValue()));
+    EXPECT_TRUE(BigInt::Equal(andRes1.GetTaggedValue(), bigint2.GetTaggedValue()));
+
+    JSHandle<BigInt> addOpRes2 = BigInt::BitwiseOp(thread, Operate::AND, bigint2, bigint1);
+    JSHandle<BigInt> andRes2 = BigInt::BitwiseAND(thread, bigint2, bigint1);
+    EXPECT_TRUE(BigInt::Equal(addOpRes2.GetTaggedValue(), bigint2.GetTaggedValue()));
+    EXPECT_TRUE(BigInt::Equal(andRes2.GetTaggedValue(), bigint2.GetTaggedValue()));
+
+    CString bigintStr4 = "111111111111111111111111111111111111111111111100100100";
+    JSHandle<BigInt> bigint = BigIntHelper::SetBigInt(thread, bigintStr4, BigInt::BINARY);
+    JSHandle<BigInt> andRes3 = BigInt::BitwiseAND(thread, bigint3, bigint1);
+    EXPECT_TRUE(BigInt::Equal(andRes3.GetTaggedValue(), bigint.GetTaggedValue()));
+
+    JSHandle<BigInt> andRes4 = BigInt::BitwiseAND(thread, bigint1, bigint3);
+    EXPECT_TRUE(BigInt::Equal(andRes4.GetTaggedValue(), bigint.GetTaggedValue()));
+
+    CString bigintStr5 = "-1000000000000000000000000000000000000000000000000000000";
+    JSHandle<BigInt> bigint5 = BigIntHelper::SetBigInt(thread, bigintStr5, BigInt::BINARY);
+    JSHandle<BigInt> andRes5 = BigInt::BitwiseAND(thread, bigint3, bigint4);
+    EXPECT_TRUE(BigInt::Equal(andRes5.GetTaggedValue(), bigint5.GetTaggedValue()));
+
+    CString bigintStr6 = "-1000000000000000000000000000000000000000000000000000000";
+    JSHandle<BigInt> bigint6 = BigIntHelper::SetBigInt(thread, bigintStr6, BigInt::BINARY);
+    JSHandle<BigInt> andRes6 = BigInt::BitwiseAND(thread, bigint4, bigint3);
+    EXPECT_TRUE(BigInt::Equal(andRes6.GetTaggedValue(), bigint6.GetTaggedValue()));
 
     // Bitwise OR operation
     JSHandle<BigInt> orOpRes = BigInt::BitwiseOp(thread, Operate::OR, maxSafeInt, maxSafeIntPlusOne);
@@ -184,11 +229,35 @@ HWTEST_F_L0(JSBigintTest, Bitwise_AND_XOR_OR_NOT_SubOne_AddOne)
     EXPECT_TRUE(BigInt::Equal(orOpRes.GetTaggedValue(), bigint1.GetTaggedValue()));
     EXPECT_TRUE(BigInt::Equal(orRes.GetTaggedValue(), bigint1.GetTaggedValue()));
 
+    JSHandle<BigInt> orRes1 = BigInt::BitwiseOR(thread, bigint3, maxSafeIntPlusOne);
+    EXPECT_TRUE(BigInt::Equal(orRes1.GetTaggedValue(), bigint3.GetTaggedValue()));
+
+    JSHandle<BigInt> orRes2 = BigInt::BitwiseOR(thread, maxSafeIntPlusOne, bigint3);
+    EXPECT_TRUE(BigInt::Equal(orRes2.GetTaggedValue(), bigint3.GetTaggedValue()));
+
+    CString bigintStr7 = "-11011011";
+    JSHandle<BigInt> bigint7 = BigIntHelper::SetBigInt(thread, bigintStr7, BigInt::BINARY);
+    JSHandle<BigInt> orRes3 = BigInt::BitwiseOR(thread, bigint3, bigint4);
+    EXPECT_TRUE(BigInt::Equal(orRes3.GetTaggedValue(), bigint7.GetTaggedValue()));
+
     // Bitwise XOR operation
     JSHandle<BigInt> xorOpRes = BigInt::BitwiseOp(thread, Operate::XOR, maxSafeIntPlusOne, bigint1);
     JSHandle<BigInt> xorRes = BigInt::BitwiseXOR(thread, maxSafeIntPlusOne, bigint1);
     EXPECT_TRUE(BigInt::Equal(xorOpRes.GetTaggedValue(), maxSafeInt.GetTaggedValue()));
     EXPECT_TRUE(BigInt::Equal(xorRes.GetTaggedValue(), maxSafeInt.GetTaggedValue()));
+
+    CString bigintStr8 = "-100000000000000000000000000000000000000000000011011100";
+    JSHandle<BigInt> bigint8 = BigIntHelper::SetBigInt(thread, bigintStr8, BigInt::BINARY);
+    JSHandle<BigInt> xorRes1 = BigInt::BitwiseXOR(thread, bigint3, maxSafeIntPlusOne);
+    EXPECT_TRUE(BigInt::Equal(xorRes1.GetTaggedValue(), bigint8.GetTaggedValue()));
+
+    JSHandle<BigInt> xorRes2 = BigInt::BitwiseXOR(thread, maxSafeIntPlusOne, bigint3);
+    EXPECT_TRUE(BigInt::Equal(xorRes2.GetTaggedValue(), bigint8.GetTaggedValue()));
+
+    CString bigintStr9 = "111111111111111111111111111111111111111111111100100101";
+    JSHandle<BigInt> bigint9 = BigIntHelper::SetBigInt(thread, bigintStr9, BigInt::BINARY);
+    JSHandle<BigInt> xorRes3 = BigInt::BitwiseXOR(thread, bigint3, bigint4);
+    EXPECT_TRUE(BigInt::Equal(xorRes3.GetTaggedValue(), bigint9.GetTaggedValue()));
 
     // Bitwise NOT operation, include sign bits.
     JSHandle<BigInt> notRes1 = BigInt::BitwiseNOT(thread, maxSafeInt);
@@ -208,6 +277,17 @@ HWTEST_F_L0(JSBigintTest, Bitwise_AND_XOR_OR_NOT_SubOne_AddOne)
     JSHandle<BigInt> addOneRes = BigInt::BitwiseAddOne(thread, maxSafeInt);
     JSHandle<BigInt> minusMaxSafePlusOneInt = BigInt::UnaryMinus(thread, maxSafeIntPlusOne);
     EXPECT_TRUE(BigInt::Equal(addOneRes.GetTaggedValue(), minusMaxSafePlusOneInt.GetTaggedValue()));
+
+    JSHandle<BigInt> newBigint = BigInt::CreateBigint(thread, 2);
+    newBigint->SetDigit(0, std::numeric_limits<uint32_t>::max());
+    newBigint->SetDigit(1, std::numeric_limits<uint32_t>::max());
+    JSHandle<BigInt> addOneRes1 = BigInt::BitwiseAddOne(thread, newBigint);
+    addOneRes1->SetSign(false);
+    JSHandle<BigInt> newBigint1 = BigInt::CreateBigint(thread, 3);
+    newBigint1->SetDigit(0, 0);
+    newBigint1->SetDigit(1, 0);
+    newBigint1->SetDigit(2, 1);
+    EXPECT_TRUE(BigInt::Equal(addOneRes1.GetTaggedValue(), newBigint1.GetTaggedValue()));
 }
 
 /**
@@ -280,6 +360,11 @@ HWTEST_F_L0(JSBigintTest, UnaryMinus)
     EXPECT_TRUE(BigInt::Equal(minusRes3.GetTaggedValue(), minSafeIntSubOne.GetTaggedValue()));
     JSHandle<BigInt> minusRes4 = BigInt::UnaryMinus(thread, minSafeIntSubOne);
     EXPECT_TRUE(BigInt::Equal(minusRes4.GetTaggedValue(), maxSafeIntPlusOne.GetTaggedValue()));
+
+    JSHandle<BigInt> zero =  BigInt::Int32ToBigInt(thread, 0);
+    JSHandle<BigInt> minusRes5 = BigInt::UnaryMinus(thread, zero);
+    EXPECT_TRUE(!minusRes5->GetSign());
+    EXPECT_TRUE(BigInt::Equal(zero.GetTaggedValue(), minusRes5.GetTaggedValue()));
 }
 
 /**
@@ -304,13 +389,16 @@ HWTEST_F_L0(JSBigintTest, Exponentiate_Multiply_Divide_Remainder)
     JSHandle<BigInt> resBigint2 = BigIntHelper::SetBigInt(thread, resBigintStr2);
     JSHandle<BigInt> resBigint3 = BigIntHelper::SetBigInt(thread, resBigintStr3);
     JSHandle<BigInt> resBigint4 = BigIntHelper::SetBigInt(thread, resBigintStr4);
-
+    JSHandle<BigInt> resBigint5 = BigInt::Int32ToBigInt(thread, -1);
+    JSHandle<BigInt> zero = BigInt::Int32ToBigInt(thread, 0);
     // Exponentiate
     JSHandle<BigInt> expRes1 = BigInt::Exponentiate(thread, baseBigint, expBigint1);
     EXPECT_TRUE(BigInt::Equal(expRes1.GetTaggedValue(), resBigint1.GetTaggedValue()));
     JSHandle<BigInt> expRes2 = BigInt::Exponentiate(thread, baseBigint, expBigint2);
     EXPECT_TRUE(BigInt::Equal(expRes2.GetTaggedValue(), resBigint2.GetTaggedValue()));
-
+    JSHandle<BigInt> expRes3 = BigInt::Exponentiate(thread, baseBigint, resBigint5);
+    EXPECT_TRUE(expRes3.GetTaggedValue().IsException());
+    thread->ClearException();
     // Multiply
     JSHandle<BigInt> mulRes1 = BigInt::Multiply(thread, baseBigint, baseBigint);
     for (int32_t i = 0; i < atoi(expBigintStr1.c_str()) - 2; i++) {
@@ -336,6 +424,15 @@ HWTEST_F_L0(JSBigintTest, Exponentiate_Multiply_Divide_Remainder)
     EXPECT_TRUE(BigInt::Equal(divRes3.GetTaggedValue(), resBigint2.GetTaggedValue()));
     JSHandle<BigInt> divRes4 = BigInt::Divide(thread, resBigint4, resBigint2);
     EXPECT_TRUE(BigInt::Equal(divRes4.GetTaggedValue(), resBigint1.GetTaggedValue()));
+    JSHandle<BigInt> divRes5 = BigInt::Divide(thread, baseBigint, zero);
+    EXPECT_TRUE(divRes5.GetTaggedValue().IsException());
+    thread->ClearException();
+    JSHandle<BigInt> divRes6 = BigInt::Divide(thread, expBigint2, baseBigint);
+    JSHandle<BigInt> expectRes6 = BigInt::Int32ToBigInt(thread, 27); // 27 : Expected calculation results
+    EXPECT_TRUE(BigInt::Equal(divRes6.GetTaggedValue(), expectRes6.GetTaggedValue()));
+    JSHandle<BigInt> divRes7 = BigInt::Divide(thread, expBigint1, baseBigint);
+    JSHandle<BigInt> expectRes7 = BigInt::Int32ToBigInt(thread, 26); // 26 : Expected calculation results
+    EXPECT_TRUE(BigInt::Equal(divRes7.GetTaggedValue(), expectRes7.GetTaggedValue()));
 
     // Remainder
     JSHandle<BigInt> remRes1 = BigInt::Remainder(thread, resBigint4, resBigint1);
@@ -344,6 +441,14 @@ HWTEST_F_L0(JSBigintTest, Exponentiate_Multiply_Divide_Remainder)
     EXPECT_TRUE(BigInt::Equal(remRes2.GetTaggedValue(), expBigint2.GetTaggedValue()));
     JSHandle<BigInt> remRes3 = BigInt::Remainder(thread, resBigint4, resBigint3);
     EXPECT_TRUE(BigInt::Equal(remRes3.GetTaggedValue(), expBigint2.GetTaggedValue()));
+    JSHandle<BigInt> remRes4 = BigInt::Remainder(thread, baseBigint, zero);
+    EXPECT_TRUE(remRes4.GetTaggedValue().IsException());
+    thread->ClearException();
+    JSHandle<BigInt> remRes5 = BigInt::Remainder(thread, expBigint2, baseBigint);
+    EXPECT_TRUE(BigInt::Equal(remRes5.GetTaggedValue(), zero.GetTaggedValue()));
+    JSHandle<BigInt> remRes6 = BigInt::Remainder(thread, expBigint1, baseBigint);
+    JSHandle<BigInt> expect = BigInt::Int32ToBigInt(thread, 1);
+    EXPECT_TRUE(BigInt::Equal(remRes6.GetTaggedValue(), expect.GetTaggedValue()));
 }
 
 /**
@@ -489,4 +594,327 @@ HWTEST_F_L0(JSBigintTest, CreateBigWords)
         EXPECT_TRUE(words1[i] == wordsOut1[i]);
     }
 }
+
+/**
+ * @tc.name: GetUint64MaxBigint GetInt64MaxBigint
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, GetUint64MaxBigint_GetInt64MaxBigint)
+{
+    JSHandle<BigInt> exponent = BigInt::Int32ToBigInt(thread, 64); // 64 : bits
+    JSHandle<BigInt> exponentone = BigInt::Int32ToBigInt(thread, 63); // 63 : bits
+    JSHandle<BigInt> base = BigInt::Int32ToBigInt(thread, 2); // 2 : base value
+    JSHandle<BigInt> uint64MaxBigint1  = BigInt::Exponentiate(thread, base, exponent);
+    JSHandle<BigInt> uint64MaxBigint2 = BigInt::GetUint64MaxBigint(thread);
+    EXPECT_TRUE(BigInt::Equal(uint64MaxBigint1.GetTaggedValue(), uint64MaxBigint2.GetTaggedValue()));
+    JSHandle<BigInt> int64MaxBigint1 = BigInt::Exponentiate(thread, base, exponentone);
+    JSHandle<BigInt> int64MaxBigint2 = BigInt::GetInt64MaxBigint(thread);
+    EXPECT_TRUE(BigInt::Equal(int64MaxBigint1.GetTaggedValue(), int64MaxBigint2.GetTaggedValue()));
+}
+
+/**
+ * @tc.name: Int32ToBigInt
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, Int32ToBigInt)
+{
+    JSHandle<BigInt> resBigint1 = BigInt::Int32ToBigInt(thread, std::numeric_limits<int32_t>::max());
+    JSHandle<BigInt> resBigint2 = BigInt::Int32ToBigInt(thread, std::numeric_limits<int32_t>::min());
+    JSHandle<BigInt> resBigint3 = BigInt::Int32ToBigInt(thread, 0);
+
+    EXPECT_TRUE(static_cast<int32_t>(resBigint1->GetDigit(0)) == std::numeric_limits<int32_t>::max());
+    EXPECT_FALSE(resBigint1->GetSign());
+    EXPECT_TRUE(static_cast<int32_t>(resBigint2->GetDigit(0)) == std::numeric_limits<int32_t>::min());
+    EXPECT_TRUE(resBigint2->GetSign());
+    EXPECT_TRUE(static_cast<int32_t>(resBigint3->GetDigit(0)) == 0);
+    EXPECT_FALSE(resBigint3->GetSign());
+}
+
+/**
+ * @tc.name: Uint32ToBigInt
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, Uint32ToBigInt)
+{
+    JSHandle<BigInt> resBigint1 = BigInt::Uint32ToBigInt(thread, std::numeric_limits<uint32_t>::max());
+    JSHandle<BigInt> resBigint2 = BigInt::Uint32ToBigInt(thread, std::numeric_limits<uint32_t>::min());
+    JSHandle<BigInt> resBigint3 = BigInt::Uint32ToBigInt(thread, 0);
+
+    EXPECT_TRUE(resBigint1->GetDigit(0) == std::numeric_limits<uint32_t>::max());
+    EXPECT_FALSE(resBigint1->GetSign());
+    EXPECT_TRUE(resBigint2->GetDigit(0) == std::numeric_limits<uint32_t>::min());
+    EXPECT_FALSE(resBigint2->GetSign());
+    EXPECT_TRUE(resBigint3->GetDigit(0) == 0);
+    EXPECT_FALSE(resBigint3->GetSign());
+}
+
+/**
+ * @tc.name: BigIntToInt64
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, BigIntToInt64)
+{
+    JSHandle<BigInt> resBigint1 = BigInt::Int64ToBigInt(thread, LLONG_MAX);
+    JSHandle<BigInt> resBigint2 = BigInt::Int64ToBigInt(thread, LLONG_MIN);
+    JSHandle<BigInt> resBigint3 = BigInt::Int64ToBigInt(thread, INT_MAX);
+    JSHandle<BigInt> resBigint4 = BigInt::Int64ToBigInt(thread, INT_MIN);
+    JSHandle<BigInt> resBigint5 = BigInt::Int64ToBigInt(thread, 0);
+    int64_t cValue = 0;
+    bool lossless = false;
+    BigInt::BigIntToInt64(thread, JSHandle<JSTaggedValue>(resBigint1), &cValue, &lossless);
+    EXPECT_TRUE(cValue == LLONG_MAX);
+    EXPECT_TRUE(lossless);
+    BigInt::BigIntToInt64(thread, JSHandle<JSTaggedValue>(resBigint2), &cValue, &lossless);
+    EXPECT_TRUE(cValue == LLONG_MIN);
+    EXPECT_TRUE(lossless);
+    BigInt::BigIntToInt64(thread, JSHandle<JSTaggedValue>(resBigint3), &cValue, &lossless);
+    EXPECT_TRUE(cValue == INT_MAX);
+    EXPECT_TRUE(lossless);
+    BigInt::BigIntToInt64(thread, JSHandle<JSTaggedValue>(resBigint4), &cValue, &lossless);
+    EXPECT_TRUE(cValue == INT_MIN);
+    EXPECT_TRUE(lossless);
+    BigInt::BigIntToInt64(thread, JSHandle<JSTaggedValue>(resBigint5), &cValue, &lossless);
+    EXPECT_TRUE(cValue == 0);
+    EXPECT_TRUE(lossless);
+
+    JSHandle<BigInt> resBigint6 = BigInt::CreateBigint(thread, 3); // 3 : bigint length
+    resBigint6->SetDigit(0, 0);
+    resBigint6->SetDigit(1, 0);
+    resBigint6->SetDigit(2, 1); // 2 : index
+    lossless = false;
+    BigInt::BigIntToInt64(thread, JSHandle<JSTaggedValue>(resBigint6), &cValue, &lossless);
+    EXPECT_TRUE(cValue == 0);
+    EXPECT_TRUE(!lossless);
+
+    resBigint6->SetSign(true);
+    resBigint6->SetDigit(2, 2); // 2 : index
+    BigInt::BigIntToInt64(thread, JSHandle<JSTaggedValue>(resBigint6), &cValue, &lossless);
+    EXPECT_TRUE(cValue == 0);
+    EXPECT_TRUE(!lossless);
+}
+
+/**
+ * @tc.name: BigIntToUint64
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, BigIntToUint64)
+{
+    JSHandle<BigInt> resBigint1 = BigInt::Uint64ToBigInt(thread, ULLONG_MAX);
+    JSHandle<BigInt> resBigint2 = BigInt::Uint64ToBigInt(thread, UINT_MAX);
+    JSHandle<BigInt> resBigint3 = BigInt::Uint64ToBigInt(thread, 0);
+
+    uint64_t cValue = 0;
+    bool lossless = false;
+    BigInt::BigIntToUint64(thread, JSHandle<JSTaggedValue>(resBigint1), &cValue, &lossless);
+    EXPECT_TRUE(cValue == ULLONG_MAX);
+    EXPECT_TRUE(lossless);
+    BigInt::BigIntToUint64(thread, JSHandle<JSTaggedValue>(resBigint2), &cValue, &lossless);
+    EXPECT_TRUE(cValue == UINT_MAX);
+    EXPECT_TRUE(lossless);
+    BigInt::BigIntToUint64(thread, JSHandle<JSTaggedValue>(resBigint3), &cValue, &lossless);
+    EXPECT_TRUE(cValue == 0);
+    EXPECT_TRUE(lossless);
+
+    JSHandle<BigInt> resBigint4 = BigInt::CreateBigint(thread, 3); // 3 : bigint length
+    resBigint4->SetDigit(0, 0);
+    resBigint4->SetDigit(1, 0);
+    resBigint4->SetDigit(2, 1); // 2 : index
+    lossless = false;
+    BigInt::BigIntToUint64(thread, JSHandle<JSTaggedValue>(resBigint4), &cValue, &lossless);
+    EXPECT_TRUE(cValue == 0);
+    EXPECT_TRUE(!lossless);
+}
+
+/**
+ * @tc.name: Add
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, Add)
+{
+    JSHandle<BigInt> resBigint = BigInt::CreateBigint(thread, 2); // 2 : bigint length
+    resBigint->SetDigit(0, 0);
+    resBigint->SetDigit(1, 1);
+    resBigint->SetSign(true);
+    JSHandle<BigInt> resBigint1 = BigInt::CreateBigint(thread, 2); // 2 : bigint length
+    resBigint1->SetDigit(0, 1);
+    resBigint1->SetDigit(1, 1);
+
+    JSHandle<BigInt> addres = BigInt::Add(thread, resBigint, resBigint1);
+    EXPECT_TRUE(addres->GetLength() == 1);
+    EXPECT_TRUE(addres->GetDigit(0) == 1);
+    JSHandle<BigInt> addres1 = BigInt::Add(thread, resBigint1, resBigint);
+    EXPECT_TRUE(addres1->GetLength() == 1);
+    EXPECT_TRUE(addres1->GetDigit(0) == 1);
+
+    JSHandle<BigInt> resBigint2 = BigInt::Int32ToBigInt(thread, 1);
+    JSHandle<BigInt> addres2 = BigInt::Add(thread, resBigint2, resBigint);
+    EXPECT_TRUE(addres2->GetLength() == 1);
+    EXPECT_TRUE(addres2->GetSign());
+    EXPECT_TRUE(addres2->GetDigit(0) == std::numeric_limits<uint32_t>::max());
+
+    JSHandle<BigInt> addres3 = BigInt::Add(thread, resBigint2, resBigint1);
+    EXPECT_TRUE(addres3->GetLength() == 2); // 2 : bigint length
+    EXPECT_TRUE(!addres3->GetSign());
+    EXPECT_TRUE(addres3->GetDigit(0) == 2); // 2 : digit value
+}
+
+/**
+ * @tc.name: Subtract
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, Subtract)
+{
+    JSHandle<BigInt> resBigint = BigInt::CreateBigint(thread, 2); // 2 : bigint length
+    resBigint->SetDigit(0, 0);
+    resBigint->SetDigit(1, 1);
+    JSHandle<BigInt> resBigint1 = BigInt::CreateBigint(thread, 2); // 2 : bigint length
+    resBigint1->SetDigit(0, 1);
+    resBigint1->SetDigit(1, 1);
+
+    JSHandle<BigInt> addres = BigInt::Subtract(thread, resBigint1, resBigint);
+    EXPECT_TRUE(addres->GetLength() == 1);
+    EXPECT_TRUE(addres->GetDigit(0) == 1);
+    JSHandle<BigInt> addres1 = BigInt::Subtract(thread, resBigint1, resBigint);
+    EXPECT_TRUE(addres1->GetLength() == 1);
+    EXPECT_TRUE(addres1->GetDigit(0) == 1);
+
+    JSHandle<BigInt> resBigint2 = BigInt::Int32ToBigInt(thread, -1);
+    EXPECT_TRUE(resBigint2->GetSign());
+    JSHandle<BigInt> addres2 = BigInt::Subtract(thread, resBigint, resBigint2);
+    EXPECT_TRUE(BigInt::Equal(addres2.GetTaggedValue(), resBigint1.GetTaggedValue()));
+}
+
+/**
+ * @tc.name: BigintSubOne
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, BigintSubOne)
+{
+    JSHandle<BigInt> resBigint = BigInt::Int32ToBigInt(thread, -1);
+    EXPECT_TRUE(resBigint->GetSign());
+    JSHandle<BigInt> addres = BigInt::BigintSubOne(thread, resBigint);
+    EXPECT_TRUE(addres->GetSign());
+    EXPECT_TRUE(addres->GetDigit(0) == 2);
+
+    JSHandle<BigInt> resBigint1 = BigInt::Int32ToBigInt(thread, 1);
+    JSHandle<BigInt> addres1 = BigInt::BigintSubOne(thread, resBigint1);
+    EXPECT_TRUE(addres1->GetDigit(0) == 0);
+}
+
+/**
+ * @tc.name: SignedRightShift
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, SignedRightShift)
+{
+    // the left operand is a positive number
+    CString bigintStr1 = "111111011011110111111101111111101111111111110111111111110111111011";
+    JSHandle<BigInt> bigint1 = BigIntHelper::SetBigInt(thread, bigintStr1, BigInt::BINARY);
+    JSHandle<BigInt> shift1 = BigInt::Int32ToBigInt(thread, 20); // 20 : shiftBits
+    JSHandle<BigInt> res1 = BigInt::SignedRightShift(thread, bigint1, shift1);
+
+    CString expectResStr1 = "1111110110111101111111011111111011111111111101";
+    JSHandle<BigInt> expectRes1 = BigIntHelper::SetBigInt(thread, expectResStr1, BigInt::BINARY);
+    EXPECT_TRUE(BigInt::Equal(res1.GetTaggedValue(), expectRes1.GetTaggedValue()));
+
+    JSHandle<BigInt> shift2 = BigInt::Int32ToBigInt(thread, 0);
+    JSHandle<BigInt> res2 = BigInt::SignedRightShift(thread, bigint1, shift2);
+    EXPECT_TRUE(BigInt::Equal(res2.GetTaggedValue(), bigint1.GetTaggedValue()));
+
+    JSHandle<BigInt> res3 = BigInt::SignedRightShift(thread, shift2, bigint1);
+    EXPECT_TRUE(BigInt::Equal(res3.GetTaggedValue(), shift2.GetTaggedValue()));
+
+    JSHandle<BigInt> shift3 = BigInt::Int32ToBigInt(thread, -33); // -33 : shiftBits
+    JSHandle<BigInt> res4 = BigInt::SignedRightShift(thread, bigint1, shift3);
+    CString expectResStr4 =
+        "111111011011110111111101111111101111111111110111111111110111111011000000000000000000000000000000000";
+    JSHandle<BigInt> expectRes4 = BigIntHelper::SetBigInt(thread, expectResStr4, BigInt::BINARY);
+    EXPECT_TRUE(BigInt::Equal(res4.GetTaggedValue(), expectRes4.GetTaggedValue()));
+
+    // left operand is negative number
+    JSHandle<BigInt> bigint2 = BigInt::UnaryMinus(thread, bigint1);
+
+    CString expectResStr5 =
+        "-1111110110111101111111011111111011111111111110";
+    JSHandle<BigInt> expectRes5 = BigIntHelper::SetBigInt(thread, expectResStr5, BigInt::BINARY);
+    JSHandle<BigInt> res5 = BigInt::SignedRightShift(thread, bigint2, shift1);
+    EXPECT_TRUE(BigInt::Equal(res5.GetTaggedValue(), expectRes5.GetTaggedValue()));
+
+    CString expectResStr6 =
+        "-111111011011110111111101111111101111111111110111111111110111111011000000000000000000000000000000000";
+    JSHandle<BigInt> expectRes6 = BigIntHelper::SetBigInt(thread, expectResStr6, BigInt::BINARY);
+    JSHandle<BigInt> res6 = BigInt::SignedRightShift(thread, bigint2, shift3);
+    EXPECT_TRUE(BigInt::Equal(res6.GetTaggedValue(), expectRes6.GetTaggedValue()));
+
+    JSHandle<BigInt> res7 = BigInt::SignedRightShift(thread, shift3, bigint1);
+    JSHandle<BigInt> expectRes7 = BigInt::Int32ToBigInt(thread, -1);
+    EXPECT_TRUE(BigInt::Equal(res7.GetTaggedValue(), expectRes7.GetTaggedValue()));
+
+    JSHandle<BigInt> shift4 = BigInt::Int32ToBigInt(thread, 65); // 65 : shiftBits
+    JSHandle<BigInt> res8 = BigInt::SignedRightShift(thread, shift3, shift4);
+    EXPECT_TRUE(BigInt::Equal(res8.GetTaggedValue(), expectRes7.GetTaggedValue()));
+}
+
+/**
+ * @tc.name: LeftShift
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSBigintTest, LeftShift)
+{
+    // the left operand is a positive number
+    CString bigintStr1 = "111111011011110111111101111111101111111111110111111111110111111011";
+    JSHandle<BigInt> bigint1 = BigIntHelper::SetBigInt(thread, bigintStr1, BigInt::BINARY);
+    JSHandle<BigInt> shift1 = BigInt::Int32ToBigInt(thread, 20); // 20 : shiftBits
+    JSHandle<BigInt> res1 = BigInt::LeftShift(thread, bigint1, shift1);
+
+    CString expectResStr1 =
+        "11111101101111011111110111111110111111111111011111111111011111101100000000000000000000";
+    JSHandle<BigInt> expectRes1 = BigIntHelper::SetBigInt(thread, expectResStr1, BigInt::BINARY);
+    EXPECT_TRUE(BigInt::Equal(res1.GetTaggedValue(), expectRes1.GetTaggedValue()));
+
+    JSHandle<BigInt> shift2 = BigInt::Int32ToBigInt(thread, 0);
+    JSHandle<BigInt> res2 = BigInt::LeftShift(thread, bigint1, shift2);
+    EXPECT_TRUE(BigInt::Equal(res2.GetTaggedValue(), bigint1.GetTaggedValue()));
+
+    JSHandle<BigInt> shift3 = BigInt::Int32ToBigInt(thread, -33); // -33 : shiftBits
+    JSHandle<BigInt> res4 = BigInt::LeftShift(thread, bigint1, shift3);
+    CString expectResStr4 = "111111011011110111111101111111101";
+    JSHandle<BigInt> expectRes4 = BigIntHelper::SetBigInt(thread, expectResStr4, BigInt::BINARY);
+    EXPECT_TRUE(BigInt::Equal(res4.GetTaggedValue(), expectRes4.GetTaggedValue()));
+
+    // left operand is negative number
+    JSHandle<BigInt> bigint2 = BigInt::UnaryMinus(thread, bigint1);
+
+    CString expectResStr5 =
+        "-11111101101111011111110111111110111111111111011111111111011111101100000000000000000000";
+    JSHandle<BigInt> expectRes5 = BigIntHelper::SetBigInt(thread, expectResStr5, BigInt::BINARY);
+    JSHandle<BigInt> res5 = BigInt::LeftShift(thread, bigint2, shift1);
+    EXPECT_TRUE(BigInt::Equal(res5.GetTaggedValue(), expectRes5.GetTaggedValue()));
+
+    CString expectResStr6 = "-111111011011110111111101111111110";
+    JSHandle<BigInt> expectRes6 = BigIntHelper::SetBigInt(thread, expectResStr6, BigInt::BINARY);
+    JSHandle<BigInt> res6 = BigInt::LeftShift(thread, bigint2, shift3);
+    EXPECT_TRUE(BigInt::Equal(res6.GetTaggedValue(), expectRes6.GetTaggedValue()));
+}
+
 } // namespace panda::test

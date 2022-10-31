@@ -15,6 +15,7 @@
 
 #include "ecmascript/ts_types/ts_type_table.h"
 
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -26,47 +27,21 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
-void TSTypeTable::Initialize(JSThread *thread, const JSPandaFile *jsPandaFile,
-                             CVector<JSHandle<EcmaString>> &recordImportModules)
-{
-    EcmaVM *vm = thread->GetEcmaVM();
-    TSManager *tsManager = vm->GetTSManager();
-    ObjectFactory *factory = vm->GetFactory();
-
-    uint32_t moduleId = static_cast<uint32_t>(tsManager->GetNextModuleId());
-    JSHandle<TSTypeTable> tsTypeTable = GenerateTypeTable(thread, jsPandaFile, moduleId, recordImportModules);
-
-    // Set TStypeTable -> GlobleModuleTable
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8(jsPandaFile->GetJSPandaFileDesc());
-    tsManager->AddTypeTable(JSHandle<JSTaggedValue>(tsTypeTable), fileName);
-
-    TSTypeTable::LinkClassType(thread, tsTypeTable);
-    tsManager->GenerateStaticHClass(tsTypeTable, jsPandaFile);
-
-    // management dependency module
-    while (recordImportModules.size() > 0) {
-        CString filename = ConvertToString(recordImportModules.back().GetTaggedValue());
-        recordImportModules.pop_back();
-        const JSPandaFile *moduleFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(filename.c_str());
-        ASSERT(moduleFile != nullptr);
-        TSTypeTable::Initialize(thread, moduleFile, recordImportModules);
-    }
-}
-
 JSHandle<TSTypeTable> TSTypeTable::GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                     uint32_t moduleId,
+                                                     const CString &recordName, uint32_t moduleId,
                                                      CVector<JSHandle<EcmaString>> &recordImportModules)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // read type summary literal
     // struct of summaryLiteral: {numTypes, literalOffset0, literalOffset1, ...}
-    panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset());
+    panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset(recordName));
     JSHandle<TaggedArray> summaryLiteral = LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, summaryOffset);
     uint32_t numTypes = static_cast<uint32_t>(summaryLiteral->Get(NUM_OF_TYPES_INDEX_IN_SUMMARY_LITREAL).GetInt());
 
     FillLiteralOffsetGTMap(thread, jsPandaFile, moduleId, summaryLiteral, numTypes);
 
+    // Initialize a empty TSTypeTable with length of (numTypes + RESERVE_TABLE_LENGTH)
     JSHandle<TSTypeTable> table = factory->NewTSTypeTable(numTypes);
     TSTypeParser typeParser(thread->GetEcmaVM(), jsPandaFile, recordImportModules);
     for (uint32_t idx = 1; idx <= numTypes; ++idx) {
@@ -80,9 +55,11 @@ JSHandle<TSTypeTable> TSTypeTable::GenerateTypeTable(JSThread *thread, const JSP
         typeParser.SetTypeGT(type, moduleId, idx);
         table->Set(thread, idx, type);
     }
-    recordImportModules = typeParser.GetImportModules();
 
-    SetExportValueTable(thread, table, jsPandaFile);
+    // Get amiPaths of all of the modules/files imported by current module/file
+    recordImportModules = typeParser.GetImportModules();
+    // Generate export-table and set to the last position of this type-table
+    SetExportValueTable(thread, jsPandaFile, table);
     return table;
 }
 
@@ -121,7 +98,29 @@ panda_file::File::EntityId TSTypeTable::GetFileId(const panda_file::File &pf)
     return fileId;
 }
 
-JSHandle<TaggedArray> TSTypeTable::GetExportTableFromPandFile(JSThread *thread, const JSPandaFile *jsPandaFile)
+JSHandle<TaggedArray> TSTypeTable::GenerateExportTableFromPandaFile(JSThread *thread, const JSPandaFile *jsPandaFile)
+{
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+
+    // Read export-data from annotation of the .abc File
+    JSHandle<TaggedArray> exportTable = GetExportDataFromPandaFile(thread, jsPandaFile);
+    uint32_t length = exportTable->GetLength();
+
+    // Replace typeIds with GT
+    JSTaggedValue target;
+    for (uint32_t i = 1; i < length; i += ITEM_SIZE) {
+        target = exportTable->Get(i);
+        // Create GT based on typeId, and wrapped it into a JSTaggedValue
+        uint32_t typeId = target.GetInt();
+        GlobalTSTypeRef typeGT = TSTypeParser::CreateGT(ecmaVm, jsPandaFile, typeId);
+        // Set the wrapped GT to exportTable
+        exportTable->Set(thread, i, JSTaggedValue(typeGT.GetType()));
+    }
+
+    return exportTable;
+}
+
+JSHandle<TaggedArray> TSTypeTable::GetExportDataFromPandaFile(JSThread *thread, const JSPandaFile *jsPandaFile)
 {
     const panda_file::File &pf = *jsPandaFile->GetPandaFile();
     panda_file::File::EntityId fileId = GetFileId(pf);
@@ -135,7 +134,7 @@ JSHandle<TaggedArray> TSTypeTable::GetExportTableFromPandFile(JSThread *thread, 
         symbolTypes = EXPORTED_SYMBOL_TYPES;
     }
 
-    JSHandle<TaggedArray> typeOfExprotedSymbols(thread, thread->GlobalConstants()->GetEmptyArray());
+    JSHandle<TaggedArray> typeOfExportedSymbols(thread, thread->GlobalConstants()->GetEmptyArray());
     mda.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
         panda_file::AnnotationDataAccessor ada(pf, annotation_id);
         auto *annotationName = reinterpret_cast<const char *>(pf.GetStringData(ada.GetClassId()).data);
@@ -155,12 +154,12 @@ JSHandle<TaggedArray> TSTypeTable::GetExportTableFromPandFile(JSThread *thread, 
 
             panda_file::ScalarValue sv = adae.GetScalarValue();
             panda_file::File::EntityId literalOffset(sv.GetValue());
-            typeOfExprotedSymbols = LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, literalOffset);
+            typeOfExportedSymbols = LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, literalOffset);
             // typeOfExprotedSymbols: "symbol0", "type0", "symbol1", "type1" ...
         }
     });
 
-    return typeOfExprotedSymbols;
+    return typeOfExportedSymbols;
 }
 
 JSHandle<TaggedArray> TSTypeTable::GetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable)
@@ -170,15 +169,17 @@ JSHandle<TaggedArray> TSTypeTable::GetExportValueTable(JSThread *thread, JSHandl
     return exportValueTable;
 }
 
-void TSTypeTable::SetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> tTable, const JSPandaFile *jsPandaFile)
+void TSTypeTable::SetExportValueTable(JSThread *thread, const JSPandaFile *jsPandaFile, JSHandle<TSTypeTable> typeTable)
 {
-    JSHandle<TaggedArray> exportValueTable = GetExportTableFromPandFile(thread, jsPandaFile);
+    // Get export-type-info from specified file, and put them into an tagged array
+    JSHandle<TaggedArray> exportValueTable = GenerateExportTableFromPandaFile(thread, jsPandaFile);
+
     if (exportValueTable->GetLength() != 0) { // add exprotValueTable to tSTypeTable if isn't empty
-        tTable->Set(thread, tTable->GetLength() - 1, exportValueTable);
+        typeTable->Set(thread, typeTable->GetLength() - 1, exportValueTable);
     }
 }
 
-void TSTypeTable::CheckModule(JSThread *thread, const TSManager* tsManager,  const JSHandle<EcmaString> target,
+void TSTypeTable::CheckModule(JSThread *thread, const TSManager* tsManager, const JSHandle<EcmaString> target,
                               CVector<JSHandle<EcmaString>> &recordImportModules)
 {
     int32_t entry = tsManager->GetTSModuleTable()->GetGlobalModuleID(thread, target);
@@ -207,6 +208,7 @@ JSHandle<EcmaString> TSTypeTable::GenerateVarNameAndPath(JSThread *thread, JSHan
     JSHandle<EcmaString> targetVarName = tsManager->GenerateImportVar(importPath); // #A#./A -> A
     JSHandle<EcmaString> relativePath = tsManager->GenerateImportRelativePath(importPath); // #A#./A -> ./A
     JSHandle<EcmaString> fullPathEcmaStr = tsManager->GenerateAmiPath(fileName, relativePath); // ./A -> XXX/XXX/A
+    // Check and fill recordImportModules
     CheckModule(thread, tsManager, fullPathEcmaStr, recordImportModules);
 
     CString fullPath = ConvertToString(fullPathEcmaStr.GetTaggedValue());
@@ -217,8 +219,8 @@ JSHandle<EcmaString> TSTypeTable::GenerateVarNameAndPath(JSThread *thread, JSHan
     return targetNameAndPathEcmaStr;
 }
 
-JSHandle<TSTypeTable> TSTypeTable::PushBackTypeToInferTable(JSThread *thread, JSHandle<TSTypeTable> &table,
-                                                            const JSHandle<TSType> &type)
+JSHandle<TSTypeTable> TSTypeTable::PushBackTypeToTable(JSThread *thread, JSHandle<TSTypeTable> &table,
+                                                       const JSHandle<TSType> &type)
 {
     uint32_t capacity = table->GetLength();  // can't be 0 due to RESERVE_TABLE_LENGTH
     uint32_t numberOfTypes = static_cast<uint32_t>(table->GetNumberOfTypes());
@@ -231,69 +233,5 @@ JSHandle<TSTypeTable> TSTypeTable::PushBackTypeToInferTable(JSThread *thread, JS
     table->SetNumberOfTypes(thread, numberOfTypes + 1);
 
     return table;
-}
-
-void TSTypeTable::LinkClassType(JSThread *thread, JSHandle<TSTypeTable> table)
-{
-    int numTypes = table->GetNumberOfTypes();
-    JSMutableHandle<JSTaggedValue> type(thread, JSTaggedValue::Undefined());
-    for (int i = 1; i <= numTypes; ++i) {
-        type.Update(table->Get(i));
-        if (!type->IsTSClassType()) {
-            continue;
-        }
-
-        JSHandle<TSClassType> classType(type);
-        if (classType->GetHasLinked()) {  // has linked
-            continue;
-        }
-
-        JSHandle<TSClassType> extendClassType = classType->GetExtendClassType(thread);
-        MergeClassFiled(thread, classType, extendClassType);
-    }
-}
-
-void TSTypeTable::MergeClassFiled(JSThread *thread, JSHandle<TSClassType> classType,
-                                  JSHandle<TSClassType> extendClassType)
-{
-    ASSERT(!classType->GetHasLinked());
-
-    if (!extendClassType->GetHasLinked()) {
-        MergeClassFiled(thread, extendClassType, extendClassType->GetExtendClassType(thread));
-    }
-
-    ASSERT(extendClassType->GetHasLinked());
-
-    JSHandle<TSObjectType> field(thread, classType->GetInstanceType());
-    JSHandle<TSObjLayoutInfo> layout(thread, field->GetObjLayoutInfo());
-    uint32_t numSelfTypes = layout->NumberOfElements();
-
-    JSHandle<TSObjectType> extendField(thread, extendClassType->GetInstanceType());
-    JSHandle<TSObjLayoutInfo> extendLayout(thread, extendField->GetObjLayoutInfo());
-    uint32_t numExtendTypes = extendLayout->NumberOfElements();
-
-    uint32_t numTypes = numSelfTypes + numExtendTypes;
-
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TSObjLayoutInfo> newLayout = factory->CreateTSObjLayoutInfo(numTypes);
-
-    uint32_t index = 0;
-    while (index < numExtendTypes) {
-        JSTaggedValue key = extendLayout->GetKey(index);
-        JSTaggedValue type = extendLayout->GetTypeId(index);
-        newLayout->SetKey(thread, index, key, type);
-        index++;
-    }
-
-    index = 0;
-    while (index < numSelfTypes) {
-        JSTaggedValue key = layout->GetKey(index);
-        JSTaggedValue type = layout->GetTypeId(index);
-        newLayout->SetKey(thread, numExtendTypes + index, key, type);
-        index++;
-    }
-
-    field->SetObjLayoutInfo(thread, newLayout);
-    classType->SetHasLinked(true);
 }
 } // namespace panda::ecmascript

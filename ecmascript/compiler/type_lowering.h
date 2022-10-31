@@ -135,8 +135,12 @@ private:
     void LowerTypedDiv(GateRef gate);
     void LowerTypedEq(GateRef gate);
     void LowerTypedNotEq(GateRef gate);
+    void LowerTypedShl(GateRef gate);
+    void LowerTypedShr(GateRef gate);
+    void LowerTypedAshr(GateRef gate);
     void LowerTypedInc(GateRef gate);
     void LowerTypedDec(GateRef gate);
+    void LowerTypedNot(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
@@ -152,13 +156,19 @@ private:
     void LowerNumberDiv(GateRef gate);
     void LowerNumberEq(GateRef gate);
     void LowerNumberNotEq(GateRef gate);
+    void LowerNumberShl(GateRef gate);
+    void LowerNumberShr(GateRef gate);
+    void LowerNumberAshr(GateRef gate);
     void LowerNumberInc(GateRef gate);
     void LowerNumberDec(GateRef gate);
+    void LowerNumberNot(GateRef gate);
 
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
     template<OpCode::Op Op>
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
+    template<OpCode::Op Op>
+    GateRef ShiftNumber(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
     GateRef CompareNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
@@ -171,6 +181,7 @@ private:
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);
+    GateRef TruncDoubleToInt(GateRef gate);
     GateRef Int32Mod(GateRef left, GateRef right);
     GateRef DoubleMod(GateRef left, GateRef right);
     GateRef IntToTaggedIntPtr(GateRef x);
@@ -178,6 +189,7 @@ private:
     GateRef Less(GateRef left, GateRef right);
     GateRef LessEq(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);
+    GateRef ModNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     GateRef DivNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     GateRef FastEqual(GateRef left, GateRef right);
 

@@ -962,12 +962,12 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
 HWTEST_F_L0(StubTest, GetPropertyByNameStub)
 {
     auto module = stubModule.GetModule();
-    auto function = stubModule.GetFunction(CommonStubCSigns::GetPropertyByName);
+    auto function = stubModule.GetFunction(CommonStubCSigns::DeprecatedGetPropertyByName);
     Circuit netOfGates;
     CallSignature callSignature;
-    GetPropertyByNameCallSignature::Initialize(&callSignature);
+    DeprecatedGetPropertyByNameCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
-    GetPropertyByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    DeprecatedGetPropertyByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
@@ -1002,12 +1002,12 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
 HWTEST_F_L0(StubTest, SetPropertyByNameStub)
 {
     auto module = stubModule.GetModule();
-    auto function = stubModule.GetFunction(CommonStubCSigns::SetPropertyByName);
+    auto function = stubModule.GetFunction(CommonStubCSigns::DeprecatedSetPropertyByName);
     Circuit netOfGates;
     CallSignature callSignature;
-    SetPropertyByNameCallSignature::Initialize(&callSignature);
+    DeprecatedSetPropertyByNameCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
-    SetPropertyByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
+    DeprecatedSetPropertyByNameStubBuilder optimizer(&callSignature, stub.GetEnvironment());
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
@@ -1053,12 +1053,12 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
         stubModule.GetCompilationConfig(),  CallSignature::CallConv::CCallConv);
     llvmBuilder2.Build();
 
-    LLVMValueRef getPropertyByNamefunction = stubModule.GetFunction(CommonStubCSigns::GetPropertyByName);
+    LLVMValueRef getPropertyByNamefunction = stubModule.GetFunction(CommonStubCSigns::DeprecatedGetPropertyByName);
     Circuit netOfGates1;
     CallSignature callSignature1;
-    GetPropertyByNameCallSignature::Initialize(&callSignature1);
+    DeprecatedGetPropertyByNameCallSignature::Initialize(&callSignature1);
     Stub stub1(&callSignature1, &netOfGates1);
-    GetPropertyByNameStubBuilder getPropertyByNameStub(&callSignature, stub1.GetEnvironment());
+    DeprecatedGetPropertyByNameStubBuilder getPropertyByNameStub(&callSignature, stub1.GetEnvironment());
     stub1.SetStubBuilder(&getPropertyByNameStub);
     stub1.GenerateCircuit(stubModule.GetCompilationConfig());
     bool result = Verifier::Run(&netOfGates1);
@@ -1068,12 +1068,12 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
         stubModule.GetCompilationConfig(), CallSignature::CallConv::CCallConv);
     llvmBuilder1.Build();
 
-    LLVMValueRef function = stubModule.GetFunction(CommonStubCSigns::GetPropertyByValue);
+    LLVMValueRef function = stubModule.GetFunction(CommonStubCSigns::DeprecatedGetPropertyByValue);
     Circuit netOfGates;
     CallSignature callSignature2;
-    GetPropertyByValueCallSignature::Initialize(&callSignature2);
+    DeprecatedGetPropertyByValueCallSignature::Initialize(&callSignature2);
     Stub stub2(&callSignature2, &netOfGates);
-    GetPropertyByValueStubBuilder getPropertyByValueStub(&callSignature, stub2.GetEnvironment());
+    DeprecatedGetPropertyByValueStubBuilder getPropertyByValueStub(&callSignature, stub2.GetEnvironment());
     stub2.SetStubBuilder(&getPropertyByValueStub);
     stub2.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
@@ -1095,7 +1095,8 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
         reinterpret_cast<uintptr_t>(assembler.GetFuncPtrFromCompiledModule(getPropertyByIndexfunction)));
 
     thread->SetFastStubEntry(CommonStubCSigns::GetPropertyByIndex, reinterpret_cast<uintptr_t>(getpropertyByIndexPtr));
-    thread->SetFastStubEntry(CommonStubCSigns::GetPropertyByName, reinterpret_cast<uintptr_t>(getPropertyByNamePtr));
+    thread->SetFastStubEntry(CommonStubCSigns::DeprecatedGetPropertyByName,
+        reinterpret_cast<uintptr_t>(getPropertyByNamePtr));
     auto *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
     int x = 213;

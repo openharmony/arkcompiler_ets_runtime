@@ -24,9 +24,8 @@ std::string ConstantPool::GetStdStringByIdx(size_t index) const
     return EcmaStringAccessor(str).ToStdString(StringConvertedUsage::LOGICOPERATION);
 }
 
-JSHandle<ConstantPool> ConstantPool::RestoreConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                         uint32_t constpoolSize)
+JSHandle<ConstantPool> ConstantPool::RestoreConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
-    return vm->GetTSManager()->RestoreConstantPool(jsPandaFile, constpoolSize);
+    return vm->GetTSManager()->RestoreConstantPool(jsPandaFile);
 }
 }

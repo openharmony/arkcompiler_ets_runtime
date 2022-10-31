@@ -39,6 +39,7 @@ class JSThread;
     V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX, ecma_roots_class)                                                 \
     V(JSTaggedValue, ConstantPoolClass, CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, DictionaryClass, DICTIONARY_CLASS_INDEX, ecma_roots_class)                                       \
+    V(JSTaggedValue, COWArrayClass, COW_ARRAY_CLASS_INDEX, ecma_roots_class)                                          \
     V(JSTaggedValue, BigIntClass, BIGINT_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, JSNativePointerClass, JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, EnvClass, ENV_CLASS_INDEX, ecma_roots_class)                                                     \
@@ -83,6 +84,7 @@ class JSThread;
     V(JSTaggedValue, TSImportTypeClass, TS_IMPORT_TYPE_CLASS_INDEX, ecma_roots_class)                                 \
     V(JSTaggedValue, TSFunctionTypeClass, TS_FUNCTION_TYPE_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, TSArrayTypeClass, TS_ARRAY_TYPE_CLASS_INDEX, ecma_roots_class)                                   \
+    V(JSTaggedValue, TSIteratorInstanceTypeClass, TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX, ecma_roots_class)            \
     V(JSTaggedValue, JSSetIteratorClass, JS_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, JSRegExpIteratorClass, JS_REGEXP_ITERATOR_CLASS_INDEX, ecma_roots_class)                         \
     V(JSTaggedValue, JSMapIteratorClass, JS_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
@@ -111,6 +113,7 @@ class JSThread;
     V(JSTaggedValue, MethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)                                            \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
+    V(JSTaggedValue, AOTLiteralInfoClass, AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                             \
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
@@ -152,6 +155,7 @@ class JSThread;
     V(JSTaggedValue, ListFunction, LIST_FUNCTION_INDEX, ListFunction)                                                 \
     V(JSTaggedValue, LinkedListFunction, LINKED_LIST_FUNCTION_INDEX, LinkedListFunction)                              \
     V(JSTaggedValue, ListIteratorPrototype, LIST_ITERATOR_PROTOTYPE_INDEX, ListIterator)                              \
+    V(JSTaggedValue, UndefinedIterResult, UNDEFINED_INTERATOR_RESULT_INDEX, UndefinedIterResult)                      \
     V(JSTaggedValue, LinkedListIteratorPrototype, LINKED_LIST_ITERATOR_PROTOTYPE_INDEX, LinkedListIterator)           \
     /* SymbolTable*RegisterSymbols */                                                                                 \
     V(JSTaggedValue, NameString, NAME_STRING_INDEX, name)                                                             \
@@ -317,6 +321,7 @@ class JSThread;
     V(JSTaggedValue, NarrowString, NARROW_STRING_INDEX, narrow)                                                       \
     V(JSTaggedValue, AlwaysString, ALWAYS_STRING_INDEX, always)                                                       \
     V(JSTaggedValue, AutoString, AUTO_STRING_INDEX, auto)                                                             \
+    V(JSTaggedValue, ThrowString, THROW_STRING_INDEX, throw)                                                          \
     V(JSTaggedValue, UnitDisplayString, UNIT_DISPLAY_INDEX, unitDisplay)                                              \
     V(JSTaggedValue, NotationString, NOTATION_INDEX, notation)                                                        \
     V(JSTaggedValue, CompactDisplayString, COMPACT_DISPALY_INDEX, compactDisplay)                                     \

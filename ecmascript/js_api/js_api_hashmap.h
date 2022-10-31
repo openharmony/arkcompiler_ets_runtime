@@ -53,6 +53,12 @@ public:
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, HASHMAP_TABLE_INDEX, HASHMAP_SIZE_OFFSET)
     DECL_DUMP()
+
+private:
+    static void SetAllLinkedNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSMutableHandle<LinkedNode> node);
+    static void SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSMutableHandle<RBTreeNode> node);
+    static bool HasValueLinkedNode(JSTaggedValue node, JSTaggedValue value);
+    static bool HasValueRBTreeNode(JSTaggedValue node, JSTaggedValue value);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_API_HASHMAP_H

@@ -18,10 +18,12 @@ group("ark_aot_js_test") {
     "bigint_typed_array_constructors:bigint_typed_array_constructorsAotAction",
     "call_default_args:call_default_argsAotAction",
     "constructor_returns_non_object:constructor_returns_non_objectAotAction",
-    "dynamicimport:dynamicimportAotAction",
+
+    #"dynamicimport:dynamicimportAotAction",
     "formatrangetoparts:formatrangetopartsAotAction",
     "global_this_js:global_this_jsAotAction",
-    "module:moduleAotAction",
+
+    #"module:moduleAotAction",
     "undefined:undefinedAotAction",
   ]
 }
@@ -59,11 +61,13 @@ group("ark_aot_test") {
     "definemethod:definemethodAotAction",
     "definencfunc:definencfuncAotAction",
     "delobjprop:delobjpropAotAction",
+    "deopt:deoptAotAction",
     "destructuring:destructuringAotAction",
     "div:divAotAction",
     "duplicatefunctions:duplicatefunctionsAotAction",
     "exceptionhandler:exceptionhandlerAotAction",
     "exp:expAotAction",
+    "forloop:forloopAotAction",
     "generatorcontinuefinally:generatorcontinuefinallyAotAction",
     "getiterator:getiteratorAotAction",
     "getiteratornext:getiteratornextAotAction",
