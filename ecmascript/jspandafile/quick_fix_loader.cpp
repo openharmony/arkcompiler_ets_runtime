@@ -69,79 +69,47 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *base
 {
     // support multi constpool: baseFile->GetPandaFile()->GetHeader()->num_indexes
     EcmaVM *vm = thread->GetEcmaVM();
-    if (baseFile->IsBundlePack() != patchFile->IsBundlePack()) {
-        LOG_ECMA(ERROR) << "base and patch is not the same type hap!";
+
+    // hot reload and hot patch only support merge-abc file.
+    if (baseFile->IsBundlePack() || patchFile->IsBundlePack()) {
+        LOG_ECMA(ERROR) << "base or patch is not merge abc!";
         return false;
     }
 
-    if (!baseFile->IsBundlePack()) {
-        // Get base constpool.
-        ParseAllConstpoolWithMerge(thread, baseFile);
-        JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile, 0);
-        if (baseConstpoolValue.IsHole()) {
-            LOG_ECMA(ERROR) << "base constpool is hole";
-            return false;
-        }
-        JSHandle<ConstantPool> baseConstpool = JSHandle<ConstantPool>(thread, baseConstpoolValue);
+    // Get base constpool.
+    ParseAllConstpoolWithMerge(thread, baseFile);
+    JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile, 0);
+    if (baseConstpoolValue.IsHole()) {
+        LOG_ECMA(ERROR) << "base constpool is hole";
+        return false;
+    }
 
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        // Get patch constpool.
-        [[maybe_unused]] CVector<JSHandle<Program>> patchPrograms = ParseAllConstpoolWithMerge(thread, patchFile);
-        JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, 0);
-        if (patchConstpoolValue.IsHole()) {
-            LOG_ECMA(ERROR) << "patch constpool is hole";
-            return false;
-        }
-        JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
+    JSHandle<ConstantPool> baseConstpool = JSHandle<ConstantPool>(thread, baseConstpoolValue);
 
-        // Only esmodule support check
-        if (CheckIsInvalidPatch(baseFile, patchFile, vm)) {
-            LOG_ECMA(ERROR) << "Invalid patch";
-            return false;
-        }
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // Get patch constpool.
+    [[maybe_unused]] CVector<JSHandle<Program>> patchPrograms = ParseAllConstpoolWithMerge(thread, patchFile);
+    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, 0);
+    if (patchConstpoolValue.IsHole()) {
+        LOG_ECMA(ERROR) << "patch constpool is hole";
+        return false;
+    }
 
-        if (!ReplaceMethod(thread, baseFile, patchFile, baseConstpool, patchConstpool)) {
-            LOG_ECMA(ERROR) << "replace method failed";
-            return false;
-        }
-    } else {
-        bool isNewVersion = baseFile->IsNewVersion();
-        // Get base constpool.
-        JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile, 0);
-        if (baseConstpoolValue.IsHole()) {
-            LOG_ECMA(ERROR) << "base constpool is hole";
-            return false;
-        }
-        JSHandle<ConstantPool> baseConstpool = JSHandle<ConstantPool>(thread, baseConstpoolValue);
-        if (isNewVersion) {
-            GenerateConstpoolCache(thread, baseFile, baseConstpool);
-        }
+    JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
 
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        // Get patch constpool.
-        if (patchFile->IsModule()) {
-            vm->GetModuleManager()->HostResolveImportedModule(patchFile->GetJSPandaFileDesc());
-        }
+    // Only esmodule support check
+    if (CheckIsInvalidPatch(baseFile, patchFile, vm)) {
+        LOG_ECMA(ERROR) << "Invalid patch";
+        return false;
+    }
 
-        [[maybe_unused]] JSHandle<Program> patchProgram =
-            JSPandaFileManager::GetInstance()->GenerateProgram(vm, patchFile, JSPandaFile::ENTRY_MAIN_FUNCTION);
-        JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, 0);
-        if (patchConstpoolValue.IsHole()) {
-            LOG_ECMA(ERROR) << "patch constpool is hole";
-            return false;
-        }
-        JSHandle<ConstantPool> patchConstpool = JSHandle<ConstantPool>(thread, patchConstpoolValue);
-        if (isNewVersion) {
-            GenerateConstpoolCache(thread, patchFile, patchConstpool);
-        }
-
-        if (!ReplaceMethod(thread, baseFile, patchFile, baseConstpool, patchConstpool)) {
-            LOG_ECMA(ERROR) << "replace method failed";
-            return false;
-        }
+    if (!ReplaceMethod(thread, baseFile, patchFile, baseConstpool, patchConstpool)) {
+        LOG_ECMA(ERROR) << "replace method failed";
+        return false;
     }
 
     vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
+
     baseFileName_ = baseFile->GetJSPandaFileDesc();
     LOG_ECMA(INFO) << "LoadPatch success!";
     return true;
