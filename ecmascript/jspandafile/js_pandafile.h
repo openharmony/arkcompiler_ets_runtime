@@ -64,6 +64,7 @@ public:
     static constexpr char NODE_MODULES[] = "node_modules";
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
     static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
+    static constexpr char MERGE_ABC_NAME[] = "modules.abc";
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();

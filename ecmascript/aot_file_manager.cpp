@@ -375,6 +375,10 @@ void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filena
 bool AOTFileManager::HasLoaded(const JSPandaFile *jsPandaFile) const
 {
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
+    if (!vm_->GetJSOptions().WasAOTOutputFileSet() &&
+        (jsPandaFile->GetJSPandaFileDesc().find(JSPandaFile::MERGE_ABC_NAME) == std::string::npos)) {
+        return false;
+    }
     if (anFileInfoIndex >= anFileInfos_.size()) {
         return false;
     }
