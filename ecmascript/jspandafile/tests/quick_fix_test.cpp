@@ -47,14 +47,35 @@ public:
     JSThread *thread {nullptr};
 };
 
-HWTEST_F_L0(QuickFixTest, HotReload)
+HWTEST_F_L0(QuickFixTest, HotReload_SingleFile)
 {
-    std::string baseFileName = QUICKFIX_ABC_PATH "base.abc";
-    std::string patchFileName = QUICKFIX_ABC_PATH "patch.abc";
+    std::string baseFileName = QUICKFIX_ABC_PATH "single_file/base/index.abc";
+    std::string patchFileName = QUICKFIX_ABC_PATH "single_file/patch/index.abc";
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
 
-    bool result = JSNApi::Execute(instance, baseFileName, JSPandaFile::ENTRY_FUNCTION_NAME);
+    bool result = JSNApi::Execute(instance, baseFileName, "index");
+    EXPECT_TRUE(result);
+
+    result = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
+    EXPECT_TRUE(result);
+
+    Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(instance);
+    result = JSNApi::IsQuickFixCausedException(instance, exception, patchFileName);
+    EXPECT_FALSE(result);
+
+    result = JSNApi::UnloadPatch(instance, patchFileName);
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
+{
+    std::string baseFileName = QUICKFIX_ABC_PATH "multi_file/base/index.abc";
+    std::string patchFileName = QUICKFIX_ABC_PATH "multi_file/patch/index.abc";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool result = JSNApi::Execute(instance, baseFileName, "index");
     EXPECT_TRUE(result);
 
     result = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
