@@ -819,7 +819,7 @@ void TypeInfer::PrintAllByteCodesTypes() const
                                    << ", [moduleId: " + std::to_string(gt.GetModuleId())
                                    << ", [localId: " + std::to_string(gt.GetLocalId()) + "]";
             } else {
-                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
+                LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
             }
         }
     }
