@@ -589,6 +589,87 @@ GateRef CircuitBuilder::GetLengthFromString(GateRef value)
     return Int32LSR(len, Int32(2));  // 2 : 2 means len must be right shift 2 bits
 }
 
+GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
+{
+    GateRef method = GetMethodFromFunction(jsFunc);
+    return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+}
+
+GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type)
+{
+    GateRef constPool = GetConstPool(jsFunc);
+    GateRef module = GetModuleFromFunction(jsFunc);
+    return GetObjectFromConstPool(glue, constPool, module, index, type);
+}
+
+GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, GateRef module, GateRef index,
+                                               ConstPoolType type)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    Label cacheMiss(env_);
+    Label cache(env_);
+
+    auto cacheValue = GetValueFromTaggedArray(constPool, index);
+    DEFVAlUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    Branch(TaggedIsHole(*result), &cacheMiss, &cache);
+    Bind(&cacheMiss);
+    {
+        if (type == ConstPoolType::STRING) {
+            result = CallRuntime(glue, RTSTUB_ID(GetStringFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index) });
+        } else if (type == ConstPoolType::ARRAY_LITERAL) {
+            result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index), module });
+        } else if (type == ConstPoolType::OBJECT_LITERAL) {
+            result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index), module });
+        } else {
+            result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index) });
+        }
+        Jump(&exit);
+    }
+    Bind(&cache);
+    {
+        if (type == ConstPoolType::METHOD) {
+            Label isInt(env_);
+            Branch(TaggedIsInt(*result), &isInt, &exit);
+            Bind(&isInt);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
+                    { constPool, Int32ToTaggedInt(index) });
+                Jump(&exit);
+            }
+        } else if (type == ConstPoolType::ARRAY_LITERAL) {
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
+                    { constPool, Int32ToTaggedInt(index), module });
+                Jump(&exit);
+            }
+        } else if (type == ConstPoolType::OBJECT_LITERAL)  {
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
+                    { constPool, Int32ToTaggedInt(index), module });
+                Jump(&exit);
+            }
+        } else {
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
 {
     Label subentry(env_);

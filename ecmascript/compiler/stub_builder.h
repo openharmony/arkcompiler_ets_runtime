@@ -445,6 +445,9 @@ public:
 
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
     GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);
+    GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
+    GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
+    GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
 
     // fast path
     GateRef FastEqual(GateRef left, GateRef right);
