@@ -263,6 +263,17 @@ HWTEST_F_L0(JSAPILinkedListTest, Remove)
     EXPECT_EQ(toor->Length(), 14);
 
     toor->Dump();
+
+    // throw error test
+    JSHandle<JSAPILinkedList> linkedList(thread, CreateLinkedList());
+    JSAPILinkedList::RemoveFirst(thread, linkedList);
+    EXCEPT_EXCEPTION();
+
+    JSAPILinkedList::RemoveLast(thread, linkedList);
+    EXCEPT_EXCEPTION();
+
+    JSAPILinkedList::RemoveFirstFound(thread, linkedList, value.GetTaggedValue());
+    EXCEPT_EXCEPTION();
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, Clear)
