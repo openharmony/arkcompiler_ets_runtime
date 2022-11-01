@@ -4175,26 +4175,24 @@ GateRef StubBuilder::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRe
 
 GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label cacheMiss(env);
+    GateRef module = Circuit::NullGate();
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::STRING);
+}
 
-    auto cacheValue = GetObjectFromConstPool(constpool, index);
-    DEFVARIABLE(result, VariableType::JS_ANY(), cacheValue);
-    Branch(TaggedIsHole(cacheValue), &cacheMiss, &exit);
-    Bind(&cacheMiss);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(GetStringFromCache),
-            { constpool, IntToTaggedInt(index) });
-        Jump(&exit);
-    }
+GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index)
+{
+    GateRef module = Circuit::NullGate();
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::METHOD);
+}
 
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+GateRef StubBuilder::GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
+{
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::ARRAY_LITERAL);
+}
+
+GateRef StubBuilder::GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
+{
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::OBJECT_LITERAL);
 }
 
 GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)

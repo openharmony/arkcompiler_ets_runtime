@@ -37,6 +37,7 @@ public:
 
 private:
     JSPandaFile *CreateJSPandaFile(const CString &fileName);
+    void CollectSkippedMethod(BCInfo &bytecodeInfo, const JSPandaFile *jsPandaFile, TSManager *tsManager);
     JSHandle<JSTaggedValue> ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, const std::string &fileName);
     bool FilterMethod(const JSPandaFile *jsPandaFile, const CString &recordName, MethodLiteral *method,
         uint32_t methodOffset, MethodPcInfo &methodPCInfo);

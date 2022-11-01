@@ -53,15 +53,17 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     uint32_t skippedMethodNum = 0;
     profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
 
+    // pre-treat skipped method firstly.
+    CollectSkippedMethod(bytecodeInfo, jsPandaFile, tsManager);
+
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
         &cmpCfg, tsManager, &bytecodes, &lexEnvManager, &skippedMethodNum]
         (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
-        if (FilterMethod(jsPandaFile, recordName, method, methodOffset, methodPCInfo)) {
+        uint32_t methodId = method->GetMethodId().GetOffset();
+        if (tsManager->IsSkippedMethod(methodId)) {
             ++skippedMethodNum;
-            tsManager->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::SKIPPED_METHOD,
-                                                 method->GetMethodId().GetOffset());
             LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
             return;
         }
@@ -99,6 +101,20 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
     generator.AddModule(aotModule, aotModuleAssembler);
     return true;
+}
+
+void PassManager::CollectSkippedMethod(BCInfo &bytecodeInfo, const JSPandaFile *jsPandaFile, TSManager *tsManager)
+{
+    bytecodeInfo.EnumerateBCInfo([this, jsPandaFile, tsManager]
+        (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo,
+         [[maybe_unused]] size_t methodInfoId) {
+        auto method = jsPandaFile->FindMethodLiteral(methodOffset);
+        if (FilterMethod(jsPandaFile, recordName, method, methodOffset, methodPCInfo)) {
+            tsManager->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::SKIPPED_METHOD,
+                                                 method->GetMethodId().GetOffset());
+            return;
+        }
+    });
 }
 
 JSPandaFile *PassManager::CreateJSPandaFile(const CString &fileName)
