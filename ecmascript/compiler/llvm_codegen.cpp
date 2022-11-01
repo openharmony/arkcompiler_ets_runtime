@@ -316,20 +316,40 @@ void LLVMAssembler::PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &
     numBytes -= instSize;
 }
 
+void LLVMAssembler::Disassemble(uint8_t *buf, size_t size)
+{
+    std::string triple = "x86_64-unknown-linux-gnu";
+    LLVMModuleRef module = LLVMModuleCreateWithName("Emit");
+    LLVMSetTarget(module, triple.c_str());
+    LLVMDisasmContextRef dcr = LLVMCreateDisasm(LLVMGetTarget(module), nullptr, 0, nullptr, SymbolLookupCallback);
+    if (!dcr) {
+        LOG_COMPILER(ERROR) << "ERROR: Couldn't create disassembler for triple!";
+        return;
+    }
+    uint8_t *byteSp = buf;
+    uintptr_t numBytes = size;
+    unsigned pc = 0;
+    const size_t outStringSize = 128;
+    char outString[outStringSize];
+    while (numBytes > 0) {
+        size_t instSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
+        PrintInstAndStep(pc, &byteSp, numBytes, instSize, outString);
+    }
+    LLVMDisasmDispose(dcr);
+}
+
 void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2name,
-    const CompilerLog &log, const MethodLogList &logList) const
+                                const CompilerLog &log, const MethodLogList &logList) const
 {
     LLVMDisasmContextRef dcr = LLVMCreateDisasm(LLVMGetTarget(module_), nullptr, 0, nullptr, SymbolLookupCallback);
     bool logFlag = false;
     unsigned pc = 0;
 
     for (auto it : codeInfo_.GetCodeInfo()) {
-        uint8_t *byteSp;
-        uintptr_t numBytes;
-        byteSp = it.first;
-        numBytes = it.second;
+        uint8_t *byteSp = it.first;
+        uintptr_t numBytes = it.second;
 
-        const char outStringSize = 100;
+        const size_t outStringSize = 128;
         char outString[outStringSize];
         std::string methodName;
         while (numBytes > 0) {
@@ -353,37 +373,6 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
             size_t instSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
             PrintInstAndStep(pc, &byteSp, numBytes, instSize, outString, logFlag);
         }
-    }
-    LLVMDisasmDispose(dcr);
-}
-
-void LLVMAssembler::Disassemble(uint8_t *buf, size_t size)
-{
-
-    std::string triple = "x86_64-unknown-linux-gnu";
-    LLVMModuleRef module = LLVMModuleCreateWithName("Emit");
-    LLVMSetTarget(module, triple.c_str());
-    LLVMInitializeX86TargetInfo();
-    LLVMInitializeX86TargetMC();
-    LLVMInitializeX86Disassembler();
-    LLVMInitializeX86AsmPrinter();
-    LLVMInitializeX86AsmParser();
-    LLVMInitializeX86Target();
-    LLVMDisasmContextRef dcr = LLVMCreateDisasm(LLVMGetTarget(module), nullptr, 0, nullptr, SymbolLookupCallback);
-    if (!dcr) {
-        LOG_COMPILER(ERROR) << "ERROR: Couldn't create disassembler for triple!";
-        return;
-    }
-    uint8_t *byteSp;
-    uintptr_t numBytes;
-    byteSp = buf;
-    numBytes = size;
-    unsigned pc = 0;
-    const char outStringSize = 100;
-    char outString[outStringSize];
-    while (numBytes > 0) {
-        size_t instSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
-        PrintInstAndStep(pc, &byteSp, numBytes, instSize, outString);
     }
     LLVMDisasmDispose(dcr);
 }

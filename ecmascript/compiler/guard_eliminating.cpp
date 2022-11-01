@@ -176,7 +176,7 @@ void GuardEliminating::Run()
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
-    std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit_);
+    Scheduler::CalculateDominatorTree(circuit_, bbGatesList, bbGatesAddrToIdx, immDom);
     std::vector<std::vector<size_t>> domTree(immDom.size(), std::vector<size_t>(0));
     for (size_t idx = 1; idx < immDom.size(); ++idx) {
         domTree[immDom[idx]].emplace_back(idx);

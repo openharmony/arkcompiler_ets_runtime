@@ -994,7 +994,7 @@ void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register j
     __ Movq(rsp, rcx);
     __ Addq(DOUBLE_SLOT_SIZE, rcx); // sp + 16 skip returnAddr
     __ Mov(Operand(rcx, 0), rsi); // get origin argc
-    __ Addq(8, rcx); // 8: sp + 8 argv
+    __ Addq(FRAME_SLOT_SIZE, rcx); // 8: sp + 8 argv
     __ Movq(kungfu::CommonStubCSigns::JsProxyCallInternal, r9);
     __ Movq(Operand(rdi, r9, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), r8);
     __ Jmp(r8);

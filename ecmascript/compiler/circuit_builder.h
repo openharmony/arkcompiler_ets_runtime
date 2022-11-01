@@ -103,7 +103,7 @@ class Variable;
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(V)                       \
     V(TruncFloatToInt64, OpCode::TRUNC_FLOAT_TO_INT64)                         \
-    V(ExtFloat32ToDouble, OpCode::FEXT)                       \
+    V(ExtFloat32ToDouble, OpCode::FEXT)                                        \
     V(TruncDoubleToFloat32, OpCode::FTRUNC)
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                              \
@@ -414,9 +414,12 @@ public:
 
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
+    inline GateRef IsDictionaryMode(GateRef object);
+    inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     inline GateRef IsJsType(GateRef object, JSType type);
     inline GateRef GetObjectType(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
+    inline GateRef DoubleIsINF(GateRef x);
     inline GateRef IsDictionaryElement(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);
     inline GateRef IsClassPrototype(GateRef object);
@@ -524,6 +527,7 @@ public:
     inline GateRef GetControl() const;
     inline GateRef GetDepend() const;
     inline void SetDepend(GateRef depend);
+
 private:
     class LabelImpl {
     public:
@@ -574,6 +578,7 @@ private:
         {
             return depend_;
         }
+
     private:
         bool IsNeedSeal() const;
         bool IsSealed() const
@@ -596,6 +601,7 @@ private:
         std::vector<LabelImpl *> predecessors_;
         std::map<Variable *, GateRef> incompletePhis_;
     };
+
     explicit Label(LabelImpl *impl) : impl_(impl) {}
     friend class Environment;
     LabelImpl *GetRawLabel() const
@@ -680,6 +686,7 @@ public:
     inline void SubCfgEntry(Label *entry);
     inline void SubCfgExit();
     inline GateRef GetInput(size_t index) const;
+
 private:
     Label *currentLabel_ {nullptr};
     Circuit *circuit_ {nullptr};
@@ -752,6 +759,7 @@ public:
     {
         return id_;
     }
+
 private:
     Circuit* GetCircuit() const
     {
