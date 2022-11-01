@@ -343,4 +343,45 @@ HWTEST_F_L0(JSAPIListTest, SetProperty)
         EXPECT_EQ(setPropertyRes, true);
     }
 }
+
+/**
+ * @tc.name: GetSubList
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIListTest, GetSubList)
+{
+    JSHandle<JSAPIList> List(thread, CreateList());
+    uint32_t addElementNums = 256;
+    for (uint32_t i = 0; i < addElementNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIList::Add(thread, List, value);
+    }
+
+    // throw error test
+    uint32_t smallIndex = -1;
+    uint32_t bigIndex = List->Length() + 10;
+    uint32_t zeroIndex = 0;
+
+    // fromIndex < 0
+    JSAPIList::GetSubList(thread, List, smallIndex, zeroIndex);
+    EXCEPT_EXCEPTION();
+
+    // fromIndex >= size
+    JSAPIList::GetSubList(thread, List, bigIndex, zeroIndex);
+    EXCEPT_EXCEPTION();
+
+    // toIndex <= fromIndex
+    JSAPIList::GetSubList(thread, List, zeroIndex, zeroIndex);
+    EXCEPT_EXCEPTION();
+
+    // toIndex < 0
+    JSAPIList::GetSubList(thread, List, zeroIndex, smallIndex);
+    EXCEPT_EXCEPTION();
+
+    // toIndex > length
+    JSAPIList::GetSubList(thread, List, zeroIndex, bigIndex);
+    EXCEPT_EXCEPTION();
+}
 }  // namespace panda::test

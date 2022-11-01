@@ -538,11 +538,11 @@ JSTaggedValue ContainersArrayList::SubArrayList(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<JSAPIArrayList> newArrayList =
+    JSTaggedValue newArrayList =
         JSAPIArrayList::SubArrayList(thread, JSHandle<JSAPIArrayList>::Cast(self), value1, value2);
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return newArrayList.GetTaggedValue();
+    return newArrayList;
 }
 
 JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
