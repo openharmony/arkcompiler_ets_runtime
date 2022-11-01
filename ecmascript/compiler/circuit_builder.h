@@ -101,8 +101,10 @@ class Variable;
     V(TruncInt64ToInt16, OpCode::TRUNC, MachineType::I16)                      \
     V(TruncInt32ToInt1, OpCode::TRUNC, MachineType::I1)
 
-#define UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(V)                        \
-    V(TruncFloatToInt64, OpCode::TRUNC_FLOAT_TO_INT64)
+#define UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(V)                       \
+    V(TruncFloatToInt64, OpCode::TRUNC_FLOAT_TO_INT64)                         \
+    V(ExtFloat32ToDouble, OpCode::FEXT)                       \
+    V(TruncDoubleToFloat32, OpCode::FTRUNC)
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                              \
     V(DoubleLessThan, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OLT))                  \
@@ -205,12 +207,14 @@ public:
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
     // low level interface
+    GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef TypeCheck(GateType type, GateRef gate);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
+    GateRef GetLexicalEnv(GateRef depend);
     GateRef Arguments(size_t index);
     GateRef Merge(GateRef *in, size_t controlCount);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -351,6 +355,10 @@ public:
     inline GateRef ToTaggedInt(GateRef x);
     inline GateRef ToTaggedIntPtr(GateRef x);
     inline GateRef DoubleToTaggedDoublePtr(GateRef x);
+    inline GateRef BooleanToTaggedBooleanPtr(GateRef x);
+    inline GateRef Float32ToTaggedDoublePtr(GateRef x);
+    inline GateRef TaggedDoublePtrToFloat32(GateRef x);
+    inline GateRef TaggedIntPtrToFloat32(GateRef x);
     inline GateRef DoubleToTaggedDouble(GateRef x);
     inline GateRef DoubleToTagged(GateRef x);
     inline GateRef DoubleIsNAN(GateRef x);
@@ -362,6 +370,7 @@ public:
     inline GateRef ChangeFloat64ToInt32(GateRef x);
     inline GateRef ChangeUInt32ToFloat64(GateRef x);
     inline GateRef ChangeInt32ToFloat64(GateRef x);
+    inline GateRef ChangeInt32ToFloat32(GateRef x);
     // Pointer/Arithmetic/Logic Operations
     inline GateRef IntPtrDiv(GateRef x, GateRef y);
     inline GateRef IntPtrOr(GateRef x, GateRef y);
@@ -382,6 +391,8 @@ public:
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
 
+    GateRef IsJSHClass(GateRef obj);
+
     // middle ir: operations with any type
     template<TypedBinOp Op>
     inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType);
@@ -397,8 +408,8 @@ public:
     GateRef ToLength(GateRef receiver);
     GateRef LoadElement(GateRef receiver, GateRef index);
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
-    GateRef LoadProperty(GateRef receiver, GateRef key);
-    GateRef StoreProperty(GateRef receiver, GateRef key, GateRef value);
+    GateRef LoadProperty(GateRef receiver, GateRef offset);
+    GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);
     GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
 
     // Object Operations
@@ -428,7 +439,7 @@ public:
     GateRef IsUtf16String(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
-    GateRef GetLexicalEnv(GateRef function);
+    GateRef GetFunctionLexicalEnv(GateRef function);
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type);
@@ -473,6 +484,8 @@ public:
     inline void SetState(GateRef state);
     // type bits shift
     static const int OPRAND_TYPE_BITS = 32;
+
+    GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
 
 private:
     Circuit *circuit_ {nullptr};

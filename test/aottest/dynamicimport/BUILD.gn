@@ -15,12 +15,12 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_aot_js_test_action("B") {
   deps = []
-  is_module = true
+  is_disable_type_lowering = true
 }
 
 host_aot_js_test_action("A") {
   deps = []
-  is_module = true
+  is_disable_type_lowering = true
 }
 
 host_aot_js_test_action("dynamicimport") {
@@ -28,5 +28,5 @@ host_aot_js_test_action("dynamicimport") {
     ":gen_A_abc",
     ":gen_B_abc",
   ]
-  is_module = true
+  is_disable_type_lowering = true
 }

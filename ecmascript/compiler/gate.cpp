@@ -185,6 +185,14 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
+        case FEXT: {
+            static const Properties ps { F64, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case FTRUNC: {
+            static const Properties ps { F32, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case REV: {
             static const Properties ps { FLEX, NO_STATE, NO_DEPEND, VALUE(FLEX), NO_ROOT };
             return ps;
@@ -287,6 +295,11 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
+        case OBJECT_TYPE_CHECK: {
+            static const Properties ps { I1, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         VALUE(ANYVALUE, I64), NO_ROOT };
+            return ps;
+        }
         case HEAP_ALLOC: {
             static const Properties ps { ANYVALUE, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(I64), NO_ROOT };
             return ps;
@@ -313,6 +326,10 @@ const Properties& OpCode::GetProperties() const
         }
         case TO_LENGTH: {
             static const Properties ps { I64, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
+        case GET_ENV: {
+            static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
             return ps;
         }
         default:
@@ -378,6 +395,8 @@ std::string OpCode::Str() const
         {ZEXT, "ZEXT"},
         {SEXT, "SEXT"},
         {TRUNC, "TRUNC"},
+        {FEXT, "FEXT"},
+        {FTRUNC, "FTRUNC"},
         {REV, "REV"},
         {TRUNC_FLOAT_TO_INT64, "TRUNC_FLOAT_TO_INT64"},
         {ADD, "ADD"},
@@ -412,11 +431,13 @@ std::string OpCode::Str() const
         {FRAME_STATE, "FRAME_STATE"},
         {RESTORE_REGISTER, "RESTORE_REGISTER"},
         {SAVE_REGISTER, "SAVE_REGISTER"},
+        {OBJECT_TYPE_CHECK, "OBJECT_TYPE_CHECK"},
         {TYPE_CHECK, "TYPE_CHECK"},
         {TYPED_BINARY_OP, "TYPED_BINARY_OP"},
         {TYPE_CONVERT, "TYPE_CONVERT"},
         {TYPED_UNARY_OP, "TYPED_UNARY_OP"},
         {TO_LENGTH, "TO_LENGTH"},
+        {GET_ENV, "GET_ENV"},
         {HEAP_ALLOC, "HEAP_ALLOC"},
         {LOAD_ELEMENT, "LOAD_ELEMENT"},
         {LOAD_PROPERTY, "LOAD_PROPERTY"},

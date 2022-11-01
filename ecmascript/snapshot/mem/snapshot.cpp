@@ -38,8 +38,7 @@ namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)
 {
     TSManager *tsManager = vm_->GetTSManager();
-    tsManager->SortConstantPoolInfos();
-    JSHandle<TaggedArray> root = tsManager->GetConstantPoolInfos();
+    JSHandle<ConstantPool> root(tsManager->GetSnapshotConstantPool());
     Serialize(root.GetTaggedValue().GetTaggedObject(), nullptr, fileName);
 }
 

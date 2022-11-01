@@ -183,25 +183,14 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
     const CUnorderedMap<uint32_t, uint64_t> &constpoolMap = jsPandaFile->GetConstpoolMap();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
 
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-    const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
-#endif
-
-
     for (const auto &it : constpoolMap) {
         ConstPoolValue value(it.second);
         if (value.GetConstpoolType() == ConstPoolType::STRING) {
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-            if (isLoadedAOT) {
-                continue;
-            }
-#endif
             panda_file::File::EntityId id(it.first);
             auto foundStr = pf->GetStringData(id);
             auto string = factory->GetRawStringFromStringTable(foundStr.data, foundStr.utf16_length, foundStr.is_ascii,
                                                                MemSpaceType::OLD_SPACE);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), JSTaggedValue(string));
-            vm->GetTSManager()->AddIndexOrSkippedMethodID(CacheType::STRING, value.GetConstpoolIndex());
         } else if (value.GetConstpoolType() == ConstPoolType::BASE_FUNCTION) {
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
@@ -241,7 +230,6 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
             ASSERT(methodLiteral != nullptr);
             methodLiteral->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
-
             JSHandle<Method> method = factory->NewMethod(methodLiteral);
             method->SetConstantPool(thread, constpool.GetTaggedValue());
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), method.GetTaggedValue());
@@ -398,17 +386,7 @@ JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const 
 {
     ObjectFactory *factory = vm->GetFactory();
     uint32_t constpoolIndex = jsPandaFile->GetConstpoolIndex();
-    JSHandle<ConstantPool> constpool;
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-    const bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
-    if (isLoadedAOT) {
-        constpool = vm->GetTSManager()->RestoreConstantPool(jsPandaFile);
-    } else {
-        constpool = factory->NewConstantPool(constpoolIndex);
-    }
-#else
-    constpool = factory->NewConstantPool(constpoolIndex);
-#endif
+    JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex);
     constpool->SetJSPandaFile(jsPandaFile);
     return constpool;
 }

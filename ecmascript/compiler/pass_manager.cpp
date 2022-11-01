@@ -15,6 +15,7 @@
 #include "ecmascript/compiler/pass_manager.h"
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -38,11 +39,13 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     // ts type system
     TSManager *tsManager = vm_->GetTSManager();
     tsManager->DecodeTSTypes(jsPandaFile);
+    tsManager->GenerateSnapshotConstantPool(constantPool.GetTaggedValue());
 
     auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
                                                 LOptions(optLevel_, true, relocMode_));
     CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
+    Bytecodes bytecodes;
 
     auto &bytecodeInfo = bcInfoCollector.GetBytecodeInfo();
     auto lexEnvManager = LexEnvManager(bytecodeInfo);
@@ -51,13 +54,14 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
 
     bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
-        &cmpCfg, tsManager, &lexEnvManager, &skippedMethodNum]
+        &cmpCfg, tsManager, &bytecodes, &lexEnvManager, &skippedMethodNum]
         (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
         if (FilterMethod(jsPandaFile, recordName, method, methodOffset, methodPCInfo)) {
             ++skippedMethodNum;
-            tsManager->AddIndexOrSkippedMethodID(CacheType::SKIPPED_METHOD, method->GetMethodId().GetOffset());
+            tsManager->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::SKIPPED_METHOD,
+                                                 method->GetMethodId().GetOffset());
             LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
             return;
         }
@@ -72,15 +76,16 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
 
         bool hasTyps = jsPandaFile->HasTSTypes(recordName);
-        BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager,
-                                       &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(), fullName, recordName);
+        BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager, &bytecodes,
+                                       &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(),
+                                       EnableTypeLowering(), fullName, recordName);
         builder.BytecodeToCircuit();
         PassData data(builder.GetCircuit(), log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
         if (EnableTypeLowering()) {
-            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager);
+            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager, constantPool);
             pipeline.RunPass<GuardEliminatingPass>(&builder, &cmpCfg);
             pipeline.RunPass<GuardLoweringPass>(&builder, &cmpCfg);
             pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
@@ -92,7 +97,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     });
     LOG_COMPILER(INFO) << " ";
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
-    generator.AddModule(aotModule, aotModuleAssembler, jsPandaFile);
+    generator.AddModule(aotModule, aotModuleAssembler);
     return true;
 }
 

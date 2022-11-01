@@ -28,126 +28,6 @@ enum class MTableIdx : uint8_t {
     INFERRED_UNTION,
     NUM_OF_DEFAULT_TABLES,
 };
-
-enum class CacheType : uint8_t {
-    STRING = 0,
-    METHOD,
-    SKIPPED_METHOD,
-    CLASS_LITERAL,
-    OBJECT_LITERAL,
-    ARRAY_LITERAL,
-};
-
-class ABCInfo {
-public:
-    void PUBLIC_API AddIndexOrSkippedMethodID(CacheType type, uint32_t index, const CString &recordName);
-
-    const std::set<uint32_t>& GetStringOrMethodCache(CacheType type) const;
-
-    const std::set<std::pair<CString, uint32_t>>& GetLiteralCache(CacheType type) const;
-
-    void Iterate(const RootVisitor &v);
-
-    CVector<JSTaggedType>& GetHClassCache()
-    {
-        return hclassCache_;
-    }
-
-    void AddHClass(JSTaggedType hclass)
-    {
-        hclassCache_.emplace_back(hclass);
-    }
-
-    bool IsSkippedMethod(uint32_t methodID)
-    {
-        if (skippedMethodIDCache_.find(methodID) == skippedMethodIDCache_.end()) {
-            return false;
-        }
-        return true;
-    }
-
-    uint32_t GetHClassCacheSize()
-    {
-        return hclassCache_.size();
-    }
-
-    void ClearCaches()
-    {
-        stringIndexCache_.clear();
-        methodIndexCache_.clear();
-        skippedMethodIDCache_.clear();
-        classLiteralCache_.clear();
-        objectLiteralCache_.clear();
-        arrayLiteralCache_.clear();
-        hclassCache_.clear();
-    }
-
-private:
-    void AddStringIndex(uint32_t index);
-
-    void AddMethodIndex(uint32_t index);
-
-    void AddSkippedMethodID(uint32_t methodID);
-
-    void AddClassLiteralIndex(const CString &recordName, uint32_t index);
-
-    void AddObjectLiteralIndex(const CString &recordName, uint32_t index);
-
-    void AddArrayLiteralIndex(const CString &recordName, uint32_t index);
-
-    // constantpool index
-    std::set<uint32_t> stringIndexCache_ {};
-    std::set<uint32_t> methodIndexCache_ {};
-    std::set<uint32_t> skippedMethodIDCache_ {};
-
-    // (recordName, constantpool index)
-    std::set<std::pair<CString, uint32_t>> classLiteralCache_ {};
-    std::set<std::pair<CString, uint32_t>> objectLiteralCache_ {};
-    std::set<std::pair<CString, uint32_t>> arrayLiteralCache_ {};
-
-    // store hclass of each abc which produced from static type info
-    CVector<JSTaggedType> hclassCache_ {};
-};
-
-class SnapshotRecordInfo {
-public:
-    struct RecordLiteralInfo {
-        using LiteralMethods = std::vector<std::pair<bool, uint32_t>>;
-        using LiteralInfo = std::pair<uint32_t, LiteralMethods>;
-        std::vector<LiteralInfo> literalInfos_;
-    };
-
-    struct RecordMethodInfo {
-        std::vector<std::pair<uint32_t, uint32_t>> methodInfos_;
-    };
-
-    void InitNewRecordInfo()
-    {
-        recordMethodInfos_.emplace_back(RecordMethodInfo{});
-        recordLiteralInfos_.emplace_back(RecordLiteralInfo{});
-        ++size_;
-    }
-
-    uint32_t GetSize()
-    {
-        return size_;
-    }
-
-    std::vector<RecordMethodInfo>& GetRecordMethodInfos()
-    {
-        return recordMethodInfos_;
-    }
-    std::vector<RecordLiteralInfo>& GetRecordLiteralInfos()
-    {
-        return recordLiteralInfos_;
-    }
-
-private:
-    uint32_t size_ = 0;
-    std::vector<RecordMethodInfo> recordMethodInfos_ {};
-    std::vector<RecordLiteralInfo> recordLiteralInfos_ {};
-};
-
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -375,37 +255,6 @@ public:
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
 
-    void PUBLIC_API CreateConstantPoolInfos(size_t size);
-
-    void PUBLIC_API CollectConstantPoolInfo(const JSPandaFile* jsPandaFile);
-
-    void PUBLIC_API ResolveConstantPoolInfo(const std::map<std::pair<uint32_t, uint32_t>, uint32_t>
-                                            &methodToEntryIndexMap);
-
-    JSHandle<TaggedArray> PUBLIC_API GetConstantPoolInfos() const
-    {
-        return JSHandle<TaggedArray>(uintptr_t(&constantPoolInfos_));
-    }
-
-    void PUBLIC_API SetConstantPoolInfos(JSTaggedValue constantPoolInfos)
-    {
-        constantPoolInfos_ = constantPoolInfos;
-    }
-
-    void PUBLIC_API SortConstantPoolInfos();
-
-    JSHandle<ConstantPool> PUBLIC_API RestoreConstantPool(const JSPandaFile* pf);
-
-    void PUBLIC_API AddIndexOrSkippedMethodID(CacheType type, uint32_t index, const CString &recordName="")
-    {
-        currentABCInfo_.AddIndexOrSkippedMethodID(type, index, recordName);
-    }
-
-    void ClearCaches()
-    {
-        currentABCInfo_.ClearCaches();
-    }
-
     EcmaVM *GetEcmaVM() const
     {
         return vm_;
@@ -441,20 +290,11 @@ public:
     static constexpr int BUILTIN_ARRAY_ID = 24;
     static constexpr int BUILTIN_TYPED_ARRAY_FIRST_ID = 25;
     static constexpr int BUILTIN_TYPED_ARRAY_LAST_ID = 36;
+    static constexpr int BUILTIN_FLOAT32_ARRAY_ID = 33;
 
-    bool IsTypedArrayType(kungfu::GateType gateType) const
-    {
-        if (!IsClassInstanceTypeKind(gateType)) {
-            return false;
-        }
+    bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
-        const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
-        GlobalTSTypeRef classGT = GetClassType(gt);
-        uint32_t m = classGT.GetModuleId();
-        uint32_t l = classGT.GetLocalId();
-        return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
-               (l >= BUILTIN_TYPED_ARRAY_FIRST_ID) && (l <= BUILTIN_TYPED_ARRAY_LAST_ID);
-    }
+    bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
 
     void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, panda_file::File::EntityId offset,
                                         GlobalTSTypeRef gt)
@@ -483,16 +323,115 @@ public:
         return (m == TSModuleTable::RUNTIME_TABLE_ID) && (l == static_cast<int>(TSRuntimeType::ITERATOR_RESULT));
     }
 
-private:
-    // constantpoolInfos
-    static constexpr uint32_t CONSTANTPOOL_INFOS_ITEM_SIZE = 2;
+    int PUBLIC_API GetHClassIndex(const kungfu::GateType &gateType);
 
+    JSTaggedValue PUBLIC_API GetHClassFromCache(uint32_t index);
+
+    // not consider [[prototype]] properties and accessor, -1: not find
+    int PUBLIC_API GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key);
+
+    enum class SnapshotInfoType : uint8_t {
+        STRING = 0,
+        METHOD,
+        SKIPPED_METHOD,
+        CLASS_LITERAL,
+        OBJECT_LITERAL,
+        ARRAY_LITERAL,
+    };
+
+    class SnapshotRecordInfo {
+    public:
+        void Iterate(const RootVisitor &v);
+
+        void AddHClass(JSTaggedType hclass)
+        {
+            hclassCache_.emplace_back(hclass);
+        }
+
+        uint32_t GetHClassCacheSize() const
+        {
+            return hclassCache_.size();
+        }
+
+        CVector<JSTaggedType>& GetHClassCache()
+        {
+            return hclassCache_;
+        }
+
+        void AddRecordLiteralIndex(uint32_t index)
+        {
+            recordLiteralIndex_.emplace_back(index);
+        }
+
+        const std::vector<uint32_t>& GetRecordLiteralIndex()
+        {
+            return recordLiteralIndex_;
+        }
+
+        void AddMethodIndex(uint32_t index)
+        {
+            recordMethodIndex_.emplace_back(index);
+        }
+
+        const std::vector<uint32_t>& GetRecordMethodIndex()
+        {
+            return recordMethodIndex_;
+        }
+
+        void AddSkippedMethodID(uint32_t methodID)
+        {
+            if (skippedMethodIDs_.find(methodID) == skippedMethodIDs_.end()) {
+                skippedMethodIDs_.insert(methodID);
+            }
+        }
+
+        bool IsSkippedMethod(uint32_t methodID)
+        {
+            if (skippedMethodIDs_.find(methodID) == skippedMethodIDs_.end()) {
+                return false;
+            }
+            return true;
+        }
+
+        bool isProcessed(uint32_t constantPoolIndex)
+        {
+            if (recordConstantPoolIndex_.find(constantPoolIndex) == recordConstantPoolIndex_.end()) {
+                recordConstantPoolIndex_.insert(constantPoolIndex);
+                return false;
+            }
+            return true;
+        }
+
+    private:
+        std::vector<uint32_t> recordLiteralIndex_ {};
+        std::vector<uint32_t> recordMethodIndex_ {};
+        std::set<uint32_t> skippedMethodIDs_ {};
+        std::set<uint32_t> recordConstantPoolIndex_ {};
+
+        // store hclass of each abc which produced from static type info
+        CVector<JSTaggedType> hclassCache_ {};
+    };
+
+    void PUBLIC_API GenerateSnapshotConstantPool(JSTaggedValue constantPool);
+
+    void PUBLIC_API AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index, const CString &recordName="");
+
+    void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
+
+    JSHandle<JSTaggedValue> PUBLIC_API GetSnapshotConstantPool() const
+    {
+        return JSHandle<JSTaggedValue>(uintptr_t(&snapshotConstantPool_));
+    }
+
+private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
 
     void RecursivelyResolveTargetType(JSHandle<TSImportType> importType);
 
     void RecursivelyMergeClassField(JSHandle<TSClassType> classType, JSHandle<TSClassType> extendClassType);
+
+    bool IsDuplicatedKey(JSHandle<TSObjLayoutInfo> extendLayout, JSTaggedValue key);
 
     GlobalTSTypeRef GetExportGTByName(JSHandle<EcmaString> target,
                                       JSHandle<TaggedArray> &exportTable) const;
@@ -511,46 +450,15 @@ private:
 
     std::string GetPrimitiveStr(const GlobalTSTypeRef &gt) const;
 
-    JSTaggedValue GenerateConstantPoolInfo(const JSPandaFile* jsPandaFile);
-
-    void CollectLiteralInfo(JSHandle<TaggedArray> array,  uint32_t constantPoolIndex,
-                            SnapshotRecordInfo::RecordLiteralInfo &recordLiteralInfo);
-
-    int BinarySearch(uint32_t target, uint32_t itemSize, bool findLeftBound = true);
-
     void AddHClassInCompilePhase(GlobalTSTypeRef gt, JSTaggedValue hclass, uint32_t constantPoolLen)
     {
-        CVector<JSTaggedType> &hclassCache_ = currentABCInfo_.GetHClassCache();
+        CVector<JSTaggedType> &hclassCache_ = snapshotRecordInfo_.GetHClassCache();
         hclassCache_.emplace_back(hclass.GetRawData());
         classTypeIhcIndexMap_[gt] = constantPoolLen + hclassCache_.size() - 1;
     }
 
-    template <class Callback>
-    void IterateConstantPoolCache(CacheType type, const Callback &cb)
-    {
-        const std::set<uint32_t> &cache = currentABCInfo_.GetStringOrMethodCache(type);
-        for (auto item: cache) {
-            cb(item);
-        }
-    }
-
-    template <class Callback>
-    void IterateLiteralCaches(CacheType type, const Callback &cb)
-    {
-        const std::set<std::pair<CString, uint32_t>> &cache = currentABCInfo_.GetLiteralCache(type);
-        for (auto item: cache) {
-            cb(item);
-        }
-    }
-
-    template <class Callback>
-    void IterateHClassCaches(const Callback &cb)
-    {
-        const auto &hclassCache = currentABCInfo_.GetHClassCache();
-        for (uint32_t i = 0; i < hclassCache.size(); ++i) {
-            cb(hclassCache[i], i);
-        }
-    }
+    void CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
+                            JSHandle<ConstantPool> snapshotConstantPool);
 
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
@@ -563,9 +471,7 @@ private:
     friend class EcmaVM;
 
     // For snapshot
-    size_t constantPoolInfosSize_ {0};
-    JSTaggedValue constantPoolInfos_ {JSTaggedValue::Hole()};
-    ABCInfo currentABCInfo_ {};
+    JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
     SnapshotRecordInfo snapshotRecordInfo_ {};
 
     std::map<std::pair<const JSPandaFile *, panda_file::File::EntityId>, GlobalTSTypeRef> literalOffsetGTMap_ {};

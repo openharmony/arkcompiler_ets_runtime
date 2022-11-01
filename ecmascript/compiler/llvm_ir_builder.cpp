@@ -152,6 +152,8 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ZEXT, &LLVMIRBuilder::HandleZExtInt},
         {OpCode::SEXT, &LLVMIRBuilder::HandleSExtInt},
         {OpCode::TRUNC, &LLVMIRBuilder::HandleCastIntXToIntY},
+        {OpCode::FEXT, &LLVMIRBuilder::HandleFPExt},
+        {OpCode::FTRUNC, &LLVMIRBuilder::HandleFPTrunc},
         {OpCode::REV, &LLVMIRBuilder::HandleIntRev},
         {OpCode::ADD, &LLVMIRBuilder::HandleAdd},
         {OpCode::SUB, &LLVMIRBuilder::HandleSub},
@@ -179,6 +181,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::DEOPT, &LLVMIRBuilder::HandleDeopt},
         {OpCode::TRUNC_FLOAT_TO_INT64, &LLVMIRBuilder::HandleTruncFloatToInt},
+        {OpCode::GET_ENV, &LLVMIRBuilder::HandleGetEnv},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -1396,6 +1399,26 @@ void LLVMIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
     gate2LValue_[gate] = result;
 }
 
+void LLVMIRBuilder::HandleGetEnv(GateRef gate)
+{
+    VisitGetEnv(gate);
+}
+
+void LLVMIRBuilder::VisitGetEnv(GateRef gate)
+{
+    LLVMTypeRef returnType;
+    returnType = ConvertLLVMTypeFromGate(gate);
+    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
+    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
+    LLVMValueRef frameEnvSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
+        static_cast<int>(ReservedSlots::OPTIMIZED_JS_FUNCTION_RESERVED_SLOT) * slotSize_, false), "");
+    LLVMValueRef envAddr = LLVMBuildIntToPtr(builder_, frameEnvSlotAddr, LLVMPointerType(slotType_, 0), "env.Addr");
+    envAddr = LLVMBuildPointerCast(builder_, envAddr,
+        LLVMPointerType(returnType, LLVMGetPointerAddressSpace(LLVMTypeOf(envAddr))), "");
+    LLVMValueRef env = LLVMBuildLoad(builder_, envAddr, "");
+    gate2LValue_[gate] = env;
+}
+
 bool IsAddIntergerType(MachineType machineType)
 {
     switch (machineType) {
@@ -1794,10 +1817,38 @@ void LLVMIRBuilder::VisitCastIntXToIntY(GateRef gate, GateRef e1)
     gate2LValue_[gate] = result;
 }
 
+void LLVMIRBuilder::HandleFPExt(GateRef gate)
+{
+    VisitFPExt(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::VisitFPExt(GateRef gate, GateRef e1)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(e1)) <=
+           GetBitWidthFromMachineType(acc_.GetMachineType(gate)));
+    LLVMValueRef result = LLVMBuildFPExt(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
+    gate2LValue_[gate] = result;
+}
+
+void LLVMIRBuilder::HandleFPTrunc(GateRef gate)
+{
+    VisitFPTrunc(gate, acc_.GetIn(gate, 0));
+}
+
+void LLVMIRBuilder::VisitFPTrunc(GateRef gate, GateRef e1)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    ASSERT(GetBitWidthFromMachineType(acc_.GetMachineType(e1)) >=
+           GetBitWidthFromMachineType(acc_.GetMachineType(gate)));
+    LLVMValueRef result = LLVMBuildFPTrunc(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
+    gate2LValue_[gate] = result;
+}
+
 void LLVMIRBuilder::VisitChangeInt32ToDouble(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    LLVMValueRef result = LLVMBuildSIToFP(builder_, e1Value, LLVMDoubleType(), "");
+    LLVMValueRef result = LLVMBuildSIToFP(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
     gate2LValue_[gate] = result;
 }
 

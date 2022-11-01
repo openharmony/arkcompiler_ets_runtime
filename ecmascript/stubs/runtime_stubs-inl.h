@@ -761,10 +761,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
                                                           const JSHandle<JSHClass> &ihclass,
                                                           const JSHandle<JSTaggedValue> &module)
 {
-    if (ihclass.GetTaggedValue().IsHole()) {
-        return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool, methodId, literalId, module);
-    }
-
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());

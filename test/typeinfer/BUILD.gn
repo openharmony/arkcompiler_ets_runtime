@@ -44,6 +44,7 @@ group("ark_typeinfer_test") {
     "ldundefined:ldundefinedAotTypeInferAction",
     "lex_env_var:lex_env_varAotTypeInferAction",
     "lex_env_var_class:lex_env_var_classAotTypeInferAction",
+    "lex_env_var_multiple:lex_env_var_multipleAotTypeInferAction",
     "logic_op:logic_opAotTypeInferAction",
     "loopbeginphi:loopbeginphiAotTypeInferAction",
     "mod2dyn:mod2dynAotTypeInferAction",

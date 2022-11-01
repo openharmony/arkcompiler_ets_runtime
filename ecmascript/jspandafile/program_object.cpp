@@ -26,6 +26,6 @@ std::string ConstantPool::GetStdStringByIdx(size_t index) const
 
 JSHandle<ConstantPool> ConstantPool::RestoreConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
 {
-    return vm->GetTSManager()->RestoreConstantPool(jsPandaFile);
+    return JSHandle<ConstantPool>(vm->GetAOTFileManager()->GetSnapshotConstantPool(jsPandaFile));
 }
 }

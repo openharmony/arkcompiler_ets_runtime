@@ -38,7 +38,7 @@ size_t ArgumentAccessor::GetActualNumArgs() const
 GateRef ArgumentAccessor::GetArgGate(const size_t currentVreg) const
 {
     ASSERT(method_ != nullptr);
-    const size_t offsetArgs = MethodLiteral::GetNumVregs(jsPandaFile_, method_);
+    const size_t offsetArgs = method_->GetNumVregsWithCallField();
     ASSERT(currentVreg >= offsetArgs && currentVreg < offsetArgs + method_->GetNumArgs());
     auto reg = currentVreg - offsetArgs;
     auto haveFunc = method_->HaveFuncWithCallField();
@@ -97,7 +97,7 @@ void ArgumentAccessor::FillArgsGateType(const TypeRecorder *typeRecorder)
 {
     ASSERT(method_ != nullptr);
     const uint32_t numOfArgs = method_->GetNumArgs();
-    const uint32_t offsetArgs = MethodLiteral::GetNumVregs(jsPandaFile_, method_);
+    const uint32_t offsetArgs = method_->GetNumVregsWithCallField();
     GateAccessor gateAcc(circuit_);
     for (uint32_t argIndex = 0; argIndex < numOfArgs; argIndex++) {
         auto argType = typeRecorder->GetArgType(argIndex);

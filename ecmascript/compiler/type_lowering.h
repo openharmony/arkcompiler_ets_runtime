@@ -140,11 +140,14 @@ private:
     void LowerTypedAshr(GateRef gate);
     void LowerTypedInc(GateRef gate);
     void LowerTypedDec(GateRef gate);
+    void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
+    void LowerTypedToBool(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
     void LowerNumberCheck(GateRef gate);
+    void LowerBooleanCheck(GateRef gate);
     void LowerNumberAdd(GateRef gate);
     void LowerNumberSub(GateRef gate);
     void LowerNumberMul(GateRef gate);
@@ -161,7 +164,17 @@ private:
     void LowerNumberAshr(GateRef gate);
     void LowerNumberInc(GateRef gate);
     void LowerNumberDec(GateRef gate);
+    void LowerNumberNeg(GateRef gate);
     void LowerNumberNot(GateRef gate);
+    void LowerNumberToBool(GateRef gate);
+    void LowerBooleanToBool(GateRef gate);
+    void LowerObjectTypeCheck(GateRef gate, GateRef glue);
+    void LowerClassInstanceCheck(GateRef gate, GateRef glue);
+    void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
+    void LowerLoadProperty(GateRef gate, GateRef glue);
+    void LowerStoreProperty(GateRef gate, GateRef glue);
+    void LowerLoadElement(GateRef gate);
+    void LowerStoreElement(GateRef gate, GateRef glue);
 
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
@@ -192,6 +205,10 @@ private:
     GateRef ModNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     GateRef DivNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     GateRef FastEqual(GateRef left, GateRef right);
+    GateType GetLeftType(GateRef gate);
+    GateType GetRightType(GateRef gate);
+    GateRef GetConstPool(GateRef jsFunc);
+    GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
 
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;

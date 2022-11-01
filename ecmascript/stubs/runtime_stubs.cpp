@@ -1962,7 +1962,7 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
     auto ecmaOpcode = GetArg(argv, argc, 0).GetInt();
     std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
-    std::cerr << "aot slowpath " << result << std::endl;
+    LOG_ECMA(INFO) << "aot slowpath " << result;
     return JSTaggedValue::Undefined().GetRawData();
 }
 

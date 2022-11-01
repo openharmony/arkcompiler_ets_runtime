@@ -22,6 +22,47 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
+
+std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset)
+{
+    std::string data;
+    data.append("    at ");
+    std::string name = method->ParseFunctionName();
+    if (name.empty()) {
+        name = "anonymous";
+    }
+    data += name;
+    data.append(" (");
+    // source file
+    DebugInfoExtractor *debugExtractor =
+        JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
+    const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
+    if (sourceFile.empty()) {
+        data.push_back('?');
+    } else {
+        data += sourceFile;
+    }
+    data.push_back(':');
+    // line number and column number
+    auto callbackLineFunc = [&data](int32_t line) -> bool {
+        data += std::to_string(line + 1);
+        data.push_back(':');
+        return true;
+    };
+    auto callbackColumnFunc = [&data](int32_t column) -> bool {
+        data += std::to_string(column + 1);
+        return true;
+    };
+    panda_file::File::EntityId methodId = method->GetMethodId();
+    if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, pcOffset) ||
+        !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, pcOffset)) {
+        data.push_back('?');
+    }
+    data.push_back(')');
+    data.push_back('\n');
+    return data;
+}
+
 std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
 {
     std::string data;
@@ -35,41 +76,8 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
             continue;
         }
         if (!method->IsNativeWithCallField()) {
-            data.append("    at ");
-            std::string name = method->ParseFunctionName();
-            if (name.empty()) {
-                name = "anonymous";
-            }
-            data += name;
-            data.append(" (");
-            // source file
-            DebugInfoExtractor *debugExtractor =
-                JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
-            const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
-            if (sourceFile.empty()) {
-                data.push_back('?');
-            } else {
-                data += sourceFile;
-            }
-            data.push_back(':');
-            // line number and column number
-            auto callbackLineFunc = [&data](int32_t line) -> bool {
-                data += std::to_string(line + 1);
-                data.push_back(':');
-                return true;
-            };
-            auto callbackColumnFunc = [&data](int32_t column) -> bool {
-                data += std::to_string(column + 1);
-                return true;
-            };
-            panda_file::File::EntityId methodId = method->GetMethodId();
-            uint32_t offset = frameHandler.GetBytecodeOffset();
-            if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
-                !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-                data.push_back('?');
-            }
-            data.push_back(')');
-            data.push_back('\n');
+            auto pcOffset = frameHandler.GetBytecodeOffset();
+            data += BuildMethodTrace(method, pcOffset);
         } else if (needNative) {
             auto addr = method->GetNativePointer();
             std::stringstream strm;

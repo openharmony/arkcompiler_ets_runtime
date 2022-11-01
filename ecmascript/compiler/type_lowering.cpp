@@ -15,6 +15,8 @@
 
 #include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/deoptimizer.h"
+#include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_native_pointer.h"
 
 namespace panda::ecmascript::kungfu {
 void TypeLowering::RunTypeLowering()
@@ -38,6 +40,8 @@ void TypeLowering::RunTypeLowering()
 
 void TypeLowering::LowerType(GateRef gate)
 {
+    ArgumentAccessor argAcc(circuit_);
+    GateRef glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
     auto op = OpCode::Op(acc_.GetOpCode(gate));
     switch (op) {
         case OpCode::TYPE_CHECK:
@@ -51,6 +55,21 @@ void TypeLowering::LowerType(GateRef gate)
             break;
         case OpCode::TYPED_UNARY_OP:
             LowerTypedUnaryOp(gate);
+            break;
+        case OpCode::OBJECT_TYPE_CHECK:
+            LowerObjectTypeCheck(gate, glue);
+            break;
+        case OpCode::LOAD_PROPERTY:
+            LowerLoadProperty(gate, glue);
+            break;
+        case OpCode::STORE_PROPERTY:
+            LowerStoreProperty(gate, glue);
+            break;
+        case OpCode::LOAD_ELEMENT:
+            LowerLoadElement(gate);
+            break;
+        case OpCode::STORE_ELEMENT:
+            LowerStoreElement(gate, glue);
             break;
         default:
             break;
@@ -110,9 +129,172 @@ void TypeLowering::LowerTypeCheck(GateRef gate)
         LowerDoubleCheck(gate);
     } else if (type.IsNumberType()) {
         LowerNumberCheck(gate);
+    } else if (type.IsBooleanType()) {
+        LowerBooleanCheck(gate);
     } else {
         UNREACHABLE();
     }
+}
+
+GateRef TypeLowering::GetConstPool(GateRef jsFunc)
+{
+    GateRef method = builder_.GetMethodFromFunction(jsFunc);
+    return builder_.Load(VariableType::JS_ANY(), method, builder_.IntPtr(Method::CONSTANT_POOL_OFFSET));
+}
+
+GateRef TypeLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
+{
+    GateRef constPool = GetConstPool(jsFunc);
+    return builder_.GetValueFromTaggedArray(constPool, index);
+}
+
+void TypeLowering::LowerObjectTypeCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = GateType(static_cast<uint32_t>(acc_.GetBitField(gate)));
+    if (tsManager_->IsFloat32ArrayType(type)) {
+        LowerFloat32ArrayCheck(gate, glue);
+    } else if (tsManager_->IsClassInstanceTypeKind(type)) {
+        LowerClassInstanceCheck(gate, glue);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+void TypeLowering::LowerClassInstanceCheck(GateRef gate, [[maybe_unused]] GateRef glue)
+{
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    auto receiver = acc_.GetValueIn(gate, 0);
+    auto receiverHClass = builder_.LoadHClass(receiver);
+    auto hclassOffset = acc_.GetValueIn(gate, 1);
+    GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
+    GateRef check = builder_.Equal(receiverHClass, hclass);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), check);
+}
+
+void TypeLowering::LowerFloat32ArrayCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    bool is32Bit = builder_.GetCompilationConfig()->Is32Bit();
+    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(is32Bit));
+    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef receiverHClass = builder_.LoadHClass(receiver);
+
+    GateRef float32ArrayFunction =
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
+    GateRef protoOrHclass =
+        builder_.Load(VariableType::JS_ANY(), float32ArrayFunction,
+                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef typeCheck = builder_.Equal(receiverHClass, protoOrHclass);
+
+    auto bitfield = acc_.GetBitField(acc_.GetValueIn(gate, 1));
+    GateRef index = builder_.Int32(bitfield);
+    GateRef length =
+            builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+    GateRef lengthCheck = builder_.Int32UnsignedLessThan(index, length);
+
+    GateRef check = builder_.BoolAnd(typeCheck, lengthCheck);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), check);
+}
+
+void TypeLowering::LowerLoadProperty(GateRef gate, [[maybe_unused]] GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label hole(&builder_);
+    Label exit(&builder_);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef offset = acc_.GetValueIn(gate, 1);
+    result = builder_.Load(VariableType::JS_ANY(), receiver, offset);
+    // simplify the process, need to query the vtable to complete the whole process later
+    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE), &hole, &exit);
+    builder_.Bind(&hole);
+    {
+        result = builder_.UndefineConstant();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerStoreProperty(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef offset = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+    builder_.Store(VariableType::JS_ANY(), glue, receiver, offset, value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+// for Float32Array
+void TypeLowering::LowerLoadElement(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef arrbuffer =
+        builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
+    GateRef data = builder_.Load(VariableType::JS_POINTER(), arrbuffer, builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
+    GateRef block = builder_.Load(VariableType::JS_ANY(), data, builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
+
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef elementSize = builder_.Int32(4);  // 4: float32 occupy 4 bytes
+    GateRef offset = builder_.PtrMul(index, elementSize);
+    GateRef byteOffset =
+        builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+
+    GateRef res = builder_.Load(VariableType::FLOAT32(), block, builder_.PtrAdd(offset, byteOffset));
+    GateRef result = builder_.Float32ToTaggedDoublePtr(res);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+// for Float32Array
+void TypeLowering::LowerStoreElement(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef arrbuffer =
+        builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
+    GateRef data = builder_.Load(VariableType::JS_POINTER(), arrbuffer, builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
+    GateRef block = builder_.Load(VariableType::JS_ANY(), data, builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
+
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef elementSize = builder_.Int32(4);  // 4: float32 occupy 4 bytes
+    GateRef offset = builder_.PtrMul(index, elementSize);
+    GateRef byteOffset =
+        builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+
+    GateRef value = acc_.GetValueIn(gate, 2);
+    GateType valueType = acc_.GetGateType(value);
+
+    DEFVAlUE(storeValue, (&builder_), VariableType::FLOAT32(), builder_.Double(0));
+    if (valueType.IsIntType()) {
+        storeValue = builder_.TaggedIntPtrToFloat32(value);
+    } else if (valueType.IsDoubleType()) {
+        storeValue = builder_.TaggedDoublePtrToFloat32(value);
+    } else {
+        Label valueIsInt(&builder_);
+        Label valueIsDouble(&builder_);
+        Label exit(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+        builder_.Bind(&valueIsInt);
+        {
+            storeValue = builder_.TaggedIntPtrToFloat32(value);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&valueIsDouble);
+        {
+            storeValue = builder_.TaggedDoublePtrToFloat32(value);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&exit);
+    }
+    builder_.Store(VariableType::VOID(), glue, block, builder_.PtrAdd(offset, byteOffset), *storeValue);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypeLowering::LowerIntCheck(GateRef gate)
@@ -135,6 +317,14 @@ void TypeLowering::LowerNumberCheck(GateRef gate)
 {
     auto value = acc_.GetValueIn(gate, 0);
     auto typeCheck = builder_.TaggedIsNumber(value);
+    acc_.UpdateAllUses(gate, typeCheck);
+    acc_.DeleteGate(gate);
+}
+
+void TypeLowering::LowerBooleanCheck(GateRef gate)
+{
+    auto value = acc_.GetValueIn(gate, 0);
+    auto typeCheck = builder_.TaggedIsBoolean(value);
     acc_.UpdateAllUses(gate, typeCheck);
     acc_.DeleteGate(gate);
 }
@@ -216,6 +406,7 @@ void TypeLowering::LowerTypedUnaryOp(GateRef gate)
         case TypedUnOp::TYPED_TONUMBER:
             break;
         case TypedUnOp::TYPED_NEG:
+            LowerTypedNeg(gate);
             break;
         case TypedUnOp::TYPED_NOT:
             LowerTypedNot(gate);
@@ -225,6 +416,9 @@ void TypeLowering::LowerTypedUnaryOp(GateRef gate)
             break;
         case TypedUnOp::TYPED_DEC:
             LowerTypedDec(gate);
+            break;
+        case TypedUnOp::TYPED_TOBOOL:
+            LowerTypedToBool(gate);
             break;
         default:
             break;
@@ -421,6 +615,30 @@ void TypeLowering::LowerTypedDec(GateRef gate)
     return;
 }
 
+void TypeLowering::LowerTypedNeg(GateRef gate)
+{
+    auto value = acc_.GetLeftType(gate);
+    if (value.IsNumberType()) {
+        LowerNumberNeg(gate);
+    } else {
+        UNREACHABLE();
+    }
+    return;
+}
+
+void TypeLowering::LowerTypedToBool(GateRef gate)
+{
+    auto value = acc_.GetLeftType(gate);
+    if (value.IsNumberType()) {
+        LowerNumberToBool(gate);
+    } else if (value.IsBooleanType()) {
+        LowerBooleanToBool(gate);
+    } else {
+        UNREACHABLE();
+    }
+    return;
+}
+
 void TypeLowering::LowerTypedNot(GateRef gate)
 {
     auto value = acc_.GetLeftType(gate);
@@ -602,6 +820,106 @@ void TypeLowering::LowerNumberDec(GateRef gate)
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_DEC>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberNeg(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = acc_.GetLeftType(gate);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    if (valueType.IsIntType()) {
+        // value is int
+        GateRef intVal = builder_.GetInt64OfTInt(value);
+        GateRef res = BinaryOp<OpCode::SUB, MachineType::I64>(builder_.Int64(0), intVal);
+        result = builder_.ToTaggedIntPtr(res);
+    } else if (valueType.IsDoubleType()) {
+        // value is double
+        GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
+        GateRef res = BinaryOp<OpCode::SUB, MachineType::F64>(builder_.Double(0), doubleVal);
+        result = DoubleToTaggedDoublePtr(res);
+    } else {
+        // value is number and need typecheck in runtime
+        Label valueIsInt(&builder_);
+        Label valueIsDouble(&builder_);
+        Label exit(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+        builder_.Bind(&valueIsInt);
+        {
+            GateRef intVal = builder_.GetInt64OfTInt(value);
+            Label overflow(&builder_);
+            Label notOverflow(&builder_);
+            GateRef min = builder_.Int64(INT32_MIN);
+            builder_.Branch(builder_.Int64Equal(intVal, min), &overflow, &notOverflow);
+            builder_.Bind(&overflow);
+            {
+                GateRef res = builder_.Double(static_cast<double>(JSTaggedValue::TAG_INT32_INC_MAX));
+                result = builder_.DoubleToTaggedDoublePtr(res);
+                builder_.Jump(&exit);
+            }
+            builder_.Bind(&notOverflow);
+            {
+                GateRef res = BinaryOp<OpCode::SUB, MachineType::I64>(builder_.Int64(0), intVal);
+                result = builder_.ToTaggedIntPtr(res);
+                builder_.Jump(&exit);
+            }
+        }
+        builder_.Bind(&valueIsDouble);
+        {
+            GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
+            GateRef res = BinaryOp<OpCode::SUB, MachineType::F64>(builder_.Double(0), doubleVal);
+            result = DoubleToTaggedDoublePtr(res);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&exit);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerNumberToBool(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = acc_.GetLeftType(gate);
+    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.HoleConstant());
+    if (valueType.IsIntType()) {
+        // value is int
+        GateRef intVal = builder_.GetInt64OfTInt(value);
+        result = builder_.BoolNot(builder_.Equal(intVal, builder_.Int64(0)));
+    } else if (valueType.IsDoubleType()) {
+        // value is double
+        GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
+        GateRef doubleNotZero = builder_.BoolNot(builder_.Equal(doubleVal, builder_.Double(0)));
+        GateRef doubleNotNAN = builder_.BoolNot(builder_.DoubleIsNAN(doubleVal));
+        result = builder_.BoolAnd(doubleNotZero, doubleNotNAN);
+    } else {
+        // value is number and need typecheck in runtime
+        Label valueIsInt(&builder_);
+        Label valueIsDouble(&builder_);
+        Label exit(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(value), &valueIsInt, &valueIsDouble);
+        builder_.Bind(&valueIsInt);
+        {
+            GateRef intVal = builder_.GetInt64OfTInt(value);
+            result = builder_.BoolNot(builder_.Equal(intVal, builder_.Int64(0)));
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&valueIsDouble);
+        {
+            GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
+            GateRef doubleNotZero = builder_.BoolNot(builder_.Equal(doubleVal, builder_.Double(0)));
+            GateRef doubleNotNAN = builder_.BoolNot(builder_.DoubleIsNAN(doubleVal));
+            result = builder_.BoolAnd(doubleNotZero, doubleNotNAN);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&exit);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerBooleanToBool(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.TaggedIsTrue(value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypeLowering::LowerNumberNot(GateRef gate)

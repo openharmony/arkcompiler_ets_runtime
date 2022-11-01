@@ -118,8 +118,8 @@ bool TypeInfer::ShouldInfer(const GateRef gate) const
     if (gateToBytecode.find(gate) == gateToBytecode.end()) {
         return false;
     }
-    auto bytecodeInfo = builder_->GetByteCodeInfo(gate);
-    return !bytecodeInfo.IsJump() && !IsNewLexEnv(bytecodeInfo.opcode);
+    auto &bytecodeInfo = builder_->GetByteCodeInfo(gate);
+    return !bytecodeInfo.IsJump() && !IsNewLexEnv(bytecodeInfo.GetOpcode());
 }
 
 bool TypeInfer::Infer(GateRef gate)
@@ -549,7 +549,7 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
 
 bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
 {
-    auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
+    auto &byteCodeInfo = builder_->GetByteCodeInfo(gate);
     uint16_t stringId;
     GateType inValueType;
     if (hasIC) {
@@ -577,7 +577,7 @@ bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
 
 bool TypeInfer::InferLdGlobalVar(GateRef gate)
 {
-    auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
+    auto &byteCodeInfo = builder_->GetByteCodeInfo(gate);
     ASSERT(byteCodeInfo.inputs.size() == 2);  // 2: number of value inputs
     auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[1]).GetId();
     auto iter = stringIdToGateType_.find(stringId);
@@ -731,7 +731,7 @@ bool TypeInfer::InferGetIterator(GateRef gate)
 bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
 {
     // todo by hongtao, should consider function of .d.ts
-    auto byteCodeInfo = builder_->GetByteCodeInfo(gate);
+    auto &byteCodeInfo = builder_->GetByteCodeInfo(gate);
     ASSERT(byteCodeInfo.inputs.size() == 2);  // 2: number of parameter
     auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[1]).GetId();
     auto iter = stringIdToGateType_.find(stringId);
@@ -815,7 +815,7 @@ void TypeInfer::PrintAllByteCodesTypes() const
                                    << ", [moduleId: " + std::to_string(gt.GetModuleId())
                                    << ", [localId: " + std::to_string(gt.GetLocalId()) + "]";
             } else {
-                    LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
+                LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
             }
         }
     }
@@ -842,12 +842,12 @@ void TypeInfer::Verify() const
  */
 void TypeInfer::TypeCheck(GateRef gate) const
 {
-    auto info = builder_->GetByteCodeInfo(gate);
+    auto &info = builder_->GetByteCodeInfo(gate);
     if (!info.IsBc(EcmaOpcode::CALLARGS2_IMM8_V8_V8)) {
         return;
     }
     auto func = gateAccessor_.GetValueIn(gate, 2);
-    auto funcInfo = builder_->GetByteCodeInfo(func);
+    auto &funcInfo = builder_->GetByteCodeInfo(func);
     if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16) &&
         !funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16)) {
         return;
@@ -928,8 +928,7 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
             return true;
         };
 
-        const auto &gateToBytecode = builder_->GetGateToBytecode();
-        const uint8_t *pc = gateToBytecode.at(gate).second;
+        const uint8_t *pc = builder_->GetJSBytecode(gate);
         const MethodLiteral *methodLiteral = builder_->GetMethod();
 
         uint32_t offset = pc - methodLiteral->GetBytecodeArray();

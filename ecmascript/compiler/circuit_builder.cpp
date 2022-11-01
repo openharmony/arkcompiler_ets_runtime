@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
 
@@ -147,10 +148,28 @@ GateRef CircuitBuilder::Arguments(size_t index)
                                  GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto guard = currentLabel->GetDepend();
+    auto currentDepend = acc_.GetDep(guard);
+    GateRef ret = GetCircuit()->NewGate(OpCode(OpCode::OBJECT_TYPE_CHECK), static_cast<uint64_t>(type.Value()),
+                                        {currentControl, currentDepend, gate, index}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate)
 {
     return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CHECK), static_cast<uint64_t>(type.Value()),
                                  {gate}, GateType::NJSValue());
+}
+
+GateRef CircuitBuilder::GetLexicalEnv(GateRef depend)
+{
+    return GetCircuit()->NewGate(OpCode(OpCode::GET_ENV), MachineType::I64, 0, {depend}, GateType::TaggedValue());
 }
 
 GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
@@ -460,25 +479,25 @@ GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef va
     return ret;
 }
 
-GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef key)
+GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef offset)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_PROPERTY), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, key }, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, offset }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef key, GateRef value)
+GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef offset, GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_PROPERTY), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, key, value }, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, offset, value }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -617,7 +636,7 @@ void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::JS_ANY(), glue, function, offset, value);
 }
 
-GateRef CircuitBuilder::GetLexicalEnv(GateRef function)
+GateRef CircuitBuilder::GetFunctionLexicalEnv(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
 }
@@ -644,6 +663,12 @@ void CircuitBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, Gat
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)
+{
+    auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
+    return Load(type, env, valueIndex);
 }
 
 Environment::Environment(size_t arguments, CircuitBuilder *builder)

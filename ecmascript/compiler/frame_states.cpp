@@ -90,17 +90,17 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
     std::deque<size_t> pendingList;
     std::vector<bool> visited(size, false);
     auto entryId = 0;
-    pendingList.push_back(entryId);
+    pendingList.emplace_back(entryId);
 
     while (!pendingList.empty()) {
         size_t curBlockId = pendingList.back();
         visited[curBlockId] = true;
 
         bool change = false;
-        auto bb = builder_->GetBasicBlockById(curBlockId);
+        auto &bb = builder_->GetBasicBlockById(curBlockId);
         for (const auto &succBlock: bb.succs) {
             if (!visited[succBlock->id]) {
-                pendingList.push_back(succBlock->id);
+                pendingList.emplace_back(succBlock->id);
                 change = true;
                 break;
             }
@@ -110,13 +110,13 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
         }
         for (const auto &succBlock: bb.catchs) {
             if (!visited[succBlock->id]) {
-                pendingList.push_back(succBlock->id);
+                pendingList.emplace_back(succBlock->id);
                 change = true;
                 break;
             }
         }
         if (!change) {
-            postOrderList_.push_back(curBlockId);
+            postOrderList_.emplace_back(curBlockId);
             pendingList.pop_back();
         }
     }
@@ -143,14 +143,14 @@ bool FrameStateBuilder::MergeIntoPredBC(const uint8_t* predPc)
 GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi)
 {
     ASSERT(gateAcc_.GetOpCode(phi) == OpCode::VALUE_SELECTOR);
-    if (bb->numOfLoopBacks) {
+    if (bb->numOfLoopBacks != 0) {
         ASSERT(bb->loopbackBlocks.size() != 0);
         auto forwardValue = gateAcc_.GetValueIn(phi, 0); // 0: fowward
         auto loopBackValue = gateAcc_.GetValueIn(phi, 1); // 1: back
         size_t backIndex = 0;
         size_t forwardIndex = 0;
         for (size_t i = 0; i < bb->numOfStatePreds; ++i) {
-            auto predId = std::get<size_t>(bb->expandedPreds.at(i));
+            auto predId = std::get<0>(bb->expandedPreds.at(i));
             if (bb->loopbackBlocks.count(predId)) {
                 if (predId == predBb->id) {
                     return gateAcc_.GetValueIn(loopBackValue, backIndex);
@@ -168,7 +168,7 @@ GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *p
 
     ASSERT(gateAcc_.GetNumValueIn(phi) == bb->numOfStatePreds);
     for (size_t i = 0; i < bb->numOfStatePreds; ++i) {
-        auto predId = std::get<size_t>(bb->expandedPreds.at(i));
+        auto predId = std::get<0>(bb->expandedPreds.at(i));
         if (predId == predBb->id) {
             return gateAcc_.GetValueIn(phi, i);
         }
@@ -208,20 +208,24 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
 
 bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
 {
-    auto bb = builder_->GetBasicBlockById(bbId);
+    auto &bb = builder_->GetBasicBlockById(bbId);
     bool changed = false;
     ASSERT(!bb.isDead);
     // iterator bc
-    auto pc = bb.end;
+    auto &iterator = bb.GetBytecodeIterator();
+    iterator.GotoEnd();
+    ASSERT(bb.end == iterator.CurrentPc());
+    auto liveout = GetOrOCreateStateInfo(bb.end);
+    liveOutResult_->CopyFrom(liveout);
     while (true) {
-        auto liveout = GetOrOCreateStateInfo(pc);
-        liveOutResult_->CopyFrom(liveout);
-        ComputeLiveOutBC(pc);
-        pc = builder_->GetByteCodeCurPrePc().at(pc);
-        if (pc <= bb.start || pc >= bb.end) {
+        auto &bytecodeInfo = iterator.GetBytecodeInfo();
+        ComputeLiveOutBC(bytecodeInfo);
+        --iterator;
+        if (iterator.Done()) {
             break;
         }
-        changed |= MergeIntoPredBC(pc);
+        auto prevPc = iterator.CurrentPc();
+        changed |= MergeIntoPredBC(prevPc);
     }
 
     bool defPhi = bb.valueSelectorAccGate != Circuit::NullGate() ||
@@ -231,14 +235,14 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
         if (defPhi) {
             changed |= MergeIntoPredBB(&bb, bbPred);
         } else {
-            changed |= MergeIntoPredBC(pc);
+            changed |= MergeIntoPredBC(bbPred->end);
         }
     }
     for (auto bbPred : bb.trys) {
         if (defPhi) {
             changed |= MergeIntoPredBB(&bb, bbPred);
         } else {
-            changed |= MergeIntoPredBC(pc);
+            changed |= MergeIntoPredBC(bbPred->end);
         }
     }
     return changed;
@@ -266,15 +270,14 @@ void FrameStateBuilder::BuildFrameState()
     BindGuard(size);
 }
 
-void FrameStateBuilder::ComputeLiveOutBC(const uint8_t * pc)
+void FrameStateBuilder::ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo)
 {
+    auto pc = bytecodeInfo.GetPC();
     auto byteCodeToJSGate = builder_->GetBytecodeToGate();
-    auto bytecodeInfo = builder_->GetBytecodeInfo(pc);
-
     if (bytecodeInfo.IsMov()) {
         auto gate = Circuit::NullGate();
         // variable kill
-        if (bytecodeInfo.accOut) {
+        if (bytecodeInfo.AccOut()) {
             UpdateAccumulator(Circuit::NullGate());
             gate = ValuesAtAccumulator();
         } else if (bytecodeInfo.vregOut.size() != 0) {
@@ -283,7 +286,7 @@ void FrameStateBuilder::ComputeLiveOutBC(const uint8_t * pc)
             UpdateVirtualRegister(out, Circuit::NullGate());
         }
         // variable use
-        if (bytecodeInfo.accIn) {
+        if (bytecodeInfo.AccIn()) {
             UpdateAccumulator(gate);
         } else if (bytecodeInfo.inputs.size() != 0) {
             auto vreg = std::get<VirtualRegister>(bytecodeInfo.inputs.at(0)).GetId();
@@ -296,14 +299,14 @@ void FrameStateBuilder::ComputeLiveOutBC(const uint8_t * pc)
     }
     GateRef gate = byteCodeToJSGate.at(pc);
     // variable kill
-    if (bytecodeInfo.accOut) {
+    if (bytecodeInfo.AccOut()) {
         UpdateAccumulator(Circuit::NullGate());
     }
     for (const auto &out: bytecodeInfo.vregOut) {
         UpdateVirtualRegister(out, Circuit::NullGate());
     }
     // variable use
-    if (bytecodeInfo.accIn) {
+    if (bytecodeInfo.AccIn()) {
         auto id = bytecodeInfo.inputs.size();
         GateRef def = gateAcc_.GetValueIn(gate, id);
         UpdateAccumulator(def);
@@ -322,16 +325,19 @@ void FrameStateBuilder::BindGuard(size_t size)
 {
     auto byteCodeToJSGate = builder_->GetBytecodeToGate();
     for (size_t i = 0; i < size; i++) {
-        auto bb = builder_->GetBasicBlockById(i);
+        auto &bb = builder_->GetBasicBlockById(i);
         if (bb.isDead) {
             continue;
         }
-        builder_->EnumerateBlock(bb, [=](uint8_t *pc, BytecodeInfo &bytecodeInfo) -> bool {
-            if (bytecodeInfo.deopt) {
+        builder_->EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
+            if (bytecodeInfo.Deopt()) {
+                auto &iterator = bb.GetBytecodeIterator();
+                auto pc = bytecodeInfo.GetPC();
                 auto gate = byteCodeToJSGate.at(pc);
-                pc = builder_->GetByteCodeCurPrePc().at(pc);
-                auto stateInfo = GetOrOCreateStateInfo(pc);
-                BindGuard(gate, bytecodeInfo.pcOffset, stateInfo);
+                auto pcOffset = builder_->GetPcOffset(pc);
+                auto prevPc = iterator.PeekPrevPc(1); // 1: prev pc
+                auto stateInfo = GetOrOCreateStateInfo(prevPc);
+                BindGuard(gate, pcOffset, stateInfo);
             }
             return true;
         });

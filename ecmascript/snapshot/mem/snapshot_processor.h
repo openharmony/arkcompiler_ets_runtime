@@ -30,6 +30,7 @@
 namespace panda::ecmascript {
 class EcmaVM;
 class JSPandaFile;
+class AOTFileManager;
 
 enum class SnapshotType {
     VM_ROOT,

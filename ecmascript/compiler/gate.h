@@ -87,6 +87,7 @@ enum class TypedUnOp : uint8_t {
     TYPED_NOT,
     TYPED_INC,
     TYPED_DEC,
+    TYPED_TOBOOL,
 };
 
 enum class ICmpCondition : uint8_t {
@@ -177,6 +178,8 @@ public:
         ZEXT,
         SEXT,
         TRUNC,
+        FEXT,
+        FTRUNC,
         REV,
         TRUNC_FLOAT_TO_INT64,
         ADD,
@@ -208,11 +211,13 @@ public:
         BITCAST,
         RESTORE_REGISTER,
         SAVE_REGISTER,
+        OBJECT_TYPE_CHECK,
         TYPE_CHECK,
         TYPED_BINARY_OP,
         TYPE_CONVERT,
         TYPED_UNARY_OP,
         TO_LENGTH,
+        GET_ENV,
         HEAP_ALLOC,
         LOAD_ELEMENT,
         LOAD_PROPERTY,

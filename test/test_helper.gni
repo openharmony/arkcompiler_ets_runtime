@@ -285,10 +285,6 @@ if (!ark_standalone_build) {
   template("host_aot_js_test_action") {
     _target_name_ = "${target_name}"
     _deps_ = invoker.deps
-    _is_module_ = false
-    if (defined(invoker.is_module) && invoker.is_module) {
-      _is_module_ = true
-    }
 
     _test_ts_path_ = "./${_target_name_}.js"
     _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
@@ -304,11 +300,10 @@ if (!ark_standalone_build) {
       extra_dependencies = _deps_
       src_js = rebase_path(_test_ts_path_)
       dst_file = rebase_path(_test_abc_path_)
-      extra_args = [ "--merge-abc" ]
-
-      if (_is_module_) {
-        extra_args += [ "--module" ]
-      }
+      extra_args = [
+        "--merge-abc",
+        "--module",
+      ]
 
       in_puts = [
         _test_ts_path_,
@@ -335,6 +330,11 @@ if (!ark_standalone_build) {
       _aot_compile_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
           _test_aot_log_level + " --log-components=all"
+
+      if (defined(invoker.is_disable_type_lowering) &&
+          invoker.is_disable_type_lowering) {
+        _aot_compile_options_ += " --enable-type-lowering=false"
+      }
 
       args = [
         "--script-file",
@@ -413,10 +413,6 @@ if (!ark_standalone_build) {
   template("host_aot_test_action") {
     _target_name_ = "${target_name}"
     _deps_ = invoker.deps
-    _is_module_ = false
-    if (defined(invoker.is_module) && invoker.is_module) {
-      _is_module_ = true
-    }
 
     _test_ts_path_ = "./${_target_name_}.ts"
     _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
@@ -432,10 +428,10 @@ if (!ark_standalone_build) {
       extra_dependencies = _deps_
       src_js = rebase_path(_test_ts_path_)
       dst_file = rebase_path(_test_abc_path_)
-      extra_args = [ "--merge-abc" ]
-      if (_is_module_) {
-        extra_args += [ "--module" ]
-      }
+      extra_args = [
+        "--merge-abc",
+        "--module",
+      ]
 
       in_puts = [
         _test_ts_path_,
@@ -462,6 +458,11 @@ if (!ark_standalone_build) {
       _aot_compile_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
           _test_aot_log_level + " --log-components=all"
+
+      if (defined(invoker.is_disable_type_lowering) &&
+          invoker.is_disable_type_lowering) {
+        _aot_compile_options_ += " --enable-type-lowering=false"
+      }
 
       args = [
         "--script-file",
@@ -546,12 +547,10 @@ if (!ark_standalone_build) {
       extra_dependencies = _deps_
       src_js = rebase_path(_test_ts_path_)
       dst_file = rebase_path(_test_abc_path_)
-      extra_args = [ "--merge-abc" ]
-
-      # will support debug info mode in future
-      if (defined(invoker._is_module_) && invoker._is_module_) {
-        extra_args += [ "--module" ]
-      }
+      extra_args = [
+        "--merge-abc",
+        "--module",
+      ]
 
       in_puts = [ _test_ts_path_ ]
       out_puts = [ _test_abc_path_ ]
@@ -600,6 +599,11 @@ if (!ark_standalone_build) {
         deps += [ ":gen_builtins_d_abc" ]
         _aot_compile_options_ +=
             " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
+      }
+
+      if (defined(invoker.is_disable_type_lowering) &&
+          invoker.is_disable_type_lowering) {
+        _aot_compile_options_ += " --enable-type-lowering=false"
       }
 
       args = [

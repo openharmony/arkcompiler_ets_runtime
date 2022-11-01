@@ -159,6 +159,10 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     // reuse Attributes first.
     newJsHClass->SetLayout(thread, jshclass->GetLayout());
 
+    if (jshclass->IsAOT()) {
+        newJsHClass->SetAOT(false);
+    }
+
     return newJsHClass;
 }
 

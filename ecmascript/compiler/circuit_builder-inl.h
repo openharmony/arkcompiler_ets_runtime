@@ -124,6 +124,11 @@ GateRef CircuitBuilder::ChangeInt32ToFloat64(GateRef x)
     return UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F64, x);
 }
 
+GateRef CircuitBuilder::ChangeInt32ToFloat32(GateRef x)
+{
+    return UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F32, x);
+}
+
 GateRef CircuitBuilder::ChangeUInt32ToFloat64(GateRef x)
 {
     return UnaryArithmetic(OpCode(OpCode::UNSIGNED_INT_TO_FLOAT), MachineType::F64, x);
@@ -291,6 +296,11 @@ GateRef CircuitBuilder::TaggedIsSpecial(GateRef x)
         TaggedIsHole(x));
 }
 
+inline GateRef CircuitBuilder::IsJSHClass(GateRef obj)
+{
+    return Int32Equal(GetObjectType(LoadHClass(obj)), Int32(static_cast<int32_t>(JSType::HCLASS)));
+}
+
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
@@ -394,6 +404,30 @@ GateRef CircuitBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
+GateRef CircuitBuilder::BooleanToTaggedBooleanPtr(GateRef x)
+{
+    auto val = ZExtInt1ToInt64(x);
+    return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_BOOLEAN_MASK)));
+}
+
+GateRef CircuitBuilder::Float32ToTaggedDoublePtr(GateRef x)
+{
+    GateRef val = ExtFloat32ToDouble(x);
+    return DoubleToTaggedDoublePtr(val);
+}
+
+GateRef CircuitBuilder::TaggedDoublePtrToFloat32(GateRef x)
+{
+    GateRef val = GetDoubleOfTDouble(x);
+    return TruncDoubleToFloat32(val);
+}
+
+GateRef CircuitBuilder::TaggedIntPtrToFloat32(GateRef x)
+{
+    GateRef val = GetInt32OfTInt(x);
+    return ChangeInt32ToFloat32(val);
+}
+
 GateRef CircuitBuilder::DoubleToTaggedDouble(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
@@ -446,7 +480,7 @@ GateRef CircuitBuilder::GetGlobalConstantString(ConstantIndex index)
 // object operation
 GateRef CircuitBuilder::LoadHClass(GateRef object)
 {
-    GateRef offset = Int32(0);
+    GateRef offset = IntPtr(0);
     return Load(VariableType::JS_POINTER(), object, offset);
 }
 
@@ -598,7 +632,8 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto numberUnaryOp = TypedUnaryOperator(MachineType::I64, Op, xType, {currentControl, currentDepend, x}, gateType);
+    auto machineType = (Op == TypedUnOp::TYPED_TOBOOL) ? MachineType::I1 : MachineType::I64;
+    auto numberUnaryOp = TypedUnaryOperator(machineType, Op, xType, {currentControl, currentDepend, x}, gateType);
     currentLabel->SetControl(numberUnaryOp);
     currentLabel->SetDepend(numberUnaryOp);
     return numberUnaryOp;
