@@ -113,15 +113,14 @@ void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Regi
     __ Add(currentSp, currentSp, Operand(argc, UXTW, FRAME_SLOT_SIZE_LOG2));
 }
 
-// * uint64_t JSFunctionEntry(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
-//                            uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr)
+// * uint64_t JSFunctionEntry(uintptr_t glue, uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t prevFp,
+//                            size_t callType)
 // * Arguments:
 //        %x0 - glue
-//        %x1 - prevFp
-//        %x2 - expectedNumArgs
-//        %x3 - actualNumArgs
-//        %x4  - argV
-//        %x5  - codeAddr
+//        %x1 - actualNumArgs
+//        %x2 - argV
+//        %x3 - prevFp
+//        %x4 - callType
 //
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
 //          +--------------------------+
@@ -136,70 +135,7 @@ void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Regi
 
 void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
 {
-    Register glue(X0);
-    Register prevFp(X1);
-    Register expectedNumArgs(X2);
-    Register actualNumArgs(X3);
-    Register argV(X4);
-    Register codeAddr(X5);
-    Register sp(SP);
-    Register currentSp(X6);
-    Label copyArguments;
-
     __ BindAssemblerStub(RTSTUB_ID(JSFunctionEntry));
-    PushJSFunctionEntryFrame (assembler, prevFp);
-    Register argC(X7);
-    __ Cmp(expectedNumArgs, actualNumArgs);
-    __ CMov(argC, expectedNumArgs, actualNumArgs, Condition::HI);
-    IncreaseStackForArguments(assembler, argC, currentSp);
-
-    Label invokeCompiledJSFunction;
-    {
-        TempRegister1Scope scope1(assembler);
-        TempRegister2Scope scope2(assembler);
-        Register argc = __ TempRegister1();
-        Register undefinedValue = __ TempRegister2();
-        __ Subs(argc, expectedNumArgs, Operand(actualNumArgs));
-        __ B(Condition::LS, &copyArguments);
-        PushUndefinedWithArgc(assembler, glue, argc, undefinedValue, currentSp, nullptr, nullptr);
-    }
-    __ Bind(&copyArguments);
-    __ Cbz(actualNumArgs, &invokeCompiledJSFunction);
-    {
-        TempRegister1Scope scope1(assembler);
-        TempRegister2Scope scope2(assembler);
-        Register argc = __ TempRegister1();
-        Register argValue = __ TempRegister2();
-        __ Mov(argc, actualNumArgs);
-        PushArgsWithArgv(assembler, glue, argc, argV, argValue, currentSp, &invokeCompiledJSFunction, nullptr);
-    }
-    __ Bind(&invokeCompiledJSFunction);
-    {
-        TempRegister1Scope scope1(assembler);
-        Register env = __ TempRegister1();
-        __ Mov(Register(X19), expectedNumArgs);
-        __ Mov(Register(X20), glue);
-        __ Ldr(env, MemoryOperand(argV, actualNumArgs, UXTW, FRAME_SLOT_SIZE_LOG2));
-        __ Str(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
-        // 0 : 0 restore size
-        __ Str(env, MemoryOperand(sp, 0));
-        __ Blr(codeAddr);
-    }
-
-    // pop argV
-    // 3 : 3 means argC * 8
-    __ Ldr(actualNumArgs, MemoryOperand(sp, FRAME_SLOT_SIZE));
-    PopJSFunctionArgs(assembler, Register(X19), actualNumArgs);
-
-    __ Mov(Register(X2), Register(X20));
-    // pop prevLeaveFrameFp to restore thread->currentFrame_
-    PopJSFunctionEntryFrame(assembler, Register(X2));
-    __ Ret();
-}
-
-void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(JSFunctionReentry));
     Register glueReg(X0);
     Register argV(X2);
     Register prevFpReg(X3);

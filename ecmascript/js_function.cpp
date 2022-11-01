@@ -343,8 +343,9 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     info->SetThis(obj.GetTaggedValue());
     Method *method = func->GetCallTarget();
     if (method->IsAotWithCallField()) {
-        resultValue =
-            thread->GetEcmaVM()->AotReentry(info->GetArgsNumber(), info->GetArgs(), true);
+        const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+        resultValue = thread->GetEcmaVM()->ExecuteAot(info->GetArgsNumber(), info->GetArgs(), prevFp,
+                                                      OptimizedEntryFrame::CallType::CALL_NEW);
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
         JSTaggedType *prevSp = entryState->base.prev;

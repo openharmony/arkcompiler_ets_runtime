@@ -31,15 +31,14 @@
 namespace panda::ecmascript::x64 {
 #define __ assembler->
 
-// * uint64_t JSFunctionEntry(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
-//                            uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr)
+// * uint64_t JSFunctionEntry(uintptr_t glue, uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t prevFp,
+//                            size_t callType)
 // * Arguments:
 //        %rdi - glue
-//        %rsi - prevFp
-//        %rdx - expectedNumArgs
-//        %ecx - actualNumArgs
-//        %r8  - argV
-//        %r9  - codeAddr
+//        %rsi - actualNumArgs
+//        %rdx - argV
+//        %rcx - prevFp
+//        %r8  - callType
 //
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
 //          +--------------------------+
@@ -55,90 +54,6 @@ namespace panda::ecmascript::x64 {
 void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(JSFunctionEntry));
-    Register glueReg = rdi;
-    Register prevFpReg = rsi;
-    Register expectedNumArgsReg = rdx;
-    Register actualNumArgsReg = rcx;
-    Register argvReg = r8;
-    Register codeAddrReg = r9;
-
-    Label lCopyExtraAument;
-    Label updateNumArgs;
-    Label lCopyLoop;
-    Label lPopFrame;
-
-    __ PushCppCalleeSaveRegisters();
-    __ Pushq(glueReg); // caller save
-    // construct the frame
-    __ Pushq(rbp);
-    __ Movq(rsp, rbp);
-    __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_ENTRY_FRAME));
-    __ Pushq(prevFpReg);
-
-    // 16 bytes align check
-    __ Movl(expectedNumArgsReg, r14);
-
-    // expectedNumArgs > actualNumArgs
-    __ Movl(expectedNumArgsReg, rbx); // save expectedNumArgs
-    __ Cmpl(actualNumArgsReg, expectedNumArgsReg);
-    __ Jbe(&updateNumArgs);
-    __ Movl(actualNumArgsReg, rax);
-    __ Movl(rbx, expectedNumArgsReg);
-    __ Testb(1, r14);
-    __ Je(&lCopyExtraAument);
-    __ Pushq(0); // push zero to align 16 bytes stack
-
-    __ Bind(&lCopyExtraAument); // copy undefined value to stack
-    __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
-    __ Addq(-1, expectedNumArgsReg);
-    __ Cmpq(rax, expectedNumArgsReg);
-    __ Ja(&lCopyExtraAument);
-    __ Jmp(&lCopyLoop);
-
-    __ Bind(&updateNumArgs);
-    {
-        __ Movl(actualNumArgsReg, r14);
-        __ Movl(actualNumArgsReg, rax); // rax -> actualNumArgsReg
-        __ Testb(1, r14);
-        __ Je(&lCopyLoop);
-        __ Pushq(0); // push zero to align 16 bytes stack
-    }
-
-    __ Bind(&lCopyLoop);
-    {
-        __ Movq(Operand(argvReg, rax, Scale::Times8, -FRAME_SLOT_SIZE), actualNumArgsReg); // -8 : disp
-        __ Pushq(actualNumArgsReg);
-        __ Addq(-1, rax);
-        __ Jne(&lCopyLoop);
-
-        __ Pushq(r14);
-        __ Movq(Operand(argvReg, r14, Scale::Times8, 0), actualNumArgsReg);
-        __ Push(actualNumArgsReg); // env
-        __ Movq(glueReg, rax); // mov glue to rax
-        __ Callq(codeAddrReg); // then call jsFunction
-        __ Leaq(Operand(r14, Scale::Times8, 0), actualNumArgsReg); // Note: fixed for 3 extra arguments
-        __ Addq(actualNumArgsReg, rsp);
-        __ Addq(2 * FRAME_SLOT_SIZE, rsp); // 16: skip r14 and env
-        __ Testb(1, r14); // stack 16bytes align check
-        __ Je(&lPopFrame);
-        __ Addq(8, rsp); // 8: align byte
-    }
-
-    __ Bind(&lPopFrame);
-    {
-        __ Popq(prevFpReg);
-        __ Addq(FRAME_SLOT_SIZE, rsp); // 8: frame type
-        __ Popq(rbp);
-        __ Popq(glueReg); // caller restore
-        __ PopCppCalleeSaveRegisters(); // callee restore
-        __ Movq(prevFpReg, Operand(glueReg, JSThread::GlueData::GetLeaveFrameOffset(false)));
-        __ Ret();
-    }
-}
-
-void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(JSFunctionReentry));
     Register glueReg = rdi;
     Register argv = rdx;
     Register prevFpReg = rcx;

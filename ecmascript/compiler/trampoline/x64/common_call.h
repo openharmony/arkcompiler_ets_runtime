@@ -63,8 +63,6 @@ public:
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
-    static void JSFunctionReentry(ExtendedAssembler *assembler);
-
     static void JSCallNew(ExtendedAssembler *assembler);
 
     static void JSCallNewWithArgV(ExtendedAssembler *assembler);
