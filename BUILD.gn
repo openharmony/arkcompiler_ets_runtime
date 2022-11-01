@@ -360,6 +360,10 @@ config("ecma_test_config") {
   }
 
   ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+  if (ark_standalone_build) {
+    include_dirs = [ "//third_party/googletest/googletest/include" ]
+    ldflags += [ "-shared" ]
+  }
 }
 
 # ecmascript icu path for testcase config

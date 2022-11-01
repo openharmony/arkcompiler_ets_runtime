@@ -13,12 +13,6 @@
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
-if (ark_standalone_build) {
-  import("$build_root/ark.gni")
-} else {
-  import("//build/ohos.gni")
-}
-
 action("build_llvm_libs") {
   script = "compile_llvm_lib.sh"
   sources = [ "$js_root/ecmascript/compiler/compile_llvm_lib.sh" ]
