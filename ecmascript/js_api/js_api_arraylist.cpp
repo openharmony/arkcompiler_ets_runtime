@@ -302,9 +302,9 @@ JSTaggedValue JSAPIArrayList::Set(JSThread *thread, const uint32_t index, JSTagg
     return JSTaggedValue::Undefined();
 }
 
-JSHandle<JSAPIArrayList> JSAPIArrayList::SubArrayList(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
-                                                      const JSHandle<JSTaggedValue> &value1,
-                                                      const JSHandle<JSTaggedValue> &value2)
+JSTaggedValue JSAPIArrayList::SubArrayList(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
+                                           const JSHandle<JSTaggedValue> &value1,
+                                           const JSHandle<JSTaggedValue> &value2)
 {
     int length = arrayList->GetLength().GetInt();
     int fromIndex = JSTaggedValue::ToInt32(thread, value1);
@@ -315,16 +315,14 @@ JSHandle<JSAPIArrayList> JSAPIArrayList::SubArrayList(JSThread *thread, const JS
         oss << "The value of \"fromIndex\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << fromIndex;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
-        JSHandle<JSAPIArrayList> newArrayList = thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(0);
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, newArrayList);
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (toIndex <= fromIndex || toIndex < 0 || toIndex > length) {
         std::ostringstream oss;
         oss << "The value of \"toIndex\" is out of range. It must be >= 0 && <= " << length
             << ". Received value is: " << toIndex;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
-        JSHandle<JSAPIArrayList> newArrayList = thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(0);
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, newArrayList);
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
     int endIndex = toIndex >= length - 1 ? length - 1 : toIndex;
@@ -332,7 +330,7 @@ JSHandle<JSAPIArrayList> JSAPIArrayList::SubArrayList(JSThread *thread, const JS
     JSHandle<JSAPIArrayList> subArrayList =
         thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(newLength);
     if (newLength == 0) {
-        return subArrayList;
+        return subArrayList.GetTaggedValue();
     }
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
     ASSERT(!elements->IsDictionaryMode());
@@ -342,7 +340,7 @@ JSHandle<JSAPIArrayList> JSAPIArrayList::SubArrayList(JSThread *thread, const JS
         subArrayList->Set(thread, i, elements->Get(fromIndex + i));
     }
 
-    return subArrayList;
+    return subArrayList.GetTaggedValue();
 }
 
 JSTaggedValue JSAPIArrayList::ForEach(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
