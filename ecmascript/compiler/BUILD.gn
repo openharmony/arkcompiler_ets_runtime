@@ -253,8 +253,15 @@ ohos_shared_library("libark_jsoptimizer_test") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
   ]
+
+  ldflags = []
+  if (enable_coverage) {
+    ldflags += [ "--coverage" ]
+    cflags_cc = [ "--coverage" ]
+  }
+
   if (!ark_standalone_build) {
-    ldflags = [ "-Wl,--lto-O0" ]
+    ldflags += [ "-Wl,--lto-O0" ]
   }
   install_enable = false
 
