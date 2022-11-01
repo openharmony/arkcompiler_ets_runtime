@@ -274,8 +274,8 @@ struct FunctionInfo {
     std::string functionName = "";
     std::string scriptName = "";
     int scriptId = 0;
-    int columnNumber = -1;
-    int lineNumber = -1;
+    int columnNumber = 0;
+    int lineNumber = 0;
 };
 
 class TraceTree;
