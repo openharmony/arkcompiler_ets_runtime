@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -340,5 +340,76 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
         ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName, npmKey);
     EXPECT_TRUE(npm);
     EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetRecordName1)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module_base.abc";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module_base");
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetRecordName2)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_A.abc";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_A");
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetExportObjectIndex)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    JSNApi::GetExportObject(instance, "module_test_module_test_B", "a");
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModule)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    ModuleManager *moduleManager = instance->GetModuleManager();
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> moduleRecord(thread, module.GetTaggedValue());
+    moduleManager->AddResolveImportedModule(baseFileName.c_str(), moduleRecord);
+    JSHandle<SourceTextModule> res = moduleManager->HostResolveImportedModule(baseFileName.c_str());
+
+    EXPECT_EQ(moduleRecord->GetRawData(), res.GetTaggedValue().GetRawData());
+}
+
+HWTEST_F_L0(EcmaModuleTest, PreventExtensions_IsExtensible)
+{
+    EXPECT_FALSE(ModuleNamespace::IsExtensible());
+    EXPECT_TRUE(ModuleNamespace::PreventExtensions());
+}
+
+HWTEST_F_L0(EcmaModuleTest, Instantiate_Evaluate_GetNamespace_SetNamespace)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = instance->GetModuleManager();
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    module->SetStatus(ModuleStatus::UNINSTANTIATED);
+    ModuleRecord::Instantiate(thread, JSHandle<JSTaggedValue>(module));
+    int res = ModuleRecord::Evaluate(thread, JSHandle<JSTaggedValue>(module));
+    ModuleRecord::GetNamespace(module.GetTaggedValue());
+    ModuleRecord::SetNamespace(thread, module.GetTaggedValue(), JSTaggedValue::Undefined());
+    EXPECT_TRUE(res == SourceTextModule::UNDEFINED_INDEX);
 }
 }  // namespace panda::test
