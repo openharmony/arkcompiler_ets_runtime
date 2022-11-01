@@ -85,14 +85,27 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
     ASSERT(module->GetEcmaModuleRecordName().IsHeapObject());
     CString moduleRecordName =
         ConvertToString(EcmaString::Cast(module->GetEcmaModuleRecordName().GetTaggedObject()));
-
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
 
+    JSTaggedValue npmKey = module->GetNpmKey();
+    CString npmKeyStr = "";
+    if (!npmKey.IsUndefined()) {
+        npmKeyStr = ConvertToString(EcmaString::Cast(npmKey.GetTaggedObject()));
+    }
     CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
-    CString entryPoint =
-        ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
-    return moduleManager->HostResolveImportedModuleWithMerge(baseFilename, entryPoint);
+    CString entryPoint = "";
+    bool npm = false;
+    std::tie(entryPoint, npm) = ModuleManager::ConcatFileNameWithMerge(
+        jsPandaFile, baseFilename, moduleRecordName, moduleRequestName, npmKeyStr);
+    JSHandle<SourceTextModule> newModule = moduleManager->HostResolveImportedModuleWithMerge(baseFilename, entryPoint);
+    if (npm) {
+        JSHandle<EcmaString> newNpmkey =  thread->GetEcmaVM()->GetFactory()->NewFromUtf8(npmKeyStr.c_str());
+        newModule->SetNpmKey(thread, newNpmkey);
+    } else {
+        newModule->SetNpmKey(thread, module->GetNpmKey());
+    }
+    return newModule;
 }
 
 // old way with bundle

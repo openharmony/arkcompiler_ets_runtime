@@ -218,7 +218,12 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
     CString moduleRecordName = "moduleTest1";
     CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
     CString result = "requestModuleName1";
-    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    CString npmKey = "";
+    bool npm = false;
+    CString entryPoint = "";
+    std::tie(entryPoint, npm) =
+        ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName, npmKey);
+    EXPECT_FALSE(npm);
     EXPECT_EQ(result, entryPoint);
 }
 
@@ -243,7 +248,12 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
     CString moduleRequestName = "./requestModule.js";
     CString result = "requestModule";
     pf->InsertJSRecordInfo(result);
-    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    CString entryPoint = "";
+    CString npmKey = "";
+    bool npm = false;
+    std::tie(entryPoint, npm) =
+        ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName, npmKey);
+    EXPECT_FALSE(npm);
     EXPECT_EQ(result, entryPoint);
 
     // Test moduleRecordName with "/"
@@ -251,7 +261,9 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
     moduleRequestName = "./requestModule.js";
     result = "moduleName/requestModule";
     pf->InsertJSRecordInfo(result);
-    entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    std::tie(entryPoint, npm) =
+        ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName, npmKey);
+    EXPECT_FALSE(npm);
     EXPECT_EQ(result, entryPoint);
 }
 
@@ -276,7 +288,12 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     CString moduleRequestName = "./secord.js";
     CString result = "secord";
     CString requestFileName = "secord.abc";
-    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    CString entryPoint = "";
+    CString npmKey = "";
+    bool npm = false;
+    std::tie(entryPoint, npm) =
+        ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName, npmKey);
+    EXPECT_FALSE(npm);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
 
@@ -289,7 +306,9 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     moduleRequestName = "./test/secord.js";
     result = "secord";
     requestFileName = "test/test/secord.abc";
-    entryPoint = ModuleManager::ConcatFileNameWithMerge(pf2, baseFilename, moduleRecordName, moduleRequestName);
+    std::tie(entryPoint, npm) =
+        ModuleManager::ConcatFileNameWithMerge(pf2, baseFilename, moduleRecordName, moduleRequestName, npmKey);
+    EXPECT_FALSE(npm);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
 }
@@ -314,7 +333,12 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
     CString moduleRecordName = "node_modules/moduleTest4";
     CString moduleRequestName = "json";
     CString result = "";
-    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    CString entryPoint = "";
+    CString npmKey = "";
+    bool npm = false;
+    std::tie(entryPoint, npm) =
+        ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName, npmKey);
+    EXPECT_TRUE(npm);
     EXPECT_EQ(result, entryPoint);
 }
 }  // namespace panda::test
