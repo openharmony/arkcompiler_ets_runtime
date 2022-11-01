@@ -19,6 +19,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
+#include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 
@@ -274,5 +275,26 @@ HWTEST_F_L0(HeapTrackerTest, DumpHeapSnapshot)
     inputStream.close();
     inputStream.clear();
     std::remove(fileName.c_str());
+}
+
+HWTEST_F_L0(HeapTrackerTest, HeapSnapshotBuildUp)
+{
+    bool isVmMode = true;
+    bool isPrivate = false;
+    bool traceAllocation = false;
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation);
+    EXPECT_TRUE(heapSnapshot.BuildUp());
+}
+
+HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
+{
+    bool isVmMode = true;
+    bool isPrivate = false;
+    bool traceAllocation = false;
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation);
+    size_t beginNode = heapSnapshot.GetNodeCount();
+    heapSnapshot.UpdateNode();
+    size_t endNode = heapSnapshot.GetNodeCount();
+    EXPECT_TRUE(beginNode != endNode);
 }
 }  // namespace panda::test
