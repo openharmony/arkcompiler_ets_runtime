@@ -34,6 +34,7 @@ public:
     bool IsQuickFixCausedException(JSThread *thread,
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
+private:
     // check whether the callback is registered.
     bool HasQueryQuickFixInfoFunc() const
     {
@@ -46,7 +47,6 @@ public:
         return quickFixLoaders_.find(patchFileName) != quickFixLoaders_.end();
     }
 
-private:
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
 
     // For multi patch.
