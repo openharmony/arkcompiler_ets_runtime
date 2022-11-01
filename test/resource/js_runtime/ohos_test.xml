@@ -55,6 +55,10 @@
     </target>
     <target name="JSPandaFileTest">
         <preparer>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/base/index.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/patch/index.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/patch/index.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/patch/index.abc -> /data/test" src="out"/>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
@@ -299,6 +303,16 @@
         </preparer>
     </target>
     <target name="ContainersLightWeightMapAtFuzzTest">
+        <preparer>
+        <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+    </preparer>
+    </target>
+    <target name="ContainerslistConStructorFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="containerslistgetfirst_fuzzer">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>

@@ -292,7 +292,8 @@ using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const
     V(LdPatchVar)                         \
     V(StPatchVar)                         \
     V(LdObjByName)                        \
-    V(DeoptHandler)
+    V(DeoptHandler)                       \
+    V(ContainerRBTreeForEach)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

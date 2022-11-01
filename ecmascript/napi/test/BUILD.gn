@@ -21,6 +21,7 @@ host_unittest_action("JsnapiTest") {
 
   sources = [
     # test file
+    "dfx_jsnapi_tests.cpp",
     "jsnapi_tests.cpp",
   ]
 

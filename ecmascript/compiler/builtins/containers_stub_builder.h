@@ -17,8 +17,12 @@
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STUB_BUILDER_H
 #include "ecmascript/compiler/builtins/containers_arraylist_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_deque_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_hashmap_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_hashset_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_lightweightmap_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_lightweightset_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_linkedlist_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_list_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_plainarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_queue_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stack_stub_builder.h"
@@ -37,6 +41,10 @@ enum class ContainersType : uint8_t {
     DEQUE_FOREACH,
     LIGHTWEIGHTMAP_FOREACH,
     LIGHTWEIGHTSET_FOREACH,
+    HASHMAP_FOREACH,
+    HASHSET_FOREACH,
+    LINKEDLIST_FOREACH,
+    LIST_FOREACH,
     ARRAYLIST_FOREACH,
     ARRAYLIST_REPLACEALLELEMENTS,
 };
@@ -62,6 +70,12 @@ public:
     void ContainersLightWeightCall(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* result, Label *exit, Label *slowPath, ContainersType type);
 
+    void ContainersHashCall(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable* result, Label *exit, Label *slowPath, ContainersType type);
+
+    void ContainersLinkedListCall(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable* result, Label *exit, Label *slowPath, ContainersType type);
+
     GateRef IsContainer(GateRef obj, ContainersType type)
     {
         switch (type) {
@@ -80,6 +94,14 @@ public:
                 return IsJSAPILightWeightMap(obj);
             case ContainersType::LIGHTWEIGHTSET_FOREACH:
                 return IsJSAPILightWeightSet(obj);
+            case ContainersType::HASHMAP_FOREACH:
+                return IsJSAPIHashMap(obj);
+            case ContainersType::HASHSET_FOREACH:
+                return IsJSAPIHashSet(obj);
+            case ContainersType::LINKEDLIST_FOREACH:
+                return IsJSAPILinkedList(obj);
+            case ContainersType::LIST_FOREACH:
+                return IsJSAPIList(obj);
             case ContainersType::ARRAYLIST_FOREACH:
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
                 return IsJSAPIArrayList(obj);
@@ -177,6 +199,22 @@ public:
                 ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
                 return lightWeightSetBuilder.GetSize(obj);
             }
+            case ContainersType::HASHMAP_FOREACH: {
+                ContainersHashMapStubBuilder hashMapBuilder(this);
+                return hashMapBuilder.GetTableLength(obj);
+            }
+            case ContainersType::HASHSET_FOREACH: {
+                ContainersHashSetStubBuilder hashSetBuilder(this);
+                return hashSetBuilder.GetTableLength(obj);
+            }
+            case ContainersType::LINKEDLIST_FOREACH: {
+                ContainersLinkedListStubBuilder linkedListBuilder(this);
+                return linkedListBuilder.GetTableLength(obj);
+            }
+            case ContainersType::LIST_FOREACH: {
+                ContainersListStubBuilder listBuilder(this);
+                return listBuilder.GetTableLength(obj);
+            }
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
             case ContainersType::ARRAYLIST_FOREACH: {
                 ContainersArrayListStubBuilder arrayListBuilder(this);
@@ -241,6 +279,31 @@ public:
             case ContainersType::LIGHTWEIGHTSET_FOREACH: {
                 ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
                 return lightWeightSetBuilder.GetKey(obj, index);
+            }
+            default:
+                UNREACHABLE();
+        }
+        return False();
+    }
+
+    GateRef ContainerGetNode(GateRef obj, GateRef index, ContainersType type)
+    {
+        switch (type) {
+            case ContainersType::HASHMAP_FOREACH: {
+                ContainersHashMapStubBuilder hashMapBuilder(this);
+                return hashMapBuilder.GetNode(obj, index);
+            }
+            case ContainersType::HASHSET_FOREACH: {
+                ContainersHashSetStubBuilder hashSetBuilder(this);
+                return hashSetBuilder.GetNode(obj, index);
+            }
+            case ContainersType::LINKEDLIST_FOREACH: {
+                ContainersLinkedListStubBuilder linkedListBuilder(this);
+                return linkedListBuilder.GetNode(obj, index);
+            }
+            case ContainersType::LIST_FOREACH: {
+                ContainersListStubBuilder listBuilder(this);
+                return listBuilder.GetNode(obj, index);
             }
             default:
                 UNREACHABLE();

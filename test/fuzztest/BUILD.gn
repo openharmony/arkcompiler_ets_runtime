@@ -38,6 +38,8 @@ group("fuzztest") {
     "containerslightweightmapsetandget_fuzzer:fuzztest",
     "containerslightweightmaptostring_fuzzer:fuzztest",
     "containerslightweightmapvalues_fuzzer:fuzztest",
+    "containerslistconstructor_fuzzer:fuzztest",
+    "containerslistgetfirst_fuzzer:fuzztest",
     "containersprivatearraylist_fuzzer:fuzztest",
     "containersprivatedeque_fuzzer:fuzztest",
     "containersprivatehashmap_fuzzer:fuzztest",

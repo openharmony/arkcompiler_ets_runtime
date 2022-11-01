@@ -456,4 +456,247 @@ void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef this
     Bind(&afterLoop);
     Jump(exit);
 }
+
+void ContainersStubBuilder::ContainersHashCall(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
+    DEFVARIABLE(thisArg, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(node, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(key, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(length, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label valueIsJSAPIHash(env);
+    Label valueNotJSAPIHash(env);
+    Label objIsJSProxy(env);
+    Label objNotJSProxy(env);
+    Label objIsJSAPIHash(env);
+    Label thisArgUndefined(env);
+    Label thisArgNotUndefined(env);
+    Label callbackUndefined(env);
+    Label callbackNotUndefined(env);
+    Label nextCount(env);
+    Label nodeNotHole(env);
+    Label nodeIsLinked(env);
+    Label nodeIsRBTree(env);
+    Label loopLinked(env);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label afterLoop(env);
+    GateRef callbackFnHandle;
+    Branch(IsContainer(*thisObj, type), &valueIsJSAPIHash, &valueNotJSAPIHash);
+    Bind(&valueNotJSAPIHash);
+    {
+        Branch(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        Bind(&objIsJSProxy);
+        {
+            GateRef tempObj = GetTarget(*thisObj);
+            Branch(IsContainer(tempObj, type), &objIsJSAPIHash, slowPath);
+            Bind(&objIsJSAPIHash);
+            {
+                thisObj = tempObj;
+                Jump(&valueIsJSAPIHash);
+            }
+        }
+        Bind(&objNotJSProxy);
+        Jump(slowPath);
+    }
+    Bind(&valueIsJSAPIHash);
+    {
+        Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &callbackUndefined, &callbackNotUndefined);
+        Bind(&callbackUndefined);
+        Jump(slowPath);
+        Bind(&callbackNotUndefined);
+        {
+            Label isCall(env);
+            Label notCall(env);
+            Label isHeapObj(env);
+            callbackFnHandle = GetCallArg0();
+            Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, &notCall);
+            Bind(&isHeapObj);
+            Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
+            Bind(&notCall);
+            Jump(slowPath);
+            Bind(&isCall);
+            {
+                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &thisArgUndefined, &thisArgNotUndefined);
+                Bind(&thisArgUndefined);
+                Jump(&nextCount);
+                Bind(&thisArgNotUndefined);
+                thisArg = GetCallArg1();
+                Jump(&nextCount);
+            }
+        }
+    }
+    Bind(&nextCount);
+    {
+        length = ContainerGetSize(*thisObj, type);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label hasExceptionLinked(env);
+            Label notHasExceptionLinked(env);
+            Label hasExceptionRBTree(env);
+            Label notHasExceptionRBTree(env);
+            Branch(Int32LessThan(*index, *length), &next, &afterLoop);
+            Bind(&next);
+            {
+                node = ContainerGetNode(*thisObj, *index, type);
+                Branch(TaggedIsHole(*node), &loopEnd, &nodeNotHole);
+                Bind(&nodeNotHole);
+                Branch(IsLinkedNode(*node), &nodeIsLinked, &nodeIsRBTree);
+                LoopBegin(&nodeIsLinked);
+                {
+                    value = Load(VariableType::JS_POINTER(), *node, IntPtr(
+                        type == ContainersType::HASHSET_FOREACH ? LinkedNode::KEY_OFFSET : LinkedNode::VALUE_OFFSET));
+                    key = Load(VariableType::JS_POINTER(), *node, IntPtr(LinkedNode::KEY_OFFSET));
+                    GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(3), 0,  // 3: numArgs
+                        JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *value, *key, *thisObj });
+                    Branch(HasPendingException(glue), &hasExceptionLinked, &notHasExceptionLinked);
+                    Bind(&hasExceptionLinked);
+                    {
+                        result->WriteVariable(retValue);
+                        Jump(exit);
+                    }
+                    Bind(&notHasExceptionLinked);
+                    node = Load(VariableType::JS_POINTER(), *node, IntPtr(LinkedNode::NEXT_OFFSET));
+                    Branch(TaggedIsHole(*node), &loopEnd, &loopLinked);
+                }
+                Bind(&loopLinked);
+                LoopEnd(&nodeIsLinked);
+                Bind(&nodeIsRBTree);
+                {
+                    GateRef retValue = CallRuntime(glue, RTSTUB_ID(ContainerRBTreeForEach),
+                                                   { *node, callbackFnHandle, *thisArg, *thisObj,
+                                                     IntToTaggedInt(Int32(static_cast<int32_t>(type))) });
+                    Branch(HasPendingException(glue), &hasExceptionRBTree, &notHasExceptionRBTree);
+                    Bind(&hasExceptionRBTree);
+                    {
+                        result->WriteVariable(retValue);
+                        Jump(exit);
+                    }
+                    Bind(&notHasExceptionRBTree);
+                    Jump(&loopEnd);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        index = Int32Add(*index, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&afterLoop);
+    Jump(exit);
+}
+
+void ContainersStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
+    DEFVARIABLE(thisArg, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(valueNode, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(key, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(length, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label valueIsJSAPILinkedList(env);
+    Label valueNotJSAPILinkedList(env);
+    Label objIsJSProxy(env);
+    Label objNotJSProxy(env);
+    Label objIsJSAPILinkedList(env);
+    Label thisArgUndefined(env);
+    Label thisArgNotUndefined(env);
+    Label callbackUndefined(env);
+    Label callbackNotUndefined(env);
+    Label nextCount(env);
+    Label valueNotHole(env);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label afterLoop(env);
+    GateRef callbackFnHandle;
+    Branch(IsContainer(*thisObj, type), &valueIsJSAPILinkedList, &valueNotJSAPILinkedList);
+    Bind(&valueNotJSAPILinkedList);
+    {
+        Branch(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        Bind(&objIsJSProxy);
+        {
+            GateRef tempObj = GetTarget(*thisObj);
+            Branch(IsContainer(tempObj, type), &objIsJSAPILinkedList, slowPath);
+            Bind(&objIsJSAPILinkedList);
+            {
+                thisObj = tempObj;
+                Jump(&valueIsJSAPILinkedList);
+            }
+        }
+        Bind(&objNotJSProxy);
+        Jump(slowPath);
+    }
+    Bind(&valueIsJSAPILinkedList);
+    {
+        Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &callbackUndefined, &callbackNotUndefined);
+        Bind(&callbackUndefined);
+        Jump(slowPath);
+        Bind(&callbackNotUndefined);
+        {
+            Label isCall(env);
+            Label notCall(env);
+            Label isHeapObj(env);
+            callbackFnHandle = GetCallArg0();
+            Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, &notCall);
+            Bind(&isHeapObj);
+            Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
+            Bind(&notCall);
+            Jump(slowPath);
+            Bind(&isCall);
+            {
+                Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &thisArgUndefined, &thisArgNotUndefined);
+                Bind(&thisArgUndefined);
+                Jump(&nextCount);
+                Bind(&thisArgNotUndefined);
+                thisArg = GetCallArg1();
+                Jump(&nextCount);
+            }
+        }
+    }
+    Bind(&nextCount);
+    {
+        length = ContainerGetSize(*thisObj, type);
+        valueNode = Int32(TaggedList<TaggedArray>::ELEMENTS_START_INDEX);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label hasException(env);
+            Label notHasException(env);
+            Branch(Int32LessThan(*index, *length), &next, &afterLoop);
+            Bind(&next);
+            {
+                valueNode = TaggedGetInt(ContainerGetNode(*thisObj,
+                    Int32Add(*valueNode, Int32(TaggedList<TaggedArray>::NEXT_PTR_OFFSET)), type));
+                value = ContainerGetNode(*thisObj, *valueNode, type);
+                Branch(TaggedIsHole(*value), &loopEnd, &valueNotHole);
+                Bind(&valueNotHole);
+                key = IntToTaggedInt(*index);
+                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(3), 0,  // 3: numArgs
+                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *value, *key, *thisObj });
+                Branch(HasPendingException(glue), &hasException, &notHasException);
+                Bind(&hasException);
+                {
+                    result->WriteVariable(retValue);
+                    Jump(exit);
+                }
+                Bind(&notHasException);
+                Jump(&loopEnd);
+            }
+        }
+        Bind(&loopEnd);
+        index = Int32Add(*index, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&afterLoop);
+    Jump(exit);
+}
 }  // namespace panda::ecmascript::kungfu
