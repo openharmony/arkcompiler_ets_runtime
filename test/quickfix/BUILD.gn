@@ -26,6 +26,16 @@ test_list = [
   "print_string",
 ]
 
+if (!is_debug) {
+  test_list += [
+    "multi_classconstpool",
+    "multi_closureconstpool",
+    "multi_constructorconstpool",
+    "multi_funccallconstpool",
+    "multi_funcconstpool",
+  ]
+}
+
 host_quickfix_test_action("multi_patch") {
   extra_patches = [
     "patch1",

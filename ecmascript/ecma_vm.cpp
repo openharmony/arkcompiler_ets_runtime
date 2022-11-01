@@ -512,6 +512,16 @@ JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t inde
     return constpoolIter->second;
 }
 
+std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> EcmaVM::FindConstpools(
+    const JSPandaFile *jsPandaFile)
+{
+    auto iter = cachedConstpools_.find(jsPandaFile);
+    if (iter == cachedConstpools_.end()) {
+        return std::nullopt;
+    }
+    return iter->second;
+}
+
 JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
 {
     panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
