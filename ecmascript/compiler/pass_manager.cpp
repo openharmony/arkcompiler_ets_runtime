@@ -39,6 +39,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     // ts type system
     TSManager *tsManager = vm_->GetTSManager();
     tsManager->DecodeTSTypes(jsPandaFile);
+    tsManager->GenerateSnapshotConstantPool(constantPool.GetTaggedValue());
 
     auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
@@ -59,7 +60,8 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
         if (FilterMethod(jsPandaFile, recordName, method, methodOffset, methodPCInfo)) {
             ++skippedMethodNum;
-            tsManager->AddIndexOrSkippedMethodID(CacheType::SKIPPED_METHOD, method->GetMethodId().GetOffset());
+            tsManager->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::SKIPPED_METHOD,
+                                                 method->GetMethodId().GetOffset());
             LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
             return;
         }
@@ -95,7 +97,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     });
     LOG_COMPILER(INFO) << " ";
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
-    generator.AddModule(aotModule, aotModuleAssembler, jsPandaFile);
+    generator.AddModule(aotModule, aotModuleAssembler);
     return true;
 }
 

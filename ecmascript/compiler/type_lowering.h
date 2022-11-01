@@ -142,10 +142,12 @@ private:
     void LowerTypedDec(GateRef gate);
     void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
+    void LowerTypedToBool(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
     void LowerNumberCheck(GateRef gate);
+    void LowerBooleanCheck(GateRef gate);
     void LowerNumberAdd(GateRef gate);
     void LowerNumberSub(GateRef gate);
     void LowerNumberMul(GateRef gate);
@@ -164,6 +166,8 @@ private:
     void LowerNumberDec(GateRef gate);
     void LowerNumberNeg(GateRef gate);
     void LowerNumberNot(GateRef gate);
+    void LowerNumberToBool(GateRef gate);
+    void LowerBooleanToBool(GateRef gate);
     void LowerObjectTypeCheck(GateRef gate, GateRef glue);
     void LowerClassInstanceCheck(GateRef gate, GateRef glue);
     void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
@@ -194,7 +198,6 @@ private:
     GateRef Int32Mod(GateRef left, GateRef right);
     GateRef DoubleMod(GateRef left, GateRef right);
     GateRef IntToTaggedIntPtr(GateRef x);
-    GateRef DoubleIsINF(GateRef x);
     GateRef Less(GateRef left, GateRef right);
     GateRef LessEq(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);

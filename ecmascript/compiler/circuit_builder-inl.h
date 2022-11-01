@@ -268,6 +268,15 @@ GateRef CircuitBuilder::TaggedIsNumber(GateRef x)
     return BoolNot(TaggedIsObject(x));
 }
 
+GateRef CircuitBuilder::DoubleIsINF(GateRef x)
+{
+    GateRef infinity = Double(base::POSITIVE_INFINITY);
+    GateRef negativeInfinity = Double(-base::POSITIVE_INFINITY);
+    GateRef diff1 = DoubleEqual(x, infinity);
+    GateRef diff2 = DoubleEqual(x, negativeInfinity);
+    return BoolOr(diff1, diff2);
+}
+
 GateRef CircuitBuilder::TaggedIsHole(GateRef x)
 {
     return Equal(x, HoleConstant());
@@ -404,6 +413,12 @@ GateRef CircuitBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
 }
 
+GateRef CircuitBuilder::BooleanToTaggedBooleanPtr(GateRef x)
+{
+    auto val = ZExtInt1ToInt64(x);
+    return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_BOOLEAN_MASK)));
+}
+
 GateRef CircuitBuilder::Float32ToTaggedDoublePtr(GateRef x)
 {
     GateRef val = ExtFloat32ToDouble(x);
@@ -474,14 +489,25 @@ GateRef CircuitBuilder::GetGlobalConstantString(ConstantIndex index)
 // object operation
 GateRef CircuitBuilder::LoadHClass(GateRef object)
 {
-    GateRef offset = IntPtr(0);
+    GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
     return Load(VariableType::JS_POINTER(), object, offset);
+}
+
+void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
+{
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
 }
 
 GateRef CircuitBuilder::IsJsType(GateRef obj, JSType type)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Equal(objectType, Int32(static_cast<int32_t>(type)));
+}
+
+inline GateRef CircuitBuilder::IsDictionaryMode(GateRef object)
+{
+    GateRef type = GetObjectType(LoadHClass(object));
+    return Int32Equal(type, Int32(static_cast<int32_t>(JSType::TAGGED_DICTIONARY)));
 }
 
 GateRef CircuitBuilder::GetObjectType(GateRef hClass)
@@ -626,7 +652,8 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto numberUnaryOp = TypedUnaryOperator(MachineType::I64, Op, xType, {currentControl, currentDepend, x}, gateType);
+    auto machineType = (Op == TypedUnOp::TYPED_TOBOOL) ? MachineType::I1 : MachineType::I64;
+    auto numberUnaryOp = TypedUnaryOperator(machineType, Op, xType, {currentControl, currentDepend, x}, gateType);
     currentLabel->SetControl(numberUnaryOp);
     currentLabel->SetDepend(numberUnaryOp);
     return numberUnaryOp;

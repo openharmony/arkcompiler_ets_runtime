@@ -51,7 +51,7 @@ void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
 
     __ Bind(&target);
     {
-        JSCallDispatch(assembler);
+        AsmInterpEntryDispatch(assembler);
     }
 }
 
@@ -61,7 +61,7 @@ void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
 //        callField      - %X3
 //        argc           - %X4
 //        argv           - %X5(<callTarget, newTarget, this> are at the beginning of argv)
-void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
 {
     Label notJSFunction;
     Label callNativeEntry;
@@ -606,7 +606,7 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
-    } else if (type == FrameType::BUILTIN_ENTRY_FRAME) {
+    } else if (type == FrameType::BUILTIN_ENTRY_FRAME || type == FrameType::BUILTIN_CALL_LEAVE_FRAME) {
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type

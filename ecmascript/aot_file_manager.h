@@ -296,6 +296,7 @@ class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
+    void Iterate(const RootVisitor &v);
     void Save(const std::string &filename);
     bool Load(EcmaVM *vm, const std::string &filename);
     void AddModuleDes(ModuleSectionDes &moduleDes)
@@ -326,9 +327,20 @@ public:
 
     void RewriteRelcateDeoptHandler(EcmaVM *vm);
 
+    JSHandle<JSTaggedValue> PUBLIC_API GetSnapshotConstantPool() const
+    {
+        return JSHandle<JSTaggedValue>(uintptr_t(&snapshotConstantPool_));
+    }
+
+    void PUBLIC_API SetSnapshotConstantPool(JSTaggedValue snapshotConstantPool)
+    {
+        snapshotConstantPool_ = snapshotConstantPool;
+    }
+
 private:
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
+    JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
 };
 
 class PUBLIC_API StubFileInfo : public AOTFileInfo {
@@ -437,6 +449,8 @@ public:
     static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
+    void AddSnapshotConstantPool(JSTaggedValue snapshotConstantPool);
+    JSHandle<JSTaggedValue> GetSnapshotConstantPool(const JSPandaFile *jsPandaFile);
 
 private:
     void SetAOTmmap(void *addr, size_t totalCodeSize)

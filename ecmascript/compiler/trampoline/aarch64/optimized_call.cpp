@@ -212,12 +212,13 @@ void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
     PushJSFunctionEntryFrame (assembler, prevFpReg);
     __ Mov(Register(X6), flag);
     __ Mov(tmpArgV, argV);
-    __ Str(X2, MemoryOperand(tmpArgV, 0));
-    __ Str(X3, MemoryOperand(tmpArgV, FRAME_SLOT_SIZE));
-    __ Str(X4, MemoryOperand(tmpArgV, DOUBLE_SLOT_SIZE));
+    __ Mov(Register(X20), glueReg);
+    __ Ldr(Register(X2), MemoryOperand(tmpArgV, 0));
+    __ Ldr(Register(X3), MemoryOperand(tmpArgV, FRAME_SLOT_SIZE));
+    __ Ldr(Register(X4), MemoryOperand(tmpArgV, DOUBLE_SLOT_SIZE));
     __ Add(tmpArgV, tmpArgV, Immediate(TRIPLE_SLOT_SIZE));
-    __ Mov(X5, tmpArgV);
-    __ Cmp(X6, Immediate(1));
+    __ Mov(Register(X5), tmpArgV);
+    __ Cmp(Register(X6), Immediate(1));
     __ B(Condition::EQ, &lJSCallNewWithArgV);
     __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgV), false);
     __ B(&lPopFrame);
@@ -228,7 +229,8 @@ void OptimizedCall::JSFunctionReentry(ExtendedAssembler *assembler)
     }
 
     __ Bind(&lPopFrame);
-    PopJSFunctionEntryFrame(assembler, glueReg);
+    __ Mov(Register(X2), Register(X20));
+    PopJSFunctionEntryFrame(assembler, Register(X2));
     __ Ret();
 }
 
@@ -351,31 +353,30 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
 //          |--------------------------|                 |
 //          |       env or thread      |                 |
 //          |--------------------------|                 |
-//          |       codeAddress        |    OptimizedBuiltinLeaveFrame
+//          |       returnAddr         |    OptimizedBuiltinLeaveFrame
 //  sp ---> |--------------------------|                 |
-//          |       returnAddr         |                 |
-//          |--------------------------|                 |
 //          |       callsiteFp         |                 |
 //          |--------------------------|                 |
-//          |       frameType          |                 v
+//          |       frameType          |                 |
+//          |--------------------------|                 |
+//          |       align byte         |                 v
 //          +--------------------------+ -----------------
 
 void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
 {
-    Register fp(X29);
     Register glue(X0);
     Register sp(SP);
     Register nativeFuncAddr(X4);
+    Register glueTemp(X2);
+    Register temp(X1);
+    Register zero(Zero);
 
-    PushLeaveFrame(assembler, glue, true);
+    __ Mov(glueTemp, glue);
+    __ Str(glue, MemoryOperand(sp, 0)); // thread (instead of env)
+    __ Add(Register(X0), sp, Immediate(0));
+    AsmInterpreterCall::PushBuiltinFrame(assembler, glueTemp, FrameType::BUILTIN_CALL_LEAVE_FRAME, temp, zero);
 
-    __ Str(glue, MemoryOperand(fp, GetStackArgOffSetToFp(BuiltinsLeaveFrameArgId::ENV))); // thread (instead of env)
-    __ Add(Register(X0), fp, Immediate(GetStackArgOffSetToFp(BuiltinsLeaveFrameArgId::ENV)));
-    __ Blr(nativeFuncAddr);
-
-    // descontruct leave frame and callee save register
-    PopLeaveFrame(assembler, true);
-    __ Add(sp, sp, Immediate(FRAME_SLOT_SIZE)); // skip native code address
+    AsmInterpreterCall::CallNativeInternal(assembler, nativeFuncAddr);
     __ Ret();
 }
 
@@ -473,8 +474,6 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     {
         Register nativeFuncAddr(X4);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-        // -8 : -8 means sp increase step
-        __ Str(nativeFuncAddr, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
     }
 
@@ -574,8 +573,6 @@ void OptimizedCall::ConstructorJSCallInternal(ExtendedAssembler *assembler, Regi
     {
         Register nativeFuncAddr(X4);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-        // -8 : -8 means sp increase step
-        __ Str(nativeFuncAddr, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         CallBuiltinTrampoline(assembler);
     }
 

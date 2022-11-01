@@ -1,0 +1,2 @@
+index.js;index;module;index.js
+module.js;module;module;module.js

@@ -28,9 +28,11 @@ struct CfgInfo;
 enum FixInsIndex : uint8_t { FIX_ONE = 1, FIX_TWO = 2, FIX_FOUR = 4 };
 
 /*    ts source code
+ *    let a:number = 1;
  *    function f() {
+ *        let b:number = 1;
  *        function g() {
- *            return 0;
+ *            return a + b;
  *        }
  *        return g();
  *    }
@@ -46,11 +48,32 @@ enum FixInsIndex : uint8_t { FIX_ONE = 1, FIX_TWO = 2, FIX_FOUR = 4 };
  *              +-------------------+           +-------------------+           +-------------------+
  *
  *    We only record the type of the variable in Environment Recoder.
+ *    In the design of the Ark bytecode, if a method does not have any
+ *    lex-env variable in its Lexical Environment, then there will be
+ *    no EcmaOpcode::NEWLEXENV in it which leads to ARK runtime will
+ *    not create a Lexical Environment when the method is executed.
+ *    In order to simulate the state of the runtime as much as possible,
+ *    a field named 'status' will be added into the class LexEnv to
+ *    measure this state. Take the above code as an example, although in
+ *    static analysis, we will create LexEnv for each method, only Lexenvs
+ *    of global and function f will be created when methods are executed.
  */
 
+enum class LexicalEnvStatus : uint8_t {
+    VIRTUAL_LEXENV,
+    REALITY_LEXENV
+};
+
 struct LexEnv {
-    uint32_t outmethodId {0};
+    explicit LexEnv(uint32_t methodIdx, uint32_t num, LexicalEnvStatus lexEnvStatus)
+        : outmethodId(methodIdx), lexVarTypes(num, GateType::AnyType()),
+          status(lexEnvStatus)
+    {
+    }
+
+    uint32_t outmethodId { 0 };
     std::vector<GateType> lexVarTypes {};
+    LexicalEnvStatus status { LexicalEnvStatus::VIRTUAL_LEXENV };
 };
 
 // each method in the abc file corresponds to one MethodInfo and
@@ -63,11 +86,18 @@ struct MethodPcInfo {
 };
 
 struct MethodInfo {
+    explicit MethodInfo(size_t methodIdx, size_t methodPcIdx, uint32_t outMethodIdx, uint32_t num = 0,
+                        LexicalEnvStatus lexEnvStatus = LexicalEnvStatus::VIRTUAL_LEXENV)
+        : methodInfoIndex(methodIdx), methodPcInfoIndex(methodPcIdx),
+          lexEnv(outMethodIdx, num, lexEnvStatus)
+    {
+    }
+
     // used to record the index of the current MethodInfo to speed up the lookup of lexEnv
-    size_t methodInfoIndex;
+    size_t methodInfoIndex { 0 };
     // used to obtain MethodPcInfo from the vector methodPcInfos of struct BCInfo
-    size_t methodPcInfoIndex;
-    std::vector<uint32_t> innerMethods;
+    size_t methodPcInfoIndex { 0 };
+    std::vector<uint32_t> innerMethods {};
     LexEnv lexEnv;
 };
 
@@ -109,6 +139,8 @@ public:
     GateType GetLexEnvElementType(uint32_t methodId, uint32_t level, uint32_t slot) const;
 
 private:
+    uint32_t GetTargetLexEnv(uint32_t methodId, uint32_t level) const;
+
     std::vector<LexEnv *> lexEnvs_ {};
 };
 

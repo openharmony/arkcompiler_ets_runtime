@@ -3181,9 +3181,10 @@ void TSFunctionType::Dump(std::ostream &os) const
             os << " - Visibility: protected";
             break;
     }
-    os << " | Static: " << std::boolalpha << GetStatic();
-    os << " | Async: " << std::boolalpha << GetAsync();
-    os << " | Generator: " << std::boolalpha << GetGenerator();
+    os << " | IsStatic: " << std::boolalpha << GetStatic();
+    os << " | IsAsync: " << std::boolalpha << GetAsync();
+    os << " | IsGenerator: " << std::boolalpha << GetGenerator();
+    os << " | IsGetterSetter: " << std::boolalpha << GetIsGetterSetter();
     os << "\n";
 }
 
@@ -3238,6 +3239,9 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << "\n";
     os << " - EcmaModuleRecordName: ";
     GetEcmaModuleRecordName().Dump(os);
+    os << "\n";
+    os << " - NpmKey: ";
+    GetNpmKey().Dump(os);
     os << "\n";
     os << " - RequestedModules: ";
     GetRequestedModules().Dump(os);
@@ -5018,6 +5022,7 @@ void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
     vec.push_back(std::make_pair(CString("Namespace"), GetNamespace()));
     vec.push_back(std::make_pair(CString("EcmaModuleFilename"), GetEcmaModuleFilename()));
     vec.push_back(std::make_pair(CString("EcmaModuleRecordName"), GetEcmaModuleRecordName()));
+    vec.push_back(std::make_pair(CString("NpmKey"), GetNpmKey()));
     vec.push_back(std::make_pair(CString("RequestedModules"), GetRequestedModules()));
     vec.push_back(std::make_pair(CString("ImportEntries"), GetImportEntries()));
     vec.push_back(std::make_pair(CString("LocalExportEntries"), GetLocalExportEntries()));

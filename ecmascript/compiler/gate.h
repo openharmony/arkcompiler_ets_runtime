@@ -87,6 +87,7 @@ enum class TypedUnOp : uint8_t {
     TYPED_NOT,
     TYPED_INC,
     TYPED_DEC,
+    TYPED_TOBOOL,
 };
 
 enum class ICmpCondition : uint8_t {

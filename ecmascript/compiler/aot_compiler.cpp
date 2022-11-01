@@ -95,7 +95,7 @@ int Main(const int argc, const char **argv)
 
         CompilerLog log(logOption, isEnableBcTrace);
         AotMethodLogList logList(logMethodsList);
-        AOTFileGenerator generator(&log, &logList, vm, pandaFileNames.size());
+        AOTFileGenerator generator(&log, &logList, vm);
         std::string profilerIn(runtimeOptions.GetPGOProfilerPath());
         if (runtimeOptions.WasSetEntryPoint()) {
             entrypoint = runtimeOptions.GetEntryPoint();
