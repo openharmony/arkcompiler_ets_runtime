@@ -2363,7 +2363,9 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
         for (uint32_t i = 0; i < size; ++i) {
             argv[idx++] = values[i];
         }
-        resultValue = thread->GetEcmaVM()->AotReentry(size, argv.data(), true);
+        const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+        resultValue =
+            thread->GetEcmaVM()->ExecuteAot(size, argv.data(), prevFp, OptimizedEntryFrame::CallType::CALL_NEW);
     } else {
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
