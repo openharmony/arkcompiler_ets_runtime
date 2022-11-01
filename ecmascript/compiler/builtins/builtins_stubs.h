@@ -78,6 +78,8 @@ public:
     {
         return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
     }
+
+    GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue, GateRef numArgs, GateRef func);
 };
 
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \

@@ -332,6 +332,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+
+    let de = new List();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("List forEach throw error fail");
+        }
+    }
     if (!flag) {
         print("Test List success!!!");
     } else {

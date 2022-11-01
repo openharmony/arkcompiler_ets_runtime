@@ -284,6 +284,15 @@ if (globalThis["ArkPrivate"] != undefined) {
             flag.push(key);
         }
     }
+
+    let de = new FastVector();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "TypeError") {
+            print("Vector forEach throw error fail");
+        }
+    }
     map.forEach(elements);
     if (!flag) {
         print("Test Vector success!!!");
