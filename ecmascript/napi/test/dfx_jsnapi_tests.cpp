@@ -281,7 +281,9 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
     auto sweeper = heap->GetSweeper();
 
     DFXJSNApi::NotifyApplicationState(vm_, false);
+#if !ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     EXPECT_TRUE(!concurrentMarker->IsDisabled());
+#endif
     EXPECT_TRUE(!sweeper->IsDisabled());
 
     bool fullGC = false;
