@@ -31,7 +31,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     CString entry = entryPoint.data();
     CString name = filename;
     if (!thread->GetEcmaVM()->IsBundlePack()) {
-#if defined(PANDA_TARGET_LINUX)
+#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
         entry = JSPandaFile::ParseRecordName(filename);
 #else
         entry = JSPandaFile::ParseOhmUrl(filename);

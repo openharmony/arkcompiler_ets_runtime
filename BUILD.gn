@@ -771,6 +771,10 @@ source_set("libark_jsruntime_test_set") {
     ]
   }
 
+  if (is_ohos && is_standard_system) {
+    defines = [ "OHOS_UNIT_TEST" ]
+  }
+
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
