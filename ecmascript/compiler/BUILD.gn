@@ -200,10 +200,7 @@ source_set("ark_aot_compiler_set") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = [
-    "$js_root:libark_jsruntime",
-    "$js_root/ecmascript/compiler:libark_jsoptimizer",
-  ]
+  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
 }
 
 source_set("libark_stub_set") {
@@ -297,11 +294,12 @@ ohos_executable("ark_stub_compiler") {
 }
 
 ohos_executable("ark_aot_compiler") {
-  deps = [ ":ark_aot_compiler_set" ]
+  deps = [
+    ":ark_aot_compiler_set",
+    "$js_root:libark_jsruntime",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer",
+  ]
 
-  if (ark_standalone_build) {
-    ldflags = [ "-shared" ]
-  }
   install_enable = false
 
   part_name = "ets_runtime"
@@ -317,7 +315,7 @@ action("gen_stub_file") {
   root_out_dir_with_host_toolchain =
       get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
-  if (current_toolchain == host_toolchain || ark_standalone_build) {
+  if (current_toolchain == host_toolchain) {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an"
   } else {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
