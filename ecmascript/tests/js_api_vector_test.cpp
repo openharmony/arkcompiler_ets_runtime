@@ -249,4 +249,26 @@ HWTEST_F_L0(JSAPIVectorTest, SetProperty)
         EXPECT_EQ(setPropertyRes, true);
     }
 }
+
+/**
+ * @tc.name: TrimToCurrentLength
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIVectorTest, IncreaseCapacityToTrimToCurrentLength)
+{
+    JSHandle<JSAPIVector> toor(thread, CreateVector());
+    uint32_t elementsNums = 20;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIVector::Add(thread, toor, value);
+    }
+    JSAPIVector::IncreaseCapacityTo(thread, toor, 80);
+    JSHandle<TaggedArray> elementData(thread, toor->GetElements());
+    EXPECT_EQ(static_cast<int>(elementData->GetLength()), 80);
+    JSAPIVector::TrimToCurrentLength(thread, toor);
+    JSHandle<TaggedArray> newElementData(thread, toor->GetElements());
+    EXPECT_EQ(newElementData->GetLength(), elementsNums);
+}
 }  // namespace panda::test

@@ -37,10 +37,8 @@ class JSProxy;
 class GeneratorContext;
 struct EcmaRuntimeCallInfo;
 
-using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
-                                         uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
-using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[], uintptr_t prevFp,
-                                            bool flag);
+using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
+                                              uintptr_t prevFp, size_t callType);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
     JS_CALL_TRAMPOLINE_LIST(V)               \
@@ -82,7 +80,6 @@ using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const
     V(JSProxyCallInternalWithArgV)           \
     V(OptimizedCallOptimized)                \
     V(DeoptHandlerAsm)                       \
-    V(JSFunctionReentry)                     \
     V(JSCallNew)                             \
     V(JSCallNewWithArgV)
 

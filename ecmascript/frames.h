@@ -462,6 +462,10 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionFrame),
 
 struct OptimizedEntryFrame {
 public:
+    enum class CallType : size_t {
+        CALL_FUNC = 0,
+        CALL_NEW,
+    };
     OptimizedEntryFrame() = default;
     ~OptimizedEntryFrame() = default;
     JSTaggedType *preLeaveFrameFp;

@@ -145,7 +145,11 @@ host_unittest_action("JSPandaFileTest") {
     ":gen_patch_abc",
   ]
 
-  test_abc_dir = rebase_path(target_out_dir)
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir)
+  }
   defines = [ "QUICKFIX_ABC_PATH=\"${test_abc_dir}/\"" ]
 }
 

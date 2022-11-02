@@ -284,7 +284,7 @@ HWTEST_F_L0(ContainersListTest, Equal)
     // Value Not Equal
     JSHandle<JSAPIList> list3 = CreateJSAPIList();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-        if(i == (NODE_NUMBERS - 1)) {
+        if (i == (NODE_NUMBERS - 1)) {
             result = ListAdd(list3, JSTaggedValue(0));
         } else {
             result = ListAdd(list3, JSTaggedValue(i));

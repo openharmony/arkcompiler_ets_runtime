@@ -547,7 +547,7 @@ JSHandle<JSArray> JSLocale::SupportedLocales(JSThread *thread, const JSHandle<Ta
     //    a. Let options be ? ToObject(options).
     //    b. Let matcher be ? GetOption(options, "localeMatcher", "string", « "lookup", "best fit" », "best fit").
     // 2. Else, let matcher be "best fit".
-    LocaleMatcherOption matcher = LocaleMatcherOption::BEST_FIT;
+    [[maybe_unused]] LocaleMatcherOption matcher = LocaleMatcherOption::BEST_FIT;
     if (!options->IsUndefined()) {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, options);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
@@ -563,12 +563,7 @@ JSHandle<JSArray> JSLocale::SupportedLocales(JSThread *thread, const JSHandle<Ta
     // 4. Else,
     //    a. Let supportedLocales be LookupSupportedLocales(availableLocales, requestedLocales).
     JSMutableHandle<TaggedArray> supportedLocales(thread, JSTaggedValue::Undefined());
-    bool isBestfitSupport = false;
-    if (matcher == LocaleMatcherOption::BEST_FIT && isBestfitSupport) {
-        supportedLocales.Update(BestFitSupportedLocales(thread, availableLocales, requestedLocales).GetTaggedValue());
-    } else {
-        supportedLocales.Update(LookupSupportedLocales(thread, availableLocales, requestedLocales).GetTaggedValue());
-    }
+    supportedLocales.Update(LookupSupportedLocales(thread, availableLocales, requestedLocales).GetTaggedValue());
 
     JSHandle<JSArray> subset = JSArray::CreateArrayFromList(thread, supportedLocales);
     // 5. Return CreateArrayFromList(supportedLocales).
@@ -763,10 +758,10 @@ std::string JSLocale::UnicodeExtensionValue(const std::string extension, const s
 }
 
 ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedArray> &availableLocales,
-                                       const JSHandle<TaggedArray> &requestedLocales, LocaleMatcherOption matcher,
+                                       const JSHandle<TaggedArray> &requestedLocales,
+                                       [[maybe_unused]] LocaleMatcherOption matcher,
                                        const std::set<std::string> &relevantExtensionKeys)
 {
-    bool isBestfitSupport = false;
     std::map<std::string, std::set<std::string>> localeMap = {
         {"hc", {"h11", "h12", "h23", "h24"}},
         {"lb", {"strict", "normal", "loose"}},
@@ -783,11 +778,7 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
     if (availableLocales->GetLength() == 0 && requestedLocales->GetLength() == 0) {
         locale.Update(DefaultLocale(thread).GetTaggedValue());
     } else {
-        if (matcher == LocaleMatcherOption::BEST_FIT && isBestfitSupport) {
-            locale.Update(BestFitMatcher(thread, availableLocales, requestedLocales).GetTaggedValue());
-        } else {
-            locale.Update(LookupMatcher(thread, availableLocales, requestedLocales).GetTaggedValue());
-        }
+        locale.Update(LookupMatcher(thread, availableLocales, requestedLocales).GetTaggedValue());
     }
 
     // 4. Let foundLocale be r.[[locale]].

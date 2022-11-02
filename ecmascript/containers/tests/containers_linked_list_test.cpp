@@ -150,7 +150,6 @@ protected:
         TestHelper::TearDownFrame(thread, prev);
         return result;
     }
-
 };
 
 HWTEST_F_L0(ContainersLinkedListTest, LinkedListConstructor)
@@ -263,7 +262,7 @@ HWTEST_F_L0(ContainersLinkedListTest, RemoveByIndex)
     // Remove index < (NODE_NUMBERS / 2)
     result = LinkedListRemoveByIndex(linkedlist, JSTaggedValue(6));
     EXPECT_EQ(result, JSTaggedValue(6));
-    EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS - 2));    
+    EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS - 2));
 }
 
 HWTEST_F_L0(ContainersLinkedListTest, RemoveFirst)

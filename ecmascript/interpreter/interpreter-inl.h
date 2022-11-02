@@ -805,21 +805,15 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(JSHandle<JSTaggedValue>(thread, context->GetMethod()));
     Method *method = func->GetCallTarget();
     JSTaggedValue genObject = context->GetGeneratorObject();
-    std::vector<JSTaggedType> args(method->GetNumArgs() + NUM_MANDATORY_JSFUNC_ARGS + 1,
+    std::vector<JSTaggedType> args(method->GetNumArgs() + NUM_MANDATORY_JSFUNC_ARGS,
                                    JSTaggedValue::Undefined().GetRawData());
     args[0] = func.GetTaggedValue().GetRawData();
     args[1] = genObject.GetRawData();
     args[2] = context->GetThis().GetRawData(); // 2: this
-    JSTaggedValue env = func->GetLexicalEnv();
-    args[args.size() - 1] = env.GetRawData(); // last arg is env.
-    auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread->GetGlueAddr(),
-                                                            reinterpret_cast<uintptr_t>(thread->GetLastLeaveFrame()),
-                                                            static_cast<uint32_t>(args.size()) - 1,
-                                                            static_cast<uint32_t>(args.size()) - 1,
-                                                            args.data(),
-                                                            method->GetCodeEntryOrLiteral());
-    return JSTaggedValue(res);
+    const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+    auto res = thread->GetEcmaVM()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp,
+                                               OptimizedEntryFrame::CallType::CALL_FUNC);
+    return res;
 }
 
 void EcmaInterpreter::NotifyBytecodePcChanged(JSThread *thread)

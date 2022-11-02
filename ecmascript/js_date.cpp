@@ -712,7 +712,7 @@ CString JSDate::ToDateString(double timeMs)
     }
     if (localMin >= 0) {
         localTime += PLUS;
-    } else if (localMin < 0) {
+    } else {
         localTime += NEG;
         localMin = -localMin;
     }
@@ -844,7 +844,7 @@ JSTaggedValue JSDate::ToString(JSThread *thread) const
     }
     if (localMin >= 0) {
         localTime += PLUS;
-    } else if (localMin < 0) {
+    } else {
         localTime += NEG;
         localMin = -localMin;
     }
