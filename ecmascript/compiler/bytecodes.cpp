@@ -178,12 +178,11 @@ Bytecodes::Bytecodes()
     }
 }
 
-void BytecodeIterator::InitBytecodeInfo(
-    BytecodeCircuitBuilder *builder,
-    BytecodeInfo &info, const uint8_t *pc)
+void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
+                                    BytecodeInfo &info, const uint8_t *pc)
 {
-    auto opcode = Bytecodes::GetOpcode(pc);
-    switch (static_cast<EcmaOpcode>(opcode)) {
+    auto opcode = info.GetOpcode();
+    switch (opcode) {
         case EcmaOpcode::MOV_V4_V4: {
             uint16_t vdst = READ_INST_4_0();
             uint16_t vsrc = READ_INST_4_1();
@@ -1283,23 +1282,20 @@ void BytecodeIterator::InitBytecodeInfo(
     }
 }
 
-void BytecodeIterator::Reset(BytecodeCircuitBuilder *builder, const uint8_t *start, const uint8_t *end)
+const BytecodeInfo &BytecodeIterator::GetBytecodeInfo() const
 {
-    auto pc = start;
-    std::vector<const uint8_t*> offsets;
-    while (pc <= end) {
-        offsets.push_back(pc);
-        EcmaOpcode opcode = Bytecodes::GetOpcode(pc);
-        pc += BytecodeInstruction::Size(opcode);
-    }
-    auto bytecodes = builder->GetBytecodes();
-    infoData_.resize(offsets.size());
-    for (size_t i = 0; i < offsets.size(); i++) {
-        auto info = &infoData_[i];
-        pc = offsets[i];
-        InitBytecodeInfo(builder, *info, pc);
-        info->pc_ = pc;
-        info->metaData_ = bytecodes->GetBytecodeMetaData(pc);
-    }
+    return builder_->GetBytecodeInfo(index_);
+}
+
+const uint8_t *BytecodeIterator::PeekNextPc(size_t i) const
+{
+    ASSERT(index_ + i <= end_);
+    return builder_->GetPCByIndex(index_ + i);
+}
+
+const uint8_t *BytecodeIterator::PeekPrevPc(size_t i) const
+{
+    ASSERT(index_ - i >= start_);
+    return builder_->GetPCByIndex(index_ - i);
 }
 } // panda::ecmascript::kungfu
