@@ -807,17 +807,14 @@ void TypeInfer::PrintAllByteCodesTypes() const
     const MethodLiteral *methodLiteral = builder_->GetMethod();
     const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodLiteral->GetMethodId());
 
-    auto &pcToBCOffset = builder_->GetPcToBCOffset();
-    auto &bytecodeToGate = builder_->GetBytecodeToGate();
-
     LOG_COMPILER(INFO) << "print bytecode types:";
     LOG_COMPILER(INFO) << ".function " + functionName + "() {";
-    for (auto it = pcToBCOffset.begin(); std::next(it) != pcToBCOffset.end(); it++) {  // ignore last element
-        const uint8_t *pc = it->first;
+    uint32_t lastBcIndex = builder_->GetLastBcIndex();
+    for (uint32_t bcIndex = 0; bcIndex < lastBcIndex; bcIndex++) {  // ignore last element
+        const uint8_t *pc = builder_->GetPCByIndex(bcIndex);
         BytecodeInstruction inst(pc);
-        auto findIt = bytecodeToGate.find(pc);
-        if (findIt != bytecodeToGate.end()) {
-            GateRef gate = bytecodeToGate.at(pc);
+        GateRef gate = builder_->GetGateByBcIndex(bcIndex);
+        if (gate != Circuit::NullGate()) {
             GateType type = gateAccessor_.GetGateType(gate);
             if (!tsManager_->IsPrimitiveTypeKind(type)) {
                 GlobalTSTypeRef gt = type.GetGTRef();

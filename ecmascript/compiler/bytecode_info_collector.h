@@ -22,7 +22,6 @@
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
-struct CfgInfo;
 
 // need to remove in the future
 enum FixInsIndex : uint8_t { FIX_ONE = 1, FIX_TWO = 2, FIX_FOUR = 4 };
@@ -79,9 +78,7 @@ struct LexEnv {
 // each method in the abc file corresponds to one MethodInfo and
 // methods with the same instructions share one common MethodPcInfo
 struct MethodPcInfo {
-    std::map<uint8_t *, uint8_t *> byteCodeCurPrePc {};
-    std::vector<CfgInfo> bytecodeBlockInfos {};
-    std::map<const uint8_t *, int32_t> pcToBCOffset {};
+    std::vector<const uint8_t*> pcOffsets {};
     uint32_t methodsSize {0};
 };
 

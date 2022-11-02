@@ -119,39 +119,17 @@ void BytecodeInfoCollector::CollectMethodPcsFromNewBc(const uint32_t insSz, cons
 {
     auto bcIns = BytecodeInst(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
-    bytecodeInfo_.methodPcInfos.emplace_back(MethodPcInfo { {}, {}, {}, insSz });
-    int32_t offsetIndex = 1;
-    uint8_t *curPc = nullptr;
-    uint8_t *prePc = nullptr;
+    bytecodeInfo_.methodPcInfos.emplace_back(MethodPcInfo { {}, insSz });
+    auto &pcOffsets = bytecodeInfo_.methodPcInfos.back().pcOffsets;
+    const uint8_t *curPc = bcIns.GetAddress();
+
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         CollectMethodInfoFromNewBC(bcIns, method);
-        auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
+        curPc = bcIns.GetAddress();
         auto nextInst = bcIns.GetNext();
         bcIns = nextInst;
-
-        auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
-        auto &byteCodeCurPrePc = bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc;
-        auto &pcToBCOffset = bytecodeInfo_.methodPcInfos.back().pcToBCOffset;
-        if (offsetIndex == 1) {
-            curPc = prePc = pc;
-            bytecodeBlockInfos.emplace_back(curPc, SplitKind::START, std::vector<uint8_t *>(1, curPc));
-            byteCodeCurPrePc[curPc] = prePc;
-            pcToBCOffset[curPc] = offsetIndex++;
-        } else {
-            curPc = pc;
-            byteCodeCurPrePc[curPc] = prePc;
-            pcToBCOffset[curPc] = offsetIndex++;
-            prePc = curPc;
-            BytecodeCircuitBuilder::CollectBytecodeBlockInfo(curPc, bytecodeBlockInfos);
-        }
+        pcOffsets.emplace_back(curPc);
     }
-
-    auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
-    bytecodeBlockInfos.emplace_back(curPc, SplitKind::END, std::vector<uint8_t *>(1, curPc));
-
-    auto emptyPc = const_cast<uint8_t *>(bcInsLast.GetAddress());
-    bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc[emptyPc] = prePc;
-    bytecodeInfo_.methodPcInfos.back().pcToBCOffset[emptyPc] = offsetIndex++;
 }
 
 void BytecodeInfoCollector::CollectMethodPcs(const uint32_t insSz, const uint8_t *insArr,
@@ -161,37 +139,17 @@ void BytecodeInfoCollector::CollectMethodPcs(const uint32_t insSz, const uint8_t
     auto bcIns = OldBytecodeInst(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
 
-    bytecodeInfo_.methodPcInfos.emplace_back(MethodPcInfo { {}, {}, {}, insSz });
+    bytecodeInfo_.methodPcInfos.emplace_back(MethodPcInfo { {}, insSz });
+    auto &pcOffsets = bytecodeInfo_.methodPcInfos.back().pcOffsets;
+    const uint8_t *curPc = bcIns.GetAddress();
 
-    int32_t offsetIndex = 1;
-    uint8_t *curPc = nullptr;
-    uint8_t *prePc = nullptr;
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         TranslateBCIns(bcIns, method, entryPoint);
-        auto pc = const_cast<uint8_t *>(bcIns.GetAddress());
         auto nextInst = bcIns.GetNext();
         FixOpcode(const_cast<MethodLiteral *>(method), bcIns);
         bcIns = nextInst;
-
-        auto &bytecodeBlockInfos = bytecodeInfo_.methodPcInfos.back().bytecodeBlockInfos;
-        auto &byteCodeCurPrePc = bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc;
-        auto &pcToBCOffset = bytecodeInfo_.methodPcInfos.back().pcToBCOffset;
-        if (offsetIndex == 1) {
-            curPc = prePc = pc;
-            bytecodeBlockInfos.emplace_back(curPc, SplitKind::START, std::vector<uint8_t *>(1, curPc));
-            byteCodeCurPrePc[curPc] = prePc;
-            pcToBCOffset[curPc] = offsetIndex++;
-        } else {
-            curPc = pc;
-            byteCodeCurPrePc[curPc] = prePc;
-            pcToBCOffset[curPc] = offsetIndex++;
-            prePc = curPc;
-            BytecodeCircuitBuilder::CollectBytecodeBlockInfo(curPc, bytecodeBlockInfos);
-        }
+        pcOffsets.emplace_back(curPc);
     }
-    auto emptyPc = const_cast<uint8_t *>(bcInsLast.GetAddress());
-    bytecodeInfo_.methodPcInfos.back().byteCodeCurPrePc[emptyPc] = prePc;
-    bytecodeInfo_.methodPcInfos.back().pcToBCOffset[emptyPc] = offsetIndex++;
 }
 
 #define ADD_NOP_INST(pc, oldLen, newOpcode)                              \

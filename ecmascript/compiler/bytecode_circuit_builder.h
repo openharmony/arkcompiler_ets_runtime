@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H
 #define ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H
 
+#include <algorithm>
 #include <numeric>
 #include <tuple>
 #include <utility>
@@ -34,11 +35,6 @@
 #include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript::kungfu {
-enum class SplitKind : uint8_t {
-    DEFAULT,
-    START,
-    END
-};
 
 enum class VisitState : uint8_t {
     UNVISITED,
@@ -46,32 +42,129 @@ enum class VisitState : uint8_t {
     VISITED
 };
 
-struct CfgInfo {
-    uint8_t *pc {nullptr};
-    SplitKind splitKind {SplitKind::DEFAULT};
-    std::vector<uint8_t *> succs {};
-    CfgInfo(uint8_t *startOrEndPc, SplitKind kind, std::vector<uint8_t *> successors)
-        : pc(startOrEndPc), splitKind(kind), succs(successors) {}
+struct ExceptionItem {
+    uint8_t* startPc;
+    uint8_t* endPc;
+    std::vector<uint8_t*> catchs;
 
-    bool operator<(const CfgInfo &rhs) const
+    ExceptionItem(uint8_t* startPc, uint8_t* endPc, std::vector<uint8_t*> catchs)
+        : startPc(startPc), endPc(endPc), catchs(catchs) {}
+};
+
+using ExceptionInfo = std::vector<ExceptionItem>;
+
+class BytecodeBlockItem {
+public:
+    static constexpr uint32_t INVALID_BC_INDEX = static_cast<uint32_t>(-1);
+    bool operator<(const BytecodeBlockItem &rhs) const
     {
-        if (this->pc != rhs.pc) {
-            return this->pc < rhs.pc;
-        } else {
-            return this->splitKind < rhs.splitKind;
+        return this->startBcIndex_ < rhs.startBcIndex_;
+    }
+
+    bool operator>(const BytecodeBlockItem &rhs) const
+    {
+        return this->startBcIndex_ > rhs.startBcIndex_;
+    }
+
+    bool operator==(const BytecodeBlockItem &rhs) const
+    {
+        return this->startBcIndex_ == rhs.startBcIndex_;
+    }
+
+    BytecodeBlockItem(uint32_t startBcIndex, bool isHeadBlock)
+        : startBcIndex_(startBcIndex), isHeadBlock_(isHeadBlock) {}
+
+    uint32_t GetStartBcIndex() const
+    {
+        return startBcIndex_;
+    }
+
+    uint32_t IsHeadBlock() const
+    {
+        return isHeadBlock_;
+    }
+private:
+    uint32_t startBcIndex_ { INVALID_BC_INDEX };
+    bool isHeadBlock_ { false };
+    friend class BytecodeBlocksInfo;
+};
+
+struct BytecodeSplitItem
+{
+    BytecodeSplitItem(uint32_t start, uint32_t pred)
+        : startBcIndex(start), predBcIndex(pred) {}
+    uint32_t startBcIndex { BytecodeBlockItem::INVALID_BC_INDEX };
+    uint32_t predBcIndex { BytecodeBlockItem::INVALID_BC_INDEX };
+};
+
+class BytecodeBlocksInfo {
+public:
+    void InsertJump(uint32_t bcIndex, uint32_t predBcIndex, bool isJumpImm)
+    {
+        InsertBlockItem(bcIndex, false);
+        auto fallThrogth = bcIndex - 1; // 1: fall through
+        // isJumpImm will not generate fall through
+        if (isJumpImm || fallThrogth != predBcIndex) {
+            InsertSplitItem(bcIndex, predBcIndex);
         }
     }
 
-    bool operator==(const CfgInfo &rhs) const
+    void InsertHead(uint32_t bcIndex)
     {
-        return this->pc == rhs.pc && this->splitKind == rhs.splitKind;
+        InsertBlockItem(bcIndex, true);
     }
+
+    void InsertSplit(uint32_t bcIndex)
+    {
+        InsertBlockItem(bcIndex, false);
+    }
+
+    size_t FindBBIndexByBcIndex(uint32_t bcIndex)
+    {
+        auto findFunc = [] (uint32_t value, const BytecodeBlockItem &item)
+        {
+            return value < item.startBcIndex_;
+        };
+        const auto &it = std::upper_bound(blockItems_.begin(),
+            blockItems_.end(), bcIndex, findFunc);
+        if (it == blockItems_.end()) {
+            return blockItems_.size() - 1; // 1: last bb
+        }
+        // blockItems_[0]'s value is 0, bcIndex must be: bcIndex > blockItems_.begin()
+        return std::distance(blockItems_.begin(), it) - 1; // 1: -1 for bbIndx
+    }
+
+    const std::vector<BytecodeSplitItem> &GetSplitItems() const
+    {
+        return splitItems_;
+    }
+
+    const std::set<BytecodeBlockItem> &GetBlockItems() const
+    {
+        return blockItems_;
+    }
+private:
+    void InsertBlockItem(uint32_t bcIndex, bool isHeadBlock)
+    {
+        auto result = blockItems_.insert(BytecodeBlockItem { bcIndex, isHeadBlock });
+        if (!result.second && isHeadBlock) {
+            blockItems_.erase(result.first);
+            blockItems_.insert(BytecodeBlockItem { bcIndex, isHeadBlock });
+        }
+    }
+
+    void InsertSplitItem(uint32_t bcIndex, uint32_t predBcIndex)
+    {
+        splitItems_.emplace_back(BytecodeSplitItem { bcIndex, predBcIndex });
+    }
+    std::set<BytecodeBlockItem> blockItems_ {};
+    std::vector<BytecodeSplitItem> splitItems_ {};
 };
 
 struct BytecodeRegion {
     size_t id {0};
-    uint8_t *start {nullptr};
-    uint8_t *end {nullptr};
+    uint32_t start {0};
+    uint32_t end {0};
     std::vector<BytecodeRegion *> preds {}; // List of predessesor blocks
     std::vector<BytecodeRegion *> succs {}; // List of successors blocks
     std::vector<BytecodeRegion *> trys {}; // List of trys blocks
@@ -95,7 +188,7 @@ struct BytecodeRegion {
     GateRef mergeLoopBackEdges {Circuit::NullGate()};
     GateRef depForward {Circuit::NullGate()};
     GateRef depLoopBack {Circuit::NullGate()};
-    std::map<uint16_t, GateRef> vregToValSelectorGate {}; // corresponding ValueSelector gates of vregs
+    std::unordered_map<uint16_t, GateRef> vregToValSelectorGate {}; // corresponding ValueSelector gates of vregs
     GateRef valueSelectorAccGate {Circuit::NullGate()};
     BytecodeIterator bytecodeIterator_ {};
 
@@ -175,8 +268,8 @@ public:
         : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(hasTypes),
-          enableLog_(enableLog), enableTypeLowering_(enableTypeLowering), pcToBCOffset_(methodPCInfo.pcToBCOffset),
-          byteCodeCurPrePc_(methodPCInfo.byteCodeCurPrePc), bytecodeBlockInfos_(methodPCInfo.bytecodeBlockInfos),
+          enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
+          pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, &circuit_, methodLiteral), methodName_(name), recordName_(recordName),
           bytecodes_(bytecodes)
     {
@@ -185,21 +278,23 @@ public:
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
     NO_MOVE_SEMANTIC(BytecodeCircuitBuilder);
     void PUBLIC_API BytecodeToCircuit();
-    static void PUBLIC_API CollectBytecodeBlockInfo(uint8_t *pc, std::vector<CfgInfo> &bytecodeBlockInfos);
+    void CollectBytecodeBlockInfo(uint32_t bcIndex);
 
     [[nodiscard]] Circuit* GetCircuit()
     {
         return &circuit_;
     }
 
-    [[nodiscard]] const std::map<GateRef, std::pair<size_t, size_t>>& GetGateToBytecode() const
+    const std::unordered_map<GateRef, uint32_t>& GetGateToBytecode() const
     {
         return jsgateToBytecode_;
     }
 
-    [[nodiscard]] const std::map<const uint8_t *, GateRef>& GetBytecodeToGate() const
+    GateRef GetGateByBcIndex(uint32_t bcIndex) const
     {
-        return byteCodeToJSGate_;
+        ASSERT(bcIndex < byteCodeToJSGate_.size());
+        ASSERT(byteCodeToJSGate_[bcIndex] != Circuit::NullGate());
+        return byteCodeToJSGate_[bcIndex];
     }
 
     [[nodiscard]] EcmaOpcode PcToOpcode(const uint8_t *pc) const
@@ -209,7 +304,8 @@ public:
 
     [[nodiscard]] const uint8_t* GetJSBytecode(GateRef gate)
     {
-        return GetByteCodeInfo(gate).GetPC();
+        const auto bcIndex = jsgateToBytecode_.at(gate);
+        return GetPCByIndex(bcIndex);
     }
 
     [[nodiscard]] EcmaOpcode GetByteCodeOpcode(GateRef gate)
@@ -239,19 +335,11 @@ public:
         return methodName_;
     }
 
-
-    const BytecodeInfo &GetBytecodeInfo(size_t bbIndex, size_t bcIndex)
-    {
-        auto &bb = graph_[bbIndex];
-        auto &iterator = bb.GetBytecodeIterator();
-        iterator.Goto(static_cast<int32_t>(bcIndex));
-        return iterator.GetBytecodeInfo();
-    }
     // for external users, circuit must be built
     const BytecodeInfo &GetByteCodeInfo(const GateRef gate)
     {
-        const auto &[bbIndex, bcIndex] = jsgateToBytecode_.at(gate);
-        return GetBytecodeInfo(bbIndex, bcIndex);
+        const auto bcIndex = jsgateToBytecode_.at(gate);
+        return GetBytecodeInfo(bcIndex);
     }
 
     bool IsLogEnabled() const
@@ -287,13 +375,9 @@ public:
         }
     }
 
-    const std::map<const uint8_t *, int32_t> &GetPcToBCOffset() const
-    {
-        return pcToBCOffset_;
-    }
-
     BytecodeRegion &GetBasicBlockById(size_t id)
     {
+        ASSERT(id < graph_.size());
         return graph_[id];
     }
 
@@ -302,9 +386,15 @@ public:
         return graph_.size();
     }
 
-    size_t GetPcOffset(const uint8_t* pc) const
+    size_t GetPcOffset(const uint8_t *pc) const
     {
         return static_cast<size_t>(pc - method_->GetBytecodeArray());
+    }
+
+    size_t GetPcOffset(uint32_t bcIndex) const
+    {
+        const uint8_t* pc = GetPCByIndex(bcIndex);
+        return GetPcOffset(pc);
     }
 
     size_t GetNumberVRegs() const
@@ -316,16 +406,48 @@ public:
     {
         return bytecodes_;
     }
+
+    uint32_t GetLastBcIndex() const
+    {
+        return static_cast<uint32_t>(pcOffsets_.size() - 1);
+    }
+
+    const uint8_t *GetPCByIndex(uint32_t index) const
+    {
+        ASSERT(index <= GetLastBcIndex());
+        return pcOffsets_[index];
+    }
+
+    const uint8_t *GetLastPC() const
+    {
+        return GetPCByIndex(GetLastBcIndex());
+    }
+
+    uint32_t FindBcIndexByPc(const uint8_t *pc) const
+    {
+        auto begin = pcOffsets_.begin();
+        auto end = pcOffsets_.end();
+        auto it = std::lower_bound(begin, end, pc);
+        ASSERT(it != end);
+        ASSERT(*it == pc);
+        return std::distance(begin, it);
+    }
+
+    const BytecodeInfo &GetBytecodeInfo(uint32_t index) const
+    {
+        return infoData_[index];
+    }
+
 private:
-    void CollectTryCatchBlockInfo(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
-    void CompleteBytecodeBlockInfo();
-    void BuildBasicBlocks(std::map<std::pair<uint8_t *, uint8_t *>, std::vector<uint8_t *>> &Exception);
+    void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
+    void BuildCatchBlocks(const ExceptionInfo &Exception);
+    void BuildBasicBlocks(const ExceptionInfo &Exception);
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
-    void RemoveDeadRegions(const std::map<size_t, size_t> &bbIdToDfsTimestamp);
+    void RemoveDeadRegions(const std::unordered_map<size_t, size_t> &bbIdToDfsTimestamp);
     void InsertPhi();
-    void InsertExceptionPhi(std::map<uint16_t, std::set<size_t>> &defsitesInfo);
+    void InsertExceptionPhi(std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
     void UpdateCFG();
     bool ShouldBeDead(BytecodeRegion &curBlock);
     // build circuit
@@ -341,7 +463,7 @@ private:
     void NewJump(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     void NewReturn(BytecodeRegion &bb,  GateRef &state, GateRef &depend);
     void NewByteCode(BytecodeRegion &bb, GateRef &state, GateRef &depend);
-    void AddBytecodeOffsetInfo(GateRef &gate, const BytecodeInfo &info, size_t bcOffsetIndex, uint8_t *pc);
+    void AddBytecodeOffsetInfo(GateRef &gate, const BytecodeInfo &info, size_t bcOffsetIndex, uint32_t index);
     void BuildSubCircuit();
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
     GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
@@ -351,8 +473,9 @@ private:
     void PrintGraph();
     void PrintBBInfo();
     void PrintGraph(const char* title);
-    void PrintBytecodeInfo(BytecodeRegion& region, const std::map<const uint8_t *, GateRef>& bcToGate);
-    void PrintDefsitesInfo(const std::map<uint16_t, std::set<size_t>> &defsitesInfo);
+    void PrintBytecodeInfo(BytecodeRegion& region);
+    void PrintDefsitesInfo(const std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
+    void BuildBytecodeBlockInfo();
 
     inline bool IsEntryBlock(const size_t bbId) const
     {
@@ -361,8 +484,8 @@ private:
 
     TSManager *tsManager_;
     Circuit circuit_;
-    std::map<GateRef, std::pair<size_t, size_t>> jsgateToBytecode_;
-    std::map<const uint8_t *, GateRef> byteCodeToJSGate_;
+    std::unordered_map<GateRef, uint32_t> jsgateToBytecode_ {};
+    std::vector<GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
     const JSPandaFile *file_ {nullptr};
     const panda_file::File *pf_ {nullptr};
@@ -374,14 +497,14 @@ private:
     bool enableLog_ {false};
     bool enableTypeLowering_ {false};
     std::vector<GateRef> suspendAndResumeGates_ {};
-    const std::map<const uint8_t *, int32_t> &pcToBCOffset_;
-    const std::map<uint8_t *, uint8_t *> &byteCodeCurPrePc_;
-    std::vector<CfgInfo> &bytecodeBlockInfos_;
-    std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_;
+    std::vector<const uint8_t*> pcOffsets_;
+    std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_ {};
     FrameStateBuilder frameStateBuilder_;
     std::string methodName_;
     const CString &recordName_;
     Bytecodes *bytecodes_;
+    BytecodeBlocksInfo bytecodeBlocksInfo_{};
+    std::vector<BytecodeInfo> infoData_ {};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

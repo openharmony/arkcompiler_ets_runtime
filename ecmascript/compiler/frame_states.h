@@ -85,15 +85,15 @@ private:
     void BuildPostOrderList(size_t size);
     bool ComputeLiveOut(size_t bbId);
     void ComputeLiveState();
-    void ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo);
-    bool MergeIntoPredBC(const uint8_t *predPc);
+    void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo);
+    bool MergeIntoPredBC(uint32_t predPc);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
-    FrameStateInfo *GetOrOCreateStateInfo(const uint8_t *pc)
+    FrameStateInfo *GetOrOCreateStateInfo(uint32_t bcIndex)
     {
-        auto currentInfo = stateInfos_[pc];
+        auto currentInfo = stateInfos_[bcIndex];
         if (currentInfo == nullptr) {
             currentInfo = CreateEmptyStateInfo();
-            stateInfos_[pc] = currentInfo;
+            stateInfos_[bcIndex] = currentInfo;
         }
         return currentInfo;
     }
@@ -106,7 +106,7 @@ private:
     Circuit *circuit_ {nullptr};
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
-    std::map<const uint8_t *, FrameStateInfo *> stateInfos_;
+    std::vector<FrameStateInfo *> stateInfos_;
     std::vector<size_t> postOrderList_;
 };
 }  // panda::ecmascript::kungfu
