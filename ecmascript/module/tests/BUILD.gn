@@ -72,8 +72,12 @@ host_unittest_action("ModuleTest") {
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
   }
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir)
+  }
 
-  test_abc_dir = rebase_path(target_out_dir)
   defines = [ "MODULE_ABC_PATH=\"${test_abc_dir}/\"" ]
 }
 
