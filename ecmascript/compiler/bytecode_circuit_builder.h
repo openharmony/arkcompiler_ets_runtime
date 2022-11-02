@@ -53,25 +53,25 @@ struct ExceptionItem {
 
 using ExceptionInfo = std::vector<ExceptionItem>;
 
-class BytecodeBlockItem {
+class RegionItem {
 public:
     static constexpr uint32_t INVALID_BC_INDEX = static_cast<uint32_t>(-1);
-    bool operator<(const BytecodeBlockItem &rhs) const
+    bool operator<(const RegionItem &rhs) const
     {
         return this->startBcIndex_ < rhs.startBcIndex_;
     }
 
-    bool operator>(const BytecodeBlockItem &rhs) const
+    bool operator>(const RegionItem &rhs) const
     {
         return this->startBcIndex_ > rhs.startBcIndex_;
     }
 
-    bool operator==(const BytecodeBlockItem &rhs) const
+    bool operator==(const RegionItem &rhs) const
     {
         return this->startBcIndex_ == rhs.startBcIndex_;
     }
 
-    BytecodeBlockItem(uint32_t startBcIndex, bool isHeadBlock)
+    RegionItem(uint32_t startBcIndex, bool isHeadBlock)
         : startBcIndex_(startBcIndex), isHeadBlock_(isHeadBlock) {}
 
     uint32_t GetStartBcIndex() const
@@ -86,18 +86,17 @@ public:
 private:
     uint32_t startBcIndex_ { INVALID_BC_INDEX };
     bool isHeadBlock_ { false };
-    friend class BytecodeBlocksInfo;
+    friend class RegionsInfo;
 };
 
-struct BytecodeSplitItem
-{
+struct BytecodeSplitItem {
     BytecodeSplitItem(uint32_t start, uint32_t pred)
         : startBcIndex(start), predBcIndex(pred) {}
-    uint32_t startBcIndex { BytecodeBlockItem::INVALID_BC_INDEX };
-    uint32_t predBcIndex { BytecodeBlockItem::INVALID_BC_INDEX };
+    uint32_t startBcIndex { RegionItem::INVALID_BC_INDEX };
+    uint32_t predBcIndex { RegionItem::INVALID_BC_INDEX };
 };
 
-class BytecodeBlocksInfo {
+class RegionsInfo {
 public:
     void InsertJump(uint32_t bcIndex, uint32_t predBcIndex, bool isJumpImm)
     {
@@ -119,10 +118,9 @@ public:
         InsertBlockItem(bcIndex, false);
     }
 
-    size_t FindBBIndexByBcIndex(uint32_t bcIndex)
+    size_t FindBBIndexByBcIndex(uint32_t bcIndex) const
     {
-        auto findFunc = [] (uint32_t value, const BytecodeBlockItem &item)
-        {
+        auto findFunc = [] (uint32_t value, const RegionItem &item) {
             return value < item.startBcIndex_;
         };
         const auto &it = std::upper_bound(blockItems_.begin(),
@@ -139,17 +137,17 @@ public:
         return splitItems_;
     }
 
-    const std::set<BytecodeBlockItem> &GetBlockItems() const
+    const std::set<RegionItem> &GetBlockItems() const
     {
         return blockItems_;
     }
 private:
     void InsertBlockItem(uint32_t bcIndex, bool isHeadBlock)
     {
-        auto result = blockItems_.insert(BytecodeBlockItem { bcIndex, isHeadBlock });
+        auto result = blockItems_.insert(RegionItem { bcIndex, isHeadBlock });
         if (!result.second && isHeadBlock) {
             blockItems_.erase(result.first);
-            blockItems_.insert(BytecodeBlockItem { bcIndex, isHeadBlock });
+            blockItems_.insert(RegionItem { bcIndex, isHeadBlock });
         }
     }
 
@@ -157,7 +155,7 @@ private:
     {
         splitItems_.emplace_back(BytecodeSplitItem { bcIndex, predBcIndex });
     }
-    std::set<BytecodeBlockItem> blockItems_ {};
+    std::set<RegionItem> blockItems_ {};
     std::vector<BytecodeSplitItem> splitItems_ {};
 };
 
@@ -174,8 +172,8 @@ struct BytecodeRegion {
     std::vector<BytecodeRegion *> domFrontiers {}; // List of dominace frontiers
     std::set<size_t> loopbackBlocks {}; // List of loopback block ids
     bool isDead {false};
-    std::set<uint16_t> phi {}; // phi node
     bool phiAcc {false};
+    std::set<uint16_t> phi {}; // phi node
     size_t numOfStatePreds {0};
     size_t numOfLoopBacks {0};
     size_t statePredIndex {0};
@@ -278,40 +276,24 @@ public:
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
     NO_MOVE_SEMANTIC(BytecodeCircuitBuilder);
     void PUBLIC_API BytecodeToCircuit();
-    void CollectBytecodeBlockInfo(uint32_t bcIndex);
+    void CollectRegionInfo(uint32_t bcIndex);
 
     [[nodiscard]] Circuit* GetCircuit()
     {
         return &circuit_;
     }
 
-    const std::unordered_map<GateRef, uint32_t>& GetGateToBytecode() const
-    {
-        return jsgateToBytecode_;
-    }
-
     GateRef GetGateByBcIndex(uint32_t bcIndex) const
     {
         ASSERT(bcIndex < byteCodeToJSGate_.size());
-        ASSERT(byteCodeToJSGate_[bcIndex] != Circuit::NullGate());
         return byteCodeToJSGate_[bcIndex];
     }
 
-    [[nodiscard]] EcmaOpcode PcToOpcode(const uint8_t *pc) const
+    EcmaOpcode GetByteCodeOpcode(GateRef gate)
     {
+        auto bcIndex = gateAcc_.GetBytecodeIndex(gate);
+        auto pc = GetPCByIndex(bcIndex);
         return Bytecodes::GetOpcode(pc);
-    }
-
-    [[nodiscard]] const uint8_t* GetJSBytecode(GateRef gate)
-    {
-        const auto bcIndex = jsgateToBytecode_.at(gate);
-        return GetPCByIndex(bcIndex);
-    }
-
-    [[nodiscard]] EcmaOpcode GetByteCodeOpcode(GateRef gate)
-    {
-        auto pc = GetJSBytecode(gate);
-        return PcToOpcode(pc);
     }
 
     [[nodiscard]] std::string GetBytecodeStr(GateRef gate)
@@ -333,13 +315,6 @@ public:
     const std::string& GetMethodName() const
     {
         return methodName_;
-    }
-
-    // for external users, circuit must be built
-    const BytecodeInfo &GetByteCodeInfo(const GateRef gate)
-    {
-        const auto bcIndex = jsgateToBytecode_.at(gate);
-        return GetBytecodeInfo(bcIndex);
     }
 
     bool IsLogEnabled() const
@@ -441,7 +416,7 @@ public:
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
-    void BuildBasicBlocks(const ExceptionInfo &Exception);
+    void BuildRegions(const ExceptionInfo &Exception);
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
     void ComputeDomFrontiers(const std::vector<size_t> &immDom);
@@ -463,7 +438,6 @@ private:
     void NewJump(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     void NewReturn(BytecodeRegion &bb,  GateRef &state, GateRef &depend);
     void NewByteCode(BytecodeRegion &bb, GateRef &state, GateRef &depend);
-    void AddBytecodeOffsetInfo(GateRef &gate, const BytecodeInfo &info, size_t bcOffsetIndex, uint32_t index);
     void BuildSubCircuit();
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
     GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
@@ -475,7 +449,7 @@ private:
     void PrintGraph(const char* title);
     void PrintBytecodeInfo(BytecodeRegion& region);
     void PrintDefsitesInfo(const std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
-    void BuildBytecodeBlockInfo();
+    void BuildRegionInfo();
 
     inline bool IsEntryBlock(const size_t bbId) const
     {
@@ -484,7 +458,6 @@ private:
 
     TSManager *tsManager_;
     Circuit circuit_;
-    std::unordered_map<GateRef, uint32_t> jsgateToBytecode_ {};
     std::vector<GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
     const JSPandaFile *file_ {nullptr};
@@ -503,7 +476,7 @@ private:
     std::string methodName_;
     const CString &recordName_;
     Bytecodes *bytecodes_;
-    BytecodeBlocksInfo bytecodeBlocksInfo_{};
+    RegionsInfo regionsInfo_{};
     std::vector<BytecodeInfo> infoData_ {};
 };
 }  // namespace panda::ecmascript::kungfu
