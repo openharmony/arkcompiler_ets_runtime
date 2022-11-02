@@ -490,11 +490,6 @@ public:
         return metaData_.IsGeneratorRelative();
     }
 
-    size_t ComputeBCOffsetInputCount() const
-    {
-        return IsCall() ? 1 : 0;
-    }
-
     size_t ComputeValueInputCount() const
     {
         return (AccIn() ? 1 : 0) + inputs.size();
@@ -503,11 +498,6 @@ public:
     size_t ComputeOutCount() const
     {
         return (AccOut() ? 1 : 0) + vregOut.size();
-    }
-
-    size_t ComputeTotalValueCount() const
-    {
-        return ComputeValueInputCount() + ComputeBCOffsetInputCount();
     }
 
     bool IsBc(EcmaOpcode ecmaOpcode) const

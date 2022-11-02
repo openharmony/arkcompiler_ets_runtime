@@ -26,6 +26,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "ecmascript/compiler/gate_bitfield_accessor.h"
 #include "ecmascript/compiler/type.h"
 
 #include "libpandabase/macros.h"
@@ -37,7 +38,6 @@ using GateOp = uint8_t;
 using GateMark = uint8_t;
 using TimeStamp = uint8_t;
 using SecondaryOp = uint8_t;
-using BitField = uint64_t;
 using OutIdx = uint32_t;
 using BinaryOp = uint8_t;
 class Gate;

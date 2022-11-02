@@ -75,9 +75,8 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
         }
     }
     if (op == OpCode::JS_BYTECODE) {
-        auto pc = bcBuilder_->GetJSBytecode(gate);
-        EcmaOpcode bc = bcBuilder_->PcToOpcode(pc);
-        switch (bc) {
+        EcmaOpcode ecmaOpcode = bcBuilder_->GetByteCodeOpcode(gate);
+        switch (ecmaOpcode) {
             case EcmaOpcode::ADD2_IMM8_V8:
             case EcmaOpcode::SUB2_IMM8_V8:
             case EcmaOpcode::MUL2_IMM8_V8:
@@ -99,11 +98,10 @@ void TSTypeLowering::Lower(GateRef gate)
     auto argAcc = ArgumentAccessor(circuit_);
     GateRef thisObj = argAcc.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
 
-    auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
+    EcmaOpcode ecmaOpcode = bcBuilder_->GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
-    switch (op) {
+    switch (ecmaOpcode) {
         case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypedAdd(gate);
             break;

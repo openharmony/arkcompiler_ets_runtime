@@ -34,9 +34,11 @@ FrameStateBuilder::~FrameStateBuilder()
             delete state;
         }
     }
-    delete liveOutResult_;
-    stateInfos_.clear();
+    if (liveOutResult_ != nullptr) {
+        delete liveOutResult_;
+    }
     liveOutResult_ = nullptr;
+    stateInfos_.clear();
     builder_ = nullptr;
 }
 

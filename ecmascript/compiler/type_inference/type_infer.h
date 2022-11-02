@@ -125,6 +125,12 @@ private:
     std::string CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
                                        const std::string &logPreFix) const;
 
+    const BytecodeInfo &GetByteCodeInfo(const GateRef gate) const
+    {
+        const auto bcIndex = jsgateToBytecode_.at(gate);
+        return builder_->GetBytecodeInfo(bcIndex);
+    }
+
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
     JSHandle<ConstantPool> constantPool_;
@@ -135,6 +141,7 @@ private:
     bool enableLog_ {false};
     std::string methodName_;
     std::map<uint16_t, GateType> stringIdToGateType_;
+    std::unordered_map<GateRef, uint32_t> jsgateToBytecode_ {};
     std::map<GateRef, bool> phiState_;
 };
 }  // namespace panda::ecmascript::kungfu
