@@ -122,7 +122,7 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(vm->GetGlobalEnv()->GetFunctionClassWithProto());
 
     const CString &filename = jsPandaFile->GetJSPandaFileDesc();
-#if defined(PANDA_TARGET_LINUX)
+#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
     CString entry = JSPandaFile::ParseRecordName(filename);
 #else
     CString entry = JSPandaFile::ParseOhmUrl(filename);
