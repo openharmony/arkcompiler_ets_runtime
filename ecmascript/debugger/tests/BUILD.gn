@@ -14,11 +14,12 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-test_js_path = "//arkcompiler/ets_runtime/ecmascript/debugger/tests/js/"
+test_js_path =
+    "//arkcompiler/ets_runtime/ecmascript/debugger/tests/single_file/"
 
 test_js_files = [
-  "base",
-  "patch",
+  "base/index",
+  "patch/index",
 ]
 
 module_output_path = "arkcompiler/ets_runtime"
@@ -26,12 +27,14 @@ module_output_path = "arkcompiler/ets_runtime"
 foreach(file, test_js_files) {
   es2abc_gen_abc("gen_${file}_abc") {
     test_js = "${test_js_path}${file}.js"
-    test_abc = "$target_out_dir/${file}.abc"
+    test_abc = "$target_out_dir/single_file/${file}.abc"
 
     # Only targets in this file can depend on this.
     extra_visibility = [ ":*" ]
     src_js = rebase_path(test_js)
     dst_file = rebase_path(test_abc)
+    extra_args = [ "--module" ]
+    extra_args += [ "--merge-abc" ]
 
     in_puts = [ test_js ]
     out_puts = [ test_abc ]
@@ -62,8 +65,14 @@ host_unittest_action("HotReloadManagerTest") {
     deps += [ ":gen_${file}_abc" ]
   }
 
-  test_abc_dir = rebase_path(target_out_dir)
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir)
+  }
+
   test_js_dir = rebase_path(test_js_path)
+
   defines = [
     "DEBUGGER_ABC_DIR=\"${test_abc_dir}/\"",
     "DEBUGGER_JS_DIR=\"${test_js_dir}\"",
