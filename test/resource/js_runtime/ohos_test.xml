@@ -62,6 +62,16 @@
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="ModuleTest">
+        <preparer>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/module_test_module_test_module.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/module_test_module_test_module_base.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/module_test_module_test_A.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/module_test_module_test_B.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/module_test_module_test_C.abc -> /data/test" src="out"/>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="RegexpTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
