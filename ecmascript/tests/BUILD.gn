@@ -27,7 +27,6 @@ host_unittest_action("EcmaVm_001_Test") {
     "concurrent_marking_test.cpp",
     "concurrent_sweep_test.cpp",
     "dump_test.cpp",
-    "ecma_module_test.cpp",
 
     # "ecma_string_test.cpp",
     "ecma_string_accessor_test.cpp",
@@ -64,7 +63,6 @@ host_unittest_action("EcmaVm_001_Test") {
     "js_array_test.cpp",
     "js_async_function_test.cpp",
     "js_bigint_test.cpp",
-    "pgo_profiler_test.cpp",
     "throw_oom_error_test.cpp",
   ]
 
@@ -77,8 +75,6 @@ host_unittest_action("EcmaVm_001_Test") {
 
   deps = [
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
-    "//arkcompiler/runtime_core/assembler:libarkassembler_static",
-    "//arkcompiler/runtime_core/libpandafile:libarkfile_static",
     sdk_libc_secshared_dep,
   ]
 

@@ -67,9 +67,11 @@ group("ark_js_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/containers/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/debugger/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests:unittest",
+      "//arkcompiler/ets_runtime/ecmascript/dfx/pgo_profiler/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/ic/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/jobs/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests:unittest",
+      "//arkcompiler/ets_runtime/ecmascript/module/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/napi/test:unittest",
       "//arkcompiler/ets_runtime/ecmascript/regexp/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:unittest",
@@ -98,9 +100,11 @@ group("ark_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/builtins/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/containers/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests:host_unittest",
+      "//arkcompiler/ets_runtime/ecmascript/dfx/pgo_profiler/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/ic/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/jobs/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests:host_unittest",
+      "//arkcompiler/ets_runtime/ecmascript/module/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/napi/test:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/regexp/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:host_unittest",
@@ -360,10 +364,6 @@ config("ecma_test_config") {
   }
 
   ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
-  if (ark_standalone_build) {
-    include_dirs = [ "//third_party/googletest/googletest/include" ]
-    ldflags += [ "-shared" ]
-  }
 }
 
 # ecmascript icu path for testcase config
@@ -739,12 +739,18 @@ source_set("libark_jsruntime_test_set") {
   sources += ecma_profiler_source
   sources += ecma_debugger_source
 
+  defines = [ "OHOS_UNIT_TEST" ]
   deps = [
     "$ark_root/libpandafile:arkfile_header_deps",
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     sdk_libc_secshared_dep,
   ]
+
+  if (enable_coverage) {
+    ldflags = [ "--coverage" ]
+    cflags_cc = [ "--coverage" ]
+  }
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
@@ -758,7 +764,7 @@ source_set("libark_jsruntime_test_set") {
     if (is_linux && (current_cpu == "x86" || current_cpu == "x64")) {
       sources += [ "ecmascript/dfx/native_dfx/linux/backtrace.cpp" ]
     }
-    defines = [
+    defines += [
       "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
       "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
     ]
@@ -842,8 +848,13 @@ ohos_shared_library("libark_jsruntime_test") {
   deps = [ ":libark_jsruntime_test_set" ]
   public_deps = [ "$ark_root/libpandafile:libarkfile_static" ]
 
+  ldflags = []
+  if (enable_coverage) {
+    ldflags += [ "--coverage" ]
+    cflags_cc = [ "--coverage" ]
+  }
   if (!ark_standalone_build) {
-    ldflags = [ "-Wl,--lto-O0" ]
+    ldflags += [ "-Wl,--lto-O0" ]
   }
 
   install_enable = false

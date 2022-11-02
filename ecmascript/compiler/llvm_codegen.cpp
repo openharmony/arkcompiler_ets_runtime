@@ -270,10 +270,7 @@ kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn
                 auto value = std::stoi(std::string(Attr.getValueAsString()));
                 info.push_back(std::make_pair(RegNum, value));
                 (void)log;
-                auto logFlag = true;
-                if (logFlag) {
-                    LOG_COMPILER(INFO) << " RegNum:" << RegNum << " value:" << value << std::endl;
-                }
+                LOG_COMPILER(INFO) << " RegNum:" << RegNum << " value:" << value << std::endl;
             }
         }
     }

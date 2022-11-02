@@ -172,7 +172,7 @@ private:
     uint32_t value_ {0};
     friend class Bytecodes;
     friend class BytecodeInfo;
-    friend class BytecodeIterator;
+    friend class BytecodeCircuitBuilder;
 };
 
 class Bytecodes {
@@ -520,22 +520,27 @@ public:
         return metaData_.GetOpcode();
     }
 
-    const uint8_t *GetPC() const
-    {
-        return pc_;
-    }
+    static void InitBytecodeInfo(BytecodeCircuitBuilder *builder,
+        BytecodeInfo &info, const uint8_t* pc);
 
 private:
     BytecodeMetaData metaData_ { 0 };
-    const uint8_t *pc_ {nullptr};
-    friend class BytecodeIterator;
+    friend class BytecodeCircuitBuilder;
 };
 
 class BytecodeIterator {
 public:
     BytecodeIterator() = default;
+    explicit BytecodeIterator(BytecodeCircuitBuilder *builder,
+        uint32_t start, uint32_t end)
+        : builder_(builder), start_(start), end_(end) {}
     void Reset(BytecodeCircuitBuilder *builder,
-        const uint8_t *start, const uint8_t *end);
+        uint32_t start, uint32_t end)
+    {
+        builder_ = builder;
+        start_ = start;
+        end_ = end;
+    }
 
     BytecodeIterator& operator++()
     {
@@ -559,19 +564,19 @@ public:
 
     void GotoStart()
     {
-        index_ = 0;
+        index_ = start_;
         ASSERT(InRange());
     }
 
     void GotoEnd()
     {
-        index_ = infoData_.size() - 1;
+        index_ = end_;
         ASSERT(InRange());
     }
 
     bool InRange() const
     {
-        return (index_ < static_cast<int32_t>(infoData_.size())) && (index_ >= 0);
+        return (index_ <= end_) && (index_ >= start_);
     }
 
     bool Done() const
@@ -579,45 +584,22 @@ public:
         return !InRange();
     }
 
-    const BytecodeInfo &GetBytecodeInfo() const
+    uint32_t Index() const
     {
-        return infoData_[index_];
+        return index_;
     }
 
-    size_t Index() const
-    {
-        return static_cast<size_t>(index_);
-    }
-
-    const uint8_t* CurrentPc() const
-    {
-        return GetBytecodeInfo().GetPC();
-    }
-
-    const uint8_t *PeekNextPc(size_t i) const
-    {
-        ASSERT((Index() + i) < infoData_.size());
-        return infoData_[index_ + i].GetPC();
-    }
-
-    const uint8_t *PeekPrevPc(size_t i) const
-    {
-        ASSERT((index_ - i) >= 0);
-        return infoData_[index_ - i].GetPC();
-    }
-
-    size_t GetEndBcIndex() const
-    {
-        return static_cast<size_t>(infoData_.size() - 1);
-    }
+    const BytecodeInfo &GetBytecodeInfo() const;
+    const uint8_t *PeekNextPc(size_t i) const;
+    const uint8_t *PeekPrevPc(size_t i) const;
 
 private:
-    void InitBytecodeInfo(BytecodeCircuitBuilder *builder,
-        BytecodeInfo &info, const uint8_t *pc);
+    static constexpr uint32_t INVALID_INDEX = std::numeric_limits<uint32_t>::max();
 
-    static constexpr int32_t INVALID_INDEX = -1;
-    int32_t index_{ INVALID_INDEX };
-    std::vector<BytecodeInfo> infoData_ {};
+    BytecodeCircuitBuilder *builder_ {nullptr};
+    uint32_t start_ {0};
+    uint32_t end_ {0};
+    uint32_t index_{ INVALID_INDEX };
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODES_H

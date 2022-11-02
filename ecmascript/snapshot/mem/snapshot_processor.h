@@ -163,6 +163,6 @@ public:
         return wasted & Constants::MAX_UINT_32;
     }
 };
- }  // namespace panda::ecmascript
+}  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_PROCESSOR_H
