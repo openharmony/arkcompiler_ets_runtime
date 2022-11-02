@@ -111,7 +111,7 @@ JSHandle<TaggedArray> TSTypeTable::GenerateExportTableFromPandaFile(JSThread *th
     for (uint32_t i = 1; i < length; i += ITEM_SIZE) {
         target = exportTable->Get(i);
         // Create GT based on typeId, and wrapped it into a JSTaggedValue
-        uint32_t typeId = target.GetInt();
+        uint32_t typeId = static_cast<uint32_t>(target.GetInt());
         GlobalTSTypeRef typeGT = TSTypeParser::CreateGT(ecmaVm, jsPandaFile, typeId);
         // Set the wrapped GT to exportTable
         exportTable->Set(thread, i, JSTaggedValue(typeGT.GetType()));

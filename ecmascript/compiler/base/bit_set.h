@@ -114,8 +114,7 @@ public:
         }
     }
 private:
-    union Data
-    {
+    union Data {
         uint64_t inlineWord_ {0};
         uint64_t *words_ {nullptr};
     };
@@ -145,7 +144,7 @@ private:
         return size >> BYTE_PER_WORD_LOG2;
     }
 
-    bool UseWords() const 
+    bool UseWords() const
     {
         return wordCount_ > 1;
     }
