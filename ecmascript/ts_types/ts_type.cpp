@@ -188,6 +188,39 @@ GlobalTSTypeRef TSClassType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassTyp
     return propTypeGT;
 }
 
+GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                                    JSHandle<EcmaString> propName)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+
+    JSHandle<TSObjectType> instanceType(thread, classType->GetInstanceType());
+
+    GlobalTSTypeRef propTypeGT = TSObjectType::GetPropTypeGT(instanceType, propName);
+    if (!propTypeGT.IsDefault()) {
+        return propTypeGT;
+    }
+
+    // search on prototype chain
+    JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
+    JSMutableHandle<TSObjectType> mutablePrototypeType(thread, classType->GetPrototypeType());
+    while (propTypeGT.IsDefault()) {  // not find
+        propTypeGT = TSObjectType::GetPropTypeGT(mutablePrototypeType, propName);
+        GlobalTSTypeRef classTypeGT = mutableClassType->GetExtensionGT();
+        if (classTypeGT.IsDefault()) {  // end of prototype chain
+            break;
+        }
+
+        JSTaggedValue tmpType = tsManager->GetTSType(classTypeGT).GetTaggedValue();
+        if (tmpType.IsUndefined()) {
+            return GlobalTSTypeRef::Default();
+        }
+        mutableClassType.Update(tmpType);
+        mutablePrototypeType.Update(mutableClassType->GetPrototypeType());
+    }
+    return propTypeGT;
+}
+
 GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassInstanceType> classInstanceType,
                                                    JSHandle<EcmaString> propName)
 {
@@ -202,30 +235,7 @@ GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TS
 
     ASSERT(type->IsTSClassType());
     JSHandle<TSClassType> classType(type);
-    JSHandle<TSObjectType> instanceType(thread, classType->GetInstanceType());
-
-    GlobalTSTypeRef propTypeGT = TSObjectType::GetPropTypeGT(instanceType, propName);
-    if (!propTypeGT.IsDefault()) {
-        return propTypeGT;
-    }
-
-    // search on prototype chain
-    JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
-    JSMutableHandle<TSObjectType> mutablePrototypeType(thread, classType->GetPrototypeType());
-    while (propTypeGT.IsDefault()) {  // not find
-        propTypeGT = TSObjectType::GetPropTypeGT(mutablePrototypeType, propName);
-        classTypeGT = mutableClassType->GetExtensionGT();
-        if (classTypeGT.IsDefault()) {  // end of prototype chain
-            break;
-        }
-
-        JSTaggedValue tmpType = tsManager->GetTSType(classTypeGT).GetTaggedValue();
-        if (tmpType.IsUndefined()) {
-            return GlobalTSTypeRef::Default();
-        }
-        mutableClassType.Update(tmpType);
-        mutablePrototypeType.Update(mutableClassType->GetPrototypeType());
-    }
+    GlobalTSTypeRef propTypeGT = TSClassType::GetNonStaticPropTypeGT(thread, classType, propName);
     return propTypeGT;
 }
 
@@ -285,5 +295,44 @@ GlobalTSTypeRef TSIteratorInstanceType::GetPropTypeGT(JSThread *thread,
         return propGt;
     }
     return GlobalTSTypeRef::Default();
+}
+
+GlobalTSTypeRef TSInterfaceType::GetPropTypeGT(JSThread *thread, JSHandle<TSInterfaceType> interfaceType,
+                                               JSHandle<EcmaString> propName)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+
+    JSMutableHandle<TSInterfaceType> mutableInterfaceType(thread, interfaceType.GetTaggedValue());
+    JSMutableHandle<TSObjectType> mutableFieldsType(thread, mutableInterfaceType->GetFields());
+    GlobalTSTypeRef propTypeGT = GlobalTSTypeRef::Default();
+    propTypeGT = TSObjectType::GetPropTypeGT(mutableFieldsType, propName);
+
+    TaggedArray* extendsArray = TaggedArray::Cast(mutableInterfaceType->GetExtends().GetTaggedObject());
+    uint32_t extendsLength = extendsArray->GetLength();
+
+    for (uint32_t index = 0; index < extendsLength; index++) {
+        if (!propTypeGT.IsDefault()) {
+            return propTypeGT;
+        }
+
+        JSTaggedValue extendsValue = extendsArray->Get(index);
+        ASSERT(extendsValue.IsInt());
+        uint32_t gtRawData = extendsValue.GetInt();
+        GlobalTSTypeRef extendsGT = GlobalTSTypeRef(gtRawData);
+        JSHandle<JSTaggedValue> extendsType = tsManager->GetTSType(extendsGT);
+
+        ASSERT(extendsType->IsTSType());
+
+        if (extendsType->IsTSClassType()) {
+            JSHandle<TSClassType> innerClassType(extendsType);
+            propTypeGT = TSClassType::GetNonStaticPropTypeGT(thread, innerClassType, propName);
+        } else if (extendsType->IsTSInterfaceType()) {
+            JSHandle<TSInterfaceType> extendsInterfaceType(extendsType);
+            propTypeGT = TSInterfaceType::GetPropTypeGT(thread, extendsInterfaceType, propName);
+        }
+    }
+
+    return propTypeGT;
 }
 } // namespace panda::ecmascript

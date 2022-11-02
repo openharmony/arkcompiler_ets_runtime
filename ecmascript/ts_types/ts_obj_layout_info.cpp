@@ -16,13 +16,14 @@
 #include "ecmascript/mem/assert_scope.h"
 
 namespace panda::ecmascript {
-void TSObjLayoutInfo::SetKey(const JSThread *thread, [[maybe_unused]] int index, const JSTaggedValue &key,
-                             const JSTaggedValue &typeIdVal)
+void TSObjLayoutInfo::SetKeyAndType(const JSThread *thread, [[maybe_unused]] int index,
+    const JSTaggedValue &key, const JSTaggedValue &typeIdVal)
 {
     DISALLOW_GARBAGE_COLLECTION;
     int number = static_cast<int>(NumberOfElements());
     ASSERT(number == index);
     SetNumberOfElements(thread, number + 1);
-    SetPropertyInit(thread, number, key, typeIdVal);
+    SetKey(thread, number, key);
+    SetTypeId(thread, number, typeIdVal);
 }
 }  // namespace panda::ecmascript

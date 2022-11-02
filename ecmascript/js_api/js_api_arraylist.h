@@ -55,9 +55,9 @@ public:
     static JSTaggedValue ReplaceAllElements(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
                                             const JSHandle<JSTaggedValue> &callbackFn,
                                             const JSHandle<JSTaggedValue> &thisArg);
-    static JSHandle<JSAPIArrayList> SubArrayList(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
-                                                 const JSHandle<JSTaggedValue> &value1,
-                                                 const JSHandle<JSTaggedValue> &value2);
+    static JSTaggedValue SubArrayList(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
+                                      const JSHandle<JSTaggedValue> &value1,
+                                      const JSHandle<JSTaggedValue> &value2);
     static JSTaggedValue ForEach(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
                                  const JSHandle<JSTaggedValue> &callbackFn,
                                  const JSHandle<JSTaggedValue> &thisArg);

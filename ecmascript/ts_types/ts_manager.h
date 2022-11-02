@@ -118,6 +118,8 @@ public:
 
     void LinkInRange(JSHandle<TSModuleTable> moduleTable, int start, int end);
 
+    void FillInterfaceMethodName(JSMutableHandle<JSTaggedValue> type);
+
     void Dump();
 
     void Iterate(const RootVisitor &v);
