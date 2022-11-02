@@ -1626,16 +1626,6 @@ GateRef TypeLowering::IntToTaggedIntPtr(GateRef x)
     return builder_.ToTaggedIntPtr(val);
 }
 
-GateRef TypeLowering::DoubleIsINF(GateRef x)
-{
-    GateRef infinity = builder_.Double(base::POSITIVE_INFINITY);
-    GateRef negativeInfinity = builder_.Double(-base::POSITIVE_INFINITY);
-    GateRef isInfinity = builder_.Equal(x, infinity);
-    GateRef isNegativeInfinity = builder_.Equal(x, negativeInfinity);
-    return builder_.BoolOr(builder_.Equal(builder_.SExtInt1ToInt32(isInfinity), builder_.Int32(1)),
-                           builder_.Equal(builder_.SExtInt1ToInt32(isNegativeInfinity), builder_.Int32(1)));
-}
-
 GateRef TypeLowering::Less(GateRef left, GateRef right)
 {
     auto env = builder_.GetCurrentEnvironment();
@@ -2036,7 +2026,8 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
                 Label leftNotNan(&builder_);
                 builder_.Branch(builder_.DoubleIsNAN(*doubleLeft), &rightIsZeroOrNanOrLeftIsNanOrInf, &leftNotNan);
                 builder_.Bind(&leftNotNan);
-                builder_.Branch(DoubleIsINF(*doubleLeft), &rightIsZeroOrNanOrLeftIsNanOrInf,
+                builder_.Branch(builder_.DoubleIsINF(*doubleLeft),
+                                &rightIsZeroOrNanOrLeftIsNanOrInf,
                                 &rightNotZeroAndNanAndLeftNotNanAndInf);
             }
         }
@@ -2054,7 +2045,7 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
             builder_.Bind(&leftNotZero);
             {
                 Label rightNotInf(&builder_);
-                builder_.Branch(DoubleIsINF(*doubleRight), &leftIsZeroOrRightIsInf, &rightNotInf);
+                builder_.Branch(builder_.DoubleIsINF(*doubleRight), &leftIsZeroOrRightIsInf, &rightNotInf);
                 builder_.Bind(&rightNotInf);
                 {
                     ArgumentAccessor argAcc(circuit_);

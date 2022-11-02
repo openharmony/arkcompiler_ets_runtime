@@ -30,6 +30,7 @@ bool FilePathHelper::RealPath(const std::string &path, std::string &realPath, [[
     realPath = "";
     if (path.empty() || path.size() > PATH_MAX) {
         LOG_ECMA(WARN) << "File path is illeage";
+        return false;
     }
     char buffer[PATH_MAX] = { '\0' };
 #ifndef PANDA_TARGET_WINDOWS

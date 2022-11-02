@@ -39,10 +39,13 @@ enum class ElfSecName : uint8_t {
     SIZE
 };
 
-enum ElfSecFeature {
+enum ElfSecFeature : uint8_t {
     NOT_VALID,
     VALID_NOT_SEQUENTIAL = 1,
-    VALID_AND_SEQUENTIAL = 1 << 1 | 1,
+    VALID_AND_SEQUENTIAL = (1 << 1) | 1,
+
+    VALID_MASK = 0x1,
+    SEQUENTIAL_MASK = 0x2
 };
 
 class PUBLIC_API ElfSection {
@@ -89,13 +92,13 @@ public:
     bool isValidAOTSec() const
     {
         auto idx = static_cast<size_t>(value_);
-        return static_cast<uint8_t>(AOTSecFeatureTable_[idx]) & 0b1;
+        return static_cast<uint8_t>(AOTSecFeatureTable_[idx]) & ElfSecFeature::VALID_MASK;
     }
 
     bool isSequentialAOTSec() const
     {
         auto idx = static_cast<size_t>(value_);
-        return static_cast<uint8_t>(AOTSecFeatureTable_[idx]) & 0b10;
+        return static_cast<uint8_t>(AOTSecFeatureTable_[idx]) & ElfSecFeature::SEQUENTIAL_MASK;
     }
 
     ElfSecName GetElfEnumValue() const

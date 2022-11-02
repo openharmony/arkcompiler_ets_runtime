@@ -20,13 +20,12 @@
 #include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
-using DominatorTreeInfo = std::tuple<std::vector<GateRef>, std::unordered_map<GateRef, size_t>,
-    std::vector<size_t>>;
-DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
+void Scheduler::CalculateDominatorTree(const Circuit *circuit,
+                                       std::vector<GateRef>& bbGatesList,
+                                       std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                       std::vector<size_t> &immDom)
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
-    std::vector<GateRef> bbGatesList;
-    std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::unordered_map<GateRef, size_t> dfsTimestamp;
     std::unordered_map<GateRef, size_t> dfsFatherIdx;
     circuit->AdvanceTime();
@@ -57,7 +56,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
             bbGatesAddrToIdx[bbGatesList[idx]] = idx;
         }
     }
-    std::vector<size_t> immDom(bbGatesList.size());
+    immDom.resize(bbGatesList.size());
     std::vector<size_t> semiDom(bbGatesList.size());
     std::vector<std::vector<size_t> > semiDomTree(bbGatesList.size());
     {
@@ -65,10 +64,13 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         std::iota(parent.begin(), parent.end(), 0);
         std::vector<size_t> minIdx(bbGatesList.size());
         std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
-            if (parent[idx] == idx) return idx;
-            size_t unionFindSetRoot = unionFind(parent[idx]);
-            if (semiDom[minIdx[idx]] > semiDom[minIdx[parent[idx]]]) {
-                minIdx[idx] = minIdx[parent[idx]];
+            size_t pIdx = parent[idx];
+            if (pIdx == idx) {
+                return idx;
+            }
+            size_t unionFindSetRoot = unionFind(pIdx);
+            if (semiDom[minIdx[idx]] > semiDom[minIdx[pIdx]]) {
+                minIdx[idx] = minIdx[pIdx];
             }
             return parent[idx] = unionFindSetRoot;
         };
@@ -84,11 +86,12 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
             acc.GetInStateVector(bbGatesList[idx], preGates);
             for (const auto &predGate : preGates) {
                 if (bbGatesAddrToIdx.count(predGate) > 0) {
-                    if (bbGatesAddrToIdx[predGate] < idx) {
-                        semiDom[idx] = std::min(semiDom[idx], bbGatesAddrToIdx[predGate]);
+                    size_t preGateIdx = bbGatesAddrToIdx[predGate];
+                    if (preGateIdx < idx) {
+                        semiDom[idx] = std::min(semiDom[idx], preGateIdx);
                     } else {
-                        unionFind(bbGatesAddrToIdx[predGate]);
-                        semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[bbGatesAddrToIdx[predGate]]]);
+                        unionFind(preGateIdx);
+                        semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[preGateIdx]]);
                     }
                 }
             }
@@ -111,7 +114,6 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         }
         semiDom[0] = 0;
     }
-    return {bbGatesList, bbGatesAddrToIdx, immDom};
 }
 
 std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
@@ -127,7 +129,7 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
-    std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit);
+    Scheduler::CalculateDominatorTree(circuit, bbGatesList, bbGatesAddrToIdx, immDom);
     std::vector<std::vector<GateRef>> result(bbGatesList.size());
     for (size_t idx = 0; idx < bbGatesList.size(); idx++) {
         result[idx].push_back(bbGatesList[idx]);
@@ -439,7 +441,7 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
-    std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit);
+    Scheduler::CalculateDominatorTree(circuit, bbGatesList, bbGatesAddrToIdx, immDom);
     LOG_COMPILER(INFO) << "==================================== Scheduling ==================================";
     for (size_t bbIdx = 0; bbIdx < cfg->size(); bbIdx++) {
         LOG_COMPILER(INFO) << "B" << bbIdx << "_" << acc.GetOpCode((*cfg)[bbIdx].front()).Str() << ":"

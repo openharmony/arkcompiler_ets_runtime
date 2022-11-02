@@ -48,7 +48,7 @@ void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
     __ Ret();
 
     __ Bind(&target);
-    JSCallDispatch(assembler);
+    AsmInterpEntryDispatch(assembler);
 }
 
 // Generate code for generator re-enter asm interpreter
@@ -120,7 +120,7 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
 //        argc           - %r8
 //        argv           - %r9(<callTarget, newTarget, this> are at the beginning of argv)
 //        prevSp         - %rbp
-void AsmInterpreterCall::JSCallDispatch(ExtendedAssembler *assembler)
+void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
 {
     Label notJSFunction;
     Label callNativeEntry;

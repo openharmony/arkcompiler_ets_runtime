@@ -43,8 +43,6 @@
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 
 namespace panda::ecmascript {
-static constexpr size_t FIXED_NUM_ARGS = 3;
-
 JSTaggedValue RuntimeStubs::RuntimeInc(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSTaggedValue> inputVal = JSTaggedValue::ToNumeric(thread, value);
@@ -2078,11 +2076,11 @@ JSTaggedValue RuntimeStubs::RuntimeNewLexicalEnvWithName(JSThread *thread, uint1
 JSTaggedValue RuntimeStubs::RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t actualNumArgs)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> argumentsList = factory->NewTaggedArray(actualNumArgs - FIXED_NUM_ARGS);
+    JSHandle<TaggedArray> argumentsList = factory->NewTaggedArray(actualNumArgs - NUM_MANDATORY_JSFUNC_ARGS);
 
     auto argv = GetActualArgv(thread);
     int idx = 0;
-    for (uint32_t i = FIXED_NUM_ARGS; i < actualNumArgs; ++i) {
+    for (uint32_t i = NUM_MANDATORY_JSFUNC_ARGS; i < actualNumArgs; ++i) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         JSTaggedType arg = reinterpret_cast<JSTaggedType *>(argv)[i];
         JSTaggedValue args = JSTaggedValue(arg);
@@ -2161,8 +2159,8 @@ JSTaggedValue RuntimeStubs::RuntimeOptCopyRestArgs(JSThread *thread, uint32_t ac
 {
     // when only have three fixed args, restIndex in bytecode maybe not zero, but it actually should be zero.
     uint32_t actualRestNum = 0;
-    if (actualArgc > FIXED_NUM_ARGS) {
-        actualRestNum = actualArgc - FIXED_NUM_ARGS - restIndex;
+    if (actualArgc > NUM_MANDATORY_JSFUNC_ARGS) {
+        actualRestNum = actualArgc - NUM_MANDATORY_JSFUNC_ARGS - restIndex;
     }
     JSHandle<JSTaggedValue> restArray = JSArray::ArrayCreate(thread, JSTaggedNumber(actualRestNum));
 
@@ -2170,7 +2168,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptCopyRestArgs(JSThread *thread, uint32_t ac
     int idx = 0;
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
 
-    for (uint32_t i = FIXED_NUM_ARGS + restIndex; i < actualArgc; ++i) {
+    for (uint32_t i = NUM_MANDATORY_JSFUNC_ARGS + restIndex; i < actualArgc; ++i) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         JSTaggedType arg = reinterpret_cast<JSTaggedType *>(argv)[i];
         element.Update(JSTaggedValue(arg));
@@ -2363,7 +2361,9 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
         for (uint32_t i = 0; i < size; ++i) {
             argv[idx++] = values[i];
         }
-        resultValue = thread->GetEcmaVM()->AotReentry(size, argv.data(), true);
+        const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+        resultValue =
+            thread->GetEcmaVM()->ExecuteAot(size, argv.data(), prevFp, OptimizedEntryFrame::CallType::CALL_NEW);
     } else {
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);

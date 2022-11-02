@@ -101,6 +101,9 @@ private:
     void FillPropertyTypes(JSHandle<TSObjLayoutInfo> &layOut, const JSHandle<TaggedArray> &literal,
                            uint32_t startIndex, uint32_t lastIndex, uint32_t &index, bool isField);
 
+    void FillPropertyTypesWithoutMethodName(JSHandle<TSObjLayoutInfo> &layOut,
+        const JSHandle<TaggedArray> &literal, uint32_t startIndex, uint32_t lastIndex, uint32_t &index);
+
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};

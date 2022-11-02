@@ -28,6 +28,7 @@ enum class MTableIdx : uint8_t {
     INFERRED_UNTION,
     NUM_OF_DEFAULT_TABLES,
 };
+
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -116,6 +117,8 @@ public:
     void LinkTSTypeTable(JSHandle<TSTypeTable> table);
 
     void LinkInRange(JSHandle<TSModuleTable> moduleTable, int start, int end);
+
+    void FillInterfaceMethodName(JSMutableHandle<JSTaggedValue> type);
 
     void Dump();
 
