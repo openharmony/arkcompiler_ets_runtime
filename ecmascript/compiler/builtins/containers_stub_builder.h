@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STUB_BUILDER_H
 #include "ecmascript/compiler/builtins/containers_deque_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_lightweightmap_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_lightweightset_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_plainarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_queue_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stack_stub_builder.h"
@@ -32,6 +34,8 @@ enum class ContainersType : uint8_t {
     PLAINARRAY_FOREACH,
     QUEUE_FOREACH,
     DEQUE_FOREACH,
+    LIGHTWEIGHTMAP_FOREACH,
+    LIGHTWEIGHTSET_FOREACH,
 };
 
 class ContainersStubBuilder : public BuiltinsStubBuilder {
@@ -52,6 +56,9 @@ public:
     void DequeCommonFuncCall(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* result, Label *exit, Label *slowPath, ContainersType type);
 
+    void ContainersLightWeightCall(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable* result, Label *exit, Label *slowPath, ContainersType type);
+
     GateRef IsContainer(GateRef obj, ContainersType type)
     {
         switch (type) {
@@ -66,6 +73,10 @@ public:
                 return IsJSAPIQueue(obj);
             case ContainersType::DEQUE_FOREACH:
                 return IsJSAPIDeque(obj);
+            case ContainersType::LIGHTWEIGHTMAP_FOREACH:
+                return IsJSAPILightWeightMap(obj);
+            case ContainersType::LIGHTWEIGHTSET_FOREACH:
+                return IsJSAPILightWeightSet(obj);
             default:
                 UNREACHABLE();
         }
@@ -142,6 +153,14 @@ public:
                 ContainersDequeStubBuilder dequeBuilder(this);
                 return dequeBuilder.GetSize(obj);
             }
+            case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
+                ContainersLightWeightMapStubBuilder lightWeightMapBuilder(this);
+                return lightWeightMapBuilder.GetSize(obj);
+            }
+            case ContainersType::LIGHTWEIGHTSET_FOREACH: {
+                ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
+                return lightWeightSetBuilder.GetSize(obj);
+            }
             default:
                 UNREACHABLE();
         }
@@ -172,11 +191,37 @@ public:
                 ContainersDequeStubBuilder dequeBuilder(this);
                 return dequeBuilder.Get(obj, index);
             }
+            case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
+                ContainersLightWeightMapStubBuilder lightWeightMapBuilder(this);
+                return lightWeightMapBuilder.GetValue(obj, index);
+            }
+            case ContainersType::LIGHTWEIGHTSET_FOREACH: {
+                ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
+                return lightWeightSetBuilder.GetValue(obj, index);
+            }
             default:
                 UNREACHABLE();
         }
         return False();
     }
+
+    GateRef ContainerGetKey(GateRef obj, GateRef index, ContainersType type)
+    {
+        switch (type) {
+            case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
+                ContainersLightWeightMapStubBuilder lightWeightMapBuilder(this);
+                return lightWeightMapBuilder.GetKey(obj, index);
+            }
+            case ContainersType::LIGHTWEIGHTSET_FOREACH: {
+                ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
+                return lightWeightSetBuilder.GetKey(obj, index);
+            }
+            default:
+                UNREACHABLE();
+        }
+        return False();
+    }
+
     GateRef PlainArrayGetKey(GateRef obj, GateRef index)
     {
         ContainersPlainArrayStubBuilder plainArrayBuilder(this);

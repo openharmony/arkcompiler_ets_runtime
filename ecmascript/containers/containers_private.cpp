@@ -381,7 +381,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
     SetFrozenFunction(thread, funcPrototype, "removeAt", ContainersLightWeightMap::RemoveAt, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "clear", ContainersLightWeightMap::Clear, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "setValueAt", ContainersLightWeightMap::SetValueAt, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightMap::ForEach, FuncLength::ONE);
+    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightMap::ForEach, FuncLength::ONE,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(LightWeightMapForEach)));
     SetFrozenFunction(thread, funcPrototype, "toString", ContainersLightWeightMap::ToString, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "getValueAt", ContainersLightWeightMap::GetValueAt, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "values", ContainersLightWeightMap::Values, FuncLength::ONE);
@@ -441,7 +442,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
     SetFrozenFunction(thread, funcPrototype, "equal", ContainersLightWeightSet::Equal, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "increaseCapacityTo",
                       ContainersLightWeightSet::IncreaseCapacityTo, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightSet::ForEach, FuncLength::ONE);
+    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightSet::ForEach, FuncLength::ONE,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(LightWeightSetForEach)));
     SetFrozenFunction(thread, funcPrototype, "getIndexOf", ContainersLightWeightSet::GetIndexOf, FuncLength::ONE);
     SetFrozenFunction(thread, funcPrototype, "remove", ContainersLightWeightSet::Remove, FuncLength::ZERO);
     SetFrozenFunction(thread, funcPrototype, "removeAt", ContainersLightWeightSet::RemoveAt, FuncLength::ZERO);
