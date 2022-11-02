@@ -45,6 +45,7 @@ public:
     void SetUp() override
     {
         TestHelper::CreateEcmaVMWithScope(ecmaVm, thread, scope);
+        JSNApi::SetBundle(ecmaVm, false);
         ecmaVm->GetJsDebuggerManager()->SetDebuggerHandler(new ProtocolHandler());
     }
 
@@ -61,14 +62,14 @@ public:
 
 HWTEST_F_L0(HotReloadManagerTest, LoadAndUnload)
 {
-    std::string baseFileName = DEBUGGER_ABC_DIR "base.abc";
-    std::string patchFileName = DEBUGGER_ABC_DIR "patch.abc";
-    std::string sourceFile = DEBUGGER_JS_DIR "patch.js";
+    std::string baseFileName = DEBUGGER_ABC_DIR "single_file/base/index.abc";
+    std::string patchFileName = DEBUGGER_ABC_DIR "single_file/patch/index.abc";
+    std::string sourceFile = DEBUGGER_JS_DIR "patch/index.js";
 
     const auto *hotReloadManager = ecmaVm->GetJsDebuggerManager()->GetHotReloadManager();
     JSNApi::EnableUserUncaughtErrorHandler(ecmaVm);
 
-    bool result = JSNApi::Execute(ecmaVm, baseFileName, JSPandaFile::ENTRY_FUNCTION_NAME);
+    bool result = JSNApi::Execute(ecmaVm, baseFileName, "index");
     EXPECT_TRUE(result);
 
     auto baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName.c_str());

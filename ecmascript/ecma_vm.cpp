@@ -410,45 +410,29 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
                                               const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile, entryPoint);
-    size_t argsNum = 7; // 7: number of para
-    size_t declareNumArgs = argsNum - 1;
-    size_t actualNumArgs = argsNum - 1;
+    Method *method = mainFunc->GetCallTarget();
+    size_t actualNumArgs = method->GetNumArgs();
+    size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
     std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
     args[0] = mainFunc.GetTaggedValue().GetRawData();
     args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
     const JSTaggedType *prevFp = thread_->GetCurrentSPFrame();
-    JSTaggedValue res = ExecuteAot(argsNum, mainFunc, prevFp, actualNumArgs, declareNumArgs, args);
-    return res;
-}
-
-JSTaggedValue EcmaVM::ExecuteAot(size_t argsNum, JSHandle<JSFunction> &callTarget, const JSTaggedType *prevFp,
-                                 size_t actualNumArgs, size_t declareNumArgs, std::vector<JSTaggedType> &args)
-{
-    auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    JSTaggedValue env = callTarget->GetLexicalEnv();
-    Method *method = callTarget->GetCallTarget();
-    args[argsNum - 1] = env.GetRawData();
-    auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
-                                                            reinterpret_cast<uintptr_t>(prevFp),
-                                                            declareNumArgs,
-                                                            actualNumArgs,
-                                                            args.data(),
-                                                            method->GetCodeEntryOrLiteral());
+    JSTaggedValue res = ExecuteAot(actualNumArgs, args.data(), prevFp, OptimizedEntryFrame::CallType::CALL_FUNC);
     if (thread_->HasPendingException()) {
         return thread_->GetException();
     }
-    return JSTaggedValue(res);
+    return res;
 }
 
-JSTaggedValue EcmaVM::AotReentry(size_t actualNumArgs, JSTaggedType *args, bool isNew)
+JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
+                                 OptimizedEntryFrame::CallType callType)
 {
-    const JSTaggedType *prevFp = thread_->GetLastLeaveFrame();
-    auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionReentry);
-    auto res = reinterpret_cast<JSFunctionReentry>(entry)(thread_->GetGlueAddr(),
-                                                          actualNumArgs,
-                                                          args,
-                                                          reinterpret_cast<uintptr_t>(prevFp),
-                                                          isNew);
+    auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
+    auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
+                                                            actualNumArgs,
+                                                            args,
+                                                            reinterpret_cast<uintptr_t>(prevFp),
+                                                            static_cast<size_t>(callType));
     return res;
 }
 

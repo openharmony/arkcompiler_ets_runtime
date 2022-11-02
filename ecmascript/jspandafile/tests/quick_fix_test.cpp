@@ -61,6 +61,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_SingleFile)
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
 
+    JSNApi::SetBundle(instance, false);
+
     bool result = JSNApi::Execute(instance, baseFileName, "index");
     EXPECT_TRUE(result);
 
@@ -81,6 +83,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
     std::string patchFileName = QUICKFIX_ABC_PATH "multi_file/patch/index.abc";
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    JSNApi::SetBundle(instance, false);
 
     bool result = JSNApi::Execute(instance, baseFileName, "index");
     EXPECT_TRUE(result);

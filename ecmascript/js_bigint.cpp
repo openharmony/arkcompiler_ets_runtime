@@ -1294,7 +1294,7 @@ JSHandle<BigInt> BigInt::DivideAndRemainderWithBigintDivisor(JSThread *thread, J
     // qv is used to store the result of quotient * divisor of each round
     JSHandle<BigInt> qv = CreateBigint(thread, divisorLen + 1);
     uint32_t vHighest = v->GetDigit(divisorLen - 1);
-    for (int i = quotientLen; i >= 0; --i) {
+    for (int i = static_cast<int>(quotientLen); i >= 0; --i) {
         uint32_t currentUHighest = u->GetDigit(i + divisorLen);
         uint32_t r = 0;
         uint32_t q = DivideAndRemainder(currentUHighest, u->GetDigit(i + divisorLen - 1), vHighest, r);
@@ -1335,13 +1335,13 @@ JSHandle<BigInt> BigInt::DivideAndRemainderWithUint32Divisor(JSThread *thread, J
     uint32_t r = 0;
     JSMutableHandle<BigInt> quotient(thread, JSTaggedValue::Null());
     if (!remainder.GetTaggedValue().IsNull()) {
-        for (int i = dividend->GetLength() - 1; i >= 0; --i) {
+        for (int i = static_cast<int>(dividend->GetLength()) - 1; i >= 0; --i) {
             DivideAndRemainder(r, dividend->GetDigit(i), divisor, r);
             remainder.Update(Uint32ToBigInt(thread, r));
         }
     } else {
         quotient.Update(CreateBigint(thread, dividend->GetLength()));
-        for (int i = dividend->GetLength() - 1; i >= 0; --i) {
+        for (int i = static_cast<int>(dividend->GetLength()) - 1; i >= 0; --i) {
             uint32_t q = DivideAndRemainder(r, dividend->GetDigit(i), divisor, r);
             quotient->SetDigit(i, q);
         }
@@ -1494,14 +1494,14 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
     uint32_t bigintLen = bigint->GetLength();
     uint32_t BigintHead = bigint->GetDigit(bigintLen - 1);
     uint32_t leadingZeros = base::CountLeadingZeros(BigintHead);
-    int bigintBitLen = static_cast<int>(bigintLen * BigInt::DATEBITS) - leadingZeros;
+    int bigintBitLen = static_cast<int>(bigintLen * BigInt::DATEBITS - leadingZeros);
     // if Significant bits greater than 1024 then double is infinity
     bool bigintSign = bigint->GetSign();
     if (bigintBitLen > (base::DOUBLE_EXPONENT_BIAS + 1)) {
         return JSTaggedNumber(bigintSign ? -base::POSITIVE_INFINITY : base::POSITIVE_INFINITY);
     }
     uint64_t sign = bigintSign ? 1ULL << 63 : 0; // 63 : Set the sign bit of sign to 1
-    int needMoveBit = leadingZeros + BigInt::DATEBITS + 1;
+    int needMoveBit = static_cast<int>(leadingZeros + BigInt::DATEBITS + 1);
     // Align to the most significant bit, then right shift 12 bits so that the head of the mantissa is in place
     uint64_t mantissa = (static_cast<uint64_t>(BigintHead) << needMoveBit) >> 12; // 12 mantissa just has 52 bits
     int remainMantissaBits = needMoveBit - 12;
