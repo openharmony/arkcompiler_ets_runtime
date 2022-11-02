@@ -110,6 +110,36 @@ protected:
         JSHandle<JSAPIPlainArray> plain(thread, result);
         return plain;
     }
+
+    JSTaggedValue PlainArrayAdd(JSHandle<JSAPIPlainArray> plainArray, JSTaggedValue index, JSTaggedValue value)
+    {
+        auto callInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 4 means the value
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(plainArray.GetTaggedValue());
+        callInfo->SetCallArg(0, index);
+        callInfo->SetCallArg(1, value);
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersPlainArray::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
+
+    JSTaggedValue PlainArrayRemoveRangeFrom(JSHandle<JSAPIPlainArray> plainArray, JSTaggedValue index, JSTaggedValue size)
+    {
+        auto callInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 6 means the value
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(plainArray.GetTaggedValue());
+        callInfo->SetCallArg(0, index);
+        callInfo->SetCallArg(1, size);
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersPlainArray::RemoveRangeFrom(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
 };
 
 HWTEST_F_L0(ContainersPlainArrayTest, PlainArrayConstructor)
@@ -372,6 +402,55 @@ HWTEST_F_L0(ContainersPlainArrayTest, GetIndexOfKeyAndGetIndexOfValue)
         JSTaggedValue result = ContainersPlainArray::GetIndexOfValue(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue(11));
+    }
+}
+
+HWTEST_F_L0(ContainersPlainArrayTest, RemoveRangeFrom)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPIPlainArray> pArray = CreateJSAPIPlainArray();
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        JSTaggedValue result = PlainArrayAdd(pArray, JSTaggedValue(i), JSTaggedValue(i + 1));
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(pArray->GetSize(), static_cast<int>(i + 1));
+    }
+
+    // remove success
+    {
+        JSTaggedValue result = PlainArrayRemoveRangeFrom(pArray, JSTaggedValue(2), JSTaggedValue(2));
+        EXPECT_EQ(result, JSTaggedValue(2));
+        EXPECT_EQ(pArray->GetSize(), static_cast<int>(NODE_NUMBERS - 2));
+        for (uint32_t i = 0; i < NODE_NUMBERS - 2; i++) {
+            if (i < 2) {
+                EXPECT_EQ(pArray->Get(JSTaggedValue(i)), JSTaggedValue(i + 1));
+            } else {
+                EXPECT_EQ(pArray->Get(JSTaggedValue(i + 2)), JSTaggedValue(i + 3));
+            }
+        }
+    }
+
+    // input index type error
+    {
+        JSTaggedValue result = PlainArrayRemoveRangeFrom(pArray, JSTaggedValue::Undefined(), JSTaggedValue(2));
+        EXPECT_TRUE(thread->HasPendingException());
+        EXPECT_EQ(result, JSTaggedValue::Exception());
+        thread->ClearException();
+    }
+
+    // input size type error
+    {
+        JSTaggedValue result = PlainArrayRemoveRangeFrom(pArray, JSTaggedValue(2), JSTaggedValue::Undefined());
+        EXPECT_TRUE(thread->HasPendingException());
+        EXPECT_EQ(result, JSTaggedValue::Exception());
+        thread->ClearException();
+    }
+
+    // input index out of range
+    {
+        JSTaggedValue result = PlainArrayRemoveRangeFrom(pArray, JSTaggedValue(NODE_NUMBERS + 1), JSTaggedValue(2));
+        EXPECT_TRUE(thread->HasPendingException());
+        EXPECT_EQ(result, JSTaggedValue::Exception());
+        thread->ClearException();
     }
 }
 }
