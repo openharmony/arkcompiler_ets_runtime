@@ -411,7 +411,6 @@ inline bool JSTaggedValue::StrictEqual([[maybe_unused]] const JSThread *thread, 
 
 inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedValue &y)
 {
-
     if (x.IsInt() && y.IsInt()) {
         return StrictIntEquals(x.GetInt(), y.GetInt());
     }
