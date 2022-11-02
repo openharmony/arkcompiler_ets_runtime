@@ -24,6 +24,7 @@ group("fuzztest") {
     "biguint64arrayrefnew_fuzzer:fuzztest",
     "booleanrefnewbool_fuzzer:fuzztest",
     "buildnativeandJsstacktrace_fuzzer:fuzztest",
+    "containersplainarray_fuzzer:fuzztest",
     "containersprivatearraylist_fuzzer:fuzztest",
     "containersprivatedeque_fuzzer:fuzztest",
     "containersprivatehashmap_fuzzer:fuzztest",
