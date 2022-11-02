@@ -18,6 +18,7 @@ group("fuzztest") {
   deps += [
     "arraybufferrefnew_fuzzer:fuzztest",
     "arraybufferrefnewwithtwoparameters_fuzzer:fuzztest",
+    "arraylist_fuzzer:fuzztest",
     "bigint64arrayrefnew_fuzzer:fuzztest",
     "biginttoint64_fuzzer:fuzztest",
     "biginttouint64_fuzzer:fuzztest",
