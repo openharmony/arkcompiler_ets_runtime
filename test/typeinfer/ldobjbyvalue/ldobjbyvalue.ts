@@ -20,6 +20,9 @@ declare function AssertType(value:any, type:string):void;
         constructor(v1:number) {
             this.v1 = v1;
         }
+        5() : number {
+            return this.v1;
+        }
     }
 
     let arr1:string[] = ["a", "b", "c"];
@@ -29,8 +32,14 @@ declare function AssertType(value:any, type:string):void;
     let a2 = new A(1);
     let arr4:A[] = [a1, a2];
     let t = 1;
+    let name = "v1";
+    let value = 5;
+    let a3 = a1[name];
+    let a4 = a2[value]();
     AssertType(arr1[t], "string");
     AssertType(arr2[t], "number");
     AssertType(arr3[t], "boolean");
     AssertType(arr4[t], "class_instance");
+    AssertType(a3, "number");
+    AssertType(a4, "number");
 }

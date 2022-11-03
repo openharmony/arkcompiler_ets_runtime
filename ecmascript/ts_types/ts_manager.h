@@ -29,6 +29,12 @@ enum class MTableIdx : uint8_t {
     NUM_OF_DEFAULT_TABLES,
 };
 
+enum class PropertyType : uint8_t {
+    NORMAL = 0,
+    STATIC,
+    OTHERS,
+};
+
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -201,6 +207,23 @@ public:
         GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetGTRef());
         return GetIteratorInstanceElementGt(gt);
     }
+
+    bool PUBLIC_API IsStaticFunc(GlobalTSTypeRef gt) const;
+    
+    GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                JSHandle<EcmaString> propertyName,
+                                                PropertyType propType) const;
+    
+    inline GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                       JSTaggedValue propertyName,
+                                                       PropertyType propType) const
+    {
+        return GetSuperPropType(gt, JSHandle<EcmaString>(vm_->GetJSThread(), propertyName), propType);
+    }
+
+    GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                const uint64_t key,
+                                                PropertyType propType) const;
 
     GlobalTSTypeRef PUBLIC_API GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const;
 

@@ -24,6 +24,13 @@
 #include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
+enum class TypedArgIdx : uint8_t {
+    FUNC = 0,
+    NEW_TARGET,
+    THIS_OBJECT,
+    NUM_OF_TYPED_ARGS,
+};
+
 class TypeRecorder {
 public:
     explicit TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager);
@@ -39,8 +46,7 @@ private:
 
     void LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager);
 
-    void LoadArgTypes(const TSManager *tsManager, const MethodLiteral *methodLiteral,
-                      GlobalTSTypeRef funcGT, GlobalTSTypeRef thisGT);
+    void LoadArgTypes(const TSManager *tsManager, GlobalTSTypeRef funcGT, GlobalTSTypeRef thisGT);
 
     // This function tries to get the type of 'this'. In success, the type of the class is returned if the function is
     // a static member, or the type of instances of the class is returned. Otherwise the type 'any' is returned.
