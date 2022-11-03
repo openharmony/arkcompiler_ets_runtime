@@ -13,7 +13,6 @@
 
 container test start
 Test ArrayList success!!!
-BusinessError
 Test Deque success!!!
 Test HashMap success!!!
 Test HashSet success!!!
@@ -22,11 +21,6 @@ Test LightWeightSet success!!!
 Test LinkedList success!!!
 Test List success!!!
 Test PlainArray success!!!
-5
-6
-7
-8
-9
 Test Queue success!!!
 Test Stack success!!!
 Test TreeMap success!!!
