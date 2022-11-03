@@ -22,7 +22,8 @@ import("//build/test.gni")
 ohos_fuzztest("ContainersTreeMapGetFuzzTest") {
   module_out_path = "arkcompiler/ets_runtime"
 
-  fuzz_config_file = "//arkcompiler/ets_runtime/test/fuzztest/containerstreemapget_fuzzer"
+  fuzz_config_file =
+      "//arkcompiler/ets_runtime/test/fuzztest/containerstreemapget_fuzzer"
 
   sources = [ "containerstreemapget_fuzzer.cpp" ]
 

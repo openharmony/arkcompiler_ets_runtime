@@ -29,12 +29,12 @@ using namespace panda::ecmascript::containers;
 
 namespace OHOS {
 
-   JSFunction *JSObjectCreate(JSThread *thread)
-   {
-       EcmaVM *ecmaVM = thread->GetEcmaVM();
-       JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
-       return globalEnv->GetObjectFunction().GetObject<JSFunction>();
-   }
+    JSFunction *JSObjectCreate(JSThread *thread)
+    {
+        EcmaVM *ecmaVM = thread->GetEcmaVM();
+        JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
+        return globalEnv->GetObjectFunction().GetObject<JSFunction>();
+    }
 
     EcmaRuntimeCallInfo *CreateEcmaRuntimeCallInfo(JSThread *thread, uint32_t numArgs)
     {
@@ -97,9 +97,9 @@ namespace OHOS {
             UNREACHABLE();
         }
         
-        constexpr int NODE_NUMBERS = 8;
+        constexpr int nodeNumbers = 8;
         JSHandle<JSAPITreeMap> tmap = CreateJSAPITreeMap(thread);
-        for (int i = 0; i < NODE_NUMBERS; i++) {
+        for (int i = 0; i < nodeNumbers; i++) {
             auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
             callInfo->SetFunction(JSTaggedValue::Undefined());
             callInfo->SetThis(tmap.GetTaggedValue());
@@ -110,8 +110,8 @@ namespace OHOS {
             auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, 8);
             objCallInfo->SetFunction(JSTaggedValue::Undefined());
             objCallInfo->SetThis(tmap.GetTaggedValue());
-            objCallInfo->SetCallArg(0, JSTaggedValue(NODE_NUMBERS / 2));
-            objCallInfo->SetCallArg(1, JSTaggedValue(NODE_NUMBERS));
+            objCallInfo->SetCallArg(0, JSTaggedValue(nodeNumbers / 2)); // 2 : half of nodeNumbers
+            objCallInfo->SetCallArg(1, JSTaggedValue(nodeNumbers));
             ContainersTreeMap::Replace(callInfo);
         }
         JSNApi::DestroyJSVM(vm);

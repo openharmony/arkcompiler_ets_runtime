@@ -30,12 +30,12 @@ using namespace panda::ecmascript::containers;
 
 namespace OHOS {
 
-   JSFunction *JSObjectCreate(JSThread *thread)
-   {
-       EcmaVM *ecmaVM = thread->GetEcmaVM();
-       JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
-       return globalEnv->GetObjectFunction().GetObject<JSFunction>();
-   }
+    JSFunction *JSObjectCreate(JSThread *thread)
+    {
+        EcmaVM *ecmaVM = thread->GetEcmaVM();
+        JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
+        return globalEnv->GetObjectFunction().GetObject<JSFunction>();
+    }
 
     EcmaRuntimeCallInfo *CreateEcmaRuntimeCallInfo(JSThread *thread, uint32_t numArgs)
     {

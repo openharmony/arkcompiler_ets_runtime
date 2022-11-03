@@ -29,12 +29,12 @@ using namespace panda::ecmascript::containers;
 
 namespace OHOS {
 
-   JSFunction *JSObjectCreate(JSThread *thread)
-   {
-       EcmaVM *ecmaVM = thread->GetEcmaVM();
-       JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
-       return globalEnv->GetObjectFunction().GetObject<JSFunction>();
-   }
+    JSFunction *JSObjectCreate(JSThread *thread)
+    {
+        EcmaVM *ecmaVM = thread->GetEcmaVM();
+        JSHandle<GlobalEnv> globalEnv = ecmaVM->GetGlobalEnv();
+        return globalEnv->GetObjectFunction().GetObject<JSFunction>();
+    }
 
     EcmaRuntimeCallInfo *CreateEcmaRuntimeCallInfo(JSThread *thread, uint32_t numArgs)
     {
@@ -98,12 +98,6 @@ namespace OHOS {
         }
 
         JSHandle<JSAPITreeMap> tmap = CreateJSAPITreeMap(thread);
-        // auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        // callInfo->SetFunction(JSTaggedValue::Undefined());
-        // callInfo->SetThis(tmap.GetTaggedValue());
-        // callInfo->SetCallArg(0, JSTaggedValue(key));
-        // ContainersTreeMap::Set(callInfo);
-
         auto objcallInfo = CreateEcmaRuntimeCallInfo(thread, 8);
         objcallInfo->SetFunction(JSTaggedValue::Undefined());
         objcallInfo->SetThis(tmap.GetTaggedValue());
