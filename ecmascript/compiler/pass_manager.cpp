@@ -109,7 +109,7 @@ void PassManager::CollectSkippedMethod(BCInfo &bytecodeInfo, const JSPandaFile *
         (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo,
          [[maybe_unused]] size_t methodInfoId) {
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
-        if (FilterMethod(jsPandaFile, recordName, method, methodOffset, methodPCInfo)) {
+        if (FilterMethod(recordName, method, methodPCInfo)) {
             tsManager->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::SKIPPED_METHOD,
                                                  method->GetMethodId().GetOffset());
             return;
@@ -152,14 +152,11 @@ JSHandle<JSTaggedValue> PassManager::ResolveModuleAndConstPool(const JSPandaFile
     return constPool;
 }
 
-bool PassManager::FilterMethod(const JSPandaFile *jsPandaFile, const CString &recordName, MethodLiteral *method,
-    uint32_t methodOffset, MethodPcInfo &methodPCInfo)
+bool PassManager::FilterMethod(const CString &recordName, MethodLiteral *method, MethodPcInfo &methodPCInfo)
 {
-    if (methodOffset != jsPandaFile->GetMainMethodIndex(recordName)) {
-        if (methodPCInfo.methodsSize > maxAotMethodSize_ ||
-            !profilerLoader_.Match(recordName, method->GetMethodId())) {
-            return true;
-        }
+    if (methodPCInfo.methodsSize > maxAotMethodSize_ ||
+        !profilerLoader_.Match(recordName, method->GetMethodId())) {
+        return true;
     }
     return false;
 }
