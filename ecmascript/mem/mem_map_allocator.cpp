@@ -24,7 +24,7 @@
 #include "sys/sysinfo.h"
 #endif
 #ifdef PANDA_TARGET_WINDOWS
-
+static constexpr int INSUFFICIENT_CONTINUOUS_MEM = 1455;
 void *mmap(size_t size, int fd, off_t offset)
 {
     HANDLE handle = ((fd == -1) ? INVALID_HANDLE_VALUE : reinterpret_cast<HANDLE>(_get_osfhandle(fd)));
@@ -33,6 +33,12 @@ void *mmap(size_t size, int fd, off_t offset)
                                      (DWORD) (size & 0xffffffff),
                                      nullptr);
     if (extra == nullptr) {
+        int errCode = GetLastError();
+        if (errCode == INSUFFICIENT_CONTINUOUS_MEM) {
+            LOG_ECMA(ERROR) << "[Engine Log]Failed to request a continuous segment of " << size << " memory."
+                            << "Please clean up other heavy processes or restart the computer.";
+        }
+        LOG_ECMA(ERROR) << "CreateFileMapping fail, the error code is: " << errCode;
         return nullptr;
     }
 
@@ -99,6 +105,8 @@ MemMap MemMapAllocator::PageMap(size_t size, size_t alignment)
 #ifdef PANDA_TARGET_UNIX
     void *result = mmap(0, allocSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 #else
+    size = std::min<size_t>(size, MEDIUM_POOL_SIZE * 2);
+    allocSize = size + alignment;
     void *result = mmap(allocSize, -1, 0);
 #endif
     LOG_ECMA_IF(result == nullptr, FATAL) << "mmap fail";
