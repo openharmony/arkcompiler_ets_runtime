@@ -60,7 +60,7 @@ public:
     NO_MOVE_SEMANTIC(JsonParser);
     JSHandle<JSTaggedValue> Parse(Text begin, Text end)
     {
-        end_ = end - 1;
+        end_ = (end == begin) ? end : end - 1;
         current_ = begin;
 
         auto vm = thread_->GetEcmaVM();
