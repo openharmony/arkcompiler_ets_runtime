@@ -43,7 +43,7 @@ void TSManager::DecodeTSTypes(const JSPandaFile *jsPandaFile)
 
                 // Resolve dependencies among type-tables, e.g. import-chains, extend-chains etc.
                 int end = GetNextModuleId() - 1;
-                LinkInRange(mTable, start, end);
+                LinkInRange(jsPandaFile, mTable, start, end);
             }
         } else {
             LOG_COMPILER(INFO) << "record: " << recordName << " has no ts type info";
@@ -65,8 +65,6 @@ void TSManager::Initialize()
     TSModuleTable::Initialize(thread_, mTable);
     // Initialize module-table with 3 default type-tables
     SetTSModuleTable(mTable);
-    // Resolve import and extend chains among 3 default type-tables
-    Link();
 }
 
 void TSManager::AddTypeTable(JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaString> amiPath)
@@ -89,7 +87,6 @@ void TSManager::InitTypeTables(const JSPandaFile *jsPandaFile, const CString &re
     // Get moduleName(amiPath) and set this type-table to module-table
     JSHandle<EcmaString> amiPath = factory_->NewFromUtf8(jsPandaFile->GetJSPandaFileDesc());
     AddTypeTable(JSHandle<JSTaggedValue>(initTypeTable), amiPath);
-    GenerateStaticHClass(initTypeTable, jsPandaFile);
 
     CString filename = "";
     // management dependency module/file
@@ -117,25 +114,17 @@ void TSManager::InitTypeTables(const JSPandaFile *jsPandaFile, const CString &re
 
         // set this type-table to module-table
         AddTypeTable(JSHandle<JSTaggedValue>(initTypeTable), amiPath);
-        GenerateStaticHClass(initTypeTable, jsPandaFile);
     }
 }
 
-void TSManager::Link()
-{
-    JSHandle<TSModuleTable> moduleTable = GetTSModuleTable();
-    int length = moduleTable->GetNumberOfTSTypeTables();
-
-    LinkInRange(moduleTable, 0, length - 1);
-}
-
-void TSManager::LinkInRange(JSHandle<TSModuleTable> moduleTable, int start, int end)
+void TSManager::LinkInRange(const JSPandaFile *jsPandaFile, JSHandle<TSModuleTable> moduleTable, int start, int end)
 {
     ASSERT(start >= 0 && end < moduleTable->GetNumberOfTSTypeTables());
     for (int i = start; i <= end; i++) {
         // Resolve import chains and extend chains of class-type in each type-table
         JSHandle<TSTypeTable> typeTable = moduleTable->GetTSTypeTable(thread_, i);
         LinkTSTypeTable(typeTable);
+        GenerateStaticHClass(typeTable, jsPandaFile);
     }
 }
 
@@ -1046,6 +1035,7 @@ void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)
         builtinsTable = factory->NewTSTypeTable(0);
     }
     mTable->Set(thread, GetTSTypeTableOffset(BUILTINS_TABLE_ID), builtinsTable);
+    tsManager->LinkTSTypeTable(builtinsTable);
 
     // set infer type table
     JSHandle<EcmaString> inferTableName = factory->NewFromASCII(TSTypeTable::INFER_TABLE_NAME);

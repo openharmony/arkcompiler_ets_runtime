@@ -826,7 +826,7 @@ inline GateRef StubBuilder::Int64UnsignedLessThanOrEqual(GateRef x, GateRef y)
 
 inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
 {
-    return env_->Is32Bit() ? Int32GreaterThan(x, y) : Int64GreaterThan(x, y);
+    return env_->GetBuilder()->IntPtrGreaterThan(x, y);
 }
 
 // cast operation
@@ -1001,14 +1001,7 @@ inline GateRef StubBuilder::IsConstructor(GateRef object)
 
 inline GateRef StubBuilder::IsBase(GateRef func)
 {
-    GateRef method = GetMethodFromJSFunction(func);
-    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
-    // decode
-    return Int32LessThanOrEqual(
-        Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
-                 Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1)),
-        Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
+    return env_->GetBuilder()->IsBase(func);
 }
 
 inline GateRef StubBuilder::IsSymbol(GateRef obj)
@@ -1459,14 +1452,9 @@ inline GateRef StubBuilder::GetInlinedPropertiesFromHClass(GateRef hClass)
     return Int32Sub(objectSizeInWords, inlinedPropsStart);
 }
 
-inline GateRef StubBuilder::GetObjectSizeFromHClass(GateRef hClass) // NOTE: check for special case of string and TAGGED_ARRAY
+inline GateRef StubBuilder::GetObjectSizeFromHClass(GateRef hClass)
 {
-    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
-    GateRef objectSizeInWords = Int32And(Int32LSR(bitfield,
-        Int32(JSHClass::ObjectSizeInWordsBits::START_BIT)),
-        Int32((1LU << JSHClass::ObjectSizeInWordsBits::SIZE) - 1));
-    return PtrMul(ZExtInt32ToPtr(objectSizeInWords),
-        IntPtr(JSTaggedValue::TaggedTypeSize()));
+    return env_->GetBuilder()->GetObjectSizeFromHClass(hClass);
 }
 
 inline GateRef StubBuilder::GetInlinedPropsStartFromHClass(GateRef hClass)
