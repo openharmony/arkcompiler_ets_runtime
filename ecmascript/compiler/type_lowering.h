@@ -171,10 +171,18 @@ private:
     void LowerObjectTypeCheck(GateRef gate, GateRef glue);
     void LowerClassInstanceCheck(GateRef gate, GateRef glue);
     void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
+    void LowerNewObjTypeCheck(GateRef gate);
     void LowerLoadProperty(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate, GateRef glue);
     void LowerLoadElement(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
+    void LowerHeapAllocate(GateRef gate, GateRef glue);
+    void LowerHeapAllocateInYoung(GateRef gate, GateRef glue);
+    void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
+                                    GateRef start, GateRef end);
+    void LowerConstruct(GateRef gate, GateRef glue);
+
+    GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);

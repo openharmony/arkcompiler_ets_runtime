@@ -384,6 +384,7 @@ public:
     inline GateRef DoubleNotEqual(GateRef x, GateRef y);
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
+    inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     template<OpCode::Op Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
@@ -411,7 +412,8 @@ public:
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef offset);
     GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);
-    GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
+    GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
+    GateRef Construct(std::vector<GateRef> args);
 
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
@@ -433,6 +435,7 @@ public:
     inline GateRef LogicAnd(GateRef x, GateRef y);
     inline GateRef LogicOr(GateRef x, GateRef y);
     inline GateRef BothAreString(GateRef x, GateRef y);
+    inline GateRef GetObjectSizeFromHClass(GateRef hClass);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
@@ -494,6 +497,8 @@ public:
     static const int OPRAND_TYPE_BITS = 32;
 
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
+    GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);
+    GateRef IsBase(GateRef ctor);
 
 private:
     Circuit *circuit_ {nullptr};

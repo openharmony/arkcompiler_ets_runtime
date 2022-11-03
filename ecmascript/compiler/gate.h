@@ -223,13 +223,14 @@ public:
         LOAD_PROPERTY,
         STORE_ELEMENT,
         STORE_PROPERTY,
+        CONSTRUCT,
 
         COMMON_CIR_FIRST = NOP,
         COMMON_CIR_LAST = FRAME_STATE,
         HIGH_CIR_FIRST = JS_BYTECODE,
         HIGH_CIR_LAST = GET_EXCEPTION,
         MID_CIR_FIRST = RUNTIME_CALL,
-        MID_CIR_LAST = STORE_PROPERTY
+        MID_CIR_LAST = CONSTRUCT
     };
 
     OpCode() = default;

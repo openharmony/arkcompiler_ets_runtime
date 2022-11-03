@@ -20,6 +20,7 @@ group("aot_type_test") {
     "typelogicalop:typelogicalopAotAction",
     "typemod:typemodAotAction",
     "typemul:typemulAotAction",
+    "typenewsuper:typenewsuperAotAction",
     "typenotequal:typenotequalAotAction",
     "typesub:typesubAotAction",
   ]

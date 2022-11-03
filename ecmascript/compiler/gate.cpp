@@ -332,6 +332,11 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
             return ps;
         }
+        case CONSTRUCT: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT };
+            return ps;
+        }
         default:
             LOG_COMPILER(ERROR) << "Please complete OpCode properties (OpCode=" << op_ << ")";
             UNREACHABLE();
@@ -443,6 +448,7 @@ std::string OpCode::Str() const
         {LOAD_PROPERTY, "LOAD_PROPERTY"},
         {STORE_ELEMENT, "STORE_ELEMENT"},
         {STORE_PROPERTY, "STORE_PROPERTY"},
+        {CONSTRUCT, "CONSTRUCT"},
     };
     if (strMap.count(op_) > 0) {
         return strMap.at(op_);

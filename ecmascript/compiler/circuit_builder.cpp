@@ -153,7 +153,12 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef ind
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto guard = currentLabel->GetDepend();
-    auto currentDepend = acc_.GetDep(guard);
+    auto currentDepend = Circuit::NullGate();
+    if (acc_.GetOpCode(guard) != OpCode::GUARD) {
+        currentDepend = guard;
+    } else {
+        currentDepend = acc_.GetDep(guard);
+    }
     GateRef ret = GetCircuit()->NewGate(OpCode(OpCode::OBJECT_TYPE_CHECK), static_cast<uint64_t>(type.Value()),
                                         {currentControl, currentDepend, gate, index}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -443,13 +448,13 @@ GateRef CircuitBuilder::ToLength(GateRef receiver)
     return ret;
 }
 
-GateRef CircuitBuilder::HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag)
+GateRef CircuitBuilder::HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::HEAP_ALLOC), flag,
-                                     { currentControl, currentDepend, size }, type);
+                                     { currentControl, currentDepend, initialHClass }, type);
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -501,6 +506,21 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef offset, GateRef 
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
+}
+
+GateRef CircuitBuilder::Construct(std::vector<GateRef> args)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    uint64_t bitfield = args.size();
+    args.insert(args.begin(), currentDepend);
+    args.insert(args.begin(), currentControl);
+    auto callGate = GetCircuit()->NewGate(OpCode(OpCode::CONSTRUCT), MachineType::I64,
+                                          bitfield, args, GateType::AnyType());
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
 }
 
 GateRef CircuitBuilder::TaggedIsString(GateRef obj)
@@ -752,10 +772,19 @@ GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t
     return Load(type, env, valueIndex);
 }
 
+GateRef CircuitBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
+{
+    GateRef gConstAddr = PtrAdd(glue,
+        IntPtr(JSThread::GlueData::GetGlobalConstOffset(cmpCfg_->Is32Bit())));
+    auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
+    return Load(type, gConstAddr, constantIndex);
+}
+
 Environment::Environment(size_t arguments, CircuitBuilder *builder)
     : circuit_(builder->GetCircuit()), circuitBuilder_(builder), arguments_(arguments)
 {
     circuitBuilder_->SetEnvironment(this);
+    SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
     for (size_t i = 0; i < arguments; i++) {
         arguments_[i] = circuitBuilder_->Arguments(i);
     }
@@ -770,6 +799,7 @@ Environment::Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder)
     : circuit_(circuit), circuitBuilder_(builder)
 {
     circuitBuilder_->SetEnvironment(this);
+    SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
     GateAccessor acc(circuit);
     entry_ = Label(NewLabel(this, acc.GetIn(hir, 0)));
     currentLabel_ = &entry_;
@@ -785,6 +815,7 @@ Environment::Environment(GateRef stateEntry, GateRef dependEntry, std::vector<Ga
     Circuit *circuit, CircuitBuilder *builder) : circuit_(circuit), circuitBuilder_(builder)
 {
     circuitBuilder_->SetEnvironment(this);
+    SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
     entry_ = Label(NewLabel(this, stateEntry));
     currentLabel_ = &entry_;
     currentLabel_->Seal();

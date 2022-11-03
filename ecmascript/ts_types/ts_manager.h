@@ -118,11 +118,9 @@ public:
 
     void AddTypeTable(JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaString> amiPath);
 
-    void Link();
-
     void LinkTSTypeTable(JSHandle<TSTypeTable> table);
 
-    void LinkInRange(JSHandle<TSModuleTable> moduleTable, int start, int end);
+    void LinkInRange(const JSPandaFile *jsPandaFile, JSHandle<TSModuleTable> moduleTable, int start, int end);
 
     void FillInterfaceMethodName(JSMutableHandle<JSTaggedValue> type);
 
@@ -282,6 +280,31 @@ public:
     JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
+
+    int GetHClassIndexByClassGT(const kungfu::GateType &gateType) const
+    {
+        if (!IsClassTypeKind(gateType)) {
+            return -1;
+        }
+        GlobalTSTypeRef classGT = gateType.GetGTRef();
+        auto it = classTypeIhcIndexMap_.find(classGT);
+        if (it == classTypeIhcIndexMap_.end()) {
+            return -1;
+        } else {
+            return it->second;
+        }
+    }
+
+    bool IsUserDefinedClassTypeKind(const kungfu::GateType &gateType) const
+    {
+        if (!IsClassTypeKind(gateType)) {
+            return false;
+        }
+
+        GlobalTSTypeRef gt = gateType.GetGTRef();
+        uint32_t m = gt.GetModuleId();
+        return m != TSModuleTable::BUILTINS_TABLE_ID;
+    }
 
     EcmaVM *GetEcmaVM() const
     {

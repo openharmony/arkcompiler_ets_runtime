@@ -43,15 +43,14 @@ enum BytecodeFlags : uint32_t {
 
 enum BytecodeKind : uint32_t {
     GENERAL = 0,
-    CALL_BC = 1,
-    THROW_BC = 2,
-    RETURN_BC = 3,
-    JUMP_IMM = 4,
-    CONDITIONAL_JUMP = 5,
-    MOV = 6,
-    SET_CONSTANT = 7,
-    GENERATOR = 8,
-    DISCARDED = 9,
+    THROW_BC,
+    RETURN_BC,
+    JUMP_IMM,
+    CONDITIONAL_JUMP,
+    MOV,
+    SET_CONSTANT,
+    GENERATOR,
+    DISCARDED,
 };
 
 class BytecodeMetaData {
@@ -109,11 +108,6 @@ public:
     bool IsSetConstant() const
     {
         return GetKind() == BytecodeKind::SET_CONSTANT;
-    }
-
-    bool IsCall() const
-    {
-        return GetKind() == BytecodeKind::CALL_BC;
     }
 
     bool SupportDeopt() const
@@ -478,11 +472,6 @@ public:
     bool IsGeneral() const
     {
         return metaData_.IsGeneral();
-    }
-
-    bool IsCall() const
-    {
-        return metaData_.IsCall();
     }
 
     bool IsGeneratorRelative() const
