@@ -21,6 +21,7 @@ host_unittest_action("ContainersTest") {
 
   sources = [
     # test file
+    "containers_arraylist_test.cpp",
     "containers_deque_test.cpp",
     "containers_hashmap_test.cpp",
     "containers_hashset_test.cpp",

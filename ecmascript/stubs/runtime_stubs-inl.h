@@ -1239,7 +1239,6 @@ JSTaggedValue RuntimeStubs::RuntimeToNumeric(JSThread *thread, const JSHandle<JS
     return JSTaggedValue::ToNumeric(thread, value).GetTaggedValue();
 }
 
-// specifier = "./test.js"
 JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandle<JSTaggedValue> &specifier,
     const JSHandle<JSTaggedValue> &func)
 {

@@ -13,11 +13,18 @@
  * limitations under the License.
  */
 
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
+
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/quick_fix_manager.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda::ecmascript;
+using namespace panda::panda_file;
+using namespace panda::pandasm;
 
 namespace panda::test {
 class QuickFixTest : public testing::Test {
@@ -54,6 +61,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_SingleFile)
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
 
+    JSNApi::SetBundle(instance, false);
+
     bool result = JSNApi::Execute(instance, baseFileName, "index");
     EXPECT_TRUE(result);
 
@@ -75,6 +84,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
 
+    JSNApi::SetBundle(instance, false);
+
     bool result = JSNApi::Execute(instance, baseFileName, "index");
     EXPECT_TRUE(result);
 
@@ -87,5 +98,72 @@ HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
 
     result = JSNApi::UnloadPatch(instance, patchFileName);
     EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
+{
+    const char *baseFileName = "__base.pa";
+    const char *patchFileName = "__patch.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> basePF = pandasm::AsmEmitter::Emit(res.Value());
+    std::unique_ptr<const File> patchPF = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFile *baseFile = pfManager->NewJSPandaFile(basePF.release(), CString(baseFileName));
+    JSPandaFile *patchFile = pfManager->NewJSPandaFile(patchPF.release(), CString(patchFileName));
+    pfManager->InsertJSPandaFile(baseFile);
+    pfManager->InsertJSPandaFile(patchFile);
+
+    bool result = JSNApi::LoadPatch(instance, patchFileName, (void *)data, sizeof(data), baseFileName);
+    EXPECT_FALSE(result);
+
+    pfManager->RemoveJSPandaFile((void *)baseFile);
+    pfManager->RemoveJSPandaFile((void *)patchFile);
+}
+
+bool QuickFixQueryFunc(
+    std::string baseFileName, std::string &patchFileName, void ** patchBuffer, size_t patchBufferSize)
+{
+    if (baseFileName != QUICKFIX_ABC_PATH "multi_file/base/index.abc") {
+        return false;
+    }
+
+    patchFileName = "__index.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> patchPF = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    JSPandaFile *patchFile = pfManager->NewJSPandaFile(patchPF.release(), patchFileName.c_str());
+    pfManager->InsertJSPandaFile(patchFile);
+    patchBuffer = (void **) data;
+    patchBufferSize = sizeof(data);
+    return true;
+}
+
+HWTEST_F_L0(QuickFixTest, HotReload_RegisterQuickFixQueryFunc)
+{
+    std::string baseFileName = QUICKFIX_ABC_PATH "multi_file/base/index.abc";
+    std::string patchFileName = "__index.pa";
+    JSNApi::RegisterQuickFixQueryFunc(instance, QuickFixQueryFunc);
+
+    QuickFixManager *quickFixManager = instance->GetQuickFixManager();
+    quickFixManager->LoadPatchIfNeeded(thread, baseFileName);
+
+    const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName.c_str());
+    const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName.c_str());
+    EXPECT_TRUE(baseFile != nullptr);
+    EXPECT_TRUE(patchFile != nullptr);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    pfManager->RemoveJSPandaFile((void *)baseFile);
+    pfManager->RemoveJSPandaFile((void *)patchFile);
 }
 }  // namespace panda::test
