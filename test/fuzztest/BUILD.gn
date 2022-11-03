@@ -87,6 +87,7 @@ group("fuzztest") {
     "containerslinkedlistset_fuzzer:fuzztest",
     "containerslistconstructor_fuzzer:fuzztest",
     "containerslistgetfirst_fuzzer:fuzztest",
+    "containersplainarray_fuzzer:fuzztest",
     "containersprivatearraylist_fuzzer:fuzztest",
     "containersprivatedeque_fuzzer:fuzztest",
     "containersprivatehashmap_fuzzer:fuzztest",
