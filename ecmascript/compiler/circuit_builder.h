@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_array.h"
@@ -447,6 +448,10 @@ public:
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
+    GateRef GetConstPool(GateRef jsFunc);
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type);
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef constPool, GateRef module, GateRef index,
+                                   ConstPoolType type);
     void SetEnvironment(Environment *env)
     {
         env_ = env;
