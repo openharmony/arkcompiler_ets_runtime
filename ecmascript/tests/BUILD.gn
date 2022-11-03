@@ -24,6 +24,7 @@ host_unittest_action("EcmaVm_001_Test") {
     "accessor_data_test.cpp",
     "assert_scope_test.cpp",
     "builtins_test.cpp",
+    "byte_array_test.cpp",
     "concurrent_marking_test.cpp",
     "concurrent_sweep_test.cpp",
     "dump_test.cpp",

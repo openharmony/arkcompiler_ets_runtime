@@ -434,6 +434,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_weak_map.cpp",
   "ecmascript/builtins/builtins_weak_ref.cpp",
   "ecmascript/builtins/builtins_weak_set.cpp",
+  "ecmascript/byte_array.cpp",
   "ecmascript/calleeReg.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
   "ecmascript/containers/containers_deque.cpp",

@@ -362,7 +362,8 @@ JSTaggedValue BuiltinsTypedArray::GetBuffer(EcmaRuntimeCallInfo *argv)
                                     JSTaggedValue::Exception());
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSTaggedValue buffer = JSHandle<JSTypedArray>::Cast(thisHandle)->GetViewedArrayBuffer();
+    JSHandle<JSTypedArray> typedArray = JSHandle<JSTypedArray>::Cast(thisHandle);
+    JSTaggedValue buffer = JSTypedArray::GetOffHeapBuffer(thread, typedArray);
     // 5. Return buffer.
     return buffer;
 }
@@ -1018,7 +1019,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         }
     }
     // 9. Let targetBuffer be the value of target’s [[ViewedArrayBuffer]] internal slot.
-    JSHandle<JSTaggedValue> targetBuffer(thread, targetObj->GetViewedArrayBuffer());
+    JSHandle<JSTaggedValue> targetBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, targetObj));
     // 10. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
@@ -1196,14 +1197,8 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         //     ii. Perform SetValueInBuffer (targetBuffer, targetByteIndex, "Uint8", value).
         //     iii. Set srcByteIndex to srcByteIndex + 1.
         //     iv. Set targetByteIndex to targetByteIndex + 1.
-        JSArrayBuffer *jsArrayBuffer = JSArrayBuffer::Cast(srcBufferHandle.GetTaggedValue().GetTaggedObject());
-        JSTaggedValue srcData = jsArrayBuffer->GetArrayBufferData();
-        void *srcBuf = reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(
-            srcData.GetTaggedObject())->GetExternalPointer()) + srcByteIndex);
-        JSArrayBuffer *jsBuffer = JSArrayBuffer::Cast(targetBuffer.GetTaggedValue().GetTaggedObject());
-        JSTaggedValue targetData = jsBuffer->GetArrayBufferData();
-        void *targetBuf = reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(
-            targetData.GetTaggedObject())->GetExternalPointer()) + targetByteIndex);
+        void *srcBuf = BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBufferHandle.GetTaggedValue(), srcByteIndex);
+        void *targetBuf = BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer.GetTaggedValue(), targetByteIndex);
         if (memcpy_s(targetBuf, srcLength * srcElementSize, srcBuf, srcLength * srcElementSize) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
@@ -1322,14 +1317,8 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
         //     ii. Perform SetValueInBuffer (targetBuffer, targetByteIndex, "Uint8", value).
         //     iii. Increase srcByteIndex by 1.
         //     iv. Increase targetByteIndex by 1.
-        JSArrayBuffer *jsArrayBuffer = JSArrayBuffer::Cast(srcBuffer.GetTaggedObject());
-        JSTaggedValue srcData = jsArrayBuffer->GetArrayBufferData();
-        void *srcBuf =
-            reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(JSNativePointer::Cast(srcData.GetTaggedObject())
-                                                                 ->GetExternalPointer()) + srcByteIndex);
-        JSArrayBuffer *jsBuffer = JSArrayBuffer::Cast(targetBuffer.GetTaggedObject());
-        JSTaggedValue targetData = jsBuffer->GetArrayBufferData();
-        void *targetBuf = JSNativePointer::Cast(targetData.GetTaggedObject())->GetExternalPointer();
+        void *srcBuf = BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
+        void *targetBuf = BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer);
         if (memcpy_s(targetBuf, count * elementSize, srcBuf, count * elementSize) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
             UNREACHABLE();
@@ -1486,7 +1475,7 @@ JSTaggedValue BuiltinsTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(elementType);
     uint32_t srcByteOffset = thisObj->GetByteOffset();
     uint32_t beginByteOffset = srcByteOffset + beginIndex * elementSize;
-    JSTaggedValue buffer = thisObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = JSTypedArray::GetOffHeapBuffer(thread, thisObj);
     // 21. Let argumentsList be «buffer, beginByteOffset, newLength».
     // 5. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     // 22. Return Construct(constructor, argumentsList).
