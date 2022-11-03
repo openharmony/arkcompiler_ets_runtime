@@ -187,4 +187,18 @@ HWTEST_F_L0(JsonParserTest, Parser_005)
     uint32_t length = JSTaggedValue::ToLength(thread, lenResult).ToUint32();
     EXPECT_EQ(length, 2U);
 }
+
+/**
+ * @tc.name: Parser_006
+ * @tc.desc: Try to parse a empty string.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsonParserTest, Parser_006)
+{
+    JsonParser<uint8_t> parser(thread);
+    JSHandle<EcmaString> emptyString(thread->GlobalConstants()->GetHandledEmptyString());
+    JSHandle<JSTaggedValue> result = parser.ParseUtf8(*emptyString);
+    EXPECT_TRUE(result->IsException());
+}
 } // namespace panda::test
