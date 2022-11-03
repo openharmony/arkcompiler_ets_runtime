@@ -55,10 +55,10 @@
     </target>
     <target name="JSPandaFileTest">
         <preparer>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/base/index.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/patch/index.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/patch/index.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/patch/index.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/base/index.abc -> /data/test/single_file/base/" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/patch/index.abc -> /data/test/single_file/patch/" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/base/index.abc -> /data/test/multi_file/base/" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/patch/index.abc -> /data/test/multi_file/patch/" src="out"/>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
@@ -137,11 +137,18 @@
 	        <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="HotReloadManagerTest">
+        <preparer>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/debugger/tests/single_file/base/index.abc -> /data/test/single_file/base/" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/debugger/tests/single_file/patch/index.abc -> /data/test/single_file/patch/" src="out"/>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="DumpHeapSnapshot3FuzzTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
-    </target>
+     </target>
     <target name="JSNApiDeserializeValueFuzzTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
