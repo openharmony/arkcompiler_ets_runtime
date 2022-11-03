@@ -235,10 +235,10 @@
     </target>
     <target name="JSPandaFileTest">
         <preparer>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/base/index.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/patch/index.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/patch/index.abc -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/patch/index.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/base/index.abc -> /data/test/single_file/base/" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/single_file/patch/index.abc -> /data/test/single_file/patch/" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/base/index.abc -> /data/test/multi_file/base/" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/multi_file/patch/index.abc -> /data/test/multi_file/patch/" src="out"/>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
@@ -317,11 +317,18 @@
 	        <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="HotReloadManagerTest">
+        <preparer>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/debugger/tests/single_file/base/index.abc -> /data/test/single_file/base/" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/debugger/tests/single_file/patch/index.abc -> /data/test/single_file/patch/" src="out"/>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="DumpHeapSnapshot3FuzzTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
-    </target>
+     </target>
     <target name="JSNApiDeserializeValueFuzzTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
@@ -358,6 +365,116 @@
         </preparer>
     </target>
     <target name="StartHeapTrackingFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListAddFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListAddFirstFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListClearFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListCloneFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListConvertToArrayFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListForEachFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListGetFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListGetFirstFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListGetIteratorObjFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListGetLastFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListGetIndexOfFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListGetLastIndexOfFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListHasFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListInsertFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListLengthFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListRemoveFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListRemoveByIndexFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListRemoveFirstFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListRemoveFirstFoundFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListRemoveLastFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListRemoveLastFoundFuzzTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="ContainersLinkedListSetFuzzTest">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>

@@ -741,6 +741,7 @@ source_set("libark_jsruntime_test_set") {
   sources += ecma_profiler_source
   sources += ecma_debugger_source
 
+  defines = [ "OHOS_UNIT_TEST" ]
   deps = [
     "$ark_root/libpandafile:arkfile_header_deps",
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
@@ -765,7 +766,7 @@ source_set("libark_jsruntime_test_set") {
     if (is_linux && (current_cpu == "x86" || current_cpu == "x64")) {
       sources += [ "ecmascript/dfx/native_dfx/linux/backtrace.cpp" ]
     }
-    defines = [
+    defines += [
       "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
       "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
     ]
