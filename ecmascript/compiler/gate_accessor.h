@@ -308,6 +308,7 @@ public:
     bool IsGCRelated(GateRef gate) const;
     void SetOpCode(GateRef gate, OpCode::Op opcode);
     BitField GetBitField(GateRef gate) const;
+    uint32_t GetBytecodeIndex(GateRef gate) const;
     void SetBitField(GateRef gate, BitField bitField);
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;

@@ -72,6 +72,13 @@ BitField GateAccessor::GetBitField(GateRef gate) const
     return gatePtr->GetBitField();
 }
 
+uint32_t GateAccessor::GetBytecodeIndex(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::JS_BYTECODE);
+    BitField bitField = GetBitField(gate);
+    return GateBitFieldAccessor::GetBytecodeIndex(bitField);
+}
+
 void GateAccessor::Print(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

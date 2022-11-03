@@ -454,21 +454,24 @@ size_t OpCode::GetStateCount(BitField bitfield) const
 {
     auto properties = GetProperties();
     auto stateProp = properties.statesIn;
-    return stateProp.has_value() ? (stateProp->second ? bitfield : stateProp->first.size()) : 0;
+    auto count = GateBitFieldAccessor::GetStateCount(bitfield);
+    return stateProp.has_value() ? (stateProp->second ? count : stateProp->first.size()) : 0;
 }
 
 size_t OpCode::GetDependCount(BitField bitfield) const
 {
     auto properties = GetProperties();
     auto dependProp = properties.dependsIn;
-    return (dependProp == MANY_DEPEND) ? bitfield : dependProp;
+    auto count = GateBitFieldAccessor::GetDependCount(bitfield);
+    return (dependProp == MANY_DEPEND) ? count : dependProp;
 }
 
 size_t OpCode::GetInValueCount(BitField bitfield) const
 {
     auto properties = GetProperties();
     auto valueProp = properties.valuesIn;
-    return valueProp.has_value() ? (valueProp->second ? bitfield : valueProp->first.size()) : 0;
+    auto count = GateBitFieldAccessor::GetInValueCount(bitfield);
+    return valueProp.has_value() ? (valueProp->second ? count : valueProp->first.size()) : 0;
 }
 
 size_t OpCode::GetRootCount([[maybe_unused]] BitField bitfield) const
