@@ -392,7 +392,7 @@ public:
             }
         }
 
-        bool IsSkippedMethod(uint32_t methodID)
+        bool IsSkippedMethod(uint32_t methodID) const
         {
             if (skippedMethodIDs_.find(methodID) == skippedMethodIDs_.end()) {
                 return false;
@@ -422,6 +422,11 @@ public:
     void PUBLIC_API GenerateSnapshotConstantPool(JSTaggedValue constantPool);
 
     void PUBLIC_API AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index, const CString &recordName="");
+
+    bool PUBLIC_API IsSkippedMethod(uint32_t methodId) const
+    {
+        return snapshotRecordInfo_.IsSkippedMethod(methodId);
+    }
 
     void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
 

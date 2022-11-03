@@ -108,10 +108,10 @@ MemMap MemMapAllocator::PageMap(size_t size, size_t alignment)
 {
     size_t allocSize = size + alignment;
 #ifdef PANDA_TARGET_UNIX
-    size = std::min<size_t>(size, MEDIUM_POOL_SIZE * 2);
-    allocSize = size + alignment;
     void *result = mmap(0, allocSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 #else
+    size = std::min<size_t>(size, MEDIUM_POOL_SIZE * 2);
+    allocSize = size + alignment;
     void *result = mmap(allocSize, -1, 0);
 #endif
     LOG_ECMA_IF(result == nullptr, FATAL) << "mmap fail";
