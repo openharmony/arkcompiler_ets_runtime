@@ -34,11 +34,11 @@ void *mmap(size_t size, int fd, off_t offset)
                                      nullptr);
     if (extra == nullptr) {
         int errCode = GetLastError();
+        LOG_NO_TAG(ERROR) << "CreateFileMapping fail, the error code is: " << errCode;
         if (errCode == INSUFFICIENT_CONTINUOUS_MEM) {
-            LOG_ECMA(ERROR) << "[Engine Log]Failed to request a continuous segment of " << size << " memory."
+            LOG_NO_TAG(ERROR) << "[ArkRuntime Log]Failed to request a continuous segment of " << size << " memory."
                             << "Please clean up other heavy processes or restart the computer.";
         }
-        LOG_ECMA(ERROR) << "CreateFileMapping fail, the error code is: " << errCode;
         return nullptr;
     }
 
