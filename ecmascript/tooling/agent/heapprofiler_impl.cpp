@@ -195,7 +195,7 @@ void HeapProfilerImpl::Frontend::AddHeapSnapshotChunk(char *data, int32_t size)
         addHeapSnapshotChunk.GetChunk()[i] = data[i];
     }
 
-    channel_->SendNotification(addHeapSnapshotChunk);
+    channel_->SendNotification(addHeapSnapshotChunk, false);
 }
 
 void HeapProfilerImpl::Frontend::ReportHeapSnapshotProgress(int32_t done, int32_t total)
@@ -243,7 +243,7 @@ void HeapProfilerImpl::Frontend::LastSeenObjectId(int32_t lastSeenObjectId)
     timestamp = static_cast<int64_t>(tv.tv_usec + tv.tv_sec * THOUSAND * THOUSAND);
     double timestampMS = static_cast<double>(timestamp) / THOUSAND;
     lastSeenObjectIdEvent.SetTimestamp(timestampMS);
-    channel_->SendNotification(lastSeenObjectIdEvent);
+    channel_->SendNotification(lastSeenObjectIdEvent, false);
 }
 
 void HeapProfilerImpl::Frontend::ResetProfiles()

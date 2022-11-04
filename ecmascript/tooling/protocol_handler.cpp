@@ -98,22 +98,24 @@ void ProtocolHandler::SendResponse(const DispatchRequest &request, const Dispatc
     reply->ReleaseRoot();
 }
 
-void ProtocolHandler::SendNotification(const PtBaseEvents &events)
+void ProtocolHandler::SendNotification(const PtBaseEvents &events, bool needPrint)
 {
     LOG_DEBUGGER(DEBUG) << "ProtocolHandler::SendNotification: " << events.GetName();
     std::unique_ptr<PtJson> reply = events.ToJson();
-    SendReply(*reply);
+    SendReply(*reply, needPrint);
     reply->ReleaseRoot();
 }
 
-void ProtocolHandler::SendReply(const PtJson &reply)
+void ProtocolHandler::SendReply(const PtJson &reply, bool needPrint)
 {
     std::string str = reply.Stringify();
     if (str.empty()) {
         LOG_DEBUGGER(ERROR) << "ProtocolHandler::SendReply: json stringify error";
         return;
     }
-
+    if (needPrint) {
+        LOG_DEBUGGER(INFO) << "ProtocolHandler SendReply: " << str;
+    }
     callback_(reinterpret_cast<const void *>(vm_), str);
 }
 
