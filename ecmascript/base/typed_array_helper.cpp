@@ -209,7 +209,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     // 16. If IsSharedArrayBuffer(srcData) is false, then
     //   a. Let bufferConstructor be ? SpeciesConstructor(srcData, %ArrayBuffer%).
 
-    JSMutableHandle<JSTaggedValue> data;
+    JSMutableHandle<JSTaggedValue> data(thread, JSTaggedValue::Undefined());
     // 18. If elementType is the same as srcType, then
     //   a. Let data be ? CloneArrayBuffer(srcData, srcByteOffset, byteLength, bufferConstructor).
     if (arrayType == srcType) {
