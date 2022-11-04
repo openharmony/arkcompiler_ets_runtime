@@ -32,7 +32,7 @@ host_unittest_action("HeapTrackerTest") {
   ]
 }
 
-host_unittest_action("HprofTest") {
+host_unittest_action("HProfTest") {
   module_out_path = module_output_path
 
   sources = [
@@ -50,10 +50,16 @@ host_unittest_action("HprofTest") {
 
 group("unittest") {
   testonly = true
-  deps = [ ":HeapTrackerTest" ]
+  deps = [
+    ":HProfTest",
+    ":HeapTrackerTest",
+  ]
 }
 
 group("host_unittest") {
   testonly = true
-  deps = [ ":HeapTrackerTestAction" ]
+  deps = [
+    ":HProfTestAction",
+    ":HeapTrackerTestAction",
+  ]
 }

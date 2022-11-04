@@ -441,7 +441,7 @@ public:
 
     TraceTree* GetTraceTree()
     {
-        return &traceTree_;
+        return traceTree_;
     }
 
     void PrepareTraceInfo()
@@ -486,7 +486,7 @@ private:
     CVector<FunctionInfo> traceInfoStack_ {};
     CMap<MethodLiteral *, struct FunctionInfo> stackInfo_;
     CMap<std::string, int> scriptIdMap_;
-    TraceTree traceTree_;
+    TraceTree *traceTree_ {nullptr};
     CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
 };
