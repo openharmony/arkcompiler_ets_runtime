@@ -584,7 +584,7 @@ public:
     const uint8_t *PeekPrevPc(size_t i) const;
 
 private:
-    static constexpr int32_t INVALID_INDEX = -1;
+    static constexpr uint32_t INVALID_INDEX = std::numeric_limits<uint32_t>::max();
 
     BytecodeCircuitBuilder *builder_ {nullptr};
     uint32_t start_ {0};
