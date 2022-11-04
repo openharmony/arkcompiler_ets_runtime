@@ -173,6 +173,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+
+    let de = new fastset();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("TreeSet forEach throw error fail");
+        }
+    }
     if (!flag) {
         print("Test TreeSet success!!!");
     } else {

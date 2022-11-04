@@ -88,6 +88,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
 
     let myTest = new Queue();
+    var arr1 = [];
     for (var i = 0; i < 10; i++) {
         myTest.add(i);
     }
@@ -96,9 +97,23 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     myTest.forEach(
         function myFunc(item, index, arr) {
-            print(item);
-	    }
+            arr1.push(item);
+        }
     );
+    for (let j = 5; j < 10; j++) {
+        if (arr1[j - 5] != j) {
+            print("Queue forEach first argv fail");
+        }
+    }
+
+    let de = new Queue();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("Queue forEach throw error fail");
+        }
+    }
 
     map.forEach(elements);
     if (!flag) {
