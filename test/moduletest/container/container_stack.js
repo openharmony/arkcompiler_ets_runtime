@@ -87,6 +87,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+
+    let de = new Stack();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("Stack forEach throw error fail");
+        }
+    }
     if (!flag) {
         print("Test Stack success!!!");
     } else {

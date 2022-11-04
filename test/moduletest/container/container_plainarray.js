@@ -129,6 +129,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+
+    let de = new PlainArray();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("PlainArray forEach throw error fail");
+        }
+    }
     if (!res) {
         print("Test PlainArray success!!!");
     } else {

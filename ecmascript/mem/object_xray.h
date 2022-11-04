@@ -88,6 +88,7 @@
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/byte_array.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -304,6 +305,8 @@ public:
             case JSType::JS_BIGINT64_ARRAY:
             case JSType::JS_BIGUINT64_ARRAY:
                 JSTypedArray::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::BYTE_ARRAY:
                 break;
             case JSType::JS_PRIMITIVE_REF:
                 JSPrimitiveRef::Cast(object)->VisitRangeSlot(visitor);

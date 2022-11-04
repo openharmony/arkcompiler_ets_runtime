@@ -29,6 +29,12 @@ enum class MTableIdx : uint8_t {
     NUM_OF_DEFAULT_TABLES,
 };
 
+enum class PropertyType : uint8_t {
+    NORMAL = 0,
+    STATIC,
+    OTHERS,
+};
+
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -118,6 +124,8 @@ public:
 
     void LinkInRange(JSHandle<TSModuleTable> moduleTable, int start, int end);
 
+    void FillInterfaceMethodName(JSMutableHandle<JSTaggedValue> type);
+
     void Dump();
 
     void Iterate(const RootVisitor &v);
@@ -199,6 +207,23 @@ public:
         GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.GetGTRef());
         return GetIteratorInstanceElementGt(gt);
     }
+
+    bool PUBLIC_API IsStaticFunc(GlobalTSTypeRef gt) const;
+    
+    GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                JSHandle<EcmaString> propertyName,
+                                                PropertyType propType) const;
+    
+    inline GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                       JSTaggedValue propertyName,
+                                                       PropertyType propType) const
+    {
+        return GetSuperPropType(gt, JSHandle<EcmaString>(vm_->GetJSThread(), propertyName), propType);
+    }
+
+    GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                const uint64_t key,
+                                                PropertyType propType) const;
 
     GlobalTSTypeRef PUBLIC_API GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const;
 
@@ -390,7 +415,7 @@ public:
             }
         }
 
-        bool IsSkippedMethod(uint32_t methodID)
+        bool IsSkippedMethod(uint32_t methodID) const
         {
             if (skippedMethodIDs_.find(methodID) == skippedMethodIDs_.end()) {
                 return false;
@@ -420,6 +445,11 @@ public:
     void PUBLIC_API GenerateSnapshotConstantPool(JSTaggedValue constantPool);
 
     void PUBLIC_API AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index, const CString &recordName="");
+
+    bool PUBLIC_API IsSkippedMethod(uint32_t methodId) const
+    {
+        return snapshotRecordInfo_.IsSkippedMethod(methodId);
+    }
 
     void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
 

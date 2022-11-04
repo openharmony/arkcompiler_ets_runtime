@@ -105,11 +105,32 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+    var arr1 = [];
+    let myTest = new Deque();
+    for (let i = 0; i < 10; i++) {
+        myTest.insertEnd(i);
+    }
+    for (let i = 0; i < 5; i++) {
+        myTest.popFirst();
+    }
+    myTest.forEach(
+        function myFunc(item, index, arr) {
+            arr1.push(item);
+        }
+    );
+    for (let j = 5; j < 10; j++) {
+        if (arr1[j - 5] != j) {
+            print("Deque forEach first argv fail");
+        }
+    }
+
     let de = new Deque();
     try {
         de.forEach(123);
     } catch(err) {
-        print(err.name);
+        if (err.name != "BusinessError") {
+            print("Deque forEach throw error fail");
+        }
     }
     if (!flag) {
         print("Test Deque success!!!");

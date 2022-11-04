@@ -1738,7 +1738,6 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
     }
     queue->emplace(objectHeader);
     size_t objectSize = objectHeader->GetClass()->SizeFromJSHClass(objectHeader);
-
     if (objectSize == 0) {
         LOG_ECMA_MEM(FATAL) << "It is a zero object. Not Support.";
     }

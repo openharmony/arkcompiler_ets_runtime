@@ -45,6 +45,7 @@
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
+#include "ecmascript/byte_array.h"
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
@@ -101,6 +102,7 @@ using ecmascript::EcmaRuntimeCallInfo;
 using ecmascript::JSArray;
 using ecmascript::JSArrayBuffer;
 using ecmascript::JSDataView;
+using ecmascript::ByteArray;
 using ecmascript::JSDate;
 using ecmascript::JSFunction;
 using ecmascript::JSFunctionBase;
@@ -122,6 +124,7 @@ using ecmascript::JSTaggedType;
 using ecmascript::JSTaggedValue;
 using ecmascript::JSThread;
 using ecmascript::LinkedHashMap;
+using ecmascript::LinkedHashSet;
 using ecmascript::ObjectFactory;
 using ecmascript::PromiseCapability;
 using ecmascript::PropertyDescriptor;
@@ -1652,8 +1655,8 @@ uint32_t TypedArrayRef::ArrayLength([[maybe_unused]] const EcmaVM *vm)
 Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
-    JSHandle<JSObject> typeArray(JSNApiHelper::ToJSHandle(this));
-    JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::Cast(*typeArray)->GetViewedArrayBuffer());
+    JSHandle<JSTypedArray> typeArray(JSNApiHelper::ToJSHandle(this));
+    JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, typeArray));
     return JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer);
 }
 
@@ -1894,6 +1897,12 @@ int32_t MapRef::GetSize()
     return map->GetSize();
 }
 
+int32_t MapRef::GetTotalElements()
+{
+    JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    return map->GetSize() + LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
+}
+
 Local<JSValueRef> MapRef::GetKey(const EcmaVM *vm, int entry)
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
@@ -1912,6 +1921,12 @@ int32_t SetRef::GetSize()
 {
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
     return set->GetSize();
+}
+
+int32_t SetRef::GetTotalElements()
+{
+    JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
+    return set->GetSize() + LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> SetRef::GetValue(const EcmaVM *vm, int entry)

@@ -232,7 +232,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     Method *method = callTarget->GetCallTarget();
     if (method->IsAotWithCallField()) {
-        auto res = thread->GetEcmaVM()->AotReentry(argc, info->GetArgs(), false);
+        const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+        auto res =
+            thread->GetEcmaVM()->ExecuteAot(argc, info->GetArgs(), prevFp, OptimizedEntryFrame::CallType::CALL_FUNC);
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
         JSTaggedType *prevSp = entryState->base.prev;

@@ -185,7 +185,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     JSHandle<JSTaggedValue> srcArray = BuiltinsBase::GetCallArg(argv, 0);
     JSHandle<JSTypedArray> srcObj(srcArray);
     // 6. Let srcData be srcArray.[[ViewedArrayBuffer]].
-    JSHandle<JSTaggedValue> srcData(thread, srcObj->GetViewedArrayBuffer());
+    JSHandle<JSTaggedValue> srcData(thread, JSTypedArray::GetOffHeapBuffer(thread, srcObj));
     // 7. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(srcData.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The srcData is detached buffer.", JSTaggedValue::Exception());
@@ -209,13 +209,13 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     // 16. If IsSharedArrayBuffer(srcData) is false, then
     //   a. Let bufferConstructor be ? SpeciesConstructor(srcData, %ArrayBuffer%).
 
-    JSHandle<JSTaggedValue>  data;
+    JSMutableHandle<JSTaggedValue> data;
     // 18. If elementType is the same as srcType, then
     //   a. Let data be ? CloneArrayBuffer(srcData, srcByteOffset, byteLength, bufferConstructor).
     if (arrayType == srcType) {
         JSTaggedValue tmp =
             BuiltinsArrayBuffer::CloneArrayBuffer(thread, srcData, srcByteOffset, globalConst->GetHandledUndefined());
-        data = JSHandle<JSTaggedValue>(thread, tmp);
+        data.Update(tmp);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
         // 19. Else,
@@ -224,7 +224,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
             JSObject::SpeciesConstructor(thread, JSHandle<JSObject>(srcData), env->GetArrayBufferFunction());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSTaggedValue tmp = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, byteLength);
-        data = JSHandle<JSTaggedValue>(thread, tmp);
+        data.Update(tmp);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         //   b. If IsDetachedBuffer(srcData) is true, throw a TypeError exception.
         if (BuiltinsArrayBuffer::IsDetachedBuffer(srcData.GetTaggedValue())) {
@@ -268,6 +268,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     jsTypedArray->SetByteLength(byteLength);
     jsTypedArray->SetByteOffset(0);
     jsTypedArray->SetArrayLength(elementLength);
+    jsTypedArray->SetIsOnHeap(false);
     // 23. Return O.
     return obj.GetTaggedValue();
 }
@@ -376,6 +377,7 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, 
     jsTypedArray->SetByteLength(0);
     jsTypedArray->SetByteOffset(0);
     jsTypedArray->SetArrayLength(0);
+    jsTypedArray->SetIsOnHeap(false);
     // 9. Return obj.
     return obj;
 }  // namespace panda::ecmascript::base
@@ -410,7 +412,6 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, 
                                                               const JSHandle<JSObject> &obj, uint64_t length,
                                                               const DataViewType arrayType)
 {
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     // 1. Assert: O is an Object that has a [[ViewedArrayBuffer]] internal slot.
     // 2. Assert: O.[[ViewedArrayBuffer]] is undefined.
     // 3. Assert: ! IsNonNegativeInteger(length) is true.
@@ -426,8 +427,15 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, 
     uint32_t arrayLength = static_cast<uint32_t>(length);
     uint64_t byteLength = elementSize * arrayLength;
     // 7. Let data be ? AllocateArrayBuffer(%ArrayBuffer%, byteLength).
-    JSHandle<JSTaggedValue> constructor = env->GetArrayBufferFunction();
-    JSTaggedValue data = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, constructor, byteLength);
+    JSTaggedValue data;
+    if (byteLength > JSTypedArray::MAX_ONHEAP_LENGTH) {
+        JSHandle<JSTaggedValue> constructor = ecmaVm->GetGlobalEnv()->GetArrayBufferFunction();
+        data = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, constructor, byteLength);
+        JSTypedArray::Cast(*obj)->SetIsOnHeap(false);
+    } else {
+        data = thread->GetEcmaVM()->GetFactory()->NewByteArray(arrayLength, elementSize).GetTaggedValue();
+        JSTypedArray::Cast(*obj)->SetIsOnHeap(true);
+    }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exception);
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
     if (arrayType == DataViewType::BIGINT64 ||

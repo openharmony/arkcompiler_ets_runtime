@@ -857,6 +857,7 @@ public:
 class PUBLIC_API MapRef : public ObjectRef {
 public:
     int32_t GetSize();
+    int32_t GetTotalElements();
     Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
@@ -867,6 +868,7 @@ public:
 class PUBLIC_API SetRef : public ObjectRef {
 public:
     int32_t GetSize();
+    int32_t GetTotalElements();
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
 };
 

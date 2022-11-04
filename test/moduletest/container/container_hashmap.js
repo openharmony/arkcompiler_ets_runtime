@@ -190,6 +190,14 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("test RBTree forEach fail. count=" + count);
     }
 
+    let de = new fastmap();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("HashMap forEach throw error fail");
+        }
+    }
     if (!flag) {
         print("Test HashMap success!!!");
     } else {

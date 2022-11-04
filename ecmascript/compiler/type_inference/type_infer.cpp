@@ -29,6 +29,15 @@ void TypeInfer::TraverseCircuit()
     for (auto gate : gateList) {
         pendingQueue.push(gate);
     }
+    // init jsgateToBytecode
+    BytecodeIterator iterator(builder_, 0, builder_->GetLastBcIndex());
+    for (iterator.GotoStart(); !iterator.Done(); ++iterator) {
+        auto index = iterator.Index();
+        GateRef gate = builder_->GetGateByBcIndex(index);
+        if (gate != Circuit::NullGate()) {
+            jsgateToBytecode_[gate] = index;
+        }
+    }
 
     while (!pendingQueue.empty()) {
         auto curGate = pendingQueue.front();
@@ -114,11 +123,10 @@ bool TypeInfer::ShouldInfer(const GateRef gate) const
     if (opcode != OpCode::CONSTANT && opcode != OpCode::RETURN && opcode != OpCode::JS_BYTECODE) {
         return false;
     }
-    auto gateToBytecode = builder_->GetGateToBytecode();
-    if (gateToBytecode.find(gate) == gateToBytecode.end()) {
+    if (jsgateToBytecode_.find(gate) == jsgateToBytecode_.end()) {
         return false;
     }
-    auto &bytecodeInfo = builder_->GetByteCodeInfo(gate);
+    auto &bytecodeInfo = GetByteCodeInfo(gate);
     return !bytecodeInfo.IsJump() && !IsNewLexEnv(bytecodeInfo.GetOpcode());
 }
 
@@ -131,8 +139,8 @@ bool TypeInfer::Infer(GateRef gate)
         return InferPhiGate(gate);
     }
     // infer ecma.* bytecode gates
-    EcmaOpcode op = builder_->GetByteCodeOpcode(gate);
-    switch (op) {
+    auto &bytecodeInfo = GetByteCodeInfo(gate);
+    switch (bytecodeInfo.GetOpcode()) {
         case EcmaOpcode::LDNAN:
         case EcmaOpcode::LDINFINITY:
         case EcmaOpcode::MOD2_IMM8_V8:
@@ -272,6 +280,12 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
             return InferSuperCall(gate);
+        case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDSUPERBYNAME_IMM16_ID16:
+            return InferSuperPropertyByName(gate);
+        case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDSUPERBYVALUE_IMM16_V8:
+            return InferSuperPropertyByValue(gate);
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
             return InferTryLdGlobalByName(gate);
@@ -544,12 +558,18 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
     if (tsManager_->IsTypedArrayType(inValueType)) {
         return UpdateType(gate, GateType::NumberType());
     }
+
+    if (ShouldInferWithLdObjByValue(inValueType)) {
+        auto key = gateAccessor_.GetBitField((gateAccessor_.GetValueIn(gate, 0)));
+        auto type = GetPropType(inValueType, key);
+        return UpdateType(gate, type);
+    }
     return false;
 }
 
 bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
 {
-    auto &byteCodeInfo = builder_->GetByteCodeInfo(gate);
+    auto &byteCodeInfo = GetByteCodeInfo(gate);
     uint16_t stringId;
     GateType inValueType;
     if (hasIC) {
@@ -577,7 +597,7 @@ bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
 
 bool TypeInfer::InferLdGlobalVar(GateRef gate)
 {
-    auto &byteCodeInfo = builder_->GetByteCodeInfo(gate);
+    auto &byteCodeInfo = GetByteCodeInfo(gate);
     ASSERT(byteCodeInfo.inputs.size() == 2);  // 2: number of value inputs
     auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[1]).GetId();
     auto iter = stringIdToGateType_.find(stringId);
@@ -614,14 +634,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
         // If this object has no gt type, we cannot get its internal property type
         if (ShouldInferWithLdObjByName(objType)) {
             auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
-            auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-            auto name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
-            auto type = GetPropType(objType, name);
-            if (tsManager_->IsGetterSetterFunc(type)) {
-                auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
-                return UpdateType(gate, returnGt);
-            }
-            return UpdateType(gate, type);
+            return GetObjPropWithName(gate, objType, index);
         }
     }
     return false;
@@ -646,13 +659,25 @@ bool TypeInfer::InferLdStr(GateRef gate)
     return UpdateType(gate, stringType);
 }
 
+bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
+{
+    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    JSTaggedValue name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
+    auto type = GetPropType(objType, name);
+    if (tsManager_->IsGetterSetterFunc(type)) {
+        auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
+        return UpdateType(gate, returnGt);
+    }
+    return UpdateType(gate, type);
+}
+
 bool TypeInfer::InferCallFunction(GateRef gate, bool isDeprecated)
 {
     // first elem is function in old isa
     size_t funcIndex = 0;
     if (!isDeprecated) {
-        // 2: last two elem is function anc bytecode offset in new isa
-        funcIndex = gateAccessor_.GetNumValueIn(gate) - 2;
+        // 1: last one elem is function
+        funcIndex = gateAccessor_.GetNumValueIn(gate) - 1;
     }
     auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, funcIndex));
     if (tsManager_->IsFunctionTypeKind(funcType)) {
@@ -685,6 +710,11 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
             auto type = GetPropType(objType, value);
             return UpdateType(gate, type);
         }
+        if (GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
+            ConstDataId dataId(gateAccessor_.GetBitField(valueGate));
+            auto index = dataId.GetId();
+            return GetObjPropWithName(gate, objType, index);
+        }
     }
     return false;
 }
@@ -714,6 +744,52 @@ bool TypeInfer::InferSuperCall(GateRef gate)
     return false;
 }
 
+bool TypeInfer::InferSuperPropertyByName(GateRef gate)
+{
+    auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    return GetSuperProp(gate, index);
+}
+
+bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
+{
+    auto valueGate = gateAccessor_.GetValueIn(gate, 1);
+    if (GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
+        ConstDataId dataId(gateAccessor_.GetBitField(valueGate));
+        auto index = dataId.GetId();
+        return GetSuperProp(gate, index);
+    }
+    if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
+        auto index = gateAccessor_.GetBitField(valueGate);
+
+        return GetSuperProp(gate, index, false);
+    }
+    return false;
+}
+
+bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
+{
+    ArgumentAccessor argAcc(circuit_);
+    auto func = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    auto newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
+    auto funcType = gateAccessor_.GetGateType(func);
+    auto classType = gateAccessor_.GetGateType(newTarget);
+    if (!funcType.IsAnyType() && !classType.IsAnyType()) {
+        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+        GlobalTSTypeRef type = GlobalTSTypeRef::Default();
+        bool isStatic = tsManager_->IsStaticFunc(funcType.GetGTRef());
+        auto propType = isStatic ? PropertyType::STATIC : PropertyType::NORMAL;
+        type = isString ? tsManager_->GetSuperPropType(classType.GetGTRef(),
+            ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index), propType) :
+            tsManager_->GetSuperPropType(classType.GetGTRef(), index, propType);
+        if (tsManager_->IsGetterSetterFunc(type)) {
+            auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
+            return UpdateType(gate, returnGt);
+        }
+        return UpdateType(gate, type);
+    }
+    return false;
+}
+
 bool TypeInfer::InferGetIterator(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
@@ -735,7 +811,7 @@ bool TypeInfer::InferGetIterator(GateRef gate)
 bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
 {
     // todo by hongtao, should consider function of .d.ts
-    auto &byteCodeInfo = builder_->GetByteCodeInfo(gate);
+    auto &byteCodeInfo = GetByteCodeInfo(gate);
     ASSERT(byteCodeInfo.inputs.size() == 2);  // 2: number of parameter
     auto stringId = std::get<ConstDataId>(byteCodeInfo.inputs[1]).GetId();
     auto iter = stringIdToGateType_.find(stringId);
@@ -801,17 +877,14 @@ void TypeInfer::PrintAllByteCodesTypes() const
     const MethodLiteral *methodLiteral = builder_->GetMethod();
     const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodLiteral->GetMethodId());
 
-    auto &pcToBCOffset = builder_->GetPcToBCOffset();
-    auto &bytecodeToGate = builder_->GetBytecodeToGate();
-
     LOG_COMPILER(INFO) << "print bytecode types:";
     LOG_COMPILER(INFO) << ".function " + functionName + "() {";
-    for (auto it = pcToBCOffset.begin(); std::next(it) != pcToBCOffset.end(); it++) {  // ignore last element
-        const uint8_t *pc = it->first;
+    uint32_t lastBcIndex = builder_->GetLastBcIndex();
+    for (uint32_t bcIndex = 0; bcIndex < lastBcIndex; bcIndex++) {  // ignore last element
+        const uint8_t *pc = builder_->GetPCByIndex(bcIndex);
         BytecodeInstruction inst(pc);
-        auto findIt = bytecodeToGate.find(pc);
-        if (findIt != bytecodeToGate.end()) {
-            GateRef gate = bytecodeToGate.at(pc);
+        GateRef gate = builder_->GetGateByBcIndex(bcIndex);
+        if (gate != Circuit::NullGate()) {
             GateType type = gateAccessor_.GetGateType(gate);
             if (!tsManager_->IsPrimitiveTypeKind(type)) {
                 GlobalTSTypeRef gt = type.GetGTRef();
@@ -846,12 +919,12 @@ void TypeInfer::Verify() const
  */
 void TypeInfer::TypeCheck(GateRef gate) const
 {
-    auto &info = builder_->GetByteCodeInfo(gate);
+    auto &info = GetByteCodeInfo(gate);
     if (!info.IsBc(EcmaOpcode::CALLARGS2_IMM8_V8_V8)) {
         return;
     }
     auto func = gateAccessor_.GetValueIn(gate, 2);
-    auto &funcInfo = builder_->GetByteCodeInfo(func);
+    auto &funcInfo = GetByteCodeInfo(func);
     if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16) &&
         !funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16)) {
         return;
@@ -916,8 +989,9 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
     OpCode op = gateAccessor_.GetOpCode(gate);
     log += "op: " + op.Str() + ", ";
     if (op != OpCode::VALUE_SELECTOR) {
+        auto &bytecodeInfo = GetByteCodeInfo(gate);
     // handle ByteCode gate: print gate id, bytecode and line number in source code.
-        log += "bytecode: " + builder_->GetBytecodeStr(gate) + ", ";
+        log += "bytecode: " + GetEcmaOpcodeStr(bytecodeInfo.GetOpcode()) + ", ";
         GateType type = gateAccessor_.GetGateType(gate);
         log += "type: " + tsManager_->GetTypeStr(type) + ", ";
         if (!tsManager_->IsPrimitiveTypeKind(type)) {
@@ -932,10 +1006,9 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
             return true;
         };
 
-        const uint8_t *pc = builder_->GetJSBytecode(gate);
+        const auto bcIndex = jsgateToBytecode_.at(gate);
+        auto offset = builder_->GetPcOffset(bcIndex);
         const MethodLiteral *methodLiteral = builder_->GetMethod();
-
-        uint32_t offset = pc - methodLiteral->GetBytecodeArray();
         debugExtractor->MatchLineWithOffset(callbackLineFunc, methodLiteral->GetMethodId(), offset);
 
         log += "at line: " + std::to_string(lineNumber);

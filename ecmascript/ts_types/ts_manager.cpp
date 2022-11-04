@@ -162,6 +162,33 @@ void TSManager::LinkTSTypeTable(JSHandle<TSTypeTable> typeTable)
             JSHandle<TSClassType> extendClassType = GetExtendClassType(classType);
             RecursivelyMergeClassField(classType, extendClassType);
         }
+
+        // We need to fill the method name into the corresponding layout
+        if (type->IsTSInterfaceType()) {
+            FillInterfaceMethodName(type);
+        }
+    }
+}
+
+void TSManager::FillInterfaceMethodName(JSMutableHandle<JSTaggedValue> type)
+{
+    JSHandle<TSInterfaceType> interfaceType(type);
+    JSHandle<TSObjectType> objectType(thread_, interfaceType->GetFields());
+    JSHandle<TSObjLayoutInfo> layout(thread_, objectType->GetObjLayoutInfo());
+    uint32_t numElements = layout->NumberOfElements();
+
+    for (uint32_t index = 0; index < numElements; index++) {
+        JSTaggedValue typeId = layout->GetTypeId(index);
+        GlobalTSTypeRef propGT = GlobalTSTypeRef(static_cast<uint32_t>(typeId.GetInt()));
+        if (GetTypeKind(propGT) == TSTypeKind::FUNCTION) {
+            JSHandle<JSTaggedValue> tsType = GetTSType(propGT);
+            ASSERT(tsType->IsTSFunctionType());
+
+            JSHandle<TSFunctionType> functionType(tsType);
+            JSTaggedValue functionName = functionType->GetName();
+            ASSERT(functionName.IsString());
+            layout->SetKey(thread_, index, functionName);
+        };
     }
 }
 
@@ -237,7 +264,7 @@ void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType, JSHa
     for (index = 0; index < numExtendTypes; index++) {
         JSTaggedValue key = extendLayout->GetKey(index);
         JSTaggedValue type = extendLayout->GetTypeId(index);
-        newLayout->SetKey(thread_, index, key, type);
+        newLayout->SetKeyAndType(thread_, index, key, type);
     }
 
     for (index = 0; index < numSelfTypes; index++) {
@@ -246,7 +273,7 @@ void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType, JSHa
             continue;
         }
         JSTaggedValue type = layout->GetTypeId(index);
-        newLayout->SetKey(thread_, numExtendTypes + index, key, type);
+        newLayout->SetKeyAndType(thread_, numExtendTypes + index, key, type);
     }
 
     field->SetObjLayoutInfo(thread_, newLayout);
@@ -350,6 +377,9 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> 
     } else if (type->IsTSIteratorInstanceType()) {
         JSHandle<TSIteratorInstanceType> iteratorInstance(type);
         return TSIteratorInstanceType::GetPropTypeGT(thread, iteratorInstance, propertyName);
+    } else if (type->IsTSInterfaceType()) {
+        JSHandle<TSInterfaceType> objectType(type);
+        return TSInterfaceType::GetPropTypeGT(thread, objectType, propertyName);
     } else {
         LOG_COMPILER(ERROR) << "unsupport TSType GetPropType: "
                             << static_cast<uint8_t>(type->GetTaggedObject()->GetClass()->GetObjectType());
@@ -357,9 +387,53 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> 
     }
 }
 
+bool TSManager::IsStaticFunc(GlobalTSTypeRef gt) const
+{
+    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetStatic();
+}
+
+GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> propertyName,
+                                            PropertyType propType) const
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSTaggedValue> type = GetTSType(gt);
+    if (type->IsTSClassType()) {
+        JSHandle<TSClassType> classType(type);
+        return TSClassType::GetSuperPropTypeGT(thread, classType, propertyName, propType);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, const uint64_t key, PropertyType propType) const
+{
+    JSTaggedValue keyValue = JSTaggedValue(key);
+    JSMutableHandle<EcmaString> propertyName(thread_, JSTaggedValue::Undefined());
+    if (keyValue.IsInt()) {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetInt())));
+    } else if (keyValue.IsDouble()) {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetDouble())));
+    } else {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(key).c_str()));
+    }
+    return GetSuperPropType(gt, propertyName, propType);
+}
+
 GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, const uint64_t key) const
 {
-    auto propertyName = factory_->NewFromStdString(std::to_string(key).c_str());
+    JSTaggedValue keyValue = JSTaggedValue(key);
+    JSMutableHandle<EcmaString> propertyName(thread_, JSTaggedValue::Undefined());
+    if (keyValue.IsInt()) {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetInt())));
+    } else if (keyValue.IsDouble()) {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetDouble())));
+    } else {
+        propertyName.Update(factory_->NewFromStdString(std::to_string(key).c_str()));
+    }
     return GetPropType(gt, propertyName);
 }
 
@@ -1092,7 +1166,7 @@ void TSModuleTable::FillLayoutTypes(JSThread *thread, JSHandle<TSObjLayoutInfo> 
         key.Update(prop[index]);
         ASSERT(key->IsString());
         value.Update(JSTaggedValue(propType[index].GetType()));
-        layOut->SetKey(thread, index, key.GetTaggedValue(), value.GetTaggedValue());
+        layOut->SetKeyAndType(thread, index, key.GetTaggedValue(), value.GetTaggedValue());
     }
 }
 

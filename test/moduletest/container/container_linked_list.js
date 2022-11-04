@@ -281,6 +281,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+
+    let de = new LinkedList();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("LinkedList forEach throw error fail");
+        }
+    }
     if (!flag) {
         print("Test LinkedList success!!!");
     } else {

@@ -493,6 +493,7 @@ public:
     bool IsString() const;
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
+    bool IsByteArray() const;
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
     bool IsLinkedNode() const;

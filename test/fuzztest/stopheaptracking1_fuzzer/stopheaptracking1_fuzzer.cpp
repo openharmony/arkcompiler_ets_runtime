@@ -15,25 +15,46 @@
 
 #include "stopheaptracking1_fuzzer.h"
 
-#include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/dfx/hprof/file_stream.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
+#include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 
-#define MAXBYTELEN sizeof(int)
-
 namespace OHOS {
     void StopHeapTracking1FuzzTest(const uint8_t* data, size_t size)
     {
+        if (data == nullptr || size < 0) {
+            std::cout << "illegal input!";
+            return;
+        }
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
-            return;
+        vm->SetEnableForceGC(false);
+
+        auto factory = vm->GetFactory();
+        bool isVmMode = true;
+        bool traceAllocation = false;
+        double timeInterval = 10; // 10 : time interval 10 ms
+        ecmascript::FileStream *stream = nullptr;
+        DFXJSNApi::StartHeapTracking(vm, timeInterval, isVmMode, stream, traceAllocation);
+
+        sleep(1);
+        int count = 100;
+        while (count-- > 0) {
+            JSHandle<EcmaString> string = factory->NewFromASCII("testString");
+            factory->NewJSString(JSHandle<JSTaggedValue>(string));
         }
-        std::string path(data, data + size);
-        DFXJSNApi::StopHeapTracking(vm, path);
+        const std::string filePath(data, data + size);
+        std::fstream outputString(filePath, std::ios::out);
+        outputString.close();
+        outputString.clear();
+        DFXJSNApi::StopHeapTracking(vm, filePath);
+        std::remove(filePath.c_str());
+        vm->SetEnableForceGC(true);
         JSNApi::DestroyJSVM(vm);
     }
 }
