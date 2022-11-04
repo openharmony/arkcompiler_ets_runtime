@@ -226,10 +226,14 @@ void FrameIterator::Advance()
         if (!needCalCallSiteInfo) {
             return;
         }
-        uint64_t textStart;
+        uint64_t textStart = 0;
         std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_, calleeRegInfo_) = CalCallSiteInfo(optimizedReturnAddr_);
         ASSERT(optimizedReturnAddr_ >= textStart);
         optimizedReturnAddr_ = optimizedReturnAddr_ - textStart;
+        if (t == FrameType::LEAVE_FRAME && fpDeltaPrevFrameSp_ == 0) {
+            // it may be asm code stub's leave frame.
+            fpDeltaPrevFrameSp_ = 2 * sizeof(uintptr_t); // 2: skip prev and return addr
+        }
     }
 }
 template void FrameIterator::Advance<GCVisitedFlag::VISITED>();
