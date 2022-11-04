@@ -20,8 +20,7 @@
 #include <cstdint>
 
 namespace panda::ecmascript::kungfu {
-class BitSet
-{
+class BitSet {
 public:
     static constexpr uint32_t BYTE_PER_WORD = sizeof(uint64_t);
     static constexpr uint32_t BYTE_PER_WORD_LOG2 = 3;
@@ -115,8 +114,7 @@ public:
         }
     }
 private:
-    union Data
-    {
+    union Data {
         uint64_t inlineWord_ {0};
         uint64_t *words_ {nullptr};
     };
@@ -152,9 +150,6 @@ private:
 
     uint32_t wordCount_ {0};
     Data data_;
-
-
 };
-
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BITSET_H

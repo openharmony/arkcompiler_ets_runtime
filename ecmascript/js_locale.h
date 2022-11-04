@@ -223,7 +223,8 @@ public:
 
     // 9.2.7 ResolveLocale ( availableLocales, requestedLocales, options, relevantExtensionKeys, localeData )
     static ResolvedLocale ResolveLocale(JSThread *thread, const JSHandle<TaggedArray> &availableLocales,
-                                        const JSHandle<TaggedArray> &requestedLocales, LocaleMatcherOption matcher,
+                                        const JSHandle<TaggedArray> &requestedLocales,
+                                        [[maybe_unused]] LocaleMatcherOption matcher,
                                         const std::set<std::string> &relevantExtensionKeys);
 
     // 9.2.8 LookupSupportedLocales ( availableLocales, requestedLocales )

@@ -28,8 +28,7 @@ struct BytecodeRegion;
 
 class FrameStateInfo {
 public:
-    explicit FrameStateInfo(size_t numVregs) :
-        values_(numVregs) {}
+    explicit FrameStateInfo(size_t numVregs) : values_(numVregs) {}
 
     void SetValuesAt(size_t index, GateRef gate)
     {
@@ -87,9 +86,9 @@ private:
     bool ComputeLiveOut(size_t bbId);
     void ComputeLiveState();
     void ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo);
-    bool MergeIntoPredBC(const uint8_t* predPc);
+    bool MergeIntoPredBC(const uint8_t *predPc);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
-    FrameStateInfo *GetOrOCreateStateInfo(const uint8_t * pc)
+    FrameStateInfo *GetOrOCreateStateInfo(const uint8_t *pc)
     {
         auto currentInfo = stateInfos_[pc];
         if (currentInfo == nullptr) {

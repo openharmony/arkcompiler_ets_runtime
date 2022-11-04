@@ -275,7 +275,6 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), literal.GetTaggedValue());
         }
     }
-
     return constpool;
 }
 
