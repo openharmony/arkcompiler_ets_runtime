@@ -108,6 +108,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     res.forEach(elements);
+
+    let de = new fastset();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("LightWeightSet forEach throw error fail");
+        }
+    }
     if (!flag) {
         print("Test LightWeightSet success!!!");
     } else {

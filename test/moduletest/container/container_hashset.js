@@ -148,6 +148,14 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+    let de = new fastset();
+    try {
+        de.forEach(123);
+    } catch(err) {
+        if (err.name != "BusinessError") {
+            print("HashSet forEach throw error fail");
+        }
+    }
     if (!flag) {
         print("Test HashSet success!!!");
     } else {
