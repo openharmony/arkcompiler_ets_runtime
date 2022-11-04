@@ -966,4 +966,147 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
     delete ref2;
     ASSERT_EQ(weakNodeNum, 4);
 }
+
+HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
+{
+    vm_->SetEnableForceGC(false);
+    auto globalEnv = vm_->GetGlobalEnv();
+    auto factory = vm_->GetFactory();
+    JSHandle<JSTaggedValue> jsFunc = globalEnv->GetArrayFunction();
+    JSHandle<JSObject> objVal1 =
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
+    JSHandle<JSObject> objVal2 =
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
+    JSObject *newObj2 = *objVal2;
+    JSTaggedValue canBeGcValue(newObj2);
+
+    uint32_t arrayLength = 2;
+    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(arrayLength);
+    taggedArray->Set(thread_, 0, objVal1);
+    taggedArray->Set(thread_, 1, canBeGcValue);
+    EXPECT_EQ(taggedArray->GetIdx(objVal1.GetTaggedValue()), 0U);
+    EXPECT_EQ(taggedArray->GetIdx(canBeGcValue), 1U);
+
+    // trigger gc
+    JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::OLD_GC;
+    JSNApi::TriggerGC(vm_, gcType);
+    EXPECT_EQ(taggedArray->GetIdx(objVal1.GetTaggedValue()), 0U);
+    EXPECT_EQ(taggedArray->GetIdx(canBeGcValue), TaggedArray::MAX_ARRAY_INDEX);
+
+    vm_->SetEnableForceGC(true);
+}
+
+HWTEST_F_L0(JSNApiTests, ExecuteModuleBuffer)
+{
+    const char *fileName = "__JSNApiTests_ExecuteModuleBuffer.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    bool executeResult =
+        JSNApi::ExecuteModuleBuffer(vm_, reinterpret_cast<const uint8_t *>(data), sizeof(data), fileName);
+    EXPECT_FALSE(executeResult);
+}
+
+HWTEST_F_L0(JSNApiTests, addWorker_DeleteWorker)
+{
+    JSRuntimeOptions option;
+    EcmaVM *workerVm = JSNApi::CreateEcmaVM(option);
+    JSNApi::addWorker(vm_, workerVm);
+    bool hasDeleted = JSNApi::DeleteWorker(vm_, workerVm);
+    EXPECT_TRUE(hasDeleted);
+
+    hasDeleted = JSNApi::DeleteWorker(vm_, nullptr);
+    EXPECT_FALSE(hasDeleted);
+}
+
+HWTEST_F_L0(JSNApiTests, PrimitiveRef_GetValue)
+{
+    auto factory = vm_->GetFactory();
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, 0);
+    EXPECT_EQ(intValue->Value(), 0);
+
+    Local<JSValueRef> jsValue = intValue->GetValue(vm_);
+    EXPECT_TRUE(*jsValue == nullptr);
+
+    JSHandle<JSTaggedValue> nullHandle(thread_, JSTaggedValue::Null());
+    JSHandle<JSHClass> jsClassHandle =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_PRIMITIVE_REF, nullHandle);
+    TaggedObject *taggedObject = factory->NewObject(jsClassHandle);
+    JSHandle<JSTaggedValue> jsTaggedValue(thread_, JSTaggedValue(taggedObject));
+    Local<PrimitiveRef> jsValueRef = JSNApiHelper::ToLocal<JSPrimitiveRef>(jsTaggedValue);
+    EXPECT_TRUE(*(jsValueRef->GetValue(vm_)) != nullptr);
+}
+
+HWTEST_F_L0(JSNApiTests, BigIntRef_New_Uint64)
+{
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    EXPECT_TRUE(maxBigintUint64->IsBigInt());
+
+    JSHandle<BigInt> maxBigintUint64Val(thread_, JSNApiHelper::ToJSTaggedValue(*maxBigintUint64));
+    EXPECT_EQ(maxBigintUint64Val->GetDigit(0), static_cast<uint32_t>(maxUint64 & 0xffffffff));
+    EXPECT_EQ(maxBigintUint64Val->GetDigit(1), static_cast<uint32_t>((maxUint64 >> BigInt::DATEBITS) & 0xffffffff));
+
+    uint64_t minUint64 = std::numeric_limits<uint64_t>::min();
+    Local<BigIntRef> minBigintUint64 = BigIntRef::New(vm_, minUint64);
+    EXPECT_TRUE(minBigintUint64->IsBigInt());
+
+    JSHandle<BigInt> minBigintUint64Val(thread_, JSNApiHelper::ToJSTaggedValue(*minBigintUint64));
+    EXPECT_EQ(minBigintUint64Val->GetDigit(0), static_cast<uint32_t>(minUint64 & 0xffffffff));
+    EXPECT_EQ(minBigintUint64Val->GetLength(), 1U);
+}
+
+HWTEST_F_L0(JSNApiTests, BigIntRef_New_Int64)
+{
+    int64_t maxInt64 = std::numeric_limits<int64_t>::max();
+    Local<BigIntRef> maxBigintInt64 = BigIntRef::New(vm_, maxInt64);
+    EXPECT_TRUE(maxBigintInt64->IsBigInt());
+
+    JSHandle<BigInt> maxBigintInt64Val(thread_, JSNApiHelper::ToJSTaggedValue(*maxBigintInt64));
+    EXPECT_EQ(maxBigintInt64Val->GetDigit(0), static_cast<uint32_t>(maxInt64 & 0xffffffff));
+    EXPECT_EQ(maxBigintInt64Val->GetDigit(1), static_cast<uint32_t>((maxInt64 >> BigInt::DATEBITS) & 0xffffffff));
+
+    int64_t minInt64 = std::numeric_limits<int64_t>::min();
+    Local<BigIntRef> minBigintInt64 = BigIntRef::New(vm_, minInt64);
+    EXPECT_TRUE(minBigintInt64->IsBigInt());
+
+    JSHandle<BigInt> minBigintInt64Val(thread_, JSNApiHelper::ToJSTaggedValue(*minBigintInt64));
+    EXPECT_EQ(minBigintInt64Val->GetSign(), true);
+    EXPECT_EQ(minBigintInt64Val->GetDigit(0), static_cast<uint32_t>((-minInt64) & 0xffffffff));
+    EXPECT_EQ(minBigintInt64Val->GetDigit(1), static_cast<uint32_t>(((-minInt64) >> BigInt::DATEBITS) & 0xffffffff));
+}
+
+HWTEST_F_L0(JSNApiTests, BigIntRef_CreateBigWords_GetWordsArray_GetWordsArraySize)
+{
+    bool sign = false;
+    uint32_t size = 3;
+    const uint32_t MULTIPLE = 2;
+    const uint64_t words[3] = {
+        std::numeric_limits<uint64_t>::min() - 1,
+        std::numeric_limits<uint64_t>::min(),
+        std::numeric_limits<uint64_t>::max(),
+    };
+    Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm_, sign, size, words);
+    EXPECT_TRUE(bigWords->IsBigInt());
+
+    Local<BigIntRef> bigWordsRef(bigWords);
+    EXPECT_EQ(bigWordsRef->GetWordsArraySize(), size);
+
+    JSHandle<BigInt> bigintUint64Val(thread_, JSNApiHelper::ToJSTaggedValue(*bigWords));
+    EXPECT_EQ(bigintUint64Val->GetSign(), false);
+    EXPECT_EQ(bigintUint64Val->GetLength(), size * MULTIPLE);
+
+    bool resultSignBit = true;
+    uint64_t *resultWords = new uint64_t[3](); // 3 : length of words array
+    bigWordsRef->GetWordsArray(&resultSignBit, size, resultWords);
+    EXPECT_EQ(resultSignBit, false);
+    EXPECT_EQ(resultWords[0], words[0]);
+    EXPECT_EQ(resultWords[1], words[1]);
+    EXPECT_EQ(resultWords[2], words[2]);
+    delete[] resultWords;
+}
 }  // namespace panda::test
