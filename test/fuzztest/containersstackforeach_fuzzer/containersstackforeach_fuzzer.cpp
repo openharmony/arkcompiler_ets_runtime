@@ -27,6 +27,8 @@ using namespace panda::test;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
+#define MAXBYTELEN sizeof(uint32_t)
+
 namespace OHOS {
     JSFunction *JSObjectCreate(JSThread *thread)
     {
@@ -92,7 +94,6 @@ namespace OHOS {
             return;
         }
         double input = 0;
-        const double MAXBYTELEN = 6;
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }
@@ -102,7 +103,7 @@ namespace OHOS {
         }
 
         JSHandle<JSAPIStack> stack = CreateJSAPIStack(thread);
-        for (size_t i = 0; i < MAXBYTELEN; i++) {
+        {
             EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
             callInfo->SetFunction(JSTaggedValue::Undefined());
             callInfo->SetThis(stack.GetTaggedValue());

@@ -27,6 +27,8 @@ using namespace panda::test;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
+#define MAXBYTELEN sizeof(uint32_t)
+
 namespace OHOS {
     JSFunction *JSObjectCreate(JSThread *thread)
     {
@@ -87,7 +89,6 @@ namespace OHOS {
             return;
         }
         double input = 0;
-        const double MAXBYTELEN = 6;
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }
