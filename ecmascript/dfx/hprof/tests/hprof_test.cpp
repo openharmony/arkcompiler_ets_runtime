@@ -136,11 +136,15 @@ public:
     {
         int retry = 2;
         RemoveExistingFile();
-        HeapProfilerInterface::DumpHeapSnapshot(thread, DumpFormat::JSON, filePath);
+        EcmaVM *ecmaVm = thread->GetEcmaVM();
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm);
+        FileStream stream(filePath.c_str());
+        heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
         while (!IsFileExist() && retry > 0) {
             retry--;
-            HeapProfilerInterface::DumpHeapSnapshot(thread, DumpFormat::JSON, filePath);
+            heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
         }
+        HeapProfilerInterface::Destroy(ecmaVm);
         return IsFileExist();
     }
 

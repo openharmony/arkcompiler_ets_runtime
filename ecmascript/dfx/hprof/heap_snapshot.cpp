@@ -726,7 +726,7 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
         AddTraceNodeId(methodLiteral);
     }
 
-    TraceNode* topNode = traceTree_.AddNodeToTree(traceNodeIndex_);
+    TraceNode* topNode = traceTree_->AddNodeToTree(traceNodeIndex_);
     if (topNode == nullptr) {
         return -1;
     }

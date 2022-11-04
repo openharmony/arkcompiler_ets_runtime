@@ -192,26 +192,17 @@ HWTEST_F_L0(HeapTrackerTest, HeapTrackerTraceAllocation)
     fstream inputStream(fileName, std::ios::in);
     std::string line;
     std::string emptyTraceFunctionInfo = "\"trace_function_infos\":[";
-    std::string emptyTraceNode = "\"trace_tree\":[";
     std::string firstTraceFunctionInfo = "\"trace_function_infos\":[0,";
-    std::string firstTraceNode = "\"trace_tree\":[1,0";
     uint32_t emptyTraceFunctionInfoSize = emptyTraceFunctionInfo.size();
-    uint32_t emptyTraceNodeSize = emptyTraceNode.size();
     bool traceFunctionInfoIsFind = false;
-    bool traceNodeIsFind = false;
     while (getline(inputStream, line)) {
         if (line.substr(0U, emptyTraceFunctionInfoSize) == emptyTraceFunctionInfo) {
             ASSERT_TRUE(line.substr(0, firstTraceFunctionInfo.size()) == firstTraceFunctionInfo);
             traceFunctionInfoIsFind = true;
-        }
-
-        if (line.substr(0U, emptyTraceNodeSize) == emptyTraceNode) {
-            ASSERT_TRUE(line.substr(0, firstTraceNode.size()) == firstTraceNode);
-            traceNodeIsFind = true;
+            break;
         }
     }
     ASSERT_TRUE(traceFunctionInfoIsFind);
-    ASSERT_TRUE(traceNodeIsFind);
 
     inputStream.close();
     inputStream.clear();
