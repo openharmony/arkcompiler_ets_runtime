@@ -32,7 +32,7 @@ public:
     virtual void RunIfWaitingForDebugger() = 0;
     virtual void SendResponse(const DispatchRequest &request, const DispatchResponse &response,
                               const PtBaseReturns &result) = 0;
-    virtual void SendNotification(const PtBaseEvents &events) = 0;
+    virtual void SendNotification(const PtBaseEvents &events, bool needPrint = true) = 0;
 
 private:
     NO_COPY_SEMANTIC(ProtocolChannel);

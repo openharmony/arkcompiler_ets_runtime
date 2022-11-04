@@ -44,13 +44,13 @@ public:
 
     void SendResponse(const DispatchRequest &request, const DispatchResponse &response,
                       const PtBaseReturns &result) override;
-    void SendNotification(const PtBaseEvents &events) override;
+    void SendNotification(const PtBaseEvents &events, bool needPrint = true) override;
 
 private:
     NO_MOVE_SEMANTIC(ProtocolHandler);
     NO_COPY_SEMANTIC(ProtocolHandler);
     std::unique_ptr<PtJson> CreateErrorReply(const DispatchResponse &response);
-    void SendReply(const PtJson &reply);
+    void SendReply(const PtJson &reply, bool needPrint = true);
 
     std::function<void(const void *, const std::string &)> callback_;
     Dispatcher dispatcher_;
