@@ -323,20 +323,20 @@ void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(std::vector<Pc2CallSiteInfo> 
         stackmapOffset += callsite.CalStackMapSize();
         int loc = FindLoc(CallsitePcs, x.first);
         ASSERT(loc >= 0 && loc < static_cast<int>(callsiteNum));
-        result.callsites[loc] = callsite;
+        result.callsites[static_cast<uint32_t>(loc)] = callsite;
     }
     totalSize = stackmapOffset;
     for (auto &x: pc2Deopts) {
         int loc = FindLoc(CallsitePcs, x.first);
         ASSERT(loc >= 0 && loc < static_cast<int>(callsiteNum));
         DeoptInfoType deopt = x.second;
-        result.callsites[loc].head.calliteOffset = x.first;
-        result.callsites[loc].head.deoptNum = deopt.size();
-        result.callsites[loc].head.deoptOffset = totalSize;
+        result.callsites[static_cast<uint32_t>(loc)].head.calliteOffset = x.first;
+        result.callsites[static_cast<uint32_t>(loc)].head.deoptNum = deopt.size();
+        result.callsites[static_cast<uint32_t>(loc)].head.deoptOffset = totalSize;
         std::pair<uint32_t, std::vector<kungfu::ARKDeopt>> sizeAndArkDeopt;
         GenARKDeopt(deopt, sizeAndArkDeopt);
         totalSize += sizeAndArkDeopt.first;
-        result.callsites[loc].callsite2Deopt = sizeAndArkDeopt.second;
+        result.callsites[static_cast<uint32_t>(loc)].callsite2Deopt = sizeAndArkDeopt.second;
     }
     result.secHead.callsiteNum = callsiteNum;
     result.secHead.callsitStart = sizeof(StackMapSecHead);

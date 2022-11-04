@@ -68,8 +68,8 @@ public:
                 funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - entrys[j];
             }
             kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
-            stubInfo.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta, funcSize,
-                info);
+            stubInfo.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta,
+                              funcSize, info);
             ASSERT(!cs->GetName().empty());
             addr2name[entrys[j]] = cs->GetName();
         }
@@ -113,7 +113,7 @@ public:
             auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
             bool isMainFunc = found != std::string::npos;
             aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, idx,
-                                 funcEntry - codeBuff, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
+                             funcEntry - codeBuff, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
         }
     }
 
