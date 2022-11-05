@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "containerslistconstructor_fuzzer.h"
+#include "containerslistisempty_fuzzer.h"
 
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda;
@@ -72,12 +73,12 @@ namespace OHOS {
         objCallInfo->SetFunction(newTarget.GetTaggedValue());
         objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
         objCallInfo->SetThis(JSTaggedValue::Undefined());
-        JSTaggedValue result = ContainersList::ListConstructor(objCallInfo);
+        JSTaggedValue result = ContainersList::Add(objCallInfo);
         JSHandle<JSAPIList> map(thread, result);
         return map;
     }
 
-    void ContainerslistConStructorFuzzTest(const uint8_t* data, size_t size)
+    void ContainerslistIsemptyFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -92,6 +93,9 @@ namespace OHOS {
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }
+        if (JSTaggedValue::IsImpureNaN(input)) {
+            return;
+        }
         if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
@@ -101,7 +105,7 @@ namespace OHOS {
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(lightWeightSet.GetTaggedValue());
         callInfo->SetCallArg(0, JSTaggedValue(input));
-        ContainersList::ListConstructor(callInfo);
+        ContainersList::IsEmpty(callInfo);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -110,6 +114,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::ContainerslistConStructorFuzzTest(data, size);
+    OHOS::ContainerslistIsemptyFuzzTest(data, size);
     return 0;
 }

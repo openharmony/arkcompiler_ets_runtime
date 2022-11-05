@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "containerslistconstructor_fuzzer.h"
+#include "containerslistconverttoarray_fuzzer.h"
 
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -21,7 +21,10 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/napi/include/jsnapi.h"
+
+#define MAXBYTELEN sizeof(uint32_t)
 
 using namespace panda;
 using namespace panda::test;
@@ -45,6 +48,29 @@ namespace OHOS {
         EcmaRuntimeCallInfo *objCallInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, callee, undefined, numArgs);
         return objCallInfo;
+    }
+
+    EcmaRuntimeCallInfo* CreateEcmaRuntimeCallInfo(JSThread *thread, JSTaggedValue newTgt, uint32_t argvLength)
+    {
+        const uint8_t testDecodedSize = 2;
+        int32_t numActualArgs = argvLength / testDecodedSize + 1;
+        JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
+        
+        size_t frameSize = 0;
+        if (thread->IsAsmInterpreter()) {
+            frameSize = InterpretedEntryFrame::NumOfMembers() + numActualArgs;
+        } else {
+            frameSize = InterpretedFrame::NumOfMembers() + numActualArgs;
+        }
+        JSTaggedType *newSp = sp - frameSize;
+        for (int i = numActualArgs; i > 0; i--) {
+            newSp[i - 1] = JSTaggedValue::Undefined().GetRawData();
+        }
+        EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
+        *(--newSp) = numActualArgs;
+        *(--newSp) = panda::ecmascript::ToUintPtr(thread);
+        ecmaRuntimeCallInfo->SetNewTarget(newTgt);
+        return ecmaRuntimeCallInfo;
     }
 
     JSTaggedValue InitializeContainersList(JSThread *thread)
@@ -72,12 +98,12 @@ namespace OHOS {
         objCallInfo->SetFunction(newTarget.GetTaggedValue());
         objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
         objCallInfo->SetThis(JSTaggedValue::Undefined());
-        JSTaggedValue result = ContainersList::ListConstructor(objCallInfo);
-        JSHandle<JSAPIList> map(thread, result);
-        return map;
+        JSTaggedValue result = ContainersList::Add(objCallInfo);
+        JSHandle<JSAPIList> list(thread, result);
+        return list;
     }
 
-    void ContainerslistConStructorFuzzTest(const uint8_t* data, size_t size)
+    void ContainerslistConvertToArrayFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -88,7 +114,6 @@ namespace OHOS {
             return;
         }
         double input = 0;
-        const double MAXBYTELEN = 8;
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }
@@ -96,12 +121,17 @@ namespace OHOS {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        JSHandle<JSAPIList> lightWeightSet = CreateJSAPIList(thread);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+        JSHandle<JSAPIList> list = CreateJSAPIList(thread);
+        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
         callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(lightWeightSet.GetTaggedValue());
+        callInfo->SetThis(list.GetTaggedValue());
         callInfo->SetCallArg(0, JSTaggedValue(input));
-        ContainersList::ListConstructor(callInfo);
+        ContainersList::Add(callInfo);
+
+        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+        callInfo1->SetFunction(JSTaggedValue::Undefined());
+        callInfo1->SetThis(list.GetTaggedValue());
+        ContainersList::ConvertToArray(callInfo1);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -110,6 +140,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::ContainerslistConStructorFuzzTest(data, size);
+    OHOS::ContainerslistConvertToArrayFuzzTest(data, size);
     return 0;
 }

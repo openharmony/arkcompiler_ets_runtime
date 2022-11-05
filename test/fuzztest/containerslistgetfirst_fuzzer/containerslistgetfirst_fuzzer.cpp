@@ -29,7 +29,6 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
 
 namespace OHOS {
-
     JSFunction *JSObjectCreate(JSThread *thread)
     {
         EcmaVM *ecmaVM = thread->GetEcmaVM();
@@ -69,7 +68,7 @@ namespace OHOS {
     JSHandle<JSAPIList> CreateJSAPIList(JSThread *thread)
     {
         JSHandle<JSFunction> newTarget(thread, InitializeContainersList(thread));
-        auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+        auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
         objCallInfo->SetFunction(newTarget.GetTaggedValue());
         objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
         objCallInfo->SetThis(JSTaggedValue::Undefined());
@@ -102,11 +101,8 @@ namespace OHOS {
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(lightWeightSet.GetTaggedValue());
         callInfo->SetCallArg(0, JSTaggedValue(input));
-        for (double i = 0; i < MAXBYTELEN; i++) {
-
-            ContainersList::Add(callInfo);
-        }
-        ContainersList::GetFirst(callInfo);
+        callInfo->SetCallArg(1, JSTaggedValue(input));
+        ContainersList::Add(callInfo);
         JSNApi::DestroyJSVM(vm);
     }
 }
