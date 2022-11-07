@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "containerslistconstructor_fuzzer.h"
+#include "containerslistequal_fuzzer.h"
 
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda;
@@ -45,6 +46,29 @@ namespace OHOS {
         EcmaRuntimeCallInfo *objCallInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, callee, undefined, numArgs);
         return objCallInfo;
+    }
+
+    EcmaRuntimeCallInfo* CreateEcmaRuntimeCallInfo(JSThread *thread, JSTaggedValue newTgt, uint32_t argvLength)
+    {
+        const uint8_t testDecodedSize = 2;
+        int32_t numActualArgs = argvLength / testDecodedSize + 1;
+        JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
+        
+        size_t frameSize = 0;
+        if (thread->IsAsmInterpreter()) {
+            frameSize = InterpretedEntryFrame::NumOfMembers() + numActualArgs;
+        } else {
+            frameSize = InterpretedFrame::NumOfMembers() + numActualArgs;
+        }
+        JSTaggedType *newSp = sp - frameSize;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        for (int i = numActualArgs; i > 0; i--) {
+            newSp[i - 1] = JSTaggedValue::Undefined().GetRawData();
+        }
+        EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(newSp - 2);
+        *(--newSp) = numActualArgs;
+        *(--newSp) = panda::ecmascript::ToUintPtr(thread);
+        ecmaRuntimeCallInfo->SetNewTarget(newTgt);
+        return ecmaRuntimeCallInfo;
     }
 
     JSTaggedValue InitializeContainersList(JSThread *thread)
@@ -72,12 +96,12 @@ namespace OHOS {
         objCallInfo->SetFunction(newTarget.GetTaggedValue());
         objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
         objCallInfo->SetThis(JSTaggedValue::Undefined());
-        JSTaggedValue result = ContainersList::ListConstructor(objCallInfo);
+        JSTaggedValue result = ContainersList::Add(objCallInfo);
         JSHandle<JSAPIList> map(thread, result);
         return map;
     }
 
-    void ContainerslistConStructorFuzzTest(const uint8_t* data, size_t size)
+    void ContainerslistEqualFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -92,16 +116,19 @@ namespace OHOS {
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }
+        if (JSTaggedValue::IsImpureNaN(input)) {
+            return;
+        }
         if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        JSHandle<JSAPIList> lightWeightSet = CreateJSAPIList(thread);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+        JSHandle<JSAPIList> list = CreateJSAPIList(thread);
+        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
         callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(lightWeightSet.GetTaggedValue());
+        callInfo->SetThis(list.GetTaggedValue());
         callInfo->SetCallArg(0, JSTaggedValue(input));
-        ContainersList::ListConstructor(callInfo);
+        ContainersList::Equal(callInfo);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -110,6 +137,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::ContainerslistConStructorFuzzTest(data, size);
+    OHOS::ContainerslistEqualFuzzTest(data, size);
     return 0;
 }

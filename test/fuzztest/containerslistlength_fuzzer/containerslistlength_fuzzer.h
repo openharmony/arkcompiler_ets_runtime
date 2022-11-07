@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#ifndef CONTAINERSLISTCONSTRUCTOR_FUZZER_H
-#define CONTAINERSLISTCONSTRUCTOR_FUZZER_H
+#ifndef CONTAINERSLISTLENGTH_FUZZER_H
+#define CONTAINERSLISTLENGTH_FUZZER_H
 
-#define FUZZ_PROJECT_NAME "containerslistconstructor_fuzzer"
+#define FUZZ_PROJECT_NAME "containerslistlength_fuzzer"
 
 #endif

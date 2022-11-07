@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "containerslistconstructor_fuzzer.h"
+#include "containerslistforeach_fuzzer.h"
 
 #include "ecmascript/containers/containers_list.h"
 #include "ecmascript/containers/containers_private.h"
@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda;
@@ -72,12 +73,12 @@ namespace OHOS {
         objCallInfo->SetFunction(newTarget.GetTaggedValue());
         objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
         objCallInfo->SetThis(JSTaggedValue::Undefined());
-        JSTaggedValue result = ContainersList::ListConstructor(objCallInfo);
+        JSTaggedValue result = ContainersList::Add(objCallInfo);
         JSHandle<JSAPIList> map(thread, result);
         return map;
     }
 
-    void ContainerslistConStructorFuzzTest(const uint8_t* data, size_t size)
+    void ContainerslistForEachFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -92,16 +93,25 @@ namespace OHOS {
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }
+        if (JSTaggedValue::IsImpureNaN(input)) {
+            return;
+        }
         if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        JSHandle<JSAPIList> lightWeightSet = CreateJSAPIList(thread);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+        JSHandle<JSAPIList> list = CreateJSAPIList(thread);
+        auto *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
         callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(lightWeightSet.GetTaggedValue());
+        callInfo->SetThis(list.GetTaggedValue());
         callInfo->SetCallArg(0, JSTaggedValue(input));
-        ContainersList::ListConstructor(callInfo);
+        ContainersList::Insert(callInfo);
+        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+        callInfo1->SetFunction(JSTaggedValue::Undefined());
+        callInfo1->SetThis(list.GetTaggedValue());
+        callInfo1->SetCallArg(0, JSTaggedValue(input));
+        callInfo1->SetCallArg(1, list.GetTaggedValue());
+        ContainersList::ForEach(callInfo1);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -110,6 +120,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::ContainerslistConStructorFuzzTest(data, size);
+    OHOS::ContainerslistForEachFuzzTest(data, size);
     return 0;
 }

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef CONTAINERSLIGHTWEIGHTSET_FUZZER_H
-#define CONTAINERSLIGHTWEIGHTSET_FUZZER_H
+#ifndef CONTAINERSLISTFGETFIRST_FUZZER_H
+#define CONTAINERSLISTFGETFIRST_FUZZER_H
 
 #define FUZZ_PROJECT_NAME "containerslistgetfirst_fuzzer"
 
