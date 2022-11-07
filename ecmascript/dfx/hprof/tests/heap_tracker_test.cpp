@@ -60,7 +60,7 @@ public:
     }
     bool Good() override
     {
-        return true;
+        return testStream_.good();
     }
 
     void UpdateHeapStats([[maybe_unused]]HeapStat* updateData, [[maybe_unused]]int32_t count) override
@@ -70,6 +70,14 @@ public:
     void UpdateLastSeenObjectId([[maybe_unused]]int32_t lastSeenObjectId) override
     {
     }
+
+    void Clear()
+    {
+        testStream_.clear(std::ios::badbit);
+    }
+
+private:
+    std::fstream testStream_;
 };
 }
 
@@ -240,7 +248,7 @@ HWTEST_F_L0(HeapTrackerTest, DumpHeapSnapshot)
         instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
     }
 
-    // Create file test.heaptimeline
+    // Create file test.heapsnapshot
     std::string fileName = "test.heapsnapshot";
     fstream outputString(fileName, std::ios::out);
     outputString.close();
@@ -296,5 +304,195 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
     heapSnapshot.UpdateNode();
     size_t endNode = heapSnapshot.GetNodeCount();
     EXPECT_TRUE(beginNode != endNode);
+}
+
+HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_001)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+
+    sleep(1);
+    int count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSAsyncFuncObject();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSSymbol();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+    }
+
+    TestStream stream;
+    stream.Clear();
+    EXPECT_TRUE(!stream.Good());
+    TestProgress testProgress;
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true);
+    HeapProfilerInterface::Destroy(instance);
+}
+
+HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_002)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+
+    sleep(1);
+    int count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSAsyncFuncObject();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSSymbol();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+    }
+
+    TestStream stream;
+    stream.Clear();
+    EXPECT_TRUE(!stream.Good());
+    TestProgress testProgress;
+    heapProfile->DumpHeapSnapshot(DumpFormat::BINARY, &stream, &testProgress, true, true);
+    HeapProfilerInterface::Destroy(instance);
+}
+
+HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_003)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+
+    sleep(1);
+    int count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSAsyncFuncObject();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSSymbol();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+    }
+
+    TestStream stream;
+    stream.Clear();
+    EXPECT_TRUE(!stream.Good());
+    TestProgress testProgress;
+    heapProfile->DumpHeapSnapshot(DumpFormat::OTHER, &stream, &testProgress, true, true);
+    HeapProfilerInterface::Destroy(instance);
+}
+
+HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_004)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+
+    sleep(1);
+    int count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSAsyncFuncObject();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSSymbol();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+    }
+
+    TestStream stream;
+    stream.Clear();
+    EXPECT_TRUE(!stream.Good());
+    TestProgress testProgress;
+    DumpFormat dumFormat = static_cast<DumpFormat>(5);
+    heapProfile->DumpHeapSnapshot(dumFormat, &stream, &testProgress, true, true);
+    HeapProfilerInterface::Destroy(instance);
+}
+
+HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamEndOfStream)
+{
+    int fd = 3;
+    FileDescriptorStream fileStream(fd);
+    EXPECT_TRUE(fileStream.Good());
+    fileStream.EndOfStream();
+}
+
+HWTEST_F_L0(HeapTrackerTest, StreamWriterEnd)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+
+    sleep(1);
+    int count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSAsyncFuncObject();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        instance->GetFactory()->NewJSSymbol();
+    }
+    sleep(1);
+    count = 100;
+    while (count-- > 0) {
+        JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+    }
+
+    // Create file test.heapsnapshot
+    std::string fileName = "test.heapsnapshot";
+    fstream outputString(fileName, std::ios::out);
+    outputString.close();
+    outputString.clear();
+
+    FileStream stream(fileName.c_str());
+    TestProgress testProgress;
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true);
+    StreamWriter streamWriter(&stream);
+    streamWriter.End();
+    HeapProfilerInterface::Destroy(instance);
+
+    // Check
+    fstream inputStream(fileName, std::ios::in);
+    std::string line;
+    std::string nodes = "\"nodes\":[";
+    std::string sample = "\"samples\":[]";
+    uint32_t nodesSize = nodes.size();
+    uint32_t sampleSize = sample.size();
+    bool isNodesFind = false;
+    bool isSampleFind = false;
+    while (getline(inputStream, line)) {
+        if (line.substr(0U, nodesSize) == nodes) {
+            isNodesFind = true;
+        }
+
+        if (line.substr(0U, sampleSize) == sample) {
+            isSampleFind = true;
+        }
+    }
+    ASSERT_TRUE(isNodesFind);
+    ASSERT_TRUE(isSampleFind);
+
+    inputStream.close();
+    inputStream.clear();
+    std::remove(fileName.c_str());
 }
 }  // namespace panda::test
