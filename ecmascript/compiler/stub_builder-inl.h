@@ -1092,6 +1092,42 @@ inline GateRef StubBuilder::IsJSAPILightWeightSet(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_LIGHT_WEIGHT_SET)));
 }
 
+inline GateRef StubBuilder::IsLinkedNode(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINKED_NODE)));
+}
+
+inline GateRef StubBuilder::IsJSAPIHashMap(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_HASH_MAP)));
+}
+
+inline GateRef StubBuilder::IsJSAPIHashSet(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_HASH_SET)));
+}
+
+inline GateRef StubBuilder::IsJSAPILinkedList(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_LINKED_LIST)));
+}
+
+inline GateRef StubBuilder::IsJSAPIList(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_LIST)));
+}
+
+inline GateRef StubBuilder::IsJSAPIArrayList(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)));
+}
+
 inline GateRef StubBuilder::GetTarget(GateRef proxyObj)
 {
     GateRef offset = IntPtr(JSProxy::TARGET_OFFSET);

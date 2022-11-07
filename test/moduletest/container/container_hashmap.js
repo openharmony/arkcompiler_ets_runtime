@@ -165,6 +165,31 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     res.forEach(elements);
+
+    // test RBTree
+    let collisionMap = new fastmap();
+    let count = 0;
+    // same hash when mod 1024
+    collisionMap.set(1224, 1);
+    collisionMap.set(1285, 2);
+    collisionMap.set(1463, 3);
+    collisionMap.set(4307, 4);
+    collisionMap.set(5135, 5);
+    collisionMap.set(5903, 6);
+    collisionMap.set(6603, 7);
+    collisionMap.set(6780, 8);
+    collisionMap.set(8416, 9);
+    collisionMap.set(9401, 10);
+    collisionMap.set(9740, 11);
+    collisionMap.forEach((value, key, hashMap) => {
+        if (hashMap.get(key) == value) {
+            count += value;
+        }
+    });
+    if (count != 66) {  // 66: 1 + 2 + 3 + ... + 11
+        print("test RBTree forEach fail. count=" + count);
+    }
+
     let de = new fastmap();
     try {
         de.forEach(123);

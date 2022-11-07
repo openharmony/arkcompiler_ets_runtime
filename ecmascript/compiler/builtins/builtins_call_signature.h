@@ -33,6 +33,12 @@ namespace panda::ecmascript::kungfu {
     V(DequeForEach)                                 \
     V(LightWeightMapForEach)                        \
     V(LightWeightSetForEach)                        \
+    V(HashMapForEach)                               \
+    V(HashSetForEach)                               \
+    V(LinkedListForEach)                            \
+    V(ListForEach)                                  \
+    V(ArrayListForEach)                             \
+    V(ArrayListReplaceAllElements)                  \
 
 class BuiltinsStubCSigns {
 public:
