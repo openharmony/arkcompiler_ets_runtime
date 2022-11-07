@@ -134,7 +134,6 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     bool isNewVersion = jsPandaFile->IsNewVersion();
     if (isNewVersion) {
         constpool = vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(mainMethodIndex));
-        GenerateConstpoolCache(thread, jsPandaFile, constpool);
     } else {
         JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, 0);
         if (constpoolVal.IsHole()) {
@@ -450,16 +449,13 @@ bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
     vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchUnloaded(patchFile);
 
     ClearReservedInfo();
-    if (!ClearPatchInfo(thread, patchFileName)) {
-        LOG_ECMA(ERROR) << "UnloadPatch failed";
-        return false;
-    }
+    ClearPatchInfo(thread, patchFileName);
 
     LOG_ECMA(INFO) << "UnloadPatch success!";
     return true;
 }
 
-bool QuickFixLoader::ClearPatchInfo(JSThread *thread, const CString &patchFileName) const
+void QuickFixLoader::ClearPatchInfo(JSThread *thread, const CString &patchFileName) const
 {
     EcmaVM *vm = thread->GetEcmaVM();
 
@@ -470,11 +466,8 @@ bool QuickFixLoader::ClearPatchInfo(JSThread *thread, const CString &patchFileNa
 
     const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName);
     if (patchFile != nullptr) {
-        LOG_ECMA(ERROR) << "patch jsPandaFile is not nullptr";
-        return false;
+        LOG_ECMA(INFO) << "patch jsPandaFile is not nullptr";
     }
-
-    return true;
 }
 
 void QuickFixLoader::ReplaceMethodInner(JSThread *thread,
