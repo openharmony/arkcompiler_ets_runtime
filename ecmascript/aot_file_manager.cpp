@@ -692,7 +692,7 @@ bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
         auto s = funcEntryDes.begin() + startIndex;
         auto t = funcEntryDes.begin() + startIndex + funcCount;
         AOTFileInfo::FuncEntryDes target;
-        target.codeAddr_ = retAddr;
+        target.codeAddr_ = retAddr - 1; // -1: for pc
         auto it = std::upper_bound(s, t, target, cmp);
         --it;
         ASSERT(it != t);

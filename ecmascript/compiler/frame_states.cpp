@@ -131,7 +131,10 @@ bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc)
     // liveout next
     auto frameInfo = GetOrOCreateStateInfo(predPc);
     FrameStateInfo *predFrameInfo = liveOutResult_;
-    bool changed = false;
+    bool changed = frameInfo->MergeLiveout(predFrameInfo);
+    if (!changed) {
+        return changed;
+    }
     for (size_t i = 0; i < numVregs_; i++) {
         auto predValue = predFrameInfo->ValuesAt(i);
         auto value = frameInfo->ValuesAt(i);
@@ -242,13 +245,18 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
             changed |= MergeIntoPredBC(bbPred->end);
         }
     }
-    for (auto bbPred : bb.trys) {
-        if (defPhi) {
-            changed |= MergeIntoPredBB(&bb, bbPred);
-        } else {
-            changed |= MergeIntoPredBC(bbPred->end);
+    if (!bb.trys.empty()) {
+        // clear GET_EXCEPTION gate if this is a catch block
+        UpdateAccumulator(Circuit::NullGate());
+        for (auto bbPred : bb.trys) {
+            if (defPhi) {
+                changed |= MergeIntoPredBB(&bb, bbPred);
+            } else {
+                changed |= MergeIntoPredBC(bbPred->end);
+            }
         }
     }
+
     return changed;
 }
 
@@ -281,8 +289,8 @@ void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &byt
         auto gate = Circuit::NullGate();
         // variable kill
         if (bytecodeInfo.AccOut()) {
-            UpdateAccumulator(Circuit::NullGate());
             gate = ValuesAtAccumulator();
+            UpdateAccumulator(Circuit::NullGate());
         } else if (bytecodeInfo.vregOut.size() != 0) {
             auto out = bytecodeInfo.vregOut[0];
             gate = ValuesAt(out);
