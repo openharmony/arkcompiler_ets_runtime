@@ -446,31 +446,42 @@ JSTaggedValue TaggedSingleList::Sort(JSThread *thread, const JSHandle<JSTaggedVa
     return JSTaggedValue::Undefined();
 }
 
-JSTaggedValue TaggedSingleList::GetSubList(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
-                                           const int fromIndex, const int toIndex,
-                                           const JSHandle<TaggedSingleList> &subList)
+void TaggedSingleList::GetSubList(JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
+                                  const int fromIndex, const int toIndex,
+                                  const JSHandle<TaggedSingleList> &subList)
 {
-    int dataIndex = taggedList->FindDataIndexByNodeIndex(fromIndex);
-    int endIndex = taggedList->FindDataIndexByNodeIndex(toIndex);
-    int preDataIndex = ELEMENTS_START_INDEX;
-    int num = 0;
-    JSMutableHandle<JSTaggedValue> dataHandle(thread, JSTaggedValue::Undefined());
-    JSHandle<JSTaggedValue> nextHandle(thread, JSTaggedValue(ELEMENTS_START_INDEX));
-    while (dataIndex != endIndex) {
-        int elementDataIndex = ELEMENTS_START_INDEX + TaggedSingleList::ENTRY_SIZE + num * TaggedSingleList::ENTRY_SIZE;
-        dataHandle.Update(taggedList->GetElement(dataIndex));
-        subList->SetElement(thread, preDataIndex + NEXT_PTR_OFFSET, JSTaggedValue(elementDataIndex));
-        subList->SetElement(thread, elementDataIndex, dataHandle.GetTaggedValue());
-        subList->SetElement(thread, elementDataIndex + NEXT_PTR_OFFSET, nextHandle.GetTaggedValue());
-        subList->SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(elementDataIndex));
-        subList->SetNumberOfNodes(thread, num + 1);
+    int fromDataIndex = -1;
+    int toDataIndex = -1;
+    int dataIndex = taggedList->GetElement(ELEMENTS_START_INDEX + NEXT_PTR_OFFSET).GetInt();
+    int nodeSum = 0;
+    while (dataIndex != ELEMENTS_START_INDEX) {
+        if (nodeSum == fromIndex) {
+            fromDataIndex = dataIndex;
+        }
+        if (nodeSum == toIndex) {
+            toDataIndex = dataIndex;
+            break;
+        }
         dataIndex = taggedList->GetElement(dataIndex + NEXT_PTR_OFFSET).GetInt();
-        preDataIndex = elementDataIndex;
-        num++;
+        nodeSum++;
     }
-    subList->SetNumberOfDeletedNodes(thread, 0);
 
-    return subList.GetTaggedValue();
+    int preDataIndex = ELEMENTS_START_INDEX;
+    JSMutableHandle<JSTaggedValue> dataHandle(thread, JSTaggedValue::Undefined());
+    int curDataIndex = preDataIndex;
+    while (fromDataIndex != toDataIndex) {
+        curDataIndex += TaggedSingleList::ENTRY_SIZE;
+        dataHandle.Update(taggedList->GetElement(fromDataIndex));
+        subList->SetElement(thread, preDataIndex + NEXT_PTR_OFFSET, JSTaggedValue(curDataIndex));
+        subList->SetElement(thread, curDataIndex, dataHandle.GetTaggedValue());
+        preDataIndex = curDataIndex;
+        fromDataIndex = taggedList->GetElement(fromDataIndex + NEXT_PTR_OFFSET).GetInt();
+    }
+    subList->SetElement(thread, curDataIndex + NEXT_PTR_OFFSET, JSTaggedValue(ELEMENTS_START_INDEX));
+    subList->SetElement(thread, HEAD_TABLE_INDEX, JSTaggedValue(ELEMENTS_START_INDEX));
+    subList->SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(curDataIndex));
+    subList->SetNumberOfNodes(thread, toIndex - fromIndex);
+    subList->SetNumberOfDeletedNodes(thread, 0);
 }
 
 JSTaggedValue TaggedSingleList::Equal(const JSHandle<TaggedSingleList> &compareList)

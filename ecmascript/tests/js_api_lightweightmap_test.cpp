@@ -300,11 +300,11 @@ HWTEST_F_L0(JSAPILightWeightMapTest, GetStateOfKey)
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
     JSAPILightWeightMap::Set(thread, lwm, key1, value1);
     KeyState keyState1 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key1);
-    EXPECT_TRUE(keyState1.isExist);
+    EXPECT_TRUE(keyState1.existed);
 
     JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
     KeyState keyState2 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key2);
-    EXPECT_FALSE(keyState2.isExist);
+    EXPECT_FALSE(keyState2.existed);
 
     // hash Collision
     std::vector<double> hashCollisionVector = {1224.0, 1285.0, 1463.0, 4307.0, 5135.0, 5903.0,
@@ -318,11 +318,11 @@ HWTEST_F_L0(JSAPILightWeightMapTest, GetStateOfKey)
     for (uint32_t i = 0; i < hashCollisionVector.size() - 1; i++) {
         JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(hashCollisionVector[i]));
         KeyState keyState4 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key4);
-        EXPECT_TRUE(keyState4.isExist);
+        EXPECT_TRUE(keyState4.existed);
     }
     JSHandle<JSTaggedValue> key5(thread, JSTaggedValue(hashCollisionVector[hashCollisionVector.size() - 1]));
     KeyState keyState5 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key5);
-    EXPECT_FALSE(keyState5.isExist);
+    EXPECT_FALSE(keyState5.existed);
 }
 
 HWTEST_F_L0(JSAPILightWeightMapTest, IncreaseCapacityTo)
