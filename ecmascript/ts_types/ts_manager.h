@@ -330,7 +330,6 @@ public:
 
     GlobalTSTypeRef ConvertPrimitiveToBuiltin(kungfu::GateType gateType)
     {
-        ASSERT(gateType.IsPrimitiveType());
         const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
         uint32_t l = gt.GetLocalId();
         switch (l) {

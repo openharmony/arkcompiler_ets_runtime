@@ -84,7 +84,7 @@ void TypeLowering::LowerTypeConvert(GateRef gate)
     auto rightType = acc_.GetRightType(gate);
     if (rightType.IsNumberType()) {
         GateRef value = acc_.GetValueIn(gate, 0);
-        if (leftType.IsPrimitiveType() && !leftType.IsStringType()) {
+        if (leftType.IsDigitablePrimitiveType()) {
             LowerPrimitiveToNumber(gate, value, leftType);
         }
         return;
