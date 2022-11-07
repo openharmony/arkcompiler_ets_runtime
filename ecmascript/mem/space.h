@@ -87,6 +87,11 @@ public:
         maximumCapacity_ = maximumCapacity;
     }
 
+    size_t GetOverShootMaximumCapacity() const
+    {
+        return maximumCapacity_ + outOfMemoryOvershootSize_;
+    }
+
     size_t GetInitialCapacity() const
     {
         return initialCapacity_;

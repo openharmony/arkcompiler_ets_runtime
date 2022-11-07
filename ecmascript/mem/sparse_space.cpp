@@ -369,12 +369,13 @@ void OldSpace::Merge(LocalSpace *localSpace)
         IncreaseLiveObjectSize(region->AliveObject());
         allocator_->CollectFreeObjectSet(region);
     });
-    if (committedSize_ > maximumCapacity_ + outOfMemoryOvershootSize_) {
+    size_t hugeSpaceCommitSize = heap_->GetHugeObjectSpace()->GetCommittedSize();
+    if (committedSize_ + hugeSpaceCommitSize > GetOverShootMaximumCapacity()) {
         LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
         heap_->ShouldThrowOOMError(true);
         IncreaseMergeSize(committedSize_- oldCommittedSize);
         // if throw OOM, temporarily increase space size to avoid vm crash
-        IncreaseOutOfMemoryOvershootSize(committedSize_ - maximumCapacity_ - outOfMemoryOvershootSize_);
+        IncreaseOutOfMemoryOvershootSize(committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity());
     }
 
     localSpace->GetRegionList().Clear();
