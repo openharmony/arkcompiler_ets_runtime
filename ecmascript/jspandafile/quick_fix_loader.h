@@ -63,7 +63,7 @@ private:
         reservedBaseMethodInfo_.clear();
         reservedBaseClassInfo_.clear();
     }
-    bool ClearPatchInfo(JSThread *thread, const CString &patchFileName) const;
+    void ClearPatchInfo(JSThread *thread, const CString &patchFileName) const;
 
     bool CheckIsInvalidPatch(const JSPandaFile *baseFile, const JSPandaFile *patchFile, EcmaVM *vm) const;
     // Check module mismatch
