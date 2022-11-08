@@ -335,9 +335,9 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ecmaString fail";
         EXPECT_TRUE(res->IsString()) << "[NotString] Deserialize ecmaString fail";
         JSHandle<EcmaString> resEcmaString = JSHandle<EcmaString>::Cast(res);
-        auto ecmaStringCode = EcmaStringAccessor(ecmaString).GetHashcode();
+        auto ecmaStringCode2 = EcmaStringAccessor(ecmaString).GetHashcode();
         auto resEcmaStringCode = EcmaStringAccessor(resEcmaString).GetHashcode();
-        EXPECT_TRUE(ecmaStringCode == resEcmaStringCode) << "Not same HashCode";
+        EXPECT_TRUE(ecmaStringCode2 == resEcmaStringCode) << "Not same HashCode";
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*ecmaString, *resEcmaString)) << "Not same EcmaString";
         Destroy();
     }

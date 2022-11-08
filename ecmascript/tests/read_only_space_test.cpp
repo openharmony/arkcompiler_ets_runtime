@@ -157,7 +157,8 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
         // test gc in parent process
         heap->CollectGarbage(TriggerGCType::OLD_GC);
     } else {
-        JSNApi::postFork(vm);
+        panda::RuntimeOption postOption;
+        JSNApi::postFork(vm, postOption);
         // test gc in child process
         heap->CollectGarbage(TriggerGCType::OLD_GC);
         auto *region = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());
