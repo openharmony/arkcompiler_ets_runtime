@@ -38,6 +38,10 @@ namespace panda::ecmascript {
     V(CanNotGetNotEcmaObject, "Can not get Prototype on non ECMA Object")                    \
     V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")
 
+#define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
+    V(IsBoundFunction)                                                                       \
+    V(IsCallable)
+
 class MessageString {
 public:
     enum MessageId {
@@ -50,6 +54,7 @@ public:
         ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_MESSAGE_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_MESSAGE_ID)
         ASM_INTERPRETER_BUILTINS_STUB_LIST(DEF_MESSAGE_ID)
+        DEBUG_CHECK_MESSAGE_STRING_LIST(DEF_MESSAGE_ID)
 #undef DEF_MESSAGE_ID
         MAX_MESSAGE_COUNT,
         ASM_INTERPRETER_START = Message_INT32_VALUE + 1,

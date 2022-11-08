@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_STUB_BUILDER_H
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
@@ -24,6 +25,20 @@ namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
+
+#ifndef NDEBUG
+#define ASM_ASSERT(messageId, glue, condition, nextLabel)                           \
+    Label nextLabel(env);                                                           \
+    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
+    Bind(&nextLabel)
+#elif ECMASCRIPT_ENABLE_ASM_ASSERT
+#define ASM_ASSERT(messageId, glue, condition, nextLabel)                           \
+    Label nextLabel(env);                                                           \
+    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
+    Bind(&nextLabel)
+#else
+#define ASM_ASSERT(messageId, ...) ((void)0)
+#endif
 
 class StubBuilder {
 public:
@@ -508,6 +523,7 @@ public:
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
     inline void PGOProfiler(GateRef glue, GateRef func);
+    void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode::Op Op>
