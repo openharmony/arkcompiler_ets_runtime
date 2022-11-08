@@ -214,7 +214,7 @@ HWTEST_F_L0(ObjectFactoryTest, InsertElementByIndex)
 {
     constexpr uint32_t ELEMENT_NUMS = 20;
     constexpr uint32_t INSERT_INDEX = 0;
-    JSHandle<JSTaggedValue> insertValue(ELEMENT_NUMS);
+    JSHandle<JSTaggedValue> insertValue(thread, JSTaggedValue(ELEMENT_NUMS));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> semiTaggedarray = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole(),
                                                                     MemSpaceType::SEMI_SPACE);
@@ -225,8 +225,8 @@ HWTEST_F_L0(ObjectFactoryTest, InsertElementByIndex)
         semiTaggedarray->Set(thread, i, JSTaggedValue(i));
         oldTaggedarray->Set(thread, i, JSTaggedValue(i));
     }
-    factory->InsertElementByIndex(semiTaggedarray, insertValue, INSERT_INDEX, ELEMENT_NUMS);
-    factory->InsertElementByIndex(oldTaggedarray, insertValue, INSERT_INDEX, ELEMENT_NUMS);
+    factory->InsertElementByIndex(semiTaggedarray, insertValue, INSERT_INDEX, ELEMENT_NUMS - 1);
+    factory->InsertElementByIndex(oldTaggedarray, insertValue, INSERT_INDEX, ELEMENT_NUMS - 1);
     // check
     EXPECT_EQ(semiTaggedarray->Get(thread, 0), insertValue.GetTaggedValue());
     EXPECT_EQ(oldTaggedarray->Get(thread, 0), insertValue.GetTaggedValue());

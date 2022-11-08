@@ -2126,6 +2126,7 @@ JSHandle<TaggedArray> ObjectFactory::InsertElementByIndex(JSHandle<TaggedArray> 
                                                           uint32_t effectiveLength)
 {
     ASSERT(0 <= index || index <= effectiveLength);
+    ASSERT(effectiveLength < srcArray->GetLength());
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
     if (region->InYoungSpace() && !region->IsMarking()) {
         size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
