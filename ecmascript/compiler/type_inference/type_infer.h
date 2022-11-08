@@ -135,6 +135,11 @@ private:
         return builder_->GetBytecodeInfo(bcIndex);
     }
 
+    bool IsByteCodeGate(const GateRef gate) const
+    {
+        return jsgateToBytecode_.find(gate) != jsgateToBytecode_.end();
+    }
+
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
     JSHandle<ConstantPool> constantPool_;

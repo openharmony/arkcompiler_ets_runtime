@@ -717,7 +717,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
             auto type = GetPropType(objType, value);
             return UpdateType(gate, type);
         }
-        if (GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
+        if (IsByteCodeGate(valueGate) && GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
             ConstDataId dataId(gateAccessor_.GetBitField(valueGate));
             auto index = dataId.GetId();
             return GetObjPropWithName(gate, objType, index);
@@ -760,7 +760,7 @@ bool TypeInfer::InferSuperPropertyByName(GateRef gate)
 bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
 {
     auto valueGate = gateAccessor_.GetValueIn(gate, 1);
-    if (GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
+    if (IsByteCodeGate(valueGate) && GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
         ConstDataId dataId(gateAccessor_.GetBitField(valueGate));
         auto index = dataId.GetId();
         return GetSuperProp(gate, index);
