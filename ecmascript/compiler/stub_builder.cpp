@@ -4389,6 +4389,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label methodNotNative(env);
     Branch(Int64NotEqual(Int64And(callField, isNativeMask), Int64(0)), &methodIsNative, &methodNotNative);
     auto data = std::begin(args);
+    Label notFastBuiltinsArg0(env);
+    Label notFastBuiltinsArg1(env);
+    Label notFastBuiltinsArg2(env);
+    Label notFastBuiltinsArg3(env);
     // 3. call native
     Bind(&methodIsNative);
     {
@@ -4399,11 +4403,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         GateRef numArgs = Int32Add(actualNumArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0: {
-                Label notFastBuiltins(env);
                 thisValue = data[0];
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
-                    method, &notFastBuiltins, &exit, &result, args, mode);
-                Bind(&notFastBuiltins);
+                    method, &notFastBuiltinsArg0, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg0);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue });
                 break;
@@ -4414,11 +4417,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, thisValue });
                 break;
             case JSCallMode::CALL_THIS_ARG1: {
-                Label notFastBuiltins(env);
                 thisValue = data[1];
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
-                    method, &notFastBuiltins, &exit, &result, args, mode);
-                Bind(&notFastBuiltins);
+                    method, &notFastBuiltinsArg1, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg1);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
                 break;
@@ -4429,11 +4431,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
                 break;
             case JSCallMode::CALL_THIS_ARG2: {
-                Label notFastBuiltins(env);
                 thisValue = data[2];
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
-                    method, &notFastBuiltins, &exit, &result, args, mode);
-                Bind(&notFastBuiltins);
+                    method, &notFastBuiltinsArg2, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg2);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
                 break;
@@ -4444,11 +4445,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
                 break;
             case JSCallMode::CALL_THIS_ARG3: {
-                Label notFastBuiltins(env);
                 thisValue = data[3];
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
-                    method, &notFastBuiltins, &exit, &result, args, mode);
-                Bind(&notFastBuiltins);
+                    method, &notFastBuiltinsArg3, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg3);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func,
                         newTarget, thisValue, data[0], data[1], data[2] }); // 2: args2
