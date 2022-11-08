@@ -112,281 +112,186 @@ public:
 
 class HProfTestHelper {
 public:
-    explicit HProfTestHelper(const CString &aFilePath) : filePath(aFilePath) {}
-    ~HProfTestHelper() = default;
-
-    bool IsFileExist()
+    explicit HProfTestHelper(const std::string &aFilePath, EcmaVM *vm)
+        : instance(vm),
+          filePath(aFilePath)
     {
-        bool exist = false;
-        exist = SafeOpenFile();
-        SafeCloseFile();
-        return exist;
-    }
+        fstream outputString(filePath, std::ios::out);
+        outputString.close();
+        outputString.clear();
 
-    bool RemoveExistingFile()
-    {
-        int code = 0;
-        if (IsFileExist()) {
-            code = std::remove(filePath.c_str());
-        }
-        return code == 0 ? true : false;
-    }
-
-    bool GenerateHeapDump(JSThread *thread)
-    {
-        int retry = 2;
-        RemoveExistingFile();
-        EcmaVM *ecmaVm = thread->GetEcmaVM();
-        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm);
         FileStream stream(filePath.c_str());
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
         heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
-        while (!IsFileExist() && retry > 0) {
-            retry--;
-            heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
-        }
-        HeapProfilerInterface::Destroy(ecmaVm);
-        return IsFileExist();
+
+        inputStream = fstream(filePath, std::ios::in);
+        HeapProfilerInterface::Destroy(instance);
     }
 
-    bool ContrastJSONLineHeader(int lineId, CString lineHeader)
+    ~HProfTestHelper()
+    {
+        inputStream.close();
+        inputStream.clear();
+    }
+
+    bool ContrastJSONLineHeader(std::string lineHeader)
     {
         bool allSame = false;
-        if (!SafeOpenFile()) {  // No JSON File
-            allSame = false;
-            SafeCloseFile();
-        } else {
-            CString line;
-            int i = 1;
-            while (getline(inputFile, line)) {
-                if (i == lineId && line.find(lineHeader) != line.npos) {
-                    allSame = true;
-                    break;
-                }
-                i++;
+        std::string line;
+        int i = 1;
+        while (getline(inputStream, line)) {
+            if (line.find(lineHeader) != line.npos) {
+                allSame = true;
+                break;
             }
-            SafeCloseFile();
+            i++;
         }
-
         return allSame;
     }
 
-    bool ContrastJSONSectionPayload(CString dataLable, int fieldNum)
+    bool ContrastJSONSectionPayload(std::string dataLable, int fieldNum)
     {
-        if (!SafeOpenFile()) {  // No JSON File
-            SafeCloseFile();
-            return false;
-        } else {
-            CString line;
-            int i = 1;
-            while (getline(inputFile, line)) {
-                if (i > 10 && line.find(dataLable) != line.npos) {  // 10 : Hit the line
-                    CString::size_type pos = 0;
-                    int loop = 0;
-                    while ((pos = line.find(",", pos)) != line.npos) {
-                        pos++;
-                        loop++;  // "," count
-                    }
-                    SafeCloseFile();
-                    return loop == fieldNum - 1;
+        std::string line;
+        int i = 1;
+        while (getline(inputStream, line)) {
+            if (i > 10 && line.find(dataLable) != line.npos) {  // 10 : Hit the line
+                std::string::size_type pos = 0;
+                int loop = 0;
+                while ((pos = line.find(",", pos)) != line.npos) {
+                    pos++;
+                    loop++;  // "," count
                 }
-                i++;  // Search the Next Line
+                return loop == fieldNum - 1;
             }
-            SafeCloseFile();
+            i++;  // Search the Next Line
         }
         return false;  // Lost the Line
     }
 
     bool ContrastJSONClousure()
     {
-        if (!SafeOpenFile()) {  // No JSON File
-            SafeCloseFile();
-            return false;
-        }
-        CString lineBk;  // The Last Line
-        CString line;
-        while (getline(inputFile, line)) {
+        std::string lineBk;  // The Last Line
+        std::string line;
+        while (getline(inputStream, line)) {
             lineBk = line;
         }
-        SafeCloseFile();
         return lineBk.compare("}") == 0;
     }
 
-    int ExtractCountFromMeta(CString typeLable)
+    int ExtractCountFromMeta(std::string typeLable)
     {
-        if (!SafeOpenFile()) {  // No JSON File
-            SafeCloseFile();
-            return -1;
-        } else {
-            CString line;
-            int i = 1;
-            while (getline(inputFile, line)) {
-                int length = line.length() - typeLable.length() - 1;
-                if (line.find(typeLable) != line.npos) {  // Get
-                    if (line.find(",") == line.npos) {    // "trace_function_count" end without ","
-                        length = line.length() - typeLable.length();
-                    }
-                    line = line.substr(typeLable.length(), length);
-                    SafeCloseFile();
-                    return std::stoi(line.c_str());
+        std::string line;
+        int i = 1;
+        while (getline(inputStream, line)) {
+            int length = line.length() - typeLable.length() - 1;
+            if (line.find(typeLable) != line.npos) {  // Get
+                if (line.find(",") == line.npos) {    // "trace_function_count" end without ","
+                    length = line.length() - typeLable.length();
                 }
-                i++;
+                line = line.substr(typeLable.length(), length);
+                return std::stoi(line.c_str());
             }
-            SafeCloseFile();
+            i++;
         }
         return -1;
     }
 
-    int ExtractCountFromPayload(CString dataLabel)
+    int ExtractCountFromPayload(std::string dataLabel)
     {
-        if (!SafeOpenFile()) {  // No JSON File
-            SafeCloseFile();
-            return -1;
-        } else {
-            CString line;
-            bool hit = false;
-            int loop = 0;
-            while (getline(inputFile, line)) {
-                if (!hit && line.find(dataLabel) != line.npos) {  // Get
-                    loop += 1;                                    // First Line
-                    hit = true;
-                    if (line.find("[]") != line.npos) {  // Empty
-                        loop = 0;
-                        SafeCloseFile();
-                        return loop;
-                    } else {
-                        continue;
-                    }
-                }
-                if (hit) {
-                    if (line.find("],") != line.npos) {  // Reach End
-                        loop += 1;                       // End Line
-                        SafeCloseFile();
-                        return loop;
-                    } else {
-                        loop++;
-                        continue;
-                    }
+        std::string line;
+        bool hit = false;
+        int loop = 0;
+        while (getline(inputStream, line)) {
+            if (!hit && line.find(dataLabel) != line.npos) {  // Get
+                loop += 1;                                    // First Line
+                hit = true;
+                if (line.find("[]") != line.npos) {  // Empty
+                    loop = 0;
+                    return loop;
+                } else {
+                    continue;
                 }
             }
-            SafeCloseFile();
+            if (hit) {
+                if (line.find("],") != line.npos) {  // Reach End
+                    loop += 1;                       // End Line
+                    return loop;
+                } else {
+                    loop++;
+                    continue;
+                }
+            }
         }
         return -1;
     }
 
 private:
-    bool SafeOpenFile()
-    {
-        inputFile.clear();
-        inputFile.open(filePath.c_str(), std::ios::in);
-        int retry = 2;
-        while (!inputFile.good() && retry > 0) {
-            inputFile.open(filePath.c_str(), std::ios::in);
-            retry--;
-        }
-        return inputFile.good();
-    }
-
-    void SafeCloseFile()
-    {
-        inputFile.close();
-        inputFile.clear();  // Reset File status
-    }
-    CString filePath;
-    std::fstream inputFile {};
+    EcmaVM *instance {nullptr};
+    std::string filePath;
+    std::fstream inputStream {};
 };
-
-HWTEST_F_L0(HProfTest, GenerateFileForManualCheck)
-{
-    HProfTestHelper tester("hprof_json_test.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
-}
-
-HWTEST_F_L0(HProfTest, GenerateFile)
-{
-    HProfTestHelper tester("GenerateFile.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
-    ASSERT_TRUE(tester.RemoveExistingFile());
-}
 
 HWTEST_F_L0(HProfTest, ParseJSONHeader)
 {
-    HProfTestHelper tester("ParseJSONHeader.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(1, "{\"snapshot\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(2, "{\"meta\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(3, "{\"node_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(4, "\"node_types\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(5, "\"edge_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(6, "\"edge_types\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(7, "\"trace_function_info_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(8, "\"trace_node_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(9, "\"sample_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader(10, "\"location_fields\":"));
-    ASSERT_TRUE(tester.RemoveExistingFile());
+    HProfTestHelper tester("ParseJSONHeader.heapsnapshot", instance);
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("{\"snapshot\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("{\"meta\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("{\"node_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"node_types\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"edge_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"edge_types\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"trace_function_info_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"trace_node_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"sample_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"location_fields\":"));
 }
 
 HWTEST_F_L0(HProfTest, ContrastTraceFunctionInfo)
 {
-    HProfTestHelper tester("ContrastTraceFunctionInfo.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
+    HProfTestHelper tester("ContrastTraceFunctionInfo.heapsnapshot", instance);
     ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"trace_function_infos\":", 2));  // Empty
-    ASSERT_TRUE(tester.RemoveExistingFile());
 }
 
 HWTEST_F_L0(HProfTest, ContrastTraceTree)
 {
-    HProfTestHelper tester("ContrastTraceTree.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
+    HProfTestHelper tester("ContrastTraceTree.heapsnapshot", instance);
     ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"trace_tree\":", 2));  // Empty
-    ASSERT_TRUE(tester.RemoveExistingFile());
 }
 
 HWTEST_F_L0(HProfTest, ContrastSamples)
 {
-    HProfTestHelper tester("ContrastSamples.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
+    HProfTestHelper tester("ContrastSamples.heapsnapshot", instance);
     ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"samples\":", 2));  // Empty
-    ASSERT_TRUE(tester.RemoveExistingFile());
 }
 
 HWTEST_F_L0(HProfTest, ContrastLocations)
 {
-    HProfTestHelper tester("ContrastLocations.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
+    HProfTestHelper tester("ContrastLocations.heapsnapshot", instance);
     ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"locations\":", 2));  // Empty
-    ASSERT_TRUE(tester.RemoveExistingFile());
 }
 
 HWTEST_F_L0(HProfTest, ContrastString)
 {
-    HProfTestHelper tester("ContrastString.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
+    HProfTestHelper tester("ContrastString.heapsnapshot", instance);
     ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"strings\":[", 1 + 1));
-    ASSERT_TRUE(tester.RemoveExistingFile());
 }
 
 HWTEST_F_L0(HProfTest, ContrastClosure)
 {
-    HProfTestHelper tester("ContrastClosure.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
+    HProfTestHelper tester("ContrastClosure.heapsnapshot", instance);
     ASSERT_TRUE(tester.ContrastJSONClousure());
-    ASSERT_TRUE(tester.RemoveExistingFile());
 }
 
 HWTEST_F_L0(HProfTest, ContrastEdgeCount)
 {
-    HProfTestHelper tester("ContrastEdgeCount.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
+    HProfTestHelper tester("ContrastEdgeCount.heapsnapshot", instance);
     ASSERT_TRUE(tester.ExtractCountFromMeta("\"edge_count\":") == tester.ExtractCountFromPayload("\"edges\":["));
-    ASSERT_TRUE(tester.RemoveExistingFile());
 }
 
 HWTEST_F_L0(HProfTest, ContrastTraceFunctionInfoCount)
 {
-    HProfTestHelper tester("ContrastTraceFunctionInfoCount.heapsnapshot");
-    ASSERT_TRUE(tester.GenerateHeapDump(thread));
+    HProfTestHelper tester("ContrastTraceFunctionInfoCount.heapsnapshot", instance);
     ASSERT_TRUE(tester.ExtractCountFromMeta("\"trace_function_count\":") ==
                 tester.ExtractCountFromPayload("\"trace_function_infos\":"));
-    ASSERT_TRUE(tester.RemoveExistingFile());
 }
 }  // namespace panda::test
