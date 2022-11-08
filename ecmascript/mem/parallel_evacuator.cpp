@@ -133,7 +133,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region)
         if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
         }
-
+        heap_->OnMoveEvent(reinterpret_cast<uintptr_t>(mem), reinterpret_cast<TaggedObject *>(address));
         Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
         VerifyHeapObject(reinterpret_cast<TaggedObject *>(address));
