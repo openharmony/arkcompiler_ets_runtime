@@ -418,14 +418,6 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_004)
     HeapProfilerInterface::Destroy(instance);
 }
 
-HWTEST_F_L0(HeapTrackerTest, FileStreamWriteChunk)
-{
-    std::string fileName = "test.FileStreamWriteChunk";
-    FileStream stream(fileName.c_str());
-    std::string str = "Hello";
-    EXPECT_TRUE(stream.WriteChunk(str.data(), str.size()));
-}
-
 HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamEndOfStream)
 {
     int fd = 3;
