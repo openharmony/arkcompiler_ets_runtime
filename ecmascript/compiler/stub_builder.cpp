@@ -901,27 +901,31 @@ GateRef StubBuilder::TaggedToRepresentation(GateRef value)
 
 void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
 {
-    auto depend = env_->GetCurrentLabel()->GetDepend();
-    GateRef ptr = PtrAdd(base, offset);
-    GateRef result = env_->GetCircuit()->NewGate(
-        OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
-    env_->GetCurrentLabel()->SetDepend(result);
-    if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
-        auto env = GetEnvironment();
-        Label entry(env);
-        env->SubCfgEntry(&entry);
-        Label exit(env);
-        Label isHeapObject(env);
+    if (!env_->IsAsmInterp()) {
+        env_->GetBuilder()->Store(type, glue, base, offset, value);
+    } else {
+        auto depend = env_->GetCurrentLabel()->GetDepend();
+        GateRef ptr = PtrAdd(base, offset);
+        GateRef result = env_->GetCircuit()->NewGate(
+            OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
+        env_->GetCurrentLabel()->SetDepend(result);
+        if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
+            auto env = GetEnvironment();
+            Label entry(env);
+            env->SubCfgEntry(&entry);
+            Label exit(env);
+            Label isHeapObject(env);
 
-        Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
-        Bind(&isHeapObject);
-        {
-            UpdateLeaveFrameAndCallNGCRuntime(
-                glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
-            Jump(&exit);
+            Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
+            Bind(&isHeapObject);
+            {
+                UpdateLeaveFrameAndCallNGCRuntime(
+                    glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
+                Jump(&exit);
+            }
+            Bind(&exit);
+            env->SubCfgExit();
         }
-        Bind(&exit);
-        env->SubCfgExit();
     }
 }
 

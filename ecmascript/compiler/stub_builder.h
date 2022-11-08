@@ -31,6 +31,8 @@ public:
         : callSignature_(parent->GetCallSignature()), env_(parent->GetEnvironment()) {}
     explicit StubBuilder(CallSignature *callSignature, Environment *env)
         : callSignature_(callSignature), env_(env) {}
+    explicit StubBuilder(Environment *env)
+        : env_(env) {}
     virtual ~StubBuilder() = default;
     NO_MOVE_SEMANTIC(StubBuilder);
     NO_COPY_SEMANTIC(StubBuilder);

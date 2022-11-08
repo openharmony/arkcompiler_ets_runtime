@@ -159,6 +159,56 @@ void NewObjectStubBuilder::NewArgumentsObj(Variable *result, Label *exit,
     Jump(exit);
 }
 
+void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj,
+                                             GateRef hclass, bool isEmptyArray)
+{
+    auto env = GetEnvironment();
+    Label initializeArray(env);
+    Label afterInitialize(env);
+    HeapAlloc(result, &initializeArray, spaceType);
+    Bind(&initializeArray);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(0), hclass);
+    InitializeWithSpeicalValue(&afterInitialize, result->ReadVariable(), Undefined(), Int32(JSArray::SIZE),
+                               TruncInt64ToInt32(size_));
+    Bind(&afterInitialize);
+    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
+
+    GateRef propertiesOffset = IntPtr(JSObject::PROPERTIES_OFFSET);
+    GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    if (isEmptyArray) {
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, obj);
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, obj);
+        Store(VariableType::JS_ANY(), glue_, result->ReadVariable(), lengthOffset, IntToTaggedInt(Int32(0)));
+    } else {
+        auto newProperties = Load(VariableType::JS_POINTER(), obj, propertiesOffset);
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, newProperties);
+
+        auto newElements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, newElements);
+
+        GateRef arrayLength = Load(VariableType::JS_ANY(), obj, lengthOffset);
+        Store(VariableType::JS_ANY(), glue_, result->ReadVariable(), lengthOffset, arrayLength);
+    }
+
+    auto accessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    SetPropertyInlinedProps(glue_, result->ReadVariable(), hclass, accessor,
+        Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_POINTER());
+    Jump(exit);
+}
+
+void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType)
+{
+    switch (spaceType) {
+        case RegionSpaceFlag::IN_YOUNG_SPACE:
+            AllocateInYoung(result, exit);
+            break;
+        default:
+            break;
+    }
+}
+
 void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
 {
     auto env = GetEnvironment();
@@ -198,8 +248,8 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
     }
 }
 
-void NewObjectStubBuilder::InitializeWithSpeicalValue(Label *exit,
-    GateRef object, GateRef value, GateRef start, GateRef end)
+void NewObjectStubBuilder::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start,
+                                                      GateRef end)
 {
     auto env = GetEnvironment();
     Label begin(env);
