@@ -202,10 +202,9 @@ public:
         return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BIG_INT));
     }
 
-    bool IsPrimitiveType() const
+    bool IsDigitablePrimitiveType() const
     {
-        return IsNumberType() || IsStringType() || IsNullType()
-               || IsUndefinedType() || IsBooleanType() || IsBigIntType();
+        return IsNumberType() || IsNullType() || IsUndefinedType() || IsBooleanType() || IsBigIntType();
     }
 
     bool IsGCRelated() const

@@ -616,7 +616,7 @@ void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-    if (srcType.IsPrimitiveType() && !srcType.IsStringType()) {
+    if (srcType.IsDigitablePrimitiveType()) {
         LowerPrimitiveTypeToNumber(gate);
     } else {
         acc_.DeleteGuardAndFrameState(gate);
