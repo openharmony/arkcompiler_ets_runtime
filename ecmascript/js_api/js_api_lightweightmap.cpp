@@ -423,7 +423,7 @@ JSHandle<TaggedArray> JSAPILightWeightMap::GrowCapacity(const JSThread *thread, 
     }
     uint32_t newCapacity = ComputeCapacity(needCapacity);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> newArray = factory->NewAndCopyTaggedArray(oldArray, newCapacity, oldLength);
+    JSHandle<TaggedArray> newArray = factory->CopyArray(oldArray, oldLength, newCapacity);
     return newArray;
 }
 
