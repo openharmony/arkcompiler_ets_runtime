@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -1730,12 +1731,33 @@ void SlowPathLowering::LowerCreateEmptyArray(GateRef gate, GateRef glue)
     DebugPrintBC(gate, glue);
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CreateEmptyArray), {}, true);
+    Label afterNewJSArray(&builder_);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    GateRef glueGlobalEnvOffset =
+        builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCompilationConfig()->Is32Bit()));
+    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+
+    auto arrayFunc = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    auto hclass = builder_.Load(VariableType::JS_POINTER(), arrayFunc,
+                                builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+
+    GateRef size = builder_.GetObjectSizeFromHClass(hclass);
+    auto emptyArray = builder_.GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                      ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    auto env = builder_.GetCurrentEnvironment();
+    env->SetCompilationConfig(builder_.GetCompilationConfig());
+    {
+        NewObjectStubBuilder stubBuilder(env);
+        stubBuilder.SetParameters(glue, size);
+        stubBuilder.NewJSArrayLiteral(&result, &afterNewJSArray, RegionSpaceFlag::IN_YOUNG_SPACE, emptyArray, hclass,
+                                      true);
+    }
+    builder_.Bind(&afterNewJSArray);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
-    ReplaceHirToSubCfg(gate, result, successControl, failControl, true);
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl, true);
 }
 
 void SlowPathLowering::LowerCreateEmptyObject(GateRef gate, GateRef glue)
@@ -1754,18 +1776,32 @@ void SlowPathLowering::LowerCreateEmptyObject(GateRef gate, GateRef glue)
 void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc)
 {
     DebugPrintBC(gate, glue);
-    Label successExit(&builder_);
-    Label exceptionExit(&builder_);
-    // 1: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef index = acc_.GetValueIn(gate, 0);
-    GateRef obj = builder_.GetObjectFromConstPool(glue, jsFunc, builder_.TruncInt64ToInt32(index),
-                                                  ConstPoolType::ARRAY_LITERAL);
-    GateRef result = LowerCallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { obj }, true);
-    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
-        &exceptionExit, &successExit);
-    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
-    ReplaceHirToSubCfg(gate, result, successControl, failControl);
+    Label afterNewJSArray(&builder_);
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> failControl;
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    GateRef index = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef method = builder_.GetMethodFromFunction(jsFunc);
+    GateRef constPool = builder_.Load(VariableType::JS_ANY(), method, builder_.IntPtr(Method::CONSTANT_POOL_OFFSET));
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+
+    auto obj = builder_.GetObjectFromConstPool(glue, constPool, module, index, ConstPoolType::ARRAY_LITERAL);
+    auto hclass = builder_.LoadHClass(obj);
+    GateRef size = builder_.GetObjectSizeFromHClass(hclass);
+
+    auto env = builder_.GetCurrentEnvironment();
+    env->SetCompilationConfig(builder_.GetCompilationConfig());
+    {
+        NewObjectStubBuilder stubBuilder(env);
+        stubBuilder.SetParameters(glue, size);
+        stubBuilder.NewJSArrayLiteral(&result, &afterNewJSArray, RegionSpaceFlag::IN_YOUNG_SPACE, obj, hclass, false);
+    }
+    builder_.Bind(&afterNewJSArray);
+    successControl.emplace_back(builder_.GetState());
+    successControl.emplace_back(builder_.GetDepend());
+    failControl.emplace_back(Circuit::NullGate());
+    failControl.emplace_back(Circuit::NullGate());
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl, true);
 }
 
 void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef glue, GateRef jsFunc)
