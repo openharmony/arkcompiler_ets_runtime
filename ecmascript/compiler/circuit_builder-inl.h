@@ -169,6 +169,11 @@ GateRef CircuitBuilder::Int32Equal(GateRef x, GateRef y)
     return Equal(x, y);
 }
 
+GateRef CircuitBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32GreaterThan(x, y) : Int64GreaterThan(x, y);
+}
+
 template<OpCode::Op Op, MachineType Type>
 GateRef CircuitBuilder::BinaryOp(GateRef x, GateRef y)
 {
@@ -633,6 +638,16 @@ GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
     return ret;
 }
 
+GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
+{
+    // NOTE: check for special case of string and TAGGED_ARRAY
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    GateRef objectSizeInWords = Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::ObjectSizeInWordsBits::START_BIT)),
+        Int32((1LU << JSHClass::ObjectSizeInWordsBits::SIZE) - 1));
+    return PtrMul(ZExtInt32ToPtr(objectSizeInWords), IntPtr(JSTaggedValue::TaggedTypeSize()));
+}
+
 template<TypedBinOp Op>
 GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType)
 {
@@ -820,6 +835,18 @@ void CircuitBuilder::SetDepend(GateRef depend)
 void CircuitBuilder::SetState(GateRef state)
 {
     GetCurrentLabel()->SetControl(state);
+}
+
+// ctor is base but not builtin
+inline GateRef CircuitBuilder::IsBase(GateRef ctor)
+{
+    GateRef method = GetMethodFromFunction(ctor);
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
+
+    GateRef kind = Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
+                            Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1));
+    return Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
 }
 
 void Label::Seal()

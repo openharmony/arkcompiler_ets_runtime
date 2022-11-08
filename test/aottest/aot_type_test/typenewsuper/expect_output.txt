@@ -11,8 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//arkcompiler/ets_runtime/test/test_helper.gni")
-
-host_aot_test_action("typeequal") {
-  deps = []
-}
+123
+abc

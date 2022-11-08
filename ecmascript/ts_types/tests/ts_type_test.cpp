@@ -304,7 +304,9 @@ HWTEST_F_L0(TSTypeTest, ImportType)
 
     tsManager->AddTypeTable(JSHandle<JSTaggedValue>(exportTable), fileNameHandle);
 
-    tsManager->Link();
+    JSHandle<TSModuleTable> moduleTable = tsManager->GetTSModuleTable();
+    int numOfTSTypeTables = moduleTable->GetNumberOfTSTypeTables();
+    tsManager->LinkInRange(jsPandaFile1, moduleTable, 0, numOfTSTypeTables - 1);
     GlobalTSTypeRef linkimportGTA = tsManager->GetImportTypeTargetGT(importGTA);
     GlobalTSTypeRef linkredirectImportGTA = tsManager->GetImportTypeTargetGT(redirectImportGTA);
     GlobalTSTypeRef linkimportGTB = tsManager->GetImportTypeTargetGT(importGTB);

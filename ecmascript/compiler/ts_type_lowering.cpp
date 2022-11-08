@@ -97,6 +97,9 @@ void TSTypeLowering::Lower(GateRef gate)
 {
     auto argAcc = ArgumentAccessor(circuit_);
     GateRef thisObj = argAcc.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
+    GateRef glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
+    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    GateRef newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
 
     EcmaOpcode ecmaOpcode = bcBuilder_->GetByteCodeOpcode(gate);
     // initialize label manager
@@ -207,6 +210,15 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
             LowerTypedStObjByIndex(gate);
+            break;
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            LowerTypedNewObjRange(gate, glue);
+            break;
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+            LowerTypedSuperCall(gate, jsFunc, newTarget, glue);
             break;
         default:
             break;
@@ -881,5 +893,138 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
+}
+
+void TSTypeLowering::LowerTypedNewObjRange(GateRef gate, GateRef glue)
+{
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+    GateType ctorType = acc_.GetGateType(ctor);
+    if (!tsManager_->IsUserDefinedClassTypeKind(ctorType)) {
+        acc_.DeleteGuardAndFrameState(gate);
+        return;
+    }
+
+    int hclassIndex = tsManager_->GetHClassIndexByClassGT(ctorType);
+
+    // guard maybe not a GUARD
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    auto currentLabel = builder_.GetCurrentEnvironment()->GetCurrentLabel();
+    auto currentDepend = acc_.GetDep(guard);
+    currentLabel->SetDepend(currentDepend);
+
+    DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    Label allocateThisObj(&builder_);
+    Label notAllocateThisObj(&builder_);
+    Label construct(&builder_);
+
+    GateRef isBase = builder_.IsBase(ctor);
+    builder_.Branch(isBase, &allocateThisObj, &notAllocateThisObj);
+    builder_.Bind(&allocateThisObj);
+    {
+        // add TypeCheck to detect protoOrHclass is equal with ihclass,
+        // if pass TypeCheck: 1.no need to check whether hclass is valid 2.no need to check return result
+        check = builder_.ObjectTypeCheck(ctorType, ctor, builder_.IntPtr(hclassIndex));
+
+        GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
+                                              builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        thisObj = builder_.HeapAlloc(protoOrHclass, GateType::AnyType(), RegionSpaceFlag::IN_YOUNG_SPACE);
+        builder_.Jump(&construct);
+    }
+    builder_.Bind(&notAllocateThisObj);
+    {
+        check = builder_.Boolean(true);
+        builder_.Jump(&construct);
+    }
+    builder_.Bind(&construct);
+
+    acc_.ReplaceIn(guard, 1, *check);
+
+    // call constructor
+    size_t range = acc_.GetNumValueIn(gate);
+    GateRef envArg = builder_.Undefined();
+    GateRef actualArgc = builder_.Int64(range + 2);  // 2:newTaget, this
+    std::vector<GateRef> args { glue, envArg, actualArgc, ctor, ctor, *thisObj };
+    for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
+        args.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    GateRef bcIndex = builder_.Int64(acc_.GetBytecodeIndex(gate));
+    args.emplace_back(bcIndex);
+
+    GateRef constructGate = builder_.Construct(args);
+
+    acc_.SetDep(constructGate, guard);
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, constructGate, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
+void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget, GateRef glue)
+{
+    GateType ctorType = acc_.GetGateType(ctor);  // ldfunction in derived constructor get function type
+    if (!tsManager_->IsClassTypeKind(ctorType) && !tsManager_->IsFunctionTypeKind(ctorType)) {
+        acc_.DeleteGuardAndFrameState(gate);
+        return;
+    }
+
+    // guard maybe not a GUARD
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    auto currentLabel = builder_.GetCurrentEnvironment()->GetCurrentLabel();
+    auto currentDepend = acc_.GetDep(guard);
+    currentLabel->SetDepend(currentDepend);
+
+    DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    Label allocateThisObj(&builder_);
+    Label notAllocateThisObj(&builder_);
+    Label construct(&builder_);
+
+    GateRef superCtor = GetSuperConstructor(ctor);
+    GateRef isBase = builder_.IsBase(superCtor);
+
+    builder_.Branch(isBase, &allocateThisObj, &notAllocateThisObj);
+    builder_.Bind(&allocateThisObj);
+    {
+        GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), newTarget,
+                                              builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        check = builder_.IsJSHClass(protoOrHclass);
+        thisObj = builder_.HeapAlloc(protoOrHclass, GateType::AnyType(), RegionSpaceFlag::IN_YOUNG_SPACE);
+        builder_.Jump(&construct);
+    }
+    builder_.Bind(&notAllocateThisObj);
+    {
+        check = builder_.Boolean(true);
+        builder_.Jump(&construct);
+    }
+    builder_.Bind(&construct);
+
+    acc_.ReplaceIn(guard, 1, *check);
+
+    // call constructor
+    size_t range = acc_.GetNumValueIn(gate);
+    GateRef envArg = builder_.Undefined();
+    GateRef actualArgc = builder_.Int64(range + 3);  // 3: ctor, newTaget, this
+    std::vector<GateRef> args { glue, envArg, actualArgc, superCtor, newTarget, *thisObj };
+    for (size_t i = 0; i < range; ++i) {
+        args.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    GateRef bcIndex = builder_.Int64(acc_.GetBytecodeIndex(gate));
+    args.emplace_back(bcIndex);
+
+    GateRef constructGate = builder_.Construct(args);
+
+    acc_.SetDep(constructGate, guard);
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, constructGate, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
+GateRef TSTypeLowering::GetSuperConstructor(GateRef ctor)
+{
+    GateRef hclass = builder_.LoadHClass(ctor);
+    GateRef protoOffset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
+    return builder_.Load(VariableType::JS_ANY(), hclass, protoOffset);
 }
 }  // namespace panda::ecmascript

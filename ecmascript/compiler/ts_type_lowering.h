@@ -76,6 +76,10 @@ private:
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
+    void LowerTypedNewObjRange(GateRef gate, GateRef glue);
+    void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget, GateRef glue);
+
+    GateRef GetSuperConstructor(GateRef ctor);
 
     // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
