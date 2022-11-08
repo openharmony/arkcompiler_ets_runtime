@@ -40,7 +40,7 @@ public:
     ~BitSet()
     {
         if (UseWords()) {
-            delete data_.words_;
+            delete[] data_.words_;
             data_.words_ = nullptr;
         }
     }
@@ -104,9 +104,10 @@ public:
 
     void CopyFrom(const BitSet &other)
     {
+        ASSERT(wordCount_ == other.wordCount_);
         wordCount_ = other.wordCount_;
-        data_.inlineWord_ = other.data_.inlineWord_;
         if (!UseWords()) {
+            data_.inlineWord_ = other.data_.inlineWord_;
             return;
         }
         for (size_t i = 0; i < wordCount_; i++) {
