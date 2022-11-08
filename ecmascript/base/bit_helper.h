@@ -19,7 +19,12 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <macros.h>
+#include <securec.h>
 #include <type_traits>
+
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/log.h"
 
 namespace panda::ecmascript::base {
 template <typename T>
@@ -124,7 +129,11 @@ inline To bit_cast(const From &src) noexcept  // NOLINT(readability-identifier-n
 {
     static_assert(sizeof(To) == sizeof(From), "size of the types must be equal");
     To dst;
-    memcpy(&dst, &src, sizeof(To));
+    errno_t res = memcpy_s(&dst, sizeof(To), &src, sizeof(To));
+    if (res != EOK) {
+        LOG_FULL(FATAL) << "memcpy_s failed";
+        UNREACHABLE();
+    }
     return dst;
 }
 
