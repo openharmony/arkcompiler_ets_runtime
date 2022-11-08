@@ -305,12 +305,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeArrayList(JSThread *thread)
     SetFrozenFunction(thread, prototype, "removeByIndex", ContainersArrayList::RemoveByIndex, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "remove", ContainersArrayList::Remove, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "removeByRange", ContainersArrayList::RemoveByRange, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "replaceAllElements",
-                      ContainersArrayList::ReplaceAllElements, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersArrayList::ReplaceAllElements,
+        FuncLength::TWO, static_cast<uint8_t>(BUILTINS_STUB_ID(ArrayListReplaceAllElements)));
     SetFrozenFunction(thread, prototype, "sort", ContainersArrayList::Sort, FuncLength::ONE);
     SetFrozenFunction(thread, prototype, "subArrayList", ContainersArrayList::SubArrayList, FuncLength::TWO);
     SetFrozenFunction(thread, prototype, "convertToArray", ContainersArrayList::ConvertToArray, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "forEach", ContainersArrayList::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, prototype, "forEach", ContainersArrayList::ForEach, FuncLength::TWO,
+        static_cast<uint8_t>(BUILTINS_STUB_ID(ArrayListForEach)));
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, prototype, "ArrayList");
@@ -979,7 +980,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeList(JSThread *thread)
     SetFrozenFunction(thread, listFuncPrototype, "getIndexOf", ContainersList::GetIndexOf, FuncLength::ONE);
     SetFrozenFunction(thread, listFuncPrototype, "getLastIndexOf", ContainersList::GetLastIndexOf, FuncLength::ONE);
     SetFrozenFunction(thread, listFuncPrototype, "set", ContainersList::Set, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "forEach", ContainersList::ForEach, FuncLength::ONE);
+    SetFrozenFunction(thread, listFuncPrototype, "forEach", ContainersList::ForEach, FuncLength::ONE,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(ListForEach)));
     SetFrozenFunction(thread, listFuncPrototype, "replaceAllElements", ContainersList::ReplaceAllElements,
                       FuncLength::ONE);
     SetFrozenFunction(thread, listFuncPrototype, "equal", ContainersList::Equal, FuncLength::ONE);
@@ -1041,7 +1043,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLinkedList(JSThread *thread
     SetFrozenFunction(thread, linkedListFuncPrototype, "convertToArray", ContainersLinkedList::ConvertToArray,
                       FuncLength::ONE);
     SetFrozenFunction(thread, linkedListFuncPrototype, "set", ContainersLinkedList::Set, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "forEach", ContainersLinkedList::ForEach, FuncLength::ONE);
+    SetFrozenFunction(thread, linkedListFuncPrototype, "forEach", ContainersLinkedList::ForEach, FuncLength::ONE,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(LinkedListForEach)));
 
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersLinkedList::Length, "length",
                                                         FuncLength::ZERO);
@@ -1113,7 +1116,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
     // HashMap.prototype.get()
     SetFrozenFunction(thread, hashMapFuncPrototype, "get", ContainersHashMap::Get, FuncLength::ONE);
     // HashMap.prototype.forEach()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "forEach", ContainersHashMap::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, hashMapFuncPrototype, "forEach", ContainersHashMap::ForEach, FuncLength::TWO,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(HashMapForEach)));
     // HashMap.prototype.hasKey()
     SetFrozenFunction(thread, hashMapFuncPrototype, "hasKey", ContainersHashMap::HasKey, FuncLength::ONE);
      // HashMap.prototype.hasValue()
@@ -1189,7 +1193,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
     SetFrozenFunction(thread, hashSetFuncPrototype, "clear", ContainersHashSet::Clear, FuncLength::ZERO);
     SetFrozenFunction(thread, hashSetFuncPrototype, "values", ContainersHashSet::Values, FuncLength::ZERO);
     SetFrozenFunction(thread, hashSetFuncPrototype, "entries", ContainersHashSet::Entries, FuncLength::ZERO);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "forEach", ContainersHashSet::ForEach, FuncLength::TWO);
+    SetFrozenFunction(thread, hashSetFuncPrototype, "forEach", ContainersHashSet::ForEach, FuncLength::TWO,
+                      static_cast<uint8_t>(BUILTINS_STUB_ID(HashSetForEach)));
     
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // @@ToStringTag

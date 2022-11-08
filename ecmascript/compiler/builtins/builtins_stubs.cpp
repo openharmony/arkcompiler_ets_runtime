@@ -681,4 +681,124 @@ DECLARE_BUILTINS(LightWeightSetForEach)
     Bind(&exit);
     Return(*res);
 }
+
+DECLARE_BUILTINS(HashMapForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersHashCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::HASHMAP_FOREACH);
+    Bind(&slowPath);
+    {
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(HashSetForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersHashCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::HASHSET_FOREACH);
+    Bind(&slowPath);
+    {
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(LinkedListForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersLinkedListCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::LINKEDLIST_FOREACH);
+    Bind(&slowPath);
+    {
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(ListForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersLinkedListCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::LIST_FOREACH);
+    Bind(&slowPath);
+    {
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(ArrayListForEach)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::ARRAYLIST_FOREACH);
+    Bind(&slowPath);
+    {
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(ArrayListReplaceAllElements)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
+
+    Label exit(env);
+    Label slowPath(env);
+    
+    ContainersStubBuilder containersBuilder(this);
+    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
+        &slowPath, ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
+    Bind(&slowPath);
+    {
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
 }  // namespace panda::ecmascript::kungfu

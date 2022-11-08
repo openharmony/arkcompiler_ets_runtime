@@ -269,9 +269,9 @@ JSTaggedValue ContainersHashSet::ForEach(EcmaRuntimeCallInfo *argv)
             currentKey.Update(node->GetKey());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle,
-                                                    thisArgHandle, undefined, 2); // 2: two args
+                                                    thisArgHandle, undefined, 3); // 3: three args
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(currentKey.GetTaggedValue(), thisHandle.GetTaggedValue());
+            info->SetCallArg(currentKey.GetTaggedValue(), currentKey.GetTaggedValue(), thisHandle.GetTaggedValue());
             JSTaggedValue funcResult = JSFunction::Call(info);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
         }
