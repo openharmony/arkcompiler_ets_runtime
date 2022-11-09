@@ -110,25 +110,32 @@ bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 }
 
 bool DFXJSNApi::StartHeapTracking(const EcmaVM *vm, double timeInterval, bool isVmMode,
-                                  Stream *stream, bool traceAllocation)
+                                  Stream *stream, bool traceAllocation, bool newThread)
 {
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
-    return heapProfile->StartHeapTracking(timeInterval, isVmMode, stream, traceAllocation);
+    return heapProfile->StartHeapTracking(timeInterval, isVmMode, stream, traceAllocation, newThread);
 }
 
-bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, const std::string &filePath)
+bool DFXJSNApi::UpdateHeapTracking(const EcmaVM *vm, Stream *stream)
+{
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
+    return heapProfile->UpdateHeapTracking(stream);
+}
+
+bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, const std::string &filePath, bool newThread)
 {
     FileStream stream(filePath);
-    return StopHeapTracking(vm, &stream, nullptr);
+    return StopHeapTracking(vm, &stream, nullptr, newThread);
 }
 
-bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, Stream* stream, Progress *progress)
+bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, Stream* stream, Progress *progress, bool newThread)
 {
     bool result = false;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
-    result = heapProfile->StopHeapTracking(stream, progress);
+    result = heapProfile->StopHeapTracking(stream, progress, newThread);
     ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
     return result;
 }

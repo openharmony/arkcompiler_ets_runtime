@@ -36,6 +36,7 @@ ohos_fuzztest("InitializeDebuggerFuzzTest") {
     "//arkcompiler/ets_runtime:libark_jsruntime",
     "//arkcompiler/ets_runtime/ecmascript/tooling:libark_ecma_debugger_set",
     "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog",
+    "//third_party/libuv:uv",
     sdk_libc_secshared_dep,
   ]
 }

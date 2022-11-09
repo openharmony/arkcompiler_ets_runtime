@@ -91,7 +91,7 @@ HeapSnapshot::~HeapSnapshot()
 
 bool HeapSnapshot::BuildUp()
 {
-    FillNodes();
+    FillNodes(true);
     FillEdges();
     AddSyntheticRoot();
     return Verify();
@@ -111,13 +111,12 @@ void HeapSnapshot::PrepareSnapshot()
     }
 }
 
-void HeapSnapshot::UpdateNode()
+void HeapSnapshot::UpdateNode(bool isInFinish)
 {
     for (Node *node : nodes_) {
         node->SetLive(false);
     }
-    FillNodes();
-
+    FillNodes(isInFinish);
     for (auto iter = nodes_.begin(); iter != nodes_.end();) {
         if (!(*iter)->IsLive()) {
             iter = nodes_.erase(iter);
@@ -129,7 +128,7 @@ void HeapSnapshot::UpdateNode()
 
 bool HeapSnapshot::FinishSnapshot()
 {
-    UpdateNode();
+    UpdateNode(true);
     FillEdges();
     AddSyntheticRoot();
     return Verify();
@@ -155,14 +154,12 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
         sequenceId = timeStamp.GetLastSequenceId();
         int32_t nodesSize = 0;
         int32_t nodesCount = 0;
-
         while (iter != nodes_.end() && (*iter)->GetId() <= static_cast<uint32_t>(sequenceId)) {
             nodesCount++;
             nodesSize += (*iter)->GetSelfSize();
             iter++;
         }
-        if (((timeStamp.GetCount() != nodesCount) || (timeStamp.GetSize() != nodesSize))
-            && ((nodesCount != 0) && (nodesSize != 0))) {
+        if ((timeStamp.GetCount() != nodesCount) || (timeStamp.GetSize() != nodesSize)) {
             timeStamp.SetCount(nodesCount);
             timeStamp.SetSize(nodesSize);
             statsBuffer.emplace_back(static_cast<int32_t>(timeIndex), nodesCount, nodesSize);
@@ -172,7 +169,6 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
             }
         }
     }
-
     if (!statsBuffer.empty()) {
         stream->UpdateHeapStats(&statsBuffer.front(), static_cast<int32_t>(statsBuffer.size()));
         statsBuffer.clear();
@@ -196,7 +192,9 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject* forward_address)
         EraseNodeUnique(node);
     }
     node = GenerateNode(JSTaggedValue(forward_address), sequenceId);
-    node->SetTraceId(traceNodeId);
+    if (node != nullptr) {
+        node->SetTraceId(traceNodeId);
+    }
 }
 
 // NOLINTNEXTLINE(readability-function-size)
@@ -546,18 +544,18 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
     return nodeType;
 }
 
-void HeapSnapshot::FillNodes()
+void HeapSnapshot::FillNodes(bool isInFinish)
 {
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
-        heap->IterateOverObjects([this](TaggedObject *obj) {
-            GenerateNode(JSTaggedValue(obj));
+        heap->IterateOverObjects([this, &isInFinish](TaggedObject *obj) {
+            GenerateNode(JSTaggedValue(obj), -1, isInFinish);
         });
     }
 }
 
-Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, int sequenceId)
+Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, int sequenceId, bool isInFinish)
 {
     Node *node = nullptr;
     if (sequenceId == -1) {
@@ -571,7 +569,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, int sequenceId)
             if (isPrivate_) {
                 node = GeneratePrivateStringNode(sequenceId);
             } else {
-                node = GenerateStringNode(entry, sequenceId);
+                node = GenerateStringNode(entry, sequenceId, isInFinish);
             }
             if (node == nullptr) {
                 LOG_ECMA(DEBUG) << "string node nullptr";
@@ -581,19 +579,19 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, int sequenceId)
         TaggedObject *obj = entry.GetTaggedObject();
         auto *baseClass = obj->GetClass();
         if (baseClass != nullptr) {
-            node = Node::NewNode(vm_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
-                                 obj->GetClass()->SizeFromJSHClass(obj), obj);
-            Node *existNode = entryMap_.FindOrInsertNode(node);  // Fast Index
-            if (existNode == node) {
+            Address addr = reinterpret_cast<Address>(obj);
+            Node *existNode = entryMap_.FindEntry(addr);  // Fast Index
+            if (existNode == nullptr) {
+                node = Node::NewNode(vm_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
+                                     obj->GetClass()->SizeFromJSHClass(obj), obj);
                 if (sequenceId == sequenceId_ + SEQ_STEP) {
                     sequenceId_ = sequenceId;  // Odd Digit
                 }
+                entryMap_.InsertEntry(node);
                 InsertNodeUnique(node);
                 ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
             } else {
                 existNode->SetLive(true);
-                ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
-                const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(node);
                 return nullptr;
             }
         }
@@ -789,13 +787,17 @@ void HeapSnapshot::AddMethodInfo(Method *method, const FrameHandler &frameHandle
     return;
 }
 
-Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId)
+Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId, bool isInFinish)
 {
     Node *node = nullptr;
     auto originStr = static_cast<EcmaString *>(entry.GetTaggedObject());
     size_t selfsize = originStr->ObjectSize();
     CString strContent;
-    strContent.append(EntryVisitor::ConvertKey(entry));
+    if (isInFinish) {
+        strContent.append(EntryVisitor::ConvertKey(entry));
+    } else {
+        strContent.append(EntryVisitor::ConvertKey(vm_->GetFactory()->GetEmptyString().GetTaggedValue()));
+    }
     node = Node::NewNode(vm_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,
                          entry.GetTaggedObject());
     Node *existNode = entryMap_.FindOrInsertNode(node);  // Fast Index
@@ -805,13 +807,13 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId)
         }
         InsertNodeUnique(node);
     } else {
+        if (isInFinish) {
+            existNode->SetName(GetString(strContent));
+        }
         existNode->SetLive(true);
     }
     ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
     if (existNode != node) {
-        if ((node->GetAddress() == existNode->GetAddress()) && (existNode->GetName()->empty())) {
-            existNode->SetName(GetString(strContent));
-        }
         const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(node);
         return nullptr;
     }
@@ -1023,6 +1025,7 @@ CString EntryVisitor::ConvertKey(JSTaggedValue key)
 {
     ASSERT(key.GetTaggedObject() != nullptr);
     EcmaString *keyString = EcmaString::Cast(key.GetTaggedObject());
+
     if (key.IsSymbol()) {
         JSSymbol *symbol = JSSymbol::Cast(key.GetTaggedObject());
         keyString = EcmaString::Cast(symbol->GetDescription().GetTaggedObject());
