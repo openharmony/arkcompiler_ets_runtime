@@ -16,6 +16,7 @@
 #include "ecmascript/base/mem_mmap.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 
 namespace panda::ecmascript::kungfu {
 Circuit::Circuit(bool isArch64) : space_(nullptr), circuitSize_(0), gateCount_(0), time_(1),
@@ -125,13 +126,15 @@ void Circuit::PrintAllGates() const
     }
 }
 
-void Circuit::PrintAllGates(BytecodeCircuitBuilder &builder) const
+void Circuit::PrintAllGatesWithBytecode() const
 {
     std::vector<GateRef> gateList;
     GetAllGates(gateList);
     for (const auto &gate : gateList) {
         if (GetOpCode(gate) == OpCode::JS_BYTECODE) {
-            std::string bytecodeStr = builder.GetBytecodeStr(gate);
+            BitField bitField = GetBitField(gate);
+            auto opcode = GateBitFieldAccessor::GetByteCodeOpcode(bitField);
+            std::string bytecodeStr = GetEcmaOpcodeStr(opcode);
             LoadGatePtrConst(gate)->PrintByteCode(bytecodeStr);
         } else {
             LoadGatePtrConst(gate)->Print();

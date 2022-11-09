@@ -123,9 +123,16 @@ private:
         return GetFrameArgv(static_cast<size_t>(index));
     }
     bool CollectVirtualRegisters(Method* method, FrameWriter *frameWriter);
-    bool hasDeoptValue(int32_t index)
+    bool HasDeoptValue(int32_t index)
     {
         return deoptVregs_.find(static_cast<kungfu::OffsetType>(index)) != deoptVregs_.end();
+    }
+    JSTaggedValue GetDeoptValue(int32_t index)
+    {
+        if (!HasDeoptValue(index)) {
+            return JSTaggedValue::Undefined();
+        }
+        return deoptVregs_.at(static_cast<kungfu::OffsetType>(index));
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();

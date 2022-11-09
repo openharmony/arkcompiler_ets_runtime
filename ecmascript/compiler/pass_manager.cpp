@@ -78,21 +78,24 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
 
         bool hasTyps = jsPandaFile->HasTSTypes(recordName);
-        BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager, &bytecodes,
-                                       &cmpCfg, hasTyps, enableMethodLog && log_->OutputCIR(),
+        Circuit circuit(cmpCfg.Is64Bit());
+        BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager, &circuit,
+                                       &bytecodes, hasTyps, enableMethodLog && log_->OutputCIR(),
                                        EnableTypeLowering(), fullName, recordName);
         builder.BytecodeToCircuit();
-        PassData data(builder.GetCircuit(), log_, enableMethodLog, fullName);
+        PassData data(&circuit, log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
-        pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
-        pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
-        if (EnableTypeLowering()) {
-            pipeline.RunPass<TSTypeLoweringPass>(&builder, &cmpCfg, tsManager, constantPool);
-            pipeline.RunPass<GuardEliminatingPass>(&builder, &cmpCfg);
-            pipeline.RunPass<GuardLoweringPass>(&builder, &cmpCfg);
-            pipeline.RunPass<TypeLoweringPass>(&builder, &cmpCfg, tsManager);
+        if (hasTyps && EnableTypeLowering()) {
+            pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
         }
-        pipeline.RunPass<SlowPathLoweringPass>(&builder, &cmpCfg, tsManager);
+        pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
+        if (hasTyps && EnableTypeLowering()) {
+            pipeline.RunPass<TSTypeLoweringPass>(&cmpCfg, tsManager, constantPool);
+            pipeline.RunPass<GuardEliminatingPass>(&cmpCfg);
+            pipeline.RunPass<GuardLoweringPass>(&cmpCfg);
+            pipeline.RunPass<TypeLoweringPass>(&cmpCfg, tsManager);
+        }
+        pipeline.RunPass<SlowPathLoweringPass>(&cmpCfg, tsManager, method);
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);

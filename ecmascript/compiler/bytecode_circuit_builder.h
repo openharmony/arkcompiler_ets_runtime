@@ -256,19 +256,19 @@ public:
                                     const MethodLiteral *methodLiteral,
                                     MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
+                                    Circuit *circuit,
                                     Bytecodes *bytecodes,
-                                    const CompilationConfig* cconfig,
                                     bool hasTypes,
                                     bool enableLog,
                                     bool enableTypeLowering,
                                     std::string name,
                                     const CString &recordName)
-        : tsManager_(tsManager), circuit_(cconfig->Is64Bit()), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
-          method_(methodLiteral), gateAcc_(&circuit_), argAcc_(&circuit_, method_),
+        : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
+          method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
           typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(hasTypes),
           enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
-          frameStateBuilder_(this, &circuit_, methodLiteral), methodName_(name), recordName_(recordName),
+          frameStateBuilder_(this, circuit, methodLiteral), methodName_(name), recordName_(recordName),
           bytecodes_(bytecodes)
     {
     }
@@ -280,26 +280,13 @@ public:
 
     [[nodiscard]] Circuit* GetCircuit()
     {
-        return &circuit_;
+        return circuit_;
     }
 
     GateRef GetGateByBcIndex(uint32_t bcIndex) const
     {
         ASSERT(bcIndex < byteCodeToJSGate_.size());
         return byteCodeToJSGate_[bcIndex];
-    }
-
-    EcmaOpcode GetByteCodeOpcode(GateRef gate)
-    {
-        auto bcIndex = gateAcc_.GetBytecodeIndex(gate);
-        auto pc = GetPCByIndex(bcIndex);
-        return Bytecodes::GetOpcode(pc);
-    }
-
-    [[nodiscard]] std::string GetBytecodeStr(GateRef gate)
-    {
-        auto opcode = GetByteCodeOpcode(gate);
-        return GetEcmaOpcodeStr(opcode);
     }
 
     [[nodiscard]] const MethodLiteral* GetMethod() const
@@ -457,7 +444,7 @@ private:
     }
 
     TSManager *tsManager_;
-    Circuit circuit_;
+    Circuit *circuit_;
     std::vector<GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
     const JSPandaFile *file_ {nullptr};

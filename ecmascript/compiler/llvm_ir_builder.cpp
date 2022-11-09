@@ -1947,12 +1947,17 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     GateRef pc = acc_.GetValueIn(frameState, pcIndex);
     std::vector<LLVMValueRef> values;
     for (size_t i = 0; i < accIndex; i++) {
-        GateRef vreg = acc_.GetValueIn(frameState, i);
+        GateRef vregValue = acc_.GetValueIn(frameState, i);
+        if (acc_.IsConstantValue(vregValue, JSTaggedValue::VALUE_OPTIMIZED)) {
+            continue;
+        }
         values.emplace_back(LLVMConstInt(LLVMInt32Type(), i, false));
-        values.emplace_back(gate2LValue_.at(vreg));
+        values.emplace_back(gate2LValue_.at(vregValue));
     }
-    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ACC_INDEX), false));
-    values.emplace_back(gate2LValue_.at(acc));
+    if (!acc_.IsConstantValue(acc, JSTaggedValue::VALUE_OPTIMIZED)) {
+        values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ACC_INDEX), false));
+        values.emplace_back(gate2LValue_.at(acc));
+    }
     values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_INDEX), false));
     values.emplace_back(gate2LValue_.at(pc));
     LLVMValueRef runtimeCall =
