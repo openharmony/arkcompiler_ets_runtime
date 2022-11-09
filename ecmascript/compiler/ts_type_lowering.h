@@ -23,10 +23,10 @@
 namespace panda::ecmascript::kungfu {
 class TSTypeLowering {
 public:
-    TSTypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
+    TSTypeLowering(Circuit *circuit, CompilationConfig *cmpCfg,
                    TSManager *tsManager, bool enableLog, const std::string& name,
                    const JSHandle<JSTaggedValue> &constantPool)
-        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
           enableLog_(enableLog), methodName_(name), constantPool_(constantPool) {}
 
@@ -91,7 +91,6 @@ private:
     void SpeculateConditionJump(GateRef gate);
     template<TypedUnOp Op>
     GateRef AppendOverflowCheck(GateRef typeCheck, GateRef intVal);
-    BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;

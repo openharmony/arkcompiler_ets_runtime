@@ -38,7 +38,7 @@ void TSTypeLowering::RunTSTypeLowering()
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
-        circuit_->PrintAllGates(*bcBuilder_);
+        circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
 }
@@ -52,7 +52,8 @@ void TSTypeLowering::VerifyGuard() const
         if (op == OpCode::JS_BYTECODE) {
             auto depend = acc_.GetDep(gate);
             if (acc_.GetOpCode(depend) == OpCode::GUARD) {
-                std::string bytecodeStr = bcBuilder_->GetBytecodeStr(gate);
+                auto opcode = acc_.GetByteCodeOpcode(gate);
+                std::string bytecodeStr = GetEcmaOpcodeStr(opcode);
                 LOG_COMPILER(ERROR) << "[ts_type_lowering][Error] the depend of ["
                                     << "id: " << acc_.GetId(gate) << ", JS_BYTECODE: " << bytecodeStr
                                     << "] should not be GUARD after ts type lowring";
@@ -75,7 +76,7 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
         }
     }
     if (op == OpCode::JS_BYTECODE) {
-        EcmaOpcode ecmaOpcode = bcBuilder_->GetByteCodeOpcode(gate);
+        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
         switch (ecmaOpcode) {
             case EcmaOpcode::ADD2_IMM8_V8:
             case EcmaOpcode::SUB2_IMM8_V8:
@@ -101,7 +102,7 @@ void TSTypeLowering::Lower(GateRef gate)
     GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
     GateRef newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
 
-    EcmaOpcode ecmaOpcode = bcBuilder_->GetByteCodeOpcode(gate);
+    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
     switch (ecmaOpcode) {

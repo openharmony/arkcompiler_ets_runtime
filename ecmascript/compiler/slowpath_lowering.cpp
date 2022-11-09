@@ -56,7 +56,7 @@ void SlowPathLowering::CallRuntimeLowering()
                            << " After slowpath Lowering "
                            << "[" << GetMethodName() << "] "
                            << "=================" << "\033[0m";
-        circuit_->PrintAllGates(*bcBuilder_);
+        circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "=========================== End ===========================" << "\033[0m";
     }
 }
@@ -265,10 +265,10 @@ void SlowPathLowering::Lower(GateRef gate)
     GateRef actualArgc = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
     GateRef thisObj = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
 
-    EcmaOpcode op = bcBuilder_->GetByteCodeOpcode(gate);
+    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
-    switch (op) {
+    switch (ecmaOpcode) {
         case EcmaOpcode::CALLARG0_IMM8:
             LowerCallArg0(gate, glue);
             break;
@@ -808,10 +808,9 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
     GateRef context =
         builder_.Load(VariableType::JS_POINTER(), genObj, builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET));
     // new tagged array
-    auto method = bcBuilder_->GetMethod();
-    auto jsPandaFile = bcBuilder_->GetJSPandaFile();
-    const size_t arrLength = MethodLiteral::GetNumVregs(jsPandaFile, method) + method->GetNumArgs();
-    GateRef length = builder_.Int32((arrLength));
+    auto method = methodLiteral_;
+    const size_t arrLength = method->GetNumberVRegs();
+    GateRef length = builder_.Int32(arrLength);
     GateRef taggedLength = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(length));
     const int arrayId = RTSTUB_ID(NewTaggedArray);
     GateRef taggedArray = LowerCallRuntime(glue, arrayId, {taggedLength});
@@ -3347,7 +3346,7 @@ void SlowPathLowering::LowerWideStPatchVar(GateRef gate, GateRef glue)
 void SlowPathLowering::DebugPrintBC(GateRef gate, GateRef glue)
 {
     if (enableBcTrace_) {
-        auto ecmaOpcode = bcBuilder_->GetByteCodeOpcode(gate);
+        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
         auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
         GateRef constOpcode = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(ecmaOpcodeGate));
         GateRef debugGate = builder_.CallRuntime(glue,  RTSTUB_ID(DebugAOTPrint), acc_.GetDep(gate), {constOpcode});

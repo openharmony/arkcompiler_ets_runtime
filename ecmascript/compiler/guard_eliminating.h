@@ -22,11 +22,11 @@
 namespace panda::ecmascript::kungfu {
 class GuardEliminating {
 public:
-    GuardEliminating(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
+    GuardEliminating(Circuit *circuit, CompilationConfig *cmpCfg,
         bool enableLog, const std::string& name)
-        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
         enableLog_(enableLog), methodName_(name) {}
-    
+
     ~GuardEliminating() = default;
 
     void Run();
@@ -51,7 +51,6 @@ private:
     void RemoveOneTrusted(GateRef gate);
     void RemoveTwoTrusted(GateRef gate);
     void RemoveTrustedTypeCheck(const std::vector<GateRef>& guardedList);
-    BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;

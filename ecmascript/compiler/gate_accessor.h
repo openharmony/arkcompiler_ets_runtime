@@ -309,6 +309,7 @@ public:
     void SetOpCode(GateRef gate, OpCode::Op opcode);
     BitField GetBitField(GateRef gate) const;
     uint32_t GetBytecodeIndex(GateRef gate) const;
+    EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void SetBitField(GateRef gate, BitField bitField);
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;
@@ -349,6 +350,7 @@ public:
     bool IsLoopBack(GateRef gate) const;
     bool IsState(GateRef gate) const;
     bool IsConstant(GateRef gate) const;
+    bool IsConstantValue(GateRef gate, uint64_t value) const;
     bool IsTypedOperator(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;

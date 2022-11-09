@@ -59,7 +59,7 @@ void GuardLowering::Run()
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
-        circuit_->PrintAllGates(*bcBuilder_);
+        circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
 }

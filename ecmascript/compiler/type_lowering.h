@@ -97,9 +97,9 @@ namespace panda::ecmascript::kungfu {
 
 class TypeLowering {
 public:
-    TypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
+    TypeLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
                  bool enableLog, const std::string& name)
-        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
           enableLog_(enableLog), methodName_(name) {}
 
@@ -217,7 +217,6 @@ private:
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
 
-    BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;

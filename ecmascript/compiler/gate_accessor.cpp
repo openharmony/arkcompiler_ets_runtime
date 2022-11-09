@@ -79,6 +79,13 @@ uint32_t GateAccessor::GetBytecodeIndex(GateRef gate) const
     return GateBitFieldAccessor::GetBytecodeIndex(bitField);
 }
 
+EcmaOpcode GateAccessor::GetByteCodeOpcode(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::JS_BYTECODE);
+    BitField bitField = GetBitField(gate);
+    return GateBitFieldAccessor::GetByteCodeOpcode(bitField);
+}
+
 void GateAccessor::Print(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -227,6 +234,16 @@ bool GateAccessor::IsState(GateRef gate) const
 bool GateAccessor::IsConstant(GateRef gate) const
 {
     return GetOpCode(gate).IsConstant();
+}
+
+bool GateAccessor::IsConstantValue(GateRef gate, uint64_t value) const
+{
+    auto isConstant = IsConstant(gate);
+    if (isConstant) {
+        BitField bitField = GetBitField(gate);
+        return GateBitFieldAccessor::GetConstantValue(bitField) == value;
+    }
+    return false;
 }
 
 bool GateAccessor::IsTypedOperator(GateRef gate) const

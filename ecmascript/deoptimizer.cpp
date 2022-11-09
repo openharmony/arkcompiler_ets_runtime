@@ -192,7 +192,7 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     for (int32_t i = actualNumArgs - 1; i >= 0; i--) {
         JSTaggedValue value = JSTaggedValue::Undefined();
         // deopt value
-        if (hasDeoptValue(virtualIndex)) {
+        if (HasDeoptValue(virtualIndex)) {
             value = deoptVregs_.at(static_cast<kungfu::OffsetType>(virtualIndex));
         } else {
             value = GetActualFrameArgs(i);
@@ -220,10 +220,7 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
     // [call field virtual regs]
     for (int32_t i = virtualIndex; i >= 0; i--) {
-        JSTaggedValue value = JSTaggedValue::Undefined();
-        if (hasDeoptValue(virtualIndex)) {
-            value = deoptVregs_.at(static_cast<kungfu::OffsetType>(virtualIndex));
-        }
+        JSTaggedValue value = GetDeoptValue(virtualIndex);
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
@@ -247,7 +244,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
 
     JSTaggedValue thisObj = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);
-    auto acc = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::ACC_INDEX));
+    auto acc = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
     statePtr->function = callTarget;
     statePtr->acc = acc;
     statePtr->env = env_;

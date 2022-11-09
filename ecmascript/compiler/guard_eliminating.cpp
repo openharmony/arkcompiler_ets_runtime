@@ -181,7 +181,7 @@ void GuardEliminating::Run()
     for (size_t idx = 1; idx < immDom.size(); ++idx) {
         domTree[immDom[idx]].emplace_back(idx);
     }
-    
+
     // dfs the dominator tree to eliminate guard
     // which is domined by another guard with same condition
     std::set<GateRef> conditionSet;
@@ -250,7 +250,7 @@ void GuardEliminating::Run()
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
-        circuit_->PrintAllGates(*bcBuilder_);
+        circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
 }

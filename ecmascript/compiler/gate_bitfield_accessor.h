@@ -17,13 +17,22 @@
 #define ECMASCRIPT_COMPILER_GATE_BITFIELD_ACCESSOR_H
 
 #include "libpandabase/utils/bit_field.h"
+#include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
 using BitField = uint64_t;
+using EcmaOpcode = BytecodeInstruction::Opcode;
+
 class GateBitFieldAccessor {
 public:
-    static constexpr unsigned START_BIT = 32;
-    static constexpr unsigned MASK = (1LLU << START_BIT) - 1; // 1: mask
+    static constexpr unsigned IN_VALUE_NUM_BITS = 16;
+    static constexpr unsigned OPCODE_NUM_BITS = 16;
+    static constexpr unsigned BC_INDEX_NUM_BITS = 32;
+
+    using InValueBits = panda::BitField<uint32_t, 0, IN_VALUE_NUM_BITS>;
+    using OpcodeBits = InValueBits::NextField<EcmaOpcode, OPCODE_NUM_BITS>;
+    using BcIndexBits = OpcodeBits::NextField<uint32_t, BC_INDEX_NUM_BITS>;
+
 
     static uint64_t GetStateCount(BitField bitfield)
     {
@@ -37,18 +46,30 @@ public:
 
     static uint32_t GetInValueCount(BitField bitfield)
     {
-        return static_cast<uint32_t>(bitfield & MASK);
+        return InValueBits::Decode(bitfield);
     }
 
     static uint32_t GetBytecodeIndex(BitField bitfield)
     {
-        return static_cast<uint32_t>(bitfield >> START_BIT);
+        return BcIndexBits::Decode(bitfield);
+    }
+
+    static EcmaOpcode GetByteCodeOpcode(BitField bitfield)
+    {
+        return OpcodeBits::Decode(bitfield);
     }
 
     // 32 bit inValue, 32 bit bcIndex
-    static BitField ConstructJSBytecode(uint32_t inValue, uint32_t bcIndex)
+    static BitField ConstructJSBytecode(uint16_t inValue, EcmaOpcode opcode, uint32_t bcIndex)
     {
-        return (static_cast<uint64_t>(bcIndex) << START_BIT) | inValue;
+        uint64_t value = InValueBits::Encode(inValue) | OpcodeBits::Encode(opcode) |
+            BcIndexBits::Encode(bcIndex);
+        return value;
+    }
+
+    static uint64_t GetConstantValue(BitField bitfield)
+    {
+        return bitfield;
     }
 };
 
