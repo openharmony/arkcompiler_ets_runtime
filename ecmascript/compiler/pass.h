@@ -97,50 +97,44 @@ public:
     bool Run(PassData* data, BytecodeCircuitBuilder *builder, const JSHandle<JSTaggedValue> &constantPool,
              TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId)
     {
-        if (builder->HasTypes()) {
-            bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
-            TypeInfer typeInfer(builder, data->GetCircuit(), constantPool, tsManager,
-                                lexEnvManager, methodId, enableLog, data->GetMethodName());
-            typeInfer.TraverseCircuit();
-        }
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
+        TypeInfer typeInfer(builder, data->GetCircuit(), constantPool, tsManager,
+                            lexEnvManager, methodId, enableLog, data->GetMethodName());
+        typeInfer.TraverseCircuit();
         return true;
     }
 };
 
 class TSTypeLoweringPass {
 public:
-    bool Run(PassData *data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, TSManager *tsManager,
+    bool Run(PassData *data, CompilationConfig *cmpCfg, TSManager *tsManager,
              const JSHandle<JSTaggedValue> &constantPool)
     {
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        TSTypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog,
+        TSTypeLowering lowering(data->GetCircuit(), cmpCfg, tsManager, enableLog,
                                 data->GetMethodName(), constantPool);
-        if (builder->HasTypes()) {
-            lowering.RunTSTypeLowering();
-        }
+        lowering.RunTSTypeLowering();
         return true;
     }
 };
 
 class TypeLoweringPass {
 public:
-    bool Run(PassData *data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, TSManager *tsManager)
+    bool Run(PassData *data, CompilationConfig *cmpCfg, TSManager *tsManager)
     {
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        TypeLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog, data->GetMethodName());
-        if (builder->HasTypes()) {
-            lowering.RunTypeLowering();
-        }
+        TypeLowering lowering(data->GetCircuit(), cmpCfg, tsManager, enableLog, data->GetMethodName());
+        lowering.RunTypeLowering();
         return true;
     }
 };
 
 class SlowPathLoweringPass {
 public:
-    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, TSManager *tsManager)
+    bool Run(PassData* data, CompilationConfig *cmpCfg, TSManager *tsManager, const MethodLiteral *methodLiteral)
     {
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        SlowPathLowering lowering(builder, data->GetCircuit(), cmpCfg, tsManager, enableLog, data->GetMethodName());
+        SlowPathLowering lowering(data->GetCircuit(), cmpCfg, tsManager, methodLiteral, enableLog, data->GetMethodName());
         lowering.CallRuntimeLowering();
         return true;
     }
@@ -162,12 +156,10 @@ public:
 
 class GuardEliminatingPass {
 public:
-    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
+    bool Run(PassData* data, CompilationConfig *cmpCfg)
     {
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        if (builder->HasTypes()) {
-            GuardEliminating(builder, data->GetCircuit(), cmpCfg, enableLog, data->GetMethodName()).Run();
-        }
+        GuardEliminating(data->GetCircuit(), cmpCfg, enableLog, data->GetMethodName()).Run();
         return true;
     }
 };
@@ -218,10 +210,10 @@ public:
 
 class GuardLoweringPass {
 public:
-    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
+    bool Run(PassData* data, CompilationConfig *cmpCfg)
     {
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        GuardLowering(builder, cmpCfg, data->GetCircuit(), data->GetMethodName(), enableLog).Run();
+        GuardLowering(cmpCfg, data->GetCircuit(), data->GetMethodName(), enableLog).Run();
         return true;
     }
 };

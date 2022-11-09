@@ -48,7 +48,7 @@ public:
     GateRef NewGate(OpCode op, BitField bitfield, const std::vector<GateRef> &inList, GateType type,
                     MarkCode mark = MarkCode::NO_MARK);
     void PrintAllGates() const;
-    void PrintAllGates(BytecodeCircuitBuilder &builder) const;
+    void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
     static GateRef GetCircuitRoot(OpCode opcode);
     static GateRef NullGate();

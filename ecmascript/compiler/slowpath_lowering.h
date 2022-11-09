@@ -110,9 +110,11 @@ namespace panda::ecmascript::kungfu {
 
 class SlowPathLowering {
 public:
-    SlowPathLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
-                     TSManager *tsManager, bool enableLog, const std::string& name)
-        : tsManager_(tsManager), bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit),
+    SlowPathLowering(Circuit *circuit, CompilationConfig *cmpCfg,
+                     TSManager *tsManager, const MethodLiteral *methodLiteral,
+                     bool enableLog, const std::string& name)
+        : tsManager_(tsManager), methodLiteral_(methodLiteral),
+          circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
           enableLog_(enableLog), methodName_(name)
@@ -291,7 +293,7 @@ private:
     void LowerConstPoolData(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
-    BytecodeCircuitBuilder *bcBuilder_;
+    const MethodLiteral *methodLiteral_ {nullptr};
     Circuit *circuit_;
     GateAccessor acc_;
     ArgumentAccessor argAcc_;
