@@ -18,7 +18,7 @@ import("//build/config/features.gni")
 import("//build/ohos.gni")
 
 ####################################fuzztest##################################
-ohos_fuzztest("SetNativePointerFieldCount_fuzzer") {
+ohos_fuzztest("SetNativePointerFieldCountFuzzTest") {
   module_out_path = "arkcompiler/ets_runtime"
 
   fuzz_config_file = "//arkcompiler/ets_runtime/test/fuzztest/setnativepointerfieldcount_fuzzer"
@@ -36,5 +36,5 @@ ohos_fuzztest("SetNativePointerFieldCount_fuzzer") {
 group("fuzztest") {
   testonly = true
   deps = []
-  deps += [ ":SetNativePointerFieldCount_fuzzer" ]
+  deps += [ ":SetNativePointerFieldCountFuzzTest" ]
 }
