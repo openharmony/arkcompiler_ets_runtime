@@ -17,6 +17,7 @@
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string_table.h"
@@ -149,7 +150,8 @@ JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, Fun
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
     if (builtinId != INVALID_BUILTINS_ID) {
-        method->SetFastBuiltinBit(true);
+        bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(static_cast<kungfu::BuiltinsStubCSigns::ID>(builtinId));
+        method->SetFastBuiltinBit(isFast);
         method->SetBuiltinId(builtinId);
     }
     method->SetNumArgsWithCallField(numArgs);

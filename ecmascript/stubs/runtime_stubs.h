@@ -93,8 +93,12 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(MarkingBarrier)                          \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
-    V(AotFloatMod)                             \
     V(FloatMod)                                \
+    V(FloatSqrt)                               \
+    V(FloatCos)                                \
+    V(FloatSin)                                \
+    V(FloatACos)                               \
+    V(FloatATan)                               \
     V(FindElementWithCache)                    \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
@@ -345,8 +349,12 @@ public:
     static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
     static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
-    static JSTaggedType AotFloatMod(double x, double y);
     static JSTaggedType FloatMod(double x, double y);
+    static JSTaggedType FloatSqrt(double x);
+    static JSTaggedType FloatCos(double x);
+    static JSTaggedType FloatSin(double x);
+    static JSTaggedType FloatACos(double x);
+    static JSTaggedType FloatATan(double x);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
