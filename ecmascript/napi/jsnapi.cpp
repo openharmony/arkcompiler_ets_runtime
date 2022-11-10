@@ -701,7 +701,7 @@ void JSNApi::DestroyMemMapAllocator()
 void JSNApi::InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options)
 {
     ecmascript::PGOProfilerManager::GetInstance()->Initialize(
-        options.IsEnablePGOProfiler(), options.GetPGOProfilerPath());
+        options.GetPGOHotnessThreshold(), options.GetPGOProfilerPath());
 }
 
 void JSNApi::DestroyPGOProfiler()

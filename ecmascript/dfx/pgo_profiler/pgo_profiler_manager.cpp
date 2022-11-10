@@ -43,23 +43,26 @@ void PGOProfiler::Sample(JSTaggedType value)
             auto &methodCountMap = iter->second;
             auto result = methodCountMap.find(jsMethod->GetMethodId());
             if (result != methodCountMap.end()) {
-                uint32_t &count = result->second;
-                count++;
+                auto &info = result->second;
+                info->IncreaseCount();
             } else {
-                methodCountMap.emplace(jsMethod->GetMethodId(), 1);
+                auto info = new MethodProfilerInfo(1, jsMethod->ParseFunctionName());
+                methodCountMap.emplace(jsMethod->GetMethodId(), info);
             }
         } else {
-            std::unordered_map<EntityId, uint32_t> methodsCountMap;
-            methodsCountMap.emplace(jsMethod->GetMethodId(), 1);
+            std::unordered_map<EntityId, MethodProfilerInfo *> methodsCountMap;
+            auto info = new MethodProfilerInfo(1, jsMethod->ParseFunctionName());
+            methodsCountMap.emplace(jsMethod->GetMethodId(), info);
             profilerMap_.emplace(recordName, methodsCountMap);
         }
     }
 }
 
-void PGOProfilerManager::Initialize(bool isEnable, const std::string &outDir)
+void PGOProfilerManager::Initialize(uint32_t hotnessThreshold, const std::string &outDir)
 {
+    isEnable_ = false;
     globalProfilerMap_.clear();
-    isEnable_ = isEnable;
+    hotnessThreshold_ = hotnessThreshold;
     if (outDir.empty()) {
         outDir_ = "";
         isEnable_ = false;
@@ -87,13 +90,15 @@ void PGOProfilerManager::Merge(PGOProfiler *profiler)
             auto methodId = countIter->first;
             auto result = globalMethodCountMap.find(methodId);
             if (result != globalMethodCountMap.end()) {
-                uint32_t &count = result->second;
-                count += countIter->second;
+                auto &info = result->second;
+                info->AddCount(countIter->second->GetCount());
+                delete countIter->second;
             } else {
                 globalMethodCountMap.emplace(methodId, countIter->second);
             }
         }
     }
+    profiler->profilerMap_.clear();
 }
 
 void PGOProfilerManager::SaveProfiler()
@@ -126,8 +131,8 @@ std::string PGOProfilerManager::ProcessProfile()
         auto methodCountMap = iter->second;
         bool isFirst = true;
         for (auto countIter = methodCountMap.begin(); countIter != methodCountMap.end(); countIter++) {
-            LOG_ECMA(DEBUG) << "Method id:" << countIter->first << "(" << countIter->second << ")";
-            if (countIter->second <= MIN_COUNT) {
+            LOG_ECMA(DEBUG) << "Method id:" << countIter->first << "(" << countIter->second->GetCount() << ")";
+            if (countIter->second->GetCount() < hotnessThreshold_) {
                 continue;
             }
             if (!isFirst) {
@@ -135,15 +140,18 @@ std::string PGOProfilerManager::ProcessProfile()
             } else {
                 auto recordName = iter->first;
                 profilerStream << recordName;
-                profilerStream << ":";
+                profilerStream << ":[";
                 isFirst = false;
             }
             profilerStream << countIter->first.GetOffset();
             profilerStream << "/";
-            profilerStream << countIter->second;
+            profilerStream << countIter->second->GetCount();
+            profilerStream << "/";
+            profilerStream << countIter->second->GetMethodName();
+            delete countIter->second;
         }
         if (!isFirst) {
-            profilerStream << "\n";
+            profilerStream << "]\n";
         }
     }
     globalProfilerMap_.clear();

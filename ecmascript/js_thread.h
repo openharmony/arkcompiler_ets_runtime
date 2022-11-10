@@ -43,6 +43,11 @@ enum class MarkStatus : uint8_t {
     MARK_FINISHED,
 };
 
+enum class PGOProfilerStatus : uint8_t {
+    PGO_PROFILER_DISABLE,
+    PGO_PROFILER_ENABLE,
+};
+
 struct BCStubEntries {
     static constexpr size_t EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT =
         kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS;
@@ -170,8 +175,10 @@ STATIC_ASSERT_EQ_ARCH(sizeof(COStubEntries), COStubEntries::SizeArch32, COStubEn
 class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
+    static constexpr int PGO_PROFILER_BITFIELD_NUM = 1;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
+    using PGOStatusBits = MarkStatusBits::NextField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_NUM>;
     using ThreadId = uint32_t;
 
     JSThread(EcmaVM *vm);
@@ -442,6 +449,13 @@ public:
     {
         auto status = MarkStatusBits::Decode(glueData_.threadStateBitField_);
         return status == MarkStatus::MARK_FINISHED;
+    }
+
+    void SetPGOProfilerEnable(bool enable)
+    {
+        PGOProfilerStatus status =
+            enable ? PGOProfilerStatus::PGO_PROFILER_ENABLE : PGOProfilerStatus::PGO_PROFILER_DISABLE;
+        PGOStatusBits::Set(status, &glueData_.threadStateBitField_);
     }
 
     bool CheckSafepoint() const;

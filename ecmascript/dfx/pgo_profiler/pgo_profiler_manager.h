@@ -26,22 +26,53 @@ namespace panda::ecmascript {
  * Support statistics of JS Function call heat. Save the method ID whose calls are less than MIN_COUNT.
  *
  * The saving format is as follows:
- * "recordName1:methodId1/methodCount,methodId2/methodCount,methodId3/methodCount......"
- * "recordName2:methodId1/methodCount,methodId2/methodCount,methodId3/methodCount......"
+ * "recordName1:[methodId/count/name,methodId/count/name......]"
+ * "recordName2:[methodId/count/name,methodId/count/name,methodId/count/name......]"
  *                                 "......"
  * */
+class MethodProfilerInfo {
+public:
+    MethodProfilerInfo(uint32_t count, const std::string &methodName) : count_(count), methodName_(methodName) {}
+
+    void IncreaseCount()
+    {
+        count_++;
+    }
+
+    void AddCount(uint32_t count)
+    {
+        count_ += count;
+    }
+
+    uint32_t GetCount() const
+    {
+        return count_;
+    }
+    const std::string &GetMethodName() const
+    {
+        return methodName_;
+    }
+
+    NO_COPY_SEMANTIC(MethodProfilerInfo);
+    NO_MOVE_SEMANTIC(MethodProfilerInfo);
+
+private:
+    uint32_t count_ {0};
+    std::string methodName_;
+};
+
 class PGOProfiler {
 public:
-    PGOProfiler(bool isEnable) : isEnable_(isEnable) {};
-    virtual ~PGOProfiler() = default;
-
     NO_COPY_SEMANTIC(PGOProfiler);
     NO_MOVE_SEMANTIC(PGOProfiler);
 
     void Sample(JSTaggedType value);
 private:
+    PGOProfiler(bool isEnable) : isEnable_(isEnable) {};
+    virtual ~PGOProfiler() = default;
+
     bool isEnable_ {false};
-    std::unordered_map<CString, std::unordered_map<EntityId, uint32_t>> profilerMap_;
+    std::unordered_map<CString, std::unordered_map<EntityId, MethodProfilerInfo *>> profilerMap_;
     friend class PGOProfilerManager;
 };
 
@@ -53,7 +84,12 @@ public:
         return &instance;
     }
 
-    void Initialize(bool isEnable, const std::string &outDir);
+    PGOProfilerManager() = default;
+
+    NO_COPY_SEMANTIC(PGOProfilerManager);
+    NO_MOVE_SEMANTIC(PGOProfilerManager);
+
+    void Initialize(uint32_t hotnessThreshold, const std::string &outDir);
 
     void Destroy()
     {
@@ -65,7 +101,10 @@ public:
 
     PGOProfiler *Build(bool isEnable)
     {
-        return new PGOProfiler(isEnable && isEnable_);
+        if (isEnable) {
+            isEnable_ = true;
+        }
+        return new PGOProfiler(isEnable);
     }
 
     void Destroy(PGOProfiler *profiler)
@@ -77,16 +116,15 @@ public:
     }
 
 private:
-    static constexpr uint32_t MIN_COUNT = 1;
-
     void Merge(PGOProfiler *profile);
     void SaveProfiler();
     std::string ProcessProfile();
 
     os::memory::Mutex mutex_;
     bool isEnable_ {false};
+    uint32_t hotnessThreshold_ {2};
     std::string outDir_;
-    std::unordered_map<CString, std::unordered_map<EntityId, uint32_t>> globalProfilerMap_;
+    std::unordered_map<CString, std::unordered_map<EntityId, MethodProfilerInfo *>> globalProfilerMap_;
 };
 
 } // namespace panda::ecmascript

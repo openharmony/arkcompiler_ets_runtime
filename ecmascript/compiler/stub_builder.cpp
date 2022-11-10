@@ -988,7 +988,11 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             GateRef stateBitFieldAddr = Int64Add(glue,
                                                  Int64(JSThread::GlueData::GetStateBitFieldOffset(isArch32)));
             GateRef stateBitField = Load(VariableType::INT64(), stateBitFieldAddr, Int64(0));
-            Branch(Int64Equal(stateBitField, Int64(0)), &exit, &marking);
+            // mask: 1 << JSThread::CONCURRENT_MARKING_BITFIELD_NUM - 1
+            GateRef markingBitMask = Int64Sub(
+                Int64LSL(Int64(1), Int64(JSThread::CONCURRENT_MARKING_BITFIELD_NUM)), Int64(1));
+            GateRef state = Int64And(stateBitField, markingBitMask);
+            Branch(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
 
             Bind(&marking);
             UpdateLeaveFrameAndCallNGCRuntime(
@@ -4501,9 +4505,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     }
     // 4. call nonNative
     Bind(&methodNotNative);
-    PGOProfiler(glue, func);
     Label funcIsClassConstructor(env);
     Label funcNotClassConstructor(env);
+    PGOProfiler(glue, func);
     if (!AssemblerModule::IsCallNew(mode)) {
         Branch(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &funcNotClassConstructor);
         Bind(&funcIsClassConstructor);
@@ -4970,6 +4974,36 @@ void StubBuilder::Assert(int messageId, int line, GateRef glue, GateRef conditio
     {
         FatalPrint(glue, { Int32(messageId), Int32(line) });
         Jump(nextLabel);
+    }
+}
+
+void StubBuilder::PGOProfiler(GateRef glue, GateRef func)
+{
+    auto env = GetEnvironment();
+    if (env->IsAsmInterp()) {
+        Label subEntry(env);
+        env->SubCfgEntry(&subEntry);
+
+        // Decode bitfield
+        GateRef stateBitFieldAddr = Int64Add(glue,
+                                             Int64(JSThread::GlueData::GetStateBitFieldOffset(env->Is32Bit())));
+        GateRef stateBitField = Load(VariableType::INT64(), stateBitFieldAddr, Int64(0));
+        // equal stateBitField >> JSThread::CONCURRENT_MARKING_BITFIELD_NUM
+        GateRef profilerBitOffset = Int64LSR(stateBitField, Int64(JSThread::CONCURRENT_MARKING_BITFIELD_NUM));
+        // mask: 1 << JSThread::PGO_PROFILER_BITFIELD_NUM - 1
+        GateRef profilerBitMask = Int64Sub(Int64LSL(Int64(1), Int64(JSThread::PGO_PROFILER_BITFIELD_NUM)), Int64(1));
+        GateRef state = Int64And(profilerBitOffset, profilerBitMask);
+        Label exit(env);
+        Label pgoProfiler(env);
+        Branch(Int64Equal(state, Int64(static_cast<int64_t>(PGOProfilerStatus::PGO_PROFILER_ENABLE))),
+            &pgoProfiler, &exit);
+        Bind(&pgoProfiler);
+        {
+            UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(PGOProfiler), { glue, func });
+            Jump(&exit);
+        }
+        Bind(&exit);
+        env->SubCfgExit();
     }
 }
 }  // namespace panda::ecmascript::kungfu
