@@ -232,6 +232,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     JSTaggedValue callTarget = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
     auto method = GetMethod(callTarget);
     std::string data = JsStackInfo::BuildMethodTrace(method, pc_);
+
     LOG_COMPILER(DEBUG) << "Deoptimize" << data;
     ASSERT(thread_ != nullptr);
 
@@ -240,8 +241,8 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     if (!CollectVirtualRegisters(method, &frameWriter)) {
         return JSTaggedValue::Exception().GetRawData();
     }
-    const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
     AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
+    const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
 
     JSTaggedValue thisObj = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);
     auto acc = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::ACC_INDEX));

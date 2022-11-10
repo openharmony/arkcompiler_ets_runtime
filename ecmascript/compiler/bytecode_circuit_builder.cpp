@@ -647,11 +647,12 @@ void BytecodeCircuitBuilder::BuildBlockCircuitHead()
     }
 }
 
-std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo &info)
+std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo &info, BitField bitfield)
 {
-    size_t numValueInputs = info.ComputeValueInputCount();
-    const size_t length = 2; // 2: state and depend on input
-    std::vector<GateRef> inList(length + numValueInputs, Circuit::NullGate());
+    auto opcode = OpCode(OpCode::JS_BYTECODE);
+    auto numValues = opcode.GetOpCodeNumIns(bitfield);
+    const size_t length = opcode.GetInValueStarts(bitfield);
+    std::vector<GateRef> inList(numValues, Circuit::NullGate());
     for (size_t i = 0; i < info.inputs.size(); i++) {
         auto &input = info.inputs[i];
         if (std::holds_alternative<ConstDataId>(input)) {
@@ -675,8 +676,8 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
                     std::get<ConstDataId>(input).GetId(), recordName_);
             }
             inList[i + length] = circuit_->GetConstantGate(MachineType::I64,
-                                                              std::get<ConstDataId>(input).GetId(),
-                                                              GateType::NJSValue());
+                                                           std::get<ConstDataId>(input).GetId(),
+                                                           GateType::NJSValue());
         } else if (std::holds_alternative<Immediate>(input)) {
             inList[i + length] = circuit_->GetConstantGate(MachineType::I64,
                                                           std::get<Immediate>(input).GetValue(),
@@ -797,7 +798,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     BitField bitfield = GateBitFieldAccessor::ConstructJSBytecode(numValueInputs,
         bytecodeInfo.GetOpcode(), iterator.Index());
     GateRef gate = 0;
-    std::vector<GateRef> inList = CreateGateInList(bytecodeInfo);
+    std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, bitfield);
     if (bytecodeInfo.IsDef()) {
         gate = circuit_->NewGate(OpCode(OpCode::JS_BYTECODE), MachineType::I64, bitfield,
                                 inList, GateType::AnyType());
@@ -859,11 +860,13 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
     BitField bitfield = GateBitFieldAccessor::ConstructJSBytecode(numValueInputs,
         bytecodeInfo.GetOpcode(), iterator.Index());
     if (bytecodeInfo.IsCondJump()) {
+        auto opcode = OpCode(OpCode::JS_BYTECODE);
+        auto numValues = opcode.GetOpCodeNumIns(bitfield);
         GateRef gate = 0;
-        gate = circuit_->NewGate(OpCode(OpCode::JS_BYTECODE), MachineType::NOVALUE, bitfield,
-                                std::vector<GateRef>(2 + numValueInputs, // 2: state and depend input
-                                                     Circuit::NullGate()),
-                                GateType::Empty());
+        gate = circuit_->NewGate(opcode, MachineType::NOVALUE, bitfield,
+                                 std::vector<GateRef>(numValues,
+                                                      Circuit::NullGate()),
+                                 GateType::Empty());
         gateAcc_.NewIn(gate, 0, state);
         gateAcc_.NewIn(gate, 1, depend);
         auto ifTrue = circuit_->NewGate(OpCode(OpCode::IF_TRUE), 0, {gate}, GateType::Empty());
@@ -1177,10 +1180,9 @@ void BytecodeCircuitBuilder::BuildCircuit()
             [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount();
             ASSERT(numValueInputs == valueCount);
             ASSERT(numValueOutputs <= 1);
-            auto stateCount = gateAcc_.GetStateCount(gate);
-            auto dependCount = gateAcc_.GetDependCount(gate);
+            auto valueStarts = gateAcc_.GetInValueStarts(gate);
             for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {
-                auto inIdx = valueIdx + stateCount + dependCount;
+                auto inIdx = valueIdx + valueStarts;
                 if (!gateAcc_.IsInGateNull(gate, inIdx)) {
                     continue;
                 }
