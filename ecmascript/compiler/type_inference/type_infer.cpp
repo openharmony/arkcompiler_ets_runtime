@@ -627,7 +627,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));  // 2: the third parameter is receiver
     if (!objType.IsAnyType()) {
         if (tsManager_->IsArrayTypeKind(objType)) {
-            auto builtinGt = GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, TSManager::BUILTIN_ARRAY_ID);
+            auto builtinGt = GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, static_cast<int>(BuiltinTypeId::ARRAY));
             auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
             objType = GateType(builtinInstanceType);
         }

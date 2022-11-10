@@ -847,7 +847,8 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
     uint32_t m = classGT.GetModuleId();
     uint32_t l = classGT.GetLocalId();
     return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
-            (l >= BUILTIN_TYPED_ARRAY_FIRST_ID) && (l <= BUILTIN_TYPED_ARRAY_LAST_ID);
+            (l >= static_cast<uint32_t>(BuiltinTypeId::UINT8_CLAMPED_ARRAY)) &&
+            (l <= static_cast<uint32_t>(BuiltinTypeId::BIG_UINT64_ARRAY));
 }
 
 bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
@@ -860,7 +861,7 @@ bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
     GlobalTSTypeRef classGT = GetClassType(gt);
     uint32_t m = classGT.GetModuleId();
     uint32_t l = classGT.GetLocalId();
-    return (m == TSModuleTable::BUILTINS_TABLE_ID) && (l == BUILTIN_FLOAT32_ARRAY_ID);
+    return (m == TSModuleTable::BUILTINS_TABLE_ID) && (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY));
 }
 
 std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
@@ -1076,7 +1077,7 @@ bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
         return false;
     }
     uint32_t localId = funcGt.GetLocalId();
-    if (localId == TSManager::BUILTINS_MATH_ID) {
+    if (localId == static_cast<uint32_t>(BuiltinTypeId::MATH)) {
         return true;
     }
     return false;
