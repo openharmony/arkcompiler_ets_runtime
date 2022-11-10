@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/llvm_stackmap_parser.h"
+#include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript::kungfu {
 void TSTypeLowering::RunTSTypeLowering()
@@ -221,6 +223,9 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
             LowerTypedSuperCall(gate, jsFunc, newTarget, glue);
+            break;
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            LowerCallThis1Imm8V8V8(gate);
             break;
         default:
             break;
@@ -830,7 +835,6 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
     } else {
         UNREACHABLE();
     }
-
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -1038,5 +1042,56 @@ GateRef TSTypeLowering::GetSuperConstructor(GateRef ctor)
     GateRef hclass = builder_.LoadHClass(ctor);
     GateRef protoOffset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
     return builder_.Load(VariableType::JS_ANY(), hclass, protoOffset);
+}
+
+void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    GateRef function = acc_.GetValueIn(gate, 2); // 2:function
+    GateRef a0 = acc_.GetValueIn(gate, 1);
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    builder_.SetDepend(acc_.GetDep(guard));
+    GateRef funcheck = builder_.CallTargetCheck(function, builder_.IntPtr(static_cast<int64_t>(id)));
+    BuiltinLowering lowering(circuit_);
+    GateRef paracheck = lowering.CheckPara(gate, id);
+    GateRef check = builder_.BoolAnd(paracheck, funcheck);
+
+    acc_.ReplaceIn(guard, 1, check);
+    builder_.SetDepend(guard);
+
+    GateRef result = builder_.TypedCallBuiltin(a0, id);
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
+BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func, GateRef receiver)
+{
+    GateType receiverType = acc_.GetGateType(receiver);
+    if (!tsManager_->IsBuiltinMath(receiverType)) {
+        return BuiltinsStubCSigns::ID::NONE;
+    }
+    GateType funcType = acc_.GetGateType(func);
+    if (!tsManager_->IsBuiltin(funcType)) {
+        return BuiltinsStubCSigns::ID::NONE;
+    }
+    std::string name = tsManager_->GetFuncName(funcType);
+    BuiltinsStubCSigns::ID id = BuiltinLowering::GetBuiltinId(name);
+    return id;
+}
+
+void TSTypeLowering::LowerCallThis1Imm8V8V8(GateRef gate)
+{
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef a0 = acc_.GetValueIn(gate, 1); // 1:parameter index
+    GateType a0Type = acc_.GetGateType(a0);
+    GateRef func = acc_.GetValueIn(gate, 2); // 2:function
+    BuiltinsStubCSigns::ID id = GetBuiltinId(func, thisObj);
+    if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
+        SpeculateCallBuiltin(gate, id);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
+    }
 }
 }  // namespace panda::ecmascript

@@ -37,6 +37,7 @@ group("ark_aot_test") {
     "ashr:ashrAotAction",
     "asyncgenerator:asyncgeneratorAotAction",
     "bind:bindAotAction",
+    "builtinmath:builtinmathAotAction",
     "call_same_bytecode_func:call_same_bytecode_funcAotAction",
     "callithisrange:callithisrangeAotAction",
     "calls:callsAotAction",

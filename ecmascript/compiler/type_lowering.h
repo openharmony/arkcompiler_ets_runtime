@@ -183,6 +183,8 @@ private:
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
                                     GateRef start, GateRef end);
     void LowerConstruct(GateRef gate, GateRef glue);
+    void LowerTypedCallBuitin(GateRef gate);
+    void LowerCallTargetCheck(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 
