@@ -674,6 +674,34 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
     return numberUnaryOp;
 }
 
+template<TypedLoadOp Op>
+GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
+{
+    auto opIdx = static_cast<uint64_t>(Op);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_ELEMENT), opIdx,
+                                     { currentControl, currentDepend, receiver, index }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+template<TypedStoreOp Op>
+GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value)
+{
+    auto opIdx = static_cast<uint64_t>(Op);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_ELEMENT), opIdx,
+                                     { currentControl, currentDepend, receiver, index, value }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 // Number operator
 template<TypedBinOp Op>
 GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)

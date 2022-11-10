@@ -408,7 +408,9 @@ public:
 
     // middle ir: object operations
     GateRef ToLength(GateRef receiver);
+    template<TypedLoadOp Op>
     GateRef LoadElement(GateRef receiver, GateRef index);
+    template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef offset);
     GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);

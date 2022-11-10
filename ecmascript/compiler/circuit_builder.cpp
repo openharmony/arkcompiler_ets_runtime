@@ -460,30 +460,6 @@ GateRef CircuitBuilder::HeapAlloc(GateRef initialHClass, GateType type, RegionSp
     return ret;
 }
 
-GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_ELEMENT), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, index }, GateType::AnyType());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_ELEMENT), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, index, value }, GateType::AnyType());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
 GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef offset)
 {
     auto currentLabel = env_->GetCurrentLabel();

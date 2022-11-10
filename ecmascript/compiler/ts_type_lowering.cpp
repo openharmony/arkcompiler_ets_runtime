@@ -823,7 +823,12 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
 
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
-    GateRef result = builder_.LoadElement(receiver, index);
+    GateRef result = Circuit::NullGate();
+    if (tsManager_->IsFloat32ArrayType(receiverType)) {
+        result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index);
+    } else {
+        UNREACHABLE();
+    }
 
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
@@ -856,7 +861,12 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     acc_.ReplaceIn(guard, 1, check);
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
-    builder_.StoreElement(receiver, index, value);
+
+    if (tsManager_->IsFloat32ArrayType(receiverType)) {
+        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
+    } else {
+        UNREACHABLE();
+    }
 
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, Circuit::NullGate(), builder_.GetState(), builder_.GetDepend(), removedGate);
