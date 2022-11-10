@@ -184,7 +184,8 @@ bool JSPandaFile::IsModule(const CString &recordName) const
     if (info != jsRecordInfo_.end()) {
         return info->second.moduleRecordIdx == -1 ? false : true;
     }
-    return false;
+    LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
+    UNREACHABLE();
 }
 
 bool JSPandaFile::IsCjs(const CString &recordName) const
@@ -196,7 +197,8 @@ bool JSPandaFile::IsCjs(const CString &recordName) const
     if (info != jsRecordInfo_.end()) {
         return info->second.isCjs;
     }
-    return false;
+    LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
+    UNREACHABLE();
 }
 
 CString JSPandaFile::FindEntryPoint(const CString &recordName) const

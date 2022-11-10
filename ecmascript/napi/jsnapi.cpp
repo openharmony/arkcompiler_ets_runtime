@@ -2648,4 +2648,9 @@ void JSNApi::SetLoop(EcmaVM *vm, void *loop)
 {
     vm->SetLoop(loop);
 }
+
+std::string JSNApi::GetAssetPath(EcmaVM *vm)
+{
+    return vm->GetAssetPath().c_str();
+}
 }  // namespace panda
