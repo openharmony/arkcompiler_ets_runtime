@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
@@ -85,6 +86,7 @@ int Main(const int argc, const char **argv)
         size_t relocMode = runtimeOptions.GetRelocMode();
         std::string logOption = runtimeOptions.GetCompilerLogOption();
         std::string logMethodsList = runtimeOptions.GetMethodsListForLog();
+        bool compilerLogTime = runtimeOptions.IsEnableCompilerLogTime();
         bool isEnableBcTrace = runtimeOptions.IsEnableByteCodeTrace();
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
@@ -92,8 +94,9 @@ int Main(const int argc, const char **argv)
         BytecodeStubCSigns::Initialize();
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
-
+        
         CompilerLog log(logOption, isEnableBcTrace);
+        log.SetEnableCompilerLogTime(compilerLogTime);
         AotMethodLogList logList(logMethodsList);
         AOTFileGenerator generator(&log, &logList, vm);
         std::string profilerIn(runtimeOptions.GetPGOProfilerPath());

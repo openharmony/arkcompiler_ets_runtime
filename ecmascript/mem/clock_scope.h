@@ -41,6 +41,12 @@ public:
         return (float) duration.count() / MILLION_TIME;
     }
 
+    double GetCurTime() const
+    {
+        auto curTime_ = Duration(start_.time_since_epoch());
+        return (double) curTime_.count() / MILLION_TIME;
+    }
+
 private:
     NO_COPY_SEMANTIC(ClockScope);
     NO_MOVE_SEMANTIC(ClockScope);
@@ -49,5 +55,4 @@ private:
     static constexpr uint32_t MILLION_TIME = 1000;
 };
 }  // namespace panda::ecmascript
-
 #endif  // ECMASCRIPT_MEM_CLOCK_SCOPE_H

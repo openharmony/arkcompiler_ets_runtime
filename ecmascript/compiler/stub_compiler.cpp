@@ -33,7 +33,7 @@
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
-    explicit StubPassData(Stub *stub, LLVMModule *module, const CompilerLog *log, bool enableMethodLog)
+    explicit StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log, bool enableMethodLog)
         : PassData(nullptr, log, enableMethodLog, "stubs"), module_(module), stub_(stub) {}
     ~StubPassData() = default;
 
@@ -96,7 +96,7 @@ private:
 void StubCompiler::RunPipeline(LLVMModule *module) const
 {
     auto callSigns = module->GetCSigns();
-    const CompilerLog *log = GetLog();
+    CompilerLog *log = GetLog();
     auto logList = GetLogList();
     auto cconfig = module->GetCompilationConfig();
 
@@ -135,7 +135,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
 {
     InitializeCS();
     size_t res = 0;
-    const CompilerLog *log = GetLog();
+    CompilerLog *log = GetLog();
     const MethodLogList *logList = GetLogList();
     StubFileGenerator generator(log, logList, triple_, enablePGOProfiler_);
     if (!filePath_.empty()) {

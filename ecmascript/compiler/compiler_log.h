@@ -17,32 +17,20 @@
 #define ECMASCRIPT_COMPILER_LOG_H
 
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iomanip>
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/mem/clock_scope.h"
 
 namespace panda::ecmascript::kungfu {
 class CompilerLog {
 public:
-    CompilerLog(const std::string &logOpt, bool enableBCTrace = false)
-    {
-        outputCIR_ = logOpt.find("cir") != std::string::npos ||
-            logOpt.find("0") != std::string::npos;
-        outputLLIR_ = logOpt.find("llir") != std::string::npos ||
-            logOpt.find("1") != std::string::npos;
-        outputASM_ = logOpt.find("asm") != std::string::npos ||
-            logOpt.find("2") != std::string::npos;
-        outputType_ = logOpt.find("type") != std::string::npos ||
-            logOpt.find("3") != std::string::npos;
-        allMethod_ = logOpt.find("all") != std::string::npos;
-        cerMethod_ = logOpt.find("all") == std::string::npos &&
-            logOpt.find("cer") != std::string::npos;
-        noneMethod_ = logOpt.find("all") == std::string::npos &&
-            logOpt.find("cer") == std::string::npos;
-        enableBCTrace_ = enableBCTrace;
-    }
+    explicit CompilerLog(const std::string &logOpt, bool enableBCTrace = false);
     ~CompilerLog() = default;
 
     bool AllMethod() const
@@ -84,7 +72,31 @@ public:
     {
         return enableBCTrace_;
     }
+
+    bool GetEnableCompilerLogTime() const
+    {
+        return compilerLogTime_;
+    }
+
+    void SetEnableCompilerLogTime(bool compilerLogTime)
+    {
+        compilerLogTime_ = compilerLogTime;
+    }
+
+    void PrintPassTime() const;
+    void PrintMethodTime() const;
+    void PrintTime() const;
+    void AddMethodTime(const std::string& name, double time);
+    void AddPassTime(const std::string& name, double time);
+
 private:
+    static constexpr int PASS_LENS = 25;
+    static constexpr int METHOD_LENS = 18;
+    static constexpr int PERCENT_LENS = 4;
+    static constexpr int TIME_LENS = 12;
+    static constexpr int MILLION_TIME = 1000;
+    static constexpr int HUNDRED_TIME = 100;
+
     bool allMethod_ {false};
     bool cerMethod_ {false};
     bool noneMethod_ {false};
@@ -93,18 +105,16 @@ private:
     bool outputASM_ {false};
     bool outputType_ {false};
     bool enableBCTrace_ {false};
+    bool compilerLogTime_ {true};
+    std::map<std::string, double> timePassMap_ {};
+    std::map<std::string, double> timeMethodMap_ {};
 };
 
 class MethodLogList {
 public:
     explicit MethodLogList(const std::string &logMethods) : methods_(logMethods) {}
     ~MethodLogList() = default;
-    bool IncludesMethod(const std::string &methodName) const
-    {
-        bool empty = methodName.empty();
-        bool found = methods_.find(methodName) != std::string::npos;
-        return !empty && found;
-    }
+    bool IncludesMethod(const std::string &methodName) const;
 private:
     std::string methods_ {};
 };
@@ -120,40 +130,31 @@ public:
     }
     ~AotMethodLogList() = default;
 
-    bool IncludesMethod(const std::string &fileName, const std::string &methodName) const
-    {
-        if (fileMethods_.find(fileName) == fileMethods_.end()) {
-            return false;
-        }
-        std::vector mehtodVector = fileMethods_.at(fileName);
-        auto it = find(mehtodVector.begin(), mehtodVector.end(), methodName);
-        return (it != mehtodVector.end());
-    }
+    bool IncludesMethod(const std::string &fileName, const std::string &methodName) const;
 
 private:
-    std::vector<std::string> spiltString(const std::string &str, const char ch)
-    {
-        std::vector<std::string> vec{};
-        std::istringstream sstr(str.c_str());
-        std::string spilt;
-        while (getline(sstr, spilt, ch)) {
-            vec.emplace_back(spilt);
-        }
-        return vec;
-    }
-
-    void ParseFileMethodsName(const std::string &logMethods)
-    {
-        std::vector<std::string> fileVector = spiltString(logMethods, fileSplitSign);
-        std::vector<std::string> itemVector;
-        for (size_t index = 0; index < fileVector.size(); ++index) {
-            itemVector = spiltString(fileVector[index], methodSplitSign);
-            std::vector<std::string> methodVector(itemVector.begin() + 1, itemVector.end());
-            fileMethods_[itemVector[0]] = methodVector;
-        }
-    }
-
+    std::vector<std::string> spiltString(const std::string &str, const char ch);
+    void ParseFileMethodsName(const std::string &logMethods);
     std::map<std::string, std::vector<std::string>> fileMethods_ {};
+};
+
+class TimeScope : public ClockScope {
+public:
+    TimeScope(std::string name, std::string methodName, CompilerLog* log);
+    ~TimeScope();
+   
+private:
+    static constexpr int PASS_LENS = 25;
+    static constexpr int TIME_LENS = 12;
+    static constexpr int MILLION_TIME = 1000;
+
+    std::string name_ {""};
+    double startTime_ {0};
+    double timeUsed_ {0};
+    std::string methodName_ {""};
+    CompilerLog *log_ {nullptr};
+
+    const std::string GetShortName(const std::string& methodName);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LOG_H

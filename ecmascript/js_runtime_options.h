@@ -79,6 +79,7 @@ const std::string HELP_OPTION_MSG =
     "       Default: \"none\"\n"
     "--compiler-log-methods: specific method list for compiler log output, only used when compiler-log."
                             "Default: \"none\"\n"
+    "--compiler-log-time: Enable to print pass compiler time. Default: false\n"
     "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
     "--enable-bytecode-trace: enable tracing bytecode for aot runtime. Default: false\n"
     "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
@@ -162,6 +163,7 @@ enum CommandValues {
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_ASSERT_TYPES,
     OPTION_PRINT_ANY_TYPES,
+    OPTION_COMPILER_LOG_TIME,
     OPTION_IS_WORKER,
     OPTION_BUILTINS_DTS,
     OPTION_ENABLE_BC_TRACE,
@@ -503,6 +505,21 @@ public:
             GetCompilerLogOption().find("all") == std::string::npos;
     }
 
+    void SetCompilerLogTime(bool value)
+    {
+        compilerLogTime_ = value;
+    }
+
+    bool IsEnableCompilerLogTime() const
+    {
+        return compilerLogTime_;
+    }
+
+    bool WasSetCompilerLogTime() const
+    {
+        return WasOptionSet(OPTION_COMPILER_LOG_TIME);
+    }
+
     uint64_t GetSerializerBufferSizeLimit() const
     {
         return serializerBufferSizeLimit_;
@@ -662,6 +679,7 @@ public:
     {
         return WasOptionSet(OPTION_ENABLE_BC_TRACE);
     }
+
 
     std::string GetLogLevel() const
     {
@@ -899,6 +917,7 @@ private:
     bool startupTime_ {false};
     std::string compilerLogOpt_ {"none"};
     std::string compilerLogMethods_ {"none"};
+    bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
     bool assertTypes_ {false};
     bool printAnyTypes_ {false};
