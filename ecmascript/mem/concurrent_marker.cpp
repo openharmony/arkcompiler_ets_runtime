@@ -64,7 +64,7 @@ void ConcurrentMarker::Mark()
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarking);
     ClockScope scope;
     InitializeMarking();
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<MarkerTask>(heap_));
+    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<MarkerTask>(heap_->GetJSThread()->GetThreadId(), heap_));
     if (!heap_->IsFullMark() && heap_->IsParallelGCEnabled()) {
         heap_->PostParallelGCTask(ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK);
     }
