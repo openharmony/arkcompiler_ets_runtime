@@ -24,6 +24,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+
 bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
@@ -82,7 +83,10 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager, &circuit,
                                        &bytecodes, hasTyps, enableMethodLog && log_->OutputCIR(),
                                        EnableTypeLowering(), fullName, recordName);
-        builder.BytecodeToCircuit();
+        {
+            TimeScope timeScope("BytecodeToCircuit", methodName, log_);
+            builder.BytecodeToCircuit();
+        }
         PassData data(&circuit, log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         if (hasTyps && EnableTypeLowering()) {
@@ -100,8 +104,8 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
     });
-    LOG_COMPILER(INFO) << " ";
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
+    log_->PrintTime();
     generator.AddModule(aotModule, aotModuleAssembler);
     return true;
 }

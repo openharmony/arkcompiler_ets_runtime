@@ -28,11 +28,12 @@
 #include "ecmascript/compiler/type_inference/type_infer.h"
 #include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/compiler/compiler_log.h"
 
 namespace panda::ecmascript::kungfu {
 class PassData {
 public:
-    explicit PassData(Circuit *circuit, const CompilerLog *log, bool enableMethodLog, std::string name)
+    explicit PassData(Circuit *circuit, CompilerLog *log, bool enableMethodLog, std::string name)
         : circuit_(circuit), log_(log), enableMethodLog_(enableMethodLog), name_(name)
     {
     }
@@ -53,7 +54,7 @@ public:
         return circuit_;
     }
 
-    const CompilerLog *GetLog() const
+    CompilerLog *GetLog() const
     {
         return log_;
     }
@@ -71,7 +72,7 @@ public:
 private:
     Circuit *circuit_ {nullptr};
     ControlFlowGraph cfg_;
-    const CompilerLog *log_ {nullptr};
+    CompilerLog *log_ {nullptr};
     bool enableMethodLog_ {false};
     std::string name_;
 };
@@ -97,6 +98,7 @@ public:
     bool Run(PassData* data, BytecodeCircuitBuilder *builder, const JSHandle<JSTaggedValue> &constantPool,
              TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId)
     {
+        TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
         TypeInfer typeInfer(builder, data->GetCircuit(), constantPool, tsManager,
                             lexEnvManager, methodId, enableLog, data->GetMethodName());
@@ -110,6 +112,7 @@ public:
     bool Run(PassData *data, CompilationConfig *cmpCfg, TSManager *tsManager,
              const JSHandle<JSTaggedValue> &constantPool)
     {
+        TimeScope timescope("TSTypeLoweringPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         TSTypeLowering lowering(data->GetCircuit(), cmpCfg, tsManager, enableLog,
                                 data->GetMethodName(), constantPool);
@@ -122,6 +125,7 @@ class TypeLoweringPass {
 public:
     bool Run(PassData *data, CompilationConfig *cmpCfg, TSManager *tsManager)
     {
+        TimeScope timescope("TypeLoweringPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         TypeLowering lowering(data->GetCircuit(), cmpCfg, tsManager, enableLog, data->GetMethodName());
         lowering.RunTypeLowering();
@@ -133,6 +137,7 @@ class SlowPathLoweringPass {
 public:
     bool Run(PassData* data, CompilationConfig *cmpCfg, TSManager *tsManager, const MethodLiteral *methodLiteral)
     {
+        TimeScope timescope("SlowPathLoweringPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         SlowPathLowering lowering(data->GetCircuit(), cmpCfg, tsManager, methodLiteral, enableLog, data->GetMethodName());
         lowering.CallRuntimeLowering();
@@ -144,6 +149,7 @@ class VerifierPass {
 public:
     bool Run(PassData* data)
     {
+        TimeScope timescope("VerifierPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         bool isQualified = Verifier::Run(data->GetCircuit(), data->GetMethodName(), enableLog);
         if (!isQualified) {
@@ -158,6 +164,7 @@ class GuardEliminatingPass {
 public:
     bool Run(PassData* data, CompilationConfig *cmpCfg)
     {
+        TimeScope timescope("GuardEliminatingPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         GuardEliminating(data->GetCircuit(), cmpCfg, enableLog, data->GetMethodName()).Run();
         return true;
@@ -168,6 +175,7 @@ class SchedulingPass {
 public:
     bool Run(PassData* data)
     {
+        TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         data->SetScheduleResult(Scheduler::Run(data->GetCircuit(), data->GetMethodName(), enableLog));
         return true;
@@ -184,6 +192,7 @@ public:
     bool Run(PassData *data, LLVMModule *module, const MethodLiteral *methodLiteral,
              const JSPandaFile *jsPandaFile)
     {
+        TimeScope timescope("LLVMIRGenPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(llvmImpl_, data->GetMethodName());
@@ -199,6 +208,7 @@ class AsyncFunctionLoweringPass {
 public:
     bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
     {
+        TimeScope timescope("AsyncFunctionLoweringPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         AsyncFunctionLowering lowering(builder, data->GetCircuit(), cmpCfg, enableLog, data->GetMethodName());
         if (lowering.IsAsyncRelated()) {
@@ -212,6 +222,7 @@ class GuardLoweringPass {
 public:
     bool Run(PassData* data, CompilationConfig *cmpCfg)
     {
+        TimeScope timescope("GuardLoweringPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         GuardLowering(cmpCfg, data->GetCircuit(), data->GetMethodName(), enableLog).Run();
         return true;
