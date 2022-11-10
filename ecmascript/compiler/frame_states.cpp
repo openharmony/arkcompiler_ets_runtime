@@ -47,7 +47,7 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo
     size_t frameStateInputs = numVregs_ + 1; // +1: for pc
     std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
     auto optimizedGate = circuit_->GetConstantGate(MachineType::I64,
-                                                   JSTaggedValue::VALUE_OPTIMIZED,
+                                                   JSTaggedValue::VALUE_OPTIMIZED_OUT,
                                                    GateType::TaggedValue());
     for (size_t i = 0; i < numVregs_; i++) {
         auto value = stateInfo->ValuesAt(i);

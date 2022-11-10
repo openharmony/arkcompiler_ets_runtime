@@ -492,6 +492,11 @@ size_t OpCode::GetOpCodeNumIns(BitField bitfield) const
     return GetStateCount(bitfield) + GetDependCount(bitfield) + GetInValueCount(bitfield) + GetRootCount(bitfield);
 }
 
+size_t OpCode::GetInValueStarts(BitField bitfield) const
+{
+    return GetStateCount(bitfield) + GetDependCount(bitfield);
+}
+
 MachineType OpCode::GetMachineType() const
 {
     return GetProperties().returnValue;
@@ -583,7 +588,7 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckStateInput() const
 
 std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput(bool isArch64) const
 {
-    size_t valueStart = GetStateCount() + GetDependCount();
+    size_t valueStart = GetInValueStarts();
     size_t valueEnd = valueStart + GetInValueCount();
     for (size_t idx = valueStart; idx < valueEnd; idx++) {
         auto expectedIn = GetOpCode().GetInMachineType(GetBitField(), idx);
@@ -1065,6 +1070,12 @@ Out *Gate::GetOut(size_t idx)
     return &reinterpret_cast<Out *>(this)[-1 - idx];
 }
 
+const Out *Gate::GetOutConst(size_t idx) const
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    return &reinterpret_cast<const Out *>(this)[-1 - idx];
+}
+
 Out *Gate::GetFirstOut()
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -1168,6 +1179,11 @@ GateType Gate::GetGateType() const
 size_t Gate::GetNumIns() const
 {
     return GetOpCodeNumIns(GetOpCode(), GetBitField());
+}
+
+size_t Gate::GetInValueStarts() const
+{
+    return GetStateCount() + GetDependCount();
 }
 
 size_t Gate::GetStateCount() const

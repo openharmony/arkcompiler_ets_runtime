@@ -260,7 +260,7 @@ GateRef SlowPathLowering::GetHomeObjectFromJSFunction(GateRef jsFunc)
 
 void SlowPathLowering::Lower(GateRef gate)
 {
-    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    GateRef glue = acc_.GetGlueFromArgList();
     GateRef newTarget = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
     GateRef actualArgc = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
@@ -1224,7 +1224,7 @@ void SlowPathLowering::LowerThrowDeleteSuperProperty(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
 {
-    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    GateRef glue = acc_.GetGlueFromArgList();
     GateRef depend = acc_.GetDep(hirGate);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue, exceptionOffset);
@@ -2038,7 +2038,7 @@ void SlowPathLowering::LowerNewObjRange(GateRef gate, GateRef glue)
 
 void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 {
-    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    GateRef glue = acc_.GetGlueFromArgList();
     DebugPrintBC(gate, glue);
     std::vector<GateRef> trueState;
     GateRef value = acc_.GetValueIn(gate, 0);
@@ -3225,7 +3225,7 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
         acc_.DeleteGate(item);
     }
 
-    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    GateRef glue = acc_.GetGlueFromArgList();
     DebugPrintBC(gate, glue);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -3258,7 +3258,7 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
 
 void SlowPathLowering::LowerGetResumeMode(GateRef gate)
 {
-    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+    GateRef glue = acc_.GetGlueFromArgList();
     DebugPrintBC(gate, glue);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
@@ -3410,7 +3410,6 @@ void SlowPathLowering::LowerCallArg1Imm8V8(GateRef gate, GateRef glue)
     DebugPrintBC(gate, glue);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    // 2: func and bcoffset
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLARG1_IMM8_V8));
 
     GateRef newTarget = builder_.Undefined();
@@ -3455,7 +3454,6 @@ void SlowPathLowering::LowerCallThisArg1(GateRef gate, GateRef glue)
     DebugPrintBC(gate, glue);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    // 2: func and bcoffset
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
@@ -3471,7 +3469,6 @@ void SlowPathLowering::LowerCallargs2Imm8V8V8(GateRef gate, GateRef glue)
     DebugPrintBC(gate, glue);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    // 2: func and bcoffset
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLARGS2_IMM8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
@@ -3490,7 +3487,6 @@ void SlowPathLowering::LowerCallargs3Imm8V8V8(GateRef gate, GateRef glue)
     DebugPrintBC(gate, glue);
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
-    // 2: func and bcoffset
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
@@ -3510,7 +3506,6 @@ void SlowPathLowering::LowerCallthis2Imm8V8V8V8(GateRef gate, GateRef glue)
     DebugPrintBC(gate, glue);
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
-    // 2: func and bcoffset
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);

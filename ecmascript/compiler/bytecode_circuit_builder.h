@@ -278,7 +278,7 @@ public:
     void PUBLIC_API BytecodeToCircuit();
     void CollectRegionInfo(uint32_t bcIndex);
 
-    [[nodiscard]] Circuit* GetCircuit()
+    [[nodiscard]] Circuit* GetCircuit() const
     {
         return circuit_;
     }
@@ -418,7 +418,7 @@ private:
     void NewMerge(GateRef &state, GateRef &depend, size_t numOfIns);
     void NewLoopBegin(BytecodeRegion &bb);
     void BuildBlockCircuitHead();
-    std::vector<GateRef> CreateGateInList(const BytecodeInfo &info);
+    std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, BitField bitfield);
     void SetBlockPred(BytecodeRegion &bbNext, const GateRef &state, const GateRef &depend, bool isLoopBack);
     GateRef NewConst(const BytecodeInfo &info);
     void NewJSGate(BytecodeRegion &bb, GateRef &state, GateRef &depend);

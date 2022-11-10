@@ -123,11 +123,11 @@ private:
         return GetFrameArgv(static_cast<size_t>(index));
     }
     bool CollectVirtualRegisters(Method* method, FrameWriter *frameWriter);
-    bool HasDeoptValue(int32_t index)
+    bool HasDeoptValue(int32_t index) const
     {
         return deoptVregs_.find(static_cast<kungfu::OffsetType>(index)) != deoptVregs_.end();
     }
-    JSTaggedValue GetDeoptValue(int32_t index)
+    JSTaggedValue GetDeoptValue(int32_t index) const
     {
         if (!HasDeoptValue(index)) {
             return JSTaggedValue::Undefined();

@@ -253,6 +253,7 @@ public:
     [[nodiscard]] size_t GetInValueCount(BitField bitfield) const;
     [[nodiscard]] size_t GetRootCount(BitField bitfield) const;
     [[nodiscard]] size_t GetOpCodeNumIns(BitField bitfield) const;
+    [[nodiscard]] size_t GetInValueStarts(BitField bitfield) const;
     [[nodiscard]] MachineType GetMachineType() const;
     [[nodiscard]] MachineType GetInMachineType(BitField bitfield, size_t idx) const;
     [[nodiscard]] OpCode GetInStateCode(size_t idx) const;
@@ -393,6 +394,7 @@ public:
     static constexpr GateRef InvalidGateRef = -1;
     [[nodiscard]] Out *GetOut(size_t idx);
     [[nodiscard]] Out *GetFirstOut();
+    [[nodiscard]] const Out *GetOutConst(size_t idx) const;
     [[nodiscard]] const Out *GetFirstOutConst() const;
     // note: GetFirstOut() is not equal to GetOut(0)
     // note: behavior of GetFirstOut() is undefined when there are no Outs
@@ -421,6 +423,7 @@ public:
     [[nodiscard]] size_t GetStateCount() const;
     [[nodiscard]] size_t GetDependCount() const;
     [[nodiscard]] size_t GetInValueCount() const;
+    [[nodiscard]] size_t GetInValueStarts() const;
     [[nodiscard]] size_t GetRootCount() const;
     [[nodiscard]] BitField GetBitField() const;
     void SetBitField(BitField bitfield);
