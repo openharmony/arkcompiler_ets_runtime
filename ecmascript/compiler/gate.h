@@ -122,6 +122,14 @@ enum class FCmpCondition : uint8_t {
     ALW_TRUE,
 };
 
+enum class TypedStoreOp : uint8_t {
+    FLOAT32ARRAY_STORE_ELEMENT,
+};
+
+enum class TypedLoadOp : uint8_t {
+    FLOAT32ARRAY_LOAD_ELEMENT,
+};
+
 class OpCode {
 public:
     enum Op : GateOp {
