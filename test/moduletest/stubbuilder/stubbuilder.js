@@ -530,6 +530,533 @@
 }
 
 /*
+*  GetPropertyByValue();  
+*/
+                      /**************HandleLdobjbyvalueImm16V8****************/
+{
+    var obj = {name1:"bom", 2:"arm"};
+    var v1 = obj.name1;
+    var v3 = obj[2];
+    var key = "name1";
+    var v4 = obj.key;
+    var v5 = obj[key];
+    print(v1);
+    print(v3);
+    print(v4);
+    print(v5);
+}
+
+/*
+*  Int8ToTaggedInt(); SExtInt8ToInt64();  
+*/
+                      /**************HandleThrowIfsupernotcorrectcallPrefImm16****************/
+{
+    class A {
+        constructor() {
+        }
+    }
+
+    class B extends A {
+        constructor(name, age) {
+          super(); 
+          this.name = name;
+          this.age = age;
+        }
+        sayName() {
+          print(this.name);
+          print(this.age);
+        }
+    }
+    new A();
+    const people = new B("echo", 19);
+    people.sayName();
+}
+
+/*
+*  SetPropertyByName(); SetTypeArrayPropertyByName(); CallSetterHelper(); ShouldCallSetter(); IsWritable(); UpdateValueInDict();
+*  AddPropertyByName(); SetHasConstructorCondition(); SetHasConstructorToHClass(); SetPropertyInlinedProps(); SetOffsetFieldInPropAttr();
+*  SetIsInlinePropsFieldInPropAttr(); JSHClassAddProperty(); IsDictionaryMode(); SetPropertiesArray(); SetDictionaryOrderFieldInPropAttr();
+*  ComputePropertyCapacityInJSObj();
+*/
+                      /**************HandleStobjbynameImm8Id16V8****************/
+{
+    var obj1 = {"qq":10};
+    var obj2={"mm":2,"nn":3};
+    var obj3={"xx":1,"yy":5};
+    obj1.field1 = obj2;
+    obj1.field2 = obj3;
+    print(obj1)
+}
+
+/**************HandleGetnextpropnameV8****************/
+{
+    var fun = function() {
+        let array = [1, 8, 6, 9], arr;
+        for (arr in array) {
+            print(array[arr]);
+        };
+        return undefined;
+    }
+    var iter = fun();
+    print(iter);
+}
+
+/**************HandleDeprecatedTonumberPrefV8****************/
+{
+    function Module(stdlib, foreign, heap) {
+        var x = +stdlib.x;
+    }
+    print(Module(this, { x:0 }));
+}
+
+/**************HandleIsinImm8V8****************/
+{
+    function Person() {
+    };
+    Person.prototype.name = "hello";
+    Person.prototype.age = "12";
+    Person.prototype.sayName = function(){alert(this.name);};
+     
+    function hasPrototypeProperty(object, name){
+        return !object.hasOwnProperty(name) && (name in object);
+    };
+    var p1 = new Person();
+    print(hasPrototypeProperty(p1,"name"));
+    p1.name = "nn";
+    print(hasPrototypeProperty(p1,"name"));
+}
+
+/**************HandleInstanceofImm8V8****************/
+{
+    function MyInstanceOf(left, right) {
+        let proto = Object.getPrototypeOf(left);
+        let prototype = right.prototype;
+        while (true) {
+            if (!proto) return false;
+            if (proto === prototype) {
+                return true;
+            }
+            proto = Object.getPrototypeOf(proto)
+        }
+    }
+
+    class Person {
+    }
+
+    class Student extends Person{ 
+    }
+
+    let p1 = new Person();
+    let stu1 = new Student();
+    print(p1 instanceof Person);
+    print(MyInstanceOf(p1, Person));
+    print(stu1 instanceof Person);
+    print(MyInstanceOf(stu1, Person));
+    print(stu1 instanceof Student);
+    print(MyInstanceOf(stu1, Student));
+    print(p1 instanceof Student);
+    print(MyInstanceOf(p1, Student));
+}
+
+/**************HandleThrowUndefinedifholePrefV8V8****************/
+{
+    var array = [11, 8, 19];
+
+    function distinct(arr) {
+        const obj = {}
+        const result = arr.reduce((pre, cur) => {
+        if (!obj[cur.stuId]) {
+            obj[cur.stuId] = true;
+            return [...pre, cur];
+        }
+        return pre;
+    }, [])
+        print(result);
+        return result;
+    }
+    distinct(array);
+}
+
+/**************HandleThrowIfnotobjectPrefV8****************/
+{
+    var array = [168, 168, 19];
+
+    function process(arr) {
+        const cache = [];
+        for (const t of arr) {
+            if (cache.find(c => c.maxDeptCode === t.maxDeptCode && c.minDeptCode === t.minDeptCode)) {
+                continue;
+            }
+            cache.push(t);
+        }
+ 
+        return cache;
+    }
+    print(process(array));
+}
+
+/**************HandleCreateemptyobject****************/
+{
+    let str = 'baobfabobodabfodao';
+    let num = str.split("").reduce((pre, cur) => {
+        if (cur in pre) {
+            pre[cur]++;
+        } else {
+            pre[cur] = 1;
+        }
+        return pre;
+    }, {})
+    print('frequency');
+}
+
+/**************HandleCreateemptyarrayImm8****************/
+{
+    let array1 = [
+        { id: "50", active: "a", value: 12 },
+        { id: "51", active: "a", value: 15 }
+    ];
+    let array2 = [
+        { id: "50", active: "a", value: 10 },
+        { id: "51", active: "a", value: 11 },
+        { id: "52", active: "a", value: 13 }
+    ];
+    
+    let arr = [];
+    array1.map(id =>
+        arr.push({
+            id: id.id,
+            newValue: array2.find(o => o.id === id.id).value + 2
+        })
+    );
+    print("2", JSON.stringify(arr));
+}
+
+/**************HandleGetnextpropnameV8****************/
+{
+    let obj1 = {
+        name: "bob",
+        age: 18,
+        sex: "man",
+      } 
+    let obj2 = {}
+    
+    for (let key in obj1) {
+      obj2[key] = obj1[key];
+    }
+    obj1.name = "Tom" 
+    print(obj1.name);
+}
+
+/**************HandleGetunmappedargs****************/
+{
+    function abs() {
+        if (arguments.length === 0) {
+            return 0;
+        }
+        var x = arguments[0];
+        return x >= 0 ? x : -x;
+    }
+     
+    print(abs());
+    print(abs(10));
+    print(abs(-9)); 
+}
+
+/**************HandleCopyrestargsImm8****************/
+{
+    function add(...theArgs) {
+        theArgs.push(31);
+        var result = 0; 
+        for (let i = 0; i < theArgs.length; i++) {
+            result = result + theArgs[i];
+        }
+        var lastItem = theArgs.pop();
+        print(lastItem);
+        return result;
+    }
+
+    add();
+}
+
+/**************HandleStarrayspreadV8V8****************/
+{
+    class Parent {
+        static myMethod(msg) {
+            print('static', msg);
+        }
+        myMethod(msg) {
+            print('instance', msg);
+        }
+    }
+
+    class Child extends Parent {
+        static myMethod(msg) {
+            super.myMethod(msg);
+        }
+        myMethod(msg) {
+            super.myMethod(msg);
+        }
+    }
+    
+    Child.myMethod(1);
+    var child = new Child();
+    child.myMethod(2);
+}
+
+/**************HandleSupercallspreadImm8V8****************/
+{
+    class Demo { 
+        constructor(x) {
+          this.x = x;
+        }
+   }
+   
+   class Demo2 extends Demo{}
+
+   let d = new Demo2('hello');
+   print(d.x);
+}
+
+/**************HandleDeprecatedLdsuperbynamePrefId32V8****************/
+{
+    class Demo {
+        constructor(x,y) {
+            this.x = x;
+            this.y = y;
+        }
+        customSplit(){
+            return [...this.y]
+        }
+    }
+
+    class Demo2 extends Demo {
+        constructor(x, y) {
+            super(x, y);
+        }
+        customSplit(){
+            return [...this.x]
+        }
+        task1(){
+            return super.customSplit();
+        }
+        task2(){
+            return this.customSplit();
+        }
+    }
+
+    let d = new Demo2('hello','world');
+    print(d.task1());
+    print(d.task2());
+}
+
+/**************HandleCreateregexpwithliteralImm8Id16Imm8****************/
+{
+    function filterParams(obj) {
+        let _newPar = {};
+        for (let key in obj) {
+            if ((obj[key] === 0 || obj[key]) && obj[key].toString().replace(/(^\s*)|(\s*$)/g, '') !== '') {
+                _newPar[key] = obj[key];
+            }
+        }
+        return _newPar;
+    }
+	var func = filterParams({a:"", b:null, c:"010", d:123});
+	print(func);
+}
+
+/**************HandleTryldglobalbynameImm8Id16****************/
+{
+    function randomNumber(n1, n2) {
+        if (arguments.length === 2) {
+            return Math.round(n1 + Math.random() * (n2 - n1));
+        } else if (arguments.length === 1) {
+            return Math.round(Math.random() * n1)
+        } else {
+            return Math.round(Math.random() * 255)
+        }
+    }
+
+    var func = randomNumber(5, 10);
+	print("succ");
+}
+
+/**************HandleLdaStrId16****************/
+{
+    let promise = new Promise((resolve, reject) => {
+        print('Promise');
+        resolve();
+    });  
+    promise.then(function() {
+    });  
+}
+
+/**************HandleDeprecatedCreatearraywithbufferPrefImm16****************/
+{
+    function Change() {
+        var newArr = [];
+        for (var i = arguments.length - 1; i >= 0; i--) {
+            newArr[newArr.length] = arguments[i]
+        }
+        return newArr;
+    }
+
+    Change(1, 2345, 6, 8, 89, 5, 9);
+    var arr = [1, 2345, 6, 8, 89, 5, 9];
+    print(arr.reverse());
+}
+
+/**************HandleDeprecatedNegPrefV8****************/
+{
+    var arr = ['red', 'blue', 'red', 'green', 'pink', 'red', 'red'];
+    var index = arr.indexOf('red');
+
+    var number = 0;
+    while (index != -1) {
+        print(index);
+        var index = arr.indexOf('red', index + 1);
+        number++;
+    }
+    print(number);
+}
+
+/**************HandleJeqzImm8****************/
+{
+    var str5 = 'abaaudffgggghhhhjkkkgfddduuuuuu23444343434';
+        do {
+            var index = str5.indexOf('s');
+            str5 = str5.replace('s', 'u');
+        } while (index !== -1)
+
+    print(str5);
+}
+
+/**************HandleStobjbyvalueImm8V8V8****************/
+{
+    var str = "abcoefoxyozzopp";
+    var o = {};
+    for (var i = 0; i < str.length; i++) {
+        var chars = str.charAt(i);
+        if (o[chars]) {
+            o[chars]++;
+        } else {
+            o[chars] = 1;
+        }
+    }
+    print(o);
+}
+
+/**************HandleNoteqImm8V8****************/
+{
+    var arr = [2, 0, 6, 1, 77, 0, 52, 0, 25, 7];
+    var newArr = [];
+    for (var i = 0; i < arr.length; i++) {
+        if (arr[i] != 0) {
+            newArr[newArr.length] = arr[i];
+        }
+    }
+    print(newArr);
+}
+
+/**************HandleStricteqImm8V8****************/
+{
+    function unique(arr) {
+        var newArr = []
+        for (var i = 0; i < arr.length; i++) {
+          if (newArr.indexOf(arr[i]) === -1) {
+            newArr.push(arr[i])
+          }
+        }
+        return newArr;
+    }
+    var demo = unique(['blue', 'green', 'blue']);
+    print(demo);
+}
+
+/**************HandleDeprecatedCallthisrangePrefImm16V8****************/
+{
+   
+    function countDown(time) {
+        var nowTime = +new Date();
+        var inputTime = +new Date(time);
+        var times = (inputTime - nowTime) / 1000;
+        var d = parseInt(times / 60 / 60 / 24);
+        d = d < 10 ? '0' + d : d;
+        var h = parseInt((times / 60 / 60) % 24);
+        h = h < 10 ? '0' + h : h;
+        var m = parseInt((times / 60) % 60);
+        m = m < 10 ? '0' + m : m;
+        var s = parseInt(times % 60);
+        s = s < 10 ? '0' + s : s;
+        return d + '天' + h + '时' + m + '分' + s + '秒';
+    }
+    (countDown('2022-10-10 18:00:00'));
+    var date = new Date();
+    var date1 = +new Date();
+    print("blue");
+}
+
+/**************HandleStownbyindexImm8V8Imm16****************/
+{
+    function doMath(data) {
+        let min = data[0];
+        let max = data[0];
+        let sum = 0;
+        data.sort(function(a, b) {
+                return a - b;
+        })
+        min = data[0];
+        max = data[data.length - 1];
+        for (let i = 0; i < data.length; i++) {
+            sum += data[i];
+        }
+        return [min, max, sum];
+    }
+    print(doMath([23, 54, 34, 2, 7, 8, 1, 77, 43]));
+}
+
+/**************HandleWideNewobjrangePrefImm16V8****************/
+{
+    function Person(name, age) {
+        this.name = name;
+        this.age = age;
+        this.say = function () {
+            return "name : " + this.name + " age: " + this.age;
+        };
+    }
+
+    var o = new Object();
+    Person.call(o, "zhangsan", 20);
+    print(o.say());
+}
+
+/**************HandleWideLdobjbyindexPrefImm32****************/
+{
+    function maxValue() {
+        var max = arguments[0];
+        for (var i = 0; i < arguments.length; i++) {
+           if (max < arguments[i]) {
+            max = arguments[i];
+           }
+        }
+        return max;
+    }
+    print(maxValue(2, 4, 5, 9));
+    print(maxValue(12, 4, 9));
+}
+
+/**************HandleDeprecatedLdobjbynamePrefId32V8****************/
+{
+    var obj = {};
+    Object.defineProperty(obj, "x", {
+    value : 1,
+    writable : true,
+    enumerable : true,
+    configurable : true
+    });
+    print(obj.x);
+}
+
+/*
 *    PtrAdd(); IntPtrSize();
 *    DispatchWithId();
 */
