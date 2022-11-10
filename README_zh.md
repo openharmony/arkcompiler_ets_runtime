@@ -54,7 +54,7 @@
 ## 约束<a name="section119744591305"></a>
 
 * 仅支持运行方舟eTS编译器\(ts2abc或es2abc\)生成的方舟字节码文件
-* 只支持ES2015标准和严格模式（use strict)
+* 只支持ES2021标准和严格模式（use strict)
 * 不支持通过字符串动态创建函数(比如new Function("console.log(1);"))
 
 ## 编译构建<a name="section137768191623"></a>
