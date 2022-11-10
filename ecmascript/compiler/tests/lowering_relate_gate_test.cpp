@@ -164,8 +164,10 @@ HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
     auto lengthString = builder.Load(VariableType::JS_POINTER(), globalEnv, lenthOffset);
 
     builder.Store(VariableType::JS_POINTER(), glue, array, builder.IntPtr(0), arg1);
-    builder.StoreElement(array, builder.IntPtr(0), builder.ToTaggedInt(builder.Int64(0)));
-    builder.StoreElement(array, builder.IntPtr(1), builder.ToTaggedInt(builder.Int64(1)));
+    builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(array, builder.IntPtr(0),
+        builder.ToTaggedInt(builder.Int64(0)));
+    builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(array, builder.IntPtr(1),
+        builder.ToTaggedInt(builder.Int64(1)));
     builder.StoreProperty(array, lengthString, builder.ToTaggedInt(builder.Int64(2)));
     auto length = builder.LoadProperty(array, lengthString);
     Label less2(&builder);
@@ -174,7 +176,8 @@ HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
         builder.ToTaggedInt(builder.Int64(2))));
     builder.Branch(condtion, &less2, &notLess2);
     builder.Bind(&less2);
-    auto ret = builder.LoadElement(array,  builder.IntPtr(1));
+    auto ret =
+        builder.LoadElement<ecmascript::kungfu::TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(array, builder.IntPtr(1));
     builder.Return(ret);
     builder.Bind(&notLess2);
     builder.Return(builder.Int64(-1));
