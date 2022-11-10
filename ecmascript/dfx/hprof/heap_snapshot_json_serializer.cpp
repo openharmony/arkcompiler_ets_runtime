@@ -229,7 +229,7 @@ void HeapSnapshotJSONSerializer::SerializeTraceTree()
 {
     writer_->Write("\"trace_tree\":[");
     TraceTree* tree = snapshot_->GetTraceTree();
-    if (tree != nullptr) {
+    if ((tree != nullptr) && (snapshot_->trackAllocations())) {
         SerializeTraceNode(tree->GetRoot());
     }
     writer_->Write("],\n");
