@@ -48,6 +48,7 @@ source_set("libark_jsoptimizer_set") {
     "builtins/builtins_string_stub_builder.cpp",
     "builtins/builtins_stubs.cpp",
     "builtins/containers_stub_builder.cpp",
+    "builtins_lowering.cpp",
     "bytecode_circuit_builder.cpp",
     "bytecode_info_collector.cpp",
     "bytecodes.cpp",

@@ -237,6 +237,8 @@ public:
 
     GlobalTSTypeRef PUBLIC_API GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const;
 
+    std::string PUBLIC_API GetFuncName(kungfu::GateType gt) const;
+
     inline GlobalTSTypeRef PUBLIC_API GetArrayParameterTypeGT(kungfu::GateType gateType) const
     {
         GlobalTSTypeRef gt = gateType.GetGTRef();
@@ -346,6 +348,7 @@ public:
     static constexpr int BUILTIN_FLOAT32_ARRAY_ID = 33;
     static constexpr int BUILTIN_TYPED_ARRAY_LAST_ID = 36;
     static constexpr int BUILTIN_STRING_ID = 39;
+    static constexpr int BUILTINS_MATH_ID = 53; // fix number by front
 
     bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
@@ -504,6 +507,10 @@ public:
     {
         return JSHandle<JSTaggedValue>(uintptr_t(&snapshotConstantPool_));
     }
+
+    bool PUBLIC_API IsBuiltin(kungfu::GateType funcType) const;
+
+    bool PUBLIC_API IsBuiltinMath(kungfu::GateType funcType) const;
 
 private:
     NO_COPY_SEMANTIC(TSManager);

@@ -3459,8 +3459,8 @@ void SlowPathLowering::LowerCallThisArg1(GateRef gate, GateRef glue)
     GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef a0 = acc_.GetValueIn(gate, 1);
-    GateRef func = acc_.GetValueIn(gate, 2);
+    GateRef a0 = acc_.GetValueIn(gate, 1); // 1:first parameter
+    GateRef func = acc_.GetValueIn(gate, 2); // 2:function
     GateRef bcOffset = builder_.Int64(acc_.GetBytecodeIndex(gate));
     GateRef env = builder_.Undefined();
     LowerToJSCall(gate, glue, {glue, env, actualArgc, func, newTarget, thisObj, a0, bcOffset});
@@ -3476,8 +3476,8 @@ void SlowPathLowering::LowerCallargs2Imm8V8V8(GateRef gate, GateRef glue)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef a0 = acc_.GetValueIn(gate, 0);
-    GateRef a1 = acc_.GetValueIn(gate, 1);
-    GateRef func = acc_.GetValueIn(gate, 2);
+    GateRef a1 = acc_.GetValueIn(gate, 1); // 1:first parameter
+    GateRef func = acc_.GetValueIn(gate, 2); // 2:function
     GateRef bcOffset = builder_.Int64(acc_.GetBytecodeIndex(gate));
     GateRef env = builder_.Undefined();
 

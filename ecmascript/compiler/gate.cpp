@@ -282,9 +282,19 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
+        // ts type lowering relate IR
+        case TYPED_CALL_CHECK: {
+            static const Properties ps { I1, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case TYPED_BINARY_OP: {
             static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
                                          VALUE(ANYVALUE, ANYVALUE, I8), NO_ROOT };
+            return ps;
+        }
+        case TYPED_CALL: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         MANY_VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
         case TYPE_CONVERT: {
@@ -438,7 +448,9 @@ std::string OpCode::Str() const
         {SAVE_REGISTER, "SAVE_REGISTER"},
         {OBJECT_TYPE_CHECK, "OBJECT_TYPE_CHECK"},
         {TYPE_CHECK, "TYPE_CHECK"},
+        {TYPED_CALL_CHECK, "TYPED_CALL_CHECK"},
         {TYPED_BINARY_OP, "TYPED_BINARY_OP"},
+        {TYPED_CALL, "TYPED_CALL"},
         {TYPE_CONVERT, "TYPE_CONVERT"},
         {TYPED_UNARY_OP, "TYPED_UNARY_OP"},
         {TO_LENGTH, "TO_LENGTH"},
@@ -1402,7 +1414,8 @@ bool OpCode::IsGeneralState() const
             (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT) || (op_ == OpCode::TYPED_UNARY_OP) ||
             (op_ == OpCode::TO_LENGTH) || (op_ == OpCode::HEAP_ALLOC) ||
             (op_ == OpCode::LOAD_ELEMENT) || (op_ == OpCode::LOAD_PROPERTY) ||
-            (op_ == OpCode::STORE_ELEMENT) || (op_ == OpCode::STORE_PROPERTY));
+            (op_ == OpCode::STORE_ELEMENT) || (op_ == OpCode::STORE_PROPERTY) ||
+            (op_ == OpCode::TYPED_CALL));
 }
 
 bool OpCode::IsTerminalState() const

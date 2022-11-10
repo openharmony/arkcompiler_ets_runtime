@@ -172,6 +172,23 @@ GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate)
                                  {gate}, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto state = currentLabel->GetControl();
+    auto depend = currentLabel->GetDepend();
+    std::vector<GateRef> inLists;
+    inLists.emplace_back(state);
+    inLists.emplace_back(depend);
+    inLists.emplace_back(function);
+    inLists.emplace_back(id);
+    GateRef ret = GetCircuit()->NewGate(OpCode(OpCode::TYPED_CALL_CHECK), inLists.size() - 2, // 2: state&depend
+                                        inLists, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::GetLexicalEnv(GateRef depend)
 {
     return GetCircuit()->NewGate(OpCode(OpCode::GET_ENV), MachineType::I64, 0, {depend}, GateType::TaggedValue());
@@ -187,6 +204,14 @@ GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, 
     uint64_t operandTypes = (static_cast<uint64_t>(typeLeft.Value()) << OPRAND_TYPE_BITS) |
                           static_cast<uint64_t>(typeRight.Value());
     return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, operandTypes, inList, gateType);
+}
+
+GateRef CircuitBuilder::TypedCallOperator(MachineType type, GateRef state, GateRef depend, std::vector<GateRef> inList)
+{
+    BitField number = static_cast<BitField>(inList.size());
+    inList.insert(inList.begin(), depend);
+    inList.insert(inList.begin(), state);
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_CALL), type, number, inList, GateType::AnyType());
 }
 
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
@@ -778,6 +803,15 @@ GateRef CircuitBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, 
         IntPtr(JSThread::GlueData::GetGlobalConstOffset(cmpCfg_->Is32Bit())));
     auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
     return Load(type, gConstAddr, constantIndex);
+}
+
+GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
+{
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    return Int64And(
+        Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
+        Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
 }
 
 Environment::Environment(size_t arguments, CircuitBuilder *builder)

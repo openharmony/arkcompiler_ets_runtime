@@ -20,7 +20,11 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 
 namespace panda::ecmascript::kungfu {
-#define BUILTINS_STUB_LIST(V)                       \
+
+#define PADDING_STUB_LIST(V)                       \
+    V(NONE)
+
+#define ASM_INTERPRETER_BUILTINS_STUB_LIST(V)       \
     V(CharCodeAt)                                   \
     V(IndexOf)                                      \
     V(Substring)                                    \
@@ -40,13 +44,24 @@ namespace panda::ecmascript::kungfu {
     V(ArrayListForEach)                             \
     V(ArrayListReplaceAllElements)                  \
 
+#define AOT_BUILTINS_STUB_LIST(V)                   \
+    V(SQRT)                                         \
+    V(COS)                                          \
+    V(SIN)                                          \
+    V(ACOS)                                         \
+    V(ATAN)                                         \
+
 class BuiltinsStubCSigns {
 public:
     enum ID {
 #define DEF_STUB_ID(name) name,
-        BUILTINS_STUB_LIST(DEF_STUB_ID)
+        PADDING_STUB_LIST(DEF_STUB_ID)
+        ASM_INTERPRETER_BUILTINS_STUB_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
-        NUM_OF_BUILTINS_STUBS
+        NUM_OF_BUILTINS_STUBS,
+#define DEF_STUB_ID(name) name,
+        AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
+#undef DEF_STUB_ID
     };
 
     static void Initialize();
@@ -62,6 +77,11 @@ public:
     static const CallSignature* BuiltinsHandler()
     {
         return &builtinsCSign_;
+    }
+
+    static bool IsFastBuiltin(ID builtinId)
+    {
+        return builtinId > NONE && builtinId < NUM_OF_BUILTINS_STUBS;
     }
 private:
     static CallSignature callSigns_[NUM_OF_BUILTINS_STUBS];

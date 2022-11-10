@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -76,6 +77,12 @@ void TypeLowering::LowerType(GateRef gate)
             break;
         case OpCode::CONSTRUCT:
             LowerConstruct(gate, glue);
+            break;
+        case OpCode::TYPED_CALL:
+            LowerTypedCallBuitin(gate);
+            break;
+        case OpCode::TYPED_CALL_CHECK:
+            LowerCallTargetCheck(gate);
             break;
         default:
             break;
@@ -2184,7 +2191,7 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
                     ArgumentAccessor argAcc(circuit_);
                     auto glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
                     result = builder_.CallNGCRuntime(
-                        glue, RTSTUB_ID(AotFloatMod), Gate::InvalidGateRef, { *doubleLeft, *doubleRight });
+                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, { *doubleLeft, *doubleRight });
                     builder_.Jump(&exit);
                 }
             }
@@ -2444,5 +2451,17 @@ GateRef TypeLowering::FastEqual(GateRef left, GateRef right)
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void TypeLowering::LowerTypedCallBuitin(GateRef gate)
+{
+    BuiltinLowering lowering(circuit_);
+    lowering.LowerTypedCallBuitin(gate);
+}
+
+void TypeLowering::LowerCallTargetCheck(GateRef gate)
+{
+    BuiltinLowering lowering(circuit_);
+    lowering.LowerCallTargetCheck(gate);
 }
 }  // namespace panda::ecmascript

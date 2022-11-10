@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/Relocator.h"
+#include "ecmascript/relocator.h"
 #include <climits>
 #include <iomanip>
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64_constants.h"
@@ -113,7 +113,7 @@ bool Relocator::RelocateBySymbol(const char* symbol, uintptr_t patchAddr)
     }
     auto symId = GetSymbol(symbol);
     if (!symId.has_value()) {
-        LOG_COMPILER(INFO) << " don't find symbol:" << symbol << " in symbol table.";
+        LOG_COMPILER(DEBUG) << " don't find symbol:" << symbol << " in symbol table.";
         return false;
     }
     bool ret = RelocateBySymbolId(symId.value(), patchAddr);
