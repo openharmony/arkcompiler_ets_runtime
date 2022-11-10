@@ -96,9 +96,10 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
 
 void TSTypeLowering::Lower(GateRef gate)
 {
+    GateRef glue = acc_.GetGlueFromArgList();
+
     auto argAcc = ArgumentAccessor(circuit_);
     GateRef thisObj = argAcc.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
-    GateRef glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
     GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
     GateRef newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
 

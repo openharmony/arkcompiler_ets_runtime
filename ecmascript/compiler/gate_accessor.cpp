@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -116,11 +117,17 @@ void GateAccessor::SetBitField(GateRef gate, BitField bitField)
     gatePtr->SetBitField(bitField);
 }
 
+size_t GateAccessor::GetInValueStarts(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetInValueStarts();
+}
+
 GateRef GateAccessor::GetValueIn(GateRef gate, size_t idx) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     ASSERT(idx < gatePtr->GetInValueCount());
-    size_t valueIndex = gatePtr->GetStateCount() + gatePtr->GetDependCount();
+    size_t valueIndex = gatePtr->GetInValueStarts();
     return circuit_->GetIn(gate, valueIndex + idx);
 }
 
@@ -400,7 +407,7 @@ void GateAccessor::ReplaceDependIn(GateRef gate, GateRef in, size_t index)
 void GateAccessor::ReplaceValueIn(GateRef gate, GateRef in, size_t index)
 {
     ASSERT(index < GetInValueCount(gate));
-    size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
+    size_t valueStartIndex = GetInValueStarts(gate);
     circuit_->ModifyIn(gate, valueStartIndex + index, in);
 }
 
@@ -442,7 +449,7 @@ bool GateAccessor::IsDependIn(const UseIterator &useIt) const
 
 bool GateAccessor::IsValueIn(const UseIterator &useIt) const
 {
-    size_t valueStartIndex = GetStateCount(*useIt) + GetDependCount(*useIt);
+    size_t valueStartIndex = GetInValueStarts(*useIt);
     size_t valueEndIndex = valueStartIndex + GetInValueCount(*useIt);
     size_t index = useIt.GetIndex();
     return (index >= valueStartIndex && index < valueEndIndex);
@@ -466,7 +473,7 @@ bool GateAccessor::IsDependIn(GateRef gate, size_t index) const
 
 bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
 {
-    size_t valueStartIndex = GetStateCount(gate) + GetDependCount(gate);
+    size_t valueStartIndex = GetInValueStarts(gate);
     size_t valueEndIndex = valueStartIndex + GetInValueCount(gate);
     return (index >= valueStartIndex && index < valueEndIndex);
 }
@@ -512,5 +519,19 @@ GateType GateAccessor::GetRightType(GateRef gate) const
     auto operandTypes = GetBitField(gate);
     auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
     return GateType(static_cast<uint32_t>(operandTypes ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS)));
+}
+
+GateRef GateAccessor::GetGlueFromArgList() const
+{
+    auto argRoot = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+    ASSERT(static_cast<size_t>(CommonArgIdx::GLUE) == 0);
+    const Gate *curGate = circuit_->LoadGatePtrConst(argRoot);
+
+    const Out *curOut = curGate->GetFirstOutConst();
+    ASSERT(!curGate->IsFirstOutNull());
+    while (!curOut->IsNextOutNull()) {
+        curOut = curOut->GetNextOutConst();
+    }
+    return circuit_->GetGateRef(curOut->GetGateConst());
 }
 }  // namespace panda::ecmascript::kungfu

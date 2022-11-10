@@ -40,8 +40,7 @@ void TypeLowering::RunTypeLowering()
 
 void TypeLowering::LowerType(GateRef gate)
 {
-    ArgumentAccessor argAcc(circuit_);
-    GateRef glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
+    GateRef glue = acc_.GetGlueFromArgList();
     auto op = OpCode::Op(acc_.GetOpCode(gate));
     switch (op) {
         case OpCode::TYPE_CHECK:
@@ -2241,8 +2240,7 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
                 builder_.Branch(builder_.DoubleIsINF(*doubleRight), &leftIsZeroOrRightIsInf, &rightNotInf);
                 builder_.Bind(&rightNotInf);
                 {
-                    ArgumentAccessor argAcc(circuit_);
-                    auto glue = argAcc.GetCommonArgGate(CommonArgIdx::GLUE);
+                    GateRef glue = acc_.GetGlueFromArgList();
                     result = builder_.CallNGCRuntime(
                         glue, RTSTUB_ID(AotFloatMod), Gate::InvalidGateRef, { *doubleLeft, *doubleRight });
                     builder_.Jump(&exit);

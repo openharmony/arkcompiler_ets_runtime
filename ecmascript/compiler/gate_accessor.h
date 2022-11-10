@@ -334,6 +334,7 @@ public:
     size_t GetStateCount(GateRef gate) const;
     size_t GetDependCount(GateRef gate) const;
     size_t GetInValueCount(GateRef gate) const;
+    size_t GetInValueStarts(GateRef gate) const;
     void UpdateAllUses(GateRef gate, GateRef replaceValueIn);
     void ReplaceIn(GateRef gate, size_t index, GateRef in);
     void ReplaceStateIn(GateRef gate, GateRef in, size_t index = 0);
@@ -370,6 +371,7 @@ public:
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
+    GateRef GetGlueFromArgList() const;
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const
