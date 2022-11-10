@@ -35,6 +35,70 @@ enum class PropertyType : uint8_t {
     OTHERS,
 };
 
+enum class BuiltinTypeId : uint8_t {  // keep the same with enum BuiltinType in ets_frontend
+    FUNCTION = 1,
+    RANGE_ERROR,
+    ERROR,
+    OBJECT,
+    SYNTAX_ERROR,
+    TYPE_ERROR,
+    REFERENCE_ERROR,
+    URI_ERROR,
+    SYMBOL,
+    EVAL_ERROR,
+    NUMBER,
+    PARSE_FLOAT,
+    DATE,
+    BOOLEAN,
+    BIG_INT,
+    PARSE_INT,
+    WEAK_MAP,
+    REG_EXP,
+    SET,
+    MAP,
+    WEAK_REF,
+    WEAK_SET,
+    FINALIZATION_REGISTRY,
+    ARRAY,
+    UINT8_CLAMPED_ARRAY,
+    UINT8_ARRAY,
+    TYPED_ARRAY,
+    INT8_ARRAY,
+    UINT16_ARRAY,
+    UINT32_ARRAY,
+    INT16_ARRAY,
+    INT32_ARRAY,
+    FLOAT32_ARRAY,
+    FLOAT64_ARRAY,
+    BIG_INT64_ARRAY,
+    BIG_UINT64_ARRAY,
+    SHARED_ARRAY_BUFFER,
+    DATA_VIEW,
+    STRING,
+    ARRAY_BUFFER,
+    EVAL,
+    IS_FINITE,
+    ARK_PRIVATE,
+    PRINT,
+    DECODE_URI,
+    DECODE_URI_COMPONENT,
+    IS_NAN,
+    ENCODE_URI,
+    JS_NAN,
+    GLOBAL_THIS,
+    ENCODE_URI_COMPONENT,
+    JS_INFINITY,
+    MATH,
+    JSON,
+    ATOMICS,
+    UNDEFINED,
+    REFLECT,
+    PROMISE,
+    PROXY,
+    GENERATOR_FUNCTION,
+    INTL,
+};
+
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -340,16 +404,6 @@ public:
     IS_TSTYPEKIND_METHOD_LIST(IS_TSTYPEKIND)
 #undef IS_TSTYPEKIND
 
-    static constexpr int BUILTIN_SYMBOL_ID = 9;
-    static constexpr int BUILTIN_NUMBER_ID = 11;
-    static constexpr int BUILTIN_BOOLEAN_ID = 14;
-    static constexpr int BUILTIN_ARRAY_ID = 24;
-    static constexpr int BUILTIN_TYPED_ARRAY_FIRST_ID = 25;
-    static constexpr int BUILTIN_FLOAT32_ARRAY_ID = 33;
-    static constexpr int BUILTIN_TYPED_ARRAY_LAST_ID = 36;
-    static constexpr int BUILTIN_STRING_ID = 39;
-    static constexpr int BUILTINS_MATH_ID = 53; // fix number by front
-
     bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
@@ -360,15 +414,15 @@ public:
         uint32_t l = gt.GetLocalId();
         switch (l) {
             case static_cast<uint32_t>(TSPrimitiveType::SYMBOL):
-                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, BUILTIN_SYMBOL_ID);
+                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, static_cast<int>(BuiltinTypeId::SYMBOL));
             case static_cast<uint32_t>(TSPrimitiveType::INT):
             case static_cast<uint32_t>(TSPrimitiveType::DOUBLE):
             case static_cast<uint32_t>(TSPrimitiveType::NUMBER):
-                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, BUILTIN_NUMBER_ID);
+                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, static_cast<int>(BuiltinTypeId::NUMBER));
             case static_cast<uint32_t>(TSPrimitiveType::BOOLEAN):
-                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, BUILTIN_BOOLEAN_ID);
+                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, static_cast<int>(BuiltinTypeId::BOOLEAN));
             case static_cast<uint32_t>(TSPrimitiveType::STRING):
-                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, BUILTIN_STRING_ID);
+                return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, static_cast<int>(BuiltinTypeId::STRING));
             default:
                 return gt;
         }
