@@ -33,6 +33,7 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/compiler/compiler_log.h"
 
 namespace panda::ecmascript::kungfu {
 

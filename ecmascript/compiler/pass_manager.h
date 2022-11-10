@@ -34,7 +34,7 @@ public:
     ~PassManager() = default;
 
     bool Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn);
-
+    
 private:
     JSPandaFile *CreateJSPandaFile(const CString &fileName);
     void CollectSkippedMethod(BCInfo &bytecodeInfo, const JSPandaFile *jsPandaFile, TSManager *tsManager);
@@ -51,7 +51,7 @@ private:
     std::string triple_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
-    const CompilerLog *log_ {nullptr};
+    CompilerLog *log_ {nullptr};
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
     bool enableTypeLowering_ {true};
