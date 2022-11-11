@@ -44,7 +44,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
                                                 LOptions(optLevel_, true, relocMode_));
-    CompilationConfig cmpCfg(triple_, log_->IsEnableByteCodeTrace());
+    CompilationConfig cmpCfg(triple_, false, log_->IsEnableByteCodeTrace());
     Bytecodes bytecodes;
 
     auto &bytecodeInfo = bcInfoCollector.GetBytecodeInfo();

@@ -85,7 +85,7 @@ private:
 
     os::memory::Mutex mutex_;
     bool isEnable_ {false};
-    std::string realOutPath_;
+    std::string outDir_;
     std::unordered_map<CString, std::unordered_map<EntityId, uint32_t>> globalProfilerMap_;
 };
 
