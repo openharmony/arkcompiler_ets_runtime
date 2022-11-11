@@ -25,7 +25,7 @@ group("ark_js_packages") {
 
 group("ark_js_host_windows_tools_packages") {
   deps = []
-  if (host_os != "mac") {
+  if (host_os != "mac" && target_os != "android") {
     deps += [ "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)" ]
   }
 }
