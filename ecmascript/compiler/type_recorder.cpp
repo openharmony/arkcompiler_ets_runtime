@@ -14,22 +14,29 @@
  */
 
 #include "ecmascript/compiler/type_recorder.h"
+
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
+#include "libpandafile/method_data_accessor-inl.h"
+
 namespace panda::ecmascript::kungfu {
-TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager)
+TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
+                           TSManager *tsManager, const CString &recordName)
     : argTypes_(methodLiteral->GetNumArgsWithCallField() + static_cast<size_t>(TypedArgIdx::NUM_OF_TYPED_ARGS),
-    GateType::AnyType())
+                GateType::AnyType())
 {
-    LoadTypes(jsPandaFile, methodLiteral, tsManager);
+    if (!jsPandaFile->HasTSTypes(recordName)) {
+        return;
+    }
+    LoadTypes(jsPandaFile, methodLiteral, tsManager, recordName);
 }
 
-void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager)
+void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
+                             TSManager *tsManager, const CString &recordName)
 {
     JSThread *thread = tsManager->GetThread();
-    CVector<JSHandle<EcmaString>> vec;
-    TSTypeParser typeParser(tsManager->GetEcmaVM(), jsPandaFile, vec);
+    TSTypeParser typeParser(tsManager);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId fieldId = methodLiteral->GetMethodId();
     panda_file::MethodDataAccessor mda(*pf, fieldId);
@@ -59,7 +66,7 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
             for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // + 2 means bcOffset and typeId
                 int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
                 uint32_t typeId =  static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
-                GlobalTSTypeRef gt = typeParser.CreateGT(typeId);
+                GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
 
                 // The type of a function is recorded as (-1, funcTypeId). If the function is a member of a class,
                 // the type of the class or its instance is is recorded as (-2, classTypeId). If it is a static

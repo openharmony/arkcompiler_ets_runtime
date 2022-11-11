@@ -266,7 +266,7 @@ public:
                                     const CString &recordName)
         : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
-          typeRecorder_(jsPandaFile, method_, tsManager), hasTypes_(hasTypes),
+          typeRecorder_(jsPandaFile, method_, tsManager, recordName), hasTypes_(hasTypes),
           enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral), methodName_(name), recordName_(recordName),

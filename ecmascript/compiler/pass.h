@@ -95,14 +95,14 @@ private:
 
 class TypeInferPass {
 public:
-    bool Run(PassData* data, BytecodeCircuitBuilder *builder, const JSHandle<JSTaggedValue> &constantPool,
-             TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId, bool hasTypes)
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, TSManager *tsManager,
+             LexEnvManager *lexEnvManager, size_t methodId, bool hasTypes)
     {
         TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetLog());
         if (hasTypes) {
             bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
-            TypeInfer typeInfer(builder, data->GetCircuit(), constantPool, tsManager,
-                                lexEnvManager, methodId, enableLog, data->GetMethodName());
+            TypeInfer typeInfer(builder, data->GetCircuit(), tsManager, lexEnvManager,
+                                methodId, enableLog, data->GetMethodName());
             typeInfer.TraverseCircuit();
         }
         return true;
@@ -111,13 +111,12 @@ public:
 
 class TSTypeLoweringPass {
 public:
-    bool Run(PassData *data, CompilationConfig *cmpCfg, TSManager *tsManager,
-             const JSHandle<JSTaggedValue> &constantPool)
+    bool Run(PassData *data, CompilationConfig *cmpCfg, TSManager *tsManager)
     {
         TimeScope timescope("TSTypeLoweringPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         TSTypeLowering lowering(data->GetCircuit(), cmpCfg, tsManager, enableLog,
-                                data->GetMethodName(), constantPool);
+                                data->GetMethodName());
         lowering.RunTSTypeLowering();
         return true;
     }

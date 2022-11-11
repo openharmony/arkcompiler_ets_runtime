@@ -348,8 +348,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "TSClassType";
         case JSType::TS_INTERFACE_TYPE:
             return "TSInterfaceType";
-        case JSType::TS_IMPORT_TYPE:
-            return "TSImportType";
         case JSType::TS_CLASS_INSTANCE_TYPE:
             return "TSClassInstanceType";
         case JSType::TS_UNION_TYPE:
@@ -865,9 +863,6 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::TS_INTERFACE_TYPE:
             TSInterfaceType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_IMPORT_TYPE:
-            TSImportType::Cast(obj)->Dump(os);
             break;
         case JSType::TS_CLASS_INSTANCE_TYPE:
             TSClassInstanceType::Cast(obj)->Dump(os);
@@ -3073,44 +3068,6 @@ void TSInterfaceType::Dump(std::ostream &os) const
     }
 }
 
-void TSImportType::Dump(std::ostream &os) const
-{
-    os << " - Dump Import Type - " << "\n";
-    os << " - TSImportType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSImportType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSImportType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " -------------------------------------------- ";
-    os << " - Target Type: ";
-    GlobalTSTypeRef targetGT = GetTargetGT();
-    uint64_t targetGTValue = targetGT.GetType();
-    os << " - TargetTypeGT: ";
-    os << targetGTValue;
-    os << "\n";
-    os << " - Target Type moduleId: ";
-    uint32_t targetModuleId = targetGT.GetModuleId();
-    os << targetModuleId;
-    os << "\n";
-    os << " - Target Type localTypeId: ";
-    uint32_t targetLocalTypeId = targetGT.GetLocalId();
-    os << targetLocalTypeId;
-    os << "\n";
-    os << " -------------------------------------------- ";
-    os << " - Taget Type Path: ";
-    JSTaggedValue importPath = GetImportPath();
-    importPath.DumpTaggedValue(os);
-    os << "\n";
-}
-
 void TSClassInstanceType::Dump(std::ostream &os) const
 {
     os << " - Dump ClassInstance Type - " << "\n";
@@ -3885,9 +3842,6 @@ static void DumpObject(TaggedObject *obj,
                 return;
             case JSType::TS_INTERFACE_TYPE:
                 TSInterfaceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_IMPORT_TYPE:
-                TSImportType::Cast(obj)->DumpForSnapshot(vec);
                 return;
             case JSType::TS_CLASS_INSTANCE_TYPE:
                 TSClassInstanceType::Cast(obj)->DumpForSnapshot(vec);
@@ -5004,11 +4958,6 @@ void TSInterfaceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 void TSClassInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("ClassGT"), JSTaggedValue(GetClassGT().GetType())));
-}
-
-void TSImportType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
-{
-    vec.push_back(std::make_pair(CString("ImportTypePath"), GetImportPath()));
 }
 
 void TSUnionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

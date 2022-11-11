@@ -14,8 +14,10 @@
  */
 
 #include "ecmascript/compiler/type_inference/type_infer.h"
+
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
 void TypeInfer::TraverseCircuit()
@@ -600,31 +602,34 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     // 3: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 3);
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));  // 2: the third parameter is receiver
-    if (!objType.IsAnyType()) {
-        if (tsManager_->IsArrayTypeKind(objType)) {
-            auto builtinGt = GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, static_cast<int>(BuiltinTypeId::ARRAY));
+    if (objType.IsAnyType()) {
+        return false;
+    }
+
+    if (ShouldConvertToBuiltinArray(objType)) {
+        GlobalTSTypeRef builtinGt = ConvertPrimitiveToBuiltin(objType);
+        auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
+        objType = GateType(builtinInstanceType);
+    }
+    if (tsManager_->IsPrimitiveTypeKind(objType)) {
+        GlobalTSTypeRef builtinGt = ConvertPrimitiveToBuiltin(objType);
+        if (builtinGt.GetModuleId() == TSModuleTable::BUILTINS_TABLE_ID) {
             auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
             objType = GateType(builtinInstanceType);
         }
-        if (tsManager_->IsPrimitiveTypeKind(objType)) {
-            auto builtinGt = tsManager_->ConvertPrimitiveToBuiltin(objType);
-            if (builtinGt.GetModuleId() == TSModuleTable::BUILTINS_TABLE_ID) {
-                auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
-                objType = GateType(builtinInstanceType);
-            }
-        }
-        // If this object has no gt type, we cannot get its internal property type
-        if (ShouldInferWithLdObjByName(objType)) {
-            auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
-            return GetObjPropWithName(gate, objType, index);
-        }
+    }
+    // If this object has no gt type, we cannot get its internal property type
+    if (ShouldInferWithLdObjByName(objType)) {
+        uint16_t index = ConstDataId(gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1))).GetId();
+        return GetObjPropWithName(gate, objType, index);
     }
     return false;
 }
 
 bool TypeInfer::InferNewObject(GateRef gate)
 {
-    if (gateAccessor_.GetGateType(gate).IsAnyType()) {
+    auto objType = gateAccessor_.GetGateType(gate);
+    if (!tsManager_->IsClassInstanceTypeKind(objType)) {
         ASSERT(gateAccessor_.GetNumValueIn(gate) > 0);
         auto classType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
         if (tsManager_->IsClassTypeKind(classType)) {
@@ -644,7 +649,8 @@ bool TypeInfer::InferLdStr(GateRef gate)
 bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
 {
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSTaggedValue name = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index);
+    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    JSTaggedValue name = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index);
     auto type = GetPropType(objType, name);
     if (tsManager_->IsGetterSetterFunc(type)) {
         auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
@@ -752,7 +758,7 @@ bool TypeInfer::InferSuperCall(GateRef gate)
 
 bool TypeInfer::InferSuperPropertyByName(GateRef gate)
 {
-    auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    uint16_t index = ConstDataId(gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0))).GetId();
     return GetSuperProp(gate, index);
 }
 
@@ -784,8 +790,9 @@ bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
         GlobalTSTypeRef type = GlobalTSTypeRef::Default();
         bool isStatic = tsManager_->IsStaticFunc(funcType.GetGTRef());
         auto propType = isStatic ? PropertyType::STATIC : PropertyType::NORMAL;
+        JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
         type = isString ? tsManager_->GetSuperPropType(classType.GetGTRef(),
-            ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), index), propType) :
+            ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index), propType) :
             tsManager_->GetSuperPropType(classType.GetGTRef(), index, propType);
         if (tsManager_->IsGetterSetterFunc(type)) {
             auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
@@ -880,6 +887,52 @@ bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
     return UpdateType(gate, loopInType);
 }
 
+GlobalTSTypeRef TypeInfer::ConvertPrimitiveToBuiltin(const GateType &gateType)
+{
+    GlobalTSTypeRef builtinGt = GlobalTSTypeRef::Default();
+    if (!tsManager_->IsBuiltinsDTSEnabled()) {
+        return builtinGt;
+    }
+
+    const JSPandaFile *builtinjsPandaFile = tsManager_->GetBuiltinPandaFile();
+    if (builtinjsPandaFile == nullptr) {
+        LOG_COMPILER(FATAL) << "load lib_ark_builtins.d.ts failed";
+    }
+    const CString &builtinsRecordName = tsManager_->GetBuiltinRecordName();
+    TSTypeParser typeParser(tsManager_);
+
+    if (tsManager_->IsArrayTypeKind(gateType)) {
+        return typeParser.CreateGT(builtinjsPandaFile, builtinsRecordName,
+                                   static_cast<uint32_t>(BuiltinTypeId::ARRAY));
+    }
+
+    const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
+    uint32_t l = gt.GetLocalId();
+    switch (l) {
+        case static_cast<uint32_t>(TSPrimitiveType::SYMBOL):
+            builtinGt = typeParser.CreateGT(builtinjsPandaFile, builtinsRecordName,
+                                            static_cast<uint32_t>(BuiltinTypeId::SYMBOL));
+            break;
+        case static_cast<uint32_t>(TSPrimitiveType::INT):
+        case static_cast<uint32_t>(TSPrimitiveType::DOUBLE):
+        case static_cast<uint32_t>(TSPrimitiveType::NUMBER):
+            builtinGt = typeParser.CreateGT(builtinjsPandaFile, builtinsRecordName,
+                                            static_cast<uint32_t>(BuiltinTypeId::NUMBER));
+            break;
+        case static_cast<uint32_t>(TSPrimitiveType::BOOLEAN):
+            builtinGt = typeParser.CreateGT(builtinjsPandaFile, builtinsRecordName,
+                                            static_cast<uint32_t>(BuiltinTypeId::BOOLEAN));
+            break;
+        case static_cast<uint32_t>(TSPrimitiveType::STRING):
+            builtinGt = typeParser.CreateGT(builtinjsPandaFile, builtinsRecordName,
+                                            static_cast<uint32_t>(BuiltinTypeId::STRING));
+            break;
+        default:
+            builtinGt = GlobalTSTypeRef::Default();
+    }
+    return builtinGt;
+}
+
 void TypeInfer::PrintAllByteCodesTypes() const
 {
     std::vector<GateRef> gateList;
@@ -902,7 +955,7 @@ void TypeInfer::PrintAllByteCodesTypes() const
                 GlobalTSTypeRef gt = type.GetGTRef();
                 LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type)
                                    << ", [moduleId: " + std::to_string(gt.GetModuleId())
-                                   << ", [localId: " + std::to_string(gt.GetLocalId()) + "]";
+                                   << ", localId: " + std::to_string(gt.GetLocalId()) + "]";
             } else {
                 LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
             }
@@ -943,13 +996,15 @@ void TypeInfer::TypeCheck(GateRef gate) const
     }
     auto funcName = gateAccessor_.GetValueIn(func, 1);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), gateAccessor_.GetBitField(funcName));
-    auto funcNameString = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));
+    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    uint16_t funcNameStrId = ConstDataId(gateAccessor_.GetBitField(funcName)).GetId();
+    ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), funcNameStrId);
+    auto funcNameString = constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));
     if (funcNameString ==  "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gate, 1);
-        ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(),
-                                         ConstDataId(gateAccessor_.GetBitField(expectedGate)).GetId());
-        auto expectedTypeStr = constantPool_->GetStdStringByIdx(gateAccessor_.GetBitField(expectedGate));
+        uint16_t strId = ConstDataId(gateAccessor_.GetBitField(expectedGate)).GetId();
+        ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), strId);
+        auto expectedTypeStr = constantPool->GetStdStringByIdx(strId);
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {

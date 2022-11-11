@@ -18,10 +18,8 @@
 
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/ts_types/ts_manager.h"
-#include "libpandafile/file-inl.h"
 #include "ecmascript/method.h"
-#include "libpandafile/method_data_accessor-inl.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 enum class TypedArgIdx : uint8_t {
@@ -33,7 +31,8 @@ enum class TypedArgIdx : uint8_t {
 
 class TypeRecorder {
 public:
-    explicit TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager);
+    explicit TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
+                          TSManager *tsManager, const CString &recordName);
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
@@ -44,7 +43,8 @@ private:
     static constexpr int METHOD_ANNOTATION_THIS_TYPE_OFFSET = -2;
     static constexpr int METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET = -1;
 
-    void LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral, TSManager *tsManager);
+    void LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
+                   TSManager *tsManager, const CString &recordName);
 
     void LoadArgTypes(const TSManager *tsManager, GlobalTSTypeRef funcGT, GlobalTSTypeRef thisGT);
 

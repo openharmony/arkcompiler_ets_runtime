@@ -642,7 +642,6 @@ public:
     bool IsTSUnionType() const;
     bool IsTSInterfaceType() const;
     bool IsTSClassInstanceType() const;
-    bool IsTSImportType() const;
     bool IsTSFunctionType() const;
     bool IsTSArrayType() const;
     bool IsTSIteratorInstanceType() const;

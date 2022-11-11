@@ -24,12 +24,11 @@
 namespace panda::ecmascript::kungfu {
 class TSTypeLowering {
 public:
-    TSTypeLowering(Circuit *circuit, CompilationConfig *cmpCfg,
-                   TSManager *tsManager, bool enableLog, const std::string& name,
-                   const JSHandle<JSTaggedValue> &constantPool)
+    TSTypeLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
+                   bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
-          enableLog_(enableLog), methodName_(name), constantPool_(constantPool) {}
+          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
+          tsManager_(tsManager), enableLog_(enableLog), methodName_(name) {}
 
     ~TSTypeLowering() = default;
 
@@ -105,7 +104,6 @@ private:
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
-    JSHandle<ConstantPool> constantPool_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H

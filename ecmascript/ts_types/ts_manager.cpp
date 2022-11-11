@@ -15,42 +15,12 @@
 
 #include "ecmascript/ts_types/ts_manager.h"
 
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/ts_type_parser.h"
-#include "ecmascript/ts_types/ts_type_table.h"
-#include "libpandafile/file-inl.h"
-#include "libpandafile/method_data_accessor-inl.h"
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/ts_types/ts_type_table.h"
 
 namespace panda::ecmascript {
-void TSManager::DecodeTSTypes(const JSPandaFile *jsPandaFile)
-{
-    JSHandle<TSModuleTable> mTable = GetTSModuleTable();
-
-    const CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &recordInfoMap = jsPandaFile->GetJSRecordInfo();
-    for (auto it = recordInfoMap.begin(); it != recordInfoMap.end(); it++) {
-        const CString recordName = it->first;
-        if (jsPandaFile->HasTSTypes(recordName)) {
-            JSHandle<EcmaString> queryTableName = factory_->NewFromUtf8(recordName);
-            int index = mTable->GetGlobalModuleID(thread_, queryTableName);
-            if (index == TSModuleTable::NOT_FOUND) {
-                int start = GetNextModuleId();
-                // Recursively create and preliminarily fill type-tables,
-                // according to one related .abc file and other files imported by it.
-                InitTypeTables(jsPandaFile, recordName);
-
-                // Resolve dependencies among type-tables, e.g. import-chains, extend-chains etc.
-                int end = GetNextModuleId() - 1;
-                LinkInRange(jsPandaFile, mTable, start, end);
-            }
-        } else {
-            LOG_COMPILER(INFO) << "record: " << recordName << " has no ts type info";
-        }
-    }
-}
-
 TSManager::TSManager(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
                                    assertTypes_(vm_->GetJSOptions().AssertTypes()),
                                    printAnyTypes_(vm_->GetJSOptions().PrintAnyTypes())
@@ -67,6 +37,34 @@ void TSManager::Initialize()
     SetTSModuleTable(mTable);
 }
 
+std::tuple<JSHandle<TSTypeTable>, uint32_t> TSManager::GenerateTSTypeTable(const JSPandaFile *jsPandaFile,
+                                                                           const CString &recordName)
+{
+    JSHandle<EcmaString> amiPath = factory_->NewFromUtf8(recordName);
+    JSHandle<TSTypeTable> table;
+    uint32_t moduleId = 0;
+    int moduleIdBaseOnFile = GetTSModuleTable()->GetGlobalModuleID(thread_, amiPath);
+    if (moduleIdBaseOnFile != TSModuleTable::NOT_FOUND) {
+        table = GetTSModuleTable()->GetTSTypeTable(thread_, moduleIdBaseOnFile);
+        moduleId = moduleIdBaseOnFile;
+    } else {
+        // read type summary literal
+        // struct of summaryLiteral: {numTypes, literalOffset0, literalOffset1, ...}
+        panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset(recordName));
+        JSHandle<TaggedArray> summaryLiteral =
+            LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile, summaryOffset);
+        uint32_t numIdx = static_cast<uint32_t>(BuiltinTypeId::NUM_INDEX_IN_SUMMARY);
+        uint32_t numTypes = static_cast<uint32_t>(summaryLiteral->Get(numIdx).GetInt());
+
+        // Initialize a empty TSTypeTable with length of (numTypes + RESERVE_TABLE_LENGTH)
+        table = factory_->NewTSTypeTable(numTypes);
+        moduleId = GetNextModuleId();
+        table->SetNumberOfTypes(thread_, TSTypeTable::DEFAULT_NUM_TYPES);
+        AddTypeTable(JSHandle<JSTaggedValue>(table), amiPath);
+    }
+    return std::make_tuple(table, moduleId);
+}
+
 void TSManager::AddTypeTable(JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaString> amiPath)
 {
     JSHandle<TSModuleTable> table = GetTSModuleTable();
@@ -74,164 +72,12 @@ void TSManager::AddTypeTable(JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaStr
     SetTSModuleTable(updateTable);
 }
 
-void TSManager::InitTypeTables(const JSPandaFile *jsPandaFile, const CString &recordName)
-{
-    CVector<JSHandle<EcmaString>> recordImportModules {};
-    JSHandle<TSModuleTable> mTable = GetTSModuleTable();
-    uint32_t moduleId = static_cast<uint32_t>(GetNextModuleId());
-
-    // Initialize type-table according to current .abc file
-    JSHandle<TSTypeTable> initTypeTable = TSTypeTable::GenerateTypeTable(thread_, jsPandaFile, recordName,
-                                                                         moduleId, recordImportModules);
-
-    // Get moduleName(amiPath) and set this type-table to module-table
-    JSHandle<EcmaString> amiPath = factory_->NewFromUtf8(jsPandaFile->GetJSPandaFileDesc());
-    AddTypeTable(JSHandle<JSTaggedValue>(initTypeTable), amiPath);
-
-    CString filename = "";
-    // management dependency module/file
-    while (recordImportModules.size() > 0) {
-        // Get amiPath/filename of a imported file
-        amiPath = recordImportModules.back();
-        recordImportModules.pop_back();
-
-        // If a module is just poped up from recordImportModules and added to module-table,
-        // a same module would pass the unique-check of recordImportModules.
-        // Thus another check is required.
-        int index = mTable->GetGlobalModuleID(thread_, amiPath);
-        if (index != TSModuleTable::NOT_FOUND) {
-            continue;
-        }
-
-        filename = ConvertToString(amiPath.GetTaggedValue());
-
-        // Get JSPandaFile of the imported file
-        const JSPandaFile *importedFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(filename.c_str());
-        ASSERT(importedFile != nullptr);
-
-        // Initialize type-table according to imported .abc file
-        initTypeTable = TSTypeTable::GenerateTypeTable(thread_, importedFile, filename, moduleId, recordImportModules);
-
-        // set this type-table to module-table
-        AddTypeTable(JSHandle<JSTaggedValue>(initTypeTable), amiPath);
-    }
-}
-
-void TSManager::LinkInRange(const JSPandaFile *jsPandaFile, JSHandle<TSModuleTable> moduleTable, int start, int end)
-{
-    ASSERT(start >= 0 && end < moduleTable->GetNumberOfTSTypeTables());
-    for (int i = start; i <= end; i++) {
-        // Resolve import chains and extend chains of class-type in each type-table
-        JSHandle<TSTypeTable> typeTable = moduleTable->GetTSTypeTable(thread_, i);
-        LinkTSTypeTable(typeTable);
-        GenerateStaticHClass(typeTable, jsPandaFile);
-    }
-}
-
-void TSManager::LinkTSTypeTable(JSHandle<TSTypeTable> typeTable)
-{
-    int numTypes = typeTable->GetNumberOfTypes();
-    JSMutableHandle<JSTaggedValue> type(thread_, JSTaggedValue::Undefined());
-
-    for (int i = 1; i < numTypes + 1; i++) {
-        type.Update(typeTable->Get(i));
-
-        // Resolve import-chains, recursively set Target GT
-        if (type->IsTSImportType()) {
-            JSHandle<TSImportType> importType(type);
-            RecursivelyResolveTargetType(importType);
-        }
-
-        // Resolve extend-chains, recursively merge fields of super-class to sub-class
-        if (type->IsTSClassType()) {
-            JSHandle<TSClassType> classType(type);
-            if (classType->GetHasLinked()) {  // has linked
-                continue;
-            }
-            JSHandle<TSClassType> extendClassType = GetExtendClassType(classType);
-            RecursivelyMergeClassField(classType, extendClassType);
-        }
-
-        // We need to fill the method name into the corresponding layout
-        if (type->IsTSInterfaceType()) {
-            FillInterfaceMethodName(type);
-        }
-    }
-}
-
-void TSManager::FillInterfaceMethodName(JSMutableHandle<JSTaggedValue> type)
-{
-    JSHandle<TSInterfaceType> interfaceType(type);
-    JSHandle<TSObjectType> objectType(thread_, interfaceType->GetFields());
-    JSHandle<TSObjLayoutInfo> layout(thread_, objectType->GetObjLayoutInfo());
-    uint32_t numElements = layout->NumberOfElements();
-
-    for (uint32_t index = 0; index < numElements; index++) {
-        JSTaggedValue typeId = layout->GetTypeId(index);
-        GlobalTSTypeRef propGT = GlobalTSTypeRef(static_cast<uint32_t>(typeId.GetInt()));
-        if (GetTypeKind(propGT) == TSTypeKind::FUNCTION) {
-            JSHandle<JSTaggedValue> tsType = GetTSType(propGT);
-            ASSERT(tsType->IsTSFunctionType());
-
-            JSHandle<TSFunctionType> functionType(tsType);
-            JSTaggedValue functionName = functionType->GetName();
-            ASSERT(functionName.IsString());
-            layout->SetKey(thread_, index, functionName);
-        };
-    }
-}
-
-void TSManager::RecursivelyResolveTargetType(JSHandle<TSImportType> importType)
-{
-    if (!importType->GetTargetGT().IsDefault()) {
-        return;
-    }
-    JSHandle<TSModuleTable> table = GetTSModuleTable();
-    // Parse name and ami-path of imported object
-    JSHandle<EcmaString> importVarAndPath(thread_, importType->GetImportPath());
-    JSHandle<EcmaString> varName = GenerateImportVar(importVarAndPath);
-    JSHandle<EcmaString> amiPath = GenerateImportRelativePath(importVarAndPath);
-
-    // Get moduleId by imported file ami-path
-    // moduleIdBaseOnFile is a module-Id corresponding with a specific .abc file
-    int moduleIdBaseOnFile = table->GetGlobalModuleID(thread_, amiPath);
-    ASSERT(moduleIdBaseOnFile != TSModuleTable::NOT_FOUND);
-
-    // Get export-table stored in corresponding type-table
-    JSHandle<TSTypeTable> typeTable = table->GetTSTypeTable(thread_, moduleIdBaseOnFile);
-    JSHandle<TaggedArray> moduleExportTable = TSTypeTable::GetExportValueTable(thread_, typeTable);
-
-    // Get GT of export type from export-table
-    GlobalTSTypeRef importedGT = GetExportGTByName(varName, moduleExportTable);
-    ASSERT(importedGT != GlobalTSTypeRef::Default());
-
-    // moduleIdBaseOnGT is a module-Id corresponding with a specific imported-type in export-table,
-    // it refers to the exact .abc file from which the imported-type is exported.
-    uint32_t moduleIdBaseOnGT = importedGT.GetModuleId();
-    // Two different (not equal) moduleIds means that the imported type (i.e. export type in export-table)
-    // is either a primitive or a builtin type
-    if (moduleIdBaseOnGT != static_cast<uint32_t>(moduleIdBaseOnFile)) {
-        importType->SetTargetGT(importedGT);
-        return;
-    }
-
-    // Otherwise resolve the imported-chain recursively
-    JSHandle<TSType> bindType = JSHandle<TSType>(GetTSType(importedGT));
-    if (bindType.GetTaggedValue().IsTSImportType()) {
-        JSHandle<TSImportType> redirectImportType(bindType);
-        RecursivelyResolveTargetType(redirectImportType);
-        importType->SetTargetGT(redirectImportType->GetTargetGT());
-    } else {
-        importType->SetTargetGT(bindType->GetGT());
-    }
-}
-
-void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType, JSHandle<TSClassType> extendClassType)
+void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType)
 {
     ASSERT(!classType->GetHasLinked());
-
+    JSHandle<TSClassType> extendClassType = GetExtendClassType(classType);
     if (!extendClassType->GetHasLinked()) {
-        RecursivelyMergeClassField(extendClassType, GetExtendClassType(extendClassType));
+        RecursivelyMergeClassField(extendClassType);
     }
 
     ASSERT(extendClassType->GetHasLinked());
@@ -305,7 +151,8 @@ int TSManager::GetHClassIndex(const kungfu::GateType &gateType)
 JSTaggedValue TSManager::GetHClassFromCache(uint32_t index)
 {
     const auto &hclassCache = snapshotRecordInfo_.GetHClassCache();
-    return JSTaggedValue(hclassCache[index]);
+    JSHandle<ConstantPool> constantPool(GetSnapshotConstantPool());
+    return JSTaggedValue(hclassCache[index - constantPool->GetCacheLength()]);
 }
 
 int TSManager::GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key)
@@ -322,20 +169,6 @@ int TSManager::GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key)
     return offset;
 }
 
-GlobalTSTypeRef TSManager::GetExportGTByName(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable) const
-{
-    uint32_t length = exportTable->GetLength();
-    // ["A", "101", "B", "102"]
-    // get GT of a export type specified by its descriptor/name
-    for (uint32_t i = 0; i < length; i = i + 2) {  // 2: symbol and symbolType
-        EcmaString *valueString = EcmaString::Cast(exportTable->Get(i).GetTaggedObject());
-        if (EcmaStringAccessor::StringsAreEqual(*target, valueString)) {
-            // Transform raw data of JSTaggedValue to GT
-            return GlobalTSTypeRef(exportTable->Get(i + 1).GetInt());
-        }
-    }
-    return GlobalTSTypeRef::Default();
-}
 
 JSHandle<TSClassType> TSManager::GetExtendClassType(JSHandle<TSClassType> classType) const
 {
@@ -378,7 +211,7 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> 
 
 bool TSManager::IsStaticFunc(GlobalTSTypeRef gt) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    ASSERT(IsFunctionTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType(tsType);
@@ -428,7 +261,7 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, const uint64_t key) c
 
 uint32_t TSManager::GetUnionTypeLength(GlobalTSTypeRef gt) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::UNION);
+    ASSERT(IsUnionTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSUnionType());
     JSHandle<TSUnionType> unionType = JSHandle<TSUnionType>(tsType);
@@ -438,7 +271,7 @@ uint32_t TSManager::GetUnionTypeLength(GlobalTSTypeRef gt) const
 
 GlobalTSTypeRef TSManager::GetUnionTypeByIndex(GlobalTSTypeRef gt, int index) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::UNION);
+    ASSERT(IsUnionTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSUnionType());
     JSHandle<TSUnionType> unionType = JSHandle<TSUnionType>(tsType);
@@ -468,8 +301,6 @@ TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
                     return TSTypeKind::ARRAY;
                 case JSType::TS_OBJECT_TYPE:
                     return TSTypeKind::OBJECT;
-                case JSType::TS_IMPORT_TYPE:
-                    return TSTypeKind::IMPORT;
                 case JSType::TS_INTERFACE_TYPE:
                     return TSTypeKind::INTERFACE_KIND;
                 case JSType::TS_ITERATOR_INSTANCE_TYPE:
@@ -494,48 +325,6 @@ void TSManager::Dump()
     }
 }
 
-JSHandle<EcmaString> TSManager::GenerateAmiPath(JSHandle<EcmaString> cur, JSHandle<EcmaString> rel) const
-{
-    CString currentAbcFile = ConvertToString(cur.GetTaggedValue());
-    CString relativeAbcFile = ConvertToString(rel.GetTaggedValue());
-    CString fullPath;
-
-    if (relativeAbcFile.find("./") != 0 && relativeAbcFile.find("../") != 0) { // not start with "./" or "../"
-        fullPath = relativeAbcFile + ".abc";
-        return factory_->NewFromUtf8(fullPath); // not relative
-    }
-    auto slashPos = currentAbcFile.find_last_of('/');
-    if (slashPos == std::string::npos) {
-        fullPath.append(relativeAbcFile.substr(2, relativeAbcFile.size() - 2)); // 2: remove "./"
-        fullPath.append(".abc"); // ".js" -> ".abc"
-        return factory_->NewFromUtf8(fullPath);
-    }
-
-    fullPath.append(currentAbcFile.substr(0, slashPos + 1)); // 1: with "/"
-    fullPath.append(relativeAbcFile.substr(2, relativeAbcFile.size() - 2)); // 2: remove "./"
-    fullPath.append(".abc"); // ".js" -> ".abc"
-
-    return factory_->NewFromUtf8(fullPath);
-}
-
-JSHandle<EcmaString> TSManager::GenerateImportVar(JSHandle<EcmaString> import) const
-{
-    // importNamePath #A#./A
-    CString importVarNamePath = ConvertToString(import.GetTaggedValue());
-    auto firstPos = importVarNamePath.find_first_of('#');
-    auto lastPos = importVarNamePath.find_last_of('#');
-    CString target = importVarNamePath.substr(firstPos + 1, lastPos - firstPos - 1);
-    return factory_->NewFromUtf8(target); // #A#./A -> A
-}
-
-JSHandle<EcmaString> TSManager::GenerateImportRelativePath(JSHandle<EcmaString> importRel) const
-{
-    CString importNamePath = ConvertToString(importRel.GetTaggedValue());
-    auto lastPos = importNamePath.find_last_of('#');
-    CString path = importNamePath.substr(lastPos + 1, importNamePath.size() - lastPos - 1);
-    return factory_->NewFromUtf8(path); // #A#./A -> ./A
-}
-
 GlobalTSTypeRef TSManager::GetOrCreateTSIteratorInstanceType(TSRuntimeType runtimeType, GlobalTSTypeRef elementGt)
 {
     ASSERT((runtimeType >= TSRuntimeType::ITERATOR_RESULT) && (runtimeType <= TSRuntimeType::ITERATOR));
@@ -554,7 +343,7 @@ GlobalTSTypeRef TSManager::GetOrCreateTSIteratorInstanceType(TSRuntimeType runti
 
 GlobalTSTypeRef TSManager::GetIteratorInstanceElementGt(GlobalTSTypeRef gt) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::ITERATOR_INSTANCE);
+    ASSERT(IsIteratorInstanceTypeKind(gt));
     JSHandle<JSTaggedValue> type = GetTSType(gt);
     ASSERT(type->IsTSIteratorInstanceType());
     JSHandle<TSIteratorInstanceType> iteratorFuncInstance(type);
@@ -643,15 +432,6 @@ void TSManager::Iterate(const RootVisitor &v)
     snapshotRecordInfo_.Iterate(v);
 }
 
-GlobalTSTypeRef TSManager::GetImportTypeTargetGT(GlobalTSTypeRef gt) const
-{
-    ASSERT(GetTypeKind(gt) == TSTypeKind::IMPORT);
-    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
-    ASSERT(tsType->IsTSImportType());
-    JSHandle<TSImportType> importType = JSHandle<TSImportType>(tsType);
-    return importType->GetTargetGT();
-}
-
 JSHandle<TSTypeTable> TSManager::GetInferTypeTable() const
 {
     JSHandle<TSModuleTable> mTable = GetTSModuleTable();
@@ -687,7 +467,7 @@ JSHandle<TSTypeTable> TSManager::GetRuntimeTypeTable() const
 std::string TSManager::GetFuncName(kungfu::GateType type) const
 {
     GlobalTSTypeRef gt = type.GetGTRef();
-    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    ASSERT(IsFunctionTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
@@ -699,7 +479,7 @@ std::string TSManager::GetFuncName(kungfu::GateType type) const
 
 uint32_t TSManager::GetFunctionTypeLength(GlobalTSTypeRef gt) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    ASSERT(IsFunctionTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
@@ -718,7 +498,7 @@ void TSManager::SetRuntimeTypeTable(JSHandle<TSTypeTable> runtimeTable)
 
 GlobalTSTypeRef TSManager::GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    ASSERT(IsFunctionTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
@@ -727,7 +507,7 @@ GlobalTSTypeRef TSManager::GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index)
 
 GlobalTSTypeRef TSManager::GetFuncThisGT(GlobalTSTypeRef gt) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    ASSERT(IsFunctionTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType(tsType);
@@ -736,7 +516,7 @@ GlobalTSTypeRef TSManager::GetFuncThisGT(GlobalTSTypeRef gt) const
 
 bool TSManager::IsGetterSetterFunc(GlobalTSTypeRef gt) const
 {
-    if (GetTypeKind(gt) != TSTypeKind::FUNCTION) {
+    if (!IsFunctionTypeKind(gt)) {
         return false;
     }
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
@@ -747,7 +527,7 @@ bool TSManager::IsGetterSetterFunc(GlobalTSTypeRef gt) const
 
 GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    ASSERT(IsFunctionTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSFunctionType());
     JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
@@ -771,13 +551,13 @@ GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
     SetInferTypeTable(newITable);
     auto instanceGT = GlobalTSTypeRef(TSModuleTable::INFER_TABLE_ID, newITable->GetNumberOfTypes());
     classInstanceType->SetGT(instanceGT);
-    ASSERT(GetTypeKind(instanceGT) == TSTypeKind::CLASS_INSTANCE);
+    ASSERT(IsClassInstanceTypeKind(instanceGT));
     return instanceGT;
 }
 
 GlobalTSTypeRef TSManager::GetClassType(GlobalTSTypeRef classInstanceGT) const
 {
-    ASSERT(GetTypeKind(classInstanceGT) == TSTypeKind::CLASS_INSTANCE);
+    ASSERT(IsClassInstanceTypeKind(classInstanceGT));
     JSHandle<JSTaggedValue> tsType = GetTSType(classInstanceGT);
     ASSERT(tsType->IsTSClassInstanceType());
     JSHandle<TSClassInstanceType> instanceType(tsType);
@@ -786,39 +566,26 @@ GlobalTSTypeRef TSManager::GetClassType(GlobalTSTypeRef classInstanceGT) const
 
 GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
 {
-    ASSERT(GetTypeKind(gt) == TSTypeKind::ARRAY);
+    ASSERT(IsArrayTypeKind(gt));
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
     ASSERT(tsType->IsTSArrayType());
     JSHandle<TSArrayType> arrayType = JSHandle<TSArrayType>(tsType);
     return arrayType->GetElementGT();
 }
 
-void TSManager::GenerateStaticHClass(JSHandle<TSTypeTable> tsTypeTable, const JSPandaFile *jsPandaFile)
+void TSManager::GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle<TSClassType> classType)
 {
     JSHandle<ConstantPool> constPool(thread_, vm_->FindConstpool(jsPandaFile, 0));
-    JSMutableHandle<TSClassType> classType(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<TSObjectType> instanceType(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<TSObjectType> prototypeType(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<JSHClass> phcHandle(thread_, JSTaggedValue::Undefined());
+    JSHandle<TSObjectType> instanceType(thread_, classType->GetInstanceType());
+    JSHClass *ihc = TSObjectType::GetOrCreateHClass(thread_, instanceType, TSObjectTypeKind::INSTANCE);
+    JSHandle<TSObjectType> prototypeType(thread_, classType->GetPrototypeType());
+    JSHClass *phc = TSObjectType::GetOrCreateHClass(thread_, prototypeType, TSObjectTypeKind::PROTOTYPE);
+    JSHandle<JSHClass> phcHandle(thread_, JSTaggedValue(phc));
+    JSHandle<JSObject> prototype = factory_->NewJSObject(phcHandle);
+    ihc->SetProto(thread_, prototype);
 
-    for (int index = 1; index <= tsTypeTable->GetNumberOfTypes(); ++index) {
-        JSTaggedValue type = tsTypeTable->Get(index);
-        if (!type.IsTSClassType()) {
-            continue;
-        }
-        classType.Update(type);
-
-        instanceType.Update(classType->GetInstanceType());
-        JSHClass *ihc = TSObjectType::GetOrCreateHClass(thread_, instanceType, TSObjectTypeKind::INSTANCE);
-        prototypeType.Update(classType->GetPrototypeType());
-        JSHClass *phc = TSObjectType::GetOrCreateHClass(thread_, prototypeType, TSObjectTypeKind::PROTOTYPE);
-        phcHandle.Update(JSTaggedValue(phc));
-        JSHandle<JSObject> prototype = thread_->GetEcmaVM()->GetFactory()->NewJSObject(phcHandle);
-        ihc->SetProto(thread_, prototype);
-
-        GlobalTSTypeRef gt = classType->GetGT();
-        AddHClassInCompilePhase(gt, JSTaggedValue(ihc), constPool->GetCacheLength());
-    }
+    GlobalTSTypeRef gt = classType->GetGT();
+    AddHClassInCompilePhase(gt, JSTaggedValue(ihc), constPool->GetCacheLength());
 }
 
 JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
@@ -841,14 +608,23 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
     if (!IsClassInstanceTypeKind(gateType)) {
         return false;
     }
-
-    const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
-    GlobalTSTypeRef classGT = GetClassType(gt);
+    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
+    GlobalTSTypeRef classGT = GetClassType(gateGT);
+    if (IsBuiltinsDTSEnabled()) {
+        for (uint32_t i = static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_FIRST);
+             i <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST); i++) {
+            if ((HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(i))) &&
+                (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(i)) == classGT)) {
+                return true;
+            }
+        }
+        return false;
+    }
     uint32_t m = classGT.GetModuleId();
     uint32_t l = classGT.GetLocalId();
     return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
-            (l >= static_cast<uint32_t>(BuiltinTypeId::UINT8_CLAMPED_ARRAY)) &&
-            (l <= static_cast<uint32_t>(BuiltinTypeId::BIG_UINT64_ARRAY));
+           (l >= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_FIRST)) &&
+           (l <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST));
 }
 
 bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
@@ -856,12 +632,17 @@ bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
     if (!IsClassInstanceTypeKind(gateType)) {
         return false;
     }
-
-    const GlobalTSTypeRef gt = GlobalTSTypeRef(gateType.Value());
-    GlobalTSTypeRef classGT = GetClassType(gt);
+    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
+    GlobalTSTypeRef classGT = GetClassType(gateGT);
+    if (IsBuiltinsDTSEnabled()) {
+        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY);
+        return (HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
+               (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == classGT);
+    }
     uint32_t m = classGT.GetModuleId();
     uint32_t l = classGT.GetLocalId();
-    return (m == TSModuleTable::BUILTINS_TABLE_ID) && (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY));
+    return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
+           (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY));
 }
 
 std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
@@ -935,17 +716,30 @@ void TSManager::SnapshotRecordInfo::Iterate(const RootVisitor &v)
     }
 }
 
-void TSManager::GenerateSnapshotConstantPool(JSTaggedValue constantPool)
+void TSManager::InitSnapshotConstantPool(JSTaggedValue constantPool)
 {
     JSHandle<ConstantPool> cp(thread_, constantPool);
+    uint32_t constantPoolSize = cp->GetCacheLength();
+    JSHandle<ConstantPool> newConstantPool = factory_->NewConstantPool(constantPoolSize);
+    newConstantPool->SetJSPandaFile(cp->GetJSPandaFile());
+    newConstantPool->SetIndexHeader(cp->GetIndexHeader());
+    snapshotConstantPool_ = newConstantPool.GetTaggedValue();
+}
+
+void TSManager::AddHClassToSnapshotConstantPool()
+{
+    JSHandle<ConstantPool> cp(thread_, snapshotConstantPool_);
     uint32_t constantPoolSize = cp->GetCacheLength();
     const auto &hclassCache = snapshotRecordInfo_.GetHClassCache();
     uint32_t hclassCacheSize = snapshotRecordInfo_.GetHClassCacheSize();
     LOG_COMPILER(INFO) << "snapshot: constantPoolSize: " << constantPoolSize;
     LOG_COMPILER(INFO) << "snapshot: hclassCacheSize: " << hclassCacheSize;
     JSHandle<ConstantPool> newConstantPool = factory_->NewConstantPool(constantPoolSize + hclassCacheSize);
+    for (uint32_t i = 0; i < constantPoolSize; ++i) {
+        newConstantPool->SetObjectToCache(thread_, i, cp->GetObjectFromCache(i));
+    }
     for (uint32_t i = 0; i < hclassCacheSize; ++i) {
-        newConstantPool->SetObjectToCache(thread_, constantPoolSize + i,  JSTaggedValue(hclassCache[i]));
+        newConstantPool->SetObjectToCache(thread_, constantPoolSize + i, JSTaggedValue(hclassCache[i]));
     }
     newConstantPool->SetJSPandaFile(cp->GetJSPandaFile());
     newConstantPool->SetIndexHeader(cp->GetIndexHeader());
@@ -954,7 +748,7 @@ void TSManager::GenerateSnapshotConstantPool(JSTaggedValue constantPool)
 
 void TSManager::AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index, const CString &recordName)
 {
-    if (type != SnapshotInfoType::SKIPPED_METHOD && snapshotRecordInfo_.isProcessed(index)) {
+    if (type != SnapshotInfoType::SKIPPED_METHOD && snapshotRecordInfo_.IsProcessed(index)) {
         return;
     }
 
@@ -1071,26 +865,46 @@ void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &
 
 bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
 {
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    uint32_t moduleId = funcGt.GetModuleId();
+    GlobalTSTypeRef funcGT = funcType.GetGTRef();
+    uint32_t moduleId = funcGT.GetModuleId();
     if (moduleId != static_cast<uint32_t>(MTableIdx::BUILTIN)) {
         return false;
     }
-    uint32_t localId = funcGt.GetLocalId();
-    if (localId == static_cast<uint32_t>(BuiltinTypeId::MATH)) {
-        return true;
+
+    if (IsBuiltinsDTSEnabled()) {
+        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::MATH);
+        auto gt = GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx));
+        return (funcGT == gt);
+    } else {
+        uint32_t localId = funcGT.GetLocalId();
+        return (localId == static_cast<uint32_t>(BuiltinTypeId::MATH));
     }
-    return false;
 }
 
 bool TSManager::IsBuiltin(kungfu::GateType funcType) const
 {
     GlobalTSTypeRef funcGt = funcType.GetGTRef();
     uint32_t moduleId = funcGt.GetModuleId();
-    if (moduleId != static_cast<uint32_t>(MTableIdx::BUILTIN)) {
-        return false;
+    return (moduleId == static_cast<uint32_t>(MTableIdx::BUILTIN));
+}
+
+void TSManager::GenerateBuiltinSummary()
+{
+    ASSERT(IsBuiltinsDTSEnabled());
+    CString builtinsDTSFileName = GetBuiltinsDTS();
+    JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(builtinsDTSFileName);
+    if (jsPandaFile == nullptr) {
+        LOG_COMPILER(FATAL) << "load lib_ark_builtins.d.ts failed";
     }
-    return true;
+    JSPandaFileManager::GetInstance()->InsertJSPandaFile(jsPandaFile);
+    SetBuiltinPandaFile(jsPandaFile);
+    CString builtinsRecordName(TSTypeTable::BUILTINS_TABLE_NAME);
+    SetBuiltinRecordName(builtinsRecordName);
+    panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset(builtinsRecordName));
+    JSHandle<TaggedArray> builtinOffsets = LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile, summaryOffset);
+    for (uint32_t i = 0; i <= static_cast<uint32_t>(BuiltinTypeId::NUM_OF_BUILTIN_TYPES); i++) {
+        builtinOffsets_.emplace_back(static_cast<uint32_t>(builtinOffsets->Get(i).GetInt()));
+    }
 }
 
 void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)
@@ -1112,12 +926,11 @@ void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)
     mTable->Set(thread, GetSortIdOffset(BUILTINS_TABLE_ID), JSTaggedValue(BUILTINS_TABLE_ID));
     JSHandle<TSTypeTable> builtinsTable;
     if (tsManager->IsBuiltinsDTSEnabled()) {
-        builtinsTable = GenerateBuiltinsTypeTable(thread);
+        GenerateBuiltinsTypeTable(thread);
     } else {
         builtinsTable = factory->NewTSTypeTable(0);
+        mTable->Set(thread, GetTSTypeTableOffset(BUILTINS_TABLE_ID), builtinsTable);
     }
-    mTable->Set(thread, GetTSTypeTableOffset(BUILTINS_TABLE_ID), builtinsTable);
-    tsManager->LinkTSTypeTable(builtinsTable);
 
     // set infer type table
     JSHandle<EcmaString> inferTableName = factory->NewFromASCII(TSTypeTable::INFER_TABLE_NAME);
@@ -1162,7 +975,8 @@ void TSModuleTable::AddRuntimeTypeTable(JSThread *thread)
     // add IteratorFunction GT
     JSHandle<TSFunctionType> iteratorFunctionType = factory->NewTSFunctionType(0);
     newRuntimeTable = TSTypeTable::PushBackTypeToTable(thread, runtimeTable, JSHandle<TSType>(iteratorFunctionType));
-    GlobalTSTypeRef functiontGt = GlobalTSTypeRef(TSModuleTable::RUNTIME_TABLE_ID, newRuntimeTable->GetNumberOfTypes());
+    GlobalTSTypeRef functiontGt = GlobalTSTypeRef(TSModuleTable::RUNTIME_TABLE_ID,
+                                                  newRuntimeTable->GetNumberOfTypes());
     iteratorFunctionType->SetGT(functiontGt);
     iteratorFunctionType->SetReturnGT(iteratorResultGt);
 
@@ -1241,18 +1055,14 @@ JSHandle<TSModuleTable> TSModuleTable::AddTypeTable(JSThread *thread, JSHandle<T
     return table;
 }
 
-JSHandle<TSTypeTable> TSModuleTable::GenerateBuiltinsTypeTable(JSThread *thread)
+void TSModuleTable::GenerateBuiltinsTypeTable(JSThread *thread)
 {
-    CString builtinsDTSFileName = thread->GetEcmaVM()->GetTSManager()->GetBuiltinsDTS();
-    JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(builtinsDTSFileName);
-    if (jsPandaFile == nullptr) {
-        LOG_COMPILER(FATAL) << "load lib_ark_builtins.d.ts failed";
-    }
-
-    CVector<JSHandle<EcmaString>> vec;
-    const CString builtinsRecordName("lib_ark_builtins.d");
-    JSHandle<TSTypeTable> builtinsTypeTable =
-        TSTypeTable::GenerateTypeTable(thread, jsPandaFile, builtinsRecordName, BUILTINS_TABLE_ID, vec);
-    return builtinsTypeTable;
+    auto tsManager = thread->GetEcmaVM()->GetTSManager();
+    tsManager->GenerateBuiltinSummary();
+    uint32_t numOfTypes = tsManager->GetBuiltinOffset(static_cast<uint32_t>(BuiltinTypeId::NUM_INDEX_IN_SUMMARY));
+    JSHandle<TSTypeTable> table =
+        thread->GetEcmaVM()->GetFactory()->NewTSTypeTable(numOfTypes);
+    table->SetNumberOfTypes(thread, TSTypeTable::DEFAULT_NUM_TYPES);
+    tsManager->GetTSModuleTable()->Set(thread, GetTSTypeTableOffset(BUILTINS_TABLE_ID), table);
 }
 } // namespace panda::ecmascript

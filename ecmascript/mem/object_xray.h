@@ -476,9 +476,6 @@ public:
             case JSType::TS_INTERFACE_TYPE:
                 TSInterfaceType::Cast(object)->VisitRangeSlot(visitor);
                 break;
-            case JSType::TS_IMPORT_TYPE:
-                TSImportType::Cast(object)->VisitRangeSlot(visitor);
-                break;
             case JSType::TS_CLASS_INSTANCE_TYPE:
                 break;
             case JSType::TS_FUNCTION_TYPE:
