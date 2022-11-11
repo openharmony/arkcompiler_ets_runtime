@@ -102,7 +102,6 @@ class TSTypeTable;
 class TSClassInstanceType;
 class TSFunctionType;
 class TSArrayType;
-class TSImportType;
 class TSObjLayoutInfo;
 class TSModuleTable;
 class TSFunctionType;
@@ -477,7 +476,6 @@ public:
     JSHandle<TSClassType> NewTSClassType();
     JSHandle<TSUnionType> NewTSUnionType(uint32_t length);
     JSHandle<TSInterfaceType> NewTSInterfaceType();
-    JSHandle<TSImportType> NewTSImportType();
     JSHandle<TSClassInstanceType> NewTSClassInstanceType();
     JSHandle<TSTypeTable> NewTSTypeTable(uint32_t length);
     JSHandle<TSModuleTable> NewTSModuleTable(uint32_t length);

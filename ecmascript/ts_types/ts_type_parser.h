@@ -22,93 +22,101 @@
 namespace panda::ecmascript {
 class TSTypeParser {
 public:
+    explicit TSTypeParser(TSManager *tsManager)
+        : tsManager_(tsManager), vm_(tsManager->GetEcmaVM()),
+          thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()) {}
+    ~TSTypeParser() = default;
+
+    GlobalTSTypeRef PUBLIC_API CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
+
+private:
     static constexpr size_t TYPE_KIND_INDEX_IN_LITERAL = 0;
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
     static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
+    static constexpr size_t IMPORT_PATH_OFFSET_IN_LITERAL = 1;
 
-    explicit TSTypeParser(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                          CVector<JSHandle<EcmaString>> &recordImportModules)
-        : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()), jsPandaFile_(jsPandaFile),
-          recordImportModules_(recordImportModules) {}
-    ~TSTypeParser() = default;
+    static constexpr const char* DECLARED_SYMBOL_TYPES = "declaredSymbolTypes";
+    static constexpr const char* EXPORTED_SYMBOL_TYPES = "exportedSymbolTypes";
 
-    JSHandle<JSTaggedValue> ParseType(JSHandle<TaggedArray> &literal);
-
-    void SetTypeGT(JSHandle<JSTaggedValue> type, uint32_t moduleId, uint32_t localId)
+    inline GlobalTSTypeRef GetGT(const JSPandaFile *jsPandaFile, JSHandle<TSTypeTable> table,
+                                 uint32_t moduleId, uint32_t typeId)
     {
+        auto localId = table->GetNumberOfTypes() + 1;
+        table->SetNumberOfTypes(thread_, localId);
         GlobalTSTypeRef gt = GlobalTSTypeRef(moduleId, localId);
+        tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, gt);
+        return gt;
+    }
+
+    inline void SetTSType(JSHandle<TSTypeTable> table, JSHandle<JSTaggedValue> type,
+                          const GlobalTSTypeRef &gt)
+    {
         JSHandle<TSType>(type)->SetGT(gt);
+        uint32_t localId = gt.GetLocalId();
+        table->Set(thread_, localId, type);
     }
 
-    inline GlobalTSTypeRef CreateGT(uint32_t typeId)
-    {
-        return CreateGT(vm_, jsPandaFile_, typeId);
-    }
+    GlobalTSTypeRef ParseType(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
 
-    inline static GlobalTSTypeRef CreateGT(EcmaVM *vm, const JSPandaFile *jsPandaFile, uint32_t typeId)
-    {
-        if (typeId <= BUILDIN_TYPE_OFFSET) {
-            return GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, typeId);
-        }
+    GlobalTSTypeRef ParseBuiltinObjType(uint32_t typeId);
 
-        if (typeId <= USER_DEFINED_TYPE_OFFSET) {
-            return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, typeId - BUILDIN_TYPE_OFFSET);
-        }
+    GlobalTSTypeRef ResolveImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                      JSHandle<TaggedArray> literal, uint32_t typeId);
 
-        TSManager *tsManager = vm->GetTSManager();
-        panda_file::File::EntityId offset(typeId);
-        return tsManager->GetGTFromOffset(jsPandaFile, offset);
-    }
+    JSHandle<JSTaggedValue> ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                               JSHandle<TaggedArray> literal, TSTypeKind kind);
 
-    inline CVector<JSHandle<EcmaString>> GetImportModules() const
-    {
-        return recordImportModules_;
-    }
+    JSHandle<TSClassType> ParseClassType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                         const JSHandle<TaggedArray> &literal);
 
-private:
+    JSHandle<TSClassInstanceType> ParseClassInstanceType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                         const JSHandle<TaggedArray> &literal);
 
-    inline static uint32_t GetLocalIdInTypeTable(uint32_t typeId)
-    {
-        return typeId - USER_DEFINED_TYPE_OFFSET;
-    }
+    JSHandle<TSInterfaceType> ParseInterfaceType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                 const JSHandle<TaggedArray> &literal);
 
-    inline static GlobalTSTypeRef GetPrimitiveGT(uint32_t typeId)
-    {
-        return GlobalTSTypeRef(typeId);
-    }
+    JSHandle<TSUnionType> ParseUnionType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                         const JSHandle<TaggedArray> &literal);
 
-    inline static GlobalTSTypeRef GetBuiltinsGT(uint32_t typeId)
-    {
-        return GlobalTSTypeRef(typeId - BUILDIN_TYPE_OFFSET);  // not implement yet.
-    }
+    JSHandle<TSFunctionType> ParseFunctionType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                               const JSHandle<TaggedArray> &literal);
 
-    JSHandle<TSClassType> ParseClassType(const JSHandle<TaggedArray> &literal);
+    JSHandle<TSArrayType> ParseArrayType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                         const JSHandle<TaggedArray> &literal);
 
-    JSHandle<TSClassInstanceType> ParseClassInstanceType(const JSHandle<TaggedArray> &literal);
+    JSHandle<TSObjectType> ParseObjectType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                           const JSHandle<TaggedArray> &literal);
 
-    JSHandle<TSInterfaceType> ParseInterfaceType(const JSHandle<TaggedArray> &literal);
+    void FillPropertyTypes(const JSPandaFile *jsPandaFile,
+                           const CString &recordName,
+                           JSHandle<TSObjLayoutInfo> &layOut,
+                           const JSHandle<TaggedArray> &literal,
+                           uint32_t startIndex, uint32_t lastIndex,
+                           uint32_t &index, bool isField);
 
-    JSHandle<TSImportType> ParseImportType(const JSHandle<TaggedArray> &literal);
+    void FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile,
+                                  const CString &recordName,
+                                  JSHandle<TSObjLayoutInfo> &layOut,
+                                  const JSHandle<TaggedArray> &literal,
+                                  uint32_t startIndex, uint32_t lastIndex,
+                                  uint32_t &index);
 
-    JSHandle<TSUnionType> ParseUnionType(const JSHandle<TaggedArray> &literal);
+    void GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> type);
 
-    JSHandle<TSFunctionType> ParseFunctionType(const JSHandle<TaggedArray> &literal);
+    JSHandle<TaggedArray> GetExportDataFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
 
-    JSHandle<TSArrayType> ParseArrayType(const JSHandle<TaggedArray> &literal);
+    JSHandle<TaggedArray> GenerateExportTableFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
 
-    JSHandle<TSObjectType> ParseObjectType(const JSHandle<TaggedArray> &literal);
+    JSHandle<EcmaString> GenerateImportRelativePath(JSHandle<EcmaString> importRel) const;
 
-    void FillPropertyTypes(JSHandle<TSObjLayoutInfo> &layOut, const JSHandle<TaggedArray> &literal,
-                           uint32_t startIndex, uint32_t lastIndex, uint32_t &index, bool isField);
+    JSHandle<EcmaString> GenerateImportVar(JSHandle<EcmaString> import) const;
 
-    void FillPropertyTypesWithoutMethodName(JSHandle<TSObjLayoutInfo> &layOut,
-        const JSHandle<TaggedArray> &literal, uint32_t startIndex, uint32_t lastIndex, uint32_t &index);
+    GlobalTSTypeRef GetExportGTByName(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable) const;
 
+    TSManager *tsManager_ {nullptr};
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    const JSPandaFile *jsPandaFile_ {nullptr};
-    CVector<JSHandle<EcmaString>> recordImportModules_ {};
 };
 }  // panda::ecmascript
 #endif  // ECMASCRIPT_TS_TYPES_TS_TYPE_PARSER_H

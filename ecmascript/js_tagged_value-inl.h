@@ -1229,11 +1229,6 @@ inline bool JSTaggedValue::IsTSUnionType() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSUnionType();
 }
 
-inline bool JSTaggedValue::IsTSImportType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSImportType();
-}
-
 inline bool JSTaggedValue::IsTSClassInstanceType() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSClassInstanceType();

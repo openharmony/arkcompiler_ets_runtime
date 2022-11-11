@@ -517,8 +517,6 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
                 return GetString("TSClassType");
             case JSType::TS_UNION_TYPE:
                 return GetString("TSUnionType");
-            case JSType::TS_IMPORT_TYPE:
-                return GetString("TSImportType");
             case JSType::TS_CLASS_INSTANCE_TYPE:
                 return GetString("TSClassInstanceType");
             case JSType::TS_FUNCTION_TYPE:

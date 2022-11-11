@@ -972,12 +972,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(interfaceType)
                 break;
             }
-            case JSType::TS_IMPORT_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSImportType::SIZE, 3U);
-                JSHandle<TSImportType> importType = factory->NewTSImportType();
-                DUMP_FOR_HANDLE(importType)
-                break;
-            }
             case JSType::TS_CLASS_INSTANCE_TYPE: {
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassInstanceType::SIZE, 2U);
                 JSHandle<TSClassInstanceType> classInstanceType = factory->NewTSClassInstanceType();
