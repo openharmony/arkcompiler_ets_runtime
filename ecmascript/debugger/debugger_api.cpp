@@ -326,16 +326,17 @@ void DebuggerApi::GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleO
     if (dictionary.IsTaggedArray()) {
         JSTaggedValue localExportEntries = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetLocalExportEntries();
         ASSERT(localExportEntries.IsTaggedArray());
-        TaggedArray *localExportArray = TaggedArray::Cast(localExportEntries.GetTaggedObject());
+        JSHandle<TaggedArray> localExportArray = JSHandle<TaggedArray>(thread, TaggedArray::Cast(localExportEntries.GetTaggedObject()));
         uint32_t exportEntriesLen = localExportArray->GetLength();
-        TaggedArray *dict = TaggedArray::Cast(dictionary.GetTaggedObject());
+        JSHandle<TaggedArray> dict = JSHandle<TaggedArray>(thread, TaggedArray::Cast(dictionary.GetTaggedObject()));
         uint32_t valueLen = dict->GetLength();
         if (exportEntriesLen != valueLen) {
             LOG_FULL(FATAL) << "Key does not match value";
         }
 
-        for (uint32_t idx = 0; idx < valueLen; idx++) {
-            LocalExportEntry *ee = LocalExportEntry::Cast(localExportArray->Get(idx).GetTaggedObject());
+        JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
+        for (uint32_t idx = 0; idx < exportEntriesLen; idx++) {
+            ee.Update(localExportArray->Get(idx));
             JSTaggedValue key = ee->GetExportName();
             if (key.IsString()) {
                 Local<JSValueRef> name = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, key));
