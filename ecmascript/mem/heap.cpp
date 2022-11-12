@@ -37,10 +37,6 @@
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
 
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
-#include <sys/sysinfo.h>
-#endif
-
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -173,7 +169,7 @@ void Heap::Destroy()
         delete hugeObjectSpace_;
         hugeObjectSpace_ = nullptr;
     }
-    if (readOnlySpace_ != nullptr) {
+    if (readOnlySpace_ != nullptr && !isFork_) {
         readOnlySpace_->ClearReadOnly();
         readOnlySpace_->Destroy();
         delete readOnlySpace_;

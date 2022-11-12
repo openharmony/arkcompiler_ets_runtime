@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/file_path_helper.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -53,7 +53,7 @@ HWTEST_F_L0(FilePathHelperTest, RealPath)
     EXPECT_TRUE(std::fopen(filePath.c_str(), "r") == nullptr);
 
     std::string realPath;
-    bool result = FilePathHelper::RealPath(filePath, realPath, false);
+    bool result = RealPath(filePath, realPath, false);
     EXPECT_EQ(result, true);
 
     std::fstream stream {};

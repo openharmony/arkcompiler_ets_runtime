@@ -14,10 +14,6 @@
  */
 #include "ecmascript/aot_file_manager.h"
 
-#ifdef PANDA_TARGET_WINDOWS
-#include "shlwapi.h"
-#endif
-
 #include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
@@ -34,7 +30,9 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/mem/region.h"
-#include "ecmascript/base/mem_mmap.h"
+#include "ecmascript/platform/file.h"
+#include "ecmascript/platform/map.h"
+
 
 extern const uint8_t _binary_stub_an_start[];
 extern const uint32_t _binary_stub_an_length;
@@ -142,11 +140,12 @@ void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
 
 void StubFileInfo::Save(const std::string &filename)
 {
-    if (!VerifyFilePath(filename, true)) {
+    std::string realPath;
+    if (!RealPath(filename, realPath, false)) {
         return;
     }
 
-    std::ofstream file(filename.c_str(), std::ofstream::binary);
+    std::ofstream file(realPath.c_str(), std::ofstream::binary);
     SetStubNum(entries_.size());
     file.write(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
     file.write(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
@@ -181,8 +180,7 @@ bool StubFileInfo::Load(EcmaVM *vm)
     des_.resize(moduleNum_);
     uint32_t totalCodeSize = 0;
     binBufparser.ParseBuffer(&totalCodeSize, sizeof(totalCodeSize_));
-    int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
-    auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(totalCodeSize, 256_KB), 0, false, prot);
+    auto pool = PageMap(AlignUp(totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
     vm->GetAOTFileManager()->SetStubmmap(pool.GetMem(), pool.GetSize());
     uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
     uint32_t curUnitOffset = 0;
@@ -221,14 +219,15 @@ AnFileDataManager::~AnFileDataManager()
     while (iter != loadedData_.end()) {
         void *poolAddr = iter->second->poolAddr;
         size_t poolSize = iter->second->poolSize;
-        MemMapAllocator::GetInstance()->Free(poolAddr, poolSize, false);
+        PageUnmap(MemMap(poolAddr, poolSize));
         iter = loadedData_.erase(iter);
     }
 }
 
 bool AnFileDataManager::SafeLoad(const std::string &filename)
 {
-    if (!AOTFileInfo::VerifyFilePath(filename)) {
+    std::string realPath;
+    if (!RealPath(filename, realPath, false)) {
         LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
                             << "please execute ark_aot_compiler with options --aot-file.";
         UNREACHABLE();
@@ -241,7 +240,7 @@ bool AnFileDataManager::SafeLoad(const std::string &filename)
     if (anFileData != nullptr) {
         return true;
     }
-    if (!UnsafeLoadData(cstrFileName)) {
+    if (!UnsafeLoadData(cstrFileName, realPath)) {
         return false;
     }
     return true;
@@ -264,11 +263,11 @@ std::shared_ptr<const AnFileDataManager::AnFileData> AnFileDataManager::SafeGetA
     return UnsafeFind(filename);
 }
 
-bool AnFileDataManager::UnsafeLoadData(const CString &filename)
+bool AnFileDataManager::UnsafeLoadData(const CString &filename, std::string &realPath)
 {
-    std::ifstream file(filename.c_str(), std::ofstream::binary);
+    std::ifstream file(realPath.c_str(), std::ofstream::binary);
     if (!file.good()) {
-        LOG_COMPILER(ERROR) << "Fail to load an file: " << filename.c_str();
+        LOG_COMPILER(ERROR) << "Fail to load an file: " << realPath.c_str();
         file.close();
         return false;
     }
@@ -302,8 +301,7 @@ bool AnFileDataManager::UnsafeLoadData(const CString &filename)
     data->des.resize(data->moduleNum);
     file.read(reinterpret_cast<char *>(&data->totalCodeSize), sizeof(data->totalCodeSize));
 
-    int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
-    auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(data->totalCodeSize, 256_KB), 0, false, prot);
+    auto pool = PageMap(AlignUp(data->totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
     data->poolAddr = pool.GetMem();
     data->poolSize = pool.GetSize();
 
@@ -322,10 +320,11 @@ void AnFileInfo::Iterate(const RootVisitor &v)
 
 void AnFileInfo::Save(const std::string &filename)
 {
-    if (!VerifyFilePath(filename, true)) {
+    std::string realPath;
+    if (!RealPath(filename, realPath, false)) {
         return;
     }
-    std::ofstream file(filename.c_str(), std::ofstream::binary);
+    std::ofstream file(realPath.c_str(), std::ofstream::binary);
     SetStubNum(entries_.size());
     auto anVersion = AOTFileManager::AOT_VERSION;
     file.write(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
@@ -415,28 +414,6 @@ bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry
 void AOTFileInfo::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&machineCodeObj_)));
-}
-
-bool AOTFileInfo::VerifyFilePath([[maybe_unused]] const std::string &filePath,
-    [[maybe_unused]] bool toGenerate)
-{
-#ifndef PANDA_TARGET_WINDOWS
-    if (filePath.size() > PATH_MAX) {
-        return false;
-    }
-
-    std::vector<char> resolvedPath(PATH_MAX);
-    auto result = realpath(filePath.c_str(), resolvedPath.data());
-    if (toGenerate && errno == ENOENT) {
-        return true;
-    }
-    if (result == nullptr) {
-        return false;
-    }
-    return true;
-#else
-    return false;
-#endif
 }
 
 void AOTFileManager::LoadStubFile()
@@ -700,7 +677,7 @@ AOTFileManager::~AOTFileManager()
         arkStackMapParser_ = nullptr;
     }
     for (size_t i = 0; i < stubAddrs_.size(); i++) {
-        MemMapAllocator::GetInstance()->Free(stubAddrs_[i].first, stubAddrs_[i].second, false);
+        PageUnmap(MemMap(stubAddrs_[i].first, stubAddrs_[i].second));
     }
 }
 
@@ -727,29 +704,11 @@ bool AOTFileManager::GetAbsolutePath(const CString &relativePathCstr, CString &a
 {
     std::string relativePath = CstringConvertToStdString(relativePathCstr);
     std::string absPath = "";
-    if (GetAbsolutePath(relativePath, absPath)) {
+    if (RealPath(relativePath, absPath)) {
         absPathCstr = ConvertToString(absPath);
         return true;
     }
     return false;
-}
-
-bool AOTFileManager::GetAbsolutePath(const std::string &relativePath, std::string &absPath)
-{
-    if (relativePath.size() >= PATH_MAX) {
-        return false;
-    }
-    char buffer[PATH_MAX] = {0};
-#ifndef PANDA_TARGET_WINDOWS
-    auto path = realpath(relativePath.c_str(), buffer);
-#else
-    auto path = _fullpath(buffer, relativePath.c_str(), sizeof(buffer) - 1);
-#endif
-    if (path == nullptr) {
-        return false;
-    }
-    absPath = std::string(buffer);
-    return true;
 }
 
 void BinaryBufferParser::ParseBuffer(void *dst, uint32_t count)

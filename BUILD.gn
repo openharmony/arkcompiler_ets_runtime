@@ -390,10 +390,8 @@ ecma_source = [
   "ecmascript/base/atomic_helper.cpp",
   "ecmascript/base/builtins_base.cpp",
   "ecmascript/base/error_helper.cpp",
-  "ecmascript/base/file_path_helper.cpp",
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
-  "ecmascript/base/mem_mmap.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
@@ -662,11 +660,33 @@ if (!is_mingw && !is_mac && target_os != "ios") {
   ]
 }
 
+ecma_platform_source = []
+if (is_mingw) {
+  ecma_platform_source += [
+    "ecmascript/platform/windows/map.cpp",
+    "ecmascript/platform/windows/file.cpp",
+    "ecmascript/platform/windows/os.cpp",
+    "ecmascript/platform/windows/time.cpp",
+  ]
+} else {
+  ecma_platform_source += [
+    "ecmascript/platform/unix/file.cpp",
+    "ecmascript/platform/unix/map.cpp",
+    "ecmascript/platform/unix/time.cpp",
+  ]
+  if (is_mac || target_os == "ios") {
+    ecma_platform_source += [ "ecmascript/platform/unix/mac/os.cpp" ]
+  } else {
+    ecma_platform_source += [ "ecmascript/platform/unix/linux/os.cpp" ]
+  }
+}
+
 source_set("libark_jsruntime_set") {
   sources = ecma_source
   sources += ecma_profiler_source
   sources += ecma_debugger_source
   sources += hitrace_scope_source
+  sources += ecma_platform_source
 
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -746,6 +766,7 @@ source_set("libark_jsruntime_test_set") {
   sources += intl_sources
   sources += ecma_profiler_source
   sources += ecma_debugger_source
+  sources += ecma_platform_source
 
   defines = [ "OHOS_UNIT_TEST" ]
   deps = [

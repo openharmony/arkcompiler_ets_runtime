@@ -13,15 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_BASE_FILE_PATH_HELPER_H
-#define ECMASCRIPT_BASE_FILE_PATH_HELPER_H
+#ifndef ECMASCRIPT_PLATFORM_TIME_H
+#define ECMASCRIPT_PLATFORM_TIME_H
 
-#include <string>
+#include <cstdint>
 
-namespace panda::ecmascript::base {
-class FilePathHelper {
-public:
-    static bool RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
-};
-} // namespace panda::ecmascript::base
-#endif  // ECMASCRIPT_BASE_FILE_PATH_HELPER_H
+namespace panda::ecmascript {
+int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal);
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_PLATFORM_TIME_H

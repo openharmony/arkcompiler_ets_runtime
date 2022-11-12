@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/mem_mmap.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
+#include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript::kungfu {
 Circuit::Circuit(bool isArch64) : space_(nullptr), circuitSize_(0), gateCount_(0), time_(1),
                                   dataSection_(), isArch64_(isArch64)
 {
-    space_ = panda::ecmascript::base::MemMmap::Mmap(CIRCUIT_SPACE, false);
+    space_ = panda::ecmascript::PageMap(CIRCUIT_SPACE, PAGE_PROT_READWRITE).GetMem();
     NewGate(OpCode(OpCode::CIRCUIT_ROOT), 0, {}, GateType::Empty());  // circuit root
     auto circuitRoot = Circuit::GetCircuitRoot(OpCode(OpCode::CIRCUIT_ROOT));
     NewGate(OpCode(OpCode::STATE_ENTRY), 0, {circuitRoot}, GateType::Empty());
@@ -37,7 +37,7 @@ Circuit::Circuit(bool isArch64) : space_(nullptr), circuitSize_(0), gateCount_(0
 
 Circuit::~Circuit()
 {
-    panda::ecmascript::base::MemMmap::Munmap(space_, CIRCUIT_SPACE);
+    panda::ecmascript::PageUnmap(MemMap(space_, CIRCUIT_SPACE));
 }
 
 uint8_t *Circuit::AllocateSpace(size_t gateSize)

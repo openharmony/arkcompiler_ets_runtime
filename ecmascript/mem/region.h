@@ -23,6 +23,7 @@
 #include "ecmascript/mem/gc_bitset.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/platform/map.h"
 
 #include "libpandabase/os/mutex.h"
 #include "libpandabase/utils/aligned_storage.h"
@@ -348,38 +349,15 @@ public:
         highWaterMark_ = mark;
     }
 
-    int SetCodeExecutableAndReadable()
-    {
-        // NOLINT(hicpp-signed-bitwise)
-#ifndef PANDA_TARGET_WINDOWS
-        int res = mprotect(reinterpret_cast<void *>(allocateBase_), GetCapacity(), PROT_EXEC | PROT_READ | PROT_WRITE);
-#else
-        int res = 0;
-#endif
-        return res;
-    }
-
-    int SetReadOnlyAndMarked()
+    void SetReadOnlyAndMarked()
     {
         packedData_.markGCBitset_->SetAllBits(packedData_.bitsetSize_);
-        // NOLINT(hicpp-signed-bitwise)
-#ifndef PANDA_TARGET_WINDOWS
-        int res = mprotect(reinterpret_cast<void *>(allocateBase_), GetCapacity(), PROT_READ);
-#else
-        int res = 0;
-#endif
-        return res;
+        PageProtect(reinterpret_cast<void *>(allocateBase_), GetCapacity(), PAGE_PROT_READ);
     }
 
-    int ClearReadOnly()
+    void ClearReadOnly()
     {
-        // NOLINT(hicpp-signed-bitwise)
-#ifndef PANDA_TARGET_WINDOWS
-        int res = mprotect(reinterpret_cast<void *>(allocateBase_), GetCapacity(), PROT_READ | PROT_WRITE);
-#else
-        int res = 0;
-#endif
-        return res;
+        PageProtect(reinterpret_cast<void *>(allocateBase_), GetCapacity(), PAGE_PROT_READWRITE);
     }
 
     void InitializeFreeObjectSets()

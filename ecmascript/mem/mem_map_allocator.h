@@ -19,65 +19,13 @@
 #include <deque>
 #include <map>
 
+#include "ecmascript/platform/map.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_common.h"
-
+#include "ecmascript/log_wrapper.h"
 #include "libpandabase/os/mutex.h"
 
-#if !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_IOS)
-#include <sys/prctl.h>
-#ifndef PR_SET_VMA
-#define PR_SET_VMA 0x53564d41
-#endif
-
-#ifndef PR_SET_VMA_ANON_NAME
-#define PR_SET_VMA_ANON_NAME 0
-#endif
-#endif // PANDA_TARGET_UNIX
-
-#ifdef PANDA_TARGET_WINDOWS
-#include <windows.h>
-
-#ifdef ERROR
-#undef ERROR
-#endif
-
-#ifdef GetObject
-#undef GetObject
-#endif
-
-#ifdef STRICT
-#undef STRICT
-#endif
-
-#ifdef VOID
-#undef VOID
-#endif
-#endif
-
-#include "ecmascript/log_wrapper.h"
-
 namespace panda::ecmascript {
-class MemMap {
-public:
-    MemMap() : mem_(nullptr), size_(0) {}
-    MemMap(void *mem, size_t size) : mem_(mem), size_(size) {};
-    ~MemMap() = default;
-
-    inline void *GetMem() const
-    {
-        return mem_;
-    }
-
-    inline size_t GetSize() const
-    {
-        return size_;
-    }
-private:
-    void *mem_;
-    size_t size_;
-};
-
 // Regular region with length of DEFAULT_REGION_SIZE(256kb)
 class MemMapPool {
 public:
@@ -88,11 +36,7 @@ public:
     {
         os::memory::LockHolder lock(lock_);
         for (auto &it : memMapVector_) {
-#ifdef PANDA_TARGET_UNIX
-            munmap(it.GetMem(), it.GetSize());
-#else
-            UnmapViewOfFile(it.GetMem());
-#endif
+            PageUnmap(it);
         }
         memMapVector_.clear();
         memMapCache_.clear();
@@ -161,11 +105,7 @@ public:
 
     void Finalize()
     {
-#ifdef PANDA_TARGET_UNIX
-        munmap(memMap_.GetMem(), memMap_.GetSize());
-#else
-        UnmapViewOfFile(memMap_.GetMem());
-#endif
+        PageUnmap(memMap_);
         freeList_.clear();
     }
 
@@ -222,7 +162,8 @@ public:
     {
         AdapterSuitablePoolCapacity();
         memMapTotalSize_ = 0;
-        MemMap memMap = PageMap(capacity_ / 2, alignment);
+        size_t hugeObjectCapacity = std::min(capacity_ / 2, MAX_HUGE_OBJECT_CAPACITY);
+        MemMap memMap = PageMap(hugeObjectCapacity, PAGE_PROT_NONE, alignment);
         PageRelease(memMap.GetMem(), memMap.GetSize());
         memMapFreeList_.Initialize(memMap);
     }
@@ -262,34 +203,12 @@ public:
         return &vmAllocator_;
     }
 
-    MemMap Allocate(size_t size, size_t alignment, bool isRegular, int prot);
-
-    MemMap Allocate(size_t size, size_t alignment, bool isRegular);
+    MemMap Allocate(size_t size, size_t alignment, bool regular, int prot);
 
     void Free(void *mem, size_t size, bool isRegular);
 
 private:
     static constexpr size_t REGULAR_REGION_MMAP_SIZE = 4_MB;
-
-    MemMap PageMap(size_t size, size_t alignment);
-
-    void PageRelease([[maybe_unused]]void *mem, [[maybe_unused]]size_t size)
-    {
-#ifdef PANDA_TARGET_UNIX
-        madvise(mem, size, MADV_DONTNEED);
-#endif
-    }
-
-    void PageTag([[maybe_unused]]void *mem, [[maybe_unused]]size_t size, [[maybe_unused]]bool remove = false)
-    {
-#if !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_IOS)
-        if (remove) {
-            prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, mem, size, nullptr);
-        } else {
-            prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, mem, size, "ArkJS Heap");
-        }
-#endif
-    }
 
     void AdapterSuitablePoolCapacity();
 

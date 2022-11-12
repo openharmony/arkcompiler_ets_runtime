@@ -13,39 +13,28 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/file_path_helper.h"
+#include "ecmascript/platform/file.h"
 
 #include <climits>
 
 #include "ecmascript/log_wrapper.h"
 
-#ifdef PANDA_TARGET_WINDOWS
-#include "shlwapi.h"
-#endif
-
-namespace panda::ecmascript::base {
-
-bool FilePathHelper::RealPath(const std::string &path, std::string &realPath, [[maybe_unused]] bool readOnly)
+namespace panda::ecmascript {
+bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
 {
     if (path.empty() || path.size() > PATH_MAX) {
         LOG_ECMA(WARN) << "File path is illeage";
         return false;
     }
     char buffer[PATH_MAX] = { '\0' };
-#ifndef PANDA_TARGET_WINDOWS
     if (!realpath(path.c_str(), buffer)) {
         // Maybe file does not exist.
         if (readOnly || errno != ENOENT) {
-            LOG_ECMA(ERROR) << "File path realpath failure";
+            LOG_ECMA(ERROR) << "File path" << path << " realpath failure";
             return false;
         }
     }
-#else
-    if (!_fullpath(buffer, path.c_str(), sizeof(buffer) - 1)) {
-        return false;
-    }
-#endif
     realPath = std::string(buffer);
     return true;
 }
-}  // namespace panda::ecmascript::base
+}  // namespace panda::ecmascript

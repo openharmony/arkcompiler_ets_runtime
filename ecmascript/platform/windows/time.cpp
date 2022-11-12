@@ -13,28 +13,19 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_BASE_MEM_MMAP_H
-#define ECMASCRIPT_BASE_MEM_MMAP_H
+#include "ecmascript/platform/time.h"
 
-#include <cstdlib>
-#include "ecmascript/common.h"
+#include <timezoneapi.h>
 
-#ifdef PANDA_TARGET_WINDOWS
-#define PROT_READ 0x1
-#define PROT_WRITE 0x2
-#define PROT_EXEC 0x4
-#define PROT_NONE 0x0
-#endif
-
-namespace panda::ecmascript::base {
-class MemMmap {
-public:
-    MemMmap() = default;
-    ~MemMmap() = default;
-
-    static void* PUBLIC_API Mmap(size_t allocSize, bool executable = true);
-    static int PUBLIC_API Munmap(void *addr, size_t allocSize);
-};
-}  // namespace panda::ecmascript::base
-
-#endif  // ECMASCRIPT_BASE_MEM_MMAP_H
+namespace panda::ecmascript {
+int64_t GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLocal)
+{
+    if (!isLocal) {
+        return 0;
+    }
+    TIME_ZONE_INFORMATION tmp;
+    GetTimeZoneInformation(&tmp);
+    int64_t res = -tmp.Bias;
+    return res;
+}
+}  // namespace panda::ecmascript

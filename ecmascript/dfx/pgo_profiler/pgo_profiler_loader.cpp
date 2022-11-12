@@ -17,11 +17,11 @@
 
 #include <string>
 
-#include "ecmascript/base/file_path_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/method.h"
+#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
 void PGOProfilerLoader::LoadProfiler(const std::string &inPath, uint32_t hotnessThreshold)
@@ -33,8 +33,7 @@ void PGOProfilerLoader::LoadProfiler(const std::string &inPath, uint32_t hotness
         return;
     }
     std::string realPath;
-    if (!base::FilePathHelper::RealPath(inPath, realPath)) {
-        LOG_ECMA(ERROR) << "The file path(" << inPath << ") real path failure!";
+    if (!RealPath(inPath, realPath)) {
         return;
     }
 

@@ -421,6 +421,11 @@ public:
         shouldThrowOOMError_ = shouldThrow;
     }
 
+    void SetIsFork(bool isFork)
+    {
+        isFork_ = isFork;
+    }
+
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
 
     void IncreaseNativeBindingSize(bool nonMovable, size_t size);
@@ -555,6 +560,7 @@ private:
     bool oldSpaceLimitAdjusted_ {false};
     bool shouldThrowOOMError_ {false};
     bool runningNativeFinalizeCallbacks_ {false};
+    bool isFork_ {false};
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};

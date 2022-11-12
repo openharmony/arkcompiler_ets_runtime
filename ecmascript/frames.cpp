@@ -21,12 +21,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/interpreter/frame_handler.h"
-
-#if defined(PANDA_TARGET_UNIX) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
-#include <sys/ptrace.h>
-#else
-#define ptrace(PTRACE_PEEKTEXT, pid, addr, NULL) static_cast<long>(-1)
-#endif
+#include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
@@ -593,7 +588,7 @@ bool ReadUintptrFromAddr(int pid, uintptr_t addr, uintptr_t &value)
     long *retAddr = reinterpret_cast<long *>(&value);
     // note: big endian
     for (size_t i = 0; i < sizeof(uintptr_t) / sizeof(long); i++) {
-        *retAddr = ptrace(PTRACE_PEEKTEXT, pid, addr, NULL);
+        *retAddr = PtracePeektext(pid, addr);
         if (*retAddr == -1) {
             LOG_ECMA(ERROR) << "ReadFromAddr ERROR, addr: " << addr;
             return false;

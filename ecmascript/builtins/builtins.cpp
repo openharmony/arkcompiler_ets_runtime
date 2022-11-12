@@ -15,14 +15,6 @@
 
 #include "ecmascript/builtins/builtins.h"
 
-#ifdef PANDA_TARGET_WINDOWS
-#ifdef ERROR
-#undef ERROR
-#endif
-#ifdef GetObject
-#undef GetObject
-#endif
-#endif
 #include "ecmascript/base/error_type.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
@@ -239,7 +231,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     asyncGeneratorResNextRetProRstFtnClass->SetCallable(true);
     asyncGeneratorResNextRetProRstFtnClass->SetExtensible(true);
     env->SetAsyncGeneratorResNextRetProRstFtnClass(thread_, asyncGeneratorResNextRetProRstFtnClass);
-    
+
     JSHandle<JSHClass> proxyRevocFuncClass = factory_->NewEcmaHClass(
         JSProxyRevocFunction::SIZE, JSType::JS_PROXY_REVOC_FUNCTION, env->GetFunctionPrototype());
     proxyRevocFuncClass->SetCallable(true);
@@ -2923,7 +2915,7 @@ void Builtins::InitializeAsyncGeneratorFunction(const JSHandle<GlobalEnv> &env,
     PropertyDescriptor asyncGeneratorObjDesc(thread_, asyncGeneratorFuncPrototypeValue, false, false, true);
     JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(env->GetInitialAsyncGenerator()),
                                 globalConst->GetHandledConstructorString(), asyncGeneratorObjDesc);
-    
+
     PropertyDescriptor asyncGeneratorObjProtoDesc(thread_, asyncGeneratorFuncPrototypeValue, true, false, false);
     JSObject::DefineOwnProperty(thread_, JSHandle<JSObject>(env->GetInitialAsyncGenerator()),
                                 globalConst->GetHandledPrototypeString(), asyncGeneratorObjProtoDesc);
