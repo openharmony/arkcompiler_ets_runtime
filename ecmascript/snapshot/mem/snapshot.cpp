@@ -17,7 +17,6 @@
 
 #include <cerrno>
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <unistd.h>
 
 #include "ecmascript/ecma_vm.h"
@@ -31,6 +30,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
@@ -44,11 +44,11 @@ void Snapshot::Serialize(const CString &fileName)
 
 void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf, const CString &fileName)
 {
-    std::pair<bool, CString> filePath = VerifyFilePath(fileName, true);
-    if (!filePath.first) {
+    std::string realPath;
+    if (!RealPath(std::string(fileName), realPath, false)) {
         LOG_FULL(FATAL) << "snapshot file path error";
     }
-    std::fstream writer(fileName.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
+    std::fstream writer(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
     if (!writer.good()) {
         writer.close();
         LOG_FULL(FATAL) << "snapshot open file failed";
@@ -72,11 +72,11 @@ void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf,
 
 void Snapshot::Serialize(uintptr_t startAddr, size_t size, const CString &fileName)
 {
-    std::pair<bool, CString> filePath = VerifyFilePath(fileName, true);
-    if (!filePath.first) {
+    std::string realPath;
+    if (!RealPath(std::string(fileName), realPath, false)) {
         LOG_FULL(FATAL) << "snapshot file path error";
     }
-    std::fstream writer(fileName.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
+    std::fstream writer(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
     if (!writer.good()) {
         writer.close();
         LOG_FULL(FATAL) << "snapshot open file failed";
@@ -99,18 +99,20 @@ void Snapshot::Serialize(uintptr_t startAddr, size_t size, const CString &fileNa
 
 void Snapshot::SerializeBuiltins(const CString &fileName)
 {
-    std::pair<bool, CString> filePath = VerifyFilePath(fileName, true);
-    if (!filePath.first) {
+    std::string realPath;
+    if (!RealPath(std::string(fileName), realPath, false)) {
         LOG_FULL(FATAL) << "snapshot file path error";
     }
-    // if builtins.snapshot file has exist, return directly
-    if (!filePath.second.empty()) {
-        return;
-    }
-    std::fstream write(fileName.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
+    std::fstream write(realPath.c_str(), std::ios::out | std::ios::binary | std::ios::app);
     if (!write.good()) {
         write.close();
         LOG_FULL(FATAL) << "snapshot open file failed";
+    }
+    // if builtins.snapshot file has exist, return directly
+    if (write.tellg()) {
+        LOG_FULL(DEBUG) << "snapshot already exist";
+        write.close();
+        return;
     }
 
     SnapshotProcessor processor(vm_);
@@ -134,12 +136,12 @@ void Snapshot::SerializeBuiltins(const CString &fileName)
 
 const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins)
 {
-    std::pair<bool, CString> filePath = VerifyFilePath(snapshotFile, false);
-    if (!filePath.first) {
+    std::string realPath;
+    if (!RealPath(std::string(snapshotFile), realPath, false)) {
         LOG_FULL(FATAL) << "snapshot file path error";
         UNREACHABLE();
     }
-    int fd = open(filePath.second.c_str(), O_CLOEXEC);  // NOLINT(cppcoreguidelines-pro-type-vararg)
+    int fd = open(realPath.c_str(), O_CLOEXEC);  // NOLINT(cppcoreguidelines-pro-type-vararg)
     if (UNLIKELY(fd == -1)) {
         LOG_FULL(FATAL) << "open file failed";
         UNREACHABLE();
@@ -184,22 +186,6 @@ size_t Snapshot::AlignUpPageSize(size_t spaceSize)
         return spaceSize;
     }
     return Constants::PAGE_SIZE_ALIGN_UP * (spaceSize / Constants::PAGE_SIZE_ALIGN_UP + 1);
-}
-
-std::pair<bool, CString> Snapshot::VerifyFilePath(const CString &filePath, bool toGenerate)
-{
-    if (filePath.size() > PATH_MAX) {
-        return std::make_pair(false, "");
-    }
-    CVector<char> resolvedPath(PATH_MAX);
-    auto result = realpath(filePath.c_str(), resolvedPath.data());
-    if (toGenerate && errno == ENOENT) {
-        return std::make_pair(true, "");
-    }
-    if (!result) {
-        return std::make_pair(false, "");
-    }
-    return std::make_pair(true, CString(resolvedPath.data()));
 }
 
 void Snapshot::WriteToFile(std::fstream &writer, const panda_file::File *pf, size_t size, SnapshotProcessor &processor)

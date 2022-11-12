@@ -19,6 +19,7 @@
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/mem/space-inl.h"
+#include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
 constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
@@ -31,7 +32,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     }
     RegionSpaceFlag flags = space->GetRegionFlag();
     bool isRegular = (flags == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE) ? false : true;
-    auto pool = MemMapAllocator::GetInstance()->Allocate(capacity, DEFAULT_REGION_SIZE, isRegular);
+    int prot = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE) ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
+    auto pool = MemMapAllocator::GetInstance()->Allocate(capacity, DEFAULT_REGION_SIZE, isRegular, prot);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
         LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);

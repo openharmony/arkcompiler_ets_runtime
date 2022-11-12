@@ -151,7 +151,6 @@ public:
     static constexpr uint16_t THOUSAND = 1000;
     static double SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
     static void GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
-    static int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal);
     static CString StrToTargetLength(const CString &str, int length);
     DECL_DUMP()
 
