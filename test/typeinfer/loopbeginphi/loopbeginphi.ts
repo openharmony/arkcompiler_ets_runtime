@@ -39,4 +39,14 @@ declare function AssertType(value:any, type:string):void;
         AssertType(res, "number");
         res = res + func();
     }
+    class A {
+        static a1 : number = 1;
+        static a2 : number = 2;
+        a2(p1 : number) {
+            let x = A.a1;
+            for (let i = x; i < 10; i = i + A.a2) {
+                AssertType(i, "number")
+            }
+        }
+    }
 }
