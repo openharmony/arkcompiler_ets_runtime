@@ -23,6 +23,13 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+enum InferState : uint8_t {
+    NOT_INFERED = 0, // gate has not been infered
+    INITAILIZED, // infer-state has been reseted, either any or non-any
+    NORMAL_INFERED, // gate has been infered to non-any type
+    ANY_INFERED, // gate has been infered to any, not a final result
+};
+
 class TypeInfer {
 public:
     TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
@@ -151,7 +158,7 @@ private:
     std::string methodName_;
     std::map<uint16_t, GateType> stringIdToGateType_;
     std::unordered_map<GateRef, uint32_t> jsgateToBytecode_ {};
-    std::map<GateRef, bool> phiState_;
+    std::map<GateRef, InferState> phiState_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H

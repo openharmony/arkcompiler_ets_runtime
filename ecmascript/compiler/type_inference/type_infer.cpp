@@ -300,7 +300,7 @@ bool TypeInfer::InferPhiGate(GateRef gate)
         }
         auto valueInType = gateAccessor_.GetGateType(*it);
         if (valueInType.IsAnyType()) {
-            phiState_[gate] = true;
+            phiState_[gate] = InferState::ANY_INFERED; // phi gate has been marked as any
             return UpdateType(gate, valueInType);
         }
         if (valueInType.IsNumberType()) {
@@ -309,7 +309,7 @@ bool TypeInfer::InferPhiGate(GateRef gate)
             typeList.emplace_back(valueInType.GetGTRef());
         }
     }
-    phiState_[gate] = false;
+    phiState_[gate] = InferState::NORMAL_INFERED; // phi gate has been marked as normal type(non any)
     // deduplicate
     std::sort(typeList.begin(), typeList.end());
     auto deduplicateIndex = std::unique(typeList.begin(), typeList.end());
@@ -858,12 +858,18 @@ bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
     auto loopBackGate = gateAccessor_.GetValueIn(gate, 1);
     auto loopBackType = gateAccessor_.GetGateType(loopBackGate);
     // loop-begin phi will be initialized as loopInTytpe
+    // type of loop-back phi should be infered correctly only after loop-begin has actual type
+    // if loop-in phi is actual any type, loop-begin phi must be any
     if (phiState_.find(gate) == phiState_.end()) {
-        phiState_[gate] = false;
+        phiState_[loopBackGate] = InferState::INITAILIZED;
+        if (!loopInType.IsAnyType()) {
+            phiState_[gate] = InferState::INITAILIZED;
+        }
         return UpdateType(gate, loopInType);
     }
     // if loopBackType has been inferred to any, not initialized to any, the loop-begin phi should be marked as any
-    if (loopBackType.IsAnyType() && phiState_.find(loopBackGate) != phiState_.end() && phiState_[loopBackGate]) {
+    if (loopBackType.IsAnyType() && phiState_.find(loopBackGate) != phiState_.end() &&
+        phiState_[loopBackGate] == InferState::ANY_INFERED) {
         return UpdateType(gate, GateType::AnyType());
     }
     // if loopInType and loopBackType both have non-any type, we need special treatment for the situation
