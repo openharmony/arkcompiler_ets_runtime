@@ -30,6 +30,61 @@ uint32_t UTF16Decode(uint16_t lead, uint16_t trail)
     return cp;
 }
 
+bool IsUTF16HighSurrogate(uint16_t ch)
+{
+    return DECODE_LEAD_LOW <= ch && ch <= DECODE_LEAD_HIGH;
+}
+
+bool IsUTF16LowSurrogate(uint16_t ch)
+{
+    return DECODE_TRAIL_LOW <= ch && ch <= DECODE_TRAIL_HIGH;
+}
+
+// Methods for decode utf16 to unicode
+uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index)
+{
+    uint16_t high = utf16[*index];
+    if ((high & SURROGATE_MASK) != DECODE_LEAD_LOW || !IsUTF16HighSurrogate(high) || *index == len - 1) {
+        return high;
+    }
+    uint16_t low = utf16[*index + 1];
+    if (!IsUTF16LowSurrogate(low)) {
+        return high;
+    }
+    (*index)++;
+    return ((high - DECODE_LEAD_LOW) << UTF16_OFFSET) + (low - DECODE_TRAIL_LOW) + DECODE_SECOND_FACTOR;
+}
+
+inline int UTF8Length(uint32_t codepoint)
+{
+    if (codepoint <= UTF8_1B_MAX) {
+        return UtfLength::ONE;
+    }
+    if (codepoint <= UTF8_2B_MAX) {
+        return UtfLength::TWO;
+    }
+    if (codepoint <= UTF8_3B_MAX) {
+        return UtfLength::THREE;
+    }
+    return UtfLength::FOUR;
+}
+
+// Methods for encode unicode to unicode
+size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t len, size_t index)
+{
+    int size = UTF8Length(codepoint);
+    if (index + size > len) {
+        return 0;
+    }
+    for (int j = size - 1; j > 0; j--) {
+        uint8_t cont = ((codepoint | byteMark) & byteMask);
+        utf8[index + j] = cont;
+        codepoint >>= UTF8_OFFSET;
+    }
+    utf8[index] = codepoint | firstByteMark[size];
+    return size;
+}
+
 bool IsValidUTF8(const std::vector<uint8_t> &data)
 {
     uint32_t length = data.size();
@@ -154,27 +209,25 @@ size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify)
 size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
                                 size_t start, bool modify)
 {
-    size_t utf8Pos = 0;
     if (utf16In == nullptr || utf8Out == nullptr || utf8Len == 0) {
         return 0;
     }
+    size_t utf8Pos = 0;
     size_t end = start + utf16Len;
     for (size_t i = start; i < end; ++i) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        uint16_t next16Code = 0;
-        if ((i + 1) != end && utf::IsAvailableNextUtf16Code(utf16In[i + 1])) {
-            next16Code = utf16In[i + 1];
+        uint32_t codepoint = DecodeUTF16(utf16In, end, &i);
+        if (codepoint == 0) {
+            if (modify) {
+                // special case for \u0000 ==> C080 - 1100'0000 1000'0000
+                utf8Out[utf8Pos++] = UTF8_2B_FIRST;
+                utf8Out[utf8Pos++] = UTF8_2B_SECOND;
+            }
+            continue;
         }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        Utf8Char ch = ConvertUtf16ToUtf8(utf16In[i], next16Code, modify);
-        if (utf8Pos + ch.n > utf8Len) {
-            break;
-        }
-        for (size_t c = 0; c < ch.n; ++c) {
-            utf8Out[utf8Pos++] = ch.ch[c];  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        }
-        if (ch.n == UtfLength::FOUR) {  // Two UTF-16 chars are used
-            ++i;
+        if (utf8Out == nullptr) {
+            utf8Pos += UTF8Length(codepoint);
+        } else {
+            utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Len, utf8Pos);
         }
     }
     return utf8Pos;
