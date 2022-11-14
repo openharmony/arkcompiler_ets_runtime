@@ -131,6 +131,16 @@ public:
 
     ~EcmaVM();
 
+    void SetLoop(void *loop)
+    {
+        loop_ = loop;
+    }
+
+    void *GetLoop() const
+    {
+        return loop_;
+    }
+
     bool IsInitialized() const
     {
         return initialized_;
@@ -623,6 +633,7 @@ private:
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
     CMap<uint32_t, EcmaVM *> WorkerList_ {};
+    void *loop_ {nullptr};
 };
 }  // namespace ecmascript
 }  // namespace panda

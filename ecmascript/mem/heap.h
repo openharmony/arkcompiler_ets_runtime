@@ -354,11 +354,15 @@ public:
 
     void StartHeapTracking(HeapTracker *tracker)
     {
+        WaitAllTasksFinished();
+        parallelGC_ = false;
         tracker_ = tracker;
     }
 
     void StopHeapTracking()
     {
+        WaitAllTasksFinished();
+        parallelGC_ = true;
         tracker_ = nullptr;
     }
 
