@@ -64,12 +64,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
         uint32_t methodId = method->GetMethodId().GetOffset();
-        if (tsManager->IsSkippedMethod(methodId)) {
-            ++skippedMethodNum;
-            LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
-            return;
-        }
-
+        
         if (log_->CertainMethod()) {
             enableMethodLog = logList_->IncludesMethod(fileName, methodName);
         }
@@ -88,6 +83,13 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             TimeScope timeScope("BytecodeToCircuit", methodName, log_);
             builder.BytecodeToCircuit();
         }
+
+        if (tsManager->IsSkippedMethod(methodId)) {
+            ++skippedMethodNum;
+            LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
+            return;
+        }
+
         PassData data(&circuit, log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         if (EnableTypeInfer()) {

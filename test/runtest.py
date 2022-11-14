@@ -79,7 +79,7 @@ def match_list_name(list, name):
 class ArkTest():
     def __init__(self, args):
         self.args = args
-        self.self_dir = sys.argv[0]
+        self.self_dir = os.path.abspath(sys.argv[0])
         self.hap_abc = 'ets/modules.abc'
         self.place_dir = 'arkcompiler/ets_runtime/test'
         if self.self_dir.find(self.place_dir) < 0:
@@ -104,7 +104,7 @@ class ArkTest():
         self.expect = 'expect_output.txt'
         self.types = {'all': ['.ts', '.js'],
                       'abc': ['.ts', '.js'],
-                      'hap': ['.abc'],
+                      'pack': ['.an'],
                       'aot': ['.abc'],
                       'aotd': ['.abc'],
                       'run': ['.abc'],
@@ -192,8 +192,9 @@ class ArkTest():
         self.runner = ''
         self.runnerd = 'gdb --args'
         if self.arm64:
-            self.runner = 'qemu-aarch64'
-            self.runnerd = 'qemu-aarch64 -cpu max,sve=off -g 123456'
+            if self.step[:3] != 'aot':
+                self.runner = 'qemu-aarch64'
+                self.runnerd = 'qemu-aarch64 -cpu max,sve=off -g 123456'
             self.aot_args = f'{self.aot_args} --target-triple=aarch64-unknown-linux-gnu'
         self.test_count = 0
         self.fail_cases = []
@@ -225,11 +226,13 @@ class ArkTest():
         abc_file = f'{os.path.splitext(file)[0]}.abc'
         cmd_map = {
             'abc': f'node --expose-gc {self.ts2abc} {file} --merge-abc',
-            'hap': [f'{self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {abc_file}',
-                    f'mkdir -p {out_case_dir}/../an/arm64-v8a',
-                    f'mv {out_case_dir}/{name}.an {hap_dir}/an/arm64-v8a/entry.an',
-                    f'mv {out_case_dir}/{name}.ai {hap_dir}/an/arm64-v8a/entry.ai',
-                    f'cd {out_case_dir}/.. && rm -f ../{hap_name}.hap && zip -r ../{hap_name}.hap *'],
+            'pack': [f'mkdir -p {out_case_dir}/../an/arm64-v8a',
+                     f'mv {out_case_dir}/{name}.an {hap_dir}/an/arm64-v8a/entry.an',
+                     f'mv {out_case_dir}/{name}.ai {hap_dir}/an/arm64-v8a/entry.ai',
+                     f'cd {out_case_dir}/.. && rm -f ../{hap_name}.hap && zip -r ../{hap_name}.hap *',
+                     f'mv {hap_dir}/an/arm64-v8a/entry.an {out_case_dir}/{name}.an',
+                     f'mv {hap_dir}/an/arm64-v8a/entry.ai {out_case_dir}/{name}.ai',
+                     f'rm -rf {hap_dir}/an'],
             'aot': f'{self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {abc_file}',
             'aotd': f'{self.runnerd} {self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {abc_file}',
             'run': f'{self.runner} {self.jsvm} {self.jsvm_args} --aot-file={out_case_dir}/{name} --entry-point={name} {abc_file}',
@@ -241,12 +244,9 @@ class ArkTest():
             'clean': f'rm -f {out_case_dir}/{name}.abc {out_case_dir}/{name}.an {out_case_dir}/{name}.ai',
             'cleanhap': f'rm -rf {hap_dir}/an {out_case_dir}/{name}.an {out_case_dir}/{name}.ai'}
         if self.step == 'hap':
-            # maybe input -s hap
-            if os.path.isfile(f'{hap_dir}/{self.hap_abc}') == False:
-                print(f'hap file not exist: {hap_dir}/{self.hap_abc}')
-                sys.exit(0)
+            self.step = 'aot'
             perf_start = time.perf_counter()
-            cmd = cmd_map[self.step][0]
+            cmd = cmd_map[self.step]
             print(cmd)
             os.system(cmd)
             perf_end = time.perf_counter()
@@ -254,7 +254,9 @@ class ArkTest():
             an_size = os.path.getsize(f'{out_case_dir}/{name}.an') / 1024
             print(f'test: {file}  abc_size: {abc_size: .1f}KB  an_size: {an_size:.1f}KB  '
                   f'expand: {an_size / abc_size: .1f}  time: {perf_end - perf_start: .1f}s')
-            for cmd in cmd_map[self.step][1:]:
+            self.step = 'pack'
+        if self.step == 'pack':
+            for cmd in cmd_map[self.step]:
                 print(cmd)
                 os.system(cmd)
             print(f'packed hap: {hap_name}.hap')
@@ -266,7 +268,7 @@ class ArkTest():
             # gdb should use the os.system
             cmd = cmd_map[self.step]
             print(cmd)
-            if self.arm64 and self.step[-1:] == 'd':
+            if self.arm64 and self.step[-1:] == 'd' and self.step[:3] != 'aot':
                 print(f'gdb-client start:   gdb-multiarch {self.jsvm}')
                 print(f'gdb-server connect: target remote:123456')
             os.system(cmd)
@@ -325,33 +327,42 @@ class ArkTest():
                     found = path.find(postfix)
                     if found == len(path) - len(postfix):
                         result.append(path)
+        if os.path.isfile(dir):
+            for postfix in postfix_list:
+                found = dir.find(postfix)
+                if found == len(dir) - len(postfix):
+                    result.append(dir)
+                    break
         return result
 
     def test_hap(self):
         if self.step != 'all':
             return 1
-        files = self.find_file(self.args.name, [self.hap_abc])
+        files = self.find_file(self.args.name, [self.hap_abc, '.hap'])
         if len(files):
             self.step = 'hap'
-            self.run_test(files[0])
+            file = files[0]
+            type = os.path.splitext(file)[-1]
+            if type == '.hap':
+                hap_dir = f'{os.path.splitext(file)[0]}.aot'
+                os.system(f'mkdir -p {hap_dir} && unzip -o {file} -d {hap_dir}')
+                file = f'{hap_dir}/{self.hap_abc}'
+            self.run_test(file)
             return 0
         return 1
 
     def test(self):
         # run single test by name
         files = []
+        if self.step not in self.types:
+            print(f'not supported step: {self.step}')
+            return 1
         if not self.args.all:
-            if os.path.isdir(self.args.name):
-                files = self.find_file(self.args.name, self.types[self.step])
-                if len(files):
-                    self.run_test(files[0])
-                elif self.test_hap():
-                    print(f'input path no test case: {self.args.name}')
-                    return 1
-            elif os.path.exists(self.args.name):
-                self.run_test(self.args.name)
-            else:
-                print(f'input test not exists: {self.args.name}')
+            files = self.find_file(self.args.name, self.types[self.step])
+            if len(files):
+                self.run_test(files[0])
+            elif self.test_hap():
+                print(f'input path no test case: {self.args.name}')
                 return 1
             return 0
 
