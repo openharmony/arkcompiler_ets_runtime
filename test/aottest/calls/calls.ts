@@ -36,6 +36,8 @@ function foo4(a: any, b: any, c: any, d: any) {
 
 print(foo());
 print(foo1(1));
+print(foo1(1));
+print(foo1(1));
 print(foo2(1, 2));
 print(foo3(1, 2, 3));
 print(foo4(1, 2, 3, 4));

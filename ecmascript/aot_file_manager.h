@@ -320,9 +320,11 @@ public:
         return static_cast<uintptr_t>(it->second);
     }
 
-    bool HasLoaded() const
+    bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
+
+    bool IsLoad() const
     {
-        return !mainEntryMap_.empty();
+        return isLoad_;
     }
 
     void RewriteRelcateDeoptHandler(EcmaVM *vm);
@@ -341,6 +343,7 @@ private:
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
     JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
+    bool isLoad_ {false};
 };
 
 class PUBLIC_API StubFileInfo : public AOTFileInfo {
@@ -439,7 +442,9 @@ public:
     }
 
     void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
-    bool HasLoaded(const JSPandaFile *jsPandaFile) const;
+    const AnFileInfo *GetAnFileInfo(const JSPandaFile *jsPandaFile) const;
+    bool IsLoad(const JSPandaFile *jsPandaFile) const;
+    bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
                                    const AOTLiteralInfo *entryIndexes);

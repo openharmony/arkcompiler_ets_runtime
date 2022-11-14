@@ -315,8 +315,20 @@ bool AnFileInfo::Load(EcmaVM *vm, const std::string &filename)
     }
     file.close();
     LOG_COMPILER(INFO) << "loaded aot file: " << filename.c_str();
+    isLoad_ = true;
     return true;
 }
+
+bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const
+{
+    auto methodId = jsPandaFile->GetMainMethodIndex(entry);
+    auto it = mainEntryMap_.find(methodId);
+    if (it == mainEntryMap_.end()) {
+        return false;
+    }
+    return true;
+}
+
 
 void AOTFileInfo::Iterate(const RootVisitor &v)
 {
@@ -372,18 +384,36 @@ void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filena
 #endif
 }
 
-bool AOTFileManager::HasLoaded(const JSPandaFile *jsPandaFile) const
+const AnFileInfo *AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
 {
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
     if (!vm_->GetJSOptions().WasAOTOutputFileSet() &&
         (jsPandaFile->GetJSPandaFileDesc().find(JSPandaFile::MERGE_ABC_NAME) == std::string::npos)) {
-        return false;
+        return nullptr;
     }
     if (anFileInfoIndex >= anFileInfos_.size()) {
+        return nullptr;
+    }
+    return &anFileInfos_[anFileInfoIndex];
+}
+
+bool AOTFileManager::IsLoad(const JSPandaFile *jsPandaFile) const
+{
+    const AnFileInfo *anFileInfo = GetAnFileInfo(jsPandaFile);
+    if (anFileInfo == nullptr) {
         return false;
     }
-    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
-    return anFileInfo.HasLoaded();
+    return anFileInfo->IsLoad();
+}
+
+bool AOTFileManager::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const
+{
+    const AnFileInfo *anFileInfo = GetAnFileInfo(jsPandaFile);
+    if (anFileInfo == nullptr) {
+        return false;
+    }
+
+    return anFileInfo->IsLoadMain(jsPandaFile, entry);
 }
 
 void AOTFileManager::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
