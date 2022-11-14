@@ -17,62 +17,8 @@
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/string_hashmap.h"
-#include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
-class StreamWriter {
-public:
-    explicit StreamWriter(Stream* stream)
-        : stream_(stream), chunkSize_(stream->GetSize()), chunk_(chunkSize_), current_(0)
-    {
-    }
-
-    void Write(const CString &str)
-    {
-        auto len = static_cast<int>(str.size());
-        const char *cur = str.c_str();
-        const char *end = cur + len;
-        while (cur < end) {
-            int dstSize = chunkSize_ - current_;
-            int writeSize = std::min(static_cast<int>(end - cur), dstSize);
-            if (memcpy_s(chunk_.data() + current_, dstSize, cur, writeSize) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-            }
-            cur += writeSize;
-            current_ += writeSize;
-
-            if (current_ == chunkSize_) {
-                WriteChunk();
-            }
-        }
-    }
-
-    void Write(uint64_t num)
-    {
-        Write(ToCString(num));
-    }
-
-    void End()
-    {
-        if (current_ > 0) {
-            WriteChunk();
-        }
-        stream_->EndOfStream();
-    }
-
-private:
-    void WriteChunk()
-    {
-        stream_->WriteChunk(chunk_.data(), current_);
-        current_ = 0;
-    }
-
-    Stream *stream_ {nullptr};
-    int chunkSize_ {0};
-    CVector<char> chunk_;
-    int current_;
-};
-
 bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *stream)
 {
     // Serialize Node/Edge/String-Table

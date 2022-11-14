@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/c_containers.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 
 #include "os/mem.h"
@@ -29,8 +30,60 @@ using fstream = std::fstream;
 using stringstream = std::stringstream;
 
 class HeapSnapshot;
-class StreamWriter;
 class TraceNode;
+
+class StreamWriter {
+public:
+    explicit StreamWriter(Stream* stream)
+        : stream_(stream), chunkSize_(stream->GetSize()), chunk_(chunkSize_), current_(0)
+    {
+    }
+
+    void Write(const CString &str)
+    {
+        auto len = static_cast<int>(str.size());
+        const char *cur = str.c_str();
+        const char *end = cur + len;
+        while (cur < end) {
+            int dstSize = chunkSize_ - current_;
+            int writeSize = std::min(static_cast<int>(end - cur), dstSize);
+            if (memcpy_s(chunk_.data() + current_, dstSize, cur, writeSize) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed";
+            }
+            cur += writeSize;
+            current_ += writeSize;
+
+            if (current_ == chunkSize_) {
+                WriteChunk();
+            }
+        }
+    }
+
+    void Write(uint64_t num)
+    {
+        Write(ToCString(num));
+    }
+
+    void End()
+    {
+        if (current_ > 0) {
+            WriteChunk();
+        }
+        stream_->EndOfStream();
+    }
+
+private:
+    void WriteChunk()
+    {
+        stream_->WriteChunk(chunk_.data(), current_);
+        current_ = 0;
+    }
+
+    Stream *stream_ {nullptr};
+    int chunkSize_ {0};
+    CVector<char> chunk_;
+    int current_;
+};
 
 class HeapSnapshotJSONSerializer {
 public:
@@ -38,7 +91,7 @@ public:
     ~HeapSnapshotJSONSerializer() = default;
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);
-    bool Serialize(HeapSnapshot *snapshot, Stream* stream);
+    bool Serialize(HeapSnapshot *snapshot, Stream *stream);
 
 private:
     void SerializeSnapshotHeader();
@@ -46,14 +99,14 @@ private:
     void SerializeEdges();
     void SerializeTraceFunctionInfo();
     void SerializeTraceTree();
-    void SerializeTraceNode(TraceNode* node);
+    void SerializeTraceNode(TraceNode *node);
     void SerializeSamples();
     void SerializeLocations();
     void SerializeStringTable();
     void SerializerSnapshotClosure();
 
     HeapSnapshot *snapshot_ {nullptr};
-    StreamWriter* writer_ {nullptr};
+    StreamWriter *writer_ {nullptr};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_HPROF_HEAP_SNAPSHOT_SERIALIZER_H
