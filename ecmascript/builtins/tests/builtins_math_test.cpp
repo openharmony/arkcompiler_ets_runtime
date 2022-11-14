@@ -2914,9 +2914,9 @@ HWTEST_F_L0(BuiltinsMathTest, Random)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread_, ecmaRuntimeCallInfo);
     JSTaggedValue result1 = BuiltinsMath::Random(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread_, prev);
-    JSTaggedValue result2 = BuiltinsMath::Random(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread_, prev);
-    ASSERT_NE(result1.GetRawData(), result2.GetRawData());
+    double value1 = JSTaggedValue(static_cast<JSTaggedType>(result1.GetRawData())).GetDouble();
+    ASSERT_TRUE(value1 >= 0);
+    ASSERT_TRUE(value1 < 1.0);
 }
 
 // Math.random()
