@@ -755,7 +755,7 @@ void Heap::PrepareRecordRegionsForReclaim()
 
 void Heap::TriggerConcurrentMarking()
 {
-    if (concurrentMarker_->IsEnabled() && !fullGCRequested_) {
+    if (concurrentMarker_->IsEnabled() && !fullGCRequested_ && ConcurrentMarker::TryIncreaseTaskCounts()) {
         concurrentMarker_->Mark();
     }
 }
