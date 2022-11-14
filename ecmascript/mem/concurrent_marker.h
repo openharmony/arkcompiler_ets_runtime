@@ -44,6 +44,27 @@ public:
     explicit ConcurrentMarker(Heap *heap, EnableConcurrentMarkType type);
     ~ConcurrentMarker() = default;
 
+    static bool TryIncreaseTaskCounts()
+    {
+        size_t taskPoolSize = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+        {
+            os::memory::LockHolder holder(taskCountMutex_);
+            // total counts of running concurrent mark tasks should be less than taskPoolSize
+            if (taskCounts_ + 1 < taskPoolSize) {
+                taskCounts_++;
+                return true;
+            }
+        }
+        LOG_FULL(INFO) << "Concurrent mark tasks in taskPool are full";
+        return false;
+    }
+
+    static void DecreaseTaskCounts()
+    {
+        os::memory::LockHolder holder(taskCountMutex_);
+        taskCounts_--;
+    }
+
     /*
      * Concurrent marking related configurations and utilities.
      */
@@ -116,6 +137,9 @@ private:
 
     void InitializeMarking();
     void FinishMarking(float spendTime);
+
+    static size_t taskCounts_;
+    static os::memory::Mutex taskCountMutex_;
 
     Heap *heap_ {nullptr};
     EcmaVM *vm_ {nullptr};
