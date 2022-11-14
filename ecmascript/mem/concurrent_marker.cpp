@@ -32,6 +32,9 @@
 #include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
+size_t ConcurrentMarker::taskCounts_ = 0;
+os::memory::Mutex ConcurrentMarker::taskCountMutex_;
+
 ConcurrentMarker::ConcurrentMarker(Heap *heap, EnableConcurrentMarkType type)
     : heap_(heap),
       vm_(heap->GetEcmaVM()),
@@ -126,6 +129,7 @@ void ConcurrentMarker::Reset(bool revertCSet)
             heap_->EnumerateNewSpaceRegions(callback);
         }
     }
+    DecreaseTaskCounts();
 }
 
 void ConcurrentMarker::InitializeMarking()
