@@ -120,6 +120,7 @@ public:
         if (info != jsRecordInfo_.end()) {
             return info->second.mainMethodIndex;
         }
+        LOG_ECMA(ERROR) << "can not get main method index: " << recordName;
         return 0;
     }
 
