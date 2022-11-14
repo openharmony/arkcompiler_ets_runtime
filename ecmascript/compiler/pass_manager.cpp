@@ -89,11 +89,11 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
         PassData data(&circuit, log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
-        if (hasTyps && EnableTypeLowering()) {
-            pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId);
+        if (EnableTypeInfer()) {
+            pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId, hasTyps);
         }
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
-        if (hasTyps && EnableTypeLowering()) {
+        if (EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>(&cmpCfg, tsManager, constantPool);
             pipeline.RunPass<GuardEliminatingPass>(&cmpCfg);
             pipeline.RunPass<GuardLoweringPass>(&cmpCfg);

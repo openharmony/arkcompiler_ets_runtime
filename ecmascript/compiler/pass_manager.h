@@ -29,6 +29,7 @@ public:
                 uint32_t hotnessThreshold)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), enableTypeLowering_(enableTypeLowering),
+          enableTypeInfer_(enableTypeLowering || vm_->GetTSManager()->AssertTypes()),
           hotnessThreshold_(hotnessThreshold) {};
     PassManager() = default;
     ~PassManager() = default;
@@ -46,6 +47,11 @@ private:
         return enableTypeLowering_;
     }
 
+    bool EnableTypeInfer() const
+    {
+        return enableTypeInfer_;
+    }
+
     EcmaVM *vm_ {nullptr};
     std::string entry_ {};
     std::string triple_ {};
@@ -55,6 +61,7 @@ private:
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
     bool enableTypeLowering_ {true};
+    bool enableTypeInfer_ {true};
     uint32_t hotnessThreshold_ {0};
     PGOProfilerLoader profilerLoader_;
 };
