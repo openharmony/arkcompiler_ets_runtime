@@ -81,7 +81,7 @@ private:
     bool InferNewObject(GateRef gate);
     bool SetStGlobalBcType(GateRef gate, bool hasIC = false);
     bool InferLdStr(GateRef gate);
-    bool InferCallFunction(GateRef gate, bool isDeprecated = false);
+    bool InferCallFunction(GateRef gate);
     bool InferLdObjByValue(GateRef gate);
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);
