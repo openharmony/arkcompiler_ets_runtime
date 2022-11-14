@@ -91,7 +91,7 @@ HeapSnapshot::~HeapSnapshot()
 
 bool HeapSnapshot::BuildUp()
 {
-    FillNodes();
+    FillNodes(true);
     FillEdges();
     AddSyntheticRoot();
     return Verify();
@@ -817,6 +817,9 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId, bool
         }
         InsertNodeUnique(node);
     } else {
+        if (isInFinish) {
+            existNode->SetName(GetString(strContent));
+        }
         existNode->SetLive(true);
     }
     ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
