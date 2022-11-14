@@ -38,20 +38,23 @@ private:
     bool ReplaceMethod(JSThread *thread,
                        const JSPandaFile *baseFile,
                        const JSPandaFile *patchFile,
-                       const JSHandle<ConstantPool> &baseConstpool,
-                       const JSHandle<ConstantPool> &patchConstpool);
+                       const CMap<int32_t, JSTaggedValue> &baseConstpoolValues);
     void ReplaceMethodInner(JSThread *thread,
                             Method *destMethod,
                             MethodLiteral *srcMethodLiteral,
                             JSTaggedValue srcConstpool);
 
-    void InsertBaseClassMethodInfo(uint32_t constpoolIndex, uint32_t literalIndex, MethodLiteral *base);
-    bool HasNormalMethodReplaced(uint32_t index) const;
-    bool HasClassMethodReplaced(uint32_t constpoolIndex, uint32_t literalIndex) const;
+    void InsertBaseClassMethodInfo(uint32_t constpoolNum,
+                                   uint32_t constpoolIndex,
+                                   uint32_t literalIndex,
+                                   MethodLiteral *base);
+    void InsertBaseNormalMethodInfo(uint32_t constpoolNum, uint32_t constpoolIndex, MethodLiteral *base);
+    bool HasNormalMethodReplaced(uint32_t constpoolNum, uint32_t constpoolIndex) const;
+    bool HasClassMethodReplaced(uint32_t constpoolNum, uint32_t constpoolIndex, uint32_t literalIndex) const;
 
     CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
     CVector<JSHandle<Program>> ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile);
-    void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile, JSHandle<ConstantPool> constpool);
+    void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile);
 
     bool ExecutePatchMain(JSThread *thread, const JSHandle<Program> &patchProgram, const JSPandaFile *patchFile);
     bool ExecutePatchMain(JSThread *thread, const CVector<JSHandle<Program>> &programs, const JSPandaFile *patchFile);
@@ -60,12 +63,14 @@ private:
 
     void ClearReservedInfo()
     {
-        reservedBaseMethodInfo_.clear();
-        reservedBaseClassInfo_.clear();
+        reservedBaseNormalMethodInfo_.clear();
+        reservedBaseClassMethodInfo_.clear();
     }
     void ClearPatchInfo(JSThread *thread, const CString &patchFileName) const;
 
     bool CheckIsInvalidPatch(const JSPandaFile *baseFile, const JSPandaFile *patchFile, EcmaVM *vm) const;
+
+    JSTaggedValue FindConstpoolVal(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId methodId);
     // Check module mismatch
     static bool CheckIsModuleMismatch(JSThread *thread, JSHandle<SourceTextModule> patchModule,
                                       JSHandle<SourceTextModule> baseModule);
@@ -80,14 +85,43 @@ private:
 
     CString baseFileName_;
 
-    // For method unload patch.
-    // key: base constpool index, value: base methodLiteral.
-    CUnorderedMap<uint32_t, MethodLiteral *> reservedBaseMethodInfo_ {};
+    struct NormalMethodIndex {
+        uint32_t constpoolNum {UINT32_MAX};
+        uint32_t constpoolIndex {UINT32_MAX};
+        bool operator < (const NormalMethodIndex &normalMethodIndex) const
+        {
+            if (constpoolNum < normalMethodIndex.constpoolNum) {
+                return true;
+            }
+            if (constpoolNum == normalMethodIndex.constpoolNum) {
+                return constpoolIndex < normalMethodIndex.constpoolIndex;
+            }
+            return false;
+        }
+    };
+    CMap<NormalMethodIndex, MethodLiteral *> reservedBaseNormalMethodInfo_ {};
 
-    // For class unload patch.
-    // key: base constpool index.
-    // key: class literal tagged array index, value: base methodLiteral.
-    CUnorderedMap<uint32_t, CUnorderedMap<uint32_t, MethodLiteral *>> reservedBaseClassInfo_ {};
+    struct ClassMethodIndex {
+        uint32_t constpoolNum {UINT32_MAX};
+        uint32_t constpoolIndex {UINT32_MAX};
+        uint32_t literalIndex {UINT32_MAX};
+        bool operator < (const ClassMethodIndex &classMethodIndex) const
+        {
+            if (constpoolNum < classMethodIndex.constpoolNum) {
+                return true;
+            }
+            if (constpoolNum == classMethodIndex.constpoolNum &&
+                constpoolIndex < classMethodIndex.constpoolIndex) {
+                return true;
+            }
+            if (constpoolNum == classMethodIndex.constpoolNum &&
+                constpoolIndex == classMethodIndex.constpoolIndex) {
+                return literalIndex < classMethodIndex.literalIndex;
+            }
+            return false;
+        }
+    };
+    CMap<ClassMethodIndex, MethodLiteral *> reservedBaseClassMethodInfo_ {};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_QUICK_FIX_LOADER_H
