@@ -285,5 +285,4 @@ HWTEST_F_L0(ObjectFactoryTest, CopyTaggedArrayElement)
         EXPECT_EQ(srcOldTaggedarray->Get(thread, i), dstOldTaggedarray->Get(thread, i));
     }
 }
-
 }  // namespace panda::test
