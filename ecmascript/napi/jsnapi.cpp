@@ -2548,4 +2548,9 @@ void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
     ecmascript::CString path = assetPath.c_str();
     vm->SetAssetPath(path);
 }
+
+void JSNApi::SetLoop(EcmaVM *vm, void *loop)
+{
+    vm->SetLoop(loop);
+}
 }  // namespace panda

@@ -16,6 +16,7 @@
 #include "ecmascript/tooling/agent/heapprofiler_impl.h"
 
 namespace panda::ecmascript::tooling {
+static constexpr int32_t MILLI_TO_MICRO = 1000;
 void HeapProfilerImpl::DispatcherImpl::Dispatch(const DispatchRequest &request)
 {
     static std::unordered_map<std::string, AgentHandler> dispatcherTable {
@@ -300,12 +301,33 @@ DispatchResponse HeapProfilerImpl::StartSampling([[maybe_unused]]const StartSamp
 DispatchResponse HeapProfilerImpl::StartTrackingHeapObjects(const StartTrackingHeapObjectsParams &params)
 {
     bool traceAllocation = params.GetTrackAllocations();
-    bool result = panda::DFXJSNApi::StartHeapTracking(vm_, INTERVAL, true, &stream_, traceAllocation);
+    bool result = panda::DFXJSNApi::StartHeapTracking(vm_, INTERVAL, true, &stream_, traceAllocation, false);
+
+    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm_->GetLoop());
+    if (loop == nullptr) {
+        return DispatchResponse::Fail("StartHeapTracking GetLoop fail");
+    }
+    uv_timer_init(loop, &handle_);
+    handle_.data = this;
+    uv_timer_start(&handle_, HeapTrackingCallback, 0, INTERVAL * MILLI_TO_MICRO);
+
+    uv_work_t *work = new uv_work_t;
+    uv_queue_work(loop, work, [](uv_work_t *) { }, [](uv_work_t *work, int32_t) { delete work; });
+
     if (result) {
         return DispatchResponse::Ok();
     } else {
         return DispatchResponse::Fail("StartHeapTracking fail");
     }
+}
+
+void HeapProfilerImpl::HeapTrackingCallback(uv_timer_t* handle)
+{
+    HeapProfilerImpl *heapProfilerImpl = static_cast<HeapProfilerImpl *>(handle->data);
+    if (heapProfilerImpl == nullptr) {
+        return;
+    }
+    panda::DFXJSNApi::UpdateHeapTracking(heapProfilerImpl->vm_, &(heapProfilerImpl->stream_));
 }
 
 DispatchResponse HeapProfilerImpl::StopSampling([[maybe_unused]]std::unique_ptr<SamplingHeapProfile> *profile)
@@ -318,10 +340,11 @@ DispatchResponse HeapProfilerImpl::StopTrackingHeapObjects(const StopTrackingHea
     bool result = false;
     if (params.GetReportProgress()) {
         HeapProfilerProgress progress(&frontend_);
-        result = panda::DFXJSNApi::StopHeapTracking(vm_, &stream_, &progress);
+        result = panda::DFXJSNApi::StopHeapTracking(vm_, &stream_, &progress, false);
     } else {
-        result = panda::DFXJSNApi::StopHeapTracking(vm_, &stream_, nullptr);
+        result = panda::DFXJSNApi::StopHeapTracking(vm_, &stream_, nullptr, false);
     }
+    uv_timer_stop(&handle_);
     if (result) {
         return DispatchResponse::Ok();
     } else {

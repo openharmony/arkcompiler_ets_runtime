@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_TOOLING_AGENT_HEAPPROFILER_IMPL_H
 #define ECMASCRIPT_TOOLING_AGENT_HEAPPROFILER_IMPL_H
 
+#include <uv.h>
+
 #include "ecmascript/tooling/base/pt_params.h"
 #include "ecmascript/tooling/base/pt_events.h"
 #include "ecmascript/tooling/base/pt_returns.h"
@@ -30,7 +32,7 @@
 
 #include <sys/time.h>
 
-static const double INTERVAL = 0.05;
+static const double INTERVAL = 0.2;
 
 namespace panda::ecmascript::tooling {
 class HeapProfilerImpl final {
@@ -49,6 +51,7 @@ public:
     DispatchResponse GetSamplingProfile(std::unique_ptr<SamplingHeapProfile> *profile);
     DispatchResponse StartSampling(const StartSamplingParams &params);
     DispatchResponse StartTrackingHeapObjects(const StartTrackingHeapObjectsParams &params);
+    static void HeapTrackingCallback(uv_timer_t* handle);
     DispatchResponse StopSampling(std::unique_ptr<SamplingHeapProfile> *profile);
     DispatchResponse StopTrackingHeapObjects(const StopTrackingHeapObjectsParams &params);
     // The params type of TakeHeapSnapshot is the same as of StopTrackingHeapObjects.
@@ -170,6 +173,7 @@ private:
     const EcmaVM *vm_ {nullptr};
     Frontend frontend_;
     HeapProfilerStream stream_;
+    uv_timer_t handle_;
 };
 }  // namespace panda::ecmascript::tooling
 #endif

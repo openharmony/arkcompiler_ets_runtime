@@ -364,7 +364,7 @@ public:
     bool Verify();
 
     void PrepareSnapshot();
-    void UpdateNode();
+    void UpdateNode(bool isInFinish = false);
     Node *AddNode(TaggedObject* address);
     void MoveNode(uintptr_t address, TaggedObject* forward_address);
     void RecordSampleTime();
@@ -451,10 +451,10 @@ public:
     }
 
 private:
-    void FillNodes();
-    Node *GenerateNode(JSTaggedValue entry, int sequenceId = -1);
+    void FillNodes(bool isInFinish = false);
+    Node *GenerateNode(JSTaggedValue entry, int sequenceId = -1, bool isInFinish = false);
     Node *GeneratePrivateStringNode(int sequenceId);
-    Node *GenerateStringNode(JSTaggedValue entry, int sequenceId);
+    Node *GenerateStringNode(JSTaggedValue entry, int sequenceId, bool isInFinish = false);
     void FillEdges();
     void BridgeAllReferences();
     CString *GenerateEdgeName(TaggedObject *from, TaggedObject *to);

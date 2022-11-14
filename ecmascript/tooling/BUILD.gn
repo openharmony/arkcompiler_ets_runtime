@@ -25,6 +25,10 @@ config("ark_ecma_debugger_config") {
     "//third_party/boost",
     "//third_party/cJSON",
   ]
+
+  if (!is_mingw && !is_mac && target_os != "ios") {
+    include_dirs += [ "//third_party/libuv/include" ]
+  }
 }
 
 debugger_sources = [
@@ -97,6 +101,7 @@ ohos_shared_library("libark_ecma_debugger") {
   deps = [
     ":libark_ecma_debugger_set",
     "//arkcompiler/ets_runtime:libark_jsruntime",
+    "//third_party/libuv:uv",
   ]
 
   install_enable = true
@@ -143,6 +148,7 @@ ohos_shared_library("libark_ecma_debugger_test") {
   deps = [
     ":libark_ecma_debugger_test_set",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "//third_party/libuv:uv",
   ]
 
   if (is_ohos && is_standard_system) {

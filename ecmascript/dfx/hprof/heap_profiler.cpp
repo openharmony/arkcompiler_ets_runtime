@@ -64,7 +64,8 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
     return jsonSerializer_->Serialize(snapshot, stream);
 }
 
-bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream, bool traceAllocation)
+bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream,
+                                     bool traceAllocation, bool newThread)
 {
     HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::REAL_TIME, isVmMode, false, traceAllocation);
     if (snapshot == nullptr) {
@@ -73,11 +74,33 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
 
     heapTracker_ = std::make_unique<HeapTracker>(snapshot, timeInterval, stream);
     const_cast<EcmaVM *>(vm_)->StartHeapTracking(heapTracker_.get());
-    heapTracker_->StartTracing();
+
+    if (newThread) {
+        heapTracker_->StartTracing();
+    }
+
     return true;
 }
 
-bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress)
+bool HeapProfiler::UpdateHeapTracking(Stream *stream)
+{
+    HeapSnapshot *snapshot = hprofs_.at(0);
+    if (snapshot == nullptr) {
+        return false;
+    }
+
+    vm_->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
+    snapshot->UpdateNode();
+
+    snapshot->RecordSampleTime();
+    if (stream != nullptr) {
+        snapshot->PushHeapStat(stream);
+    }
+
+    return true;
+}
+
+bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool newThread)
 {
     if (heapTracker_ == nullptr) {
         return false;
@@ -85,7 +108,9 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress)
     int32_t heapCount = vm_->GetHeap()->GetHeapObjectCount();
 
     const_cast<EcmaVM *>(vm_)->StopHeapTracking();
-    heapTracker_->StopTracing();
+    if (newThread) {
+        heapTracker_->StopTracing();
+    }
 
     HeapSnapshot *snapshot = hprofs_.at(0);
     if (snapshot == nullptr) {

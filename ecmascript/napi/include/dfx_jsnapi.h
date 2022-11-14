@@ -55,9 +55,10 @@ public:
     static bool BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static bool BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static bool StartHeapTracking(const EcmaVM *vm, double timeInterval, bool isVmMode = true,
-                                  Stream *stream = nullptr, bool traceAllocation = false);
-    static bool StopHeapTracking(const EcmaVM *vm, const std::string &filePath);
-    static bool StopHeapTracking(const EcmaVM *vm, Stream *stream, Progress *progress = nullptr);
+                                  Stream *stream = nullptr, bool traceAllocation = false, bool newThread = true);
+    static bool UpdateHeapTracking(const EcmaVM *vm, Stream *stream);
+    static bool StopHeapTracking(const EcmaVM *vm, const std::string &filePath, bool newThread = true);
+    static bool StopHeapTracking(const EcmaVM *vm, Stream *stream, Progress *progress = nullptr, bool newThread = true);
     static void PrintStatisticResult(const EcmaVM *vm);
     static void StartRuntimeStat(EcmaVM *vm);
     static void StopRuntimeStat(EcmaVM *vm);

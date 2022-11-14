@@ -1204,6 +1204,7 @@ public:
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
+    static void SetLoop(EcmaVM *vm, void *loop);
 
 private:
     static int vmCount_;
