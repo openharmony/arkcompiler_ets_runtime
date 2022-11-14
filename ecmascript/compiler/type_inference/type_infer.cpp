@@ -958,7 +958,7 @@ void TypeInfer::TypeCheck(GateRef gate) const
             log += "[TypeAssertion] but expected type: " + expectedTypeStr + "\n";
 
             LOG_COMPILER(ERROR) << "[TypeAssertion] [" << sourceFileName << ":" << functionName << "] begin:";
-            LOG_COMPILER(FATAL) << log << " [TypeAssertion] end";
+            LOG_COMPILER(FATAL) << log << "[compiler] [TypeAssertion] end";
         }
     }
 }
@@ -994,17 +994,12 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
     log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
     OpCode op = gateAccessor_.GetOpCode(gate);
     log += "op: " + op.Str() + ", ";
-    if (op != OpCode::VALUE_SELECTOR) {
+    if (op == OpCode::ARG) {
+        log += "arg gate, ";
+    } else if (op != OpCode::VALUE_SELECTOR) {
         auto &bytecodeInfo = GetByteCodeInfo(gate);
-    // handle ByteCode gate: print gate id, bytecode and line number in source code.
+        // handle ByteCode gate: print gate id, bytecode and line number in source code.
         log += "bytecode: " + GetEcmaOpcodeStr(bytecodeInfo.GetOpcode()) + ", ";
-        GateType type = gateAccessor_.GetGateType(gate);
-        log += "type: " + tsManager_->GetTypeStr(type) + ", ";
-        if (!tsManager_->IsPrimitiveTypeKind(type)) {
-            GlobalTSTypeRef gt = type.GetGTRef();
-            log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
-            log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
-        }
 
         int32_t lineNumber = 0;
         auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
@@ -1017,7 +1012,7 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
         const MethodLiteral *methodLiteral = builder_->GetMethod();
         debugExtractor->MatchLineWithOffset(callbackLineFunc, methodLiteral->GetMethodId(), offset);
 
-        log += "at line: " + std::to_string(lineNumber);
+        log += "at line: " + std::to_string(lineNumber) + ", ";
     } else {
     // handle phi gate: print gate id and input gates id list.
         log += "phi gate, ins: ";
@@ -1027,7 +1022,15 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
         }
     }
 
-    log += "\n compiler: ";
+    GateType type = gateAccessor_.GetGateType(gate);
+    log += "type: " + tsManager_->GetTypeStr(type) + ", ";
+    if (!tsManager_->IsPrimitiveTypeKind(type)) {
+        GlobalTSTypeRef gt = type.GetGTRef();
+        log += "[moduleId: " + std::to_string(gt.GetModuleId()) + ", ";
+        log += "localId: " + std::to_string(gt.GetLocalId()) + "], ";
+    }
+
+    log += "\n[compiler] ";
     return log;
 }
 }  // namespace panda::ecmascript

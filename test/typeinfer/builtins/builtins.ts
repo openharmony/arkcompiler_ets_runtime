@@ -56,7 +56,7 @@ declare function AssertType(value: any, type: string): void;
     let err2 = Error("err2");
     AssertType(err2.message, "string");
     AssertType(err2.name, "string");
-    AssertType(err2.stack, "union");
+    AssertType(err2.stack, "string");
 
     // RangeError
     let rangeErr = new RangeError();
@@ -66,7 +66,7 @@ declare function AssertType(value: any, type: string): void;
     let rangeErr2 = RangeError("RangeError");
     AssertType(rangeErr2.message, "string");
     AssertType(rangeErr2.name, "string");
-    AssertType(rangeErr2.stack, "union");
+    AssertType(rangeErr2.stack, "string");
 
     // Boolean
     let bool = new Boolean(4);
