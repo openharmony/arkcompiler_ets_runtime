@@ -1530,9 +1530,9 @@ bool JSObject::InstanceOf(JSThread *thread, const JSHandle<JSTaggedValue> &objec
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, instOfHandler, target, undefined, 1);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         info->SetCallArg(object.GetTaggedValue());
         JSTaggedValue tagged = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         return tagged.ToBoolean();
     }
 
