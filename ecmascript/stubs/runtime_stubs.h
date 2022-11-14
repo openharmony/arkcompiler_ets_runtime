@@ -111,7 +111,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(CallInternalSetter)                 \
     V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
-    V(DebugBreak)                         \
     V(Dump)                               \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
@@ -150,8 +149,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(Exp)                                \
     V(IsIn)                               \
     V(InstanceOf)                         \
-    V(FastStrictEqual)                    \
-    V(FastStrictNotEqual)                 \
     V(CreateGeneratorObj)                 \
     V(ThrowConstAssignment)               \
     V(GetTemplateObject)                  \
@@ -177,11 +174,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(LdSuperByValue)                     \
     V(StSuperByValue)                     \
     V(LdObjByIndex)                       \
-    V(LdObjByValue)                       \
     V(StObjByIndex)                       \
     V(StOwnByIndex)                       \
-    V(ResolveClass)                       \
-    V(CloneClassFromTemplate)             \
     V(CreateClassWithBuffer)              \
     V(CreateClassWithIHClass)             \
     V(SetClassConstructorLength)          \
@@ -191,17 +185,14 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \
     V(GetModuleNamespace)                 \
-    V(GetModuleNamespaceOnJSFunc)         \
     V(StModuleVarByIndex)                 \
     V(StModuleVarByIndexOnJSFunc)         \
     V(StModuleVar)                        \
-    V(StModuleVarOnJSFunc)                \
     V(LdLocalModuleVarByIndex)            \
     V(LdExternalModuleVarByIndex)         \
     V(LdLocalModuleVarByIndexOnJSFunc)    \
     V(LdExternalModuleVarByIndexOnJSFunc) \
     V(LdModuleVar)                        \
-    V(LdModuleVarOnJSFunc)                \
     V(Throw)                              \
     V(GetPropIterator)                    \
     V(AsyncFunctionEnter)                 \
@@ -210,16 +201,12 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(ThrowPatternNonCoercible)           \
     V(ThrowDeleteSuperProperty)           \
     V(Eq)                                 \
-    V(LdGlobalRecord)                     \
-    V(GetGlobalOwnProperty)               \
-    V(TryLdGlobalByName)                  \
     V(TryLdGlobalICByName)                \
     V(LoadMiss)                           \
     V(StoreMiss)                          \
     V(TryUpdateGlobalRecord)              \
     V(ThrowReferenceError)                \
     V(StGlobalVar)                        \
-    V(LdGlobalVar)                        \
     V(LdGlobalICVar)                      \
     V(ToNumber)                           \
     V(ToBoolean)                          \
@@ -240,7 +227,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(CopyRestArgs)                       \
     V(CreateArrayWithBuffer)              \
     V(CreateObjectWithBuffer)             \
-    V(NewLexicalEnv)                      \
     V(NewThisObject)                      \
     V(NewObjRange)                        \
     V(DefineFunc)                         \
@@ -255,7 +241,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(ThrowNonConstructorException)       \
     V(ThrowStackOverflowException)        \
     V(ThrowDerivedMustReturnException)    \
-    V(CallNative)                         \
     V(CallSpread)                         \
     V(DefineGetterSetterByValue)          \
     V(SuperCall)                          \
@@ -270,7 +255,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(OptGetUnmapedArgs)                  \
     V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
-    V(OptGetLexicalEnv)                   \
     V(OptNewLexicalEnv)                   \
     V(OptNewLexicalEnvWithName)           \
     V(OptSuspendGenerator)                \
@@ -278,8 +262,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(GetTypeArrayPropertyByIndex)        \
     V(SetTypeArrayPropertyByIndex)        \
     V(OptPopLexicalEnv)                   \
-    V(OptLdLexVar)                        \
-    V(OptStLexVar)                        \
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
     V(GetMethodFromCache)                 \
@@ -292,7 +274,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(StringEqual)                        \
     V(LdPatchVar)                         \
     V(StPatchVar)                         \
-    V(LdObjByName)                        \
     V(DeoptHandler)                       \
     V(ContainerRBTreeForEach)
 
