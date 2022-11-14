@@ -28,6 +28,9 @@ static constexpr uint16_t DECODE_TRAIL_LOW = 0xDC00;
 static constexpr uint16_t DECODE_TRAIL_HIGH = 0xDFFF;
 static constexpr uint32_t DECODE_FIRST_FACTOR = 0x400;
 static constexpr uint32_t DECODE_SECOND_FACTOR = 0x10000;
+static constexpr uint32_t UTF8_OFFSET = 6;
+static constexpr uint32_t UTF16_OFFSET = 10;
+static constexpr uint16_t SURROGATE_MASK = 0xF800;
 
 static constexpr uint8_t BIT_MASK_1 = 0x80;
 static constexpr uint8_t BIT_MASK_2 = 0xC0;
@@ -42,11 +45,15 @@ static constexpr uint8_t UTF8_2B_FIRST = 0xc0;
 static constexpr uint8_t UTF8_2B_SECOND = 0x80;
 static constexpr uint8_t UTF8_2B_THIRD = 0x3f;
 
+static constexpr uint16_t UTF8_3B_MAX = 0xffff;
 static constexpr uint8_t UTF8_3B_FIRST = 0xe0;
 static constexpr uint8_t UTF8_3B_SECOND = 0x80;
 static constexpr uint8_t UTF8_3B_THIRD = 0x80;
 
 static constexpr uint8_t UTF8_4B_FIRST = 0xf0;
+
+static constexpr uint8_t byteMask = 0xbf;
+static constexpr uint8_t byteMark = 0x80;
 
 enum UtfLength : uint8_t { ONE = 1, TWO = 2, THREE = 3, FOUR = 4 };
 enum UtfOffset : uint8_t { SIX = 6, TEN = 10, TWELVE = 12, EIGHTEEN = 18 };
@@ -56,6 +63,12 @@ struct Utf8Char {
     size_t n;
     std::array<uint8_t, MAX_BYTES> ch;
 };
+
+static const unsigned char firstByteMark[7] = {0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC};
+
+uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index);
+
+size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t len, size_t index);
 
 uint32_t UTF16Decode(uint16_t lead, uint16_t trail);
 
