@@ -99,9 +99,20 @@ void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::u
         LOG_ECMA(ERROR) << "method info format error";
         return;
     }
-    int count = atoi(methodCountString[1].c_str());
-    if (count >= static_cast<int>(hotnessThreshold_)) {
-        int methodId = atoi(methodCountString[0].c_str());
+    char *endPtr = nullptr;
+    static constexpr int NUMBER_BASE = 10;
+    uint32_t count = static_cast<uint32_t>(strtol(methodCountString[1].c_str(), &endPtr, NUMBER_BASE));
+    if (endPtr == methodCountString[1].c_str() || *endPtr != '\0') {
+        LOG_ECMA(ERROR) << "method count strtol error";
+        return;
+    }
+    if (count >= hotnessThreshold_) {
+        endPtr = nullptr;
+        uint32_t methodId = static_cast<uint32_t>(strtol(methodCountString[0].c_str(), &endPtr, NUMBER_BASE));
+        if (endPtr == methodCountString[0].c_str() || *endPtr != '\0') {
+            LOG_ECMA(ERROR) << "method id strtol error";
+            return;
+        }
         methodIds.emplace(methodId);
     }
 }

@@ -322,10 +322,12 @@ action("gen_stub_file") {
       get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
   if (current_toolchain == host_toolchain || ark_standalone_build) {
-    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an"
+    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
+                  "/stub.an" + " --enable-pgo-profiler=false"
   } else {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
-                  "/stub.an" + " --target-triple=aarch64-unknown-linux-gnu"
+                  "/stub.an" + " --target-triple=aarch64-unknown-linux-gnu" +
+                  " --enable-pgo-profiler=false"
   }
 
   args = [
