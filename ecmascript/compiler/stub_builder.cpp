@@ -3081,6 +3081,7 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key)
     {
         Label valueIsCallable(env);
         Label valueNotCallable(env);
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), glue, TaggedIsHeapObject(value), assertLabel);
         Branch(IsCallable(value), &valueIsCallable, &valueNotCallable);
         Bind(&valueNotCallable);
         {
@@ -3142,6 +3143,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
     // 1. If IsCallable(C) is false, return false.
     Label targetIsCallable2(env);
     Label targetNotCallable2(env);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), glue, TaggedIsHeapObject(target), assertLabel);
     Branch(IsCallable(target), &targetIsCallable2, &targetNotCallable2);
     Bind(&targetNotCallable2);
     {
@@ -3155,6 +3157,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
         //    b. Return InstanceofOperator(O,BC)  (see 12.9.4).
         Label targetIsBoundFunction(env);
         Label targetNotBoundFunction(env);
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(IsBoundFunction), glue, TaggedIsHeapObject(target), assertLabel1);
         Branch(IsBoundFunction(target), &targetIsBoundFunction, &targetNotBoundFunction);
         Bind(&targetIsBoundFunction);
         {
@@ -4951,5 +4954,22 @@ GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void StubBuilder::Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel)
+{
+    auto env = GetEnvironment();
+    Label ok(env);
+    Label notOk(env);
+    Branch(condition, &ok, &notOk);
+    Bind(&ok);
+    {
+        Jump(nextLabel);
+    }
+    Bind(&notOk);
+    {
+        FatalPrint(glue, { Int32(messageId), Int32(line) });
+        Jump(nextLabel);
+    }
 }
 }  // namespace panda::ecmascript::kungfu
