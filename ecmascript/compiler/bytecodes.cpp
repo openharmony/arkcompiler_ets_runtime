@@ -71,6 +71,9 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::SHL2_IMM8_V8:
         case EcmaOpcode::SHR2_IMM8_V8:
         case EcmaOpcode::ASHR2_IMM8_V8:
+        case EcmaOpcode::AND2_IMM8_V8:
+        case EcmaOpcode::OR2_IMM8_V8:
+        case EcmaOpcode::XOR2_IMM8_V8:
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:

@@ -138,6 +138,9 @@ private:
     void LowerTypedShl(GateRef gate);
     void LowerTypedShr(GateRef gate);
     void LowerTypedAshr(GateRef gate);
+    void LowerTypedAnd(GateRef gate);
+    void LowerTypedOr(GateRef gate);
+    void LowerTypedXor(GateRef gate);
     void LowerTypedInc(GateRef gate);
     void LowerTypedDec(GateRef gate);
     void LowerTypedNeg(GateRef gate);
@@ -162,6 +165,9 @@ private:
     void LowerNumberShl(GateRef gate);
     void LowerNumberShr(GateRef gate);
     void LowerNumberAshr(GateRef gate);
+    void LowerNumberAnd(GateRef gate);
+    void LowerNumberOr(GateRef gate);
+    void LowerNumberXor(GateRef gate);
     void LowerNumberInc(GateRef gate);
     void LowerNumberDec(GateRef gate);
     void LowerNumberNeg(GateRef gate);
@@ -194,6 +200,8 @@ private:
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<OpCode::Op Op>
     GateRef ShiftNumber(GateRef left, GateRef right, GateType leftType, GateType rightType);
+    template<OpCode::Op Op>
+    GateRef LogicalNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
     GateRef CompareNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
