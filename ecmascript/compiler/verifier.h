@@ -59,7 +59,8 @@ public:
                                          const std::function<bool(size_t, size_t)> &isAncestor,
                                          const std::function<size_t(size_t, size_t)> &lowestCommonAncestor);
 
-    static std::vector<GateRef> FindFixedGates(const Circuit *circuit, const std::vector<GateRef> &bbGatesList);
+    static void FindFixedGates(const Circuit *circuit, const std::vector<GateRef> &bbGatesList,
+                               std::vector<GateRef> &fixedGatesList);
 
     static bool Run(const Circuit *circuit, const std::string& methodName = "", bool enableLog = false);
 };

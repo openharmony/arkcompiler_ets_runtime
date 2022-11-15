@@ -206,7 +206,7 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
             result[lowerBound.at(schedulableGate)].push_back(schedulableGate);
         }
         std::vector<GateRef> argList;
-        acc.GetOutVector(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST)), argList);
+        acc.GetOuts(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST)), argList);
         std::sort(argList.begin(), argList.end(), [&](const GateRef &lhs, const GateRef &rhs) -> bool {
             return acc.GetBitField(lhs) > acc.GetBitField(rhs);
         });
@@ -214,9 +214,9 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
             result.front().push_back(arg);
         }
         for (const auto &bbGate : bbGatesList) {
-            std::vector<GateRef> succGates;
-            acc.GetOutVector(bbGate, succGates);
-            for (const auto &succGate : succGates) {
+            auto uses = acc.Uses(bbGate);
+            for (auto i = uses.begin(); i != uses.end(); i++) {
+                GateRef succGate = *i;
                 if (acc.GetOpCode(succGate).IsFixed()) {
                     result[bbGatesAddrToIdx.at(acc.GetIn(succGate, 0))].push_back(succGate);
                 }
@@ -229,9 +229,11 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
     return result;
 }
 
-std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulingUpperBound(const Circuit *circuit,
+std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulingUpperBound(
+    const Circuit *circuit,
     const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-    const std::function<bool(size_t, size_t)> &isAncestor, const std::vector<GateRef> &schedulableGatesList)
+    const std::function<bool(size_t, size_t)> &isAncestor,
+    const std::vector<GateRef> &schedulableGatesList)
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
     std::unordered_map<GateRef, size_t> upperBound;
@@ -274,7 +276,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
         auto &rootState = dfsStack.top();
         auto &rootPredGates = rootState.predGates;
         rootState.curGate = schedulableGate;
-        acc.GetInVector(schedulableGate, rootPredGates);
+        acc.GetIns(schedulableGate, rootPredGates);
         while (!dfsStack.empty()) {
             auto &curState = dfsStack.top();
             auto &curGate = curState.curGate;
@@ -315,7 +317,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
                 auto &newState = dfsStack.top();
                 auto &newPredGates = newState.predGates;
                 newState.curGate = predGate;
-                acc.GetInVector(predGate, newPredGates);
+                acc.GetIns(predGate, newPredGates);
             }
         }
         if (!returnValue.has_value()) {
@@ -335,9 +337,9 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
     std::vector<GateRef> bbAndFixedGatesList;
     for (const auto &item : bbGatesAddrToIdx) {
         bbAndFixedGatesList.push_back(item.first);
-        std::vector<GateRef> succGates;
-        acc.GetOutVector(item.first, succGates);
-        for (const auto &succGate : succGates) {
+        auto uses = acc.Uses(item.first);
+        for (auto i = uses.begin(); i != uses.end(); i++) {
+            GateRef succGate = *i;
             if (acc.GetOpCode(succGate).IsFixed()) {
                 bbAndFixedGatesList.push_back(succGate);
             }
@@ -353,7 +355,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
         dfsVisitStack.push(emptyVisitState);
         auto &rootState = dfsVisitStack.top();
         auto &rootPrevGates = rootState.prevGates;
-        acc.GetInVector(gate, rootPrevGates);
+        acc.GetIns(gate, rootPrevGates);
         while (!dfsVisitStack.empty()) {
             auto &curState = dfsVisitStack.top();
             auto &prevGates = curState.prevGates;
@@ -372,7 +374,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
                 dfsVisitStack.push(emptyVisitState);
                 auto &newState = dfsVisitStack.top();
                 auto &newPrevGates = newState.prevGates;
-                acc.GetInVector(prevGate, newPrevGates);
+                acc.GetIns(prevGate, newPrevGates);
             }
             ++idx;
         }
@@ -389,7 +391,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
         auto &rootState = dfsFinishStack.top();
         auto &rootPrevGates = rootState.prevGates;
         rootState.curGate = gate;
-        acc.GetInVector(gate, rootPrevGates);
+        acc.GetIns(gate, rootPrevGates);
         while (!dfsFinishStack.empty()) {
             auto &curState = dfsFinishStack.top();
             auto &curGate = curState.curGate;
@@ -427,7 +429,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
                 auto &newState = dfsFinishStack.top();
                 auto &newPrevGates = newState.prevGates;
                 newState.curGate = prevGate;
-                acc.GetInVector(prevGate, newPrevGates);
+                acc.GetIns(prevGate, newPrevGates);
             }
             ++idx;
         }
@@ -448,9 +450,11 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
                            << "  immDom=" << immDom[bbIdx];
         LOG_COMPILER(INFO) << "  pred=[";
         bool isFirst = true;
-        std::vector<GateRef> predStates;
-        acc.GetInVector((*cfg)[bbIdx].front(), predStates);
-        for (const auto &predState : predStates) {
+        //std::vector<GateRef> predStates;
+        GateRef head = cfg->at(bbIdx).front();
+        auto ins = acc.Ins(head);
+        for (auto i = ins.begin(); i != ins.end(); i++) {
+            GateRef predState = *i;
             if (acc.GetOpCode(predState).IsState() || acc.GetOpCode(predState) == OpCode::STATE_ENTRY) {
                 LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(predState);
                 isFirst = false;
@@ -458,9 +462,10 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
         }
         LOG_COMPILER(INFO) << "]  succ=[";
         isFirst = true;
-        std::vector<GateRef> succStates;
-        acc.GetOutVector((*cfg)[bbIdx].front(), succStates);
-        for (const auto &succState : succStates) {
+        GateRef h = cfg->at(bbIdx).front();
+        auto uses = acc.Uses(h);
+        for (auto i = uses.begin(); i != uses.end(); i++) {
+            GateRef succState = *i;
             if (acc.GetOpCode(succState).IsState() || acc.GetOpCode(succState) == OpCode::STATE_ENTRY) {
                 LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(succState);
                 isFirst = false;
