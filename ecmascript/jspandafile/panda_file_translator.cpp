@@ -282,8 +282,8 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
                                                        const CString &entryPoint,
                                                        JSHandle<ConstantPool> constpool)
 {
-    auto recordInfo = jsPandaFile->FindRecordInfo(entryPoint);
-    if (recordInfo.hasParsedLiteralConstPool) {
+    auto recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(entryPoint);
+    if (recordInfo.IsParsedConstpoolOfCurrentVM(vm)) {
         return;
     }
 
@@ -378,7 +378,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), literal.GetTaggedValue());
         }
     }
-    const_cast<JSPandaFile *>(jsPandaFile)->UpdateHasParsedLiteralConstpool(entryPoint);
+    recordInfo.SetParsedConstpoolVM(vm);
 }
 
 JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)

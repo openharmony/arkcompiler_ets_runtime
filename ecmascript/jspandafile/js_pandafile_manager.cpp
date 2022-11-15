@@ -68,9 +68,6 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
 const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
                                                        std::string_view entryPoint, const void *buffer, size_t size)
 {
-    if (buffer == nullptr || size == 0) {
-        return nullptr;
-    }
     {
         os::memory::LockHolder lock(jsPandaFileLock_);
         const JSPandaFile *jsPandaFile = FindJSPandaFileUnlocked(filename);
@@ -79,7 +76,9 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
             return jsPandaFile;
         }
     }
-
+    if (buffer == nullptr || size == 0) {
+        return nullptr;
+    }
     auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
