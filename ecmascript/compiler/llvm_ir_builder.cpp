@@ -213,13 +213,13 @@ void LLVMIRBuilder::Build()
     for (size_t bbIdx = 0; bbIdx < scheduledGates_->size(); bbIdx++) {
         const std::vector<GateRef>& bb = scheduledGates_->at(bbIdx);
         OperandsVector predecessors;
-        std::vector<GateRef> ivec;
-        acc_.GetInVector(bb[0], ivec);
-        for (auto in : ivec) {
-            if (!acc_.GetOpCode(in).IsState()) {
+        auto ins = acc_.Ins(bb[0]);
+        for (auto i = ins.begin(); i != ins.end(); i++) {
+            GateRef r = *i;
+            if (!acc_.GetOpCode(r).IsState()) {
                 continue;
             }
-            predecessors.insert(instID2bbID_[acc_.GetId(in)]);
+            predecessors.insert(instID2bbID_[acc_.GetId(r)]);
         }
         LinkToLLVMCfg(bbIdx, predecessors);
 
@@ -316,30 +316,6 @@ BasicBlockImpl *LLVMIRBuilder::EnsureBBImpl(BasicBlock *bb) const
 
 void LLVMIRBuilder::GenPrologue([[maybe_unused]] LLVMModuleRef &module, LLVMBuilderRef &builder)
 {
-    /* current frame for x86_64 system:
-    for optimized entry frame
-         0    pre   <-- rbp register
-        -8    type
-        -16   current sp before call other function
-        -24   pre frame thread fp
-    for optimized frame
-         0    pre rbp  <-- rbp
-        -8    type
-        -16   current sp before call other function
-
-     for 32 arm bit system:
-        not support
-     for arm64 system
-     for optimized entry frame
-         0    pre rbp  <-- x29 register
-        -8    type
-        -16   current sp before call other function
-        -24   pre frame thread fp
-    for optimized frame
-        0    pre rbp  <-- rbp
-        -8    type
-        -16   current sp before call other function
-    */
     if (compCfg_->Is32Bit()) {
         return;
     }
@@ -352,19 +328,17 @@ void LLVMIRBuilder::GenPrologue([[maybe_unused]] LLVMModuleRef &module, LLVMBuil
     LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
 
     LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder, llvmFpAddr, slotType_, "cast_int_t");
-    LLVMValueRef frameTypeSlotAddr = LLVMBuildSub(builder, frameAddr, LLVMConstInt(slotType_,
-        slotSize_, false), "");
-    LLVMValueRef addr = LLVMBuildIntToPtr(builder, frameTypeSlotAddr,
-        LLVMPointerType(slotType_, 0), "frameType.Addr");
+    LLVMValueRef frameTypeSlotAddr = LLVMBuildSub(builder, frameAddr, LLVMConstInt(slotType_, slotSize_, false), "");
+    LLVMValueRef addr = LLVMBuildIntToPtr(builder, frameTypeSlotAddr, LLVMPointerType(slotType_, 0), "frameType.Addr");
 
     int reservedSlotsSize = slotSize_ * static_cast<int>(ReservedSlots::OPTIMIZED_RESERVED_SLOT);
     if (frameType == panda::ecmascript::FrameType::OPTIMIZED_FRAME) {
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
-            std::to_string(reservedSlotsSize).c_str());
+                                           std::to_string(reservedSlotsSize).c_str());
     } else if (frameType == panda::ecmascript::FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
         reservedSlotsSize = slotSize_ * static_cast<int>(ReservedSlots::OPTIMIZED_JS_FUNCTION_RESERVED_SLOT);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
-            std::to_string(reservedSlotsSize).c_str());
+                                           std::to_string(reservedSlotsSize).c_str());
     } else {
         LOG_COMPILER(FATAL) << "frameType interpret type error !";
         ASSERT_PRINT(static_cast<uintptr_t>(frameType), "is not support !");
@@ -469,7 +443,7 @@ LLVMTypeRef LLVMIRBuilder::GetMachineRepType(MachineRep rep) const
 void LLVMIRBuilder::HandleCall(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL || callOp == OpCode::BUILTINS_CALL) {
         VisitCall(gate, ins, callOp);
@@ -481,14 +455,14 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
 void LLVMIRBuilder::HandleBytecodeCall(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     VisitBytecodeCall(gate, ins);
 }
 
 void LLVMIRBuilder::HandleRuntimeCall(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     VisitRuntimeCall(gate, ins);
 }
 
@@ -563,7 +537,7 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
 void LLVMIRBuilder::HandleRuntimeCallWithArgv(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     VisitRuntimeCallWithArgv(gate, ins);
 }
 
@@ -745,15 +719,6 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMGetParamTypes(calleeFuncType, paramTypes.data());
 
     int extraParameterCnt = 0;
-    // for arm32, r0-r3 must be occupied by fake parameters, then the actual paramters will be in stack.
-    if (compCfg_->Is32Bit() && calleeDescriptor->GetTargetKind() != CallSignature::TargetKind::RUNTIME_STUB) {
-        if (calleeDescriptor->GetCallConv() == CallSignature::CallConv::WebKitJSCallConv) {
-            for (int i = 0; i < CompilationConfig::FAKE_REGISTER_PARAMTERS_ARM32; i++) {
-                params.push_back(gate2LValue_[glueGate]);
-            }
-            extraParameterCnt += CompilationConfig::FAKE_REGISTER_PARAMTERS_ARM32;
-        }
-    }
     size_t actualNumArgs = 0;
     LLVMValueRef bcOffset = LLVMConstInt(LLVMInt32Type(), 0, 0);
     ComputeArgCountAndBCOffset(actualNumArgs, bcOffset, inList, kind);
@@ -854,7 +819,7 @@ void LLVMIRBuilder::VisitAlloca(GateRef gate)
 void LLVMIRBuilder::HandlePhi(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     VisitPhi(gate, ins);
 }
 
@@ -863,7 +828,7 @@ void LLVMIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &srcGates)
     LLVMTypeRef type = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef phi = LLVMBuildPhi(builder_, type, "");
     std::vector<GateRef> relMergeIns;
-    acc_.GetInVector(srcGates[0], relMergeIns);
+    acc_.GetIns(srcGates[0], relMergeIns);
     bool addToPhiRebuildList = false;
     for (int i = 1; i < static_cast<int>(srcGates.size()); i++) {
         GateId gateId = acc_.GetId(relMergeIns[i - 1]);
@@ -917,7 +882,7 @@ void LLVMIRBuilder::VisitReturn([[maybe_unused]] GateRef gate, [[maybe_unused]] 
 void LLVMIRBuilder::HandleReturn(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     VisitReturn(gate, 1, ins);
 }
 
@@ -959,7 +924,7 @@ void LLVMIRBuilder::LinkToLLVMCfg(int bbId, const OperandsVector &predecessors)
 void LLVMIRBuilder::HandleGoto(GateRef gate)
 {
     std::vector<GateRef> outs;
-    acc_.GetOutStateVector(gate, outs);
+    acc_.GetOutStates(gate, outs);
     int block = instID2bbID_[acc_.GetId(gate)];
     int bbOut = instID2bbID_[acc_.GetId(outs[0])];
     switch (acc_.GetOpCode(gate)) {
@@ -1005,11 +970,7 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
     LLVMValueRef llvmValue = nullptr;
     auto machineType = acc_.GetMachineType(gate);
     if (machineType == MachineType::ARCH) {
-        if (compCfg_->Is32Bit()) {
-            machineType = MachineType::I32;
-        } else {
-            machineType = MachineType::I64;
-        }
+        machineType = compCfg_->Is32Bit() ? MachineType::I32 : MachineType::I64;
     }
     if (machineType == MachineType::I32) {
         llvmValue = LLVMConstInt(LLVMInt32Type(), value.to_ulong(), 0);
@@ -1064,14 +1025,14 @@ void LLVMIRBuilder::VisitRelocatableData(GateRef gate, uint64_t value)
 void LLVMIRBuilder::HandleZExtInt(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     VisitZExtInt(gate, ins[0]);
 }
 
 void LLVMIRBuilder::HandleSExtInt(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     VisitSExtInt(gate, ins[0]);
 }
 
@@ -1083,11 +1044,6 @@ void LLVMIRBuilder::HandleParameter(GateRef gate)
 void LLVMIRBuilder::VisitParameter(GateRef gate)
 {
     int argth = static_cast<int>(acc_.GetBitField(gate));
-    if (callConv_ == CallSignature::CallConv::WebKitJSCallConv) {
-        if (compCfg_->Is32Bit() && argth > 0) {
-            argth += CompilationConfig::FAKE_REGISTER_PARAMTERS_ARM32;
-        }
-    }
     LLVMValueRef value = LLVMGetParam(function_, argth);
     ASSERT(LLVMTypeOf(value) == ConvertLLVMTypeFromGate(gate));
     gate2LValue_[gate] = value;
@@ -1118,9 +1074,9 @@ void LLVMIRBuilder::SaveLexicalEnvOnFrame(LLVMValueRef value)
 void LLVMIRBuilder::HandleBranch(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     std::vector<GateRef> outs;
-    acc_.GetOutStateVector(gate, outs);
+    acc_.GetOutStates(gate, outs);
     GateRef bTrue = (acc_.GetOpCode(outs[0]) == OpCode::IF_TRUE) ? outs[0] : outs[1];
     GateRef bFalse = (acc_.GetOpCode(outs[0]) == OpCode::IF_FALSE) ? outs[0] : outs[1];
     int bbTrue = instID2bbID_[acc_.GetId(bTrue)];
@@ -1176,9 +1132,9 @@ void LLVMIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfalse
 void LLVMIRBuilder::HandleSwitch(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     std::vector<GateRef> outs;
-    acc_.GetOutStateVector(gate, outs);
+    acc_.GetOutStates(gate, outs);
     VisitSwitch(gate, ins[1], outs);
 }
 
@@ -1274,7 +1230,7 @@ LLVMValueRef LLVMIRBuilder::CanonicalizeToPtr(LLVMValueRef value)
 void LLVMIRBuilder::HandleIntRev(GateRef gate)
 {
     std::vector<GateRef> ins;
-    acc_.GetInVector(gate, ins);
+    acc_.GetIns(gate, ins);
     VisitIntRev(gate, ins[0]);
 }
 
@@ -2027,14 +1983,6 @@ LLVMTypeRef LLVMModule::GetFuncType(const CallSignature *stubDescriptor)
     if (paramsType != nullptr) {
         LLVMTypeRef glueType = ConvertLLVMTypeFromVariableType(paramsType[0]);
         paramTys.push_back(glueType);
-        if (cfg_.Is32Bit() && stubDescriptor->GetTargetKind() != CallSignature::TargetKind::RUNTIME_STUB) {
-            if (stubDescriptor->GetCallConv() == CallSignature::CallConv::WebKitJSCallConv) {
-                for (int i = 0; i < CompilationConfig::FAKE_REGISTER_PARAMTERS_ARM32; i++) {
-                    paramTys.push_back(glueType);  // fake paramter's type is same with glue type
-                }
-                extraParameterCnt += CompilationConfig::FAKE_REGISTER_PARAMTERS_ARM32;
-            }
-        }
 
         for (size_t i = 1; i < paramCount; i++) {
             paramTys.push_back(ConvertLLVMTypeFromVariableType(paramsType[i]));

@@ -21,7 +21,7 @@ void GuardLowering::LowerGuard(GateRef gate)
     GateRef checkGate = acc_.GetIn(gate, 1);
     acc_.ReplaceValueIn(gate, builder_.False(), 0);
     std::vector<GateRef> outs;
-    acc_.GetOutVector(gate, outs); // get guard next gate
+    acc_.GetOuts(gate, outs); // get guard next gate
     ASSERT(outs.size() == 1);
     GateRef next = outs[0];
     GateRef prev = acc_.GetState(next);

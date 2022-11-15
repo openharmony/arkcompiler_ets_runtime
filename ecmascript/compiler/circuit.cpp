@@ -269,16 +269,6 @@ bool Circuit::IsSelector(GateRef gate) const
     return false;
 }
 
-std::vector<GateRef> Circuit::GetInVector(GateRef gate) const
-{
-    std::vector<GateRef> result;
-    const Gate *curGate = LoadGatePtrConst(gate);
-    for (size_t idx = 0; idx < curGate->GetNumIns(); idx++) {
-        result.push_back(GetGateRef(curGate->GetInGateConst(idx)));
-    }
-    return result;
-}
-
 GateRef Circuit::GetIn(GateRef gate, size_t idx) const
 {
     ASSERT(idx < LoadGatePtrConst(gate)->GetNumIns());

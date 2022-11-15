@@ -26,7 +26,6 @@
 #include "ecmascript/frames.h"
 
 #include "libpandabase/macros.h"
-
 #include "securec.h"
 
 namespace panda::ecmascript::kungfu {
@@ -92,7 +91,6 @@ private:
     void ModifyIn(GateRef gate, size_t idx, GateRef in);
     void NewIn(GateRef gate, size_t idx, GateRef in);
     std::vector<GateRef> GetOutVector(GateRef gate) const;
-    std::vector<GateRef> GetInVector(GateRef gate) const;
     bool IsFirstOutNull(GateRef gate) const;
     bool IsInGateNull(GateRef gate, size_t idx) const;
     GateRef GetIn(GateRef gate, size_t idx) const;
@@ -122,6 +120,7 @@ private:
     bool isArch64_ {false};
 
     friend class GateAccessor;
+    friend class ConstGateAccessor;
     friend class Verifier;
 };
 }  // namespace panda::ecmascript::kungfu

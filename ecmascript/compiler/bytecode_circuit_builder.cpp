@@ -1102,7 +1102,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId,
     if (ans == Circuit::NullGate() && tmpAcc) {
         if (!bb.trys.empty()) {
             std::vector<GateRef> outList;
-            gateAcc_.GetOutVector(bb.dependStart, outList);
+            gateAcc_.GetOuts(bb.dependStart, outList);
             ASSERT(outList.size() == 1);
             const auto &getExceptionGate = outList.at(0);
             ASSERT(gateAcc_.GetOpCode(getExceptionGate) == OpCode::GET_EXCEPTION);
