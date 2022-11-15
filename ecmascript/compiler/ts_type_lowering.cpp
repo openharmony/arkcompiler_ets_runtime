@@ -152,13 +152,13 @@ void TSTypeLowering::Lower(GateRef gate)
             LowerTypedAshr(gate);
             break;
         case EcmaOpcode::AND2_IMM8_V8:
-            // lower JS_AND
+            LowerTypedAnd(gate);
             break;
         case EcmaOpcode::OR2_IMM8_V8:
-            // lower JS_OR
+            LowerTypedOr(gate);
             break;
         case EcmaOpcode::XOR2_IMM8_V8:
-            // lower JS_XOR
+            LowerTypedXor(gate);
             break;
         case EcmaOpcode::EXP_IMM8_V8:
             // lower JS_EXP
@@ -510,6 +510,45 @@ void TSTypeLowering::LowerTypedAshr(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_ASHR>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void TSTypeLowering::LowerTypedAnd(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_AND>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void TSTypeLowering::LowerTypedOr(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_OR>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void TSTypeLowering::LowerTypedXor(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_XOR>(gate);
     } else {
         acc_.DeleteGuardAndFrameState(gate);
     }

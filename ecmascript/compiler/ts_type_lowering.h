@@ -65,6 +65,9 @@ private:
     void LowerTypedShl(GateRef gate);
     void LowerTypedShr(GateRef gate);
     void LowerTypedAshr(GateRef gate);
+    void LowerTypedAnd(GateRef gate);
+    void LowerTypedOr(GateRef gate);
+    void LowerTypedXor(GateRef gate);
     void LowerTypedInc(GateRef gate);
     void LowerTypedDec(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
