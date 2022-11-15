@@ -2424,7 +2424,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
     ObjectFactory *factory = ecmaVm->GetFactory();
     Method *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    JSHandle<JSTaggedValue> constpool(thread, JSTaggedValue::Undefined());
+    JSHandle<ConstantPool> constpool;
     JSHandle<TaggedArray> elementsLiteral =
         LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, scopeId, constpool);
     ASSERT(elementsLiteral->GetLength() > 0);

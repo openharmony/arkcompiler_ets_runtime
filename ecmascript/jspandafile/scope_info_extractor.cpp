@@ -25,14 +25,15 @@ JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t s
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     Method *method = FrameHandler(thread).GetMethod();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    JSHandle<JSTaggedValue> constpool(thread, method->GetConstantPool());
+    JSHandle<ConstantPool> constpool(thread, method->GetConstantPool());
 
     JSHandle<TaggedArray> elementsLiteral;
     if (jsPandaFile->IsNewVersion()) {
-        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedValue().GetTaggedObject());
-        panda_file::File::IndexHeader *indexHeader = taggedPool->GetIndexHeader();
+        panda_file::File::IndexHeader *indexHeader = constpool->GetIndexHeader();
         auto pf = jsPandaFile->GetPandaFile();
         Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
         panda_file::File::EntityId id = indexs[scopeId];
