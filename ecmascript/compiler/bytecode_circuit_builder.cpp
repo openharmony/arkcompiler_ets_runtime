@@ -1199,7 +1199,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
         });
     }
 
-    if (HasTypes() && IsTypeLoweringEnabled()) {
+    if (IsTypeLoweringEnabled()) {
         frameStateBuilder_.BuildFrameState();
     }
 

@@ -96,13 +96,15 @@ private:
 class TypeInferPass {
 public:
     bool Run(PassData* data, BytecodeCircuitBuilder *builder, const JSHandle<JSTaggedValue> &constantPool,
-             TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId)
+             TSManager *tsManager, LexEnvManager *lexEnvManager, size_t methodId, bool hasTypes)
     {
         TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
-        TypeInfer typeInfer(builder, data->GetCircuit(), constantPool, tsManager,
-                            lexEnvManager, methodId, enableLog, data->GetMethodName());
-        typeInfer.TraverseCircuit();
+        if (hasTypes) {
+            bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
+            TypeInfer typeInfer(builder, data->GetCircuit(), constantPool, tsManager,
+                                lexEnvManager, methodId, enableLog, data->GetMethodName());
+            typeInfer.TraverseCircuit();
+        }
         return true;
     }
 };
