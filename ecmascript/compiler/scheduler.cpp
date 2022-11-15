@@ -83,7 +83,7 @@ void Scheduler::CalculateDominatorTree(const Circuit *circuit,
         semiDom[0] = semiDom.size();
         for (size_t idx = bbGatesList.size() - 1; idx >= 1; idx--) {
             std::vector<GateRef> preGates;
-            acc.GetInStateVector(bbGatesList[idx], preGates);
+            acc.GetInStates(bbGatesList[idx], preGates);
             for (const auto &predGate : preGates) {
                 if (bbGatesAddrToIdx.count(predGate) > 0) {
                     size_t preGateIdx = bbGatesAddrToIdx[predGate];

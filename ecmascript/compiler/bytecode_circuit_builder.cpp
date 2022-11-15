@@ -880,6 +880,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
             SetBlockPred(*bbNext, ifFalse, trueRelay, isLoopBack);
             SetBlockPred(*bbNext, ifTrue, falseRelay, isLoopBack);
             bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});
+            bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});
         } else {
             ASSERT(bb.succs.size() == 2); // 2 : 2 num of successors
             [[maybe_unused]] uint32_t bitSet = 0;
