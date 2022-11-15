@@ -113,8 +113,9 @@ int32_t JSAPIVector::GetIndexFrom(JSThread *thread, const JSHandle<JSAPIVector> 
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     for (int32_t i = index; i < length; i++) {
         value.Update(JSTaggedValue(elements->Get(i)));
-        if (JSTaggedValue::StrictEqual(thread, obj, value))
+        if (JSTaggedValue::StrictEqual(thread, obj, value)) {
             return i;
+        }
     }
     return -1;
 }
@@ -354,8 +355,9 @@ void JSAPIVector::GrowCapacity(JSThread *thread, const JSHandle<JSAPIVector> &ve
         uint32_t oldCapacity = elementData->GetLength();
         // 2 : 2 Capacity doubled
         uint32_t newCapacity = oldCapacity * 2;
-        if (newCapacity < minCapacity)
+        if (newCapacity < minCapacity) {
             newCapacity = minCapacity;
+        }
 
         if (newCapacity > MAX_ARRAY_SIZE) {
             newCapacity = (minCapacity > MAX_ARRAY_SIZE) ? MAX_VALUE : MAX_ARRAY_SIZE;

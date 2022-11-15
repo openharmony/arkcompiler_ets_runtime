@@ -826,7 +826,8 @@ void RandomGenerator::InitRandom()
     gettimeofday(&tv, NULL);
     randomState = static_cast<uint64_t>((tv.tv_sec * SECONDS_TO_SUBTLE) + tv.tv_usec);
     // the state must be non zero
-    if (randomState == 0)
+    if (randomState == 0) {
         randomState = 1;
+    }
 }
 }  // namespace panda::ecmascript::base

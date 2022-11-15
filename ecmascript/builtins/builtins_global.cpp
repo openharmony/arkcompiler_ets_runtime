@@ -387,8 +387,9 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
                 int32_t n = 0;
                 while ((((static_cast<uint32_t>(bb) << static_cast<uint32_t>(n)) & BIT_MASK_ONE) != 0)) {
                     n++;
-                    if (n > 4) // 4 : 4 means less than 4
+                    if (n > 4) { // 4 : 4 means less than 4
                         break;
+                    }
                 }
                 // 2. If n equals 1 or n is greater than 4, throw a URIError exception.
                 if ((n == 1) || (n > 4)) {  // 4: means greater than 4

@@ -121,13 +121,10 @@ public:
         switch (type) {
             case MemSpaceType::OLD_SPACE:
                 return oldSpace_;
-                break;
             case MemSpaceType::NON_MOVABLE:
                 return nonMovableSpace_;
-                break;
             case MemSpaceType::MACHINE_CODE_SPACE:
                 return machineCodeSpace_;
-                break;
             default:
                 UNREACHABLE();
                 break;

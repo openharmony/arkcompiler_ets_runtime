@@ -1151,8 +1151,9 @@ uint32_t BigInt::DivideAndRemainder(uint32_t highBit, uint32_t lowBit, uint32_t 
            highQuotient * lowDivisor > tempRemainder * HALFUINT32VALUE + lowDividend1) {
         highQuotient--;
         tempRemainder += highDivisor;
-        if (tempRemainder >= HALFUINT32VALUE)
+        if (tempRemainder >= HALFUINT32VALUE) {
             break;
+        }
     }
     uint32_t tempLowDividend = highDividend * HALFUINT32VALUE + lowDividend1 - highQuotient * divisor;
     uint32_t lowQuotient = tempLowDividend / highDivisor;
@@ -1163,8 +1164,9 @@ uint32_t BigInt::DivideAndRemainder(uint32_t highBit, uint32_t lowBit, uint32_t 
            lowQuotient * lowDivisor > tempRemainder * HALFUINT32VALUE + lowDividend2) {
         lowQuotient--;
         tempRemainder += highDivisor;
-        if (tempRemainder >= HALFUINT32VALUE)
+        if (tempRemainder >= HALFUINT32VALUE) {
             break;
+        }
     }
 
     // In order to facilitate the calculation, we start to make left alignment
@@ -1479,8 +1481,9 @@ static JSTaggedNumber Rounding(const uint64_t &sign, uint64_t &mantissa, uint64_
         if ((mantissa >> base::DOUBLE_SIGNIFICAND_SIZE) != 0) {
             mantissa = 0;
             exponent++;
-            if (exponent > base::DOUBLE_EXPONENT_BIAS)
+            if (exponent > base::DOUBLE_EXPONENT_BIAS) {
                 return JSTaggedNumber(sign ? -base::POSITIVE_INFINITY : base::POSITIVE_INFINITY);
+            }
         }
     }
     return CalculateNumber(sign, mantissa, exponent);

@@ -319,11 +319,15 @@ int TaggedTree<Derived>::FindEntry(JSThread *thread, const JSHandle<Derived> &tr
             return parentIndex;
         } else if (res == ComparisonResult::LESS) {
             JSTaggedValue child = tree->GetLeftChild(parentIndex);
-            if (child.IsHole()) break;
+            if (child.IsHole()) {
+                break;
+            }
             parentIndex = child.GetInt();
         } else {
             JSTaggedValue child = tree->GetRightChild(parentIndex);
-            if (child.IsHole()) break;
+            if (child.IsHole()) {
+                break;
+            }
             parentIndex = child.GetInt();
         }
         parentKey.Update(tree->GetKey(parentIndex));
@@ -375,11 +379,15 @@ JSHandle<Derived> TaggedTree<Derived>::Insert(JSThread *thread, JSHandle<Derived
             return tree;
         } else if (res == ComparisonResult::LESS) {
             JSTaggedValue child = newTree->GetLeftChild(parentIndex);
-            if (child.IsHole()) break;
+            if (child.IsHole()) {
+                break;
+            }
             parentIndex = child.GetInt();
         } else {
             JSTaggedValue child = newTree->GetRightChild(parentIndex);
-            if (child.IsHole()) break;
+            if (child.IsHole()) {
+                break;
+            }
             parentIndex = child.GetInt();
         }
         parentKey.Update(newTree->GetKey(parentIndex));

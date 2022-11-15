@@ -656,7 +656,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         TempRegister1Scope scope1(assembler);
         Register tmp = __ TempRegister1();
         const int64_t argoffsetSlot = static_cast<int64_t>(CommonArgIdx::FUNC) - 1;
-        __ Add(argV, argV, Immediate((NUM_MANDATORY_JSFUNC_ARGS + argoffsetSlot) *FRAME_SLOT_SIZE));
+        __ Add(argV, argV, Immediate((NUM_MANDATORY_JSFUNC_ARGS + argoffsetSlot) * FRAME_SLOT_SIZE));
         PushArgsWithArgv(assembler, glue, actualArgC, argV, tmp, fp, nullptr, nullptr);
     }
     __ Bind(&copyBoundArgument);
