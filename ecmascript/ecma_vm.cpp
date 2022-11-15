@@ -288,6 +288,11 @@ EcmaVM::~EcmaVM()
     // clear c_address: c++ pointer delete
     ClearBufferData();
 
+    if (!isBundlePack_) {
+        const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
+        const_cast<JSPandaFile *>(jsPandaFile)->DeleteParsedConstpoolVM(this);
+    }
+
     if (gcStats_ != nullptr) {
         if (options_.EnableGCStatsPrint()) {
             gcStats_->PrintStatisticResult(true);

@@ -2641,6 +2641,11 @@ void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
     vm->SetAssetPath(path);
 }
 
+std::string JSNApi::GetAssetPath(EcmaVM *vm)
+{
+    return vm->GetAssetPath().c_str();
+}
+
 void JSNApi::SetLoop(EcmaVM *vm, void *loop)
 {
     vm->SetLoop(loop);
