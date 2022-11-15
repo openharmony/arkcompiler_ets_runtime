@@ -32,9 +32,10 @@ namespace OHOS {
             return;
         }
         auto factory = vm->GetFactory();
-        JSHandle<TaggedArray> array = factory->NewTaggedArray(256 * 1024 + *data); // new huge object tagged array
+        const uint32_t hugeSize = 256 * 1024;
+        JSHandle<TaggedArray> array = factory->NewTaggedArray(hugeSize + *data); // new huge object tagged array
         if (*data > 0) {
-            JSHandle<TaggedArray> array1 = factory->NewTaggedArray(256 * 1024 + *data);
+            JSHandle<TaggedArray> array1 = factory->NewTaggedArray(hugeSize + *data);
             array->Set(vm->GetAssociatedJSThread(), 0, array1.GetTaggedValue());
         }
         const CString fileName = "snapshot";

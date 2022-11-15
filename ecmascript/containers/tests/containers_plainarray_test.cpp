@@ -126,7 +126,8 @@ protected:
         return result;
     }
 
-    JSTaggedValue PlainArrayRemoveRangeFrom(JSHandle<JSAPIPlainArray> plainArray, JSTaggedValue index, JSTaggedValue size)
+    JSTaggedValue PlainArrayRemoveRangeFrom(JSHandle<JSAPIPlainArray> plainArray, JSTaggedValue index,
+                                            JSTaggedValue size)
     {
         auto callInfo =
             TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 6 means the value

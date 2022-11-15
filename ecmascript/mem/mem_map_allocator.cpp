@@ -105,7 +105,7 @@ MemMap MemMapAllocator::PageMap(size_t size, size_t alignment)
 #ifdef PANDA_TARGET_UNIX
     void *result = mmap(0, allocSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 #else
-    size = std::min<size_t>(size, MEDIUM_POOL_SIZE * 2);
+    size = std::min<size_t>(size, MEDIUM_POOL_SIZE * 2); // 2 : twice the size of the medium pool
     allocSize = size + alignment;
     void *result = mmap(allocSize, -1, 0);
 #endif
