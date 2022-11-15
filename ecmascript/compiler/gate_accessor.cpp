@@ -153,7 +153,7 @@ GateRef GateAccessor::GetState(GateRef gate, size_t idx) const
     return circuit_->GetIn(gate, idx);
 }
 
-void GateAccessor::GetInStateVector(GateRef gate, std::vector<GateRef>& ins) const
+void GateAccessor::GetInStates(GateRef gate, std::vector<GateRef>& ins) const
 {
     const Gate *curGate = circuit_->LoadGatePtrConst(gate);
     for (size_t idx = 0; idx < curGate->GetStateCount(); idx++) {

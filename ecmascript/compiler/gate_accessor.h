@@ -420,11 +420,11 @@ private:
         return InsIterator(circuit_, &reinterpret_cast<In *>(circuit_->LoadGatePtr(gate) + 1)[endIndex]);
     }
 
-    void GetInStateVector(GateRef gate, std::vector<GateRef>& ins) const;
-
     void GetIns(GateRef gate, std::vector<GateRef>& ins) const;
 
     void GetOuts(GateRef gate, std::vector<GateRef>& outs) const;
+
+    void GetInStates(GateRef gate, std::vector<GateRef>& ins) const;
 
     void GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const;
 
