@@ -30,7 +30,7 @@ public:
     struct JSRecordInfo {
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
-        bool hasParsedLiteralConstPool {false};
+        CUnorderedSet<const EcmaVM *> vmListOfParsedConstPool;
         int moduleRecordIdx {-1};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
         bool hasTSTypes {false};
@@ -44,6 +44,20 @@ public:
         uint32_t GetTypeSummaryOffset() const
         {
             return typeSummaryOffset;
+        }
+
+        void SetParsedConstpoolVM(const EcmaVM *vm)
+        {
+            vmListOfParsedConstPool.insert(vm);
+        }
+
+        bool IsParsedConstpoolOfCurrentVM(const EcmaVM *vm) const
+        {
+            auto iter = vmListOfParsedConstPool.find(vm);
+            if (iter != vmListOfParsedConstPool.end()) {
+                return true;
+            }
+            return false;
         }
     };
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
@@ -211,7 +225,7 @@ public:
         return false;
     }
 
-    JSRecordInfo FindRecordInfo(const CString &recordName) const
+    JSRecordInfo &FindRecordInfo(const CString &recordName)
     {
         auto info = jsRecordInfo_.find(recordName);
         if (info == jsRecordInfo_.end()) {
@@ -219,16 +233,6 @@ public:
             UNREACHABLE();
         }
         return info->second;
-    }
-
-    void UpdateHasParsedLiteralConstpool(const CString &recordName)
-    {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info == jsRecordInfo_.end()) {
-            LOG_FULL(FATAL) << "find recordName failed: " << recordName;
-            UNREACHABLE();
-        }
-        info->second.hasParsedLiteralConstPool = true;
     }
 
     // note : it only uses in TDD
@@ -293,6 +297,13 @@ public:
     {
         JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
         return recordInfo.GetTypeSummaryOffset();
+    }
+
+    void DeleteParsedConstpoolVM(const EcmaVM *vm)
+    {
+        for (auto &recordInfo : jsRecordInfo_) {
+            recordInfo.second.vmListOfParsedConstPool.erase(vm);
+        }
     }
 
 private:
