@@ -31,6 +31,9 @@
 #include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
+const std::string TEST_ENTRY_POINT = "test";
+const std::string RETEST_ENTRY_POINT = "retest";
+
 void BlockSignals()
 {
 #if defined(PANDA_TARGET_UNIX)
@@ -127,7 +130,7 @@ int Main(const int argc, const char **argv)
             }
             std::cout << "QuickFix load patch success" << std::endl;
 
-            res = JSNApi::Execute(vm, testLoadFileName, entry);
+            res = JSNApi::Execute(vm, testLoadFileName, TEST_ENTRY_POINT);
             if (!res) {
                 std::cout << "Cannot execute panda file '" << testLoadFileName
                         << "' with entry '" << entry << "'" << std::endl;
@@ -151,7 +154,7 @@ int Main(const int argc, const char **argv)
             }
             std::cout << "QuickFix unload patch success" << std::endl;
 
-            res = JSNApi::Execute(vm, testUnloadFileName, entry);
+            res = JSNApi::Execute(vm, testUnloadFileName, RETEST_ENTRY_POINT);
             if (!res) {
                 std::cout << "Cannot execute panda file '" << testUnloadFileName
                         << "' with entry '" << entry << "'" << std::endl;

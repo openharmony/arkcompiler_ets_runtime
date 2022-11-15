@@ -31,11 +31,13 @@ host_quickfix_test_action("multi_patch") {
     "patch1",
     "patch2",
   ]
+  entry_point = "--entry-point=base"
 }
 
 foreach(testcase, test_list) {
   host_quickfix_test_action("${testcase}") {
     extra_patches = []
+    entry_point = "--entry-point=base"
   }
 }
 
