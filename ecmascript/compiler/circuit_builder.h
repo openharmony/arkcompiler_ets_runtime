@@ -133,8 +133,6 @@ public:
         TRIPLE_AARCH64,
         TRIPLE_ARM32,
     };
-    // fake parameters for register r1 ~ r3
-    static constexpr int FAKE_REGISTER_PARAMTERS_ARM32 = 3;
 
     CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isEnableBcTrace = false)
         : triple_(GetTripleFromString(triple)), isEnableBcTrace_(isEnableBcTrace), enablePGOProfiler_(enablePGOProfiler)

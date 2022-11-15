@@ -272,7 +272,7 @@ public:
         return { circuit_, gate };
     }
 
-    InWrapper Ins(GateRef gate)
+    InWrapper Ins(GateRef gate) const
     {
         return { circuit_, gate };
     }
@@ -297,11 +297,6 @@ public:
     }
 
     ~GateAccessor() = default;
-
-    void GetInVector(GateRef gate, std::vector<GateRef>& ins) const;
-    void GetInStateVector(GateRef gate, std::vector<GateRef>& ins) const;
-    void GetOutVector(GateRef gate, std::vector<GateRef>& outs) const;
-    void GetOutStateVector(GateRef gate, std::vector<GateRef>& outStates) const;
     void GetAllGates(std::vector<GateRef>& gates) const;
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
@@ -425,7 +420,106 @@ private:
         return InsIterator(circuit_, &reinterpret_cast<In *>(circuit_->LoadGatePtr(gate) + 1)[endIndex]);
     }
 
+    void GetInStateVector(GateRef gate, std::vector<GateRef>& ins) const;
+
+    void GetIns(GateRef gate, std::vector<GateRef>& ins) const;
+
+    void GetOuts(GateRef gate, std::vector<GateRef>& outs) const;
+
+    void GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const;
+
     Circuit *circuit_;
+
+    friend class LLVMIRBuilder;
+    friend class Scheduler;
+    friend class GuardLowering;
+    friend class ArgumentAccessor;
+    friend class BytecodeCircuitBuilder;
+};
+
+class ConstGateAccessor {
+public:
+    struct ConstInsIterator {
+        explicit ConstInsIterator(const Circuit* circuit, const In* in) : circuit_(circuit), in_(in)
+        {
+        }
+
+        GateRef operator*() const
+        {
+            return circuit_->GetGateRef(in_->GetGateConst());
+        }
+
+        const ConstInsIterator& operator++()
+        {
+            in_++;
+            return *this;
+        }
+        ConstInsIterator operator++(int)
+        {
+            ConstInsIterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+        OpCode GetOpCode() const
+        {
+            ASSERT(in_ != nullptr);
+            return in_->GetGateConst()->GetOpCode();
+        }
+
+        friend bool operator== (const ConstInsIterator& a, const ConstInsIterator& b)
+        {
+            return a.in_ == b.in_;
+        };
+        friend bool operator!= (const ConstInsIterator& a, const ConstInsIterator& b)
+        {
+            return a.in_ != b.in_;
+        };
+
+    private:
+        const Circuit* circuit_;
+        const In* in_;
+    };
+
+    struct ConstInWrapper {
+        const Circuit* circuit;
+        const GateRef gate;
+        auto begin()
+        {
+            return ConstGateAccessor(circuit).ConstInBegin(gate);
+        }
+        auto end()
+        {
+            return ConstGateAccessor(circuit).ConstInEnd(gate);
+        }
+    };
+
+    ConstInWrapper Ins(GateRef gate) const
+    {
+        return { circuit_, gate };
+    }
+
+    explicit ConstGateAccessor(const Circuit *circuit) : circuit_(circuit)
+    {
+    }
+
+    ~ConstGateAccessor() = default;
+
+private:
+    ConstInsIterator ConstInBegin(GateRef gate) const
+    {
+        return ConstInsIterator(circuit_, &reinterpret_cast<const In *>(circuit_->LoadGatePtrConst(gate) + 1)[0]);
+    }
+
+    ConstInsIterator ConstInEnd(GateRef gate) const
+    {
+        auto endIndex = circuit_->LoadGatePtrConst(gate)->GetNumIns();
+        return ConstInsIterator(circuit_,
+                                &reinterpret_cast<const In *>(circuit_->LoadGatePtrConst(gate) + 1)[endIndex]);
+    }
+
+    const Circuit *circuit_;
+    friend struct ConstInWrapper;
 };
 }
 #endif  // ECMASCRIPT_COMPILER_GATE_ACCESSOR_H

@@ -128,9 +128,9 @@ void GuardEliminating::TrustedTypePropagate(std::queue<GateRef>& workList, const
     while (!workList.empty()) {
         auto gate = workList.front();
         workList.pop();
-        std::vector<GateRef> outs;
-        acc_.GetOutVector(gate, outs);
-        for (auto phi : outs) {
+        auto uses = acc_.Uses(gate);
+        for (auto i = uses.begin(); i != uses.end(); i++) {
+            GateRef phi = *i;
             if ((acc_.GetOpCode(phi) != OpCode::VALUE_SELECTOR) ||
                 (acc_.GetGateType(phi) != acc_.GetGateType(gate))) {
                 continue;

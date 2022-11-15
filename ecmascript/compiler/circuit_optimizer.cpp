@@ -1563,11 +1563,11 @@ void GlobalValueNumbering::GetPartitionNodes(std::vector<std::shared_ptr<Partiti
         gateToNode[gate] = node;
     }
     for (auto gate : gates) {
-        std::vector<GateRef> ins;
-        acc_.GetInVector(gate, ins);
+        size_t count = acc_.GetNumIns(gate);
         auto node = gateToNode[gate];
-        for (size_t i = 0; i < ins.size(); ++i) {
-            auto defNode = gateToNode[ins[i]];
+        for (size_t i = 0; i < count; ++i) {
+            GateRef r = acc_.GetIn(gate, i);
+            auto defNode = gateToNode[r];
             defNode->SetUseByIndex(i, node);
         }
     }

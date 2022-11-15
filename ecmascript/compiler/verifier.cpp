@@ -225,12 +225,15 @@ bool Verifier::RunFixedGatesCheck(const Circuit *circuit, const std::vector<Gate
 }
 
 bool Verifier::RunFixedGatesRelationsCheck(const Circuit *circuit, const std::vector<GateRef> &fixedGatesList,
-    const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-    const std::function<bool(size_t, size_t)> &isAncestor)
+                                           const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                           const std::function<bool(size_t, size_t)> &isAncestor)
 {
+    ConstGateAccessor ac(circuit);
     for (const auto &fixedGate : fixedGatesList) {
         size_t cnt = 0;
-        for (const auto &predGate : circuit->GetInVector(fixedGate)) {
+        auto ins = ac.Ins(fixedGate);
+        for (auto i = ins.begin(); i != ins.end(); i++) {
+            GateRef predGate = *i;
             if (circuit->GetOpCode(predGate).IsFixed() &&
                 (circuit->GetOpCode(circuit->GetIn(fixedGate, 0)) == OpCode::LOOP_BEGIN && cnt == 2)) {
                 ASSERT(cnt > 0);
@@ -261,9 +264,12 @@ bool Verifier::RunFlowCyclesFind(const Circuit *circuit, std::vector<GateRef> *s
     const std::vector<GateRef> &bbGatesList, const std::vector<GateRef> &fixedGatesList)
 {
     circuit->AdvanceTime();
+    ConstGateAccessor ac(circuit);
     std::vector<GateRef> startGateList;
     for (const auto &gate : bbGatesList) {
-        for (const auto &predGate : circuit->GetInVector(gate)) {
+        auto ins = ac.Ins(gate);
+        for (auto i = ins.begin(); i != ins.end(); i++) {
+            GateRef predGate = *i;
             if (circuit->GetOpCode(predGate).IsSchedulable()) {
                 if (circuit->GetMark(predGate) == MarkCode::NO_MARK) {
                     startGateList.push_back(predGate);
@@ -273,7 +279,9 @@ bool Verifier::RunFlowCyclesFind(const Circuit *circuit, std::vector<GateRef> *s
         }
     }
     for (const auto &gate : fixedGatesList) {
-        for (const auto &predGate : circuit->GetInVector(gate)) {
+        auto ins = ac.Ins(gate);
+        for (auto i = ins.begin(); i != ins.end(); i++) {
+            GateRef predGate = *i;
             if (circuit->GetOpCode(predGate).IsSchedulable()) {
                 if (circuit->GetMark(predGate) == MarkCode::NO_MARK) {
                     startGateList.push_back(predGate);
@@ -360,10 +368,13 @@ bool Verifier::RunSchedulableGatesCheck(const Circuit *circuit, const std::vecto
 
 bool Verifier::RunPrologGatesCheck(const Circuit *circuit, const std::vector<GateRef> &schedulableGatesList)
 {
+    ConstGateAccessor ac(circuit);
     for (const auto &schedulableGate : schedulableGatesList) {
-        for (const auto &predGate : circuit->GetInVector(schedulableGate)) {
-            if (circuit->GetOpCode(predGate).IsProlog()) {
-                if (!circuit->Verify(predGate)) {
+        auto ins = ac.Ins(schedulableGate);
+        for (auto i = ins.begin(); i != ins.end(); i++) {
+            GateRef r = *i;
+            if (circuit->GetOpCode(r).IsProlog()) {
+                if (!circuit->Verify(r)) {
                     return false;
                 }
             }
@@ -409,9 +420,9 @@ bool Verifier::RunSchedulingBoundsCheck(const Circuit *circuit, const std::vecto
     return true;
 }
 
-std::vector<GateRef> Verifier::FindFixedGates(const Circuit *circuit, const std::vector<GateRef> &bbGatesList)
+void Verifier::FindFixedGates(const Circuit *circuit, const std::vector<GateRef> &bbGatesList,
+                              std::vector<GateRef> &fixedGatesList)
 {
-    std::vector<GateRef> fixedGatesList;
     for (const auto &bbGate : bbGatesList) {
         for (const auto &succGate : circuit->GetOutVector(bbGate)) {
             if (circuit->GetOpCode(succGate).IsFixed()) {
@@ -419,7 +430,6 @@ std::vector<GateRef> Verifier::FindFixedGates(const Circuit *circuit, const std:
             }
         }
     }
-    return fixedGatesList;
 }
 
 bool Verifier::Run(const Circuit *circuit, const std::string& methodName, bool enableLog)
@@ -521,7 +531,8 @@ bool Verifier::Run(const Circuit *circuit, const std::string& methodName, bool e
         }
         return false;
     }
-    std::vector<GateRef> fixedGatesList = FindFixedGates(circuit, bbGatesList);
+    std::vector<GateRef> fixedGatesList;
+    FindFixedGates(circuit, bbGatesList, fixedGatesList);
     if (!RunFixedGatesCheck(circuit, fixedGatesList)) {
         if (enableLog) {
             LOG_COMPILER(ERROR) << "[Verifier][Fail] RunFixedGatesCheck failed";
