@@ -290,17 +290,19 @@ HWTEST_F_L0(PGOProfilerTest, InvalidFormat)
     std::ofstream file("ark-profiler6/profiler.aprof");
     std::string result = "recordName\n";
     file.write(result.c_str(), result.size());
-    result = "recordName1:\n";
+    result = "recordName:[]\n";
     file.write(result.c_str(), result.size());
-    result = "recordName2:123/df\n";
+    result = "recordName2:[123/df/main]\n";
     file.write(result.c_str(), result.size());
-    result = "recordName3:test/11\n";
+    result = "recordName3:[test/11/main]\n";
     file.write(result.c_str(), result.size());
-    result = "recordName4:2313/11/2\n";
+    result = "recordName4:[2313]\n";
     file.write(result.c_str(), result.size());
     file.close();
     PGOProfilerLoader loader;
     loader.LoadProfiler("ark-profiler6/profiler.aprof", 2);
+    ASSERT_FALSE(loader.Match("recordName2", EntityId(123)));
+    ASSERT_FALSE(loader.Match("recordName4", EntityId(2313)));
 
     unlink("ark-profiler6/profiler.aprof");
     rmdir("ark-profiler6");
@@ -311,9 +313,9 @@ HWTEST_F_L0(PGOProfilerTest, DoubleRecordNameFormat)
     mkdir("ark-profiler7/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     std::ofstream file("ark-profiler7/profiler.aprof");
-    std::string result = "recordName:123/223\n";
+    std::string result = "recordName:[123/223/hello]\n";
     file.write(result.c_str(), result.size());
-    result = "recordName:1232/3\n";
+    result = "recordName:[1232/3/hello]\n";
     file.write(result.c_str(), result.size());
     file.close();
     PGOProfilerLoader loader;

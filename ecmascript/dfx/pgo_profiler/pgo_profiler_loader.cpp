@@ -63,13 +63,14 @@ void PGOProfilerLoader::LoadProfiler(const std::string &inPath, uint32_t hotness
 
 void PGOProfilerLoader::ParseProfiler(const std::string &profilerString)
 {
-    size_t index = profilerString.find_first_of(":");
-    if (index == std::string::npos) {
-        LOG_ECMA(ERROR) << "Profiler format error";
+    size_t index = profilerString.find_first_of("[");
+    size_t end = profilerString.find_last_of("]");
+    if (index == std::string::npos || end == std::string::npos || index > end) {
+        LOG_ECMA(ERROR) << "Profiler format error" << profilerString;
         return;
     }
-    CString recordName = ConvertToString(profilerString.substr(0, index));
-    std::string content = profilerString.substr(index + 1);
+    CString recordName = ConvertToString(profilerString.substr(0, index - 1));
+    std::string content = profilerString.substr(index + 1, end - index - 1);
     std::vector<std::string> hotnessMethodIdStrings = base::StringHelper::SplitString(content, ",");
     if (hotnessMethodIdStrings.empty()) {
         LOG_ECMA(INFO) << "hotness method is none";
@@ -95,22 +96,22 @@ void PGOProfilerLoader::ParseProfiler(const std::string &profilerString)
 void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::unordered_set<EntityId> &methodIds)
 {
     std::vector<std::string> methodCountString = base::StringHelper::SplitString(methodInfo, "/");
-    if (methodCountString.size() != METHOD_INFO_COUNT) {
-        LOG_ECMA(ERROR) << "method info format error";
+    if (methodCountString.size() < METHOD_INFO_COUNT) {
+        LOG_ECMA(ERROR) << "method info format error" << methodInfo;
         return;
     }
     char *endPtr = nullptr;
     static constexpr int NUMBER_BASE = 10;
     uint32_t count = static_cast<uint32_t>(strtol(methodCountString[1].c_str(), &endPtr, NUMBER_BASE));
     if (endPtr == methodCountString[1].c_str() || *endPtr != '\0') {
-        LOG_ECMA(ERROR) << "method count strtol error";
+        LOG_ECMA(ERROR) << "method count strtol error" << methodCountString[1];
         return;
     }
     if (count >= hotnessThreshold_) {
         endPtr = nullptr;
         uint32_t methodId = static_cast<uint32_t>(strtol(methodCountString[0].c_str(), &endPtr, NUMBER_BASE));
         if (endPtr == methodCountString[0].c_str() || *endPtr != '\0') {
-            LOG_ECMA(ERROR) << "method id strtol error";
+            LOG_ECMA(ERROR) << "method id strtol error" << methodCountString[0];
             return;
         }
         methodIds.emplace(methodId);
