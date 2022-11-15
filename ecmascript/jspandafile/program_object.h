@@ -16,23 +16,21 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_PROGRAM_OBJECT_H
 #define ECMASCRIPT_JSPANDAFILE_PROGRAM_OBJECT_H
 
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
+
 #include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/index_accessor.h"
-
 
 namespace panda {
 namespace ecmascript {
 class JSThread;
-class NativeAreaAllocator;
 
 class Program : public ECMAObject {
 public:
@@ -72,8 +70,7 @@ public:
     static JSHandle<ConstantPool> CreateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                   panda_file::File::EntityId id)
     {
-        const panda_file::File::IndexHeader *mainIndex =
-            jsPandaFile->GetPandaFile()->GetIndexHeader(id);
+        const panda_file::File::IndexHeader *mainIndex = jsPandaFile->GetPandaFile()->GetIndexHeader(id);
         LOG_ECMA_IF(mainIndex == nullptr, FATAL) << "Unknown methodId: " << id.GetOffset();
         auto constpoolSize = mainIndex->method_idx_size;
 
@@ -176,7 +173,7 @@ public:
         }
 
         if (val.IsHole()) {
-            EcmaHandleScope handleScope(thread);
+            [[maybe_unused]] EcmaHandleScope handleScope(thread);
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
@@ -194,7 +191,7 @@ public:
             }
 
             val = method.GetTaggedValue();
-            constpoolHandle->Set(thread, index, val);
+            constpoolHandle->SetObjectToCache(thread, index, val);
         }
 
         return val;
@@ -217,7 +214,7 @@ public:
         }
 
         if (val.IsHole()) {
-            EcmaHandleScope handleScope(thread);
+            [[maybe_unused]] EcmaHandleScope handleScope(thread);
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
 
@@ -234,7 +231,7 @@ public:
             }
 
             val = method.GetTaggedValue();
-            constpool->Set(thread, index, val);
+            constpool->SetObjectToCache(thread, index, val);
             return val;
         }
 
@@ -244,7 +241,7 @@ public:
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
                                                   uint32_t literal, CString entry)
     {
-        EcmaHandleScope handleScope(thread);
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         auto val = constpool->Get(literal);
         JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
 
@@ -261,13 +258,13 @@ public:
             ASSERT(jsPandaFile->IsNewVersion());
             panda_file::File::EntityId literalId = constpool->GetEntityId(literal);
             JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, literalId, JSHandle<JSTaggedValue>(constpool), entry);
+                thread, jsPandaFile, literalId, constpool, entry);
             if (isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined()) {
                 vm->GetAOTFileManager()->SetAOTFuncEntryForLiteral(jsPandaFile, *literalArray, *entryIndexes);
             }
 
             val = literalArray.GetTaggedValue();
-            constpool->Set(thread, literal, val);
+            constpool->SetObjectToCache(thread, literal, val);
             return val;
         }
 
@@ -278,7 +275,7 @@ public:
     static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index, CString entry)
     {
         static_assert(type == ConstPoolType::OBJECT_LITERAL || type == ConstPoolType::ARRAY_LITERAL);
-        EcmaHandleScope handleScope(thread);
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->Get(index);
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
@@ -299,13 +296,12 @@ public:
             panda_file::File::EntityId id = taggedPool->GetEntityId(index);
 
             // New inst
-            switch (type)
-            {
+            switch (type) {
                 case ConstPoolType::OBJECT_LITERAL: {
                     JSMutableHandle<TaggedArray> elements(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
                     LiteralDataExtractor::ExtractObjectDatas(
-                        thread, jsPandaFile, id, elements, properties, JSHandle<JSTaggedValue>(constpoolHandle), entry);
+                        thread, jsPandaFile, id, elements, properties, constpoolHandle, entry);
                     JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
                     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
@@ -326,7 +322,7 @@ public:
                 }
                 case ConstPoolType::ARRAY_LITERAL: {
                     JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
-                        thread, jsPandaFile, id, JSHandle<JSTaggedValue>(constpoolHandle), entry);
+                        thread, jsPandaFile, id, constpoolHandle, entry);
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length)));
                     arr->SetElements(thread, literal);
@@ -340,7 +336,7 @@ public:
                     LOG_FULL(FATAL) << "Unknown type: " << static_cast<uint8_t>(type);
                     UNREACHABLE();
             }
-            constpoolHandle->Set(thread, index, val);
+            constpoolHandle->SetObjectToCache(thread, index, val);
         }
 
         return val;
@@ -359,7 +355,7 @@ public:
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
         auto val = taggedPool->Get(index);
         if (val.IsHole()) {
-            EcmaHandleScope handleScope(thread);
+            [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
             panda_file::File::EntityId id = taggedPool->GetEntityId(index);
@@ -373,7 +369,7 @@ public:
                 foundStr.data, foundStr.utf16_length, foundStr.is_ascii, MemSpaceType::OLD_SPACE);
             val = JSTaggedValue(string);
 
-            constpoolHandle->Set(thread, index, val);
+            constpoolHandle->SetObjectToCache(thread, index, val);
         }
 
         return val;

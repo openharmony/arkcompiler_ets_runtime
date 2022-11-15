@@ -118,16 +118,13 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *base
 CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(vm->GetGlobalEnv()->GetFunctionClassWithProto());
-
     JSHandle<ConstantPool> constpool;
     bool isNewVersion = jsPandaFile->IsNewVersion();
     if (!isNewVersion) {
         JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, 0);
         if (constpoolVal.IsHole()) {
             constpool = PandaFileTranslator::ParseConstPool(vm, jsPandaFile);
-            // 1: old version dont support multi constpool
+            // old version dont support multi constpool
             vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue());
         } else {
             constpool = JSHandle<ConstantPool>(thread, constpoolVal);
@@ -139,10 +136,11 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     const CString &fileName = jsPandaFile->GetJSPandaFileDesc();
     for (const auto &item : recordInfos) {
         const CString &recordName = item.first;
-        LOG_ECMA(DEBUG) << "Parse constpool: " << fileName << ":" << recordName;
+
         vm->GetModuleManager()->HostResolveImportedModuleWithMerge(fileName, recordName);
 
         uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(recordName);
+        ASSERT(mainMethodIndex != 0);
         if (!isNewVersion) {
             PandaFileTranslator::ParseFuncAndLiteralConstPool(vm, jsPandaFile, recordName, constpool);
         } else {
@@ -150,20 +148,9 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
         }
 
         // Generate Program for every record.
-        auto methodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
-        JSHandle<Program> program = factory->NewProgram();
-        if (methodLiteral == nullptr) {
-            program->SetMainFunction(thread, JSTaggedValue::Undefined());
-        } else {
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-            JSHandle<Method> method = factory->NewMethod(methodLiteral);
-            JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
-
-            program->SetMainFunction(thread, mainFunc.GetTaggedValue());
-            method->SetConstantPool(thread, constpool);
-            programs.emplace_back(program);
-        }
+        JSHandle<Program> program =
+            PandaFileTranslator::GenerateProgramInternal(vm, jsPandaFile, mainMethodIndex, constpool);
+        programs.emplace_back(program);
     }
     if (isNewVersion) {
         GenerateConstpoolCache(thread, jsPandaFile, constpool);

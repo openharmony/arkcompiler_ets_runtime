@@ -37,20 +37,20 @@ public:
 
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
-                                   JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
+                                   JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
-                                                    JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
+                                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
-                                   JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
+                                   JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                     panda_file::File::EntityId index,
-                                                    JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
+                                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static JSHandle<JSFunction> DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                       JSHandle<Method> method, FunctionKind kind, uint16_t length,
                                                       const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
-        size_t index, JSHandle<JSTaggedValue> constpool, const CString &entryPoint = "");
+        size_t index, JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
 
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, size_t index,
                                             std::vector<uint32_t> &methodOffsets);
@@ -62,7 +62,7 @@ public:
                                                            panda_file::File::EntityId offset);
 private:
     static JSHandle<TaggedArray> EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
-        const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool,
+        const JSPandaFile *jsPandaFile, size_t index, JSHandle<ConstantPool> constpool,
         const CString &entryPoint = "");
 };
 }  // namespace panda::ecmascript
