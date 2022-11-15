@@ -258,8 +258,6 @@ public:
     CString FindEntryPoint(const CString &record) const;
 
     static CString ParseOhmUrl(const CString &fileName);
-    // For local merge abc, get record name from file name.
-    static CString PUBLIC_API ParseRecordName(const CString &fileName);
 
     bool IsSystemLib() const
     {

@@ -657,10 +657,10 @@ template("host_quickfix_test_action") {
   _retest_merge_file_ = "$target_out_dir/${_target_name_}/retest.txt"
   _patch_merge_file_ = "$target_out_dir/${_target_name_}/patch.txt"
 
-  _base_abc_path_ = "$target_out_dir/${_target_name_}/base.abc"
+  _base_abc_path_ = "$target_out_dir/${_target_name_}/merge.abc"
   _test_abc_path_ = "$target_out_dir/${_target_name_}/test.abc"
   _retest_abc_path_ = "$target_out_dir/${_target_name_}/retest.abc"
-  _patch_abc_path_ = "$target_out_dir/${_target_name_}/patch/base.abc"
+  _patch_abc_path_ = "$target_out_dir/${_target_name_}/patch/merge.abc"
 
   _test_expect_path_ = "./${_target_name_}/expect_output.txt"
 
@@ -781,13 +781,17 @@ template("host_quickfix_test_action") {
     out_puts = [ _patch_abc_path_ ]
   }
 
-  _script_args_ =
+  if (defined(invoker.entry_point)) {
+    _script_args_ = invoker.entry_point + " "
+  }
+
+  _script_args_ +=
       rebase_path(_base_abc_path_) + ":" + rebase_path(_test_abc_path_) + ":" +
       rebase_path(_retest_abc_path_) + ":" + rebase_path(_patch_abc_path_)
 
   foreach(patch, _extra_patches_) {
     _merge_file_ = "$target_out_dir/${_target_name_}/${patch}.txt"
-    _abc_file_ = "$target_out_dir/${_target_name_}/${patch}/base.abc"
+    _abc_file_ = "$target_out_dir/${_target_name_}/${patch}/merge.abc"
     action("gen_${_target_name_}_${patch}_merge_file") {
       script = "//arkcompiler/ets_runtime/test/quickfix/generate_merge_file.py"
       args = [
