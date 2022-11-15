@@ -177,6 +177,16 @@ void AsyncFunctionLowering::UpdateValueSelector(GateRef prevLoopBeginGate,
     GateRef loopBeginFirstState = accessor_.GetState(prevLoopBeginGate);
     GateRef newGate = circuit_->NewGate(OpCode(OpCode::MERGE), 2,
                                         {controlStateGate, loopBeginFirstState}, GateType::Empty());
+    GateRef emptyOffsetGate = circuit_->NewGate(OpCode(OpCode::CONSTANT), MachineType::I32,
+                                                        static_cast<BitField>(-1), // -1: distinguish bcoffset
+                                                        {Circuit::GetCircuitRoot(OpCode(OpCode::CIRCUIT_ROOT))},
+                                                        GateType::NJSValue());
+    GateRef restoreOffset = accessor_.GetValueIn(prevBcOffsetPhiGate);
+    // this value selector is compatible with await in the loop body
+    GateRef valueSelector = circuit_->NewGate(OpCode(OpCode::VALUE_SELECTOR), MachineType::I32, 2, // 2: num of valueIn
+                                              {newGate, restoreOffset, emptyOffsetGate},
+                                              GateType::NJSValue());
+    accessor_.ReplaceValueIn(prevBcOffsetPhiGate, valueSelector);
     accessor_.ReplaceStateIn(prevLoopBeginGate, newGate);
     auto loopBeginUses = accessor_.Uses(prevLoopBeginGate);
     for (auto use : loopBeginUses) {
