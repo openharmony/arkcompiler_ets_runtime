@@ -634,7 +634,7 @@ private:
     friend class JSPandaFileExecutor;
     CMap<uint32_t, EcmaVM *> WorkerList_ {};
     os::memory::Mutex mutex_;
-    void *loop_;
+    void *loop_ {nullptr};
 };
 }  // namespace ecmascript
 }  // namespace panda
