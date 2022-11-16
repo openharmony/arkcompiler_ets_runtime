@@ -54,9 +54,13 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     // pre-treat skipped method firstly.
     CollectSkippedMethod(bytecodeInfo, jsPandaFile, tsManager);
 
-    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, &cmpCfg,
-        tsManager, &bytecodes, &lexEnvManager, &skippedMethodNum]
+    CompilationInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_,
+        jsPandaFile, &bcInfoCollector);
+    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, &info, &skippedMethodNum]
         (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
+        auto jsPandaFile = info.jsPandaFile;
+        auto cmpCfg = info.cmpCfg;
+        auto tsManager = info.tsManager;
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
         uint32_t methodId = method->GetMethodId().GetOffset();
@@ -76,9 +80,9 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
 
         bool hasTyps = jsPandaFile->HasTSTypes(recordName);
-        Circuit circuit(cmpCfg.Is64Bit());
+        Circuit circuit(cmpCfg->Is64Bit());
         BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo, tsManager, &circuit,
-                                       &bytecodes, hasTyps, enableMethodLog && log_->OutputCIR(),
+                                       info.bytecodes, hasTyps, enableMethodLog && log_->OutputCIR(),
                                        EnableTypeLowering(), fullName, recordName);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, log_);
@@ -87,16 +91,16 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         PassData data(&circuit, log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         if (EnableTypeInfer()) {
-            pipeline.RunPass<TypeInferPass>(&builder, tsManager, &lexEnvManager, methodInfoId, hasTyps);
+            pipeline.RunPass<TypeInferPass>(&builder, &info, methodInfoId, hasTyps);
         }
-        pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
+        pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, cmpCfg);
         if (EnableTypeLowering()) {
-            pipeline.RunPass<TSTypeLoweringPass>(&cmpCfg, tsManager);
-            pipeline.RunPass<GuardEliminatingPass>(&cmpCfg);
-            pipeline.RunPass<GuardLoweringPass>(&cmpCfg);
-            pipeline.RunPass<TypeLoweringPass>(&cmpCfg, tsManager);
+            pipeline.RunPass<TSTypeLoweringPass>(&info);
+            pipeline.RunPass<GuardEliminatingPass>(cmpCfg);
+            pipeline.RunPass<GuardLoweringPass>(cmpCfg);
+            pipeline.RunPass<TypeLoweringPass>(cmpCfg, tsManager);
         }
-        pipeline.RunPass<SlowPathLoweringPass>(&cmpCfg, tsManager, method);
+        pipeline.RunPass<SlowPathLoweringPass>(cmpCfg, tsManager, method);
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);

@@ -126,7 +126,7 @@ void ArgumentAccessor::FillArgsGateType(const TypeRecorder *typeRecorder)
 void ArgumentAccessor::CollectArgs()
 {
     if (args_.size() == 0) {
-        GateAccessor(circuit_).GetOuts(argRoot_, args_);
+        GateAccessor(circuit_).GetArgsOutVector(args_);
         std::reverse(args_.begin(), args_.end());
     }
 }
