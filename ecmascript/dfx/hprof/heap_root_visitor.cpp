@@ -23,8 +23,8 @@ void HeapRootVisitor::VisitHeapRoots(JSThread *thread, const RootVisitor &visito
                                      const RootRangeVisitor &rangeVisitor,
                                      const RootBaseAndDerivedVisitor &derivedVisitor)
 {
-    auto ecma_vm = GetVMInstance(thread);
-    ecma_vm->Iterate(visitor, rangeVisitor);
+    auto ecmaVm = GetVMInstance(thread);
+    ecmaVm->Iterate(visitor, rangeVisitor);
     thread->Iterate(visitor, rangeVisitor, derivedVisitor);
 }
 
