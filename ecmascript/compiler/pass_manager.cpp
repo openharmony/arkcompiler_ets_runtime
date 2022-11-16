@@ -35,12 +35,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     }
 
     auto bcInfoCollector = BytecodeInfoCollector(jsPandaFile);
-    auto constantPool = ResolveModuleAndConstPool(jsPandaFile, fileName);
-
-    // ts type system
-    TSManager *tsManager = vm_->GetTSManager();
-    tsManager->DecodeTSTypes(jsPandaFile);
-    tsManager->GenerateSnapshotConstantPool(constantPool.GetTaggedValue());
+    ResolveModuleAndConstPool(jsPandaFile, fileName);
 
     auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
@@ -54,11 +49,13 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     uint32_t skippedMethodNum = 0;
     profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
 
+    // ts type system
+    TSManager *tsManager = vm_->GetTSManager();
     // pre-treat skipped method firstly.
     CollectSkippedMethod(bytecodeInfo, jsPandaFile, tsManager);
 
-    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, constantPool,
-        &cmpCfg, tsManager, &bytecodes, &lexEnvManager, &skippedMethodNum]
+    bytecodeInfo.EnumerateBCInfo([this, &fileName, &enableMethodLog, aotModule, jsPandaFile, &cmpCfg,
+        tsManager, &bytecodes, &lexEnvManager, &skippedMethodNum]
         (const CString &recordName, uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoId) {
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
@@ -90,11 +87,11 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         PassData data(&circuit, log_, enableMethodLog, fullName);
         PassRunner<PassData> pipeline(&data);
         if (EnableTypeInfer()) {
-            pipeline.RunPass<TypeInferPass>(&builder, constantPool, tsManager, &lexEnvManager, methodInfoId, hasTyps);
+            pipeline.RunPass<TypeInferPass>(&builder, tsManager, &lexEnvManager, methodInfoId, hasTyps);
         }
         pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, &cmpCfg);
         if (EnableTypeLowering()) {
-            pipeline.RunPass<TSTypeLoweringPass>(&cmpCfg, tsManager, constantPool);
+            pipeline.RunPass<TSTypeLoweringPass>(&cmpCfg, tsManager);
             pipeline.RunPass<GuardEliminatingPass>(&cmpCfg);
             pipeline.RunPass<GuardLoweringPass>(&cmpCfg);
             pipeline.RunPass<TypeLoweringPass>(&cmpCfg, tsManager);
@@ -137,8 +134,7 @@ JSPandaFile *PassManager::CreateJSPandaFile(const CString &fileName)
     return jsPandaFile;
 }
 
-JSHandle<JSTaggedValue> PassManager::ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile,
-                                                               const std::string &fileName)
+void PassManager::ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, const std::string &fileName)
 {
     JSThread *thread = vm_->GetJSThread();
 
@@ -156,7 +152,8 @@ JSHandle<JSTaggedValue> PassManager::ResolveModuleAndConstPool(const JSPandaFile
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
     JSHandle<Method> method(thread, mainFunc->GetMethod());
     JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());
-    return constPool;
+    TSManager *tsManager = vm_->GetTSManager();
+    tsManager->InitSnapshotConstantPool(constPool.GetTaggedValue());
 }
 
 bool PassManager::FilterMethod(const CString &recordName, MethodLiteral *method, MethodPcInfo &methodPCInfo)

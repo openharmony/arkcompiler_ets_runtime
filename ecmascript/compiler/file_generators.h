@@ -234,6 +234,7 @@ public:
 
     void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler)
     {
+        vm_->GetTSManager()->AddHClassToSnapshotConstantPool();
         modulePackage_.emplace_back(Module(llvmModule, assembler));
     }
 

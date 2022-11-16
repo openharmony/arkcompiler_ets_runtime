@@ -748,9 +748,10 @@ void TSTypeLowering::LowerTypedNot(GateRef gate)
 void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    auto propIndex = acc_.GetBitField(acc_.GetValueIn(gate, 1));
+    uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    auto prop = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), propIndex);
+    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
 
     GateRef receiver = Circuit::NullGate();
     if (isThis) {
@@ -768,7 +769,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool i
         acc_.DeleteGuardAndFrameState(gate);
         return;
     }
-    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex-constantPool_->GetCacheLength());
+    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex);
 
     auto propertyOffset = tsManager_->GetPropertyOffset(hclass, prop);
     if (propertyOffset == -1) { // slowpath
@@ -797,9 +798,10 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool i
 void TSTypeLowering::LowerTypedStObjByName(GateRef gate, GateRef thisObj, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    auto propIndex = acc_.GetBitField(acc_.GetValueIn(gate, 1));
+    uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    auto prop = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), propIndex);
+    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
 
     GateRef receiver = Circuit::NullGate();
     GateRef value = Circuit::NullGate();
@@ -820,7 +822,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, GateRef thisObj, bool i
         acc_.DeleteGuardAndFrameState(gate);
         return;
     }
-    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex-constantPool_->GetCacheLength());
+    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex);
 
     auto propertyOffset = tsManager_->GetPropertyOffset(hclass, prop);
     if (propertyOffset == -1) { // slowpath

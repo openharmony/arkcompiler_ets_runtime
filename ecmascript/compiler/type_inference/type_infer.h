@@ -32,12 +32,11 @@ enum InferState : uint8_t {
 
 class TypeInfer {
 public:
-    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
-              const JSHandle<JSTaggedValue> &constantPool, TSManager *tsManager,
+    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, TSManager *tsManager,
               LexEnvManager *lexEnvManager, size_t methodId, bool enableLog,
               const std::string& name)
-        : builder_(builder), circuit_(circuit), constantPool_(constantPool), gateAccessor_(circuit),
-          tsManager_(tsManager), lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog),
+        : builder_(builder), circuit_(circuit), gateAccessor_(circuit), tsManager_(tsManager),
+          lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog),
           methodName_(name)
     {
     }
@@ -103,6 +102,7 @@ private:
     bool InferLoopBeginPhiGate(GateRef gate);
     bool GetObjPropWithName(GateRef gate, GateType objType, uint64_t index);
     bool GetSuperProp(GateRef gate, uint64_t index, bool isString = true);
+    GlobalTSTypeRef ConvertPrimitiveToBuiltin(const GateType &gateType);
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
@@ -128,6 +128,11 @@ private:
             tsManager_->IsInterfaceTypeKind(type);
     }
 
+    inline bool ShouldConvertToBuiltinArray(const GateType &type) const
+    {
+        return tsManager_->IsArrayTypeKind(type) && tsManager_->IsBuiltinsDTSEnabled();
+    }
+
     void PrintAllByteCodesTypes() const;
     void Verify() const;
     void TypeCheck(GateRef gate) const;
@@ -149,7 +154,6 @@ private:
 
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
-    JSHandle<ConstantPool> constantPool_;
     GateAccessor gateAccessor_;
     TSManager *tsManager_ {nullptr};
     LexEnvManager *lexEnvManager_ {nullptr};

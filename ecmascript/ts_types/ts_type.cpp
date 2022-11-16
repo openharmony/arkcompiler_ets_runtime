@@ -12,16 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ts_type.h"
+#include "ecmascript/ts_types/ts_type.h"
 
-#include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/layout_info.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/ts_types/ts_obj_layout_info.h"
-#include "ecmascript/ts_types/ts_type_table.h"
 
 namespace panda::ecmascript {
 JSHClass *TSObjectType::GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType, TSObjectTypeKind kind)

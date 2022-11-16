@@ -17,13 +17,8 @@
 #define ECMASCRIPT_TS_TYPES_TS_TYPE_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/property_attributes.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
-
-#include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
 enum class TSObjectTypeKind: uint8_t {
@@ -73,6 +68,7 @@ public:
 
 private:
     JSHClass *CreateHClassByProps(JSThread *thread, JSHandle<TSObjLayoutInfo> propType) const;
+
     JSHClass *CreatePrototypeHClassByProps(JSThread *thread, JSHandle<TSObjLayoutInfo> propType) const;
 };
 
@@ -85,11 +81,12 @@ public:
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
                                          JSHandle<EcmaString> propName);
+
     static GlobalTSTypeRef GetSuperPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
                                               JSHandle<EcmaString> propName, PropertyType propType);
 
     static GlobalTSTypeRef GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
-        JSHandle<EcmaString> propName);
+                                                  JSHandle<EcmaString> propName);
 
     ACCESSORS(InstanceType, INSTANCE_TYPE_OFFSET, CONSTRUCTOR_TYPE_OFFSET);
     ACCESSORS(ConstructorType, CONSTRUCTOR_TYPE_OFFSET, PROTOTYPE_TYPE_OFFSET);
@@ -125,20 +122,6 @@ public:
     ACCESSORS_ATTACHED_TYPEREF(ClassGT, CLASS_GT_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_DUMP()
-};
-
-class TSImportType : public TSType {
-public:
-    CAST_CHECK(TSImportType, IsTSImportType);
-
-    static constexpr size_t IMPORT_TYPE_ID_OFFSET = TSType::SIZE;
-    static constexpr size_t IMPORT_PATH_OFFSET_IN_LITERAL = 1;
-    ACCESSORS(ImportPath, IMPORT_TYPE_ID_OFFSET, TARGET_GT_OFFSET);
-    ACCESSORS_ATTACHED_TYPEREF(TargetGT, TARGET_GT_OFFSET, LAST_OFFSET);
-    DEFINE_ALIGN_SIZE(LAST_OFFSET);
-
-    DECL_VISIT_OBJECT(IMPORT_TYPE_ID_OFFSET, TARGET_GT_OFFSET)
     DECL_DUMP()
 };
 

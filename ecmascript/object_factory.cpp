@@ -3257,21 +3257,6 @@ JSHandle<TSClassInstanceType> ObjectFactory::NewTSClassInstanceType()
     return classInstanceType;
 }
 
-JSHandle<TSImportType> ObjectFactory::NewTSImportType()
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSImportTypeClass().GetTaggedObject()));
-    JSHandle<TSImportType> importType(thread_, header);
-
-    importType->SetGT(GlobalTSTypeRef::Default());
-    importType->SetTargetGT(GlobalTSTypeRef::Default());
-    importType->SetImportPath(thread_, JSTaggedValue::Undefined());
-
-    return importType;
-}
-
 JSHandle<TSFunctionType> ObjectFactory::NewTSFunctionType(uint32_t length)
 {
     NewObjectHook();

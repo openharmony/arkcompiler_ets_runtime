@@ -12,8 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ts_obj_layout_info.h"
-#include "ecmascript/mem/assert_scope.h"
+#include "ecmascript/ts_types/ts_obj_layout_info.h"
 
 namespace panda::ecmascript {
 void TSObjLayoutInfo::SetKeyAndType(const JSThread *thread, [[maybe_unused]] int index,
