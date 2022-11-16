@@ -946,7 +946,7 @@ HWTEST_F_L0(ObjectOperatorTest, Property_Add_004)
     EXPECT_FALSE(objectOperator.IsTransition());
 }
 
-HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement)
+HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> handleKey0(thread, JSTaggedValue(0));
@@ -984,6 +984,24 @@ HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement)
     EXPECT_TRUE(resultDict2->GetValue(index - 1U).IsUndefined());
     EXPECT_TRUE(JSObject::GetProperty(thread, handleObject2, handleKey0).GetValue()->IsUndefined());
     EXPECT_TRUE(JSObject::GetProperty(thread, handleObject2, handleKey1).GetValue()->IsUndefined());
+}
+
+HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement2)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> globalObj = env->GetJSGlobalObject();
+    JSHandle<JSObject> handleGlobalObject(globalObj);
+    JSHandle<NumberDictionary> handleDict = NumberDictionary::Create(thread, 4);
+    handleGlobalObject->SetElements(thread, handleDict.GetTaggedValue());
+    handleGlobalObject->GetClass()->SetIsDictionaryElement(true);
+    for (int i = 0; i < 10000; i++) {
+        JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(i));
+        JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(i));
+        JSObject::SetProperty(thread, globalObj, handleKey, handleValue);
+        JSObject::DeleteProperty(thread, handleGlobalObject, handleKey);
+    }
+    auto resultDict = NumberDictionary::Cast(handleGlobalObject->GetElements().GetTaggedObject());
+    EXPECT_EQ(resultDict->Size(), 4);
 }
 
 HWTEST_F_L0(ObjectOperatorTest, Property_DeleteProperty)
