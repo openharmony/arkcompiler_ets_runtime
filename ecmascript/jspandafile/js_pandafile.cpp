@@ -15,8 +15,6 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 
-#include "ecmascript/snapshot/mem/snapshot.h"
-#include "ecmascript/snapshot/mem/snapshot_processor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 
@@ -255,5 +253,65 @@ CString JSPandaFile::ParseOhmUrl(const CString &fileName)
     }
 
     return result;
+}
+
+FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
+{
+    FunctionKind kind;
+    switch (funcKind) {
+        case panda_file::FunctionKind::NONE:
+        case panda_file::FunctionKind::FUNCTION:
+            kind = FunctionKind::BASE_CONSTRUCTOR;
+            break;
+        case panda_file::FunctionKind::NC_FUNCTION:
+            kind = FunctionKind::ARROW_FUNCTION;
+            break;
+        case panda_file::FunctionKind::GENERATOR_FUNCTION:
+            kind = FunctionKind::GENERATOR_FUNCTION;
+            break;
+        case panda_file::FunctionKind::ASYNC_FUNCTION:
+            kind = FunctionKind::ASYNC_FUNCTION;
+            break;
+        case panda_file::FunctionKind::ASYNC_GENERATOR_FUNCTION:
+            kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+            break;
+        case panda_file::FunctionKind::ASYNC_NC_FUNCTION:
+            kind = FunctionKind::ASYNC_ARROW_FUNCTION;
+            break;
+        default:
+            UNREACHABLE();
+    }
+    return kind;
+}
+
+FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
+{
+    FunctionKind kind;
+    switch (type) {
+        case ConstPoolType::BASE_FUNCTION:
+            kind = FunctionKind::BASE_CONSTRUCTOR;
+            break;
+        case ConstPoolType::NC_FUNCTION:
+            kind = FunctionKind::ARROW_FUNCTION;
+            break;
+        case ConstPoolType::GENERATOR_FUNCTION:
+            kind = FunctionKind::GENERATOR_FUNCTION;
+            break;
+        case ConstPoolType::ASYNC_FUNCTION:
+            kind = FunctionKind::ASYNC_FUNCTION;
+            break;
+        case ConstPoolType::CLASS_FUNCTION:
+            kind = FunctionKind::CLASS_CONSTRUCTOR;
+            break;
+        case ConstPoolType::METHOD:
+            kind = FunctionKind::NORMAL_FUNCTION;
+            break;
+        case ConstPoolType::ASYNC_GENERATOR_FUNCTION:
+            kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
+            break;
+        default:
+            UNREACHABLE();
+    }
+    return kind;
 }
 }  // namespace panda::ecmascript

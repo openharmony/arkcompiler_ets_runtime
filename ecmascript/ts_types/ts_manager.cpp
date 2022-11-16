@@ -989,7 +989,7 @@ void TSManager::AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index,
             JSMutableHandle<TaggedArray> elements(thread_, JSTaggedValue::Undefined());
             JSMutableHandle<TaggedArray> properties(thread_, JSTaggedValue::Undefined());
             LiteralDataExtractor::ExtractObjectDatas(thread_, jsPandaFile,
-                id, elements, properties, JSHandle<JSTaggedValue>(snapshotConstantPool), recordName);
+                id, elements, properties, snapshotConstantPool, recordName);
             CollectLiteralInfo(properties, index, snapshotConstantPool);
             snapshotRecordInfo_.AddRecordLiteralIndex(index);
             break;
@@ -997,7 +997,7 @@ void TSManager::AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index,
         case SnapshotInfoType::ARRAY_LITERAL: {
             panda_file::File::EntityId id = snapshotConstantPool->GetEntityId(index);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
-                thread_, jsPandaFile, id, JSHandle<JSTaggedValue>(snapshotConstantPool), recordName);
+                thread_, jsPandaFile, id, snapshotConstantPool, recordName);
             CollectLiteralInfo(literal, index, snapshotConstantPool);
             snapshotRecordInfo_.AddRecordLiteralIndex(index);
             break;

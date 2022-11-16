@@ -69,30 +69,7 @@ void BytecodeInfoCollector::ProcessClasses()
             if (jsPandaFile_->IsNewVersion()) {
                 panda_file::IndexAccessor indexAccessor(*pf, methodId);
                 panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
-                FunctionKind kind;
-                switch (funcKind) {
-                    case panda_file::FunctionKind::NONE:
-                    case panda_file::FunctionKind::FUNCTION:
-                        kind = FunctionKind::BASE_CONSTRUCTOR;
-                        break;
-                    case panda_file::FunctionKind::NC_FUNCTION:
-                        kind = FunctionKind::ARROW_FUNCTION;
-                        break;
-                    case panda_file::FunctionKind::GENERATOR_FUNCTION:
-                        kind = FunctionKind::GENERATOR_FUNCTION;
-                        break;
-                    case panda_file::FunctionKind::ASYNC_FUNCTION:
-                        kind = FunctionKind::ASYNC_FUNCTION;
-                        break;
-                    case panda_file::FunctionKind::ASYNC_GENERATOR_FUNCTION:
-                        kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
-                        break;
-                    case panda_file::FunctionKind::ASYNC_NC_FUNCTION:
-                        kind = FunctionKind::ASYNC_ARROW_FUNCTION;
-                        break;
-                    default:
-                        UNREACHABLE();
-                }
+                FunctionKind kind = JSPandaFile::GetFunctionKind(funcKind);
                 methodLiteral->SetFunctionKind(kind);
             }
             auto it = processedInsns.find(insns);
