@@ -1283,6 +1283,7 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(wasted);
         regionIndexMap_.emplace(regionIndex, region);
 
+        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->packedData_.begin_), objSize);
         if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
                      objSize,
                      ToVoidPtr(copyFrom),
