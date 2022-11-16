@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -32,11 +33,14 @@ enum InferState : uint8_t {
 
 class TypeInfer {
 public:
-    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, TSManager *tsManager,
-              LexEnvManager *lexEnvManager, size_t methodId, bool enableLog,
+    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
+              CompilationInfo *info, size_t methodId, bool enableLog,
               const std::string& name)
-        : builder_(builder), circuit_(circuit), gateAccessor_(circuit), tsManager_(tsManager),
-          lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog),
+        : builder_(builder), circuit_(circuit),
+          gateAccessor_(circuit),
+          tsManager_(info->tsManager),
+          lexEnvManager_(info->lexEnvManager),
+          methodId_(methodId), enableLog_(enableLog),
           methodName_(name)
     {
     }

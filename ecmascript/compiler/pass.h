@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
+#include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/compiler/type_inference/type_infer.h"
 #include "ecmascript/compiler/type_lowering.h"
@@ -31,6 +32,7 @@
 #include "ecmascript/compiler/compiler_log.h"
 
 namespace panda::ecmascript::kungfu {
+struct CompilationInfo;
 class PassData {
 public:
     explicit PassData(Circuit *circuit, CompilerLog *log, bool enableMethodLog, std::string name)
@@ -95,14 +97,12 @@ private:
 
 class TypeInferPass {
 public:
-    bool Run(PassData* data, BytecodeCircuitBuilder *builder, TSManager *tsManager,
-             LexEnvManager *lexEnvManager, size_t methodId, bool hasTypes)
+    bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationInfo *info, size_t methodId, bool hasTypes)
     {
         TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetLog());
         if (hasTypes) {
             bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
-            TypeInfer typeInfer(builder, data->GetCircuit(), tsManager, lexEnvManager,
-                                methodId, enableLog, data->GetMethodName());
+            TypeInfer typeInfer(builder, data->GetCircuit(), info, methodId, enableLog, data->GetMethodName());
             typeInfer.TraverseCircuit();
         }
         return true;
@@ -111,11 +111,11 @@ public:
 
 class TSTypeLoweringPass {
 public:
-    bool Run(PassData *data, CompilationConfig *cmpCfg, TSManager *tsManager)
+    bool Run(PassData *data, CompilationInfo *info)
     {
         TimeScope timescope("TSTypeLoweringPass", data->GetMethodName(), data->GetLog());
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        TSTypeLowering lowering(data->GetCircuit(), cmpCfg, tsManager, enableLog,
+        TSTypeLowering lowering(data->GetCircuit(), info, enableLog,
                                 data->GetMethodName());
         lowering.RunTSTypeLowering();
         return true;
@@ -130,6 +130,18 @@ public:
         bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         TypeLowering lowering(data->GetCircuit(), cmpCfg, tsManager, enableLog, data->GetMethodName());
         lowering.RunTypeLowering();
+        return true;
+    }
+};
+
+class TSInlineLoweringPass {
+public:
+    bool Run(PassData *data, CompilationInfo *info)
+    {
+        TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetLog());
+        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TSInlineLowering inlining(data->GetCircuit(), info, enableLog, data->GetMethodName());
+        inlining.RunTSInlineLowering();
         return true;
     }
 };

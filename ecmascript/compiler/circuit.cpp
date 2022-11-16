@@ -464,4 +464,22 @@ size_t Circuit::GetGateCount() const
 {
     return gateCount_;
 }
+
+void Circuit::PushFrameState()
+{
+    auto returnList = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
+    auto argList = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+
+    const Gate *returnListGate = LoadGatePtrConst(returnList);
+    const Gate *argListGate = LoadGatePtrConst(argList);
+
+    innerMethodReturnFirstOut_ = returnListGate->GetFirstOutConst();
+    innerMethodArgFirstOut_ = argListGate->GetFirstOutConst();
+}
+
+void Circuit::PopFrameState()
+{
+    innerMethodReturnFirstOut_ = nullptr;
+    innerMethodArgFirstOut_ = nullptr;
+}
 }  // namespace panda::ecmascript::kungfu

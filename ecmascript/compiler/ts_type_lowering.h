@@ -20,15 +20,18 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class TSTypeLowering {
 public:
-    TSTypeLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
+    TSTypeLowering(Circuit *circuit, CompilationInfo *info,
                    bool enableLog, const std::string& name)
-        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+        : circuit_(circuit), acc_(circuit), builder_(circuit, info->cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
-          tsManager_(tsManager), enableLog_(enableLog), methodName_(name) {}
+          tsManager_(info->tsManager),
+          enableLog_(enableLog),
+          methodName_(name) {}
 
     ~TSTypeLowering() = default;
 

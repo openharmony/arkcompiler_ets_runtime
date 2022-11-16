@@ -282,11 +282,11 @@ public:
     }
 
     bool PUBLIC_API IsStaticFunc(GlobalTSTypeRef gt) const;
-    
+
     GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
                                                 JSHandle<EcmaString> propertyName,
                                                 PropertyType propType) const;
-    
+
     inline GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
                                                        JSTaggedValue propertyName,
                                                        PropertyType propType) const
@@ -301,6 +301,10 @@ public:
     GlobalTSTypeRef PUBLIC_API GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const;
 
     GlobalTSTypeRef PUBLIC_API GetFuncThisGT(GlobalTSTypeRef gt) const;
+
+    void PUBLIC_API SetFuncMethodOffset(GlobalTSTypeRef gt, uint32_t methodOffset);
+
+    uint32_t PUBLIC_API GetFuncMethodOffset(GlobalTSTypeRef gt) const;
 
     bool PUBLIC_API IsGetterSetterFunc(GlobalTSTypeRef gt) const;
 
