@@ -534,6 +534,24 @@ GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
     return functionType->GetReturnGT();
 }
 
+void TSManager::SetFuncMethodOffset(GlobalTSTypeRef gt, uint32_t methodIndex)
+{
+    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
+    functionType->SetMethodOffset(methodIndex);
+}
+
+uint32_t TSManager::GetFuncMethodOffset(GlobalTSTypeRef gt) const
+{
+    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
+    return functionType->GetMethodOffset();
+}
+
 GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
 {
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);

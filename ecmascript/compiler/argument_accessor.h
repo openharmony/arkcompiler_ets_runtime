@@ -57,6 +57,10 @@ public:
     {
         return args_.at(index);
     }
+    size_t ArgsCount() const
+    {
+        return args_.size();
+    }
     void FillArgsGateType(const TypeRecorder *typeRecorder);
     void CollectArgs();
     static size_t GetFixArgsNum()

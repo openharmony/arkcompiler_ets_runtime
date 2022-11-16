@@ -367,6 +367,8 @@ public:
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
     GateRef GetGlueFromArgList() const;
+    void GetArgsOutVector(std::vector<GateRef>& outs) const;
+    void GetReturnOutVector(std::vector<GateRef>& outs) const;
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const

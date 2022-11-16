@@ -534,4 +534,42 @@ GateRef GateAccessor::GetGlueFromArgList() const
     }
     return circuit_->GetGateRef(curOut->GetGateConst());
 }
+
+void GateAccessor::GetArgsOutVector(std::vector<GateRef>& outs) const
+{
+    auto argRoot = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+    auto firstOut = circuit_->InnerMethodArgFirstOut();
+    if (firstOut != nullptr) {
+        const Gate *curGate = circuit_->LoadGatePtrConst(argRoot);
+        ASSERT(!curGate->IsFirstOutNull());
+        const Out *curOut = curGate->GetFirstOutConst();
+        while (curOut != firstOut) {
+            GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
+            outs.push_back(ref);
+            curOut = curOut->GetNextOutConst();
+            ASSERT(!curOut->IsNextOutNull());
+        }
+    } else {
+        GetOuts(argRoot, outs);
+    }
+}
+
+void GateAccessor::GetReturnOutVector(std::vector<GateRef>& outs) const
+{
+    auto returnRoot = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
+    auto firstOut = circuit_->InnerMethodReturnFirstOut();
+    if (firstOut != nullptr) {
+        const Gate *curGate = circuit_->LoadGatePtrConst(returnRoot);
+        ASSERT(!curGate->IsFirstOutNull());
+        const Out *curOut = curGate->GetFirstOutConst();
+        while (curOut != firstOut) {
+            GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
+            outs.push_back(ref);
+            curOut = curOut->GetNextOutConst();
+            ASSERT(!curOut->IsNextOutNull());
+        }
+    } else {
+        GetOuts(returnRoot, outs);
+    }
+}
 }  // namespace panda::ecmascript::kungfu

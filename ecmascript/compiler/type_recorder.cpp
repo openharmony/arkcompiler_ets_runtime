@@ -77,6 +77,7 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
                     continue;
                 }
                 if (bcOffset == METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
+                    tsManager->SetFuncMethodOffset(gt, methodLiteral->GetMethodId().GetOffset());
                     funcGT = gt;
                     continue;
                 }

@@ -81,6 +81,7 @@ group("ark_aot_test") {
     "global_this_ts:global_this_tsAotAction",
     "helloaot:helloaotAotAction",
     "inc:incAotAction",
+    "inline:inlineAotAction",
     "instanceof:instanceofAotAction",
     "isfalse:isfalseAotAction",
     "isin:isinAotAction",

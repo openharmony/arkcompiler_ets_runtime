@@ -22,6 +22,39 @@
 #include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript::kungfu {
+class Bytecodes;
+class LexEnvManager;
+class CompilationConfig;
+class BytecodeInfoCollector;
+
+struct CompilationInfo {
+public:
+    explicit CompilationInfo(TSManager *tsManager,
+        Bytecodes *bytecodes,
+        LexEnvManager *lexEnvManager,
+        CompilationConfig *cmpCfg,
+        CompilerLog *log,
+        const JSPandaFile *jsPandaFile,
+        BytecodeInfoCollector* bcInfoCollector)
+        : tsManager(tsManager),
+          bytecodes(bytecodes),
+          lexEnvManager(lexEnvManager),
+          cmpCfg(cmpCfg),
+          log(log),
+          jsPandaFile(jsPandaFile),
+          bcInfoCollector(bcInfoCollector)
+    {
+    }
+
+    TSManager *tsManager;
+    Bytecodes *bytecodes;
+    LexEnvManager *lexEnvManager;
+    CompilationConfig *cmpCfg;
+    CompilerLog *log;
+    const JSPandaFile *jsPandaFile;
+    BytecodeInfoCollector* bcInfoCollector;
+};
+
 class PassManager {
 public:
     PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
@@ -35,7 +68,7 @@ public:
     ~PassManager() = default;
 
     bool Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn);
-    
+
 private:
     JSPandaFile *CreateJSPandaFile(const CString &fileName);
     void CollectSkippedMethod(BCInfo &bytecodeInfo, const JSPandaFile *jsPandaFile, TSManager *tsManager);

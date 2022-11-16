@@ -67,6 +67,8 @@ public:
     {
         return isArch64_;
     }
+    void PushFrameState();
+    void PopFrameState();
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
@@ -107,6 +109,14 @@ private:
     uint8_t *GetDataPtr(size_t offset);
     Gate *LoadGatePtr(GateRef shift);
     const Gate *LoadGatePtrConst(GateRef shift) const;
+    const Out *InnerMethodArgFirstOut() const
+    {
+        return innerMethodArgFirstOut_;
+    }
+    const Out *InnerMethodReturnFirstOut() const
+    {
+        return innerMethodReturnFirstOut_;
+    }
 
 private:
     void* space_ {nullptr};
@@ -118,6 +128,8 @@ private:
     std::map<BitField, GateRef> constantDataCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
     bool isArch64_ {false};
+    const Out *innerMethodArgFirstOut_ { nullptr };
+    const Out *innerMethodReturnFirstOut_ { nullptr };
 
     friend class GateAccessor;
     friend class ConstGateAccessor;
