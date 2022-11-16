@@ -548,7 +548,7 @@ public:
 
     void PUBLIC_API GenerateSnapshotConstantPool(JSTaggedValue constantPool);
 
-    void PUBLIC_API AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index, const CString &recordName="");
+    void PUBLIC_API AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index, const CString &recordName = "");
 
     bool PUBLIC_API IsSkippedMethod(uint32_t methodId) const
     {

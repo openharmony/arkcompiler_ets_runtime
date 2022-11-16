@@ -384,7 +384,7 @@ public:
         auto thread = vm->GetAssociatedJSThread();
         JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(vector.GetTaggedValue());
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

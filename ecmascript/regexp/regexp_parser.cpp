@@ -927,7 +927,6 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, g_rangeD);
             goto parseLookBehind;
-            break;
         }
         case 'D': {
             // [^0-9]
@@ -939,7 +938,6 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, atomRange);
             goto parseLookBehind;
-            break;
         }
         case 's': {
             // [\f\n\r\t\v]
@@ -949,7 +947,6 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, g_rangeS);
             goto parseLookBehind;
-            break;
         }
         case 'S': {
             RangeSet atomRange(g_rangeS);
@@ -960,7 +957,6 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, atomRange);
             goto parseLookBehind;
-            break;
         }
         case 'w': {
             // [A-Za-z0-9]
@@ -970,7 +966,6 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, g_rangeW);
             goto parseLookBehind;
-            break;
         }
         case 'W': {
             // [^A-Za-z0-9]
@@ -982,7 +977,6 @@ int RegExpParser::ParseAtomEscape(bool isBackward)
             }
             rangeOp.InsertOpCode(&buffer_, atomRange);
             goto parseLookBehind;
-            break;
         }
         // P{UnicodePropertyValueExpression}
         // p{UnicodePropertyValueExpression}

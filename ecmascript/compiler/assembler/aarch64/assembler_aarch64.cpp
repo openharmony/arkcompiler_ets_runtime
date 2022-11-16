@@ -82,7 +82,7 @@ LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
     // 6 means the topmost bit in nImms
     unsigned int n = ((nImms >> 6) & 1) ^ 1;
     return LogicalImmediate((n << BITWISE_OP_N_LOWBITS) | (immr << BITWISE_OP_Immr_LOWBITS) |
-           ((nImms << BITWISE_OP_Imms_LOWBITS) & BITWISE_OP_Imms_MASK));
+                            ((nImms << BITWISE_OP_Imms_LOWBITS) & BITWISE_OP_Imms_MASK));
 }
 
 void AssemblerAarch64::Ldp(const Register &rt, const Register &rt2, const MemoryOperand &operand)
@@ -707,8 +707,8 @@ void AssemblerAarch64::BitWiseOpShift(BitwiseOpCode op, const Register &rd, cons
 {
     uint32_t shift_field = (operand.GetShiftOption() << BITWISE_OP_Shift_LOWBITS) & BITWISE_OP_Shift_MASK;
     uint32_t shift_amount = (operand.GetShiftAmount() << BITWISE_OP_ShiftAmount_LOWBITS) & BITWISE_OP_ShiftAmount_MASK;
-    uint32_t code = Sf(!rd.IsW()) | op | shift_field | Rm(operand.Reg().GetId())
-               |shift_amount | Rn(rn.GetId()) | Rd(rd.GetId());
+    uint32_t code = Sf(!rd.IsW()) | op | shift_field | Rm(operand.Reg().GetId()) |
+                       shift_amount | Rn(rn.GetId()) | Rd(rd.GetId());
     EmitU32(code);
 }
 
@@ -873,15 +873,15 @@ void AssemblerAarch64::AddSubReg(AddSubOpCode op, const Register &rd, const Regi
         uint32_t shift_field = ((operand.GetShiftOption()) << ADD_SUB_Shift_LOWBITS) & ADD_SUB_Shift_MASK;
         uint32_t shift_amount = ((operand.GetShiftAmount()) << ADD_SUB_ShiftAmount_LOWBITS) & ADD_SUB_ShiftAmount_MASK;
         ASSERT((op == ADD_Shift) | (op == SUB_Shift));
-        code = Sf(!rd.IsW()) | op | flags_field |shift_field | Rm(operand.Reg().GetId())
-               | shift_amount | Rn(rn.GetId()) | Rd(rd.GetId());
+        code = Sf(!rd.IsW()) | op | flags_field | shift_field | Rm(operand.Reg().GetId()) |
+                  shift_amount | Rn(rn.GetId()) | Rd(rd.GetId());
     } else {
         ASSERT((op == ADD_Extend) | (op == SUB_Extend));
         uint32_t extend_field =
             (operand.GetExtendOption() << ADD_SUB_ExtendOption_LOWBITS) & ADD_SUB_ExtendOption_MASK;
         uint32_t extend_shift = (operand.GetShiftAmount() << ADD_SUB_ExtendShift_LOWBITS) & ADD_SUB_ExtendShift_MASK;
-        code = Sf(!rd.IsW()) | op | flags_field | Rm(operand.Reg().GetId()) | extend_field
-               | extend_shift | Rn(rn.GetId()) | Rd(rd.GetId());
+        code = Sf(!rd.IsW()) | op | flags_field | Rm(operand.Reg().GetId()) | extend_field |
+                  extend_shift | Rn(rn.GetId()) | Rd(rd.GetId());
     }
     EmitU32(code);
 }

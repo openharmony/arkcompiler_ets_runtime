@@ -440,7 +440,9 @@ void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread)
 
 void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *siginfo, void *context)
 {
-    if (signal != SIGPROF) return;
+    if (signal != SIGPROF) {
+        return;
+    }
     CpuProfiler *profiler = nullptr;
     JSThread *thread = nullptr;
     {

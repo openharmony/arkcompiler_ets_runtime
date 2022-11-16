@@ -383,7 +383,7 @@ void ModuleManager::ConcatFileName(std::string &dirPath, std::string &requestPat
 #else
     if (requestPath.find("./") == 0) {
         requestPath = requestPath.substr(2); // 2 : delete './'
-        suffixEnd -=2; // 2 : delete './'
+        suffixEnd -= 2; // 2 : delete './'
     }
     if (requestPath[0] == '/') { // absoluteFilePath
         fileName = requestPath.substr(0, suffixEnd) + ".abc";
