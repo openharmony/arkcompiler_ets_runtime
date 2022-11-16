@@ -2424,9 +2424,15 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
     ObjectFactory *factory = ecmaVm->GetFactory();
     Method *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    JSHandle<ConstantPool> constpool;
+    JSHandle<ConstantPool> constpool(thread, method->GetConstantPool());
+
+    panda_file::File::IndexHeader *indexHeader = constpool->GetIndexHeader();
+    auto pf = jsPandaFile->GetPandaFile();
+    Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
+    panda_file::File::EntityId id = indexs[scopeId];
     JSHandle<TaggedArray> elementsLiteral =
-        LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, scopeId, constpool);
+        LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id, constpool);
+
     ASSERT(elementsLiteral->GetLength() > 0);
     size_t length = elementsLiteral->GetLength();
 
@@ -2444,9 +2450,8 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
         scopeDebugInfo->scopeInfo.emplace(name, slot);
     }
 
-    auto freeObjFunc = NativeAreaAllocator::FreeObjectFunc<struct ScopeDebugInfo>;
-    auto allocator = ecmaVm->GetNativeAreaAllocator();
-    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(buffer, freeObjFunc, allocator);
+    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(
+        buffer, NativeAreaAllocator::FreeObjectFunc<struct ScopeDebugInfo>, ecmaVm->GetNativeAreaAllocator());
     return pointer.GetTaggedValue();
 }
 
