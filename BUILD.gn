@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+import("$build_root/config/sanitizers/sanitizers.gni")
 
 group("ark_js_packages") {
   deps = []
@@ -19,6 +20,7 @@ group("ark_js_packages") {
     deps += [
       "//arkcompiler/ets_runtime:libark_jsruntime",
       "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm",
+      "//arkcompiler/ets_runtime/ecmascript/quick_fix:quick_fix",
     ]
   }
 }
@@ -131,7 +133,7 @@ group("ark_runtime_host_unittest") {
     deps += [ "//arkcompiler/ets_runtime/test/quickfix:ark_quickfix_test" ]
 
     # ts aot test and asm test
-    if (is_standard_system && !run_with_asan && !ark_standalone_build) {
+    if (is_standard_system && !run_with_asan) {
       deps += [
         "//arkcompiler/ets_runtime/test/aottest:ark_aot_js_test",
         "//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
@@ -225,16 +227,11 @@ config("ark_jsruntime_common_config") {
     "-funwind-tables",
     "-fasynchronous-unwind-tables",
     "-Wformat=2",
+    "-std=c++17",
   ]
-  if (ark_standalone_build) {
-    cflags_cc += [
-      "-std=c++17",
-      "-fno-rtti",
-    ]
-  } else {
-    if (use_musl) {
-      defines += [ "PANDA_USE_MUSL" ]
-    }
+
+  if (use_musl) {
+    defines += [ "PANDA_USE_MUSL" ]
   }
 
   if (build_public_version) {
@@ -283,11 +280,10 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  if (!ark_standalone_build && !is_mac && target_os != "ios") {
-    if (!use_libfuzzer) {
-      cflags_cc += [ "-flto" ]
-      ldflags = [ "-flto" ]
-    }
+  if (!is_mac && target_os != "ios" && !use_libfuzzer &&
+      !ark_standalone_build) {
+    cflags_cc += [ "-flto" ]
+    ldflags = [ "-flto" ]
   }
 
   if (is_debug) {

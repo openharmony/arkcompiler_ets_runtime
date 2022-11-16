@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
-import("//build/ohos.gni")
 
 snapshot_input_path = "//component_dist/aosp-x86_64/packages_to_install/ace_engine_full/ark_build/strip.native.min.abc"
 arkstdlib_abc_path = "//prebuilts/ark_tools/target/aex/arkstdlib.abc"

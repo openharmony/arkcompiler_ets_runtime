@@ -12,11 +12,9 @@
 # limitations under the License.
 
 import("//arkcompiler/ets_frontend/es2panda/es2abc_config.gni")
+import("//arkcompiler/ets_frontend/ts2panda/ts2abc_config.gni")
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("$build_root/test.gni")
-if (!ark_standalone_build) {
-  import("//arkcompiler/ets_frontend/ts2panda/ts2abc_config.gni")
-}
 
 if (is_standard_system || ark_standalone_build) {
   _icu_path_ = "thirdparty/icu"
@@ -34,11 +32,7 @@ template("host_unittest_action") {
     forward_variables_from(invoker, "*")
   }
 
-  if (ark_standalone_build) {
-    _module_out_path_ = ""
-  } else {
-    _module_out_path_ = invoker.module_out_path
-  }
+  _module_out_path_ = invoker.module_out_path
 
   # unittest for host running
   action("${_target_name_}Action") {
@@ -281,351 +275,342 @@ template("host_moduletest_action") {
   }
 }
 
-if (!ark_standalone_build) {
-  template("host_aot_js_test_action") {
-    _target_name_ = "${target_name}"
-    _deps_ = invoker.deps
+template("host_aot_js_test_action") {
+  _target_name_ = "${target_name}"
+  _deps_ = invoker.deps
 
-    _test_ts_path_ = "./${_target_name_}.js"
-    _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
-    _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
-    _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
-    _test_aot_arg_ = "$target_out_dir/${_target_name_}"
-    _test_aot_log_level = "info"
-    _test_expect_path_ = "./expect_output.txt"
+  _test_ts_path_ = "./${_target_name_}.js"
+  _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
+  _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
+  _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
+  _test_aot_arg_ = "$target_out_dir/${_target_name_}"
+  _test_aot_log_level = "info"
+  _test_expect_path_ = "./expect_output.txt"
 
-    ts2abc_gen_abc("gen_${_target_name_}_abc") {
-      extra_visibility =
-          [ ":*" ]  # Only targets in this file can depend on this.
-      extra_dependencies = _deps_
-      src_js = rebase_path(_test_ts_path_)
-      dst_file = rebase_path(_test_abc_path_)
-      extra_args = [
-        "--merge-abc",
-        "--module",
-      ]
+  ts2abc_gen_abc("gen_${_target_name_}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    extra_dependencies = _deps_
+    src_js = rebase_path(_test_ts_path_)
+    dst_file = rebase_path(_test_abc_path_)
+    extra_args = [
+      "--merge-abc",
+      "--module",
+    ]
 
-      in_puts = [
-        _test_ts_path_,
-        _test_expect_path_,
-      ]
-      out_puts = [ _test_abc_path_ ]
-    }
-
-    _script_args_ = rebase_path(_test_abc_path_)
-
-    action("${_target_name_}AotCompileAction") {
-      testonly = true
-
-      _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
-      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
-      deps = [
-        ":gen_${_target_name_}_abc",
-        _host_aot_target_,
-      ]
-      deps += _deps_
-
-      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
-
-      _aot_compile_options_ =
-          " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-          _test_aot_log_level + " --log-components=all"
-
-      if (defined(invoker.is_disable_type_lowering) &&
-          invoker.is_disable_type_lowering) {
-        _aot_compile_options_ += " --enable-type-lowering=false"
-      }
-
-      args = [
-        "--script-file",
-        rebase_path(_root_out_dir_) +
-            "/arkcompiler/ets_runtime/ark_aot_compiler",
-        "--script-options",
-        _aot_compile_options_,
-        "--script-args",
-        _script_args_,
-        "--expect-sub-output",
-        "ts aot compile success",
-        "--env-path",
-        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
-            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
-            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
-      ]
-
-      inputs = [ _test_abc_path_ ]
-
-      outputs = [
-        _test_aot_path_,
-        _test_aot_snapshot_path_,
-      ]
-    }
-
-    action("${_target_name_}AotAction") {
-      testonly = true
-
-      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
-      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
-
-      deps = [
-        ":${_target_name_}AotCompileAction",
-        ":gen_${_target_name_}_abc",
-        _host_jsvm_target_,
-      ]
-      deps += _deps_
-
-      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
-
-      _aot_run_options_ =
-          " --aot-file=" + rebase_path(_test_aot_arg_) +
-          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
-
-      if (defined(invoker.is_enable_enableArkTools) &&
-          invoker.is_enable_enableArkTools) {
-        _aot_run_options_ += " --enable-ark-tools=true"
-        _aot_run_options_ += " --enable-force-gc=false"
-      }
-
-      _icu_data_path_options_ =
-          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
-      _aot_run_options_ += _icu_data_path_options_
-
-      args = [
-        "--script-file",
-        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
-        "--script-options",
-        _aot_run_options_,
-        "--script-args",
-        _script_args_,
-        "--expect-file",
-        rebase_path(_test_expect_path_),
-        "--env-path",
-        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
-            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
-            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
-      ]
-
-      inputs = [ _test_abc_path_ ]
-
-      outputs = [ "$target_out_dir/${_target_name_}/" ]
-    }
+    in_puts = [
+      _test_ts_path_,
+      _test_expect_path_,
+    ]
+    out_puts = [ _test_abc_path_ ]
   }
 
-  template("host_aot_test_action") {
-    _target_name_ = "${target_name}"
-    _deps_ = invoker.deps
+  _script_args_ = rebase_path(_test_abc_path_)
 
-    _test_ts_path_ = "./${_target_name_}.ts"
-    _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
-    _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
-    _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
-    _test_aot_arg_ = "$target_out_dir/${_target_name_}"
-    _test_aot_log_level = "info"
-    _test_expect_path_ = "./expect_output.txt"
+  action("${_target_name_}AotCompileAction") {
+    testonly = true
 
-    ts2abc_gen_abc("gen_${_target_name_}_abc") {
-      extra_visibility =
-          [ ":*" ]  # Only targets in this file can depend on this.
-      extra_dependencies = _deps_
-      src_js = rebase_path(_test_ts_path_)
-      dst_file = rebase_path(_test_abc_path_)
-      extra_args = [
-        "--merge-abc",
-        "--module",
-      ]
+    _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_aot_target_,
+    ]
+    deps += _deps_
 
-      in_puts = [
-        _test_ts_path_,
-        _test_expect_path_,
-      ]
-      out_puts = [ _test_abc_path_ ]
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_compile_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
+        _test_aot_log_level + " --log-components=all"
+
+    if (defined(invoker.is_disable_type_lowering) &&
+        invoker.is_disable_type_lowering) {
+      _aot_compile_options_ += " --enable-type-lowering=false"
     }
 
-    _script_args_ = rebase_path(_test_abc_path_)
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
+      "--script-options",
+      _aot_compile_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-sub-output",
+      "ts aot compile success",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
 
-    action("${_target_name_}AotCompileAction") {
-      testonly = true
+    inputs = [ _test_abc_path_ ]
 
-      _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
-      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
-      deps = [
-        ":gen_${_target_name_}_abc",
-        _host_aot_target_,
-      ]
-      deps += _deps_
-
-      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
-
-      _aot_compile_options_ =
-          " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-          _test_aot_log_level + " --log-components=all"
-
-      if (defined(invoker.is_disable_type_lowering) &&
-          invoker.is_disable_type_lowering) {
-        _aot_compile_options_ += " --enable-type-lowering=false"
-      }
-
-      args = [
-        "--script-file",
-        rebase_path(_root_out_dir_) +
-            "/arkcompiler/ets_runtime/ark_aot_compiler",
-        "--script-options",
-        _aot_compile_options_,
-        "--script-args",
-        _script_args_,
-        "--expect-sub-output",
-        "ts aot compile success",
-        "--env-path",
-        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
-            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
-            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
-      ]
-
-      inputs = [ _test_abc_path_ ]
-
-      outputs = [
-        _test_aot_path_,
-        _test_aot_snapshot_path_,
-      ]
-    }
-
-    action("${_target_name_}AotAction") {
-      testonly = true
-
-      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
-      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
-
-      deps = [
-        ":${_target_name_}AotCompileAction",
-        ":gen_${_target_name_}_abc",
-        _host_jsvm_target_,
-      ]
-      deps += _deps_
-
-      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
-
-      _aot_run_options_ =
-          " --aot-file=" + rebase_path(_test_aot_arg_) +
-          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
-
-      if (defined(invoker.is_enable_enableArkTools) &&
-          invoker.is_enable_enableArkTools) {
-        _aot_run_options_ += " --enable-ark-tools=true"
-        _aot_run_options_ += " --enable-force-gc=false"
-      }
-
-      args = [
-        "--script-file",
-        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
-        "--script-options",
-        _aot_run_options_,
-        "--script-args",
-        _script_args_,
-        "--expect-file",
-        rebase_path(_test_expect_path_),
-        "--env-path",
-        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
-            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
-            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
-      ]
-
-      inputs = [ _test_abc_path_ ]
-
-      outputs = [ "$target_out_dir/${_target_name_}/" ]
-    }
+    outputs = [
+      _test_aot_path_,
+      _test_aot_snapshot_path_,
+    ]
   }
 
-  template("host_typeinfer_test_action") {
-    _target_name_ = "${target_name}"
-    _deps_ = invoker.deps
+  action("${_target_name_}AotAction") {
+    testonly = true
 
-    _test_ts_path_ = "./${_target_name_}.ts"
-    _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
 
-    ts2abc_gen_abc("gen_${_target_name_}_abc") {
-      extra_visibility =
-          [ ":*" ]  # Only targets in this file can depend on this.
-      extra_dependencies = _deps_
-      src_js = rebase_path(_test_ts_path_)
-      dst_file = rebase_path(_test_abc_path_)
-      extra_args = [
-        "--merge-abc",
-        "--module",
-      ]
+    deps = [
+      ":${_target_name_}AotCompileAction",
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
 
-      in_puts = [ _test_ts_path_ ]
-      out_puts = [ _test_abc_path_ ]
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_run_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_) +
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+    if (defined(invoker.is_enable_enableArkTools) &&
+        invoker.is_enable_enableArkTools) {
+      _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
     }
 
-    _script_args_ = rebase_path(_test_abc_path_)
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _aot_run_options_ += _icu_data_path_options_
 
-    _builtins_dts_path_ =
-        "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts"
-    _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _aot_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-file",
+      rebase_path(_test_expect_path_),
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
 
-    ts2abc_gen_abc("gen_builtins_d_abc") {
-      extra_visibility =
-          [ ":*" ]  # Only targets in this file can depend on this.
+    inputs = [ _test_abc_path_ ]
 
-      # extra_dependencies = _deps_
-      src_js = rebase_path(_builtins_dts_path_)
-      dst_file = rebase_path(_builtins_d_abc_path_)
-      extra_args = [
-        "--merge-abc",
-        "--q",
-        "--b",
-      ]
+    outputs = [ "$target_out_dir/${_target_name_}/" ]
+  }
+}
 
-      in_puts = [ _builtins_dts_path_ ]
-      out_puts = [ _builtins_d_abc_path_ ]
+template("host_aot_test_action") {
+  _target_name_ = "${target_name}"
+  _deps_ = invoker.deps
+
+  _test_ts_path_ = "./${_target_name_}.ts"
+  _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
+  _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
+  _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
+  _test_aot_arg_ = "$target_out_dir/${_target_name_}"
+  _test_aot_log_level = "info"
+  _test_expect_path_ = "./expect_output.txt"
+
+  ts2abc_gen_abc("gen_${_target_name_}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    extra_dependencies = _deps_
+    src_js = rebase_path(_test_ts_path_)
+    dst_file = rebase_path(_test_abc_path_)
+    extra_args = [
+      "--merge-abc",
+      "--module",
+    ]
+
+    in_puts = [
+      _test_ts_path_,
+      _test_expect_path_,
+    ]
+    out_puts = [ _test_abc_path_ ]
+  }
+
+  _script_args_ = rebase_path(_test_abc_path_)
+
+  action("${_target_name_}AotCompileAction") {
+    testonly = true
+
+    _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_aot_target_,
+    ]
+    deps += _deps_
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_compile_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
+        _test_aot_log_level + " --log-components=all"
+
+    if (defined(invoker.is_disable_type_lowering) &&
+        invoker.is_disable_type_lowering) {
+      _aot_compile_options_ += " --enable-type-lowering=false"
     }
 
-    action("${_target_name_}AotTypeInferAction") {
-      testonly = true
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
+      "--script-options",
+      _aot_compile_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-sub-output",
+      "ts aot compile success",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
 
-      _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
-      _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
-      deps = [
-        ":gen_${_target_name_}_abc",
-        _host_aot_target_,
-      ]
-      deps += _deps_
+    inputs = [ _test_abc_path_ ]
 
-      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+    outputs = [
+      _test_aot_path_,
+      _test_aot_snapshot_path_,
+    ]
+  }
 
-      _aot_compile_options_ = " --assert-types=true"
+  action("${_target_name_}AotAction") {
+    testonly = true
 
-      if (defined(invoker.is_enable_builtins_dts) &&
-          invoker.is_enable_builtins_dts) {
-        deps += [ ":gen_builtins_d_abc" ]
-        _aot_compile_options_ +=
-            " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
-      }
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
 
-      if (defined(invoker.is_disable_type_lowering) &&
-          invoker.is_disable_type_lowering) {
-        _aot_compile_options_ += " --enable-type-lowering=false"
-      }
+    deps = [
+      ":${_target_name_}AotCompileAction",
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
 
-      args = [
-        "--script-file",
-        rebase_path(_root_out_dir_) +
-            "/arkcompiler/ets_runtime/ark_aot_compiler",
-        "--script-options",
-        _aot_compile_options_,
-        "--script-args",
-        _script_args_,
-        "--expect-output",
-        "0",
-        "--env-path",
-        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
-            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
-            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
-      ]
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-      inputs = [ _test_abc_path_ ]
+    _aot_run_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_) +
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}"
 
-      outputs = [ "$target_out_dir/${_target_name_}/" ]
+    if (defined(invoker.is_enable_enableArkTools) &&
+        invoker.is_enable_enableArkTools) {
+      _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
     }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _aot_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-file",
+      rebase_path(_test_expect_path_),
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/" ]
+  }
+}
+
+template("host_typeinfer_test_action") {
+  _target_name_ = "${target_name}"
+  _deps_ = invoker.deps
+
+  _test_ts_path_ = "./${_target_name_}.ts"
+  _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
+
+  ts2abc_gen_abc("gen_${_target_name_}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    extra_dependencies = _deps_
+    src_js = rebase_path(_test_ts_path_)
+    dst_file = rebase_path(_test_abc_path_)
+    extra_args = [
+      "--merge-abc",
+      "--module",
+    ]
+
+    in_puts = [ _test_ts_path_ ]
+    out_puts = [ _test_abc_path_ ]
+  }
+
+  _script_args_ = rebase_path(_test_abc_path_)
+
+  _builtins_dts_path_ =
+      "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts"
+  _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
+
+  ts2abc_gen_abc("gen_builtins_d_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+
+    # extra_dependencies = _deps_
+    src_js = rebase_path(_builtins_dts_path_)
+    dst_file = rebase_path(_builtins_d_abc_path_)
+    extra_args = [
+      "--merge-abc",
+      "--q",
+      "--b",
+    ]
+
+    in_puts = [ _builtins_dts_path_ ]
+    out_puts = [ _builtins_d_abc_path_ ]
+  }
+
+  action("${_target_name_}AotTypeInferAction") {
+    testonly = true
+
+    _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_aot_target_,
+    ]
+    deps += _deps_
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_compile_options_ = " --assert-types=true"
+
+    if (defined(invoker.is_enable_builtins_dts) &&
+        invoker.is_enable_builtins_dts) {
+      deps += [ ":gen_builtins_d_abc" ]
+      _aot_compile_options_ +=
+          " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
+    }
+
+    if (defined(invoker.is_disable_type_lowering) &&
+        invoker.is_disable_type_lowering) {
+      _aot_compile_options_ += " --enable-type-lowering=false"
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
+      "--script-options",
+      _aot_compile_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-output",
+      "0",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/" ]
   }
 }
 
