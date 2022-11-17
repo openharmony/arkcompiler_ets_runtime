@@ -490,14 +490,14 @@ DECLARE_ASM_HANDLER(HandleGetiteratorImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
-    CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(GETITERATOR_IMM8));
+    CHECK_PENDING_EXCEPTION(res, INT_PTR(GETITERATOR_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleGetiteratorImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(GetIterator), { *varAcc });
-    CHECK_EXCEPTION_WITH_VARACC(res, INT_PTR(GETITERATOR_IMM16));
+    CHECK_PENDING_EXCEPTION(res, INT_PTR(GETITERATOR_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleThrowPatternnoncoerciblePrefNone)
@@ -5464,7 +5464,7 @@ DECLARE_ASM_HANDLER(HandleApplyImm8V8V8)
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef array = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpread), { func, obj, array });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(APPLY_IMM8_V8_V8));
+    CHECK_PENDING_EXCEPTION(res, INT_PTR(APPLY_IMM8_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedCallspreadPrefV8V8V8)
@@ -5473,7 +5473,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallspreadPrefV8V8V8)
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
     GateRef array = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpread), { func, obj, array });
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CALLSPREAD_PREF_V8_V8_V8));
+    CHECK_PENDING_EXCEPTION(res, INT_PTR(DEPRECATED_CALLSPREAD_PREF_V8_V8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleThrowNotexistsPrefNone)
