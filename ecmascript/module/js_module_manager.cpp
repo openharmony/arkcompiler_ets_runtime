@@ -612,6 +612,13 @@ std::tuple<CString, bool> ModuleManager::ConcatFileNameWithMerge(const JSPandaFi
             key = JSPandaFile::NODE_MODULES_ONE + moduleRequestName;
             entryPoint = jsPandaFile->FindEntryPoint(key);
         }
+
+        if (entryPoint.empty()) {
+            LOG_ECMA(ERROR) << "find entryPoint failed\n"
+                            << "moduleRequestName : " << moduleRequestName << "\n"
+                            << "moduleRecordName : " << moduleRecordName << "\n"
+                            << "npmKey : " << npmKey;
+        }
         npmKey = key;
     }
     return std::make_tuple(entryPoint, npm);

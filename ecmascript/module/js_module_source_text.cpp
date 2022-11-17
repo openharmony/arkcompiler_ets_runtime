@@ -392,7 +392,8 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
                 SourceTextModule::ResolveExport(thread, importedModule, importName, resolveSet);
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
-                THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
+                CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed";
+                THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
             }
             // iii. Call envRec.CreateImportBinding(
             //    in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
@@ -456,7 +457,8 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
             SourceTextModule::ResolveExport(thread, importedModule, importName, resolveSet);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
+            CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed";
+            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
         //    in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
@@ -1049,7 +1051,8 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
             SourceTextModule::ResolveExport(thread, module, exportName, resolveSet);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
+            CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed";
+            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // c. Assert: resolution is a ResolvedBinding Record.
         ASSERT(resolution->IsResolvedBinding());
@@ -1078,7 +1081,8 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
             SourceTextModule::ResolveExport(thread, module, exportName, resolveSet);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, "");
+            CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed";
+            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // c. Assert: resolution is a ResolvedBinding Record.
         ASSERT(resolution->IsResolvedIndexBinding());
