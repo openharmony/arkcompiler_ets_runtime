@@ -120,6 +120,7 @@ void HeapSnapshot::UpdateNode(bool isInFinish)
     for (auto iter = nodes_.begin(); iter != nodes_.end();) {
         if (!(*iter)->IsLive()) {
             iter = nodes_.erase(iter);
+            nodeCount_--;
         } else {
             iter++;
         }
