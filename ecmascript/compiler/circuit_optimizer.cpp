@@ -1548,7 +1548,8 @@ void Partition::MergeUses(std::map<uint32_t, std::vector<std::shared_ptr<Partiti
     }
 }
 
-GlobalValueNumbering::GlobalValueNumbering(Circuit *circuit) : acc_(GateAccessor(circuit))
+GlobalValueNumbering::GlobalValueNumbering(Circuit *circuit, bool enableLog)
+    : acc_(GateAccessor(circuit)), enableLog_(enableLog)
 {
 }
 
@@ -1635,6 +1636,9 @@ void GlobalValueNumbering::TrySplit(std::queue<std::shared_ptr<Partition>> &work
 
 void GlobalValueNumbering::EliminateRedundantGates(const std::vector<std::shared_ptr<Partition>> &partitions)
 {
+    if (IsLogEnabled()) {
+        Print(partitions);
+    }
     for (auto partition : partitions) {
         std::map<uint32_t, std::vector<std::shared_ptr<PartitionNode>>> indexToUses;
         partition->MergeUses(indexToUses);
@@ -1670,5 +1674,28 @@ void GlobalValueNumbering::Run()
         TrySplit(workList, partitions);
     }
     EliminateRedundantGates(partitions);
+}
+
+void GlobalValueNumbering::Print(const std::vector<std::shared_ptr<Partition>> &partitions)
+{
+    for (auto partition : partitions) {
+        auto kingNode = partition->GetHead();
+        std::string log = "[global-value-numbering] replace [";
+        bool noGateReplaced = true;
+        for (auto node = kingNode->GetNext(); node != nullptr; node = node->GetNext()) {
+            if (noGateReplaced) {
+                noGateReplaced = false;
+            } else {
+                log += ", ";
+            }
+            log += std::to_string(acc_.GetId(node->GetGate()));
+        }
+        if (noGateReplaced) {
+            continue;
+        }
+        log += "] with " + acc_.GetOpCode(kingNode->GetGate()).Str() + " " +
+                std::to_string(acc_.GetId(kingNode->GetGate()));
+        LOG_COMPILER(INFO) << log;
+    }
 }
 }  // namespace panda::ecmascript::kungfu

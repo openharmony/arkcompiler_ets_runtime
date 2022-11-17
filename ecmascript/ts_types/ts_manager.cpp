@@ -750,8 +750,10 @@ void TSManager::AddHClassToSnapshotConstantPool()
     uint32_t constantPoolSize = cp->GetCacheLength();
     const auto &hclassCache = snapshotRecordInfo_.GetHClassCache();
     uint32_t hclassCacheSize = snapshotRecordInfo_.GetHClassCacheSize();
-    LOG_COMPILER(INFO) << "snapshot: constantPoolSize: " << constantPoolSize;
-    LOG_COMPILER(INFO) << "snapshot: hclassCacheSize: " << hclassCacheSize;
+    if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolSize: " << constantPoolSize;
+        LOG_COMPILER(INFO) << "[aot-snapshot] hclassCacheSize: " << hclassCacheSize;
+    }
     JSHandle<ConstantPool> newConstantPool = factory_->NewConstantPool(constantPoolSize + hclassCacheSize);
     for (uint32_t i = 0; i < constantPoolSize; ++i) {
         newConstantPool->SetObjectToCache(thread_, i, cp->GetObjectFromCache(i));
@@ -859,9 +861,11 @@ void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &
 
     for (auto item: recordMethodIndex) {
         JSTaggedValue val = snapshotConstantPool->GetObjectFromCache(item);
-        uint32_t methodID = static_cast<uint32_t>(val.GetInt());
-        LOG_COMPILER(INFO) << "snapshot: resolve function method ID: " << methodID;
-        uint32_t entryIndex = methodToEntryIndexMap.at(methodID);
+        uint32_t methodOffset = static_cast<uint32_t>(val.GetInt());
+        if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+            LOG_COMPILER(INFO) << "[aot-snapshot] store AOT entry index of method (offset: " << methodOffset << ") ";
+        }
+        uint32_t entryIndex = methodToEntryIndexMap.at(methodOffset);
         snapshotConstantPool->SetObjectToCache(thread_, item, JSTaggedValue(entryIndex));
     }
 
@@ -870,13 +874,17 @@ void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &
         AOTLiteralInfo *aotLiteralInfo = AOTLiteralInfo::Cast(val.GetTaggedObject());
         uint32_t aotLiteralInfoLen = aotLiteralInfo->GetLength();
         for (uint32_t i = 0; i < aotLiteralInfoLen; ++i) {
-            JSTaggedValue methodIDVal = aotLiteralInfo->Get(i);
-            if (methodIDVal.GetInt() != -1) {
-                uint32_t methodID = static_cast<uint32_t>(methodIDVal.GetInt());
-                LOG_COMPILER(INFO) << "snapshot: resolve function method ID: " << methodID;
-                uint32_t entryIndex = methodToEntryIndexMap.at(methodID);
-                aotLiteralInfo->Set(thread_, i, JSTaggedValue(entryIndex));
+            JSTaggedValue methodOffsetVal = aotLiteralInfo->Get(i);
+            if (methodOffsetVal.GetInt() == -1) {
+                continue;
             }
+            uint32_t methodOffset = static_cast<uint32_t>(methodOffsetVal.GetInt());
+            if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+                LOG_COMPILER(INFO) << "[aot-snapshot] store AOT entry index of method (offset: "
+                                   << methodOffset << ") ";
+            }
+            uint32_t entryIndex = methodToEntryIndexMap.at(methodOffset);
+            aotLiteralInfo->Set(thread_, i, JSTaggedValue(entryIndex));
         }
     }
 }
