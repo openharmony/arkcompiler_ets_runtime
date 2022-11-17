@@ -257,16 +257,34 @@ public:
         if (lineNumber < 1) {
             return "";
         }
+        bool escape = true;
+        if (srcStr.find('\n') == std::string::npos) {
+            escape = false;
+        }
         int prePos = 0;
         int findPrePos = lineNumber - 1;
         for (int i = 0; i < findPrePos; i++) {
-            prePos = srcStr.find('\n', prePos);
-            if (prePos == -1) {
-                return "";
+            if (escape) {
+                prePos = srcStr.find('\n', prePos);
+                if (prePos == -1) {
+                    return "";
+                }
+                prePos += 1;
+            } else {
+                prePos = srcStr.find("\\n", prePos);
+                if (prePos == -1) {
+                    return "";
+                }
+                // Add the two characters found to start searching again
+                prePos += 2;
             }
-            prePos += 1;
         }
-        int findEndPos = srcStr.find('\n', prePos);
+        int findEndPos = 0;
+        if (escape) {
+            findEndPos = srcStr.find('\n', prePos);
+        } else {
+            findEndPos = srcStr.find("\\n", prePos);
+        }
         if (findEndPos == -1) {
             return srcStr.substr(prePos, srcStr.length() - prePos);
         }

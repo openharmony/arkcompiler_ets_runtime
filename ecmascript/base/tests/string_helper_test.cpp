@@ -236,5 +236,12 @@ HWTEST_F_L0(StringHelperTest, GetSpecifiedLine)
     EXPECT_STREQ(resLine1.c_str(), "Hello");
     EXPECT_STREQ(resLine2.c_str(), "world");
     EXPECT_STREQ(resLine3.c_str(), "!");
+    const std::string srcStr1 = "Hello\\nworld\\n!";
+    std::string resLine11 = StringHelper::GetSpecifiedLine(srcStr1, 1);
+    std::string resLine22 = StringHelper::GetSpecifiedLine(srcStr1, 2);
+    std::string resLine33 = StringHelper::GetSpecifiedLine(srcStr1, 3);
+    EXPECT_STREQ(resLine11.c_str(), "Hello");
+    EXPECT_STREQ(resLine22.c_str(), "world");
+    EXPECT_STREQ(resLine33.c_str(), "!");
 }
 }  // namespace panda::test

@@ -1352,7 +1352,7 @@ Local<StringRef> FunctionRef::GetName(const EcmaVM *vm)
 
 Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
 {
-    [[maybe_unused]] LocalScope scope(vm);
+    EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
@@ -1383,7 +1383,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
         sourceCode = sourceCode.substr(0, codeLen - 1);
     }
     sourceCodeHandle.Update(BuiltinsBase::GetTaggedString(thread, sourceCode.c_str()));
-    return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
+    return scope.Escape(JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle));
 }
 
 bool FunctionRef::IsNative(const EcmaVM *vm)
