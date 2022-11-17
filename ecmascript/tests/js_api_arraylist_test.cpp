@@ -162,12 +162,12 @@ HWTEST_F_L0(JSAPIArrayListTest, Insert)
     // index < 0
     JSHandle<JSTaggedValue> zeroValue(thread, JSTaggedValue(0));
     JSAPIArrayList::Insert(thread, arrayList, zeroValue, -1);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // index > length
     int outOfRangeNumber = basicLength + insertNums + 10;
     JSAPIArrayList::Insert(thread, arrayList, zeroValue, outOfRangeNumber);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -321,6 +321,10 @@ HWTEST_F_L0(JSAPIArrayListTest, GetIndexOf_GetLastIndexOf)
     int lastIndex =
         JSAPIArrayList::GetLastIndexOf(thread, arrayList, JSHandle<JSTaggedValue>(thread, JSTaggedValue(99)));
     EXPECT_EQ(lastIndex, 99 + 1);
+    int lastIndex1 =
+        JSAPIArrayList::GetLastIndexOf(
+            thread, arrayList, JSHandle<JSTaggedValue>(thread, JSTaggedValue(addElementNums)));
+    EXPECT_EQ(lastIndex1, -1);
 }
 
 /**
@@ -366,6 +370,9 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByIndex_Remove)
             // The value of the corresponding index [0, 155] is [100, 255].
             EXPECT_EQ(elements->Get(i), JSTaggedValue(i + 100));
         }
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(addElementNums));
+        bool result = JSAPIArrayList::Remove(thread, arrayList, value);
+        EXPECT_FALSE(result);
     }
 }
 
@@ -413,23 +420,23 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByRange)
 
         // startIndex < 0
         JSAPIArrayList::RemoveByRange(thread, arrayList, smallIndexValue, zeroIndexValue);
-        EXCEPT_EXCEPTION();
+        EXPECT_EXCEPTION();
 
         // startIndex >= size
         JSAPIArrayList::RemoveByRange(thread, arrayList, bigIndexValue, zeroIndexValue);
-        EXCEPT_EXCEPTION();
+        EXPECT_EXCEPTION();
 
         // endIndex <= startIndex
         JSAPIArrayList::RemoveByRange(thread, arrayList, zeroIndexValue, zeroIndexValue);
-        EXCEPT_EXCEPTION();
+        EXPECT_EXCEPTION();
         
         // endIndex < 0
         JSAPIArrayList::RemoveByRange(thread, arrayList, zeroIndexValue, smallIndexValue);
-        EXCEPT_EXCEPTION();
+        EXPECT_EXCEPTION();
 
         // endIndex > length
         JSAPIArrayList::RemoveByRange(thread, arrayList, zeroIndexValue, bigIndexValue);
-        EXCEPT_EXCEPTION();
+        EXPECT_EXCEPTION();
     }
 }
 
@@ -502,23 +509,23 @@ HWTEST_F_L0(JSAPIArrayListTest, SubArrayList)
 
     // fromIndex < 0
     JSAPIArrayList::SubArrayList(thread, arrayList, smallIndexValue, zeroIndexValue);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // fromIndex > size
     JSAPIArrayList::SubArrayList(thread, arrayList, bigIndexValue, zeroIndexValue);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // toIndex <= fromIndex
     JSAPIArrayList::SubArrayList(thread, arrayList, zeroIndexValue, zeroIndexValue);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // toIndex < 0
     JSAPIArrayList::SubArrayList(thread, arrayList, zeroIndexValue, smallIndexValue);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // toIndex > length
     JSAPIArrayList::SubArrayList(thread, arrayList, zeroIndexValue, bigIndexValue);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // newLength == 0
     uint32_t arrayLength = arrayList->GetLength().GetArrayLength();
@@ -578,6 +585,10 @@ HWTEST_F_L0(JSAPIArrayListTest, GetIteratorObj)
 HWTEST_F_L0(JSAPIArrayListTest, Get_Set_Has)
 {
     JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
+
+    // test Has of empty arraylist
+    EXPECT_FALSE(arrayList->Has(JSTaggedValue(0)));
+
     uint32_t elementsNum = 256;
     for (uint32_t i = 0; i < elementsNum; i++) {
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
@@ -589,7 +600,18 @@ HWTEST_F_L0(JSAPIArrayListTest, Get_Set_Has)
 
         bool isHas = arrayList->Has(JSTaggedValue(i * 10));
         EXPECT_EQ(isHas, true);
+        EXPECT_FALSE(arrayList->Has(JSTaggedValue(-(i + 1))));
     }
+
+    // test Get exception
+    JSTaggedValue result = arrayList->Get(thread, elementsNum);
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    EXPECT_EXCEPTION();
+
+    // test Set exception
+    JSTaggedValue result2 = arrayList->Set(thread, elementsNum, JSTaggedValue(elementsNum));
+    EXPECT_EQ(result2, JSTaggedValue::Exception());
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -632,6 +654,15 @@ HWTEST_F_L0(JSAPIArrayListTest, GetOwnProperty)
         bool getOwnPropertyRes = JSAPIArrayList::GetOwnProperty(thread, arrayList, key);
         EXPECT_EQ(getOwnPropertyRes, true);
     }
+
+    // test GetOwnProperty exception
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(elementsNums * 2));
+    EXPECT_FALSE(JSAPIArrayList::GetOwnProperty(thread, arrayList, key));
+    EXPECT_EXCEPTION();
+
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    EXPECT_FALSE(JSAPIArrayList::GetOwnProperty(thread, arrayList, undefined));
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -675,5 +706,10 @@ HWTEST_F_L0(JSAPIArrayListTest, SetProperty)
         bool setPropertyRes = JSAPIArrayList::SetProperty(thread, arrayList, key, value);
         EXPECT_EQ(setPropertyRes, true);
     }
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(-1));
+    EXPECT_FALSE(JSAPIArrayList::SetProperty(thread, arrayList, key, value));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums));
+    EXPECT_FALSE(JSAPIArrayList::SetProperty(thread, arrayList, key1, value));
 }
 } // namespace panda::test

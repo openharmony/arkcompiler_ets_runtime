@@ -167,6 +167,9 @@ HWTEST_F_L0(JSAPILightWeightMapTest, GetIndexOfKeyAndGetIndexOfValue)
         uint32_t length = lwm->GetLength();
         EXPECT_EQ(length, i + 1);
     }
+    std::string ivalue = myValue + std::to_string(NODE_NUMBERS);
+    value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+    EXPECT_TRUE(JSAPILightWeightMap::GetIndexOfValue(thread, lwm, value) == -1);
 }
 
 HWTEST_F_L0(JSAPILightWeightMapTest, IsEmptyGetKeyAtGetValue)
@@ -200,6 +203,7 @@ HWTEST_F_L0(JSAPILightWeightMapTest, IsEmptyGetKeyAtGetValue)
     result = JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::GetKeyAt(thread, lwm, 2));
     EXPECT_TRUE(JSTaggedValue::Equal(thread, result, key2));
 
+    EXPECT_EQ(lwm->IsEmpty(), JSTaggedValue::False());
     JSAPILightWeightMap::Clear(thread, lwm);
     EXPECT_EQ(lwm->IsEmpty(), JSTaggedValue::True());
 }
@@ -264,6 +268,9 @@ HWTEST_F_L0(JSAPILightWeightMapTest, RemoveAt)
     EXPECT_TRUE(isSuccessRemove);
     EXPECT_EQ(JSAPILightWeightMap::HasValue(thread, lwm, value1), JSTaggedValue::False());
     EXPECT_TRUE(lwm->GetLength() == 2);
+
+    EXPECT_EQ(JSAPILightWeightMap::RemoveAt(thread, lwm, -1), JSTaggedValue::False());
+    EXPECT_EQ(JSAPILightWeightMap::RemoveAt(thread, lwm, 10), JSTaggedValue::False());
 }
 
 HWTEST_F_L0(JSAPILightWeightMapTest, SetValueAt)
@@ -307,22 +314,27 @@ HWTEST_F_L0(JSAPILightWeightMapTest, GetStateOfKey)
     EXPECT_FALSE(keyState2.existed);
 
     // hash Collision
-    std::vector<double> hashCollisionVector = {1224.0, 1285.0, 1463.0, 4307.0, 5135.0, 5903.0,
-                                               6603.0, 6780.0, 8416.0, 9401.0, 9740.0};
-    for (uint32_t i = 0; i < hashCollisionVector.size() - 1; i++) {
-        JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(hashCollisionVector[i]));
-        JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(hashCollisionVector[i]));
+    std::vector<double> setVector = {0.0, 1224.0, 1285.0, 1463.0, 4307.0, 5135.0,
+                                     5903.0, 6603.0, 6780.0, 8416.0, 9401.0, 9740.0};
+    for (uint32_t i = 0; i < setVector.size() - 1; i++) {
+        JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(setVector[i]));
+        JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(setVector[i]));
         JSAPILightWeightMap::Set(thread, lwm, key3, value3);
     }
+    
     // check
-    for (uint32_t i = 0; i < hashCollisionVector.size() - 1; i++) {
-        JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(hashCollisionVector[i]));
+    for (uint32_t i = 0; i < setVector.size() - 1; i++) {
+        JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(setVector[i]));
         KeyState keyState4 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key4);
         EXPECT_TRUE(keyState4.existed);
     }
-    JSHandle<JSTaggedValue> key5(thread, JSTaggedValue(hashCollisionVector[hashCollisionVector.size() - 1]));
+    JSHandle<JSTaggedValue> key5(thread, JSTaggedValue(setVector[setVector.size() - 1]));
     KeyState keyState5 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key5);
     EXPECT_FALSE(keyState5.existed);
+
+    JSHandle<JSTaggedValue> key6(thread, JSTaggedValue(0));
+    KeyState keyState6 = JSAPILightWeightMap::GetStateOfKey(thread, lwm, key6);
+    EXPECT_TRUE(keyState6.existed);
 }
 
 HWTEST_F_L0(JSAPILightWeightMapTest, IncreaseCapacityTo)
@@ -387,5 +399,78 @@ HWTEST_F_L0(JSAPILightWeightMapTest, Iterator)
         EXPECT_EQ(JSAPILightWeightMap::HasKey(thread, lwm, keyHandle), JSTaggedValue::True());
         EXPECT_EQ(JSAPILightWeightMap::Get(thread, lwm, keyHandle), v);
     }
+}
+
+HWTEST_F_L0(JSAPILightWeightMapTest, IsEmptyHasValueHasAll)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPILightWeightMap> lwp(thread, CreateLightWeightMap());
+    JSHandle<JSAPILightWeightMap> hasAllLwp(thread, CreateLightWeightMap());
+    JSMutableHandle<JSTaggedValue> key1(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value1(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value2(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value3(thread, JSTaggedValue::Undefined());
+
+    std::string tValue;
+    // test IsEmpty
+    EXPECT_EQ(lwp->IsEmpty(), JSTaggedValue::True());
+    // test Set
+    std::string myKey1("mykey");
+    std::string myValue1("myvalue");
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        std::string iKey1 = myKey1 + std::to_string(i);
+        std::string iValue1 = myValue1 + std::to_string(i + 1);
+        key1.Update(factory->NewFromStdString(iKey1).GetTaggedValue());
+        value1.Update(factory->NewFromStdString(iValue1).GetTaggedValue());
+        JSAPILightWeightMap::Set(thread, lwp, key1, value1);
+    }
+    EXPECT_EQ(lwp->GetLength(), NODE_NUMBERS);
+
+    // test HasValue
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        tValue = myValue1 + std::to_string(i + 1);
+        value1.Update(factory->NewFromStdString(tValue).GetTaggedValue());
+        EXPECT_EQ(JSAPILightWeightMap::HasValue(thread, lwp, value1), JSTaggedValue::True());
+    }
+    tValue = myValue1 + std::to_string(NODE_NUMBERS + 1);
+    value1.Update(factory->NewFromStdString(tValue).GetTaggedValue());
+    EXPECT_EQ(JSAPILightWeightMap::HasValue(thread, lwp, value1), JSTaggedValue::False());
+
+    // test HasAll
+    for (uint32_t i = 0; i < NODE_NUMBERS - 5; i++) {
+        if (i == 1) {
+            std::string mykey2("destKey");
+            std::string myValue2("destValue");
+            std::string iKey2 = mykey2 + std::to_string(i);
+            std::string iValue2 = myValue2 + std::to_string(i);
+            key1.Update(factory->NewFromStdString(iKey2).GetTaggedValue());
+            value1.Update(factory->NewFromStdString(iValue2).GetTaggedValue());
+            JSAPILightWeightMap::Set(thread, hasAllLwp, key1, value1);
+        } else {
+            std::string iKey = myKey1 + std::to_string(i);
+            std::string iValue = myValue1 + std::to_string(i + 1);
+            key1.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+            value1.Update(factory->NewFromStdString(iValue).GetTaggedValue());
+            JSAPILightWeightMap::Set(thread, hasAllLwp, key1, value2);
+        }
+    }
+    EXPECT_EQ(hasAllLwp->GetLength(), NODE_NUMBERS - 5);
+    EXPECT_EQ(JSAPILightWeightMap::HasAll(thread, lwp, hasAllLwp), JSTaggedValue::False());
+    EXPECT_EQ(JSAPILightWeightMap::HasAll(thread, hasAllLwp, lwp), JSTaggedValue::False());
+}
+
+/**
+ * @tc.name: GetIteratorObj
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPILightWeightMapTest, GetIteratorObj)
+{
+    JSHandle<JSAPILightWeightMap> lwp(thread, CreateLightWeightMap());
+    JSHandle<JSTaggedValue> iteratorObj(thread, JSAPILightWeightMap::GetIteratorObj(
+        thread, lwp, IterationKind::KEY_AND_VALUE));
+    EXPECT_TRUE(iteratorObj->IsJSAPILightWeightMapIterator());
 }
 }  // namespace panda::test

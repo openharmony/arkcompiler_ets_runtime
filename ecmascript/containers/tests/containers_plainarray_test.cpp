@@ -14,7 +14,6 @@
  */
  
 #include "ecmascript/containers/containers_plainarray.h"
-
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_env.h"
@@ -25,6 +24,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -130,7 +130,7 @@ protected:
                                             JSTaggedValue size)
     {
         auto callInfo =
-            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 6 means the value
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 means the value
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(plainArray.GetTaggedValue());
         callInfo->SetCallArg(0, index);
@@ -164,6 +164,10 @@ HWTEST_F_L0(ContainersPlainArrayTest, PlainArrayConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = arrayHandle->GetSize();
     ASSERT_EQ(size, 0);
+    
+    // test PlainArrayConstructor exception
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, PlainArrayConstructor, objCallInfo);
 }
 
 HWTEST_F_L0(ContainersPlainArrayTest, AddAndHas)
@@ -453,5 +457,108 @@ HWTEST_F_L0(ContainersPlainArrayTest, RemoveRangeFrom)
         EXPECT_EQ(result, JSTaggedValue::Exception());
         thread->ClearException();
     }
+}
+
+HWTEST_F_L0(ContainersPlainArrayTest, ProxyOfGetSize)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPIPlainArray> proxyArrayList = CreateJSAPIPlainArray();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, proxyArrayList.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersPlainArray::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersPlainArray::GetSize(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersPlainArrayTest,
+    ExceptionReturnOfAddHasGetGetIndexOfKeyClearCloneGetIteratorObjForEachToStringGetIndexOfValue)
+{
+    JSHandle<JSAPIPlainArray> plianArray = CreateJSAPIPlainArray();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test Add, Has, Get and GetIndexOfKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Add, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Has, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Get, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfKey, callInfo);
+    callInfo->SetThis(plianArray.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Add, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Has, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Get, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfKey, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test Clear exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Clear, callInfo);
+
+    // test Clone exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Clone, callInfo);
+
+    // test GetIteratorObj exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIteratorObj, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, ForEach, callInfo);
+
+    // test ToString exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, ToString, callInfo);
+
+    // test GetIndexOfValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfValue, callInfo);
+}
+
+HWTEST_F_L0(ContainersPlainArrayTest,
+    ExceptionReturnOfGetKeyAtRemoveRemoveAtSetValueAtGetValueAtIsEmptyRemoveRangeFromGetSize)
+{
+    JSHandle<JSAPIPlainArray> plianArray = CreateJSAPIPlainArray();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test GetKeyAt, Remove, ReomveAt, SetValueAt, GetValueAt exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetKeyAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Remove, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, RemoveAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, SetValueAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetValueAt, callInfo);
+    callInfo->SetThis(plianArray.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetKeyAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Remove, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, RemoveAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, SetValueAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetValueAt, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, IsEmpty, callInfo);
+
+    // test RemoveRangeFrom exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, RemoveRangeFrom, callInfo);
+
+    // test GetSize exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetSize, callInfo);
 }
 }

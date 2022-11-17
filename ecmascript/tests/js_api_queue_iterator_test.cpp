@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_api/js_api_stack_iterator.h"
 #include "ecmascript/containers/containers_private.h"
+#include "ecmascript/js_api/js_api_queue_iterator.h"
+#include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/tests/test_helper.h"
 
+using namespace panda;
 using namespace panda::ecmascript;
-using namespace panda::ecmascript::containers;
 
 namespace panda::test {
-class JSAPIStackIteratorTest : public testing::Test {
+class JSAPIQueueIteratorTest : public testing::Test {
 public:
     static void SetUpTestCase()
     {
@@ -50,7 +50,7 @@ public:
     JSThread *thread {nullptr};
 
 protected:
-    static JSHandle<JSAPIStack> CreateJSApiStack(JSThread *thread)
+    JSHandle<JSAPIQueue> CreateQueue(int capacaty = JSAPIQueue::DEFAULT_CAPACITY_LENGTH)
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -63,58 +63,65 @@ protected:
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
         ecmaRuntimeCallInfo->SetThis(value.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::Stack)));
+        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::Queue)));
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
         JSTaggedValue result = containers::ContainersPrivate::Load(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
 
         JSHandle<JSTaggedValue> constructor(thread, result);
-        JSHandle<JSAPIStack> jsStack(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        jsStack->SetTop(-1);
-        return jsStack;
+        JSHandle<JSAPIQueue> jsQueue(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+        JSHandle<TaggedArray> newElements = factory->NewTaggedArray(capacaty);
+        jsQueue->SetElements(thread, newElements);
+        jsQueue->SetLength(thread, JSTaggedValue(0));
+        jsQueue->SetFront(0);
+        jsQueue->SetTail(0);
+        return jsQueue;
     }
 };
 
 /**
  * @tc.name: Next
- * @tc.desc: Create an iterator of JSAPIStack,and then loop through the elements of the iterator to check whether
+ * @tc.desc: Create an iterator of JSAPIQueue,and then loop through the elements of the iterator to check whether
  *           the elements are consistent through Next function.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(JSAPIStackIteratorTest, Next)
+HWTEST_F_L0(JSAPIQueueIteratorTest, Next)
 {
-    constexpr uint32_t DEFAULT_LENGTH = 9;
+    constexpr uint32_t DEFAULT_LENGTH = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAPIStack> jsStack = CreateJSApiStack(thread);
-    EXPECT_TRUE(*jsStack != nullptr);
+    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
+    EXPECT_TRUE(*jsQueue != nullptr);
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
     // insert value
-    std::string stackValue("keyvalue");
+    std::string queueValue("keyvalue");
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = stackValue + std::to_string(i);
+        std::string ivalue = queueValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIStack::Push(thread, jsStack, value);
+        JSAPIQueue::Add(thread, jsQueue, value);
     }
-    JSHandle<JSAPIStackIterator> stackIterator = factory->NewJSAPIStackIterator(jsStack);
+    JSHandle<JSAPIQueueIterator> queueIterator = factory->NewJSAPIQueueIterator(jsQueue);
     for (uint32_t i = 0; i <= DEFAULT_LENGTH; i++) {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(stackIterator.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetThis(queueIterator.GetTaggedValue());
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result = JSAPIStackIterator::Next(ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPIQueueIterator::Next(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
 
         JSHandle<JSObject> resultObj(thread, result);
+        std::string resultValue = queueValue + std::to_string(i);
         if (i <= DEFAULT_LENGTH - 1U) {
-            EXPECT_EQ(stackIterator->GetNextIndex(), (i + 1U));
-            EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsString());
+            value.Update(factory->NewFromStdString(resultValue).GetTaggedValue());
+            EXPECT_EQ(queueIterator->GetNextIndex(), i + 1U);
+            EXPECT_EQ(JSTaggedValue::SameValue(
+            JSObject::GetProperty(thread, resultObj, valueStr).GetValue(), value), true);
         }
         else {
-            EXPECT_TRUE(stackIterator->GetIteratedStack().IsUndefined());
+            EXPECT_TRUE(queueIterator->GetIteratedQueue().IsUndefined());
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsUndefined());
         }
     }
@@ -126,12 +133,12 @@ HWTEST_F_L0(JSAPIStackIteratorTest, Next)
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(JSAPIStackIteratorTest, SpecialReturnOfNext)
+HWTEST_F_L0(JSAPIQueueIteratorTest, SpecialReturnOfNext)
 {
-    JSHandle<JSAPIStack> jsStack = CreateJSApiStack(thread);
+    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAPIStackIterator> stackIterator = factory->NewJSAPIStackIterator(jsStack);
-    stackIterator->SetIteratedStack(thread, JSTaggedValue::Undefined());
+    JSHandle<JSAPIQueueIterator> queueIterator = factory->NewJSAPIQueueIterator(jsQueue);
+    queueIterator->SetIteratedQueue(thread, JSTaggedValue::Undefined());
     
     // test Next exception
     {
@@ -140,7 +147,7 @@ HWTEST_F_L0(JSAPIStackIteratorTest, SpecialReturnOfNext)
         ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result = JSAPIStackIterator::Next(ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPIQueueIterator::Next(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::Exception());
         EXPECT_EXCEPTION();
@@ -150,85 +157,77 @@ HWTEST_F_L0(JSAPIStackIteratorTest, SpecialReturnOfNext)
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetThis(stackIterator.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetThis(queueIterator.GetTaggedValue());
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSTaggedValue result = JSAPIStackIterator::Next(ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPIQueueIterator::Next(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, thread->GlobalConstants()->GetUndefinedIterResult());
     }
 }
 
+
 /**
- * @tc.name: SetIteratedStack
- * @tc.desc: Call the "SetIteratedStack" function, check whether the result returned through "GetIteratedStack"
- *           function from the JSAPIStackIterator is within expectations.
+ * @tc.name: SetIteratedQueue
+ * @tc.desc: Call the "SetIteratedQueue" function, check whether the result returned through "GetIteratedQueue"
+ *           function from the JSAPIQueueIterator is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(JSAPIStackIteratorTest, SetIteratedStack)
+HWTEST_F_L0(JSAPIQueueIteratorTest, SetIteratedQueue)
 {
-    constexpr uint32_t DEFAULT_LENGTH = 9;
+    constexpr uint32_t DEFAULT_LENGTH = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAPIStack> jsStack1 = CreateJSApiStack(thread);
-    JSHandle<JSAPIStack> jsStack2 = CreateJSApiStack(thread);
-    EXPECT_TRUE(*jsStack1 != nullptr);
-    EXPECT_TRUE(*jsStack2 != nullptr);
+    JSHandle<JSAPIQueue> jsQueue1 = CreateQueue();
+    JSHandle<JSAPIQueue> jsQueue2 = CreateQueue();
+    EXPECT_TRUE(*jsQueue1 != nullptr);
+    EXPECT_TRUE(*jsQueue2 != nullptr);
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     // insert value
-    std::string stackValue("keyvalue");
+    std::string queueValue("keyvalue");
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = stackValue + std::to_string(i);
+        std::string ivalue = queueValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIStack::Push(thread, jsStack1, value);
+        JSAPIQueue::Add(thread, jsQueue1, value);
     }
 
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = stackValue + std::to_string(i + 2U);
+        std::string ivalue = queueValue + std::to_string(i + 1U);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIStack::Push(thread, jsStack2, value);
+        JSAPIQueue::Add(thread, jsQueue2, value);
     }
-    JSHandle<JSAPIStackIterator> stackIterator = factory->NewJSAPIStackIterator(jsStack1);
-    EXPECT_EQ(stackIterator->GetIteratedStack(), jsStack1.GetTaggedValue());
+    JSHandle<JSAPIQueueIterator> queueIterator = factory->NewJSAPIQueueIterator(jsQueue1);
+    EXPECT_EQ(queueIterator->GetIteratedQueue(), jsQueue1.GetTaggedValue());
 
-    stackIterator->SetIteratedStack(thread, jsStack2.GetTaggedValue());
-    JSHandle<JSAPIStack> jsAPIStackTo(thread, JSAPIStack::Cast(stackIterator->GetIteratedStack().GetTaggedObject()));
-    EXPECT_EQ(jsAPIStackTo->GetSize(), static_cast<int>(DEFAULT_LENGTH - 1U));
-
-    for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = stackValue + std::to_string(i + 2U);
-        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        EXPECT_EQ(jsAPIStackTo->Search(value), static_cast<int>(i));
-    }
+    queueIterator->SetIteratedQueue(thread, jsQueue2.GetTaggedValue());
+    EXPECT_EQ(queueIterator->GetIteratedQueue(), jsQueue2.GetTaggedValue());
 }
 
 /**
  * @tc.name: SetNextIndex
  * @tc.desc: Call the "SetNextIndex" function, check whether the result returned through "GetNextIndex"
- *           function from the JSAPIStackIterator is within expectations.
+ *           function from the JSAPIQueueIterator is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(JSAPIStackIteratorTest, SetNextIndex)
+HWTEST_F_L0(JSAPIQueueIteratorTest, SetNextIndex)
 {
-    constexpr uint32_t DEFAULT_LENGTH = 9;
+    constexpr uint32_t DEFAULT_LENGTH = 8;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAPIStack> jsStack = CreateJSApiStack(thread);
-    EXPECT_TRUE(*jsStack != nullptr);
+    JSHandle<JSAPIQueue> jsQueue = CreateQueue();
+    EXPECT_TRUE(*jsQueue != nullptr);
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     // insert value
-    std::string stackValue("keyvalue");
+    std::string queueValue("keyvalue");
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        std::string ivalue = stackValue + std::to_string(i);
+        std::string ivalue = queueValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSAPIStack::Push(thread, jsStack, value);
+        JSAPIQueue::Add(thread, jsQueue, value);
     }
-    JSHandle<JSAPIStackIterator> stackIterator = factory->NewJSAPIStackIterator(jsStack);
-    EXPECT_EQ(stackIterator->GetNextIndex(), 0U);
-    
+    JSHandle<JSAPIQueueIterator> queueIterator = factory->NewJSAPIQueueIterator(jsQueue);
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
-        stackIterator->SetNextIndex(i);
-        EXPECT_EQ(stackIterator->GetNextIndex(), i);
+        queueIterator->SetNextIndex(i);
+        EXPECT_EQ(queueIterator->GetNextIndex(), i);
     }
 }
-}  // namespace panda::ecmascript
+}  // namespace panda::test

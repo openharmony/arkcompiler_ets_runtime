@@ -24,6 +24,7 @@
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -134,6 +135,10 @@ HWTEST_F_L0(ContainersHashMapTest, HashMapConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = mapHandle->GetSize();
     ASSERT_EQ(size, 0);
+    
+    // test HashMapConstructor exception
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, HashMapConstructor, objCallInfo);
 }
 
 // hashmap.set(key, value), hashmap.get(key)
@@ -944,5 +949,84 @@ HWTEST_F_L0(ContainersHashMapTest, ForEach)
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, value.GetTaggedValue());
     }
+}
+
+HWTEST_F_L0(ContainersHashMapTest, ProxyOfGetLength)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPIHashMap> treeMap = CreateJSAPIHashMap();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, treeMap.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersHashMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersHashMap::GetLength(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersHashMapTest,
+    ExceptionReturnOfSetAllKeysValuesEntriesForEachSetGetRemoveHasKeyHasValueReplaceClearGetLength)
+{
+    JSHandle<JSAPIHashMap> treeMap = CreateJSAPIHashMap();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test SetAll exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, SetAll, callInfo);
+    callInfo->SetThis(treeMap.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, SetAll, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test Keys exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Keys, callInfo);
+
+    // test Values exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Values, callInfo);
+
+    // test Entries exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Entries, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, ForEach, callInfo);
+
+    // test Set exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Set, callInfo);
+
+    // test Get exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Get, callInfo);
+
+    // test Remove exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Remove, callInfo);
+
+    // test HasKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, HasKey, callInfo);
+
+    // test HasValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, HasValue, callInfo);
+
+    // test Replace exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Replace, callInfo);
+
+    // test Clear exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Clear, callInfo);
+
+    // test GetLength exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, GetLength, callInfo);
 }
 } // namespace panda::test

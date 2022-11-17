@@ -241,7 +241,6 @@ JSTaggedValue ContainersStack::GetLength(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Stack, GetLength);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv); // JSAPIStack
     JSHandle<JSTaggedValue> self = GetThis(argv);
 
     if (!self->IsJSAPIStack()) {
@@ -254,7 +253,7 @@ JSTaggedValue ContainersStack::GetLength(EcmaRuntimeCallInfo *argv)
         }
     }
 
-    int len = (JSHandle<JSAPIStack>::Cast(thisHandle))->GetSize();
+    int len = (JSHandle<JSAPIStack>::Cast(self))->GetSize();
     return JSTaggedValue(len + 1);
 }
 }  // namespace panda::ecmascript::containers

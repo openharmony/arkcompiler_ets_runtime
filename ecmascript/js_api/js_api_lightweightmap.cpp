@@ -320,24 +320,6 @@ JSTaggedValue JSAPILightWeightMap::SetValueAt(JSThread *thread, const JSHandle<J
     return JSTaggedValue::True();
 }
 
-int32_t JSAPILightWeightMap::GetHashIndex(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
-                                          int32_t hash, const JSTaggedValue &key, int32_t size)
-{
-    JSHandle<TaggedArray> hashArray = GetArrayByKind(thread, lightWeightMap, AccossorsKind::HASH);
-    JSHandle<TaggedArray> keyArray = GetArrayByKind(thread, lightWeightMap, AccossorsKind::KEY);
-    int32_t index = BinarySearchHashes(hashArray, hash, size);
-    if (index < 0) {
-        index ^= HASH_REBELLION;
-        return index;
-    }
-    if ((index < size) && (JSTaggedValue::SameValue(keyArray->Get(index), key))) {
-        return index;
-    }
-    JSTaggedValue dealKey = key;
-    HashParams params { hashArray, keyArray, &dealKey };
-    return AvoidHashCollision(params, index, size, hash);
-}
-
 int32_t JSAPILightWeightMap::AvoidHashCollision(HashParams &params, int32_t index, int32_t size, int32_t hash)
 {
     int32_t right = index;

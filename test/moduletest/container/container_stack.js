@@ -27,10 +27,17 @@ if (globalThis["ArkPrivate"] != undefined) {
     let res = true
     let testArray = []
     let map = new Map();
+
+    // test isEmpty true
+    map.set("test proxy isEmpty ture:", proxy.isEmpty() == true)
+
     for(let i = 0; i < 10; i++) {
         proxy.push(i)
         testArray.push(i)
     }
+
+    // test isEmpty false
+    map.set("test proxy isEmpty false:", proxy.isEmpty() == false)
 
     res = true
     for(let i = 0; i < testArray.length; i++) {
@@ -76,6 +83,16 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     map.set("test stack peek:",  proxy.peek() === 9)
     map.set("test stack locate:",  proxy.locate(5) === 5)
+
+    // test proxy pop
+    let popStack = new Stack();
+    let popProxy = new Proxy(popStack, {});
+    for (let i = 0; i < 10; i++) {
+        popProxy.push(i);
+    }
+    for (let i = 9; i >= 0; i--) {
+        map.set("test proxy stack pop:" + i, popProxy.pop() == i);
+    }
 
     let flag = undefined;
     function elements(value, key, map) {

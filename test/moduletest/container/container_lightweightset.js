@@ -31,6 +31,12 @@ if (globalThis["ArkPrivate"] != undefined) {
     proxy.add(1);
     proxy.add(2);
     proxy.add(3);
+    // test has: true
+    res.set("test has 1:", proxy.has(1));
+    res.set("test has 2:", proxy.has(2));
+    res.set("test has 3:", proxy.has(3));
+    // test has: false
+    res.set("test has 4:", proxy.has(4) == false);
     // test values: true
     let iteratorValues1 = proxy.values();
     res.set("test values:", iteratorValues1.next().value == 1 && iteratorValues1.next().value == 2 &&

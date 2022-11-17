@@ -30,6 +30,7 @@ host_unittest_action("ContainersTest") {
     "containers_linked_list_test.cpp",
     "containers_list_test.cpp",
     "containers_plainarray_test.cpp",
+    "containers_queue_test.cpp",
     "containers_stack_test.cpp",
     "containers_treemap_test.cpp",
     "containers_treeset_test.cpp",

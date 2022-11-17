@@ -24,6 +24,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -155,7 +156,7 @@ HWTEST_F_L0(ContainersTreeSetTest, TreeSetConstructor)
     InitializeTreeSetConstructor();
     JSHandle<JSFunction> newTarget(thread, InitializeTreeSetConstructor());
 
-    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     objCallInfo->SetFunction(newTarget.GetTaggedValue());
     objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
     objCallInfo->SetThis(JSTaggedValue::Undefined());
@@ -171,6 +172,12 @@ HWTEST_F_L0(ContainersTreeSetTest, TreeSetConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = setHandle->GetSize();
     ASSERT_EQ(size, 0);
+
+    // test TreeSetConstructor exception
+    objCallInfo->SetCallArg(0, JSTaggedValue(0));
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, TreeSetConstructor, objCallInfo);
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, TreeSetConstructor, objCallInfo);
 }
 
 // treeset.add(value), treeset.has(value)
@@ -1075,5 +1082,93 @@ HWTEST_F_L0(ContainersTreeSetTest, CustomCompareFunctionTest)
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ((NODE_NUMBERS - 1 - i), JSIterator::IteratorValue(thread, result)->GetInt());
     }
+}
+
+HWTEST_F_L0(ContainersTreeSetTest, ProxyOfGetLength)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPITreeSet> treeSet = CreateJSAPITreeSet();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, treeSet.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersTreeSet::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersTreeSet::GetLength(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersTreeSetTest,
+    ExceptionReturnOfGetHigherValueAddRemoveHasGetFirstValueGetLastValueClearGetLowerValue)
+{
+    JSHandle<JSAPITreeSet> treeSet = CreateJSAPITreeSet();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test GetHigherValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, GetHigherValue, callInfo);
+    callInfo->SetThis(treeSet.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, GetHigherValue, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test Add exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, Add, callInfo);
+
+    // test Remove exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, Remove, callInfo);
+
+    // test Has exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, Has, callInfo);
+
+    // test GetFirstValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, GetFirstValue, callInfo);
+
+    // test GetLastValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, GetLastValue, callInfo);
+
+    // test Clear exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, Clear, callInfo);
+
+    // test GetLowerValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, GetLowerValue, callInfo);
+}
+
+HWTEST_F_L0(ContainersTreeSetTest,
+    ExceptionReturnOfPopFirstPopLastIsEmptyForEachGetLength)
+{
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test PopFirst exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, PopFirst, callInfo);
+
+    // test PopLast exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, PopLast, callInfo);
+
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, IsEmpty, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, ForEach, callInfo);
+
+    // test GetLength exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, GetLength, callInfo);
 }
 }  // namespace panda::test

@@ -24,6 +24,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -159,6 +160,10 @@ HWTEST_F_L0(ContainersListTest, ListConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = list->Length();
     ASSERT_EQ(size, 0);
+
+    // test ListConstructor exception
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ListConstructor, objCallInfo);
 }
 
 HWTEST_F_L0(ContainersListTest, InsertAndGet)
@@ -485,5 +490,124 @@ HWTEST_F_L0(ContainersListTest, ForEach)
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue(i * 2));
     }
+}
+
+HWTEST_F_L0(ContainersListTest, ProxyOfLength)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPIList> list = CreateJSAPIList();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, list.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersList::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersList::Length(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersListTest,
+    ExceptionOfAddInsertGetSetGetFirstGetLastHasIsEmptyGetIndexOfGetLastIndexOfForEachClear)
+{
+    JSHandle<JSAPIList> list = CreateJSAPIList();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test Add exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Add, callInfo);
+    
+    // test Insert, Get and Set exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Insert, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Get, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Set, callInfo);
+    callInfo->SetThis(list.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Insert, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Get, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Set, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+
+    // test GetFirst exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetFirst, callInfo);
+
+    // test GetLast exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetLast, callInfo);
+
+    // test Has exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Has, callInfo);
+
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, IsEmpty, callInfo);
+
+    // test GetIndexOf exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetIndexOf, callInfo);
+
+    // test GetLastIndexOf exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetIndexOf, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ForEach, callInfo);
+
+    // test Clear exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Clear, callInfo);
+}
+
+HWTEST_F_L0(ContainersListTest,
+    SpecialReturnOfRemoveByIndexRemoveReplaceAllElementsEqualSortConvertToArrayGetSubListLength)
+{
+    JSHandle<JSAPIList> list = CreateJSAPIList();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+    
+    // test RemoveByIndex and Equal exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, RemoveByIndex, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ReplaceAllElements, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Equal, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Sort, callInfo);
+    callInfo->SetThis(list.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, RemoveByIndex, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ReplaceAllElements, callInfo);
+    
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    JSTaggedValue result = ContainersList::Equal(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_EQ(result, JSTaggedValue::False());
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test Remove exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Remove, callInfo);
+
+    // test ConvertToArray exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ConvertToArray, callInfo);
+
+    // test Length exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Length, callInfo);
+
+    // test GetSubList exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetSubList, callInfo);
+    callInfo->SetThis(list.GetTaggedValue());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetSubList, callInfo);
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetSubList, callInfo);
 }
 }  // namespace panda::test

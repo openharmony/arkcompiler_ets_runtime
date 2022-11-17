@@ -321,4 +321,54 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, KEY_AND_VALUE_Next)
         EXPECT_EQ(treeMapKeyIterator->GetNextIndex(), (i + 1U));
     }
 }
+
+/**
+ * @tc.name: Next and CreateTreeMapIterator
+ * @tc.desc: test special return of Next and CreateTreeMapIterator,
+ *           including throw exception and return undefined
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPITreeMapIteratorTest, SpecailReturnOfNextCreateTreeMapIterator)
+{
+    JSHandle<JSAPITreeMap> jsTreeMap = CreateTreeMap();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPITreeMapIterator> treeMapIterator = factory->NewJSAPITreeMapIterator(
+        jsTreeMap, IterationKind::KEY_AND_VALUE);
+    treeMapIterator->SetIteratedMap(thread, JSTaggedValue::Undefined());
+    
+    // test Next exception
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPITreeMapIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, JSTaggedValue::Exception());
+        EXPECT_EXCEPTION();
+    }
+
+    // test Next return undefined
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(treeMapIterator.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPITreeMapIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, thread->GlobalConstants()->GetUndefinedIterResult());
+    }
+
+    // test CreateTreeMapIterator exception
+    {
+        JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+        JSHandle<JSTaggedValue> result =
+            JSAPITreeMapIterator::CreateTreeMapIterator(thread, undefined, IterationKind::KEY_AND_VALUE);
+        EXPECT_EQ(result.GetTaggedValue(), JSTaggedValue::Exception());
+        EXPECT_EXCEPTION();
+    }
+}
 }  // namespace panda::ecmascript

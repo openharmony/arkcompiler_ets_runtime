@@ -101,6 +101,9 @@ HWTEST_F_L0(JSAPIStackTest, PushAndPeek)
 
     JSHandle<JSAPIStack> toor(thread, CreateStack());
 
+    // test Peek empty
+    EXPECT_EQ(toor->Peek(), JSTaggedValue::Undefined());
+
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
@@ -121,6 +124,9 @@ HWTEST_F_L0(JSAPIStackTest, Pop)
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
 
     JSHandle<JSAPIStack> toor(thread, CreateStack());
+
+    // test Pop empty
+    EXPECT_EQ(toor->Pop(), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 1; i <= NODE_NUMBERS; i++) {
@@ -188,6 +194,8 @@ HWTEST_F_L0(JSAPIStackTest, Search)
         EXPECT_EQ(result, value.GetTaggedValue());
         EXPECT_EQ(toor->Search(value), static_cast<int>(i));
     }
+    value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
+    EXPECT_EQ(toor->Search(value), -1);
 
     toor->Dump();
 }
@@ -212,6 +220,12 @@ HWTEST_F_L0(JSAPIStackTest, GetOwnProperty)
     testInt = 20;
     JSHandle<JSTaggedValue> stackKey2(thread, JSTaggedValue(testInt));
     EXPECT_FALSE(JSAPIStack::GetOwnProperty(thread, toor, stackKey2));
+    EXPECT_EXCEPTION();
+
+    // test GetOwnProperty exception
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    EXPECT_FALSE(JSAPIStack::GetOwnProperty(thread, toor, undefined));
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -233,6 +247,17 @@ HWTEST_F_L0(JSAPIStackTest, GetProperty)
         OperationResult getPropertyRes = JSAPIStack::GetProperty(thread, toor, key);
         EXPECT_EQ(getPropertyRes.GetValue().GetTaggedValue(), JSTaggedValue(i));
     }
+
+    // test GetProperty Exception
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+    OperationResult getPropertyRes = JSAPIStack::GetProperty(thread, toor, key);
+    EXPECT_EQ(getPropertyRes.GetValue().GetTaggedValue(), JSTaggedValue::Exception());
+    EXPECT_EXCEPTION();
+
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums));
+    OperationResult getPropertyRes1 = JSAPIStack::GetProperty(thread, toor, key1);
+    EXPECT_EQ(getPropertyRes1.GetValue().GetTaggedValue(), JSTaggedValue::Exception());
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -254,6 +279,57 @@ HWTEST_F_L0(JSAPIStackTest, SetProperty)
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 2)); // 2 : It means double
         bool setPropertyRes = JSAPIStack::SetProperty(thread, toor, key, value);
         EXPECT_EQ(setPropertyRes, true);
+    }
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(-1));
+    EXPECT_FALSE(JSAPIStack::SetProperty(thread, toor, key, value));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums));
+    EXPECT_FALSE(JSAPIStack::SetProperty(thread, toor, key1, value));
+}
+
+/**
+ * @tc.name: Has
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIStackTest, Has)
+{
+    JSHandle<JSAPIStack> toor(thread, CreateStack());
+
+    // test Has empty
+    EXPECT_FALSE(toor->Has(JSTaggedValue(0)));
+
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIStack::Push(thread, toor, value);
+    }
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        EXPECT_TRUE(toor->Has(JSTaggedValue(i)));
+    }
+    EXPECT_FALSE(toor->Has(JSTaggedValue(elementsNums)));
+}
+
+/**
+ * @tc.name: OwnKeys
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIStackTest, OwnKeys)
+{
+    JSHandle<JSAPIStack> toor(thread, CreateStack());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIStack::Push(thread, toor, value);
+    }
+    JSHandle<TaggedArray> keyArray = JSAPIStack::OwnKeys(thread, toor);
+    EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
+    EXPECT_TRUE(keyArray->GetLength() == elementsNums);
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        EXPECT_EQ(keyArray->Get(i), JSTaggedValue(i));
     }
 }
 }  // namespace panda::test

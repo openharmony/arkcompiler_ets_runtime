@@ -197,16 +197,7 @@ bool JSAPIArrayList::Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
 {
     int index = GetIndexOf(thread, arrayList, value);
     int length = arrayList->GetSize();
-    int curLength = length;
     if (index >= 0) {
-        if (index >= curLength) {
-            std::ostringstream oss;
-            oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (curLength - 1)
-            << ". Received value is: " << index;
-            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
-        }
-
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
         ASSERT(!elements->IsDictionaryMode());
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
