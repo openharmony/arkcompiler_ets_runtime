@@ -121,20 +121,9 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(vm->GetGlobalEnv()->GetFunctionClassWithProto());
 
-    const CString &filename = jsPandaFile->GetJSPandaFileDesc();
-#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
-    CString entry = JSPandaFile::ParseRecordName(filename);
-#else
-    CString entry = JSPandaFile::ParseOhmUrl(filename);
-#endif
-    uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entry);
-    ASSERT(mainMethodIndex != 0);
-
     JSHandle<ConstantPool> constpool;
     bool isNewVersion = jsPandaFile->IsNewVersion();
-    if (isNewVersion) {
-        constpool = vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(mainMethodIndex));
-    } else {
+    if (!isNewVersion) {
         JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, 0);
         if (constpoolVal.IsHole()) {
             constpool = PandaFileTranslator::ParseConstPool(vm, jsPandaFile);
@@ -152,13 +141,16 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
         const CString &recordName = item.first;
         LOG_ECMA(DEBUG) << "Parse constpool: " << fileName << ":" << recordName;
         vm->GetModuleManager()->HostResolveImportedModuleWithMerge(fileName, recordName);
+
+        uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(recordName);
         if (!isNewVersion) {
             PandaFileTranslator::ParseFuncAndLiteralConstPool(vm, jsPandaFile, recordName, constpool);
+        } else {
+            constpool = vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(mainMethodIndex));
         }
 
         // Generate Program for every record.
-        uint32_t recordIndex = jsPandaFile->GetMainMethodIndex(recordName);
-        auto methodLiteral = jsPandaFile->FindMethodLiteral(recordIndex);
+        auto methodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
         JSHandle<Program> program = factory->NewProgram();
         if (methodLiteral == nullptr) {
             program->SetMainFunction(thread, JSTaggedValue::Undefined());
