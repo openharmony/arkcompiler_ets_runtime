@@ -206,10 +206,11 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
 {
     RuntimeOption option;
     option.SetEnableProfile(true);
-    char currentPath[PATH_MAX + 1];
-    if (memset_s(currentPath, PATH_MAX + 1, 1, PATH_MAX + 1) != EOK) {
+    char currentPath[PATH_MAX + 2];
+    if (memset_s(currentPath, PATH_MAX, 1, PATH_MAX) != EOK) {
         ASSERT_TRUE(false);
     }
+    currentPath[PATH_MAX + 1] = '\0';
     option.SetProfileDir(currentPath);
     vm_ = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";

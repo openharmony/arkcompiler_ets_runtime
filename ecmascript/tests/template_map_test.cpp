@@ -200,12 +200,6 @@ HWTEST_F_L0(TemplateMapTest, IsNeedGrowHashTable)
     }
     EXPECT_FALSE(templateMap->IsNeedGrowHashTable(addEntriesCount));
     EXPECT_TRUE(templateMap->IsNeedGrowHashTable(addEntriesCount + 1));
-    templateMap->IncreaseHoleEntriesCount(thread, intNumElementsTempMap - atLeastSize);
-    EXPECT_FALSE(templateMap->IsNeedGrowHashTable(addEntriesCount));
-    EXPECT_TRUE(templateMap->IsNeedGrowHashTable(addEntriesCount + 1));
-    templateMap->IncreaseHoleEntriesCount(thread, 1);
-    EXPECT_TRUE(templateMap->IsNeedGrowHashTable(addEntriesCount));
-    EXPECT_TRUE(templateMap->IsNeedGrowHashTable(addEntriesCount + 1));
     // Test for the TemplateMap of which the size is 256
     intNumElementsTempMap = 256;
     JSHandle<TemplateMap> templateMap1 = TemplateMap::Create(thread, intNumElementsTempMap);
@@ -217,18 +211,6 @@ HWTEST_F_L0(TemplateMapTest, IsNeedGrowHashTable)
     }
     EXPECT_FALSE(templateMap1->IsNeedGrowHashTable(addEntriesCount));
     EXPECT_FALSE(templateMap1->IsNeedGrowHashTable(addEntriesCount + 1));
-    EXPECT_TRUE(templateMap1->IsNeedGrowHashTable(addEntriesCount + 2));
-    templateMap1->IncreaseHoleEntriesCount(thread, intNumElementsTempMap - atLeastSize - 1);
-    EXPECT_FALSE(templateMap1->IsNeedGrowHashTable(addEntriesCount));
-    EXPECT_FALSE(templateMap1->IsNeedGrowHashTable(addEntriesCount + 1));
-    EXPECT_TRUE(templateMap1->IsNeedGrowHashTable(addEntriesCount + 2));
-    templateMap1->IncreaseHoleEntriesCount(thread, 1);
-    EXPECT_FALSE(templateMap1->IsNeedGrowHashTable(addEntriesCount));
-    EXPECT_TRUE(templateMap1->IsNeedGrowHashTable(addEntriesCount + 1));
-    EXPECT_TRUE(templateMap1->IsNeedGrowHashTable(addEntriesCount + 2));
-    templateMap1->IncreaseHoleEntriesCount(thread, 1);
-    EXPECT_TRUE(templateMap1->IsNeedGrowHashTable(addEntriesCount));
-    EXPECT_TRUE(templateMap1->IsNeedGrowHashTable(addEntriesCount + 1));
     EXPECT_TRUE(templateMap1->IsNeedGrowHashTable(addEntriesCount + 2));
 }
 
