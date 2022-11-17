@@ -478,7 +478,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         func->SetModule(thread_, recordName);
     }
 
-    if (jsPandaFile->IsLoadedAOT()) {
+    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
         thread_->SetPrintBCOffset(true);
         EcmaRuntimeStatScope runtimeStatScope(this);
         result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
