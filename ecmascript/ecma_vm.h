@@ -416,9 +416,9 @@ public:
     {
         os::memory::LockHolder lock(mutex_);
         auto thread = workerVm->GetJSThread();
-        if (thread != nullptr) {
+        if (thread != nullptr && hostVm != nullptr) {
             auto tid = thread->GetThreadId();
-            if (tid != 0 && hostVm != nullptr && workerVm != nullptr) {
+            if (tid != 0) {
                 WorkerList_.emplace(tid, workerVm);
             }
         }
@@ -439,9 +439,12 @@ public:
     bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
     {
         os::memory::LockHolder lock(mutex_);
-        if (hostVm != nullptr && workerVm != nullptr) {
-            auto tid = workerVm->GetJSThread()->GetThreadId();
-            if (tid == 0) {return false;}
+        auto thread = workerVm->GetJSThread();
+        if (hostVm != nullptr && thread != nullptr) {
+            auto tid = thread->GetThreadId();
+            if (tid == 0) {
+                return false;
+            }
             auto iter = WorkerList_.find(tid);
             if (iter != WorkerList_.end()) {
                 WorkerList_.erase(iter);
