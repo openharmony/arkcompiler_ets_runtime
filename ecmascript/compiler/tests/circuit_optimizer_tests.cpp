@@ -350,7 +350,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSmallSizeGlobalValueNumbering) {
                                0,
                                {constantA, argB},
                                GateType::NJSValue());
-    ecmascript::kungfu::GlobalValueNumbering(&circuit).Run();
+    ecmascript::kungfu::GlobalValueNumbering(&circuit, false).Run();
     EXPECT_FALSE(acc.GetOpCode(add3).IsNop());
     EXPECT_FALSE(acc.GetOpCode(argA).IsNop());
     EXPECT_FALSE(acc.GetOpCode(argB).IsNop());
@@ -413,7 +413,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestMultiLevelGlobalValueNumbering) {
         subToSub[sub] = pairToSub[np];
         subToSubs[subToSub[sub]].emplace_back(sub);
     }
-    ecmascript::kungfu::GlobalValueNumbering(&circuit).Run();
+    ecmascript::kungfu::GlobalValueNumbering(&circuit, false).Run();
     std::map<GateRef, GateRef> gateToKing;
     for (const auto &p : addToAdds) {
         uint32_t cnt = 0;
@@ -512,7 +512,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSmallWorldGlobalValueNumbering) {
         addToAdd[add] = pairToAdd[np];
         addToAdds[addToAdd[add]].emplace_back(add);
     }
-    ecmascript::kungfu::GlobalValueNumbering(&circuit).Run();
+    ecmascript::kungfu::GlobalValueNumbering(&circuit, false).Run();
     std::map<GateRef, GateRef> gateToKing;
     for (const auto &p : addToAdds) {
         uint32_t cnt = 0;

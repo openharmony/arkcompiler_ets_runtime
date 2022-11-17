@@ -164,11 +164,11 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
                                    info_->bytecodes, true, IsLogEnabled(),
                                    hasTyps, fullName, recordName);
     {
-        TimeScope timeScope("BytecodeToCircuit", methodName, log);
+        TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log);
         builder.BytecodeToCircuit();
     }
 
-    PassData data(circuit_, log, IsLogEnabled(), fullName);
+    PassData data(circuit_, log, fullName, method->GetMethodId().GetOffset());
     PassRunner<PassData> pipeline(&data);
     pipeline.RunPass<TypeInferPass>(&builder, info_, methodInfo.methodInfoIndex, hasTyps);
     pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, cmpCfg);

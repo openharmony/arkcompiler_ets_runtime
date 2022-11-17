@@ -83,17 +83,33 @@ public:
         compilerLogTime_ = compilerLogTime;
     }
 
+    bool GetEnableMethodLog() const
+    {
+        return enableMethodLog_;
+    }
+
+    void SetEnableMethodLog(bool enableMethodLog)
+    {
+        enableMethodLog_ = enableMethodLog;
+    }
+
+    bool EnableMethodCIRLog() const
+    {
+        return GetEnableMethodLog() && OutputCIR();
+    }
+
     void PrintPassTime() const;
     void PrintMethodTime() const;
     void PrintTime() const;
-    void AddMethodTime(const std::string& name, double time);
+    void AddMethodTime(const std::string& name, uint32_t id, double time);
     void AddPassTime(const std::string& name, double time);
 
 private:
-    static constexpr int PASS_LENS = 25;
-    static constexpr int METHOD_LENS = 18;
+    static constexpr int PASS_LENS = 32;
+    static constexpr int METHOD_LENS = 16;
+    static constexpr int OFFSET_LENS = 8;
     static constexpr int PERCENT_LENS = 4;
-    static constexpr int TIME_LENS = 12;
+    static constexpr int TIME_LENS = 8;
     static constexpr int MILLION_TIME = 1000;
     static constexpr int HUNDRED_TIME = 100;
 
@@ -106,8 +122,9 @@ private:
     bool outputType_ {false};
     bool enableBCTrace_ {false};
     bool compilerLogTime_ {true};
+    bool enableMethodLog_ {false};
     std::map<std::string, double> timePassMap_ {};
-    std::map<std::string, double> timeMethodMap_ {};
+    std::map<std::pair<uint32_t, std::string>, double> timeMethodMap_ {};
 };
 
 class MethodLogList {
@@ -140,18 +157,21 @@ private:
 
 class TimeScope : public ClockScope {
 public:
-    TimeScope(std::string name, std::string methodName, CompilerLog* log);
+    TimeScope(std::string name, std::string methodName, uint32_t methodOffset, CompilerLog* log);
     ~TimeScope();
    
 private:
-    static constexpr int PASS_LENS = 25;
-    static constexpr int TIME_LENS = 12;
+    static constexpr int PASS_LENS = 32;
+    static constexpr int METHOD_LENS = 16;
+    static constexpr int OFFSET_LENS = 8;
+    static constexpr int TIME_LENS = 8;
     static constexpr int MILLION_TIME = 1000;
 
     std::string name_ {""};
     double startTime_ {0};
     double timeUsed_ {0};
     std::string methodName_ {""};
+    uint32_t methodOffset_ {0};
     CompilerLog *log_ {nullptr};
 
     const std::string GetShortName(const std::string& methodName);

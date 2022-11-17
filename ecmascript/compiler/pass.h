@@ -35,8 +35,8 @@ namespace panda::ecmascript::kungfu {
 struct CompilationInfo;
 class PassData {
 public:
-    explicit PassData(Circuit *circuit, CompilerLog *log, bool enableMethodLog, std::string name)
-        : circuit_(circuit), log_(log), enableMethodLog_(enableMethodLog), name_(name)
+    explicit PassData(Circuit *circuit, CompilerLog *log, std::string methodName, uint32_t methodOffset = 0)
+        : circuit_(circuit), log_(log), methodName_(methodName), methodOffset_(methodOffset)
     {
     }
 
@@ -61,22 +61,22 @@ public:
         return log_;
     }
 
-    bool GetEnableMethodLog() const
-    {
-        return enableMethodLog_;
-    }
-
     const std::string& GetMethodName() const
     {
-        return name_;
+        return methodName_;
+    }
+
+    uint32_t GetMethodOffset() const
+    {
+        return methodOffset_;
     }
 
 private:
     Circuit *circuit_ {nullptr};
     ControlFlowGraph cfg_;
     CompilerLog *log_ {nullptr};
-    bool enableMethodLog_ {false};
-    std::string name_;
+    std::string methodName_;
+    uint32_t methodOffset_;
 };
 
 template<typename T1>
@@ -99,9 +99,9 @@ class TypeInferPass {
 public:
     bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationInfo *info, size_t methodId, bool hasTypes)
     {
-        TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetLog());
+        TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         if (hasTypes) {
-            bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputType();
+            bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
             TypeInfer typeInfer(builder, data->GetCircuit(), info, methodId, enableLog, data->GetMethodName());
             typeInfer.TraverseCircuit();
         }
@@ -113,8 +113,8 @@ class TSTypeLoweringPass {
 public:
     bool Run(PassData *data, CompilationInfo *info)
     {
-        TimeScope timescope("TSTypeLoweringPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("TSTypeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TSTypeLowering lowering(data->GetCircuit(), info, enableLog,
                                 data->GetMethodName());
         lowering.RunTSTypeLowering();
@@ -126,8 +126,8 @@ class TypeLoweringPass {
 public:
     bool Run(PassData *data, CompilationConfig *cmpCfg, TSManager *tsManager)
     {
-        TimeScope timescope("TypeLoweringPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("TypeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TypeLowering lowering(data->GetCircuit(), cmpCfg, tsManager, enableLog, data->GetMethodName());
         lowering.RunTypeLowering();
         return true;
@@ -138,8 +138,8 @@ class TSInlineLoweringPass {
 public:
     bool Run(PassData *data, CompilationInfo *info)
     {
-        TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TSInlineLowering inlining(data->GetCircuit(), info, enableLog, data->GetMethodName());
         inlining.RunTSInlineLowering();
         return true;
@@ -150,9 +150,10 @@ class SlowPathLoweringPass {
 public:
     bool Run(PassData* data, CompilationConfig *cmpCfg, TSManager *tsManager, const MethodLiteral *methodLiteral)
     {
-        TimeScope timescope("SlowPathLoweringPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
-        SlowPathLowering lowering(data->GetCircuit(), cmpCfg, tsManager, methodLiteral, enableLog, data->GetMethodName());
+        TimeScope timescope("SlowPathLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        SlowPathLowering lowering(data->GetCircuit(), cmpCfg, tsManager, methodLiteral,
+                                  enableLog, data->GetMethodName());
         lowering.CallRuntimeLowering();
         return true;
     }
@@ -162,8 +163,8 @@ class VerifierPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("VerifierPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("VerifierPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool isQualified = Verifier::Run(data->GetCircuit(), data->GetMethodName(), enableLog);
         if (!isQualified) {
             LOG_FULL(FATAL) << "VerifierPass fail";
@@ -177,8 +178,8 @@ class GuardEliminatingPass {
 public:
     bool Run(PassData* data, CompilationConfig *cmpCfg)
     {
-        TimeScope timescope("GuardEliminatingPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("GuardEliminatingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         GuardEliminating(data->GetCircuit(), cmpCfg, enableLog, data->GetMethodName()).Run();
         return true;
     }
@@ -188,8 +189,8 @@ class SchedulingPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         data->SetScheduleResult(Scheduler::Run(data->GetCircuit(), data->GetMethodName(), enableLog));
         return true;
     }
@@ -205,8 +206,8 @@ public:
     bool Run(PassData *data, LLVMModule *module, const MethodLiteral *methodLiteral,
              const JSPandaFile *jsPandaFile)
     {
-        TimeScope timescope("LLVMIRGenPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("LLVMIRGenPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(llvmImpl_, data->GetMethodName());
         codegen.Run(data->GetCircuit(), data->GetScheduleResult(), module->GetCompilationConfig(),
@@ -221,8 +222,9 @@ class AsyncFunctionLoweringPass {
 public:
     bool Run(PassData* data, BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg)
     {
-        TimeScope timescope("AsyncFunctionLoweringPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("AsyncFunctionLoweringPass", data->GetMethodName(),
+                            data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         AsyncFunctionLowering lowering(builder, data->GetCircuit(), cmpCfg, enableLog, data->GetMethodName());
         if (lowering.IsAsyncRelated()) {
             lowering.ProcessAll();
@@ -235,8 +237,8 @@ class GuardLoweringPass {
 public:
     bool Run(PassData* data, CompilationConfig *cmpCfg)
     {
-        TimeScope timescope("GuardLoweringPass", data->GetMethodName(), data->GetLog());
-        bool enableLog = data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        TimeScope timescope("GuardLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
         GuardLowering(cmpCfg, data->GetCircuit(), data->GetMethodName(), enableLog).Run();
         return true;
     }

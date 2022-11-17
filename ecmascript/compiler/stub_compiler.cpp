@@ -33,8 +33,8 @@
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
-    explicit StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log, bool enableMethodLog)
-        : PassData(nullptr, log, enableMethodLog, "stubs"), module_(module), stub_(stub) {}
+    explicit StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log)
+        : PassData(nullptr, log, "stubs"), module_(module), stub_(stub) {}
     ~StubPassData() = default;
 
     const CompilationConfig *GetCompilationConfig() const
@@ -82,7 +82,7 @@ public:
 
     bool Run(StubPassData *data, size_t index)
     {
-        bool enableLog =  data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        bool enableLog =  data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         auto stubModule = data->GetStubModule();
         CreateCodeGen(stubModule, enableLog);
         CodeGenerator codegen(llvmImpl_, "stubs");
@@ -113,7 +113,7 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
             enableMethodLog = logList->IncludesMethod(stub.GetMethodName());
         }
 
-        StubPassData data(&stub, module, log, enableMethodLog);
+        StubPassData data(&stub, module, log);
         PassRunner<StubPassData> pipeline(&data);
         pipeline.RunPass<StubBuildCircuitPass>();
         pipeline.RunPass<VerifierPass>();
