@@ -30,8 +30,10 @@ foreach(file, test_js_files) {
     extra_visibility = [ ":*" ]
     src_js = rebase_path(test_js)
     dst_file = rebase_path(test_abc)
-    extra_args = [ "--module" ]
-    extra_args += [ "--merge-abc" ]
+    extra_args = [
+      "--module",
+      "--merge-abc",
+    ]
 
     in_puts = [ test_js ]
     out_puts = [ test_abc ]
@@ -45,69 +47,47 @@ test_multi_files = [
   "quickfix/multi_file/patch/module.js",
 ]
 
+_test_js_file_name_ = [
+  "base",
+  "patch",
+]
+
 _merge_file_raw_ = "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests/quickfix/multi_file/merge.txt"
-_base_merge_file_ = "$target_out_dir/multi_file/base/merge.txt"
-_patch_merge_file_ = "$target_out_dir/multi_file/patch/merge.txt"
 
-_base_abc_path_ = "$target_out_dir/multi_file/base/merge.abc"
-_patch_abc_path_ = "$target_out_dir/multi_file/patch/merge.abc"
+foreach(filename, _test_js_file_name_) {
+  merge_file = "$target_out_dir/multi_file/${filename}.txt"
+  merge_file_prefix = "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests/quickfix/multi_file/${filename}/"
 
-action("gen_base_merge_file") {
-  script = "//arkcompiler/ets_runtime/test/quickfix/generate_merge_file.py"
-  args = [
-    "--input",
-    rebase_path(_merge_file_raw_),
-    "--output",
-    rebase_path(_base_merge_file_),
-    "--prefix",
-    rebase_path(
-        "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests/quickfix/multi_file/base/"),
-  ]
+  action("gen_${filename}_merge_file") {
+    script = "//arkcompiler/ets_runtime/test/quickfix/generate_merge_file.py"
+    args = [
+      "--input",
+      rebase_path(_merge_file_raw_),
+      "--output",
+      rebase_path(merge_file),
+      "--prefix",
+      rebase_path(merge_file_prefix),
+    ]
 
-  inputs = [ _merge_file_raw_ ]
-  outputs = [ _base_merge_file_ ]
-}
+    inputs = [ _merge_file_raw_ ]
+    outputs = [ merge_file ]
+  }
 
-action("gen_patch_merge_file") {
-  script = "//arkcompiler/ets_runtime/test/quickfix/generate_merge_file.py"
-  args = [
-    "--input",
-    rebase_path(_merge_file_raw_),
-    "--output",
-    rebase_path(_patch_merge_file_),
-    "--prefix",
-    rebase_path(
-        "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests/quickfix/multi_file/patch/"),
-  ]
+  abc_path = "$target_out_dir/multi_file/${filename}/merge.abc"
 
-  inputs = [ _merge_file_raw_ ]
-  outputs = [ _patch_merge_file_ ]
-}
+  es2abc_gen_abc("gen_${filename}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    extra_dependencies = [ ":gen_${filename}_merge_file" ]
+    src_js = "@" + rebase_path(merge_file)
+    dst_file = rebase_path(abc_path)
+    extra_args = [
+      "--module",
+      "--merge-abc",
+    ]
 
-es2abc_gen_abc("gen_base_abc") {
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  extra_dependencies = [ ":gen_base_merge_file" ]
-  src_js = "@" + rebase_path(_base_merge_file_)
-  dst_file = rebase_path(_base_abc_path_)
-  extra_args = []
-  extra_args += [ "--module" ]
-  extra_args += [ "--merge-abc" ]
-
-  in_puts = test_multi_files
-  out_puts = [ _base_abc_path_ ]
-}
-
-es2abc_gen_abc("gen_patch_abc") {
-  extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-  extra_dependencies = [ ":gen_patch_merge_file" ]
-  src_js = "@" + rebase_path(_patch_merge_file_)
-  dst_file = rebase_path(_patch_abc_path_)
-  extra_args = []
-  extra_args += [ "--module" ]
-  extra_args += [ "--merge-abc" ]
-
-  in_puts = test_multi_files
-  out_puts = [ _patch_abc_path_ ]
+    in_puts = test_multi_files
+    out_puts = [ abc_path ]
+  }
 }
 
 module_output_path = "arkcompiler/ets_runtime"
