@@ -69,13 +69,14 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
     if (tsManager_->IsFunctionTypeKind(funcType)) {
         GlobalTSTypeRef gt = funcType.GetGTRef();
         auto methodOffset = tsManager_->GetFuncMethodOffset(gt);
-        if (tsManager_->IsSkippedMethod(methodOffset)) {
+        if (info_->IsSkippedMethod(methodOffset)) {
             return;
         }
-        inlinedMethod = info_->jsPandaFile->FindMethodLiteral(methodOffset);
-        auto &bytecodeInfo = info_->bcInfoCollector->GetBytecodeInfo();
-        auto &methodInfo = bytecodeInfo.methodList.at(methodOffset);
-        auto &methodPcInfo = bytecodeInfo.methodPcInfos[methodInfo.methodPcInfoIndex];
+        inlinedMethod = info_->GetJSPandaFile()->FindMethodLiteral(methodOffset);
+        auto &bytecodeInfo = info_->GetBytecodeInfo();
+        auto &methodInfo = bytecodeInfo.GetMethodList().at(methodOffset);
+        auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
+        auto &methodPcInfo = methodPcInfos[methodInfo.methodPcInfoIndex];
         if (methodPcInfo.pcOffsets.size() <= MAX_INLINE_BYTECODE_COUNT &&
             inlinedCall_ <= MAX_INLINE_CALL_ALLOWED) {
             auto success = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
@@ -90,7 +91,7 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
     }
 
     if ((inlinedMethod != nullptr) && IsLogEnabled()) {
-        auto jsPandaFile = info_->jsPandaFile;
+        auto jsPandaFile = info_->GetJSPandaFile();
         const std::string methodName(
             MethodLiteral::GetMethodName(jsPandaFile, inlinedMethod->GetMethodId()));
         std::string fileName = jsPandaFile->GetFileName();
@@ -109,8 +110,8 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
 
 bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets)
 {
-    auto jsPandaFile = info_->jsPandaFile;
-    auto pf = jsPandaFile->GetPandaFile();
+    const JSPandaFile *jsPandaFile = info_->GetJSPandaFile();
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::MethodDataAccessor mda(*pf, method->GetMethodId());
     panda_file::CodeDataAccessor cda(*pf, mda.GetCodeId().value());
     if (cda.GetTriesSize() != 0) {
@@ -118,7 +119,7 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
     }
     for (size_t i = 0; i < pcOffsets.size(); i++) {
         auto pc = pcOffsets[i];
-        auto ecmaOpcode = info_->bytecodes->GetOpcode(pc);
+        auto ecmaOpcode = info_->GetByteCodes()->GetOpcode(pc);
         switch (ecmaOpcode) {
             case EcmaOpcode::GETUNMAPPEDARGS:
             case EcmaOpcode::SUSPENDGENERATOR_V8:
@@ -146,11 +147,10 @@ CString TSInlineLowering::GetRecordName(const JSPandaFile *jsPandaFile,
 
 void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method)
 {
-    auto jsPandaFile = info_->jsPandaFile;
-    auto cmpCfg = info_->cmpCfg;
-    auto tsManager = info_->tsManager;
-    auto log = info_->log;
-    auto recordName = GetRecordName(jsPandaFile, method->GetMethodId());
+    const JSPandaFile *jsPandaFile = info_->GetJSPandaFile();
+    TSManager *tsManager = info_->GetTSManager();
+    CompilerLog *log = info_->GetCompilerLog();
+    CString recordName = GetRecordName(jsPandaFile, method->GetMethodId());
     bool hasTyps = jsPandaFile->HasTSTypes(recordName);
     if (!hasTyps) {
         return;
@@ -161,17 +161,17 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
 
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
-                                   info_->bytecodes, true, IsLogEnabled(),
+                                   info_->GetByteCodes(), true, IsLogEnabled(),
                                    hasTyps, fullName, recordName);
     {
         TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log);
         builder.BytecodeToCircuit();
     }
 
-    PassData data(circuit_, log, fullName, method->GetMethodId().GetOffset());
+    PassData data(&builder, circuit_, info_, log, fullName, method, method->GetMethodId().GetOffset());
     PassRunner<PassData> pipeline(&data);
-    pipeline.RunPass<TypeInferPass>(&builder, info_, methodInfo.methodInfoIndex, hasTyps);
-    pipeline.RunPass<AsyncFunctionLoweringPass>(&builder, cmpCfg);
+    pipeline.RunPass<TypeInferPass>(methodInfo.methodInfoIndex, hasTyps);
+    pipeline.RunPass<AsyncFunctionLoweringPass>();
 }
 
 void TSInlineLowering::ReplaceCallInput(GateRef gate, bool isCallThis)

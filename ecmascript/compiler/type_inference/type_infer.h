@@ -38,8 +38,8 @@ public:
               const std::string& name)
         : builder_(builder), circuit_(circuit),
           gateAccessor_(circuit),
-          tsManager_(info->tsManager),
-          lexEnvManager_(info->lexEnvManager),
+          tsManager_(info->GetTSManager()),
+          lexEnvManager_(info->GetLexEnvManager()),
           methodId_(methodId), enableLog_(enableLog),
           methodName_(name)
     {
