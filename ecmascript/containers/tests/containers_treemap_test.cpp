@@ -24,6 +24,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -158,10 +159,11 @@ HWTEST_F_L0(ContainersTreeMapTest, TreeMapConstructor)
     InitializeTreeMapConstructor();
     JSHandle<JSFunction> newTarget(thread, InitializeTreeMapConstructor());
 
-    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     objCallInfo->SetFunction(newTarget.GetTaggedValue());
     objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
     objCallInfo->SetThis(JSTaggedValue::Undefined());
+    objCallInfo->SetCallArg(0, JSTaggedValue::Undefined());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
     JSTaggedValue result = ContainersTreeMap::TreeMapConstructor(objCallInfo);
@@ -174,6 +176,12 @@ HWTEST_F_L0(ContainersTreeMapTest, TreeMapConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = mapHandle->GetSize();
     ASSERT_EQ(size, 0);
+    
+    // test TreeMapConstructor exception
+    objCallInfo->SetCallArg(0, JSTaggedValue(0));
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, TreeMapConstructor, objCallInfo);
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, TreeMapConstructor, objCallInfo);
 }
 
 // treemap.set(key, value), treemap.get(key)
@@ -1361,5 +1369,99 @@ HWTEST_F_L0(ContainersTreeMapTest, IsEmpty)
         JSTaggedValue isEmpty = ContainersTreeMap::IsEmpty(callInfo);
         EXPECT_EQ(isEmpty, JSTaggedValue::True());
     }
+}
+
+HWTEST_F_L0(ContainersTreeMapTest, ProxyOfGetLength)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPITreeMap> treeMap = CreateJSAPITreeMap();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, treeMap.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersTreeMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersTreeMap::GetLength(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersTreeMapTest,
+    ExceptionReturnOfSetAllSetGetRemoveHasKeyHasValueGetFirstKeyGetLastKeyClearGetLowerKeyGetHigherKey)
+{
+    JSHandle<JSAPITreeMap> treeMap = CreateJSAPITreeMap();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test SetAll exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, SetAll, callInfo);
+    callInfo->SetThis(treeMap.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, SetAll, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test Set exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Set, callInfo);
+
+    // test Get exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Get, callInfo);
+
+    // test Remove exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Remove, callInfo);
+
+    // test HasKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, HasKey, callInfo);
+
+    // test HasValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, HasValue, callInfo);
+
+    // test GetFirstKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetFirstKey, callInfo);
+
+    // test GetLastKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetLastKey, callInfo);
+
+    // test Clear exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Clear, callInfo);
+
+    // test GetLowerKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetLowerKey, callInfo);
+
+    // test GetHigherKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetHigherKey, callInfo);
+}
+
+HWTEST_F_L0(ContainersTreeMapTest,
+    ExceptionReturnOfReplaceForEachGetLengthIsEmpty)
+{
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+    
+    // test Replace exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Replace, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, ForEach, callInfo);
+
+    // test GetLength exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetLength, callInfo);
+
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, IsEmpty, callInfo);
 }
 }  // namespace panda::test

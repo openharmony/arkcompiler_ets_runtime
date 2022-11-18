@@ -116,6 +116,16 @@ HWTEST_F_L0(JSAPIHashSetTest, HashSetAddAndHas)
         JSTaggedValue bHas = hashSet->Has(thread, value.GetTaggedValue());
         EXPECT_EQ(bHas, JSTaggedValue::True());
     }
+
+    // test add exception
+    JSHandle<JSTaggedValue> hole(thread, JSTaggedValue::Hole());
+    JSAPIHashSet::Add(thread, hashSet, hole);
+    EXPECT_EXCEPTION();
+
+    // test Has exception
+    JSTaggedValue exceptionHas = hashSet->Has(thread, JSTaggedValue::Hole());
+    EXPECT_EQ(exceptionHas, JSTaggedValue::Exception());
+    EXPECT_EXCEPTION();
 }
 
 HWTEST_F_L0(JSAPIHashSetTest, HashSetRemoveAndHas)
@@ -155,6 +165,53 @@ HWTEST_F_L0(JSAPIHashSetTest, HashSetRemoveAndHas)
         value.Update(factory->NewFromStdString(iValue).GetTaggedValue());
 
         // test has
+        JSTaggedValue has = hashSet->Has(thread, value.GetTaggedValue());
+        EXPECT_EQ(has, JSTaggedValue::True());
+    }
+
+    // test Remove exception
+    JSTaggedValue exceptionValue = JSAPIHashSet::Remove(thread, hashSet, JSTaggedValue::Hole());
+    EXPECT_EQ(exceptionValue, JSTaggedValue::Exception());
+    EXPECT_EXCEPTION();
+}
+
+HWTEST_F_L0(JSAPIHashSetTest, JSAPIHashSetRemoveRBTreeTest)
+{
+    std::vector<int> hashCollisionVector = {1224, 1285, 1463, 4307, 5135, 5903, 6603, 6780, 8416, 9401, 9740};
+    uint32_t NODE_NUMBERS = static_cast<uint32_t>(hashCollisionVector.size());
+    constexpr uint32_t REMOVE_NUMBERS = 4;
+    JSHandle<JSAPIHashSet> hashSet(thread, CreateHashSet());
+
+    // test Remove empty
+    JSTaggedValue emptyValue = JSAPIHashSet::Remove(thread, hashSet, JSTaggedValue(0));
+    EXPECT_EQ(emptyValue, JSTaggedValue::False());
+
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+
+    for (size_t i = 0; i < hashCollisionVector.size(); i++) {
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
+        JSAPIHashSet::Add(thread, hashSet, value);
+    }
+    
+    // test Remove non-existent value
+    JSTaggedValue nonExistentValue = JSAPIHashSet::Remove(thread, hashSet, JSTaggedValue(0));
+    EXPECT_EQ(nonExistentValue, JSTaggedValue::False());
+
+    // test Remove RBTree
+    for (uint32_t i = 0; i < REMOVE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
+        JSAPIHashSet::Remove(thread, hashSet, value.GetTaggedValue());
+    }
+    EXPECT_EQ(hashSet->GetSize(), NODE_NUMBERS - REMOVE_NUMBERS);
+
+    for (uint32_t i = 0; i < REMOVE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
+        JSTaggedValue has = hashSet->Has(thread, value.GetTaggedValue());
+        EXPECT_EQ(has, JSTaggedValue::False());
+    }
+
+    for (uint32_t i = REMOVE_NUMBERS; i < NODE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
         JSTaggedValue has = hashSet->Has(thread, value.GetTaggedValue());
         EXPECT_EQ(has, JSTaggedValue::True());
     }

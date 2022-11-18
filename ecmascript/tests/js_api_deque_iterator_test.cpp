@@ -122,8 +122,47 @@ HWTEST_F_L0(JSAPIDequeIteratorTest, Next)
 }
 
 /**
- * @tc.name: SetIteratedQueue
- * @tc.desc: Call the "SetIteratedQueue" function, check whether the result returned through "GetIteratedQueue"
+ * @tc.name: Next
+ * @tc.desc: test special return of Next, including throw exception and return undefined
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIDequeIteratorTest, SpecialReturnOfNext)
+{
+    JSHandle<JSAPIDeque> jsDeque(thread, CreateJSApiDeque());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIDequeIterator> dequeIterator = factory->NewJSAPIDequeIterator(jsDeque);
+    dequeIterator->SetIteratedDeque(thread, JSTaggedValue::Undefined());
+    
+    // test Next exception
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPIDequeIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, JSTaggedValue::Exception());
+        EXPECT_EXCEPTION();
+    }
+
+    // test Next return undefined
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(dequeIterator.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPIDequeIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, thread->GlobalConstants()->GetUndefinedIterResult());
+    }
+}
+
+/**
+ * @tc.name: SetIteratedDeque
+ * @tc.desc: Call the "SetIteratedDeque" function, check whether the result returned through "GetIteratedDeque"
  *           function from the JSAPIDequeIterator is within expectations.
  * @tc.type: FUNC
  * @tc.require:

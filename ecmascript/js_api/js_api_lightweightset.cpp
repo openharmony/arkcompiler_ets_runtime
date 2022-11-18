@@ -58,21 +58,6 @@ bool JSAPILightWeightSet::Add(JSThread *thread, const JSHandle<JSAPILightWeightS
     return true;
 }
 
-JSHandle<TaggedArray> JSAPILightWeightSet::GrowCapacity(const JSThread *thread,
-                                                        const JSHandle<JSAPILightWeightSet> &obj, uint32_t capacity)
-{
-    JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
-    uint32_t oldLength = oldElements->GetLength();
-    if (capacity < oldLength) {
-        return oldElements;
-    }
-    uint32_t newCapacity = ComputeCapacity(capacity);
-    JSHandle<TaggedArray> newElements =
-        thread->GetEcmaVM()->GetFactory()->CopyArray(oldElements, oldLength, newCapacity);
-    obj->SetElements(thread, newElements);
-    return newElements;
-}
-
 JSTaggedValue JSAPILightWeightSet::Get(const uint32_t index)
 {
     TaggedArray *valueArray = TaggedArray::Cast(GetValues().GetTaggedObject());
@@ -358,10 +343,7 @@ JSTaggedValue JSAPILightWeightSet::Remove(JSThread *thread, JSHandle<JSTaggedVal
         return JSTaggedValue::Undefined();
     }
     JSTaggedValue result = valueArray->Get(index);
-    bool success = RemoveAt(thread, index);
-    if (!success) {
-        result = JSTaggedValue::Undefined();
-    }
+    RemoveAt(thread, index);
     return result;
 }
 

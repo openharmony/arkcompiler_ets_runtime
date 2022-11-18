@@ -24,6 +24,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -132,6 +133,10 @@ HWTEST_F_L0(ContainersDequeTest, DequeConstructor)
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(deque));
     JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
     ASSERT_EQ(resultProto, funcProto);
+    
+    // test DequeConstructor exception
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, DequeConstructor, objCallInfo);
 }
 
 HWTEST_F_L0(ContainersDequeTest, InsertFrontAndGetFirst)
@@ -274,5 +279,68 @@ HWTEST_F_L0(ContainersDequeTest, ForEach)
         ContainersDeque::ForEach(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
+}
+
+HWTEST_F_L0(ContainersDequeTest, ProxyOfGetSize)
+{
+    constexpr uint32_t NODE_NUMBERS = 10;
+    JSHandle<JSAPIDeque> deque = CreateJSAPIDeque();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, deque.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersDeque::InsertFront(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersDeque::GetSize(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersDequeTest,
+    ExceptionReturnOfInsertFrontInsertEndGetFirstGetLastHasPopFirstPopLastForEachGetIteratorObjGetSize)
+{
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+    
+    // test InsertFront exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, InsertFront, callInfo);
+
+    // test InsertEnd exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, InsertEnd, callInfo);
+
+    // test GetFirst exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, GetFirst, callInfo);
+
+    // test GetLast exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, GetLast, callInfo);
+
+    // test Has exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, Has, callInfo);
+
+    // test PopFirst exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, PopFirst, callInfo);
+
+    // test PopLast exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, PopLast, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, ForEach, callInfo);
+
+    // test GetIteratorObj exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, GetIteratorObj, callInfo);
+
+    // test GetSize exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, GetSize, callInfo);
 }
 }  // namespace panda::test

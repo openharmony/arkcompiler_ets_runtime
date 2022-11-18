@@ -24,6 +24,7 @@
 #include "ecmascript/js_api/js_api_hashset_iterator.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -113,6 +114,10 @@ HWTEST_F_L0(ContainersHashSetTest, HashSetConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = setHandle->GetSize();
     ASSERT_EQ(size, 0);
+      
+    // test HashSetConstructor exception
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, HashSetConstructor, objCallInfo);
 }
 
 // hashset.add(key), hashset.has(key)
@@ -404,5 +409,65 @@ HWTEST_F_L0(ContainersHashSetTest, KeysAndValuesAndEntries)
             EXPECT_EQ(JSTaggedValue::True(), valueFlag);
         }
     }
+}
+
+HWTEST_F_L0(ContainersHashSetTest, ProxyOfGetLength)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPIHashSet> hashSet = CreateJSAPIHashSet();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, hashSet.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersHashSet::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersHashSet::GetLength(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersHashSetTest,
+    ExceptionReturnOfValuesEntriesAddRemoveHasClearGetLengthIsEmptyForEach)
+{
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test Values exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Values, callInfo);
+
+    // test Entries exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Entries, callInfo);
+
+    // test Add exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Add, callInfo);
+
+    // test Remove exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Remove, callInfo);
+
+    // test Has exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Has, callInfo);
+
+    // test Clear exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Clear, callInfo);
+
+    // test GetLength exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, GetLength, callInfo);
+
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, IsEmpty, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, ForEach, callInfo);
 }
 }

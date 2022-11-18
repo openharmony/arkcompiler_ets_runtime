@@ -75,14 +75,6 @@ public:
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, HASHES_OFFSET, LENGTH_OFFSET)
     DECL_DUMP()
-private:
-    inline static uint32_t ComputeCapacity(uint32_t oldCapacity)
-    {
-        uint32_t newCapacity = oldCapacity + (oldCapacity >> 1U);
-        return newCapacity > DEFAULT_CAPACITY_LENGTH ? newCapacity : DEFAULT_CAPACITY_LENGTH;
-    }
-    static JSHandle<TaggedArray> GrowCapacity(const JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
-                                              uint32_t capacity);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_API_LIGHTWEIGHTSET_H

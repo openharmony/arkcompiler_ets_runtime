@@ -177,4 +177,43 @@ HWTEST_F_L0(JSAPIVectorIteratorTest, Next)
         }
     }
 }
+
+/**
+ * @tc.name: Next
+ * @tc.desc: test special return of Next, including throw exception and return undefined
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIVectorIteratorTest, SpecialReturnOfNext)
+{
+    JSHandle<JSAPIVector> jsVector = CreateVector();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIVectorIterator> vectorIterator = factory->NewJSAPIVectorIterator(jsVector);
+    vectorIterator->SetIteratedVector(thread, JSTaggedValue::Undefined());
+    
+    // test Next exception
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPIVectorIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, JSTaggedValue::Exception());
+        EXPECT_EXCEPTION();
+    }
+
+    // test Next return undefined
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(vectorIterator.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPIVectorIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, thread->GlobalConstants()->GetUndefinedIterResult());
+    }
+}
 }  // namespace panda::ecmascript
