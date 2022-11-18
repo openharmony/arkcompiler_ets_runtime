@@ -15,6 +15,7 @@
 
 #include <cstdio>
 #include <fstream>
+#include <fcntl.h>
 
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -464,6 +465,11 @@ HWTEST_F_L0(HeapTrackerTest, StreamWriterEnd)
     outputString.clear();
 
     FileStream stream(fileName.c_str());
+    CVector<HeapStat> statsBuffer;
+    statsBuffer.emplace_back(1, 2, 4);
+    stream.UpdateHeapStats(&statsBuffer.front(), static_cast<int32_t>(statsBuffer.size()));
+    stream.UpdateLastSeenObjectId(1);
+
     TestProgress testProgress;
     heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true);
     StreamWriter streamWriter(&stream);
@@ -494,5 +500,91 @@ HWTEST_F_L0(HeapTrackerTest, StreamWriterEnd)
     inputStream.close();
     inputStream.clear();
     std::remove(fileName.c_str());
+}
+
+HWTEST_F_L0(HeapTrackerTest, GetStringByKey)
+{
+    StringKey key = static_cast<StringKey>(2);
+    StringHashMap stringHashMap(instance);
+    CString *hashMap = stringHashMap.GetStringByKey(key);
+    EXPECT_TRUE(hashMap == nullptr);
+}
+
+HWTEST_F_L0(HeapTrackerTest, FormatString)
+{
+    bool isVmMode = true;
+    bool isPrivate = false;
+    bool traceAllocation = false;
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation);
+
+    StringHashMap stringHashMap(instance);
+    CString ret = "H\"e\rl\nl\\o\t W\fo\31rld!";
+    stringHashMap.GetString(ret);
+    StringKey retKey = std::hash<std::string>{} (std::string(ret));
+
+    CString *tmpResult = nullptr;
+    tmpResult = stringHashMap.GetStringByKey(retKey);
+    EXPECT_TRUE(tmpResult != nullptr);
+    EXPECT_TRUE(*tmpResult == "H`e`l`l`o` W`o`rld!");
+}
+
+HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamWriteChunk)
+{
+    int32_t fd = -1;
+    FileDescriptorStream testFileStream(fd);
+    CVector<HeapStat> statsBuffer;
+    statsBuffer.emplace_back(1, 2, 4);
+    testFileStream.UpdateHeapStats(&statsBuffer.front(), static_cast<int32_t>(statsBuffer.size()));
+    testFileStream.UpdateLastSeenObjectId(1);
+    testFileStream.GetSize();
+    std::string testString = "Hello!";
+    int strSize = testString.size();
+    bool isFileStream = testFileStream.WriteChunk(testString.data(), strSize);
+    EXPECT_TRUE(!isFileStream);
+
+    fd = 5;
+    FileDescriptorStream tmpFileStream(fd);
+    tmpFileStream.Good();
+    testString = "Hello!";
+    strSize = testString.size();
+    isFileStream = tmpFileStream.WriteChunk(testString.data(), strSize);
+    close(fd);
+    EXPECT_TRUE(!isFileStream);
+
+    std::string fileName = "test.StreamWriteChunk";
+    fd = open(fileName.c_str(), O_RDONLY);
+    if (fd < 0) {
+        fd = open(fileName.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IROTH);
+    }
+    FileDescriptorStream fileStream(fd);
+    testString = "Hello!";
+    strSize = testString.size();
+    isFileStream = fileStream.WriteChunk(testString.data(), strSize);
+    EXPECT_TRUE(isFileStream);
+    std::remove(fileName.c_str());
+    close(fd);
+}
+
+HWTEST_F_L0(HeapTrackerTest, AddNodeToTree)
+{
+    CVector<uint32_t> traceNodeIndex;
+    for (int i = 0; i < 3; i++) {
+        traceNodeIndex.push_back(i + 1);
+    }
+    TraceTree traceTree;
+    TraceNode *traceNode = traceTree.AddNodeToTree(traceNodeIndex);
+    EXPECT_TRUE(traceNode != nullptr);
+}
+
+HWTEST_F_L0(HeapTrackerTest, FindOrAddChild)
+{
+    TraceTree traceTree;
+    uint32_t index = 1;
+    TraceNode traceNode(&traceTree, index);
+    TraceNode *node = traceNode.FindOrAddChild(index);
+    EXPECT_TRUE(node->GetNodeIndex() == 1);
+
+    TraceNode *tmpNode = traceNode.FindOrAddChild(2);
+    EXPECT_TRUE(tmpNode->GetNodeIndex() == 2);
 }
 }  // namespace panda::test
