@@ -545,7 +545,7 @@ HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamWriteChunk)
     std::string fileName = "test.StreamWriteChunk";
     fd = open(fileName.c_str(), O_RDONLY);
     if (fd < 0) {
-        fd = open(fileName.c_str(), O_RDWR | O_CREAT);
+        fd = open(fileName.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IROTH);
     }
     FileDescriptorStream fileStream(fd);
     testString = "Hello!";
