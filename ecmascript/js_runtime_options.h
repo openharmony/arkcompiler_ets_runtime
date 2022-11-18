@@ -79,6 +79,7 @@ const std::string HELP_OPTION_MSG =
     "       Default: \"none\"\n"
     "--compiler-log-methods: specific method list for compiler log output, only used when compiler-log."
                             "Default: \"none\"\n"
+    "--compiler-log-snapshot: Enable to print snapshot information. Default: false\n"
     "--compiler-log-time: Enable to print pass compiler time. Default: false\n"
     "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
     "--enable-bytecode-trace: enable tracing bytecode for aot runtime. Default: false\n"
@@ -163,6 +164,7 @@ enum CommandValues {
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_ASSERT_TYPES,
     OPTION_PRINT_ANY_TYPES,
+    OPTION_COMPILER_LOG_SNAPSHOT,
     OPTION_COMPILER_LOG_TIME,
     OPTION_IS_WORKER,
     OPTION_BUILTINS_DTS,
@@ -503,6 +505,21 @@ public:
         return 1ULL << static_cast<uint64_t>(OPTION_COMPILER_LOG_METHODS) & wasSet_ &&
             GetCompilerLogOption().find("none") == std::string::npos &&
             GetCompilerLogOption().find("all") == std::string::npos;
+    }
+
+    void SetCompilerLogSnapshot(bool value)
+    {
+        compilerLogSnapshot_ = value;
+    }
+
+    bool IsEnableCompilerLogSnapshot() const
+    {
+        return compilerLogSnapshot_;
+    }
+
+    bool WasSetCompilerLogSnapshot() const
+    {
+        return WasOptionSet(OPTION_COMPILER_LOG_SNAPSHOT);
     }
 
     void SetCompilerLogTime(bool value)
@@ -917,6 +934,7 @@ private:
     bool startupTime_ {false};
     std::string compilerLogOpt_ {"none"};
     std::string compilerLogMethods_ {"none"};
+    bool compilerLogSnapshot_ {false};
     bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
     bool assertTypes_ {false};

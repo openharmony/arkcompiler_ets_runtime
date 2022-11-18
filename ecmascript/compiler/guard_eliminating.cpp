@@ -44,6 +44,10 @@ void GuardEliminating::ProcessTwoConditions(GateRef gate, std::set<GateRef> &con
         return;
     }
     if (conditionSet.count(left) > 0 && conditionSet.count(right) > 0) {
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
+                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+        }
         acc_.DeleteGuardAndFrameState(gate);
     } else if (conditionSet.count(left) > 0) {
         acc_.ReplaceValueIn(guard, right, 0);
@@ -63,6 +67,10 @@ void GuardEliminating::ProcessOneCondition(GateRef gate, std::set<GateRef> &cond
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     auto condition = acc_.GetValueIn(guard, 0);
     if (conditionSet.count(condition) > 0) {
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
+                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+        }
         acc_.DeleteGuardAndFrameState(gate);
     } else {
         conditionSet.insert(condition);
@@ -102,6 +110,10 @@ void GuardEliminating::RemoveOneTrusted(GateRef gate)
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     auto condition = acc_.GetValueIn(guard);
     if (condition == builder_.Boolean(true)) {
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
+                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+        }
         acc_.DeleteGuardAndFrameState(gate);
     }
 }
@@ -114,6 +126,10 @@ void GuardEliminating::RemoveTwoTrusted(GateRef gate)
     auto left = acc_.GetValueIn(condition, 0);
     auto right = acc_.GetValueIn(condition, 1);
     if (left == builder_.Boolean(true) && right == builder_.Boolean(true)) {
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
+                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+        }
         acc_.DeleteGuardAndFrameState(gate);
     } else if (left == builder_.Boolean(true)) {
         acc_.ReplaceValueIn(guard, right, 0);
@@ -170,7 +186,11 @@ void GuardEliminating::RemoveTrustedTypeCheck(const std::vector<GateRef>& guarde
 void GuardEliminating::Run()
 {
     // eliminate duplicate typecheck
-    GlobalValueNumbering(circuit_).Run();
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+    }
+
+    GlobalValueNumbering(circuit_, IsLogEnabled()).Run();
 
     // calculate dominator tree
     std::vector<GateRef> bbGatesList;

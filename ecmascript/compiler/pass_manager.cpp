@@ -63,11 +63,11 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         auto tsManager = info.tsManager;
         auto method = jsPandaFile->FindMethodLiteral(methodOffset);
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
-        uint32_t methodId = method->GetMethodId().GetOffset();
         
         if (log_->CertainMethod()) {
             enableMethodLog = logList_->IncludesMethod(fileName, methodName);
         }
+        log_->SetEnableMethodLog(enableMethodLog);
 
         std::string fullName = methodName + "@" + fileName;
         if (enableMethodLog) {
@@ -80,17 +80,17 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
                                        info.bytecodes, hasTyps, enableMethodLog && log_->OutputCIR(),
                                        EnableTypeLowering(), fullName, recordName);
         {
-            TimeScope timeScope("BytecodeToCircuit", methodName, log_);
+            TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();
         }
 
-        if (tsManager->IsSkippedMethod(methodId)) {
+        if (tsManager->IsSkippedMethod(methodOffset)) {
             ++skippedMethodNum;
             LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
             return;
         }
 
-        PassData data(&circuit, log_, enableMethodLog, fullName);
+        PassData data(&circuit, log_, fullName, methodOffset);
         PassRunner<PassData> pipeline(&data);
         if (EnableTypeInfer()) {
             pipeline.RunPass<TypeInferPass>(&builder, &info, methodInfoId, hasTyps);
@@ -108,7 +108,9 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<LLVMIRGenPass>(aotModule, method, jsPandaFile);
     });
     LOG_COMPILER(INFO) << skippedMethodNum << " large methods in " << fileName << " have been skipped";
-    log_->PrintTime();
+    if (log_->GetEnableCompilerLogTime()) {
+        log_->PrintTime();
+    }
     generator.AddModule(aotModule, aotModuleAssembler);
     return true;
 }

@@ -291,7 +291,7 @@ private:
 
 class GlobalValueNumbering {
 public:
-    GlobalValueNumbering(Circuit *circuit);
+    GlobalValueNumbering(Circuit *circuit, bool enableLog);
     ~GlobalValueNumbering() = default;
     void GetPartitionNodes(std::vector<std::shared_ptr<PartitionNode>> &nodes);
     void SplitByOpCode(const std::vector<std::shared_ptr<PartitionNode>> &nodes,
@@ -301,8 +301,14 @@ public:
                   std::vector<std::shared_ptr<Partition>> &partitions);
     void EliminateRedundantGates(const std::vector<std::shared_ptr<Partition>> &partitions);
     void Run();
+    void Print(const std::vector<std::shared_ptr<Partition>> &partitions);
 private:
+    bool IsLogEnabled() const
+    {
+        return enableLog_;
+    }
     GateAccessor acc_;
+    bool enableLog_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
 

@@ -46,9 +46,9 @@ bool AotMethodLogList::IncludesMethod(const std::string &fileName, const std::st
     if (fileMethods_.find(fileName) == fileMethods_.end()) {
         return false;
     }
-    std::vector mehtodVector = fileMethods_.at(fileName);
-    auto it = find(mehtodVector.begin(), mehtodVector.end(), methodName);
-    return (it != mehtodVector.end());
+    std::vector methodVector = fileMethods_.at(fileName);
+    auto it = find(methodVector.begin(), methodVector.end(), methodName);
+    return (it != methodVector.end());
 }
 
 std::vector<std::string> AotMethodLogList::spiltString(const std::string &str, const char ch)
@@ -73,8 +73,8 @@ void AotMethodLogList::ParseFileMethodsName(const std::string &logMethods)
     }
 }
 
-TimeScope::TimeScope(std::string name, std::string methodName, CompilerLog* log)
-    : ClockScope(), name_(std::move(name)), methodName_(std::move(methodName)), log_(log)
+TimeScope::TimeScope(std::string name, std::string methodName, uint32_t methodOffset, CompilerLog* log)
+    : ClockScope(), name_(std::move(name)), methodName_(std::move(methodName)), methodOffset_(methodOffset), log_(log)
 {
     if (log_->GetEnableCompilerLogTime()) {
         startTime_ = ClockScope().GetCurTime();
@@ -85,11 +85,14 @@ TimeScope::~TimeScope()
 {
     if (log_->GetEnableCompilerLogTime()) {
         timeUsed_ = ClockScope().GetCurTime() - startTime_;
-        LOG_COMPILER(INFO) << std::setw(PASS_LENS) << name_ << " " << std::setw(TIME_LENS) <<
-        GetShortName(methodName_) << " time used:" << timeUsed_ / MILLION_TIME << "ms";
+        if (log_->CertainMethod() && log_->GetEnableMethodLog()) {
+            LOG_COMPILER(INFO) << std::setw(PASS_LENS) << name_ << " " << std::setw(METHOD_LENS)
+                               << GetShortName(methodName_) << " offset:" << std::setw(OFFSET_LENS) << methodOffset_
+                               << " time used:" << std::setw(TIME_LENS) << timeUsed_ / MILLION_TIME << "ms";
+        }
         std::string shortName = GetShortName(methodName_);
         log_->AddPassTime(name_, timeUsed_);
-        log_->AddMethodTime(shortName, timeUsed_);
+        log_->AddMethodTime(shortName, methodOffset_, timeUsed_);
     }
 }
 
@@ -119,8 +122,9 @@ void CompilerLog::PrintPassTime() const
     }
     for (auto [key, val] : PassTimeMap) {
         LOG_COMPILER(INFO) << std::setw(PASS_LENS) << val << " Total cost time is "<< std::setw(TIME_LENS)
-        << key / MILLION_TIME << "ms " << "percentage:" << std::fixed << std::setprecision(PERCENT_LENS)
-        << key / allPassTimeforAllMethods * HUNDRED_TIME << "% ";
+                           << key / MILLION_TIME << "ms " << "percentage:"
+                           << std::fixed << std::setprecision(PERCENT_LENS)
+                           << key / allPassTimeforAllMethods * HUNDRED_TIME << "% ";
     }
 }
 
@@ -128,8 +132,8 @@ void CompilerLog::PrintMethodTime() const
 {
     double methodTotalTime = 0;
     auto myMap = timeMethodMap_;
-    std::multimap<double, std::string> MethodTimeMap;
-    std::map<std::string, double>::iterator it;
+    std::multimap<double, std::pair<uint32_t, std::string>> MethodTimeMap;
+    std::map<std::pair<uint32_t, std::string>, double>::iterator it;
     for (it = myMap.begin(); it != myMap.end(); it++) {
         MethodTimeMap.insert(make_pair(it->second, it->first));
     }
@@ -137,10 +141,12 @@ void CompilerLog::PrintMethodTime() const
         methodTotalTime += key;
     }
     for (auto [key, val] : MethodTimeMap) {
-        LOG_COMPILER(INFO) << "method:" << std::setw(METHOD_LENS) << val << " all pass cost time is "
-        << std::setw(TIME_LENS) << key / MILLION_TIME << "ms " << "percentage:" << std::fixed
-        << std::setprecision(PERCENT_LENS) << key / methodTotalTime * HUNDRED_TIME << "% ";
+        LOG_COMPILER(INFO) << "method:" << std::setw(METHOD_LENS) << val.second
+                           << " offset:" << std::setw(OFFSET_LENS) << val.first << " all pass cost time is "
+                           << std::setw(TIME_LENS) << key / MILLION_TIME << "ms " << "percentage:" << std::fixed
+                           << std::setprecision(PERCENT_LENS) << key / methodTotalTime * HUNDRED_TIME << "% ";
     }
+    LOG_COMPILER(INFO) << "total compile time is " << std::setw(TIME_LENS) << methodTotalTime / MILLION_TIME << "ms ";
 }
 
 void CompilerLog::PrintTime() const
@@ -151,22 +157,15 @@ void CompilerLog::PrintTime() const
     PrintMethodTime();
 }
 
-void CompilerLog::AddMethodTime(const std::string& name, double time)
+void CompilerLog::AddMethodTime(const std::string& name, uint32_t id, double time)
 {
-    if (timeMethodMap_.count(name) == 0) {
-        timeMethodMap_.insert(std::make_pair(name, time));
-    } else {
-        timeMethodMap_.insert(std::make_pair(name, time + timeMethodMap_.at(name)));
-    }
+    auto methodInfo = std::make_pair(id, name);
+    timeMethodMap_[methodInfo] += time;
 }
 
 void CompilerLog::AddPassTime(const std::string& name, double time)
 {
-    if (timePassMap_.count(name) == 0) {
-        timePassMap_.insert(std::make_pair(name, time));
-    } else {
-        timePassMap_.insert(std::make_pair(name, time + timePassMap_.at(name)));
-    }
+    timePassMap_[name] += time;
 }
 // namespace panda::ecmascript::kungfu
 }

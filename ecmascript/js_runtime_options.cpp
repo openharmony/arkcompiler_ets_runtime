@@ -33,6 +33,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"builtins-dts", required_argument, nullptr, OPTION_BUILTINS_DTS},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
+        {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"enable-bytecode-trace", required_argument, nullptr, OPTION_ENABLE_BC_TRACE},
@@ -149,6 +150,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_COMPILER_LOG_OPT:
                 SetCompilerLogOption(optarg);
+                break;
+            case OPTION_COMPILER_LOG_SNAPSHOT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerLogSnapshot(argBool);
+                } else {
+                    return false;
+                }
                 break;
             case OPTION_COMPILER_LOG_TIME:
                 ret = ParseBoolParam(&argBool);

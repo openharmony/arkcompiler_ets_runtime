@@ -150,7 +150,10 @@ void Circuit::GetAllGates(std::vector<GateRef>& gateList) const
     for (size_t out = sizeof(Gate); out < circuitSize_;
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         out += Gate::GetGateSize(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetIndex() + 1)) {
-        gateList.push_back(GetGateRef(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetGateConst()));
+        auto gatePtr = reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetGateConst();
+        if (!gatePtr->GetOpCode().IsNop()) {
+            gateList.push_back(GetGateRef(gatePtr));
+        }
     }
 }
 
