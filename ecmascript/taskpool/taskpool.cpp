@@ -38,7 +38,7 @@ void Taskpool::Initialize(int threadNum)
     }
 }
 
-void Taskpool::Destroy()
+void Taskpool::Destroy(int32_t id)
 {
     os::memory::LockHolder lock(mutex_);
     if (isInitialized_ <= 0) {
@@ -48,8 +48,19 @@ void Taskpool::Destroy()
     if (isInitialized_ == 0) {
         runner_->TerminateThread();
     } else {
-        runner_->TerminateTask();
+        runner_->TerminateTask(id, TaskType::ALL);
     }
+}
+
+void Taskpool::TerminateTask(int32_t id, TaskType type)
+{
+    {
+        os::memory::LockHolder lock(mutex_);
+        if (isInitialized_ <= 0) {
+            return;
+        }
+    }
+    runner_->TerminateTask(id, type);
 }
 
 uint32_t Taskpool::TheMostSuitableThreadNum(uint32_t threadNum) const

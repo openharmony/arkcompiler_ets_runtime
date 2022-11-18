@@ -18,8 +18,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <deque>
 #include <memory>
-#include <queue>
 
 #include "ecmascript/taskpool/task.h"
 #include "os/mutex.h"
@@ -37,9 +37,10 @@ public:
     std::unique_ptr<Task> PopTask();
 
     void Terminate();
+    void TerminateTask(int32_t id, TaskType type);
 
 private:
-    std::queue<std::unique_ptr<Task>> tasks_;
+    std::deque<std::unique_ptr<Task>> tasks_;
 
     std::atomic_bool terminate_ = false;
     os::memory::Mutex mtx_;

@@ -19,14 +19,33 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
+enum class TaskType : uint8_t {
+    PGO_SAVE_TASK,
+    ALL,
+};
+
+static constexpr int32_t ALL_TASK_ID = -1;
+// Tasks not managed by VM
+static constexpr int32_t GLOBAL_TASK_ID = 0;
+
 class Task {
 public:
-    Task() = default;
+    Task(int32_t id) : id_(id) {};
     virtual ~Task() = default;
     virtual bool Run(uint32_t threadIndex) = 0;
 
     NO_COPY_SEMANTIC(Task);
     NO_MOVE_SEMANTIC(Task);
+
+    virtual TaskType GetTaskType()
+    {
+        return TaskType::ALL;
+    }
+
+    int32_t GetId()
+    {
+        return id_;
+    }
 
     void Terminated()
     {
@@ -39,6 +58,7 @@ public:
     }
 
 private:
+    int32_t id_ {0};
     volatile bool terminate_ {false};
 };
 }  // namespace panda::ecmascript

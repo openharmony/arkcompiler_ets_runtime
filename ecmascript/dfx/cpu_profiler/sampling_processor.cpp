@@ -29,7 +29,7 @@
 namespace panda::ecmascript {
 const int USEC_PER_SEC = 1000 * 1000;
 const int NSEC_PER_USEC = 1000;
-SamplingProcessor::SamplingProcessor(SamplesRecord *generator, int interval)
+SamplingProcessor::SamplingProcessor(int32_t id, SamplesRecord *generator, int interval) : Task(id)
 {
     generator_ = generator;
     interval_ = interval;

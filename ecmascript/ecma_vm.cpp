@@ -154,7 +154,7 @@ bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     bool isEnablePGOProfiler = options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
-    pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(isEnablePGOProfiler);
+    pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
@@ -280,7 +280,7 @@ EcmaVM::~EcmaVM()
 {
     initialized_ = false;
     heap_->WaitAllTasksFinished();
-    Taskpool::GetCurrentTaskpool()->Destroy();
+    Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
         runtimeStat_->Print();

@@ -69,7 +69,8 @@ void ParallelEvacuator::EvacuateSpace()
         os::memory::LockHolder holder(mutex_);
         parallel_ = CalculateEvacuationThreadNum();
         for (int i = 0; i < parallel_; i++) {
-            Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<EvacuationTask>(this));
+            Taskpool::GetCurrentTaskpool()->PostTask(
+                std::make_unique<EvacuationTask>(heap_->GetJSThread()->GetThreadId(), this));
         }
     }
 
@@ -205,7 +206,8 @@ void ParallelEvacuator::UpdateReference()
         os::memory::LockHolder holder(mutex_);
         parallel_ = CalculateUpdateThreadNum();
         for (int i = 0; i < parallel_; i++) {
-            Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<UpdateReferenceTask>(this));
+            Taskpool::GetCurrentTaskpool()->PostTask(
+                std::make_unique<UpdateReferenceTask>(heap_->GetJSThread()->GetThreadId(), this));
         }
     }
 
@@ -408,8 +410,8 @@ bool ParallelEvacuator::ProcessWorkloads(bool isMain)
     return true;
 }
 
-ParallelEvacuator::EvacuationTask::EvacuationTask(ParallelEvacuator *evacuator)
-    : evacuator_(evacuator)
+ParallelEvacuator::EvacuationTask::EvacuationTask(int32_t id, ParallelEvacuator *evacuator)
+    : Task(id), evacuator_(evacuator)
 {
     allocator_ = new TlabAllocator(evacuator->heap_);
 }

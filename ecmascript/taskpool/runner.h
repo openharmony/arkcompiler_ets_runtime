@@ -44,7 +44,7 @@ public:
     }
 
     void PUBLIC_API TerminateThread();
-    void TerminateTask();
+    void TerminateTask(int32_t id, TaskType type);
 
     uint32_t GetTotalThreadNum() const
     {

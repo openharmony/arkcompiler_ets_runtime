@@ -31,7 +31,7 @@ class SamplingProcessor : public Task {
 public:
     static uint64_t GetMicrosecondsTimeStamp();
 
-    explicit SamplingProcessor(SamplesRecord *generator, int interval);
+    explicit SamplingProcessor(int32_t id, SamplesRecord *generator, int interval);
     virtual ~SamplingProcessor();
 
     bool Run(uint32_t threadIndex) override;
