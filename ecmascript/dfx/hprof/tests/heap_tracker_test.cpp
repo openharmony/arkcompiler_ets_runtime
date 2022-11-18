@@ -37,10 +37,7 @@ public:
     TestProgress() = default;
     ~TestProgress() = default;
 
-    void ReportProgress(int32_t done, int32_t total) override
-    {
-        ASSERT_PRINT(total == 2698, "total=" << total);
-    }
+    void ReportProgress([[maybe_unused]]int32_t done, [[maybe_unused]]int32_t total) override {}
 };
 
 class TestStream : public Stream {

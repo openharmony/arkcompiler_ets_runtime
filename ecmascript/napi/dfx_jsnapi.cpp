@@ -282,7 +282,7 @@ bool DFXJSNApi::CheckSafepoint(const EcmaVM *vm)
 bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames)
 {
     EcmaVM *vm;
-    if (hostVm->GetJSThread()->GetThreadId() == tid) {
+    if (hostVm->GetAssociatedJSThread()->GetThreadId() == tid) {
         vm = const_cast<EcmaVM*>(hostVm);
     } else {
         vm = hostVm->GetWorkerVm(tid);
