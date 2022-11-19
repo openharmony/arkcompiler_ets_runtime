@@ -113,6 +113,7 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
             enableMethodLog = logList->IncludesMethod(stub.GetMethodName());
         }
 
+        log->SetEnableMethodLog(enableMethodLog);
         StubPassData data(&stub, module, log);
         PassRunner<StubPassData> pipeline(&data);
         pipeline.RunPass<StubBuildCircuitPass>();
