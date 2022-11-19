@@ -63,6 +63,15 @@ public:
                                            int numOfAddedElements = 1)
     {
         if (!table->IsNeedGrowHashTable(numOfAddedElements)) {
+            // if deleted entries are more than half of the free entries, rehash to clear holes.
+            int freeSize = table->Size() - table->EntriesCount() - numOfAddedElements;
+            if (table->HoleEntriesCount() > freeSize / 2) { // 2: half
+                int copyLength = Derived::GetEntryIndex(table->Size());
+                JSHandle<Derived> copyTable(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(copyLength));
+                copyTable->SetHashTableSize(thread, table->Size());
+                table->Rehash(thread, *copyTable);
+                return copyTable;
+            }
             return table;
         }
         int newSize = ComputeHashTableSize(table->Size() + numOfAddedElements);
@@ -149,18 +158,13 @@ public:
     bool IsNeedGrowHashTable(int numOfAddEntries)
     {
         int entriesCount = EntriesCount();
-        int numOfDelEntries = HoleEntriesCount();
         int currentSize = Size();
         int numberFilled = entriesCount + numOfAddEntries;
-        // needn't to grow table:
-        //   1. after adding number entries, table have half free entries.
-        //   2. deleted entries are less than half of the free entries.
+        // needn't to grow table: after adding number entries, table have half free entries.
         const int halfFree = 2;
-        if ((numberFilled < currentSize) && ((numOfDelEntries <= (currentSize - numberFilled) / halfFree))) {
-            int neededFree = numberFilled / halfFree;
-            if (numberFilled + neededFree <= currentSize) {
-                return false;
-            }
+        int neededFree = numberFilled / halfFree;
+        if (numberFilled + neededFree <= currentSize) {
+            return false;
         }
         return true;
     }

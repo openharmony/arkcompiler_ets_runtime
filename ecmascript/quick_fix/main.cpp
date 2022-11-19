@@ -26,7 +26,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/log.cpp"
+#include "ecmascript/log.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
