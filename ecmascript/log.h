@@ -175,7 +175,15 @@ public:
     }
     ~StdLog()
     {
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
         std::cerr << stream_.str().c_str() << std::endl;
+#else
+        if constexpr (level == FATAL || level == ERROR) {
+            std::cerr << stream_.str().c_str() << std::endl;
+        } else {
+            std::cout << stream_.str().c_str() << std::endl;
+        }
+#endif
         if constexpr (level == FATAL) {
             std::abort();
         }
