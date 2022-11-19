@@ -207,6 +207,11 @@ config("ark_jsruntime_compiler_config") {
 
 config("ark_jsruntime_windows_config") {
   ldflags = [ "-lshlwapi" ]
+  if (enable_hilog) {
+    defines = [ "ENABLE_HILOG" ]
+    include_dirs =
+        [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
+  }
 }
 
 config("ark_jsruntime_common_config") {
@@ -829,6 +834,11 @@ ohos_shared_library("libark_jsruntime") {
 
   if (target_os == "android") {
     aosp_deps = [ "shared_library:liblog" ]
+  }
+  if (is_mingw) {
+    deps += [
+      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_windows",
+    ]
   }
   if (target_os == "ios" || ark_standalone_build) {
     deps += [
