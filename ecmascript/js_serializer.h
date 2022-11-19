@@ -93,13 +93,12 @@ enum class SerializationUID : uint8_t {
     OOM_ERROR,
     ERROR_MESSAGE_BEGIN,
     ERROR_MESSAGE_END,
-    // Function
+    // Function begin
     JS_FUNCTION,
-    JS_FUNCTION_BASE,
     METHOD,
     CONSTANT_POOL,
     TAGGED_ARRAY,
-    // NativePointer
+    // Function end
     NATIVE_POINTER,
     UNKNOWN
 };
@@ -114,7 +113,6 @@ public:
     std::pair<uint8_t *, size_t> ReleaseBuffer();
 
 private:
-    bool WriteJSFunctionBase(const JSHandle<JSTaggedValue> &value);
     bool WriteJSFunction(const JSHandle<JSTaggedValue> &value);
     bool WriteMethod(const JSHandle<JSTaggedValue> &value);
     bool WriteConstantPool(const JSHandle<JSTaggedValue> &value);
@@ -137,7 +135,6 @@ private:
     bool WriteJSRegExp(const JSHandle<JSTaggedValue> &value);
     bool WriteEcmaString(const JSHandle<JSTaggedValue> &value);
     bool WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, SerializationUID uId);
-    bool WriteAllKeys(const JSHandle<JSTaggedValue> &value);
     bool WritePlainObject(const JSHandle<JSTaggedValue> &value);
     bool WriteNativeBindingObject(const JSHandle<JSTaggedValue> &value);
     bool WriteNativePointer(const JSHandle<JSTaggedValue> &value);
