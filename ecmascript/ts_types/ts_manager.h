@@ -117,6 +117,16 @@ enum class BuiltinTypeId : uint8_t {  // keep the same with enum BuiltinType in 
     TYPED_ARRAY_LAST = BIG_UINT64_ARRAY,
 };
 
+struct LocalModuleInfo {
+    const JSPandaFile *jsPandaFile {nullptr}; // there may be serval merged abc files.
+    const CString recordName {""}; // distinguish different files which are all merged to a abc file.
+    uint32_t index {0}; // bytecode "ldlocalmodulevar index", importVar index is unique in the same recordName.
+    bool operator < (const LocalModuleInfo &localModuleInfo) const
+    {
+        return index < localModuleInfo.index;
+    }
+};
+
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -450,6 +460,31 @@ public:
         return literalOffsetGTMap_.at(key);
     }
 
+    inline void AddTypeToLocalModuleVarGtMap(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                             uint32_t index, GlobalTSTypeRef gt)
+    {
+        LocalModuleInfo key = {jsPandaFile, recordName, index};
+        if (localModuleVarGtMap_.find(key) == localModuleVarGtMap_.end()) {
+            localModuleVarGtMap_.emplace(key, gt);
+        } else {
+            localModuleVarGtMap_[key] = gt;
+        }
+    }
+
+    inline bool HasExportGT(const JSPandaFile *jsPandaFile, const CString &recordName,
+                            uint32_t index)
+    {
+        LocalModuleInfo key = {jsPandaFile, recordName, index};
+        return localModuleVarGtMap_.find(key) != localModuleVarGtMap_.end();
+    }
+
+    inline GlobalTSTypeRef GetGTFromModuleMap(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                              uint32_t index)
+    {
+        LocalModuleInfo key = {jsPandaFile, recordName, index};
+        return localModuleVarGtMap_.at(key);
+    }
+
     bool IsTSIterator(GlobalTSTypeRef gt) const
     {
         uint32_t m = gt.GetModuleId();
@@ -567,6 +602,7 @@ private:
     std::vector<uint32_t> builtinOffsets_ {};
     JSPandaFile *builtinPandaFile_ {nullptr};
     CString builtinsRecordName_ {""};
+    std::map<LocalModuleInfo, GlobalTSTypeRef> localModuleVarGtMap_{};
 };
 }  // namespace panda::ecmascript
 

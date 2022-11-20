@@ -35,13 +35,13 @@ class TypeInfer {
 public:
     TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
               CompilationInfo *info, size_t methodId, bool enableLog,
-              const std::string& name)
+              const std::string& name, const CString &recordName)
         : builder_(builder), circuit_(circuit),
           gateAccessor_(circuit),
           tsManager_(info->GetTSManager()),
           lexEnvManager_(info->GetLexEnvManager()),
           methodId_(methodId), enableLog_(enableLog),
-          methodName_(name)
+          methodName_(name), recordName_(recordName)
     {
     }
 
@@ -101,6 +101,8 @@ private:
     bool InferTryLdGlobalByName(GateRef gate);
     bool InferLdLexVarDyn(GateRef gate);
     bool InferStLexVarDyn(GateRef gate);
+    bool InferStModuleVar(GateRef gate);
+    bool InferLdLocalModuleVar(GateRef gate);
     bool IsNewLexEnv(EcmaOpcode opcode) const;
     bool InferGetIterator(GateRef gate);
     bool InferLoopBeginPhiGate(GateRef gate);
@@ -167,6 +169,7 @@ private:
     std::map<uint16_t, GateType> stringIdToGateType_;
     std::unordered_map<GateRef, uint32_t> jsgateToBytecode_ {};
     std::map<GateRef, InferState> phiState_;
+    const CString &recordName_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H
