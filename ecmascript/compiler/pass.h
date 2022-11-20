@@ -36,8 +36,11 @@ class CompilationInfo;
 class PassData {
 public:
     explicit PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, CompilationInfo *info, CompilerLog *log,
-                      std::string methodName, MethodLiteral *methodLiteral = nullptr, uint32_t methodOffset = 0)
+                      std::string methodName, size_t methodInfoIndex = 0,
+                      bool hasTypes = false, const CString &recordName = "",
+                      MethodLiteral *methodLiteral = nullptr, uint32_t methodOffset = 0)
         : builder_(builder), circuit_(circuit), info_(info), log_(log), methodName_(methodName),
+          methodInfoIndex_(methodInfoIndex), hasTypes_(hasTypes), recordName_(recordName),
           methodLiteral_(methodLiteral), methodOffset_(methodOffset)
     {
     }
@@ -108,6 +111,21 @@ public:
         return methodOffset_;
     }
 
+    size_t GetMethodInfoIndex() const
+    {
+        return methodInfoIndex_;
+    }
+
+    bool HasTypes() const
+    {
+        return hasTypes_;
+    }
+
+    const CString &GetRecordName() const
+    {
+        return recordName_;
+    }
+
 private:
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
@@ -115,6 +133,9 @@ private:
     CompilationInfo *info_ {nullptr};
     CompilerLog *log_ {nullptr};
     std::string methodName_;
+    size_t methodInfoIndex_;
+    bool hasTypes_;
+    const CString &recordName_;
     MethodLiteral *methodLiteral_ {nullptr};
     uint32_t methodOffset_;
 };
@@ -137,13 +158,13 @@ private:
 
 class TypeInferPass {
 public:
-    bool Run(PassData* data, size_t methodId, bool hasTypes)
+    bool Run(PassData* data)
     {
         TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        if (hasTypes) {
+        if (data->HasTypes()) {
             bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-            TypeInfer typeInfer(data->GetBuilder(), data->GetCircuit(), data->GetInfo(), methodId,
-                                enableLog, data->GetMethodName());
+            TypeInfer typeInfer(data->GetBuilder(), data->GetCircuit(), data->GetInfo(), data->GetMethodInfoIndex(),
+                                enableLog, data->GetMethodName(), data->GetRecordName());
             typeInfer.TraverseCircuit();
         }
         return true;

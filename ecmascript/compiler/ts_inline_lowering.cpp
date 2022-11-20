@@ -168,9 +168,11 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
         builder.BytecodeToCircuit();
     }
 
-    PassData data(&builder, circuit_, info_, log, fullName, method, method->GetMethodId().GetOffset());
+    PassData data(&builder, circuit_, info_, log, fullName,
+                  methodInfo.methodInfoIndex, hasTyps, recordName,
+                  method, method->GetMethodId().GetOffset());
     PassRunner<PassData> pipeline(&data);
-    pipeline.RunPass<TypeInferPass>(methodInfo.methodInfoIndex, hasTyps);
+    pipeline.RunPass<TypeInferPass>();
     pipeline.RunPass<AsyncFunctionLoweringPass>();
 }
 
