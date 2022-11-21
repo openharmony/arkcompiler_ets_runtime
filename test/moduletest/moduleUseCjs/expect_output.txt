@@ -12,3 +12,6 @@
 # limitations under the License.
 
 "module use cjsModule"
+"moduleJson"
+jscall 1
+true
