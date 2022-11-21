@@ -101,6 +101,15 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapSetAndGet)
 
     // test JSAPIHashMap
     JSHandle<JSAPIHashMap> hashMap(thread, CreateHashMap());
+
+    // test IsEmpty
+    EXPECT_EQ(hashMap->IsEmpty(), JSTaggedValue::True());
+
+    // test Set exception
+    key.Update(JSTaggedValue::Hole());
+    JSAPIHashMap::Set(thread, hashMap, key, value);
+    EXPECT_EXCEPTION();
+    
     std::string myKey("mykey");
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -111,6 +120,9 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapSetAndGet)
         JSAPIHashMap::Set(thread, hashMap, key, value);
     }
     EXPECT_EQ(hashMap->GetSize(), NODE_NUMBERS);
+    
+    // test isEmpty
+    EXPECT_EQ(hashMap->IsEmpty(), JSTaggedValue::False());
 
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string iKey = myKey + std::to_string(i);
@@ -133,6 +145,15 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapRemoveAndHas)
 
     // test JSAPIHashMap
     JSHandle<JSAPIHashMap> hashMap(thread, CreateHashMap());
+
+    // test Remove Hole
+    JSTaggedValue undefined = JSAPIHashMap::Remove(thread, hashMap, JSTaggedValue::Hole());
+    EXPECT_EQ(undefined, JSTaggedValue::Undefined());
+
+    // test Remove empty hashmap
+    JSTaggedValue undefined1 = JSAPIHashMap::Remove(thread, hashMap, JSTaggedValue(0));
+    EXPECT_EQ(undefined1, JSTaggedValue::Undefined());
+
     std::string myKey("mykey");
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -143,6 +164,10 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapRemoveAndHas)
         JSAPIHashMap::Set(thread, hashMap, key, value);
     }
     EXPECT_EQ(hashMap->GetSize(), NODE_NUMBERS);
+
+    // test Remove non-existent
+    JSTaggedValue undefined2 = JSAPIHashMap::Remove(thread, hashMap, JSTaggedValue(0));
+    EXPECT_EQ(undefined2, JSTaggedValue::Undefined());
 
     for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
         std::string iKey = myKey + std::to_string(i);
@@ -345,6 +370,88 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIteratorRBTreeTest)
         if (i <= NODE_NUMBERS - 1U) {
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsInt());
         }
+    }
+}
+
+HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapRBTreeHasValueReplaceGet)
+{
+    std::vector<int> hashCollisionVector = {1224, 1285, 1463, 4307, 5135, 5903, 6780, 8416, 9401, 9740, 6603};
+    uint32_t NODE_NUMBERS = static_cast<uint32_t>(hashCollisionVector.size());
+    JSHandle<JSAPIHashMap> hashMap(thread, CreateHashMap());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS - 1; i++) {
+        key.Update(JSTaggedValue(hashCollisionVector[i]));
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
+        JSAPIHashMap::Set(thread, hashMap, key, value);
+    }
+    
+    // test RBTree HasValue
+    for (uint32_t i = 0; i < NODE_NUMBERS - 1; i++) {
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
+        JSTaggedValue hasValue = JSAPIHashMap::HasValue(thread, hashMap, value);
+        EXPECT_EQ(hasValue, JSTaggedValue::True());
+    }
+    value.Update(JSTaggedValue(hashCollisionVector[NODE_NUMBERS - 1]));
+    JSTaggedValue hasValue = JSAPIHashMap::HasValue(thread, hashMap, value);
+    EXPECT_EQ(hasValue, JSTaggedValue::False());
+
+    // test RBTree Replace and Get
+    for (uint32_t i = 0; i < NODE_NUMBERS - 1; i++) {
+        JSTaggedValue replaceResult = hashMap->Replace(
+            thread, JSTaggedValue(hashCollisionVector[i]), JSTaggedValue(hashCollisionVector[i] * 2));
+        EXPECT_EQ(replaceResult, JSTaggedValue::True());
+    }
+    for (uint32_t i = 0; i < NODE_NUMBERS - 1; i++) {
+        JSTaggedValue replaceResult = hashMap->Get(
+            thread, JSTaggedValue(hashCollisionVector[i]));
+        EXPECT_EQ(replaceResult, JSTaggedValue(hashCollisionVector[i] * 2));
+    }
+}
+
+HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapRBTreeSetAllRemove)
+{
+    std::vector<int> hashCollisionVector = {1224, 1285, 1463, 4307, 5135, 5903, 6780, 8416, 9401, 9740, 6603};
+    uint32_t NODE_NUMBERS = static_cast<uint32_t>(hashCollisionVector.size());
+    uint32_t REMOVE_NUMBERS = 4;
+    JSHandle<JSAPIHashMap> dstHashMap(thread, CreateHashMap());
+    JSHandle<JSAPIHashMap> srcHashMap(thread, CreateHashMap());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> dstValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> srcValue(thread, JSTaggedValue::Undefined());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        key.Update(JSTaggedValue(hashCollisionVector[i]));
+        dstValue.Update(JSTaggedValue(hashCollisionVector[i]));
+        srcValue.Update(JSTaggedValue(hashCollisionVector[i] * 2));
+        JSAPIHashMap::Set(thread, dstHashMap, key, dstValue);
+        JSAPIHashMap::Set(thread, srcHashMap, key, srcValue);
+    }
+    
+    // test SetAll and Get
+    JSAPIHashMap::SetAll(thread, dstHashMap, srcHashMap);
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        JSTaggedValue replaceResult = dstHashMap->Get(
+            thread, JSTaggedValue(hashCollisionVector[i]));
+        EXPECT_EQ(replaceResult, JSTaggedValue(hashCollisionVector[i] * 2));
+    }
+
+    // test Remove RBTree
+    for (uint32_t i = 0; i < REMOVE_NUMBERS; i++) {
+        key.Update(JSTaggedValue(hashCollisionVector[i]));
+        JSAPIHashMap::Remove(thread, dstHashMap, key.GetTaggedValue());
+    }
+    EXPECT_EQ(dstHashMap->GetSize(), NODE_NUMBERS - REMOVE_NUMBERS);
+
+    for (uint32_t i = 0; i < REMOVE_NUMBERS; i++) {
+        JSTaggedValue getResult = dstHashMap->Get(thread, JSTaggedValue(hashCollisionVector[i]));
+        EXPECT_EQ(getResult, JSTaggedValue::Undefined());
+    }
+
+    for (uint32_t i = REMOVE_NUMBERS; i < NODE_NUMBERS; i++) {
+        JSTaggedValue getResult = dstHashMap->Get(thread, JSTaggedValue(hashCollisionVector[i]));
+        EXPECT_EQ(getResult, JSTaggedValue(hashCollisionVector[i] * 2));
     }
 }
 }  // namespace panda::test

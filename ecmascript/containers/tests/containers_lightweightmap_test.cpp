@@ -24,6 +24,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -127,6 +128,10 @@ HWTEST_F_L0(ContainersLightWeightMapTest, LightWeightMapConstructor)
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(mapHandle));
     JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
     ASSERT_EQ(resultProto, funcProto);
+
+    // test PlainArrayConstructor exception
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, LightWeightMapConstructor, objCallInfo);
 }
 
 HWTEST_F_L0(ContainersLightWeightMapTest, SetAndGet)
@@ -558,5 +563,119 @@ HWTEST_F_L0(ContainersLightWeightMapTest, ForEach)
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
     }
+}
+
+HWTEST_F_L0(ContainersLightWeightMapTest, ProxyOfLength)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPILightWeightMap> lightWeightMap = CreateJSAPILightWeightMap();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, lightWeightMap.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersLightWeightMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersLightWeightMap::Length(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersLightWeightMapTest,
+    ExceptionReturnOfHasAllIncreaseCapacityToLengthHasKeyHasValueGetGetIndexOfKeyGetIndexOfValueIsEmpty)
+{
+    JSHandle<JSAPILightWeightMap> lightWeightMap = CreateJSAPILightWeightMap();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test HasAll, IncreaseCapacityTo exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, HasAll, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, IncreaseCapacityTo, callInfo);
+    callInfo->SetThis(lightWeightMap.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, HasAll, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, IncreaseCapacityTo, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test Length exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, Length, callInfo);
+
+    // test HasKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, HasKey, callInfo);
+
+    // test HasValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, HasValue, callInfo);
+
+    // test Get exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, Get, callInfo);
+
+    // test GetIndexOfKey exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, GetIndexOfKey, callInfo);
+
+    // test GetIndexOfValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, GetIndexOfValue, callInfo);
+
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, IsEmpty, callInfo);
+}
+
+HWTEST_F_L0(ContainersLightWeightMapTest,
+    ExceptionReturnOfGetKeyAtSetAllRemoveAtSetValueAtGetValueAtSetRemoveClearForEachToString)
+{
+    JSHandle<JSAPILightWeightMap> lightWeightMap = CreateJSAPILightWeightMap();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test GetKeyAt, SetAll, RemoveAt, SetValueAt and GetValueAt exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, GetKeyAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, SetAll, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, RemoveAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, SetValueAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, GetValueAt, callInfo);
+    callInfo->SetThis(lightWeightMap.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, GetKeyAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, SetAll, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, RemoveAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, SetValueAt, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, GetValueAt, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test Set exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, Set, callInfo);
+
+    // test Remove exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, Remove, callInfo);
+
+    // test Clear exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, Clear, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, ForEach, callInfo);
+
+    // test ToString exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, ToString, callInfo);
+
+    // test GetIndexOfValue exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, GetIndexOfValue, callInfo);
+
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightMap, IsEmpty, callInfo);
 }
 }  // namespace panda::test

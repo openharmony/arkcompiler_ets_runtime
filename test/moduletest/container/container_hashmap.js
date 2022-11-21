@@ -25,9 +25,15 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     let res = new Map();
     let map = new fastmap();
+
+    // test isEmpty true
+    res.set("test isEmpty ture:", map.isEmpty() == true)
+
     map.set("a", "aa");
     map.set("b", "bb");
 
+    // test isEmpty false
+    res.set("test isEmpty false:", map.isEmpty() == false)
     // test get: true
     res.set("test get:", map.length == 2 && map.get("a") == "aa" && map.get("b") == "bb");
     // test hasKey and hasValue: true
@@ -91,8 +97,15 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     let map1 = new fastmap();
     let proxy = new Proxy(map1, {});
+
+    // test isEmpty true
+    res.set("test proxy isEmpty ture:", proxy.isEmpty() == true)
+
     proxy.set("a", "aa");
     proxy.set("b", "bb");
+
+    // test isEmpty false
+    res.set("test proxy isEmpty false:", proxy.isEmpty() == false)
 
     // test get: true
     res.set("test get:", proxy.length == 2 && proxy.get("a") == "aa" && proxy.get("b") == "bb");
@@ -133,7 +146,7 @@ if (globalThis["ArkPrivate"] != undefined) {
         flag = proxy.get(key) === value;
         res.set("test forEach" + key, flag)
     }
-    map.forEach(TestForEach1);
+    proxy.forEach(TestForEach1);
 
     let dmap1 = new fastmap();
     let dProxy = new Proxy(dmap1, {})

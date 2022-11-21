@@ -225,6 +225,45 @@ HWTEST_F_L0(JSAPITreeSetIteratorTest, KEY_Next)
     }
 }
 
+/**
+ * @tc.name: Next
+ * @tc.desc: test special return of Next, including throw exception and return undefined
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPITreeSetIteratorTest, SpecialReturnOfNext)
+{
+    JSHandle<JSAPITreeSet> jsTreeSet = CreateTreeSet();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPITreeSetIterator> treeSetIterator = factory->NewJSAPITreeSetIterator(jsTreeSet, IterationKind::KEY);
+    treeSetIterator->SetIteratedSet(thread, JSTaggedValue::Undefined());
+    
+    // test Next exception
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPITreeSetIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, JSTaggedValue::Exception());
+        EXPECT_EXCEPTION();
+    }
+
+    // test Next return undefined
+    {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(treeSetIterator.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = JSAPITreeSetIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, thread->GlobalConstants()->GetUndefinedIterResult());
+    }
+}
+
 HWTEST_F_L0(JSAPITreeSetIteratorTest, KEY_AND_VALUE_Next)
 {
     constexpr uint32_t DEFAULT_LENGTH = 8;

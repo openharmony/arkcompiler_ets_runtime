@@ -109,6 +109,11 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetAddAndHas)
     }
     EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
 
+    // test Add exception
+    key.Update(JSTaggedValue::Hole());
+    JSAPITreeSet::Add(thread, tset, key);
+    EXPECT_EXCEPTION();
+
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ikey = myKey + std::to_string(i);
         key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
@@ -135,6 +140,14 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetDeleteAndHas)
         JSAPITreeSet::Add(thread, tset, key);
     }
     EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+
+    // test delete
+    {
+        std::string ikey = myKey + std::to_string(NODE_NUMBERS);
+        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+        bool success = JSAPITreeSet::Delete(thread, tset, key);
+        EXPECT_EQ(success, false);
+    }
 
     for (int i = 0; i < REMOVE_SIZE; i++) {
         std::string ikey = myKey + std::to_string(i);
@@ -199,6 +212,13 @@ HWTEST_F_L0(JSAPITreeSetTest, TreeSetPop)
 
     // test TaggedTreeSet
     JSHandle<JSAPITreeSet> tset(thread, CreateTreeSet());
+
+    // test popFirst and popLast of empty treeset
+    JSTaggedValue fvalue1 = JSAPITreeSet::PopFirst(thread, tset);
+    EXPECT_EQ(fvalue1, JSTaggedValue::Undefined());
+    JSTaggedValue lvalue1 = JSAPITreeSet::PopFirst(thread, tset);
+    EXPECT_EQ(lvalue1, JSTaggedValue::Undefined());
+
     std::string myKey("mykey");
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ikey = myKey + std::to_string(i);
@@ -283,5 +303,25 @@ HWTEST_F_L0(JSAPITreeSetTest, JSAPITreeSetIterator)
     // test end
     keyIterResult.Update(JSIterator::IteratorStep(thread, keyIter).GetTaggedValue());
     EXPECT_EQ(JSTaggedValue::False(), keyIterResult.GetTaggedValue());
+}
+
+HWTEST_F_L0(JSAPITreeSetTest, TreeSetGetKey)
+{
+    constexpr int NODE_NUMBERS = 8;
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+
+    // init treeset
+    JSHandle<JSAPITreeSet> tset(thread, CreateTreeSet());
+    for (int i = 0; i < NODE_NUMBERS; i++) {
+        key.Update(JSTaggedValue(i));
+        JSAPITreeSet::Add(thread, tset, key);
+    }
+    EXPECT_EQ(tset->GetSize(), NODE_NUMBERS);
+
+    // test GetKey
+    for (int i = 0; i < NODE_NUMBERS; i++) {
+        EXPECT_EQ(tset->GetKey(i), JSTaggedValue(i));
+    }
+    EXPECT_EQ(tset->GetKey(-1), JSTaggedValue::Undefined());
 }
 }  // namespace panda::test

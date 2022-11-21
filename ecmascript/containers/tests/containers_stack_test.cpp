@@ -24,6 +24,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -132,6 +133,10 @@ HWTEST_F_L0(ContainersStackTest, StackConstructor)
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(stack));
     JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
     ASSERT_EQ(resultProto, funcProto);
+
+    // test StackConstructor exception
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, StackConstructor, objCallInfo);
 }
 
 HWTEST_F_L0(ContainersStackTest, PushAndPeek)
@@ -263,5 +268,62 @@ HWTEST_F_L0(ContainersStackTest, ForEach)
         ContainersStack::ForEach(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
+}
+
+HWTEST_F_L0(ContainersStackTest, ProxyOfGetLength)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPIStack> stack = CreateJSAPIStack();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, stack.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersStack::Push(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersStack::GetLength(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+}
+
+HWTEST_F_L0(ContainersStackTest,
+    ExceptionReturnOfIsEmptyPushPeekLocatePopForEachIteratorGetLength)
+{
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+    
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, IsEmpty, callInfo);
+
+    // test Push exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Push, callInfo);
+
+    // test Peek exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Peek, callInfo);
+
+    // test Locate exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Locate, callInfo);
+
+    // test Pop exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Pop, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, ForEach, callInfo);
+
+    // test Iterator exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Iterator, callInfo);
+
+    // test GetLength exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, GetLength, callInfo);
 }
 }  // namespace panda::test

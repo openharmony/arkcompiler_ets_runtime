@@ -48,7 +48,7 @@ public:
     JSThread *thread {nullptr};
 
 protected:
-    JSHandle<JSAPIQueue> CreateQueue()
+    JSHandle<JSAPIQueue> CreateQueue(int capacaty = JSAPIQueue::DEFAULT_CAPACITY_LENGTH)
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -69,7 +69,7 @@ protected:
 
         JSHandle<JSTaggedValue> constructor(thread, result);
         JSHandle<JSAPIQueue> jsQueue(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-        JSHandle<TaggedArray> newElements = factory->NewTaggedArray(JSAPIQueue::DEFAULT_CAPACITY_LENGTH);
+        JSHandle<TaggedArray> newElements = factory->NewTaggedArray(capacaty);
         jsQueue->SetElements(thread, newElements);
         jsQueue->SetLength(thread, JSTaggedValue(0));
         jsQueue->SetFront(0);
@@ -100,13 +100,18 @@ HWTEST_F_L0(JSAPIQueueTest, AddAndHasAndSetAndGet)
     EXPECT_EQ(jsQueue->GetSize(), DEFAULT_LENGTH);
     EXPECT_EQ(JSAPIQueue::GetArrayLength(thread, jsQueue), DEFAULT_LENGTH);
 
-    // test Set and Get
+    // test Set, Has and Get
     std::string ivalue = queueValue + std::to_string(10);
     value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+    EXPECT_FALSE(jsQueue->Has(value.GetTaggedValue()));
     jsQueue->Set(thread, 0, value.GetTaggedValue());
     EXPECT_EQ(jsQueue->Get(thread, 0), value.GetTaggedValue());
-    // test Has
     EXPECT_TRUE(jsQueue->Has(value.GetTaggedValue()));
+
+    // test Get exception
+    JSTaggedValue result = jsQueue->Get(thread, DEFAULT_LENGTH);
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    EXPECT_EXCEPTION();
 }
 
 HWTEST_F_L0(JSAPIQueueTest, PopFirstAndGetFirst)
@@ -115,6 +120,10 @@ HWTEST_F_L0(JSAPIQueueTest, PopFirstAndGetFirst)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     JSHandle<JSAPIQueue> jsQueue = CreateQueue();
+
+    // test GetFirst and pop of empty queue
+    EXPECT_EQ(JSAPIQueue::GetFirst(thread, jsQueue), JSTaggedValue::Undefined());
+    EXPECT_EQ(JSAPIQueue::Pop(thread, jsQueue), JSTaggedValue::Undefined());
 
     std::string queueValue("queuevalue");
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
@@ -202,6 +211,12 @@ HWTEST_F_L0(JSAPIQueueTest, GetOwnProperty)
     testInt = 9;
     JSHandle<JSTaggedValue> queueKey2(thread, JSTaggedValue(testInt));
     EXPECT_FALSE(JSAPIQueue::GetOwnProperty(thread, jsQueue, queueKey2));
+    EXPECT_EXCEPTION();
+
+    // test GetOwnProperty exception
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    EXPECT_FALSE(JSAPIQueue::GetOwnProperty(thread, jsQueue, undefined));
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -245,5 +260,27 @@ HWTEST_F_L0(JSAPIQueueTest, SetProperty)
         bool setPropertyRes = JSAPIQueue::SetProperty(thread, jsQueue, key, value);
         EXPECT_EQ(setPropertyRes, true);
     }
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(-1));
+    EXPECT_FALSE(JSAPIQueue::SetProperty(thread, jsQueue, key, value));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums));
+    EXPECT_FALSE(JSAPIQueue::SetProperty(thread, jsQueue, key1, value));
+}
+
+/**
+ * @tc.name: GrowCapacity
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIQueueTest, GrowCapacity)
+{
+    JSHandle<JSAPIQueue> jsQueue = CreateQueue(0);
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(0));
+    JSHandle<TaggedArray> element(thread, jsQueue->GetElements());
+    EXPECT_EQ(element->GetLength(), 0U);
+    JSAPIQueue::Add(thread, jsQueue, value);
+    JSHandle<TaggedArray> newElement(thread, jsQueue->GetElements());
+    EXPECT_EQ(newElement->GetLength(), static_cast<uint32_t>(JSAPIQueue::DEFAULT_CAPACITY_LENGTH));
 }
 }  // namespace panda::test

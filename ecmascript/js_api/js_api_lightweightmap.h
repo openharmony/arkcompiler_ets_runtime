@@ -118,8 +118,6 @@ private:
     static JSHandle<TaggedArray> GetArrayByKind(const JSThread *thread,
                                                 const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                                 AccossorsKind kind);
-    static int32_t GetHashIndex(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap, int32_t hash,
-                                const JSTaggedValue &value, int32_t size);
     static int32_t AvoidHashCollision(HashParams &params, int32_t index, int32_t size, int32_t hash);
 };
 }  // namespace panda::ecmascript

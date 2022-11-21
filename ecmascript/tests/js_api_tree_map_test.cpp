@@ -113,6 +113,11 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapSetAndGet)
     }
     EXPECT_EQ(tmap->GetSize(), NODE_NUMBERS);
 
+    // test Set exception
+    key.Update(JSTaggedValue::Hole());
+    JSAPITreeMap::Set(thread, tmap, key, value);
+    EXPECT_EXCEPTION();
+
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ikey = myKey + std::to_string(i);
         std::string ivalue = myValue + std::to_string(i);
@@ -209,6 +214,15 @@ HWTEST_F_L0(JSAPITreeMapTest, TreeMapReplaceAndClear)
         // test replace
         bool success = JSAPITreeMap::Replace(thread, tmap, key, value);
         EXPECT_EQ(success, true);
+    }
+
+    {
+        std::string ikey = myKey + std::to_string(NODE_NUMBERS);
+        std::string ivalue = myValue + std::to_string(NODE_NUMBERS + 1);
+        key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+        bool success = JSAPITreeMap::Replace(thread, tmap, key, value);
+        EXPECT_FALSE(success);
     }
 
     for (int i = 0; i < NODE_NUMBERS / 2; i++) {
@@ -318,5 +332,36 @@ HWTEST_F_L0(JSAPITreeMapTest, JSAPITreeMapIterator)
     // test end
     keyIterResult.Update(JSIterator::IteratorStep(thread, keyIter).GetTaggedValue());
     EXPECT_EQ(JSTaggedValue::False(), keyIterResult.GetTaggedValue());
+}
+
+HWTEST_F_L0(JSAPITreeMapTest, TreeMapGetKeyAndGetValue)
+{
+    constexpr int NODE_NUMBERS = 8;
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+
+    // init treemap
+    JSHandle<JSAPITreeMap> tmap(thread, CreateTreeMap());
+    for (int i = 0; i < NODE_NUMBERS; i++) {
+        key.Update(JSTaggedValue(i));
+        if (i == NODE_NUMBERS / 2) {
+            value.Update(JSTaggedValue::Hole());
+        } else {
+            value.Update(JSTaggedValue(i));
+        }
+        JSAPITreeMap::Set(thread, tmap, key, value);
+    }
+    EXPECT_EQ(tmap->GetSize(), NODE_NUMBERS);
+
+    // test GetKey and GetValue
+    for (int i = 0; i < NODE_NUMBERS; i++) {
+        EXPECT_EQ(tmap->GetKey(i), JSTaggedValue(i));
+        if (i == NODE_NUMBERS / 2) {
+            EXPECT_EQ(tmap->GetValue(i), JSTaggedValue::Undefined());
+        } else {
+            EXPECT_EQ(tmap->GetValue(i), JSTaggedValue(i));
+        }
+    }
+    EXPECT_EQ(tmap->GetKey(-1), JSTaggedValue::Undefined());
 }
 }  // namespace panda::test
