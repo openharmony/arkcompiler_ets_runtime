@@ -152,13 +152,13 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
     auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     std::string rawStr = "fork string";
     JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
-    JSNApi::preFork(vm);
+    JSNApi::PreFork(vm);
     if (fork() != 0) {
         // test gc in parent process
         heap->CollectGarbage(TriggerGCType::OLD_GC);
     } else {
         panda::RuntimeOption postOption;
-        JSNApi::postFork(vm, postOption);
+        JSNApi::PostFork(vm, postOption);
         // test gc in child process
         heap->CollectGarbage(TriggerGCType::OLD_GC);
         auto *region = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());

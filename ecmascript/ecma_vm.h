@@ -499,8 +499,8 @@ public:
 
     bool FindCatchBlock(Method *method, uint32_t pc) const;
 
-    void preFork();
-    void postFork();
+    void PreFork();
+    void PostFork();
 
     // For Internal Native MethodLiteral.
     JSTaggedValue GetMethodByIndex(MethodIndex idx);

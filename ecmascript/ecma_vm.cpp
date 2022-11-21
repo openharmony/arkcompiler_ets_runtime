@@ -121,7 +121,7 @@ bool EcmaVM::Destroy(EcmaVM *vm)
     return false;
 }
 
-void EcmaVM::preFork()
+void EcmaVM::PreFork()
 {
     heap_->CompactHeapBeforeFork();
     heap_->AdjustSpaceSizeForAppSpawn();
@@ -129,10 +129,10 @@ void EcmaVM::preFork()
     heap_->DisableParallelGC();
 }
 
-void EcmaVM::postFork()
+void EcmaVM::PostFork()
 {
     GetAssociatedJSThread()->SetThreadId();
-    Taskpool::GetCurrentTaskpool()->Initialize();
+    heap_->EnableParallelGC();
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
