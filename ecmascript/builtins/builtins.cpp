@@ -3450,6 +3450,9 @@ void Builtins::InitializeModuleNamespace(const JSHandle<GlobalEnv> &env,
         factory_->NewEcmaHClass(ModuleNamespace::SIZE, JSType::JS_MODULE_NAMESPACE, moduleNamespacePrototypeValue);
     moduleNamespaceHClass->SetPrototype(thread_, JSTaggedValue::Null());
     env->SetModuleNamespaceClass(thread_, moduleNamespaceHClass.GetTaggedValue());
+
+    // moduleNamespace.prototype [ @@toStringTag ]
+    SetStringTagSymbol(env, moduleNamespacePrototype, "Module");
 }
 
 void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const

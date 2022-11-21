@@ -3166,6 +3166,22 @@ JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTag
     return obj;
 }
 
+JSHandle<JSObject> ObjectFactory::NewDefaultExportOfScript()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
+    JSHandle<JSTaggedValue> emptyObj(NewJSObjectByConstructor(builtinObj));
+    JSHandle<JSTaggedValue> defaultKey(NewFromUtf8("default"));
+
+    JSHandle<TaggedArray> props(NewTaggedArray(2)); // 2 : two propertise
+    props->Set(thread_, 0, defaultKey);
+    props->Set(thread_, 1, emptyObj);
+    JSHandle<JSHClass> hclass = CreateObjectClass(props, 1);
+    JSHandle<JSObject> obj = NewJSObject(hclass);
+    obj->SetPropertyInlinedProps(thread_, 0, props->Get(1));
+    return obj;
+}
+
 // ----------------------------------- new TSType ----------------------------------------
 JSHandle<TSObjLayoutInfo> ObjectFactory::CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal)
 {

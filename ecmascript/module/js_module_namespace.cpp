@@ -57,6 +57,7 @@ JSHandle<ModuleNamespace> ModuleNamespace::ModuleNamespaceCreate(JSThread *threa
     JSObject::DefineOwnProperty(thread, mNpObj, toStringTag, des);
     // 10. Set module.[[Namespace]] to M.
     ModuleRecord::SetNamespace(thread, moduleRecord.GetTaggedValue(), mNp.GetTaggedValue());
+    mNp->GetJSHClass()->SetExtensible(false);
     return mNp;
 }
 
@@ -127,11 +128,6 @@ JSHandle<TaggedArray> ModuleNamespace::OwnPropertyKeys(JSThread *thread, const J
     return result;
 }
 
-bool ModuleNamespace::IsExtensible()
-{
-    return false;
-}
-
 bool ModuleNamespace::PreventExtensions()
 {
     return true;
@@ -148,25 +144,37 @@ bool ModuleNamespace::DefineOwnProperty(JSThread *thread,
         bool res = JSObject::OrdinaryDefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
         return res;
     }
-    // 4. If Desc has a [[Configurable]] field and Desc.[[Configurable]] is true, return false.
-    // 5. If Desc has an [[Enumerable]] field and Desc.[[Enumerable]] is false, return false.
-    // 6. If IsAccessorDescriptor(Desc) is true, return false.
-    // 7. If Desc has a [[Writable]] field and Desc.[[Writable]] is false, return false.
-    if (desc.IsConfigurable() || !desc.IsEnumerable() || !desc.IsWritable() || desc.IsAccessorDescriptor()) {
-        return false;
-    }
+
     // 2. Let current be ? O.[[GetOwnProperty]](P).
     PropertyDescriptor current(thread);
     // 3. If current is undefined, return false.
     if (!GetOwnProperty(thread, obj, key, current)) {
         return false;
     }
+    // 4. If Desc has a [[Configurable]] field and Desc.[[Configurable]] is true, return false.
+    // 5. If Desc has an [[Enumerable]] field and Desc.[[Enumerable]] is false, return false.
+    // 6. If IsAccessorDescriptor(Desc) is true, return false.
+    // 7. If Desc has a [[Writable]] field and Desc.[[Writable]] is false, return false.
+    if (desc.IsAccessorDescriptor()) {
+        return false;
+    }
+    if (desc.HasConfigurable() && desc.IsConfigurable()) {
+        return false;
+    }
+    if (desc.HasEnumerable() && !desc.IsEnumerable()) {
+        return false;
+    }
+    if (desc.HasWritable() && !desc.IsWritable()) {
+        return false;
+    }
+
     // 8. If Desc has a [[Value]] field, return SameValue(Desc.[[Value]], current.[[Value]]).
     if (desc.HasValue()) {
         JSHandle<JSTaggedValue> descValue = desc.GetValue();
         JSHandle<JSTaggedValue> currentValue = current.GetValue();
         return JSTaggedValue::SameValue(descValue, currentValue);
     }
+
     // 9. Return true.
     return true;
 }

@@ -443,7 +443,8 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const
     return res;
 }
 
-Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint)
+Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                                           bool excuteFromJob)
 {
     JSTaggedValue result;
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -499,7 +500,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     }
 
     // print exception information
-    if (thread_->HasPendingException()) {
+    if (!excuteFromJob && thread_->HasPendingException()) {
         auto exception = thread_->GetException();
         HandleUncaughtException(exception.GetTaggedObject());
     }

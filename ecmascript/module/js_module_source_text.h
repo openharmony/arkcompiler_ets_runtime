@@ -58,11 +58,12 @@ public:
 
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-        CVector<JSHandle<SourceTextModule>> &stack, int index, const void *buffer = nullptr, size_t size = 0);
+        CVector<JSHandle<SourceTextModule>> &stack, int index, const void *buffer = nullptr,
+        size_t size = 0, bool excuteFromJob = false);
 
     // 15.2.1.16.5.2 ModuleExecution ( module )
     static void ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                const void *buffer = nullptr, size_t size = 0);
+                                const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
 
     // 15.2.1.18 Runtime Semantics: GetModuleNamespace ( module )
     static JSHandle<JSTaggedValue> GetModuleNamespace(JSThread *thread, const JSHandle<SourceTextModule> &module);
@@ -107,7 +108,7 @@ public:
 
     // 15.2.1.16.5 Evaluate()
     static int Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                        const void *buffer = nullptr, size_t size = 0);
+                        const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
 
     // 15.2.1.16.4 Instantiate()
     static int Instantiate(JSThread *thread, const JSHandle<SourceTextModule> &module);

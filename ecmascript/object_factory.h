@@ -469,6 +469,7 @@ public:
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const uint8_t *data);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
+    JSHandle<JSObject> NewDefaultExportOfScript();
 
     // ----------------------------------- new TSType ----------------------------------------
     JSHandle<TSObjLayoutInfo> CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal = JSTaggedValue::Hole());
