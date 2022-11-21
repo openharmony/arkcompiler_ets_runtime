@@ -106,7 +106,16 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_AddAndGetKeyAtAndClear)
     // test JSAPIPlainArray
     JSHandle<JSAPIPlainArray> array(thread, CreatePlainArray());
     std::string myValue("myvalue");
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (uint32_t i = 0; i < NODE_NUMBERS; i = i + 2) {
+        uint32_t ikey = 100 + i;
+        std::string ivalue = myValue + std::to_string(i);
+     
+        key.Update(JSTaggedValue(ikey));
+        value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
+       
+        JSAPIPlainArray::Add(thread, array, key, value);
+    }
+    for (uint32_t i = 1; i < NODE_NUMBERS; i = i + 2) {
         uint32_t ikey = 100 + i;
         std::string ivalue = myValue + std::to_string(i);
      
@@ -127,6 +136,8 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_AddAndGetKeyAtAndClear)
         JSTaggedValue gvalue = array->GetKeyAt(i);
         EXPECT_EQ(gvalue, key.GetTaggedValue());
     }
+    EXPECT_EQ(array->GetKeyAt(-1), JSTaggedValue::Undefined());
+    EXPECT_EQ(array->GetKeyAt(NODE_NUMBERS), JSTaggedValue::Undefined());
     // test clear
     array->Clear(thread);
     EXPECT_EQ(array->GetSize(), 0); // 0 means the value
@@ -162,6 +173,7 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_CloneAndHasAndGet)
     int32_t lkey = 103;
     bool result = array->Has(lkey);
     EXPECT_TRUE(result);
+    EXPECT_FALSE(array->Has(lkey * 2));
 
     // test get
     myValue = std::string("myvalue3");
@@ -193,11 +205,13 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_GetIndexOfKeyAndGeIndexOfValueAndIsEmptyAndR
     int32_t lvalue = 103;
     JSTaggedValue value2 = array->GetIndexOfKey(lvalue);
     EXPECT_EQ(value2.GetNumber(), 3); // 3 means the value
+    EXPECT_EQ(array->GetIndexOfKey(lvalue * 2), JSTaggedValue(-1));
 
     myValue = "myvalue2";
     value.Update(factory->NewFromStdString(myValue).GetTaggedValue());
     JSTaggedValue value3 = array->GetIndexOfValue(value.GetTaggedValue());
     EXPECT_EQ(value3.GetNumber(), 2); // 2 means the value
+    EXPECT_EQ(array->GetIndexOfValue(JSTaggedValue(0)), JSTaggedValue(-1));
 
     value.Update(JSTaggedValue(1));
     int32_t batchSize = 3; // 3 means the value
@@ -205,6 +219,9 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_GetIndexOfKeyAndGeIndexOfValueAndIsEmptyAndR
     value3 = array->RemoveRangeFrom(thread, lvalue, batchSize);
     EXPECT_EQ(value3.GetNumber(), 3); // 3 means the value
     EXPECT_EQ(array->GetSize(), static_cast<int>(NODE_NUMBERS - 3));
+    
+    // test RemoveRangeFrom exception
+    array->RemoveRangeFrom(thread, lvalue, -1);
 }
 
 HWTEST_F_L0(JSAPIPlainArrayTest, PA_RemvoeAnrRemvoeAtAndSetValueAtAndGetValueAt)
@@ -233,6 +250,8 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_RemvoeAnrRemvoeAtAndSetValueAtAndGetValueAt)
     JSTaggedValue taggedValue =
         array->Remove(thread, JSTaggedValue(102)); // 102 means the value
     EXPECT_TRUE(JSTaggedValue::Equal(thread, value, JSHandle<JSTaggedValue>(thread, taggedValue)));
+    EXPECT_EQ(array->Remove(thread, JSTaggedValue(-1)), JSTaggedValue::Undefined());
+    EXPECT_EQ(array->Remove(thread, JSTaggedValue(100 + NODE_NUMBERS)), JSTaggedValue::Undefined());
 
     // test RemoveAt
     myValue = "myvalue4";
@@ -241,6 +260,8 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_RemvoeAnrRemvoeAtAndSetValueAtAndGetValueAt)
         array->RemoveAt(thread, JSTaggedValue(3)); // 3 means the value
     EXPECT_TRUE(JSTaggedValue::Equal(thread, value, JSHandle<JSTaggedValue>(thread, taggedValue)));
     EXPECT_EQ(array->GetSize(), static_cast<int>(NODE_NUMBERS - 2));
+    EXPECT_EQ(array->RemoveAt(thread, JSTaggedValue(-1)), JSTaggedValue::Undefined());
+    EXPECT_EQ(array->RemoveAt(thread, JSTaggedValue(NODE_NUMBERS)), JSTaggedValue::Undefined());
 
     // test SetValueAt
     myValue = "myvalue14";
@@ -348,5 +369,10 @@ HWTEST_F_L0(JSAPIPlainArrayTest, SetProperty)
         bool setPropertyRes = JSAPIPlainArray::SetProperty(thread, plainArray, key, value);
         EXPECT_EQ(setPropertyRes, true);
     }
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(-1));
+    EXPECT_FALSE(JSAPIPlainArray::SetProperty(thread, plainArray, key, value));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums));
+    EXPECT_FALSE(JSAPIPlainArray::SetProperty(thread, plainArray, key1, value));
 }
 }  // namespace panda::test

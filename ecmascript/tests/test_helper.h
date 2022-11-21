@@ -41,7 +41,7 @@ using ecmascript::JSRuntimeOptions;
 
 #define HWTEST_F_L0(testsuit, testcase) HWTEST_F(testsuit, testcase, testing::ext::TestSize.Level0)
 #define HWTEST_P_L0(testsuit, testcase) HWTEST_P(testsuit, testcase, testing::ext::TestSize.Level0)
-#define EXCEPT_EXCEPTION()                           \
+#define EXPECT_EXCEPTION()                           \
     EXPECT_TRUE(thread->HasPendingException());      \
     EXPECT_TRUE(thread->GetException().IsJSError()); \
     thread->ClearException()

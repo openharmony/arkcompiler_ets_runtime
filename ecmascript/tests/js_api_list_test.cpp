@@ -95,13 +95,15 @@ HWTEST_F_L0(JSAPIListTest, listCreate)
     EXPECT_TRUE(list != nullptr);
 }
 
-HWTEST_F_L0(JSAPIListTest, AddAndHas)
+HWTEST_F_L0(JSAPIListTest, AddHasAndIsEmpty)
 {
     constexpr int NODE_NUMBERS = 9;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
 
     JSHandle<JSAPIList> toor(thread, CreateList());
+
+    EXPECT_TRUE(toor->IsEmpty());
 
     std::string myValue("myvalue");
     for (int i = 0; i < NODE_NUMBERS; i++) {
@@ -110,6 +112,7 @@ HWTEST_F_L0(JSAPIListTest, AddAndHas)
         JSAPIList::Add(thread, toor, value);
     }
     EXPECT_EQ(toor->Length(), NODE_NUMBERS);
+    EXPECT_FALSE(toor->IsEmpty());
 
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
@@ -299,6 +302,12 @@ HWTEST_F_L0(JSAPIListTest, GetOwnProperty)
     testInt = 20;
     JSHandle<JSTaggedValue> listKey2(thread, JSTaggedValue(testInt));
     EXPECT_FALSE(JSAPIList::GetOwnProperty(thread, toor, listKey2));
+    EXPECT_EXCEPTION();
+
+    // test GetOwnProperty exception
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    EXPECT_FALSE(JSAPIList::GetOwnProperty(thread, toor, undefined));
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -342,6 +351,11 @@ HWTEST_F_L0(JSAPIListTest, SetProperty)
         bool setPropertyRes = JSAPIList::SetProperty(thread, toor, key, value);
         EXPECT_EQ(setPropertyRes, true);
     }
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(-1));
+    EXPECT_FALSE(JSAPIList::SetProperty(thread, toor, key, value));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums));
+    EXPECT_FALSE(JSAPIList::SetProperty(thread, toor, key1, value));
 }
 
 /**
@@ -366,22 +380,38 @@ HWTEST_F_L0(JSAPIListTest, GetSubList)
 
     // fromIndex < 0
     JSAPIList::GetSubList(thread, List, smallIndex, zeroIndex);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // fromIndex >= size
     JSAPIList::GetSubList(thread, List, bigIndex, zeroIndex);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // toIndex <= fromIndex
     JSAPIList::GetSubList(thread, List, zeroIndex, zeroIndex);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // toIndex < 0
     JSAPIList::GetSubList(thread, List, zeroIndex, smallIndex);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     // toIndex > length
     JSAPIList::GetSubList(thread, List, zeroIndex, bigIndex);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
+}
+
+HWTEST_F_L0(JSAPIListTest, OwnKeys)
+{
+    uint32_t elementsNums = 8;
+    JSHandle<JSAPIList> list(thread, CreateList());
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIList::Add(thread, list, value);
+    }
+    JSHandle<TaggedArray> keyArray = JSAPIList::OwnKeys(thread, list);
+    EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
+    EXPECT_TRUE(keyArray->GetLength() == elementsNums);
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        EXPECT_EQ(keyArray->Get(i), JSTaggedValue(i));
+    }
 }
 }  // namespace panda::test

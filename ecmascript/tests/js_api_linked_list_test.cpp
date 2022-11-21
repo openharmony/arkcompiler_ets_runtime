@@ -75,8 +75,7 @@ protected:
         auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         objCallInfo->SetFunction(JSTaggedValue::Undefined());
         objCallInfo->SetThis(value.GetTaggedValue());
-        // 6 : 6 value is 6.
-        objCallInfo->SetCallArg(0, JSTaggedValue(6));
+        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
         JSHandle<JSTaggedValue> contianer =
@@ -214,7 +213,7 @@ HWTEST_F_L0(JSAPILinkedListTest, GetIndexOfAndGetLastIndexOf)
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, Remove)
-{    // create jsMap
+{
     constexpr uint32_t NODE_NUMBERS = 20;
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
 
@@ -263,17 +262,28 @@ HWTEST_F_L0(JSAPILinkedListTest, Remove)
     EXPECT_EQ(toor->Length(), 14);
 
     toor->Dump();
+}
 
-    // throw error test
+HWTEST_F_L0(JSAPILinkedListTest, SpecialReturnOfRemove)
+{
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     JSHandle<JSAPILinkedList> linkedList(thread, CreateLinkedList());
     JSAPILinkedList::RemoveFirst(thread, linkedList);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     JSAPILinkedList::RemoveLast(thread, linkedList);
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
 
     JSAPILinkedList::RemoveFirstFound(thread, linkedList, value.GetTaggedValue());
-    EXCEPT_EXCEPTION();
+    EXPECT_EXCEPTION();
+
+    // test Remove and RemoveLastFound linkedlist whose nodeLength less than 0
+    JSHandle<TaggedDoubleList> doubleList(thread, linkedList->GetDoubleList());
+    doubleList->SetNumberOfNodes(thread, -1);
+    EXPECT_EQ(linkedList->Remove(thread, value.GetTaggedValue()), JSTaggedValue::False());
+    
+    JSAPILinkedList::RemoveFirstFound(thread, linkedList, value.GetTaggedValue());
+    EXPECT_EXCEPTION();
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, Clear)
@@ -345,6 +355,12 @@ HWTEST_F_L0(JSAPILinkedListTest, GetOwnProperty)
     testInt = 20;
     JSHandle<JSTaggedValue> linkedListKey2(thread, JSTaggedValue(testInt));
     EXPECT_FALSE(JSAPILinkedList::GetOwnProperty(thread, toor, linkedListKey2));
+    EXPECT_EXCEPTION();
+
+    // test GetOwnProperty exception
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    EXPECT_FALSE(JSAPILinkedList::GetOwnProperty(thread, toor, undefined));
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -388,6 +404,11 @@ HWTEST_F_L0(JSAPILinkedListTest, SetProperty)
         bool setPropertyRes = JSAPILinkedList::SetProperty(thread, toor, key, value);
         EXPECT_EQ(setPropertyRes, true);
     }
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(-1));
+    EXPECT_FALSE(JSAPILinkedList::SetProperty(thread, toor, key, value));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums));
+    EXPECT_FALSE(JSAPILinkedList::SetProperty(thread, toor, key1, value));
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, Clone)
@@ -407,4 +428,19 @@ HWTEST_F_L0(JSAPILinkedListTest, Clone)
     EXPECT_EQ(list->Length(), cloneList->Length());
 }
 
+HWTEST_F_L0(JSAPILinkedListTest, OwnKeys)
+{
+    uint32_t elementsNums = 8;
+    JSHandle<JSAPILinkedList> linkedList(thread, CreateLinkedList());
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPILinkedList::Add(thread, linkedList, value);
+    }
+    JSHandle<TaggedArray> keyArray = JSAPILinkedList::OwnKeys(thread, linkedList);
+    EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
+    EXPECT_TRUE(keyArray->GetLength() == elementsNums);
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        EXPECT_EQ(keyArray->Get(i), JSTaggedValue(i));
+    }
+}
 }  // namespace panda::test

@@ -100,6 +100,9 @@ HWTEST_F_L0(JSAPIDequeTest, InsertFrontAndGetFront)
 
     JSHandle<JSAPIDeque> toor(thread, CreateDeque());
 
+    // test GetFront of empty deque
+    EXPECT_EQ(toor->GetFront(), JSTaggedValue::Undefined());
+
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
@@ -118,6 +121,9 @@ HWTEST_F_L0(JSAPIDequeTest, InsertEndAndGetTail)
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
 
     JSHandle<JSAPIDeque> toor(thread, CreateDeque());
+
+    // test GetTail of empty deque
+    EXPECT_EQ(toor->GetTail(), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -138,6 +144,9 @@ HWTEST_F_L0(JSAPIDequeTest, PopFirst)
 
     JSHandle<JSAPIDeque> toor(thread, CreateDeque());
 
+    // test PopFirst of empty deque
+    EXPECT_EQ(toor->PopFirst(), JSTaggedValue::Undefined());
+
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
@@ -156,6 +165,9 @@ HWTEST_F_L0(JSAPIDequeTest, PopLast)
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
 
     JSHandle<JSAPIDeque> toor(thread, CreateDeque());
+
+    // test PopLast of empty deque
+    EXPECT_EQ(toor->PopLast(), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -189,6 +201,12 @@ HWTEST_F_L0(JSAPIDequeTest, GetOwnProperty)
     testInt = 20;
     JSHandle<JSTaggedValue> dequeKey2(thread, JSTaggedValue(testInt));
     EXPECT_FALSE(JSAPIDeque::GetOwnProperty(thread, toor, dequeKey2));
+    EXPECT_EXCEPTION();
+
+    // test GetOwnProperty exception
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    EXPECT_FALSE(JSAPIDeque::GetOwnProperty(thread, toor, undefined));
+    EXPECT_EXCEPTION();
 }
 
 /**
@@ -232,6 +250,35 @@ HWTEST_F_L0(JSAPIDequeTest, SetProperty)
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i * 2)); // 2 : It means double
         bool setPropertyRes = JSAPIDeque::SetProperty(thread, toor, key, value);
         EXPECT_EQ(setPropertyRes, true);
+    }
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(-1));
+    EXPECT_FALSE(JSAPIDeque::SetProperty(thread, toor, key, value));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums * 2));
+    EXPECT_FALSE(JSAPIDeque::SetProperty(thread, toor, key1, value));
+}
+
+/**
+ * @tc.name: OwnKeys
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIDequeTest, OwnKeys)
+{
+    JSHandle<JSAPIDeque> toor(thread, CreateDeque());
+    uint32_t elementsNums = 8;
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIDeque::InsertEnd(thread, toor, value);
+    }
+    
+    // test OwnKeys
+    JSHandle<TaggedArray> keyArray = JSAPIDeque::OwnKeys(thread, toor);
+    EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
+    EXPECT_TRUE(keyArray->GetLength() == elementsNums);
+    for (uint32_t i = 0; i < elementsNums; i++) {
+        EXPECT_EQ(keyArray->Get(i), toor->Get(i));
     }
 }
 }  // namespace panda::test

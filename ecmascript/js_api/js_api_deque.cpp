@@ -214,7 +214,7 @@ JSHandle<TaggedArray> JSAPIDeque::OwnKeys(JSThread *thread, const JSHandle<JSAPI
     JSHandle<TaggedArray> newElements =
         thread->GetEcmaVM()->GetFactory()->CopyDeque(oldElements, newCapacity, size, firstIndex, lastIndex);
     deque->SetFirst(0);
-    deque->SetLast(size - 1);
+    deque->SetLast(size);
     deque->SetElements(thread, newElements);
 
     for (uint32_t i = 0; i < size; i++) {

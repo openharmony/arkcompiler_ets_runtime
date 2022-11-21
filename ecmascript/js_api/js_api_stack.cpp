@@ -130,7 +130,7 @@ JSHandle<TaggedArray> JSAPIStack::OwnKeys(JSThread *thread, const JSHandle<JSAPI
 {
     uint32_t top = static_cast<uint32_t>(obj->GetTop());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys = factory->NewTaggedArray(top);
+    JSHandle<TaggedArray> keys = factory->NewTaggedArray(top + 1);
 
     for (uint32_t i = 0; i < top + 1; i++) {
         keys->Set(thread, i, JSTaggedValue(i));

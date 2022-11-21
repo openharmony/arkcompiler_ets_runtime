@@ -163,7 +163,6 @@ int32_t JSAPIVector::GetLastIndexFrom(JSThread *thread, const JSHandle<JSAPIVect
             return i;
         }
     }
-
     return -1;
 }
 
@@ -172,10 +171,6 @@ bool JSAPIVector::Remove(JSThread *thread, const JSHandle<JSAPIVector> &vector, 
     int32_t index = GetIndexOf(thread, vector, obj);
     int32_t length = vector->GetSize();
     if (index >= 0) {
-        if (index >= length) {
-            THROW_RANGE_ERROR_AND_RETURN(thread, "index-out-of-bounds", false);
-        }
-
         TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
         ASSERT(!elements->IsDictionaryMode());
         for (int32_t i = index; i < length - 1; i++) {
@@ -215,7 +210,7 @@ JSTaggedValue JSAPIVector::RemoveByRange(JSThread *thread, const JSHandle<JSAPIV
         THROW_RANGE_ERROR_AND_RETURN(thread, "the fromIndex cannot be less than or equal to toIndex",
                                      JSTaggedValue::Exception());
     }
-    if (fromIndex < 0 || toIndex < 0 || fromIndex >= length) {
+    if (fromIndex < 0 || fromIndex >= length) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "the fromIndex or the toIndex is out-of-bounds",
                                      JSTaggedValue::Exception());
     }

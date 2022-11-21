@@ -50,7 +50,6 @@ JSHandle<TaggedArray> JSAPIQueue::GrowCapacity(const JSThread *thread, const JSH
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldLength = oldElements->GetLength();
     uint32_t newCapacity = 0;
-    ASSERT(oldLength != 0);
     if (oldLength == 0) {
         newCapacity = ComputeCapacity(capacity);
         newElements = thread->GetEcmaVM()->GetFactory()->CopyArray(oldElements, oldLength, newCapacity);

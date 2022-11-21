@@ -25,11 +25,13 @@ if (globalThis["ArkPrivate"] != undefined) {
     let list = new List();
     const testArray = []
     let map = new Map();
+    map.set("test list isEmpty1:", list.isEmpty() === true)
     for(let i = 0; i < 10; i++) {
         list.add(i)
         testArray.push(i)
     }
 
+    map.set("test list isEmpty2:", list.isEmpty() === false)
     map.set("test list get 1:", list.get(1) === 1)
     map.set("test list has:",  list.has(8))
     map.set("test list not has:", list.has(123) === false)
@@ -180,12 +182,14 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     let list3 = new List();
     let proxy = new Proxy(list3, {});
+    map.set("test list proxy isEmpty1:", proxy.isEmpty() === true);
     const testArray3 = []
     for(let i = 0; i < 10; i++) {
         proxy.add(i)
         testArray3.push(i)
     }
 
+    map.set("test list proxy isEmpty2:", proxy.isEmpty() === false);
     map.set("test list get 1:", proxy.get(1) === 1)
     map.set("test list has:",  proxy.has(8))
     map.set("test list not has:", proxy.has(123) === false)

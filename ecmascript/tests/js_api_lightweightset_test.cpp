@@ -117,6 +117,12 @@ HWTEST_F_L0(JSAPILightWeightSetTest, AddIncreaseCapacityAddAll)
     uint32_t capacity = TaggedArray::Cast(lws->GetValues().GetTaggedObject())->GetLength();
     EXPECT_EQ(JSTaggedValue(capacity), JSTaggedValue(tmp));
 
+    // test IncreaseCapacityTo exception
+    JSAPILightWeightSet::IncreaseCapacityTo(thread, lws, 0);
+    EXPECT_EXCEPTION();
+    JSAPILightWeightSet::IncreaseCapacityTo(thread, lws, NODE_NUMBERS);
+    EXPECT_EXCEPTION();
+
     // test AddAll
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         bool result = JSAPILightWeightSet::Add(thread, destLws, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
@@ -138,9 +144,17 @@ HWTEST_F_L0(JSAPILightWeightSetTest, EqualClearNotEqual)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
     JSHandle<JSAPILightWeightSet> equalLws(thread, CreateLightWeightSet());
+    JSHandle<JSTaggedValue> jsArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0));
     JSMutableHandle<JSTaggedValue> value1(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value2(thread, JSTaggedValue::Undefined());
     bool result = false;
+    
+    // test Equal of two empty lightweightset
+    result = JSAPILightWeightSet::Equal(thread, lws, JSHandle<JSTaggedValue>::Cast(equalLws));
+    EXPECT_FALSE(result);
+    result = JSAPILightWeightSet::Equal(thread, lws, jsArray);
+    EXPECT_FALSE(result);
+
     // test equal
     std::string myValue1("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -208,6 +222,10 @@ HWTEST_F_L0(JSAPILightWeightSetTest, IsEmptyHasHasAll)
     value1.Update(factory->NewFromStdString(tValue).GetTaggedValue());
     result = lws->Has(value1);
     EXPECT_TRUE(result);
+    tValue = myValue1 + std::to_string(NODE_NUMBERS);
+    value1.Update(factory->NewFromStdString(tValue).GetTaggedValue());
+    result = lws->Has(value1);
+    EXPECT_FALSE(result);
 
     std::string myValue2("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS - 5; i++) {
@@ -225,6 +243,8 @@ HWTEST_F_L0(JSAPILightWeightSetTest, IsEmptyHasHasAll)
     }
     EXPECT_EQ(hasAllLws->GetSize(), NODE_NUMBERS - 5); // 5 means the value
     result = lws->HasAll(JSHandle<JSTaggedValue>::Cast(hasAllLws));
+    EXPECT_FALSE(result);
+    result = hasAllLws->HasAll(JSHandle<JSTaggedValue>::Cast(lws));
     EXPECT_FALSE(result);
 }
 
@@ -258,31 +278,139 @@ HWTEST_F_L0(JSAPILightWeightSetTest, GetIndexOfRemoveRemoveAtGetValueAt)
     // test Remove
     jsValue = lws->Remove(thread, value);
     EXPECT_EQ(value.GetTaggedValue(), jsValue);
+    jsValue = lws->Remove(thread, value);
+    EXPECT_EQ(jsValue, JSTaggedValue::Undefined());
     
     // test RemoveAt
     result = lws->RemoveAt(thread, 4); // 4 means the value
     EXPECT_EQ(lws->GetSize(), NODE_NUMBERS - 2); // 2 means the value
     EXPECT_TRUE(result);
+    result = lws->RemoveAt(thread, -1);
+    EXPECT_FALSE(result);
+    result = lws->RemoveAt(thread, static_cast<int32_t>(NODE_NUMBERS));
+    EXPECT_FALSE(result);
 }
 
 HWTEST_F_L0(JSAPILightWeightSetTest, Iterator)
 {
     constexpr uint32_t NODE_NUMBERS = 8; // 8 means the value
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAPILightWeightSet> lwm(thread, CreateLightWeightSet());
+    JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
     
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         value.Update(JSTaggedValue(i));
-        JSAPILightWeightSet::Add(thread, lwm, value);
+        JSAPILightWeightSet::Add(thread, lws, value);
     }
 
-    JSHandle<JSTaggedValue> valueIter(factory->NewJSAPILightWeightSetIterator(lwm, IterationKind::VALUE));
+    JSHandle<JSTaggedValue> valueIter(factory->NewJSAPILightWeightSetIterator(lws, IterationKind::VALUE));
     JSMutableHandle<JSTaggedValue> valueIterResult(thread, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+    for (int i = 0; i < static_cast<int>(NODE_NUMBERS); i++) {
         valueIterResult.Update(JSIterator::IteratorStep(thread, valueIter).GetTaggedValue());
         int v = JSIterator::IteratorValue(thread, valueIterResult)->GetInt();
-        JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(v));
+        EXPECT_TRUE(v == i);
     }
+}
+
+HWTEST_F_L0(JSAPILightWeightSetTest, RBTreeGetHashIndex)
+{
+    std::vector<int> hashCollisionVector = {4307, 5135, 5903, 6603, 6780, 8416, 1224, 1285, 1463, 9401, 9740};
+    uint32_t NODE_NUMBERS = static_cast<uint32_t>(hashCollisionVector.size());
+    JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
+    
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
+        JSAPILightWeightSet::Add(thread, lws, value);
+    }
+    int32_t size = static_cast<uint32_t>(lws->GetLength());
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(hashCollisionVector[i]));
+        int32_t index = lws->GetHashIndex(value, size);
+        EXPECT_TRUE(0 <= index && index < size);
+    }
+}
+
+HWTEST_F_L0(JSAPILightWeightSetTest, SpecialReturnTestEnsureCapacityGetValueAtGetHashAt)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
+    
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(i));
+        JSAPILightWeightSet::Add(thread, lws, value);
+    }
+
+    // test special return of EnsureCapacity
+    JSHandle<TaggedArray> array(thread, lws->GetValues());
+    JSAPILightWeightSet::EnsureCapacity(thread, lws, 0);
+    JSHandle<TaggedArray> newArray(thread, lws->GetValues());
+    EXPECT_TRUE(array->GetLength() == newArray->GetLength());
+
+    // test special return of GetValueAt
+    JSTaggedValue result1 = lws->GetValueAt(-1);
+    EXPECT_EQ(result1, JSTaggedValue::Undefined());
+    JSTaggedValue result2 = lws->GetValueAt(static_cast<int32_t>(NODE_NUMBERS * 2));
+    EXPECT_EQ(result2, JSTaggedValue::Undefined());
+
+    // test special return of GetHashAt
+    JSTaggedValue result3 = lws->GetHashAt(-1);
+    EXPECT_EQ(result3, JSTaggedValue::Undefined());
+    JSTaggedValue result4 = lws->GetHashAt(static_cast<int32_t>(NODE_NUMBERS * 2));
+    EXPECT_EQ(result4, JSTaggedValue::Undefined());
+}
+
+HWTEST_F_L0(JSAPILightWeightSetTest, GetHashAtHasHash)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
+    
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> hash(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(i));
+        JSAPILightWeightSet::Add(thread, lws, value);
+    }
+
+    // test GetHashAt
+    int32_t size = static_cast<int32_t>(lws->GetLength());
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        hash.Update(JSTaggedValue(lws->Hash(JSTaggedValue(i))));
+        int32_t index = lws->GetHashIndex(hash, size);
+        JSTaggedValue getHash= lws->GetHashAt(index);
+        EXPECT_EQ(getHash, hash.GetTaggedValue());
+    }
+
+    // test HasHash
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        hash.Update(JSTaggedValue(lws->Hash(JSTaggedValue(i))));
+        EXPECT_TRUE(lws->HasHash(hash));
+    }
+    hash.Update(JSTaggedValue(lws->Hash(JSTaggedValue(NODE_NUMBERS))));
+    EXPECT_FALSE(lws->HasHash(hash));
+}
+
+HWTEST_F_L0(JSAPILightWeightSetTest, ToString)
+{
+    constexpr uint32_t NODE_NUMBERS = 3;
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+
+    JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
+    JSTaggedValue result1 = JSAPILightWeightSet::ToString(thread, lws);
+    JSHandle<EcmaString> resultHandle1(thread, result1);
+    [[maybe_unused]] auto *res1 = EcmaString::Cast(resultHandle1.GetTaggedValue().GetTaggedObject());
+    JSHandle<EcmaString> det = thread->GetEcmaVM()->GetFactory()->NewFromASCII("");
+    ASSERT_EQ(EcmaStringAccessor::Compare(res1, *det), 0);
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        value.Update(JSTaggedValue(i));
+        JSAPILightWeightSet::Add(thread, lws, value);
+    }
+    JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0,1,2");
+    JSTaggedValue result = JSAPILightWeightSet::ToString(thread, lws);
+    JSHandle<EcmaString> resultHandle(thread, result);
+    [[maybe_unused]] auto *res = EcmaString::Cast(resultHandle.GetTaggedValue().GetTaggedObject());
+
+    ASSERT_EQ(EcmaStringAccessor::Compare(res, *str), 0);
 }
 }  // namespace panda::test

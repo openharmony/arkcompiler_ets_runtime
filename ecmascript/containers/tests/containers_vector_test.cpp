@@ -25,6 +25,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::containers;
@@ -153,6 +154,10 @@ HWTEST_F_L0(ContainersVectorTest, VectorConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = setHandle->GetSize();
     ASSERT_EQ(size, 0);
+
+    // test VectorConstructor exception
+    objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, VectorConstructor, objCallInfo);
 }
 
 // add  has
@@ -753,7 +758,7 @@ HWTEST_F_L0(ContainersVectorTest, SubVectorAndGetCapacityAndTrimToCurrentLengthA
     }
 }
 
-// toString  getLastIndexFrom  getIndexFrom  setLength
+// toString  getLastIndexFrom  getIndexFrom
 HWTEST_F_L0(ContainersVectorTest, ToStringAndGetLastIndexFromAndGetIndexFrom)
 {
     constexpr int32_t ELEMENT_NUMS = 8;
@@ -821,4 +826,201 @@ HWTEST_F_L0(ContainersVectorTest, ToStringAndGetLastIndexFromAndGetIndexFrom)
         EXPECT_TRUE(JSTaggedValue::SameValue(result, JSTaggedValue(-1)));
     }
 }
+
+HWTEST_F_L0(ContainersVectorTest, ProxyOfGetSizeSetLength)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    JSHandle<JSProxy> proxy = CreateJSProxyHandle(thread);
+    proxy->SetTarget(thread, vector.GetTaggedValue());
+    callInfo->SetThis(proxy.GetTaggedValue());
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i + 1));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersVector::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue retult = ContainersVector::GetSize(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_EQ(retult, JSTaggedValue(i + 1));
+    }
+    
+    // SetLength
+    {
+        callInfo->SetCallArg(0, JSTaggedValue(NODE_NUMBERS * 2));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersVector::SetLength(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::GetSize(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+
+        EXPECT_TRUE(JSTaggedValue::SameValue(result, JSTaggedValue(NODE_NUMBERS * 2)));
+    }
+
+    // SetLength
+    {
+        callInfo->SetCallArg(0, JSTaggedValue(NODE_NUMBERS / 2));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        ContainersVector::SetLength(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersVector::GetSize(callInfo);
+        TestHelper::TearDownFrame(thread, prev1);
+
+        EXPECT_TRUE(JSTaggedValue::SameValue(result, JSTaggedValue(NODE_NUMBERS / 2)));
+    }
 }
+
+HWTEST_F_L0(ContainersVectorTest,
+    ExceptionReturnOfInsertSetLengthIncreaseCapacityToGetGetIndexFromAddGetCapacityGetIndexOfIsEmpty)
+{
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test Insert, SetLength, IncreaseCapacityTo, Get, GetIndexFrom exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Insert, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SetLength, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, IncreaseCapacityTo, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Get, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIndexFrom, callInfo);
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Insert, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SetLength, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, IncreaseCapacityTo, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Get, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIndexFrom, callInfo);
+    callInfo->SetCallArg(0, JSTaggedValue(-1));
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SetLength, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test Add exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Add, callInfo);
+
+    // test GetCapacity exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetCapacity, callInfo);
+
+    // test GetIndexOf exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIndexOf, callInfo);
+
+    // test IsEmpty exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, IsEmpty, callInfo);
+}
+
+HWTEST_F_L0(ContainersVectorTest,
+    ExceptionReturnOfGetLastIndexFromRemoveByIndexRemoveByRangeGetLastElementGetLastIndexOfRemove)
+{
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test GetLastIndexFrom, RemoveByIndex, RemoveByRange exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastIndexFrom, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByIndex, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByRange, callInfo);
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastIndexFrom, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByIndex, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByRange, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test GetLastElement exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastElement, callInfo);
+
+    // test GetLastIndexOf exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastIndexOf, callInfo);
+
+    // test Remove exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Remove, callInfo);
+}
+
+HWTEST_F_L0(ContainersVectorTest,
+    ExceptionReturnOfSetSubVectorReplaceAllElementsToStringGetSizeForEachTrimToCurrentLengthClear)
+{
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+
+    // test Set, SubVector, ReplaceAllElement exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Set, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SubVector, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ReplaceAllElements, callInfo);
+    callInfo->SetThis(vector.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Set, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SubVector, callInfo);
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ReplaceAllElements, callInfo);
+    callInfo->SetCallArg(0, JSTaggedValue(-1));
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Set, callInfo);
+
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    
+    // test ToString exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ToString, callInfo);
+
+    // test GetSize exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetSize, callInfo);
+
+    // test ForEach exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ForEach, callInfo);
+
+    // test TrimToCurrentLength exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, TrimToCurrentLength, callInfo);
+
+    // test Clear exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Clear, callInfo);
+}
+
+HWTEST_F_L0(ContainersVectorTest,
+    ExceptionReturnOfCloneHasCopyToArrayConvertToArrayGetFirstElementSortGetIteratorObj)
+{
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue(0));
+    
+    // test Clone exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Clone, callInfo);
+
+    // test Has exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Has, callInfo);
+
+    // test CopyToArray exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, CopyToArray, callInfo);
+
+    // test ConvertToArray exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ConvertToArray, callInfo);
+
+    // test GetFirstElement exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetFirstElement, callInfo);
+
+    // test Sort exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Sort, callInfo);
+
+    // test GetIteratorObj exception
+    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIteratorObj, callInfo);
+}
+} // namespace panda::test

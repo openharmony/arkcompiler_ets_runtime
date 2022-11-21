@@ -77,6 +77,17 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.set("test linkedlist set:", res)
+
+    let cloneList = list.clone()
+    res = true
+    if (list.length !== cloneList.length) {
+        res = false
+    }
+    for(let i = 0; i < cloneList.length; i++) {
+        if (list[i] !== cloneList[i]) {
+            res = false
+        }
+    }
     map.set("test linkedlist clone:", res)
 
     list.addFirst(1111)
@@ -199,6 +210,17 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.set("test linkedlist set:", res)
+
+    let cloneList2 = proxy.clone()
+    res = true
+    if (proxy.length !== cloneList2.length) {
+        res = false
+    }
+    for(let i = 0; i < cloneList.length; i++) {
+        if (proxy[i] !== cloneList2[i]) {
+            res = false
+        }
+    }
     map.set("test linkedlist clone:", res)
 
     proxy.addFirst(1111)
@@ -206,6 +228,35 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     const removefirstres1 = proxy.removeFirst()
     map.set("test linkedlist removeFirst:", removefirstres1 === 1111)
+
+    let removeList = new LinkedList()
+    let removeProxy = new Proxy(removeList, {})
+    for(let i = 0; i < 10; i++) {
+        removeProxy.add(i)
+    }
+    for(let i = 9; i >= 0; i--) {
+        removeProxy.add(i)
+    }
+    let removeResult = removeProxy.removeFirstFound(2)
+    res = true
+    if (removeResult !== true || removeProxy.getIndexOf(2) !== 16) {
+        res = false
+    }
+    map.set("test linkedlist removeFirstFound:", res)
+
+    removeResult = removeProxy.removeLast()
+    res = true
+    if (removeResult !== 0 || removeProxy.getLastIndexOf(0) !== 0) {
+        res = false
+    }
+    map.set("test linkedlist removeLast:", res)
+
+    removeResult = removeProxy.removeLastFound(3)
+    res = true
+    if (removeResult !== true || removeProxy.getIndexOf(3) !== 2) {
+        res = false
+    }
+    map.set("test linkedlist removeLastFound:", res)
 
     res = true
     let j = 0
