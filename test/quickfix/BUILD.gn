@@ -24,6 +24,7 @@ test_list = [
   "global_var",
   "import_export",
   "print_string",
+  "record_not_same",
 ]
 
 if (!is_debug) {
@@ -46,7 +47,6 @@ host_quickfix_test_action("multi_patch") {
 
 foreach(testcase, test_list) {
   host_quickfix_test_action("${testcase}") {
-    extra_patches = []
     entry_point = "--entry-point=base"
   }
 }
