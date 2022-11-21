@@ -65,6 +65,7 @@ public:
     void BytecodePcChangedEvent(JSThread *thread, Method *method, uint32_t bcOffset) const
     {
         if (UNLIKELY(listener_ != nullptr)) {
+            [[maybe_unused]] EcmaHandleScope handleScope(thread);
             JSHandle<Method> methodHandle(thread, method);
             listener_->BytecodePcChanged(thread, methodHandle, bcOffset);
         }
