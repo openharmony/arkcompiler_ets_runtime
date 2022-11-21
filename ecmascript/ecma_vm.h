@@ -411,13 +411,12 @@ public:
 
     void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
     {
+        os::memory::LockHolder lock(mutex_);
         auto thread = workerVm->GetJSThread();
-        if (thread != nullptr) {
+        if (thread != nullptr && hostVm != nullptr) {
             auto tid = thread->GetThreadId();
             if (tid != 0) {
-                if (hostVm != nullptr && workerVm != nullptr) {
-                    WorkerList_.emplace(tid, workerVm);
-                }
+                WorkerList_.emplace(tid, workerVm);
             }
         }
     }
@@ -436,9 +435,13 @@ public:
 
     bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
     {
-        if (hostVm != nullptr && workerVm != nullptr) {
-            auto tid = workerVm->GetJSThread()->GetThreadId();
-            if (tid == 0) {return false;}
+        os::memory::LockHolder lock(mutex_);
+        auto thread = workerVm->GetJSThread();
+        if (hostVm != nullptr && thread != nullptr) {
+            auto tid = thread->GetThreadId();
+            if (tid == 0) {
+                return false;
+            }
             auto iter = WorkerList_.find(tid);
             if (iter != WorkerList_.end()) {
                 WorkerList_.erase(iter);
@@ -633,6 +636,7 @@ private:
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
     CMap<uint32_t, EcmaVM *> WorkerList_ {};
+    os::memory::Mutex mutex_;
     void *loop_ {nullptr};
 };
 }  // namespace ecmascript
