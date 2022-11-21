@@ -85,10 +85,12 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     CString entryPoint = "";
     CString npmKeyStr = "";
     bool npm = false;
+    CString name = recordName;
+    CString baseFileName = jsPandaFile->GetJSPandaFileDesc();
     std::tie(entryPoint, npm) =
         ModuleManager::ConcatFileNameWithMerge(jsPandaFile,
-                                               const_cast<CString &>(jsPandaFile->GetJSPandaFileDesc()),
-                                               const_cast<CString &>(recordName),
+                                               baseFileName,
+                                               name,
                                                cstringRelativePath,
                                                npmKeyStr);
     JSHandle<EcmaString> targetVarName = GenerateImportVar(importVarNamePath);
