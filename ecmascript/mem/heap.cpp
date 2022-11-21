@@ -589,7 +589,8 @@ void Heap::RecomputeLimits()
                                                                    maxGlobalSize, newSpaceCapacity, growingFactor);
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
     oldSpace_->SetInitialCapacity(newOldSpaceLimit);
-    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_
+                                   + nativeAreaAllocator_->GetNativeMemoryUsage();
     globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(globalSpaceNativeSize, MIN_HEAP_SIZE,
                                                                   maxGlobalSize, newSpaceCapacity, growingFactor);
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
@@ -655,7 +656,8 @@ void Heap::TryTriggerConcurrentMarking()
     size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
     size_t globalHeapObjectSize = GetHeapObjectSize();
     size_t oldSpaceAllocLimit = oldSpace_->GetInitialCapacity();
-    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_
+                                   + nativeAreaAllocator_->GetNativeMemoryUsage();
     if (oldSpaceConcurrentMarkSpeed == 0 || oldSpaceAllocSpeed == 0) {
         if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit ||  globalHeapObjectSize >= globalSpaceAllocLimit_
             || globalSpaceNativeSize >= globalSpaceNativeLimit_) {
