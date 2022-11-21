@@ -459,6 +459,6 @@ bool JSThread::IsLegalAsmSp(uintptr_t sp) const
 {
     uint64_t bottom = GetStackLimit() - EcmaParamConfiguration::GetDefaultReservedStackSize();
     uint64_t top = GetStackStart();
-    return (sp <= top || sp >= bottom);
+    return (bottom <= sp && sp <= top);
 }
 }  // namespace panda::ecmascript

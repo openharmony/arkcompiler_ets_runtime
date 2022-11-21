@@ -1344,12 +1344,12 @@ void FunctionRef::SetName(const EcmaVM *vm, Local<StringRef> name)
 
 Local<StringRef> FunctionRef::GetName(const EcmaVM *vm)
 {
-    [[maybe_unused]] LocalScope scope(vm);
+    EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<JSTaggedValue> name = JSFunctionBase::GetFunctionName(thread, func);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
-    return JSNApiHelper::ToLocal<StringRef>(name);
+    return scope.Escape(JSNApiHelper::ToLocal<StringRef>(name));
 }
 
 Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
@@ -1371,14 +1371,14 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entry);
     JSMutableHandle<JSTaggedValue> sourceCodeHandle(thread, BuiltinsBase::GetTaggedString(thread, ""));
     if (mainMethodIndex == 0) {
-        return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
+        return scope.Escape(JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle));
     }
 
     const std::string &allSourceCode = debugExtractor->GetSourceCode(panda_file::File::EntityId(mainMethodIndex));
     std::string sourceCode = StringHelper::GetSpecifiedLine(allSourceCode, lineNumber);
     uint32_t codeLen = sourceCode.length();
-    if (codeLen == 0 || sourceCode == "ANDA") {
-        return JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle);
+    if (codeLen == 0) {
+        return scope.Escape(JSNApiHelper::ToLocal<StringRef>(sourceCodeHandle));
     }
 
     if (sourceCode[codeLen - 1] == '\r') {

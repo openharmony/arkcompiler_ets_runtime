@@ -29,6 +29,38 @@
 namespace panda::ecmascript {
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
 const int MAX_NODE_COUNT = 10000; // 10000:the maximum size of the array
+enum class RunningState : size_t {
+    OTHER = 0,
+    GC,
+    CINT,
+    AINT,
+    AOT,
+    BUILTIN,
+    NAPI,
+    ARKUI_ENGINE,
+    RUNTIME
+};
+
+struct MethodKey {
+    void *methodIdentifier = nullptr;
+    RunningState state = RunningState::OTHER;
+    bool operator < (const MethodKey &methodKey) const
+    {
+        return state < methodKey.state ||
+               (state == methodKey.state && methodIdentifier < methodKey.methodIdentifier);
+    }
+};
+
+struct NodeKey {
+    struct MethodKey methodKey = {0};
+    int parentId = 0;
+    bool operator < (const NodeKey &nodeKey) const
+    {
+        return parentId < nodeKey.parentId ||
+               (parentId == nodeKey.parentId && methodKey < nodeKey.methodKey);
+    }
+};
+
 struct FrameInfo {
     std::string codeType = "";
     std::string functionName = "";
@@ -37,6 +69,7 @@ struct FrameInfo {
     int scriptId = 0;
     std::string url = "";
 };
+
 struct CpuProfileNode {
     int id = 0;
     int parentId = 0;
@@ -44,6 +77,7 @@ struct CpuProfileNode {
     struct FrameInfo codeEntry;
     CVector<int> children;
 };
+
 struct ProfileInfo {
     uint64_t tid = 0;
     uint64_t startTime = 0;
@@ -52,7 +86,18 @@ struct ProfileInfo {
     int nodeCount = 0;
     CVector<int> samples;
     CVector<int> timeDeltas;
+    //state time statistic
+    uint64_t gcTime = 0;
+    uint64_t cInterpreterTime = 0;
+    uint64_t asmInterpreterTime = 0;
+    uint64_t aotTime = 0;
+    uint64_t builtinTime = 0;
+    uint64_t napiTime = 0;
+    uint64_t arkuiEngineTime = 0;
+    uint64_t runtimeTime = 0;
+    uint64_t otherTime = 0;
 };
+
 struct SampleInfo {
     int id = 0;
     int line = 0;
@@ -66,16 +111,7 @@ struct FrameInfoTemp {
     int lineNumber = 0;
     int scriptId = 0;
     char url[500] = {0}; // 500:the maximum size of the url
-    void *methodIdentifier = nullptr;
-};
-struct MethodKey {
-    void *methodIdentifier = nullptr;
-    int parentId = 0;
-    bool operator < (const MethodKey &methodKey) const
-    {
-        return parentId < methodKey.parentId ||
-               (parentId == methodKey.parentId && methodIdentifier < methodKey.methodIdentifier);
-    }
+    struct MethodKey methodKey = {0};
 };
 
 class SamplesRecord {
@@ -86,6 +122,7 @@ public:
     void AddSample(uint64_t sampleTimeStamp);
     void AddSampleCallNapi(uint64_t *sampleTimeStamp);
     void WriteMethodsAndSampleInfo(bool timeEnd);
+    void WriteStateTimeStatistic();
     int GetMethodNodeCount() const;
     int GetframeStackLength() const;
     CDeque<struct SampleInfo> GetSamples() const;
@@ -103,14 +140,16 @@ public:
     void SetOutToFile(bool outToFile);
     bool GetGcState() const;
     void SetGcState(bool gcState);
+    bool GetRuntimeState() const;
+    void SetRuntimeState(bool gcState);
     void SetIsBreakSampleFlag(bool sampleFlag);
     int SemInit(int index, int pshared, int value);
     int SemPost(int index);
     int SemWait(int index);
     int SemDestroy(int index);
-    const CMap<void *, struct FrameInfo> &GetStackInfo() const;
-    void InsertStackInfo(void *methodIdentifier, struct FrameInfo &codeEntry);
-    bool PushFrameStack(void *methodIdentifier);
+    const CMap<struct MethodKey, struct FrameInfo> &GetStackInfo() const;
+    void InsertStackInfo(struct MethodKey &methodKey, struct FrameInfo &codeEntry);
+    bool PushFrameStack(struct MethodKey &methodKey);
     bool PushStackInfo(const FrameInfoTemp &frameInfoTemp);
     bool GetBeforeGetCallNapiStackFlag();
     void SetBeforeGetCallNapiStackFlag(bool flag);
@@ -118,7 +157,7 @@ public:
     void SetAfterGetCallNapiStackFlag(bool flag);
     bool GetCallNapiFlag();
     void SetCallNapiFlag(bool flag);
-    bool PushNapiFrameStack(void *methodIdentifier);
+    bool PushNapiFrameStack(struct MethodKey &methodKey);
     bool PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp);
     int GetNapiFrameStackLength();
     void ClearNapiStack();
@@ -127,35 +166,38 @@ public:
 private:
     void WriteAddNodes();
     void WriteAddSamples();
-    struct FrameInfo GetMethodInfo(void *methodIdentifier);
+    struct FrameInfo GetMethodInfo(struct MethodKey &methodKey);
+    std::string AddRunningStateToName(char *functionName, RunningState state);
     struct FrameInfo GetGcInfo();
     void FrameInfoTempToMap();
     void NapiFrameInfoTempToMap();
+    void StatisticStateTime(int timeDelta, RunningState state);
 
     int previousId_ = 0;
     uint64_t threadStartTime_ = 0;
     bool outToFile_ = false;
     std::atomic_bool isBreakSample_ = false;
     std::atomic_bool gcState_ = false;
+    std::atomic_bool runtimeState_ = false;
     std::atomic_bool isStart_ = false;
     std::atomic_bool beforeCallNapi_ = false;
     std::atomic_bool afterCallNapi_ = false;
     std::atomic_bool callNapi_ = false;
     std::unique_ptr<struct ProfileInfo> profileInfo_;
     CVector<int> stackTopLines_;
-    CMap<struct MethodKey, int> methodMap_;
+    CMap<struct NodeKey, int> nodeMap_;
     CDeque<struct SampleInfo> samples_;
     std::string sampleData_ = "";
     std::string fileName_ = "";
     sem_t sem_[3]; // 3 : sem_ size is three.
-    CMap<void *, struct FrameInfo> stackInfoMap_;
-    void *frameStack_[MAX_ARRAY_COUNT] = {};
+    CMap<struct MethodKey, struct FrameInfo> stackInfoMap_;
+    struct MethodKey frameStack_[MAX_ARRAY_COUNT] = {};
     int frameStackLength_ = 0;
     CMap<std::string, int> scriptIdMap_;
     FrameInfoTemp frameInfoTemps_[MAX_ARRAY_COUNT] = {};
     int frameInfoTempLength_ = 0;
     // napi stack
-    CVector<void *> napiFrameStack_;
+    CVector<struct MethodKey> napiFrameStack_;
     CVector<FrameInfoTemp> napiFrameInfoTemps_;
 };
 } // namespace panda::ecmascript
