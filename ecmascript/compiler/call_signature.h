@@ -375,6 +375,7 @@ private:
     V(FloatSin)                             \
     V(FloatACos)                            \
     V(FloatATan)                            \
+    V(FloatFloor)                           \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
     V(StoreBarrier)                         \

@@ -42,3 +42,20 @@ print(len);
 len = Math.atan(2); // 1.1071487177940904
 print(len);
 
+len = Math.abs(-9.6);
+print(len);
+len = Math.abs(-6);
+print(len);
+
+len = Math.floor(Number.NaN);
+print(len);
+len = Math.floor(-Number.NaN);
+print(len);
+len = Math.floor(Number.NEGATIVE_INFINITY);
+print(len);
+len = Math.floor(Number.POSITIVE_INFINITY);
+print(len);
+len = Math.floor(9.6);
+print(len);
+len = Math.floor(-9.6);
+print(len);

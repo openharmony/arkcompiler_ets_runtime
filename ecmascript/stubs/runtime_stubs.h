@@ -99,6 +99,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(FloatSin)                                \
     V(FloatACos)                               \
     V(FloatATan)                               \
+    V(FloatFloor)                              \
     V(FindElementWithCache)                    \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
@@ -336,6 +337,7 @@ public:
     static JSTaggedType FloatSin(double x);
     static JSTaggedType FloatACos(double x);
     static JSTaggedType FloatATan(double x);
+    static JSTaggedType FloatFloor(double x);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
