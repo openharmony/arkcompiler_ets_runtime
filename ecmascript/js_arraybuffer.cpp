@@ -28,6 +28,11 @@ void JSArrayBuffer::CopyDataBlockBytes(JSTaggedValue toBlock, JSTaggedValue from
 {
     void *fromBuf = JSNativePointer::Cast(fromBlock.GetTaggedObject())->GetExternalPointer();
     void *toBuf = JSNativePointer::Cast(toBlock.GetTaggedObject())->GetExternalPointer();
+    CopyDataPointBytes(toBuf, fromBuf, fromIndex, count);
+}
+
+void JSArrayBuffer::CopyDataPointBytes(void *toBuf, void *fromBuf, int32_t fromIndex, int32_t count)
+{
     auto *from = static_cast<uint8_t *>(fromBuf);
     auto *to = static_cast<uint8_t *>(toBuf);
     if (memcpy_s(to, count, from + fromIndex, count) != EOK) {  // NOLINT

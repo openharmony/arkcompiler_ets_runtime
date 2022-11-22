@@ -203,11 +203,11 @@ JSTaggedValue BuiltinsArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
     }
     if (newLen > 0) {
         // 23. Let fromBuf be the value of O’s [[ArrayBufferData]] internal slot.
-        JSTaggedValue from = arrBuf->GetArrayBufferData();
+        void *fromBuf = GetDataPointFromBuffer(arrBuf.GetTaggedValue());
         // 24. Let toBuf be the value of new’s [[ArrayBufferData]] internal slot.
-        JSTaggedValue to = newJsArrBuf->GetArrayBufferData();
+        void *toBuf = GetDataPointFromBuffer(newJsArrBuf.GetTaggedValue());
         // 25. Perform CopyDataBlockBytes(toBuf, fromBuf, first, newLen).
-        JSArrayBuffer::CopyDataBlockBytes(to, from, first, newLen);
+        JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, first, newLen);
     }
     // Return new.
     return newArrBuf.GetTaggedValue();
@@ -245,6 +245,9 @@ JSTaggedValue BuiltinsArrayBuffer::AllocateArrayBuffer(JSThread *thread, const J
 // 24.1.1.2 IsDetachedBuffer()
 bool BuiltinsArrayBuffer::IsDetachedBuffer(JSTaggedValue arrayBuffer)
 {
+    if (arrayBuffer.IsByteArray()) {
+        return false;
+    }
     // 1. Assert: Type(arrayBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
     ASSERT(arrayBuffer.IsArrayBuffer() || arrayBuffer.IsSharedArrayBuffer());
     JSArrayBuffer *buffer = JSArrayBuffer::Cast(arrayBuffer.GetTaggedObject());
@@ -296,10 +299,10 @@ JSTaggedValue BuiltinsArrayBuffer::CloneArrayBuffer(JSThread *thread, const JSHa
     JSHandle<JSArrayBuffer> newArrBuf(thread, taggedBuf);
     // Perform CopyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, cloneLength).
     // 7. Let srcBlock be the value of srcBuffer’s [[ArrayBufferData]] internal slot.
-    JSTaggedValue srcBlock = arrBuf->GetArrayBufferData();
-    JSTaggedValue targetBlock = newArrBuf->GetArrayBufferData();
+    void *fromBuf = GetDataPointFromBuffer(arrBuf.GetTaggedValue());
+    void *toBuf = GetDataPointFromBuffer(taggedBuf);
     if (cloneLen > 0) {
-        JSArrayBuffer::CopyDataBlockBytes(targetBlock, srcBlock, srcByteOffset, cloneLen);
+        JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, srcByteOffset, cloneLen);
     }
     return taggedBuf;
 }
@@ -309,10 +312,14 @@ JSTaggedValue BuiltinsArrayBuffer::CloneArrayBuffer(JSThread *thread, const JSHa
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteIndex,
                                                       DataViewType type, bool littleEndian)
 {
-    JSArrayBuffer *jsArrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
-    JSTaggedValue data = jsArrayBuffer->GetArrayBufferData();
-    void *pointer = JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer();
-    auto *block = reinterpret_cast<uint8_t *>(pointer);
+    void *pointer = GetDataPointFromBuffer(arrBuf);
+    uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
+    return GetValueFromBuffer(thread, byteIndex, block, type, littleEndian);
+}
+
+JSTaggedValue BuiltinsArrayBuffer::GetValueFromBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
+                                                      DataViewType type, bool littleEndian)
+{
     switch (type) {
         case DataViewType::UINT8:
         case DataViewType::UINT8_CLAMPED: {
@@ -352,19 +359,15 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(JSThread *thread, JSTaggedVa
                                                     DataViewType type, const JSHandle<JSTaggedValue> &value,
                                                     bool littleEndian)
 {
-    JSArrayBuffer *jsArrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
-    JSTaggedValue data = jsArrayBuffer->GetArrayBufferData();
-    void *pointer = JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer();
-    auto *block = reinterpret_cast<uint8_t *>(pointer);
-
     if (UNLIKELY(IsBigIntElementType(type))) {
+        JSHandle<JSTaggedValue> arrBufHandle(thread, arrBuf);
         switch (type) {
             case DataViewType::BIGINT64:
-                SetValueInBufferForBigInt<int64_t>(thread, value, block, byteIndex, littleEndian);
+                SetValueInBufferForBigInt<int64_t>(thread, value, arrBufHandle, byteIndex, littleEndian);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 break;
             case DataViewType::BIGUINT64:
-                SetValueInBufferForBigInt<uint64_t>(thread, value, block, byteIndex, littleEndian);
+                SetValueInBufferForBigInt<uint64_t>(thread, value, arrBufHandle, byteIndex, littleEndian);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 break;
             default:
@@ -372,6 +375,8 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(JSThread *thread, JSTaggedVa
         }
         return JSTaggedValue::Undefined();
     }
+    void *pointer = GetDataPointFromBuffer(arrBuf);
+    uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
     double val = value.GetTaggedValue().GetNumber();
     return SetValueInBuffer(byteIndex, block, type, val, littleEndian);
 }
@@ -597,8 +602,10 @@ void BuiltinsArrayBuffer::SetValueInBufferForFloat(double val, uint8_t *block, u
 }
 
 template<typename T>
-void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &val,
-                                                    uint8_t *block, uint32_t byteIndex, bool littleEndian)
+void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread,
+                                                    const JSHandle<JSTaggedValue> &val,
+                                                    JSHandle<JSTaggedValue> &arrBuf,
+                                                    uint32_t byteIndex, bool littleEndian)
 {
     static_assert(std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>, "T must be int64_t/uint64_t");
     T value = 0;
@@ -612,16 +619,16 @@ void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread, const JSHa
     if (!littleEndian) {
         value = LittleEndianToBigEndian64Bit<T>(value);
     }
+    void *pointer = GetDataPointFromBuffer(arrBuf.GetTaggedValue());
+    uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
     SetTypeData(block, value, byteIndex);
 }
 
 JSTaggedValue BuiltinsArrayBuffer::FastSetValueInBuffer(JSTaggedValue arrBuf, uint32_t byteIndex,
                                                         DataViewType type, double val, bool littleEndian)
 {
-    JSArrayBuffer *jsArrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
-    JSTaggedValue data = jsArrayBuffer->GetArrayBufferData();
-    void *pointer = JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer();
-    auto *block = reinterpret_cast<uint8_t *>(pointer);
+    void *pointer = GetDataPointFromBuffer(arrBuf);
+    uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
     return SetValueInBuffer(byteIndex, block, type, val, littleEndian);
 }
 
@@ -660,5 +667,20 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(uint32_t byteIndex, uint8_t 
             UNREACHABLE();
     }
     return JSTaggedValue::Undefined();
+}
+
+void *BuiltinsArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset)
+{
+    if (arrBuf.IsByteArray()) {
+        return reinterpret_cast<void *>(ToUintPtr(ByteArray::Cast(arrBuf.GetTaggedObject())->GetData()) + byteOffset);
+    } else {
+        JSArrayBuffer *arrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
+        if (arrayBuffer->GetArrayBufferByteLength() == 0) {
+            return nullptr;
+        }
+        JSTaggedValue data = arrayBuffer->GetArrayBufferData();
+        return reinterpret_cast<void *>(ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())
+                                                  ->GetExternalPointer()) + byteOffset);
+    }
 }
 }  // namespace panda::ecmascript::builtins

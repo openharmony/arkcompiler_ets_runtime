@@ -476,6 +476,11 @@ inline bool JSTaggedValue::IsTaggedArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();
 }
 
+inline bool JSTaggedValue::IsByteArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsByteArray();
+}
+
 inline bool JSTaggedValue::IsConstantPool() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsConstantPool();

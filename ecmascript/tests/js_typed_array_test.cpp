@@ -15,8 +15,10 @@
 
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/global_env.h"
 
 using namespace panda::ecmascript;
+using namespace panda::ecmascript::base;
 
 namespace panda::test {
 class JSTypedArrayTest : public testing::Test {
@@ -1438,5 +1440,52 @@ HWTEST_F_L0(JSTypedArrayTest, FastSetAndGetPropertyByIndex)
             EXPECT_EQ(JSTaggedNumber(result).ToUint32(), i);
         }
     }
+}
+
+/*
+ * Feature: JSTypedArray
+ * Function: GetOffHeapBuffer
+ * FunctionPoints: Set TypedArray data offheap
+ * CaseDescription: Construct ArrayBuffer and move data from ByteArray to ArrayBuffer.
+ */
+HWTEST_F_L0(JSTypedArrayTest, GetOffHeapBuffer)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
+    array->Set(thread, 0, JSTaggedValue(-128));
+    array->Set(thread, 1, JSTaggedValue(0));
+    array->Set(thread, 2, JSTaggedValue(127));
+
+
+    JSHandle<JSTaggedValue> jsarray(JSArray::CreateArrayFromList(thread, array));
+    JSHandle<JSFunction> arrayFunc = JSHandle<JSFunction>(env->GetInt8ArrayFunction());
+    JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
+
+    EcmaRuntimeCallInfo* ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*arrayFunc), 6); // 6 : arguments length
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue(*arrayFunc));
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue(*globalObject));
+    ecmaRuntimeCallInfo->SetCallArg(0, jsarray.GetTaggedValue());
+
+    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledInt8ArrayString();
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSHandle<JSTaggedValue> int8Array(
+        thread, TypedArrayHelper::TypedArrayConstructor(ecmaRuntimeCallInfo, constructorName, DataViewType::INT8));
+    TestHelper::TearDownFrame(thread, prev);
+
+    JSHandle<JSTypedArray> typedArray(int8Array);
+    ASSERT_TRUE(typedArray->GetViewedArrayBuffer().IsByteArray());
+    JSTypedArray::GetOffHeapBuffer(thread, typedArray);
+    ASSERT_TRUE(typedArray->GetViewedArrayBuffer().IsArrayBuffer());
+    JSTaggedValue data1 = JSTypedArray::FastGetPropertyByIndex(thread, typedArray.GetTaggedValue(),
+                                                               0, JSType::JS_INT8_ARRAY);
+    JSTaggedValue data2 = JSTypedArray::FastGetPropertyByIndex(thread, typedArray.GetTaggedValue(),
+                                                               1, JSType::JS_INT8_ARRAY);
+    JSTaggedValue data3 = JSTypedArray::FastGetPropertyByIndex(thread, typedArray.GetTaggedValue(),
+                                                               2, JSType::JS_INT8_ARRAY);
+    EXPECT_EQ(data1, JSTaggedValue(-128));
+    EXPECT_EQ(data2, JSTaggedValue(0));
+    EXPECT_EQ(data3, JSTaggedValue(127));
 }
 }  // namespace panda::test
