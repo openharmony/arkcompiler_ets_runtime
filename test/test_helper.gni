@@ -209,6 +209,8 @@ template("host_moduletest_action") {
       _asm_run_options_,
       "--script-args",
       _script_args_,
+      "--timeout-limit",
+      "${_timeout_}",
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",
