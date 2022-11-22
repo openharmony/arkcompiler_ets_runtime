@@ -108,6 +108,11 @@ enum class MethodIndex : uint8_t {
     METHOD_END
 };
 
+enum class IcuFormatterType {
+    SimpleDateFormatDefault,
+    SimpleDateFormatDate,
+    SimpleDateFormatTime
+};
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
                                              const JSHandle<JSTaggedValue> reason,
@@ -512,6 +517,31 @@ public:
 
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              OptimizedEntryFrame::CallType callType);
+
+    // For icu objects cache
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, std::shared_ptr<icu::UMemory> icuObj)
+    {
+        EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj);
+        icuObjCache_.insert({type, std::move(icuFormatter)});
+    }
+
+    icu::UMemory *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
+    {
+        auto iter = icuObjCache_.find(type);
+        EcmaVM::IcuFormatter icuFormatter;
+        if (iter != icuObjCache_.end()) {
+            icuFormatter = iter->second;
+            if (icuFormatter.locale == locale) {
+                return icuFormatter.icuObj.get();
+            }
+        }
+        return nullptr;
+    }
+
+    void ClearIcuCache()
+    {
+        icuObjCache_.clear();
+    }
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
@@ -631,6 +661,17 @@ private:
 
     // PGO Profiler
     PGOProfiler *pgoProfiler_;
+
+    // For icu objects cache
+    struct IcuFormatter {
+        std::string locale;
+        std::shared_ptr<icu::UMemory> icuObj;
+
+        IcuFormatter() = default;
+        IcuFormatter(const std::string &locale, std::shared_ptr<icu::UMemory> icuObj)
+            : locale(locale), icuObj(std::move(icuObj)) {}
+    };
+    std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;
