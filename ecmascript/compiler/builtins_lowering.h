@@ -39,8 +39,6 @@ private:
     GateRef TypedSqrt(GateRef gate);
     void LowerTypedAbs(GateRef gate);
     GateRef TypedAbs(GateRef gate);
-    void LowerTypedFloor(GateRef gate);
-    GateRef TypedFloor(GateRef gate);
 
     Circuit *circuit_ {nullptr};
     CircuitBuilder builder_;

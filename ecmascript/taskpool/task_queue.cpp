@@ -20,7 +20,7 @@ void TaskQueue::PostTask(std::unique_ptr<Task> task)
 {
     os::memory::LockHolder holder(mtx_);
     ASSERT(!terminate_);
-    tasks_.push(std::move(task));
+    tasks_.push_back(std::move(task));
     cv_.Signal();
 }
 
@@ -30,7 +30,7 @@ std::unique_ptr<Task> TaskQueue::PopTask()
     while (true) {
         if (!tasks_.empty()) {
             std::unique_ptr<Task> task = std::move(tasks_.front());
-            tasks_.pop();
+            tasks_.pop_front();
             return task;
         }
         if (terminate_) {
@@ -38,6 +38,21 @@ std::unique_ptr<Task> TaskQueue::PopTask()
             return nullptr;
         }
         cv_.Wait(&mtx_);
+    }
+}
+
+void TaskQueue::TerminateTask(int32_t id, TaskType type)
+{
+    os::memory::LockHolder holder(mtx_);
+    for (auto iter = tasks_.begin(); iter != tasks_.end(); iter++) {
+        if (id != ALL_TASK_ID && id != (*iter)->GetId()) {
+            continue;
+        }
+        if (type != TaskType::ALL && type != (*iter)->GetTaskType()) {
+            iter++;
+            continue;
+        }
+        (*iter)->Terminated();
     }
 }
 

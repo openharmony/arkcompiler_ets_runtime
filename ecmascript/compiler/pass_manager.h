@@ -27,32 +27,75 @@ class LexEnvManager;
 class CompilationConfig;
 class BytecodeInfoCollector;
 
-struct CompilationInfo {
+class CompilationInfo {
 public:
-    explicit CompilationInfo(TSManager *tsManager,
-        Bytecodes *bytecodes,
-        LexEnvManager *lexEnvManager,
-        CompilationConfig *cmpCfg,
-        CompilerLog *log,
-        const JSPandaFile *jsPandaFile,
-        BytecodeInfoCollector* bcInfoCollector)
-        : tsManager(tsManager),
-          bytecodes(bytecodes),
-          lexEnvManager(lexEnvManager),
-          cmpCfg(cmpCfg),
-          log(log),
-          jsPandaFile(jsPandaFile),
-          bcInfoCollector(bcInfoCollector)
+    explicit CompilationInfo(TSManager *tsManager, Bytecodes *bytecodes, LexEnvManager *lexEnvManager,
+                             CompilationConfig *cmpCfg, CompilerLog *log, const JSPandaFile *jsPandaFile,
+                             BytecodeInfoCollector* bcInfoCollector, LLVMModule *aotModule)
+        : tsManager_(tsManager), bytecodes_(bytecodes), lexEnvManager_(lexEnvManager), cmpCfg_(cmpCfg),
+          log_(log), jsPandaFile_(jsPandaFile), bcInfoCollector_(bcInfoCollector), aotModule_(aotModule)
     {
     }
 
-    TSManager *tsManager;
-    Bytecodes *bytecodes;
-    LexEnvManager *lexEnvManager;
-    CompilationConfig *cmpCfg;
-    CompilerLog *log;
-    const JSPandaFile *jsPandaFile;
-    BytecodeInfoCollector* bcInfoCollector;
+    TSManager* GetTSManager() const
+    {
+        return tsManager_;
+    }
+
+    Bytecodes* GetByteCodes() const
+    {
+        return bytecodes_;
+    }
+
+    LexEnvManager* GetLexEnvManager() const
+    {
+        return lexEnvManager_;
+    }
+
+    CompilationConfig* GetCompilerConfig() const
+    {
+        return cmpCfg_;
+    }
+
+    CompilerLog* GetCompilerLog() const
+    {
+        return log_;
+    }
+
+    const JSPandaFile* GetJSPandaFile() const
+    {
+        return jsPandaFile_;
+    }
+
+    BytecodeInfoCollector* GetBytecodeInfoCollector() const
+    {
+        return bcInfoCollector_;
+    }
+
+    LLVMModule* GetAOTModule() const
+    {
+        return aotModule_;
+    }
+
+    bool IsSkippedMethod(uint32_t methodOffset) const
+    {
+        return bcInfoCollector_->IsSkippedMethod(methodOffset);
+    }
+
+    BCInfo& GetBytecodeInfo()
+    {
+        return bcInfoCollector_->GetBytecodeInfo();
+    }
+
+private:
+    TSManager *tsManager_ {nullptr};
+    Bytecodes *bytecodes_ {nullptr};
+    LexEnvManager *lexEnvManager_ {nullptr};
+    CompilationConfig *cmpCfg_ {nullptr};
+    CompilerLog *log_ {nullptr};
+    const JSPandaFile *jsPandaFile_ {nullptr};
+    BytecodeInfoCollector *bcInfoCollector_ {nullptr};
+    LLVMModule *aotModule_ {nullptr};
 };
 
 class PassManager {
@@ -70,10 +113,8 @@ public:
     bool Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn);
 
 private:
-    JSPandaFile *CreateJSPandaFile(const CString &fileName);
-    void CollectSkippedMethod(BCInfo &bytecodeInfo, const JSPandaFile *jsPandaFile, TSManager *tsManager);
+    JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
     void ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, const std::string &fileName);
-    bool FilterMethod(const CString &recordName, MethodLiteral *method, MethodPcInfo &methodPCInfo);
 
     bool EnableTypeLowering() const
     {

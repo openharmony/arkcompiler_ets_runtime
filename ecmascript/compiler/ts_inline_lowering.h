@@ -30,8 +30,8 @@ public:
     static constexpr size_t MAX_INLINE_BYTECODE_COUNT = 10;
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
     TSInlineLowering(Circuit *circuit, CompilationInfo *info, bool enableLog, const std::string& name)
-        : circuit_(circuit), acc_(circuit), builder_(circuit, info->cmpCfg),
-          tsManager_(info->tsManager), info_(info), enableLog_(enableLog), methodName_(name) {}
+        : circuit_(circuit), acc_(circuit), builder_(circuit, info->GetCompilerConfig()),
+          tsManager_(info->GetTSManager()), info_(info), enableLog_(enableLog), methodName_(name) {}
 
     ~TSInlineLowering() = default;
 

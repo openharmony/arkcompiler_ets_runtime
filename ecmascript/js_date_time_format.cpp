@@ -148,7 +148,10 @@ void JSDateTimeFormat::SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateT
         native->ResetExternalPointer(icuPointer);
         return;
     }
-    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback, ecmaVm);
+    // According to the observed native memory, we give an approximate native binding value.
+    constexpr static size_t icuBindingNativeSize = 64 * 1024;
+    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(icuPointer, callback, ecmaVm,
+        false, icuBindingNativeSize);
     obj->SetSimpleDateTimeFormatIcu(thread, pointer.GetTaggedValue());
 }
 

@@ -30,8 +30,6 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
             LowerTypedAbs(gate);
             break;
         case BUILTINS_STUB_ID(FLOOR):
-            LowerTypedFloor(gate);
-            break;
         case BUILTINS_STUB_ID(COS):
         case BUILTINS_STUB_ID(SIN):
         case BUILTINS_STUB_ID(ACOS):
@@ -92,6 +90,9 @@ GateRef BuiltinLowering::TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID 
                 auto glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
                 int index = RTSTUB_ID(FloatCos);
                 switch (id) {
+                    case BUILTINS_STUB_ID(FLOOR):
+                        index = RTSTUB_ID(FloatFloor);
+                        break;
                     case BUILTINS_STUB_ID(ACOS):
                         index = RTSTUB_ID(FloatACos);
                         break;
@@ -137,12 +138,6 @@ void BuiltinLowering::LowerTypedSqrt(GateRef gate)
 void BuiltinLowering::LowerTypedAbs(GateRef gate)
 {
     auto ret = TypedAbs(gate);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
-}
-
-void BuiltinLowering::LowerTypedFloor(GateRef gate)
-{
-    auto ret = TypedFloor(gate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
@@ -267,7 +262,7 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
     builder_.Bind(&isInt);
     {
         auto value = builder_.GetInt32OfTInt(a0);
-        auto temp = builder_.Int32LSR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT));
+        auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
         auto res = builder_.Int32Xor(value, temp);
         result = IntToTaggedIntPtr(builder_.Int32Sub(res, temp));
         builder_.Jump(&exit);
@@ -280,84 +275,6 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
         auto res = builder_.Int64LSR(temp, builder_.Int64(1));
         result = builder_.DoubleToTaggedDoublePtr(builder_.CastInt64ToFloat64(res));
         builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef BuiltinLowering::TypedFloor(GateRef gate)
-{
-    auto env = builder_.GetCurrentEnvironment();
-    Label entry(&builder_);
-    env->SubCfgEntry(&entry);
-
-    Label exit(&builder_);
-    GateRef a0 = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-
-    Label IsInt(&builder_);
-    Label NotInt(&builder_);
-    Label calc(&builder_);
-    DEFVAlUE(value, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-    builder_.Branch(builder_.TaggedIsInt(a0), &IsInt, &NotInt);
-    builder_.Bind(&IsInt);
-    {
-        value = builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(a0));
-        builder_.Jump(&calc);
-    }
-    builder_.Bind(&NotInt);
-    {
-        value = builder_.GetDoubleOfTDouble(a0);
-        builder_.Jump(&calc);
-    }
-    builder_.Bind(&calc);
-    {
-        Label nanOrInfinity(&builder_);
-        Label notNanOrInfinity(&builder_);
-        // If value is NaN or -NaN, +infinite, -infinite, return value
-        GateRef negativeInfinity = builder_.Double(-base::POSITIVE_INFINITY);
-        GateRef isNegativeInfinity = builder_.Equal(*value, negativeInfinity);
-        isNegativeInfinity = builder_.Equal(builder_.SExtInt1ToInt32(isNegativeInfinity), builder_.Int32(1));
-        GateRef infinity = builder_.Double(base::POSITIVE_INFINITY);
-        GateRef isInfinity = builder_.Equal(*value, infinity);
-        isInfinity = builder_.Equal(builder_.SExtInt1ToInt32(isInfinity), builder_.Int32(1));
-        isInfinity = builder_.BoolOr(isInfinity, isNegativeInfinity);
-        GateRef negativeNan = builder_.Double(-base::NAN_VALUE);
-        GateRef isNegativeNan = builder_.Equal(*value, negativeNan);
-        isNegativeNan = builder_.Equal(builder_.SExtInt1ToInt32(isNegativeNan), builder_.Int32(1));
-        GateRef nan = builder_.Double(base::NAN_VALUE);
-        GateRef isNan = builder_.Equal(*value, nan);
-        isNan = builder_.Equal(builder_.SExtInt1ToInt32(isNan), builder_.Int32(1));
-        isNan = builder_.BoolOr(isNan, isNegativeNan);
-
-        builder_.Branch(builder_.BoolOr(isNan, isInfinity), &nanOrInfinity, &notNanOrInfinity);
-        builder_.Bind(&nanOrInfinity);
-        {
-            Label negNan(&builder_);
-            Label notNegNan(&builder_);
-            // If value is -NaN, return NaN, else return value
-            builder_.Branch(isNegativeNan, &negNan, &notNegNan);
-            builder_.Bind(&negNan);
-            {
-                result = builder_.DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
-                builder_.Jump(&exit);
-            }
-            builder_.Bind(&notNegNan);
-            {
-                result = builder_.DoubleToTaggedDoublePtr(*value);
-                builder_.Jump(&exit);
-            }
-        }
-        builder_.Bind(&notNanOrInfinity);
-        {
-            ArgumentAccessor argAcc_(circuit_);
-            auto glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
-            result = builder_.CallNGCRuntime(
-                glue, RTSTUB_ID(FloatFloor), Gate::InvalidGateRef, {*value});
-            builder_.Jump(&exit);        
-        }
     }
     builder_.Bind(&exit);
     auto ret = *result;

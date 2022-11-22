@@ -266,7 +266,8 @@ void Heap::Resume(TriggerGCType gcType)
     hugeObjectSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
         clearTaskFinished_ = false;
-        Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<AsyncClearTask>(this, gcType));
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, gcType));
     } else {
         ReclaimRegions(gcType);
     }
@@ -300,7 +301,7 @@ void Heap::DisableParallelGC()
     stwYoungGC_->ConfigParallelGC(false);
     sweeper_->ConfigConcurrentSweep(false);
     concurrentMarker_->ConfigConcurrentMark(false);
-    Taskpool::GetCurrentTaskpool()->Destroy();
+    Taskpool::GetCurrentTaskpool()->Destroy(GetJSThread()->GetThreadId());
 }
 
 void Heap::EnableParallelGC()
@@ -605,7 +606,8 @@ void Heap::RecomputeLimits()
                                                                    maxGlobalSize, newSpaceCapacity, growingFactor);
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
     oldSpace_->SetInitialCapacity(newOldSpaceLimit);
-    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_
+                                   + nativeAreaAllocator_->GetNativeMemoryUsage();
     globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(globalSpaceNativeSize, MIN_HEAP_SIZE,
                                                                   maxGlobalSize, newSpaceCapacity, growingFactor);
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
@@ -671,7 +673,8 @@ void Heap::TryTriggerConcurrentMarking()
     size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
     size_t globalHeapObjectSize = GetHeapObjectSize();
     size_t oldSpaceAllocLimit = oldSpace_->GetInitialCapacity();
-    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_
+                                   + nativeAreaAllocator_->GetNativeMemoryUsage();
     if (oldSpaceConcurrentMarkSpeed == 0 || oldSpaceAllocSpeed == 0) {
         if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit ||  globalHeapObjectSize >= globalSpaceAllocLimit_
             || globalSpaceNativeSize >= globalSpaceNativeLimit_) {
@@ -810,7 +813,8 @@ void Heap::WaitConcurrentMarkingFinished()
 void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 {
     IncreaseTaskCount();
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelGCTask>(this, gcTask));
+    Taskpool::GetCurrentTaskpool()->PostTask(
+        std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask));
 }
 
 void Heap::IncreaseTaskCount()

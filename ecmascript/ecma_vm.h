@@ -17,7 +17,6 @@
 #define ECMASCRIPT_ECMA_VM_H
 
 #include "ecmascript/base/config.h"
-#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
@@ -53,6 +52,7 @@ class EcmaStringTable;
 class SnapshotEnv;
 class SnapshotSerialize;
 class SnapshotProcessor;
+class PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
 #endif

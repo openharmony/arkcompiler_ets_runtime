@@ -106,7 +106,7 @@ public:
     static constexpr JSTaggedType VALUE_ZERO = TAG_INT | 0x00ULL;
     static constexpr JSTaggedType VALUE_OPTIMIZED_OUT = TAG_SPECIAL | TAG_OPTIMIZED_OUT;
 
-    static constexpr size_t INT_SIGN_BIT = 31;
+    static constexpr size_t INT_SIGN_BIT_OFFSET = 31;
     static constexpr size_t DOUBLE_ENCODE_OFFSET_BIT = 48;
     static constexpr JSTaggedType DOUBLE_ENCODE_OFFSET = 1ULL << DOUBLE_ENCODE_OFFSET_BIT;
 

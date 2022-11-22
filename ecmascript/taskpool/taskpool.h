@@ -42,13 +42,16 @@ public:
     NO_MOVE_SEMANTIC(Taskpool);
 
     void Initialize(int threadNum = DEFAULT_TASKPOOL_THREAD_NUM);
-    void Destroy();
+    void Destroy(int32_t id);
 
     void PostTask(std::unique_ptr<Task> task) const
     {
         ASSERT(isInitialized_ > 0);
         runner_->PostTask(std::move(task));
     }
+
+    // Terminate a task of a specified type
+    void TerminateTask(int32_t id, TaskType type = TaskType::ALL);
 
     uint32_t GetTotalThreadNum() const
     {

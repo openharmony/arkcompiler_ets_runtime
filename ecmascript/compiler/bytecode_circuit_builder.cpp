@@ -657,27 +657,13 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
         auto &input = info.inputs[i];
         if (std::holds_alternative<ConstDataId>(input)) {
             if (std::get<ConstDataId>(input).IsStringId()) {
-                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::STRING,
-                    std::get<ConstDataId>(input).GetId());
                 inList[i + length] = circuit_->GetConstantDataGate(std::get<ConstDataId>(input).CaculateBitField(),
                                                                   GateType::StringType());
-                continue;
-            } else if (std::get<ConstDataId>(input).IsMethodId()) {
-                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::METHOD,
-                    std::get<ConstDataId>(input).GetId());
-            } else if (std::get<ConstDataId>(input).IsClassLiteraId()) {
-                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::CLASS_LITERAL,
-                    std::get<ConstDataId>(input).GetId(), recordName_);
-            } else if (std::get<ConstDataId>(input).IsObjectLiteralID()) {
-                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::OBJECT_LITERAL,
-                    std::get<ConstDataId>(input).GetId(), recordName_);
-            } else if (std::get<ConstDataId>(input).IsArrayLiteralID()) {
-                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::ARRAY_LITERAL,
-                    std::get<ConstDataId>(input).GetId(), recordName_);
+            } else {
+                inList[i + length] = circuit_->GetConstantGate(MachineType::I64,
+                                                               std::get<ConstDataId>(input).GetId(),
+                                                               GateType::NJSValue());
             }
-            inList[i + length] = circuit_->GetConstantGate(MachineType::I64,
-                                                           std::get<ConstDataId>(input).GetId(),
-                                                           GateType::NJSValue());
         } else if (std::holds_alternative<Immediate>(input)) {
             inList[i + length] = circuit_->GetConstantGate(MachineType::I64,
                                                           std::get<Immediate>(input).GetValue(),
@@ -778,9 +764,6 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
             break;
         case EcmaOpcode::LDA_STR_ID16: {
             auto input = std::get<ConstDataId>(info.inputs.at(0));
-            if (input.IsStringId()) {
-                tsManager_->AddIndexOrSkippedMethodID(TSManager::SnapshotInfoType::STRING, input.GetId());
-            }
             gate = circuit_->GetConstantDataGate(input.CaculateBitField(), GateType::StringType());
             break;
         }
