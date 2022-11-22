@@ -655,6 +655,7 @@ if (!is_mingw && !is_mac && target_os != "ios") {
     "ecmascript/snapshot/mem/snapshot.cpp",
     "ecmascript/snapshot/mem/snapshot_env.cpp",
     "ecmascript/snapshot/mem/snapshot_processor.cpp",
+    "ecmascript/base/block_hook_scope.cpp",
   ]
 }
 
@@ -715,6 +716,10 @@ source_set("libark_jsruntime_set") {
         "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
         "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
       ]
+    }
+    if (use_musl && current_cpu == "arm" && !is_mac && !is_mingw &&
+        target_os != "ios") {
+      defines += [ "BLOCK_HOOK" ]
     }
   }
 }
