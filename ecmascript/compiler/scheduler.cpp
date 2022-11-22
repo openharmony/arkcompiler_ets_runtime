@@ -450,7 +450,6 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
                            << "  immDom=" << immDom[bbIdx];
         LOG_COMPILER(INFO) << "  pred=[";
         bool isFirst = true;
-        //std::vector<GateRef> predStates;
         GateRef head = cfg->at(bbIdx).front();
         auto ins = acc.Ins(head);
         for (auto i = ins.begin(); i != ins.end(); i++) {

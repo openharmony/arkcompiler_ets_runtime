@@ -55,7 +55,7 @@ uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index)
     return ((high - DECODE_LEAD_LOW) << UTF16_OFFSET) + (low - DECODE_TRAIL_LOW) + DECODE_SECOND_FACTOR;
 }
 
-inline int UTF8Length(uint32_t codepoint)
+inline size_t UTF8Length(uint32_t codepoint)
 {
     if (codepoint <= UTF8_1B_MAX) {
         return UtfLength::ONE;
@@ -72,11 +72,11 @@ inline int UTF8Length(uint32_t codepoint)
 // Methods for encode unicode to unicode
 size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t len, size_t index)
 {
-    int size = UTF8Length(codepoint);
+    size_t size = UTF8Length(codepoint);
     if (index + size > len) {
         return 0;
     }
-    for (int j = size - 1; j > 0; j--) {
+    for (size_t j = size - 1; j > 0; j--) {
         uint8_t cont = ((codepoint | byteMark) & byteMask);
         utf8[index + j] = cont;
         codepoint >>= UTF8_OFFSET;
@@ -231,11 +231,7 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
             }
             continue;
         }
-        if (utf8Out == nullptr) {
-            utf8Pos += UTF8Length(codepoint);
-        } else {
-            utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Len, utf8Pos);
-        }
+        utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Len, utf8Pos);
     }
     return utf8Pos;
 }
