@@ -76,7 +76,7 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
         auto &bytecodeInfo = info_->GetBytecodeInfo();
         auto &methodInfo = bytecodeInfo.GetMethodList().at(methodOffset);
         auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
-        auto &methodPcInfo = methodPcInfos[methodInfo.methodPcInfoIndex];
+        auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
         if (methodPcInfo.pcOffsets.size() <= MAX_INLINE_BYTECODE_COUNT &&
             inlinedCall_ <= MAX_INLINE_CALL_ALLOWED) {
             auto success = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
@@ -169,7 +169,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     }
 
     PassData data(&builder, circuit_, info_, log, fullName,
-                  methodInfo.methodInfoIndex, hasTyps, recordName,
+                  methodInfo.GetMethodInfoIndex(), hasTyps, recordName,
                   method, method->GetMethodId().GetOffset());
     PassRunner<PassData> pipeline(&data);
     pipeline.RunPass<TypeInferPass>();
