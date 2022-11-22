@@ -265,13 +265,6 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     if (!entryPoint.empty()) {
         moduleName = entryPoint;
         entry = entryPoint;
-    } else {
-#if defined(PANDA_TARGET_LINUX)
-        if (!jsPandaFile->IsBundlePack()) {
-            entry = JSPandaFile::ParseRecordName(moduleName);
-            moduleName = entry;
-        }
-#endif
     }
     if (jsPandaFile->IsModule(entry)) {
         EcmaVM *vm = thread->GetEcmaVM();

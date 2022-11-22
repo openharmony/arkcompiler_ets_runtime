@@ -79,8 +79,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_SingleFile)
 
 HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
 {
-    std::string baseFileName = QUICKFIX_ABC_PATH "multi_file/base/index.abc";
-    std::string patchFileName = QUICKFIX_ABC_PATH "multi_file/patch/index.abc";
+    std::string baseFileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    std::string patchFileName = QUICKFIX_ABC_PATH "multi_file/patch/merge.abc";
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
 
@@ -128,7 +128,7 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
 bool QuickFixQueryFunc(
     std::string baseFileName, std::string &patchFileName, void ** patchBuffer, size_t patchBufferSize)
 {
-    if (baseFileName != QUICKFIX_ABC_PATH "multi_file/base/index.abc") {
+    if (baseFileName != QUICKFIX_ABC_PATH "multi_file/base/merge.abc") {
         return false;
     }
 
@@ -150,7 +150,7 @@ bool QuickFixQueryFunc(
 
 HWTEST_F_L0(QuickFixTest, HotReload_RegisterQuickFixQueryFunc)
 {
-    std::string baseFileName = QUICKFIX_ABC_PATH "multi_file/base/index.abc";
+    std::string baseFileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
     std::string patchFileName = "__index.pa";
     JSNApi::RegisterQuickFixQueryFunc(instance, QuickFixQueryFunc);
 

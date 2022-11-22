@@ -49,8 +49,8 @@ _merge_file_raw_ = "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests/quick
 _base_merge_file_ = "$target_out_dir/multi_file/base/merge.txt"
 _patch_merge_file_ = "$target_out_dir/multi_file/patch/merge.txt"
 
-_base_abc_path_ = "$target_out_dir/multi_file/base/index.abc"
-_patch_abc_path_ = "$target_out_dir/multi_file/patch/index.abc"
+_base_abc_path_ = "$target_out_dir/multi_file/base/merge.abc"
+_patch_abc_path_ = "$target_out_dir/multi_file/patch/merge.abc"
 
 action("gen_base_merge_file") {
   script = "//arkcompiler/ets_runtime/test/quickfix/generate_merge_file.py"

@@ -256,13 +256,4 @@ CString JSPandaFile::ParseOhmUrl(const CString &fileName)
 
     return result;
 }
-
-CString JSPandaFile::ParseRecordName(const CString &fileName)
-{
-    size_t begin = fileName.find_last_of("/");
-    ASSERT(begin != std::string::npos);
-    size_t end = fileName.find_last_of(".");
-    ASSERT(end != std::string::npos);
-    return fileName.substr(begin + 1, end - begin - 1);
-}
 }  // namespace panda::ecmascript
