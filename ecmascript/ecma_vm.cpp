@@ -290,7 +290,9 @@ EcmaVM::~EcmaVM()
 
     if (!isBundlePack_) {
         const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
-        const_cast<JSPandaFile *>(jsPandaFile)->DeleteParsedConstpoolVM(this);
+        if (jsPandaFile != nullptr) {
+            const_cast<JSPandaFile *>(jsPandaFile)->DeleteParsedConstpoolVM(this);
+        }
     }
 
     if (gcStats_ != nullptr) {
