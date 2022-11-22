@@ -84,6 +84,7 @@ private:
     static bool CheckStarExportEntryMismatch(StarExportEntry *patch, StarExportEntry *base);
 
     CString baseFileName_;
+    bool isHotPatch_ {false}; // true: HotPatch; false: HotReload.
 
     struct NormalMethodIndex {
         uint32_t constpoolNum {UINT32_MAX};
