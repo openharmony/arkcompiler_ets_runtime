@@ -81,9 +81,10 @@ public:
             enableMarkType_ == EnableConcurrentMarkType::CONFIG_DISABLE;
     }
 
-    void DisableConcurrentMark()
+    void ConfigConcurrentMark(bool enabled)
     {
-        enableMarkType_ = EnableConcurrentMarkType::CONFIG_DISABLE;
+        enableMarkType_ = enabled ? EnableConcurrentMarkType::ENABLE :
+                          EnableConcurrentMarkType::CONFIG_DISABLE;
     }
 
     bool IsRequestDisabled() const

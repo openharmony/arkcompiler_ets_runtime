@@ -297,10 +297,26 @@ void Heap::DisableParallelGC()
     parallelGC_ = false;
     maxEvacuateTaskCount_ = 0;
     maxMarkTaskCount_ = 0;
-    stwYoungGC_->DisableParallelGC();
-    sweeper_->DisableConcurrentSweep();
-    concurrentMarker_ ->DisableConcurrentMark();
+    stwYoungGC_->ConfigParallelGC(false);
+    sweeper_->ConfigConcurrentSweep(false);
+    concurrentMarker_->ConfigConcurrentMark(false);
     Taskpool::GetCurrentTaskpool()->Destroy();
+}
+
+void Heap::EnableParallelGC()
+{
+    Taskpool::GetCurrentTaskpool()->Initialize();
+    parallelGC_ = ecmaVm_->GetJSOptions().EnableParallelGC();
+    maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
+                                         maxEvacuateTaskCount_ - 1);
+    bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
+#if ECMASCRIPT_DISABLE_CONCURRENT_MARKING
+    concurrentMarkerEnabled = false;
+#endif
+    stwYoungGC_->ConfigParallelGC(parallelGC_);
+    sweeper_->ConfigConcurrentSweep(ecmaVm_->GetJSOptions().EnableConcurrentSweep());
+    concurrentMarker_->ConfigConcurrentMark(concurrentMarkerEnabled);
 }
 
 TriggerGCType Heap::SelectGCType() const

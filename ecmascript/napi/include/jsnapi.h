@@ -1257,8 +1257,8 @@ public:
     static void DestroyMemMapAllocator();
     static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
-    static void preFork(EcmaVM *vm);
-    static void postFork(EcmaVM *vm, const RuntimeOption &option);
+    static void PreFork(EcmaVM *vm);
+    static void PostFork(EcmaVM *vm, const RuntimeOption &option);
     static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
 

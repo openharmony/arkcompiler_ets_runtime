@@ -66,9 +66,10 @@ public:
         return !IsDisabled();
     }
 
-    void DisableConcurrentSweep()
+    void ConfigConcurrentSweep(bool enabled)
     {
-        enableType_ = EnableConcurrentSweepType::CONFIG_DISABLE;
+        enableType_ = enabled ? EnableConcurrentSweepType::ENABLE :
+                      EnableConcurrentSweepType::CONFIG_DISABLE;
     }
 
     bool IsDisabled() const

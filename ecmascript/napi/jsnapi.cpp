@@ -379,12 +379,12 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
     return true;
 }
 
-void JSNApi::preFork(EcmaVM *vm)
+void JSNApi::PreFork(EcmaVM *vm)
 {
-    vm->preFork();
+    vm->PreFork();
 }
 
-void JSNApi::postFork(EcmaVM *vm, const RuntimeOption &option)
+void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
 {
     JSRuntimeOptions &jsOption = vm->GetJSOptions();
     LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
@@ -397,7 +397,7 @@ void JSNApi::postFork(EcmaVM *vm, const RuntimeOption &option)
         vm->LoadAOTFiles();
     }
 
-    vm->postFork();
+    vm->PostFork();
 }
 
 void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
