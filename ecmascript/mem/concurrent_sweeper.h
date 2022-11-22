@@ -77,7 +77,7 @@ public:
         return enableType_ == EnableConcurrentSweepType::DISABLE ||
             enableType_ == EnableConcurrentSweepType::CONFIG_DISABLE;
     }
-    
+
     bool IsRequestDisabled() const
     {
         return enableType_ == EnableConcurrentSweepType::REQUEST_DISABLE;
@@ -90,7 +90,8 @@ public:
 private:
     class SweeperTask : public Task {
     public:
-        SweeperTask(ConcurrentSweeper *sweeper, MemSpaceType type) : sweeper_(sweeper), type_(type) {};
+        SweeperTask(int32_t id, ConcurrentSweeper *sweeper, MemSpaceType type)
+            : Task(id), sweeper_(sweeper), type_(type) {};
         ~SweeperTask() override = default;
         bool Run(uint32_t threadIndex) override;
 

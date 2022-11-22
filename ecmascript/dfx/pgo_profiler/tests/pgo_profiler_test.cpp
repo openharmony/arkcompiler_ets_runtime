@@ -16,6 +16,7 @@
 #include "gtest/gtest.h"
 
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_thread.h"
@@ -62,7 +63,11 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     PGOProfilerLoader loader;
     loader.LoadProfiler("ark-profiler/profiler.aprof", 2);
     CString expectRecordName = "test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
+#else
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
+#endif
     unlink("ark-profiler/profiler.aprof");
     rmdir("ark-profiler/");
 }
@@ -102,14 +107,13 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     PGOProfilerLoader loader;
     loader.LoadProfiler("ark-profiler1/profiler.aprof", 2);
     CString expectRecordName = "test";
-#if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(20)));
-#else
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(20)));
-#endif
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(15)));
+#else
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(15)));
+#endif
     unlink("ark-profiler1/profiler.aprof");
     rmdir("ark-profiler1/");
 }
@@ -144,12 +148,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     loader.LoadProfiler("ark-profiler2/profiler.aprof", 2);
     CString expectRecordName = "test";
     CString expectRecordName1 = "test1";
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(loader.Match(expectRecordName1, EntityId(15)));
+    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
 #else
-    ASSERT_TRUE(!loader.Match(expectRecordName1, EntityId(15)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
 #endif
+    ASSERT_TRUE(loader.Match(expectRecordName1, EntityId(15)));
     unlink("ark-profiler2/profiler.aprof");
     rmdir("ark-profiler2/");
 }
@@ -277,7 +281,11 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(15)));
 
     loader.LoadProfiler("ark-profiler5/profiler.aprof", 2);
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(15)));
+#else
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(15)));
+#endif
 
     unlink("ark-profiler5/profiler.aprof");
     rmdir("ark-profiler5/profiler");
@@ -346,9 +354,59 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerLoaderNoHotMethod)
     PGOProfilerLoader loader;
     loader.LoadProfiler("ark-profiler8/profiler.aprof", 2);
     CString expectRecordName = "test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
+#else
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
+#endif
 
     unlink("ark-profiler8/profiler.aprof");
     rmdir("ark-profiler8/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
+{
+    mkdir("ark-profiler9/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    RuntimeOption option;
+    option.SetEnableProfile(true);
+    option.SetProfileDir("ark-profiler9/");
+    vm_ = JSNApi::CreateJSVM(option);
+
+    for (int i = 0; i < 5; i++) {
+        PGOProfilerManager::GetInstance()->PostSaveTask();
+        PGOProfilerManager::GetInstance()->TerminateSaveTask();
+    }
+
+    JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
+    for (int i = 0; i < 31; i++) {
+        MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(i));
+        JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
+        JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+        func->SetModule(vm_->GetJSThread(), recordName);
+        vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+        if (i % 3 == 0) {
+            vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+        }
+    }
+
+    JSNApi::DestroyJSVM(vm_);
+
+    PGOProfilerLoader loader;
+    loader.LoadProfiler("ark-profiler9/profiler.aprof", 2);
+    CString expectRecordName = "test";
+    for (int i = 0; i < 31; i++) {
+        if (i % 3 == 0) {
+            ASSERT_TRUE(loader.Match(expectRecordName, EntityId(i)));
+        } else {
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+            ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(i)));
+#else
+            ASSERT_TRUE(loader.Match(expectRecordName, EntityId(i)));
+#endif
+        }
+    }
+
+    unlink("ark-profiler9/profiler.aprof");
+    rmdir("ark-profiler9/");
 }
 }  // namespace panda::test

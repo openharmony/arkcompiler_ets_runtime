@@ -120,7 +120,7 @@ private:
 
     class MarkerTask : public Task {
     public:
-        explicit MarkerTask(Heap *heap) : heap_(heap) {}
+        explicit MarkerTask(int32_t id, Heap *heap) : Task(id), heap_(heap) {}
         ~MarkerTask() override = default;
         bool Run(uint32_t threadId) override;
 

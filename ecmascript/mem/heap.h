@@ -455,7 +455,8 @@ private:
 
     class ParallelGCTask : public Task {
     public:
-        ParallelGCTask(Heap *heap, ParallelGCTaskPhase taskPhase) : heap_(heap), taskPhase_(taskPhase) {};
+        ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
+            : Task(id), heap_(heap), taskPhase_(taskPhase) {};
         ~ParallelGCTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -469,7 +470,8 @@ private:
 
     class AsyncClearTask : public Task {
     public:
-        AsyncClearTask(Heap *heap, TriggerGCType type) : heap_(heap), gcType_(type) {}
+        AsyncClearTask(int32_t id, Heap *heap, TriggerGCType type)
+            : Task(id), heap_(heap), gcType_(type) {}
         ~AsyncClearTask() override = default;
         bool Run(uint32_t threadIndex) override;
 

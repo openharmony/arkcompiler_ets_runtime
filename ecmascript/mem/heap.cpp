@@ -266,7 +266,8 @@ void Heap::Resume(TriggerGCType gcType)
     hugeObjectSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
         clearTaskFinished_ = false;
-        Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<AsyncClearTask>(this, gcType));
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, gcType));
     } else {
         ReclaimRegions(gcType);
     }
@@ -300,7 +301,7 @@ void Heap::DisableParallelGC()
     stwYoungGC_->ConfigParallelGC(false);
     sweeper_->ConfigConcurrentSweep(false);
     concurrentMarker_->ConfigConcurrentMark(false);
-    Taskpool::GetCurrentTaskpool()->Destroy();
+    Taskpool::GetCurrentTaskpool()->Destroy(GetJSThread()->GetThreadId());
 }
 
 void Heap::EnableParallelGC()
@@ -812,7 +813,8 @@ void Heap::WaitConcurrentMarkingFinished()
 void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 {
     IncreaseTaskCount();
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelGCTask>(this, gcTask));
+    Taskpool::GetCurrentTaskpool()->PostTask(
+        std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask));
 }
 
 void Heap::IncreaseTaskCount()

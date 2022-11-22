@@ -76,7 +76,7 @@ void CpuProfiler::StartCpuProfilerForInfo()
     vm_->GetJSThread()->SetCallNapiGetStack(true);
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SamplingProcessor>(generator_, interval_));
+        std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
 }
 
 void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
@@ -132,7 +132,7 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     vm_->GetJSThread()->SetCallNapiGetStack(true);
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SamplingProcessor>(generator_, interval_));
+        std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
 }
 
 std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
@@ -267,7 +267,7 @@ void CpuProfiler::GetFrameStack(FrameHandler &frameHandler)
             if (method == nullptr) {
                 continue;
             }
-            
+
             void *methodIdentifier = GetMethodIdentifier(method, frameHandler);
             if (stackInfo.count(methodIdentifier) == 0) {
                 if (UNLIKELY(!ParseMethodInfo(methodIdentifier, frameHandler, method->GetJSPandaFile(), false))) {
