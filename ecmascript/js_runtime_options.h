@@ -48,92 +48,10 @@ struct AsmInterParsedOption {
     bool enableAsm {false};
 };
 
-const std::string COMMON_HELP_HEAD_MSG =
-    "Usage: panda [OPTIONS] [file1:file2:file3] [entrypoint] -- [arguments]\n"
-    "\n"
-    "optional arguments:\n";
-
-const std::string STUB_HELP_HEAD_MSG =
-    "Usage: ark_stub_compiler [OPTIONS]\n"
-    "\n"
-    "optional arguments:\n";
-
-const std::string HELP_OPTION_MSG =
-    "--aot-file: Path (file suffix not needed) to AOT output file. Default: \"aot_file\"\n"
-    "--ark-properties: set ark properties\n"
-    "--asm-interpreter: Enable asm interpreter. Default: true\n"
-    "--asm-opcode-disable-range: Opcode range when asm interpreter is enabled.\n"
-    "--assert-types: Enable type assertion for type inference tests. Default: false\n"
-    "--builtins-dts: builtins.d.abc file path for AOT.\n"
-    "--compiler-log: log Option For aot compiler and stub compiler,\n"
-    "       \"none\": no log,\n"
-    "       \"allllircirasm or all012\": print llIR file, CIR log and asm log for all methods,\n"
-    "       \"allcir or all0\": print cir info for all methods,\n"
-    "       \"allllir or all1\": print llir info for all methods,\n"
-    "       \"allasm or all2\": print asm log for all methods,\n"
-    "       \"alltype or all3\": print type infer log for all methods,\n"
-    "       \"cerllircirasm or cer0112\": print llIR file, CIR log and asm log for certain method defined "
-                                          "in 'mlist-for-log',\n"
-    "       \"cercir or cer0\": print cir info for certain method illustrated in 'mlist-for-log',\n"
-    "       \"cerasm or cer2\": print asm log for certain method illustrated in 'mlist-for-log',\n"
-    "       Default: \"none\"\n"
-    "--compiler-log-methods: specific method list for compiler log output, only used when compiler-log."
-                            "Default: \"none\"\n"
-    "--compiler-log-snapshot: Enable to print snapshot information. Default: false\n"
-    "--compiler-log-time: Enable to print pass compiler time. Default: false\n"
-    "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
-    "--enable-bytecode-trace: enable tracing bytecode for aot runtime. Default: false\n"
-    "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
-    "--enable-force-gc: enable force gc when allocating object. Default: true\n"
-    "--enable-ic: switch of inline cache. Default: true\n"
-    "--enable-runtime-stat: enable statistics of runtime state. Default: false\n"
-    "--enable-type-lowering: enable TSTypeLowering and TypeLowering for aot runtime. Default:true\n"
-    "--entry-point: full name of entrypoint function or method. Default: _GLOBAL::func_main_0\n"
-    "--force-full-gc: if true trigger full gc, else trigger semi and old gc. Default: true\n"
-    "--framework-abc-file: snapshot file. Default: \"strip.native.min.abc\"\n"
-    "--gcThreadNum: set gcThreadNum. Default: 7\n"
-    "--heap-size-limit: Max heap size. Default: 512MB\n"
-    "--help: Print this message and exit\n"
-    "--icu-data-path: Path to generated icu data file. Default: \"default\"\n"
-    "--IsWorker: whether is worker vm. Default: false\n"
-    "--log-level: Log level. Possible values: [\"debug\", \"info\", \"warning\", \"error\", \"fatal\"].\n"
-    "--log-components: Enable logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
-        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
-    "--log-debug: Enable debug or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
-        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
-    "--log-error: Enable error or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
-        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
-    "--log-fatal: Enable fatal logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
-        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
-    "--log-info: Enable info or above logs from specified components. Possible values: [\"all\", \"gc\", \"ecma\","
-        "\"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
-    "--log-warning: Enable warning or above logs from specified components. Possible values: [\"all\", \"gc\","
-        "\"ecma\", \"interpreter\", \"debugger\", \"compiler\", \"all\"]. Default: [\"all\"]\n"
-    "--longPauseTime: set longPauseTime. Default: 40ms\n"
-    "--maxAotMethodSize: enable aot to skip too large method. Default size: 32 KB\n"
-    "--maxNonmovableSpaceCapacity: set max nonmovable space capacity\n"
-    "--merge-abc: abc file is merge abc. Default: false\n"
-    "--opt-level: Optimization level configuration on llvm back end. Default: \"3\"\n"
-    "--options: Print compiler and runtime options\n"
-    "--print-any-types: Enable TypeFilter to print any types after type inference. Default: false\n"
-    "--reloc-mode: Relocation configuration on llvm back end. Default: \"2\"\n"
-    "--serializer-buffer-size-limit: Max serializer buffer size used by the VM. Default: 2GB\n"
-    "--snapshot-file: snapshot file. Default: \"/system/etc/snapshot\"\n"
-    "--startup-time: Print the start time of command execution. Default: false\n"
-    "--stub-file: Path of file includes common stubs module compiled by stub compiler. Default: \"stub.an\"\n"
-    "--enable-pgo-profiler: Enable pgo profiler to sample jsfunction call and output to file. Default: false\n"
-    "--pgo-hotness-threshold: set hotness threshold for pgo in aot compiler. Default: 2\n"
-    "--pgo-profiler-path: The pgo sampling profiler file output dir for application or ark_js_vm runtime,"
-        "or the sampling profiler file input dir for AOT PGO compiler. Default: ""\n"
-    "--target-triple: target triple for aot compiler or stub compiler.\n"
-    "--enable-print-execute-time: enable print execute pandafile spent time\"\n"
-    "       Possible values: [\"x86_64-unknown-linux-gnu\", \"arm-unknown-linux-gnu\", "
-                             "\"aarch64-unknown-linux-gnu\"].\n"
-    "       Default: \"x86_64-unknown-linux-gnu\"\n";
-
-const std::string HELP_TAIL_MSG =
-    "Tail arguments:\n"
-    "files: path to pandafiles\n";
+extern const std::string PUBLIC_API COMMON_HELP_HEAD_MSG;
+extern const std::string PUBLIC_API STUB_HELP_HEAD_MSG;
+extern const std::string PUBLIC_API HELP_OPTION_MSG;
+extern const std::string PUBLIC_API HELP_TAIL_MSG;
 
 enum CommandValues {
     OPTION_DEFAULT,
