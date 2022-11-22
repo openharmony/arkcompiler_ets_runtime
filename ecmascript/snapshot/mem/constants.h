@@ -35,6 +35,7 @@ public:
 
     // object or space align up
     static constexpr size_t PAGE_SIZE_ALIGN_UP = 4_KB;
+    static constexpr size_t FREE_OBJECT_MIN_SIZE = 16;
     static constexpr size_t MAX_UINT_16 = 0xFFFF;
     static constexpr size_t MAX_UINT_32 = 0xFFFFFFFF;
     static constexpr size_t MAX_OBJECT_INDEX = 0x0FFFFFFF;

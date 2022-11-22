@@ -230,9 +230,9 @@ public:
 
     ~AOTFileGenerator() override = default;
 
-    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler)
+    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, BytecodeInfoCollector *bcInfoCollector)
     {
-        vm_->GetTSManager()->AddHClassToSnapshotConstantPool();
+        vm_->GetTSManager()->ProcessSnapshotConstantPool(bcInfoCollector);
         modulePackage_.emplace_back(Module(llvmModule, assembler));
     }
 

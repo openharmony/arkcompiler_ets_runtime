@@ -1221,15 +1221,21 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
             ToUintPtr(fileRegion) + AlignUp(sizeof(Region),  static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
         // region wasted_ is used to record region index for snapshot
         size_t regionIndex = fileRegion->GetWastedSize();
-        regionIndexMap_.emplace(regionIndex, region);
-
         size_t liveObjectSize = 0;
         if (space->GetSpaceType() == MemSpaceType::SNAPSHOT_SPACE) {
             liveObjectSize = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
+            ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
         } else {
             liveObjectSize = fileRegion->AliveObject();
+            size_t freeObjSize = region->end_ - region->packedData_.begin_- liveObjectSize;
+            ASSERT(freeObjSize >= 0);
+            // if region remain 8 bytes which is added to wasted,
+            // we should subtract it when calculate region index
+            if (freeObjSize < Constants::FREE_OBJECT_MIN_SIZE) {
+                regionIndex -= freeObjSize;
+            }
         }
-        ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
+        regionIndexMap_.emplace(regionIndex, region);
 
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->packedData_.begin_), liveObjectSize);
         if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
