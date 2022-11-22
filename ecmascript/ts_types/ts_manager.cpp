@@ -866,12 +866,18 @@ bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
 
     if (IsBuiltinsDTSEnabled()) {
         uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::MATH);
-        auto gt = GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx));
-        return (funcGT == gt);
-    } else {
-        uint32_t localId = funcGT.GetLocalId();
-        return (localId == static_cast<uint32_t>(BuiltinTypeId::MATH));
+        const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
+        uint32_t mathOffset = GetBuiltinOffset(idx);
+        bool hasCreatedGT = HasCreatedGT(builtinPandaFile, mathOffset);
+        if (hasCreatedGT) {
+            auto gt = GetGTFromOffset(builtinPandaFile, mathOffset);
+            return (funcGT == gt);
+        }
+        return false;
     }
+
+    uint32_t localId = funcGT.GetLocalId();
+    return (localId == static_cast<uint32_t>(BuiltinTypeId::MATH));
 }
 
 bool TSManager::IsBuiltin(kungfu::GateType funcType) const

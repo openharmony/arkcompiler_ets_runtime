@@ -16,9 +16,7 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "libpandafile/class_data_accessor-inl.h"
+#include "libpandafile/code_data_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 template<class T, class... Args>
@@ -33,7 +31,7 @@ void BytecodeInfoCollector::ProcessClasses()
     MethodLiteral *methods = jsPandaFile_->GetMethodLiterals();
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     size_t methodIdx = 0;
-    std::map<const uint8_t *, size_t> processedInsns;
+    std::map<const uint8_t *, std::pair<size_t, uint32_t>> processedInsns;
     Span<const uint32_t> classIndexes = jsPandaFile_->GetClasses();
 
     auto &mainMethodIndexes = bytecodeInfo_.GetMainMethodIndexes();
@@ -78,7 +76,7 @@ void BytecodeInfoCollector::ProcessClasses()
             auto it = processedInsns.find(insns);
             if (it == processedInsns.end()) {
                 CollectMethodPcsFromBC(codeSize, insns, methodLiteral);
-                processedInsns[insns] = methodPcInfos.size() - 1;
+                processedInsns[insns] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
             }
             SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
@@ -110,15 +108,34 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
     }
 }
 
-void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset, size_t index)
+void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
+                                                 const std::pair<size_t, uint32_t> &processedMethodInfo)
 {
+    auto processedMethodPcInfoIndex = processedMethodInfo.first;
+    auto processedMethodOffset = processedMethodInfo.second;
+    uint32_t numOfLexVars = 0;
+    LexicalEnvStatus status = LexicalEnvStatus::VIRTUAL_LEXENV;
     auto &methodList = bytecodeInfo_.GetMethodList();
+    // Methods with the same instructions in abc files have the same static information. Since
+    // information from bytecodes is collected only once, methods other than the processed method
+    // will obtain static information from the processed method.
+    auto processedIter = methodList.find(processedMethodOffset);
+    if (processedIter != methodList.end()) {
+        const MethodInfo &processedMethod = processedIter->second;
+        numOfLexVars = processedMethod.GetNumOfLexVars();
+        status = processedMethod.GetLexEnvStatus();
+    }
+
     auto iter = methodList.find(methodOffset);
     if (iter != methodList.end()) {
-        iter->second.methodPcInfoIndex = index;
+        MethodInfo &methodInfo = iter->second;
+        methodInfo.SetMethodPcInfoIndex(processedMethodPcInfoIndex);
+        methodInfo.SetNumOfLexVars(numOfLexVars);
+        methodInfo.SetLexEnvStatus(status);
         return;
     }
-    methodList.emplace(methodOffset, MethodInfo(GetMethodInfoID(), index, 0));
+    MethodInfo info(GetMethodInfoID(), processedMethodPcInfoIndex, LexEnv::DEFAULT_ROOT, numOfLexVars, status);
+    methodList.emplace(methodOffset, info);
 }
 
 void BytecodeInfoCollector::CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset)
@@ -130,23 +147,26 @@ void BytecodeInfoCollector::CollectInnerMethods(const MethodLiteral *method, uin
 void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset)
 {
     auto &methodList = bytecodeInfo_.GetMethodList();
-    size_t methodInfoId = 0;
+    uint32_t methodInfoId = 0;
     auto methodIter = methodList.find(methodId);
     if (methodIter != methodList.end()) {
-        methodInfoId = methodIter->second.methodInfoIndex;
-        methodIter->second.innerMethods.emplace_back(innerMethodOffset);
+        MethodInfo &methodInfo = methodIter->second;
+        methodInfoId = methodInfo.GetMethodInfoIndex();
+        methodInfo.AddInnerMethod(innerMethodOffset);
     } else {
         methodInfoId = GetMethodInfoID();
-        methodList.emplace(methodId, MethodInfo(methodInfoId, 0, 0));
-        methodList.at(methodId).innerMethods.emplace_back(innerMethodOffset);
+        MethodInfo info(methodInfoId, 0, LexEnv::DEFAULT_ROOT);
+        methodList.emplace(methodId, info);
+        methodList.at(methodId).AddInnerMethod(innerMethodOffset);
     }
 
     auto innerMethodIter = methodList.find(innerMethodOffset);
     if (innerMethodIter != methodList.end()) {
-        innerMethodIter->second.lexEnv.outmethodId = methodInfoId;
+        innerMethodIter->second.SetOutMethodId(methodInfoId);
         return;
     }
-    methodList.emplace(innerMethodOffset, MethodInfo(GetMethodInfoID(), 0, static_cast<uint32_t>(methodInfoId)));
+    MethodInfo innerInfo(GetMethodInfoID(), 0, methodInfoId);
+    methodList.emplace(innerMethodOffset, innerInfo);
 }
 
 void BytecodeInfoCollector::CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index)
@@ -164,12 +184,13 @@ void BytecodeInfoCollector::NewLexEnvWithSize(const MethodLiteral *method, uint6
     auto methodOffset = method->GetMethodId().GetOffset();
     auto iter = methodList.find(methodOffset);
     if (iter != methodList.end()) {
-        iter->second.lexEnv.lexVarTypes.resize(numOfLexVars, GateType::AnyType());
-        iter->second.lexEnv.status = LexicalEnvStatus::REALITY_LEXENV;
+        MethodInfo &methodInfo = iter->second;
+        methodInfo.SetNumOfLexVars(numOfLexVars);
+        methodInfo.SetLexEnvStatus(LexicalEnvStatus::REALITY_LEXENV);
         return;
     }
-    methodList.emplace(methodOffset, MethodInfo(GetMethodInfoID(), 0, 0, numOfLexVars,
-                                                LexicalEnvStatus::REALITY_LEXENV));
+    MethodInfo info(GetMethodInfoID(), 0, LexEnv::DEFAULT_ROOT, numOfLexVars, LexicalEnvStatus::REALITY_LEXENV);
+    methodList.emplace(methodOffset, info);
 }
 
 void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(const MethodLiteral *method,
@@ -361,44 +382,42 @@ void BytecodeInfoCollector::CollectConstantPoolIndexInfoFromBC(const BytecodeIns
 }
 
 LexEnvManager::LexEnvManager(BCInfo &bcInfo)
-    : lexEnvs_(bcInfo.GetMethodList().size(), nullptr)
+    : lexEnvs_(bcInfo.GetMethodList().size())
 {
-    auto &methodList = bcInfo.GetMethodList();
-    for (auto &it : methodList) {
-        LexEnv *lexEnv = &(it.second.lexEnv);
-        lexEnvs_[it.second.methodInfoIndex] = lexEnv;
+    const auto &methodList = bcInfo.GetMethodList();
+    for (const auto &it : methodList) {
+        const MethodInfo &methodInfo = it.second;
+        lexEnvs_[methodInfo.GetMethodInfoIndex()].Inilialize(methodInfo.GetOutMethodId(),
+                                                             methodInfo.GetNumOfLexVars(),
+                                                             methodInfo.GetLexEnvStatus());
     }
 }
 
 void LexEnvManager::SetLexEnvElementType(uint32_t methodId, uint32_t level, uint32_t slot, const GateType &type)
 {
     uint32_t offset = GetTargetLexEnv(methodId, level);
-    auto &lexVarTypes = lexEnvs_[offset]->lexVarTypes;
-    if (slot < lexVarTypes.size()) {
-        lexVarTypes[slot] = type;
-    }
+    lexEnvs_[offset].SetLexVarType(slot, type);
 }
 
 GateType LexEnvManager::GetLexEnvElementType(uint32_t methodId, uint32_t level, uint32_t slot) const
 {
     uint32_t offset = GetTargetLexEnv(methodId, level);
-    auto &lexVarTypes = lexEnvs_[offset]->lexVarTypes;
-    if (slot < lexVarTypes.size()) {
-        return lexVarTypes[slot];
-    }
-    return GateType::AnyType();
+    return lexEnvs_[offset].GetLexVarType(slot);
 }
 
 uint32_t LexEnvManager::GetTargetLexEnv(uint32_t methodId, uint32_t level) const
 {
     auto offset = methodId;
-    auto status = lexEnvs_[offset]->status;
-    while ((level > 0) || (status != LexicalEnvStatus::REALITY_LEXENV)) {
-        offset = lexEnvs_[offset]->outmethodId;
+    auto status = GetLexEnvStatus(offset);
+    while (!HasDefaultRoot(offset) && ((level > 0) || (status != LexicalEnvStatus::REALITY_LEXENV))) {
+        offset = GetOutMethodId(offset);
+        if (HasDefaultRoot(offset)) {
+            break;
+        }
         if (status == LexicalEnvStatus::REALITY_LEXENV && level != 0) {
             --level;
         }
-        status = lexEnvs_[offset]->status;
+        status = GetLexEnvStatus(offset);
     }
     return offset;
 }
