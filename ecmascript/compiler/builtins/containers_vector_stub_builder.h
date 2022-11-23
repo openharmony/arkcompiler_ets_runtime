@@ -23,7 +23,7 @@ class ContainersVectorStubBuilder : public StubBuilder {
 public:
     explicit ContainersVectorStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~ContainersVectorStubBuilder() = default;
+    ~ContainersVectorStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersVectorStubBuilder);
     NO_COPY_SEMANTIC(ContainersVectorStubBuilder);
     void GenerateCircuit() override {}

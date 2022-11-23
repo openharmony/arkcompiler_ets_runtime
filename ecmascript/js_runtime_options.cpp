@@ -542,14 +542,14 @@ bool JSRuntimeOptions::ParseIntParam(const std::string &option, int* argInt)
     return true;
 }
 
-bool JSRuntimeOptions::ParseUint32Param(const std::string &option, uint32_t *argUint32)
+bool JSRuntimeOptions::ParseUint32Param(const std::string &option, uint32_t *argUInt32)
 {
     if (StartsWith(optarg, "0x")) {
         const int HEX = 16;
-        *argUint32 = std::strtoull(optarg, nullptr, HEX);
+        *argUInt32 = std::strtoull(optarg, nullptr, HEX);
     } else {
         const int DEC = 10;
-        *argUint32 = std::strtoull(optarg, nullptr, DEC);
+        *argUInt32 = std::strtoull(optarg, nullptr, DEC);
     }
 
     if (errno == ERANGE) {

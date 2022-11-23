@@ -23,7 +23,7 @@ class ContainersDequeStubBuilder : public StubBuilder {
 public:
     explicit ContainersDequeStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~ContainersDequeStubBuilder() = default;
+    ~ContainersDequeStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersDequeStubBuilder);
     NO_COPY_SEMANTIC(ContainersDequeStubBuilder);
     void GenerateCircuit() override {}

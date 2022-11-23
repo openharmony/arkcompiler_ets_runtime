@@ -284,10 +284,10 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
 }
 
 void BytecodeInfoCollector::CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns,
-                                                               const MethodLiteral *methodliteral)
+                                                               const MethodLiteral *method)
 {
     BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
-    uint32_t methodOffset = methodliteral->GetMethodId().GetOffset();
+    uint32_t methodOffset = method->GetMethodId().GetOffset();
     switch (opcode) {
         case BytecodeInstruction::Opcode::LDA_STR_ID16:
         case BytecodeInstruction::Opcode::STOWNBYNAME_IMM8_ID16_V8:

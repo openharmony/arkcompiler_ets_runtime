@@ -22,7 +22,7 @@ class BuiltinsStringStubBuilder : public StubBuilder {
 public:
     explicit BuiltinsStringStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~BuiltinsStringStubBuilder() = default;
+    ~BuiltinsStringStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsStringStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsStringStubBuilder);
     void GenerateCircuit() override {}

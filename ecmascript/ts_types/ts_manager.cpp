@@ -794,7 +794,7 @@ void TSManager::ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInf
 }
 
 void TSManager::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
-                                   JSHandle<ConstantPool> constantPool,
+                                   JSHandle<ConstantPool> snapshotConstantPool,
                                    kungfu::BytecodeInfoCollector *bcInfoCollector)
 {
     JSMutableHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue::Undefined());
@@ -819,7 +819,7 @@ void TSManager::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constan
         aotLiteralInfo->Set(thread_, i, JSTaggedValue(methodOffset));
     }
 
-    constantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
+    snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
 }
 
 void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap)
@@ -1023,7 +1023,7 @@ JSHandle<TSTypeTable> TSModuleTable::GetTSTypeTable(JSThread *thread, int entry)
 int TSModuleTable::GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiPath) const
 {
     uint32_t length = GetNumberOfTSTypeTables();
-    for (uint32_t i = 0; i < length; i ++) {
+    for (uint32_t i = 0; i < length; i++) {
         JSHandle<EcmaString> valueString = GetAmiPathByModuleId(thread, i);
         if (EcmaStringAccessor::StringsAreEqual(*amiPath, *valueString)) {
             return i;

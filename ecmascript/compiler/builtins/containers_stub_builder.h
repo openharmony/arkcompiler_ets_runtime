@@ -53,7 +53,7 @@ class ContainersStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit ContainersStubBuilder(StubBuilder *parent)
         : BuiltinsStubBuilder(parent) {}
-    ~ContainersStubBuilder() = default;
+    ~ContainersStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersStubBuilder);
     NO_COPY_SEMANTIC(ContainersStubBuilder);
     void GenerateCircuit() override {}

@@ -95,21 +95,21 @@ private:
     class EvacuateWorkload : public Workload {
     public:
         EvacuateWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
-        ~EvacuateWorkload() = default;
+        ~EvacuateWorkload() override = default;
         bool Process(bool isMain) override;
     };
 
     class UpdateRSetWorkload : public Workload {
     public:
         UpdateRSetWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
-        ~UpdateRSetWorkload() = default;
+        ~UpdateRSetWorkload() override = default;
         bool Process(bool isMain) override;
     };
 
     class UpdateNewRegionWorkload : public Workload {
     public:
         UpdateNewRegionWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
-        ~UpdateNewRegionWorkload() = default;
+        ~UpdateNewRegionWorkload() override = default;
         bool Process(bool isMain) override;
     };
 
@@ -117,7 +117,7 @@ private:
     public:
         UpdateAndSweepNewRegionWorkload(ParallelEvacuator *evacuator, Region *region)
             : Workload(evacuator, region) {}
-        ~UpdateAndSweepNewRegionWorkload() = default;
+        ~UpdateAndSweepNewRegionWorkload() override = default;
         bool Process(bool isMain) override;
     };
 

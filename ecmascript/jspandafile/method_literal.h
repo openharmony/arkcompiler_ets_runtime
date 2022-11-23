@@ -239,7 +239,7 @@ public:
 
     void SetSlotSize(uint32_t size)
     {
-        size = size > MAX_SLOT_SIZE ? MAX_SLOT_SIZE: size;
+        size = size > MAX_SLOT_SIZE ? MAX_SLOT_SIZE : size;
         literalInfo_ = SlotSizeBits::Update(literalInfo_, size);
     }
 

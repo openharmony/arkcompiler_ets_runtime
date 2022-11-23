@@ -50,10 +50,10 @@ class InterpreterStubBuilder : public StubBuilder {
 public:
     InterpreterStubBuilder(CallSignature *callSignature, Environment *env)
         : StubBuilder(callSignature, env) {}
-    ~InterpreterStubBuilder() = default;
+    ~InterpreterStubBuilder() override = default;
     NO_MOVE_SEMANTIC(InterpreterStubBuilder);
     NO_COPY_SEMANTIC(InterpreterStubBuilder);
-    virtual void GenerateCircuit() = 0;
+    virtual void GenerateCircuit() override = 0;
 
     inline void SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val);
     inline GateRef GetVregValue(GateRef sp, GateRef idx);
@@ -157,7 +157,7 @@ class InterpreterToolsStubBuilder : private InterpreterStubBuilder {
 public:
     explicit InterpreterToolsStubBuilder(CallSignature *callSignature, Environment *env)
         : InterpreterStubBuilder(callSignature, env) {}
-    ~InterpreterToolsStubBuilder() = default;
+    ~InterpreterToolsStubBuilder() override = default;
     NO_MOVE_SEMANTIC(InterpreterToolsStubBuilder);
     NO_COPY_SEMANTIC(InterpreterToolsStubBuilder);
     void GenerateCircuit() override {}

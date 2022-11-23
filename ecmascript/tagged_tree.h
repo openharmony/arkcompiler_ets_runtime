@@ -250,7 +250,7 @@ public:
         }
         int index = static_cast<int>(EntryToIndex(parent) + Derived::ENTRY_RIGHT_CHILD_INDEX);
         JSTaggedValue child = Get(index);
-        return child.IsHole() ? -1: child.GetInt();
+        return child.IsHole() ? -1 : child.GetInt();
     }
 
 protected:

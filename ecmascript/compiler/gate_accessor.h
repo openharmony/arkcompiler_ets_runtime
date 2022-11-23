@@ -63,11 +63,11 @@ public:
             return out_->GetGateConst()->GetOpCode();
         }
 
-        friend bool operator== (const ConstUseIterator& a, const ConstUseIterator& b)
+        friend bool operator == (const ConstUseIterator& a, const ConstUseIterator& b)
         {
             return a.out_ == b.out_;
         };
-        friend bool operator!= (const ConstUseIterator& a, const ConstUseIterator& b)
+        friend bool operator != (const ConstUseIterator& a, const ConstUseIterator& b)
         {
             return a.out_ != b.out_;
         };
@@ -117,11 +117,11 @@ public:
             return out_->GetGateConst()->GetOpCode();
         }
 
-        friend bool operator== (const UseIterator& a, const UseIterator& b)
+        friend bool operator == (const UseIterator& a, const UseIterator& b)
         {
             return a.out_ == b.out_;
         };
-        friend bool operator!= (const UseIterator& a, const UseIterator& b)
+        friend bool operator != (const UseIterator& a, const UseIterator& b)
         {
             return a.out_ != b.out_;
         };

@@ -71,7 +71,7 @@ struct FrameInfoTemp {
 struct MethodKey {
     void *methodIdentifier = nullptr;
     int parentId = 0;
-    bool operator< (const MethodKey &methodKey) const
+    bool operator < (const MethodKey &methodKey) const
     {
         return parentId < methodKey.parentId ||
                (parentId == methodKey.parentId && methodIdentifier < methodKey.methodIdentifier);

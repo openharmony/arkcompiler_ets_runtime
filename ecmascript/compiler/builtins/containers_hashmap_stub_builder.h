@@ -23,7 +23,7 @@ class ContainersHashMapStubBuilder : public StubBuilder {
 public:
     explicit ContainersHashMapStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~ContainersHashMapStubBuilder() = default;
+    ~ContainersHashMapStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersHashMapStubBuilder);
     NO_COPY_SEMANTIC(ContainersHashMapStubBuilder);
     void GenerateCircuit() override {}
