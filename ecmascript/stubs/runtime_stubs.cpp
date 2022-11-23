@@ -2123,15 +2123,39 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
     return index;
 }
 
-JSTaggedType RuntimeStubs::AotFloatMod(double x, double y)
+JSTaggedType RuntimeStubs::FloatMod(double x, double y)
 {
     double result = std::fmod(x, y);
     return JSTaggedValue(result).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::FloatMod(double x, double y)
+JSTaggedType RuntimeStubs::FloatSqrt(double x)
 {
-    double result = std::fmod(x, y);
+    double result = std::sqrt(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatCos(double x)
+{
+    double result = std::cos(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatSin(double x)
+{
+    double result = std::sin(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatACos(double x)
+{
+    double result = std::acos(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatATan(double x)
+{
+    double result = std::atan(x);
     return JSTaggedValue(result).GetRawData();
 }
 

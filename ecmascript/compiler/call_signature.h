@@ -369,8 +369,12 @@ private:
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
-    V(AotFloatMod)                          \
     V(FloatMod)                             \
+    V(FloatSqrt)                            \
+    V(FloatCos)                             \
+    V(FloatSin)                             \
+    V(FloatACos)                            \
+    V(FloatATan)                            \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
     V(StoreBarrier)                         \

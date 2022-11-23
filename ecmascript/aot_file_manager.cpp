@@ -23,7 +23,7 @@
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/deoptimizer.h"
-#include "ecmascript/Relocator.h"
+#include "ecmascript/relocator.h"
 #include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/message_string.h"

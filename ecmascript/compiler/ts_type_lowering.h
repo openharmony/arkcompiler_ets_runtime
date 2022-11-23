@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 
@@ -80,6 +81,7 @@ private:
     void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget, GateRef glue);
 
     GateRef GetSuperConstructor(GateRef ctor);
+    void LowerCallThis1Imm8V8V8(GateRef gate);
 
     // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
@@ -89,6 +91,8 @@ private:
     template<TypedUnOp Op>
     void SpeculateNumber(GateRef gate);
     void SpeculateConditionJump(GateRef gate);
+    void SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID Op);
+    BuiltinsStubCSigns::ID GetBuiltinId(GateRef func, GateRef receiver);
     template<TypedUnOp Op>
     GateRef AppendOverflowCheck(GateRef typeCheck, GateRef intVal);
     Circuit *circuit_ {nullptr};

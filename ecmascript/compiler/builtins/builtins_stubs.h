@@ -96,7 +96,7 @@ public:
         void GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, \
                                  GateRef numArgs);                                                  \
     };
-    BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS)
+    ASM_INTERPRETER_BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS)
 #undef DECLARE_BUILTINS_STUB_CLASS
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_STUB_H

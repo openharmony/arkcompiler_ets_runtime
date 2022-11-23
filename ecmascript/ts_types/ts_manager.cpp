@@ -684,6 +684,19 @@ JSHandle<TSTypeTable> TSManager::GetRuntimeTypeTable() const
     return runtimeTable;
 }
 
+std::string TSManager::GetFuncName(kungfu::GateType type) const
+{
+    GlobalTSTypeRef gt = type.GetGTRef();
+    ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
+    auto name = functionType->GetName();
+    EcmaStringAccessor acc(name);
+    std::string nameStr = acc.ToStdString();
+    return nameStr;
+}
+
 uint32_t TSManager::GetFunctionTypeLength(GlobalTSTypeRef gt) const
 {
     ASSERT(GetTypeKind(gt) == TSTypeKind::FUNCTION);
@@ -1053,6 +1066,30 @@ void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &
             }
         }
     }
+}
+
+bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
+{
+    GlobalTSTypeRef funcGt = funcType.GetGTRef();
+    uint32_t moduleId = funcGt.GetModuleId();
+    if (moduleId != static_cast<uint32_t>(MTableIdx::BUILTIN)) {
+        return false;
+    }
+    uint32_t localId = funcGt.GetLocalId();
+    if (localId == TSManager::BUILTINS_MATH_ID) {
+        return true;
+    }
+    return false;
+}
+
+bool TSManager::IsBuiltin(kungfu::GateType funcType) const
+{
+    GlobalTSTypeRef funcGt = funcType.GetGTRef();
+    uint32_t moduleId = funcGt.GetModuleId();
+    if (moduleId != static_cast<uint32_t>(MTableIdx::BUILTIN)) {
+        return false;
+    }
+    return true;
 }
 
 void TSModuleTable::Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable)

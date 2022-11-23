@@ -314,6 +314,10 @@ private:
         GLUE,
         FIRST_PARAMETER
     };
+    enum class CallExceptionKind : bool {
+        HAS_BC_OFFSET = true,
+        NO_BC_OFFSET = false
+    };
     LLVMRealPredicate ConvertLLVMPredicateFromFCMP(FCmpCondition cond);
     LLVMIntPredicate ConvertLLVMPredicateFromICMP(ICmpCondition cond);
     LLVMValueRef GetGlue(const std::vector<GateRef> &inList);
@@ -323,9 +327,9 @@ private:
     LLVMValueRef GetBCDebugStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBaseOffset(GateRef gate, LLVMValueRef glue);
-    bool NeedBCOffset(OpCode op);
+    CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
     void ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueRef &bcOffset, const std::vector<GateRef> &inList,
-                                    OpCode op);
+                                    CallExceptionKind kind);
     void SaveLexicalEnvOnFrame(LLVMValueRef value);
     LLVMTypeRef GetExperimentalDeoptTy();
     LLVMValueRef GetExperimentalDeopt(LLVMModuleRef &module);

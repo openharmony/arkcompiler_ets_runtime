@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_H
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/gate.h"
@@ -210,8 +211,11 @@ public:
     // low level interface
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef TypeCheck(GateType type, GateRef gate);
+    GateRef CallTargetCheck(GateRef function, GateRef id);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
+    GateRef TypedCallOperator(MachineType type, GateRef state, GateRef depend, std::vector<GateRef> inList);
+    inline GateRef TypedCallBuiltin(GateRef x, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
@@ -255,6 +259,7 @@ public:
     GateRef BinaryLogic(OpCode opcode, GateRef left, GateRef right);
     GateRef BinaryCmp(OpCode opcode, GateRef left, GateRef right, BitField condition);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
+    GateRef GetCallBuiltinId(GateRef method);
     Circuit *GetCircuit() const
     {
         return circuit_;

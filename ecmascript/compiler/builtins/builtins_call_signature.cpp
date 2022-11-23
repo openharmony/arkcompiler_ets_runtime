@@ -34,14 +34,15 @@ void BuiltinsStubCSigns::Initialize()
                 static_cast<Environment*>(env)));                    \
     });
 
-    BUILTINS_STUB_LIST(INIT_SIGNATURES)
+    ASM_INTERPRETER_BUILTINS_STUB_LIST(INIT_SIGNATURES)
 #undef INIT_SIGNATURES
     BuiltinsCallSignature::Initialize(&builtinsCSign_);
 }
 
 void BuiltinsStubCSigns::GetCSigns(std::vector<const CallSignature*>& outCSigns)
 {
-    for (size_t i = 0; i < NUM_OF_BUILTINS_STUBS; i++) {
+    const size_t firstStubId = BUILTINS_STUB_ID(NONE) + 1;
+    for (size_t i = firstStubId; i < NUM_OF_BUILTINS_STUBS; i++) {
         outCSigns.push_back(&callSigns_[i]);
     }
 }

@@ -685,21 +685,22 @@ LLVMValueRef LLVMIRBuilder::GetBuiltinsStubOffset(LLVMValueRef glue)
     return LLVMConstInt(glueType, JSThread::GlueData::GetBuiltinsStubEntriesOffset(compCfg_->Is32Bit()), 0);
 }
 
-// Only related to the call bytecode in Aot can record bcoffset
-bool LLVMIRBuilder::NeedBCOffset(OpCode op)
-{
-    return callConv_ == CallSignature::CallConv::WebKitJSCallConv && op == OpCode::NOGC_RUNTIME_CALL;
-}
-
 void LLVMIRBuilder::ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueRef &bcOffset,
-                                               const std::vector<GateRef> &inList, OpCode op)
+                                               const std::vector<GateRef> &inList, CallExceptionKind kind)
 {
-    if (NeedBCOffset(op)) {
+    if (kind == CallExceptionKind::HAS_BC_OFFSET) {
         actualNumArgs = inList.size() - 1;
         bcOffset = gate2LValue_[inList[actualNumArgs]];
     } else {
         actualNumArgs = inList.size();
     }
+}
+
+LLVMIRBuilder::CallExceptionKind LLVMIRBuilder::GetCallExceptionKind(size_t index, OpCode op) const
+{
+    bool hasBcOffset = (callConv_ == CallSignature::CallConv::WebKitJSCallConv && op == OpCode::NOGC_RUNTIME_CALL &&
+        index == RTSTUB_ID(JSCall));
+    return hasBcOffset ? CallExceptionKind::HAS_BC_OFFSET : CallExceptionKind::NO_BC_OFFSET;
 }
 
 void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, OpCode op)
@@ -712,6 +713,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef rtoffset;
     LLVMValueRef rtbaseoffset;
     LLVMValueRef callee;
+    CallExceptionKind kind = CallExceptionKind::NO_BC_OFFSET;
     if (op == OpCode::CALL) {
         calleeDescriptor = CommonStubCSigns::Get(index);
         rtoffset = GetCoStubOffset(glue, index);
@@ -722,6 +724,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         rtoffset = GetRTStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+        kind = GetCallExceptionKind(index, op);
     } else {
         LLVMValueRef opcodeOffset = gate2LValue_[inList[targetIndex]];
         rtoffset = GetBuiltinsStubOffset(glue);
@@ -753,7 +756,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     }
     size_t actualNumArgs = 0;
     LLVMValueRef bcOffset = LLVMConstInt(LLVMInt32Type(), 0, 0);
-    ComputeArgCountAndBCOffset(actualNumArgs, bcOffset, inList, op);
+    ComputeArgCountAndBCOffset(actualNumArgs, bcOffset, inList, kind);
 
     // then push the actual parameter for js function call
     for (size_t paraIdx = firstArg + 1; paraIdx < actualNumArgs; ++paraIdx) {
@@ -777,7 +780,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef call = nullptr;
     LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, calleeDescriptor);
     callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
-    if (NeedBCOffset(op)) {
+    if (kind == CallExceptionKind::HAS_BC_OFFSET) {
         std::vector<LLVMValueRef> values;
         auto bcIndex = LLVMConstInt(LLVMInt64Type(), static_cast<int>(SpecVregIndex::BC_OFFSET_INDEX), 1);
         values.push_back(bcIndex);
