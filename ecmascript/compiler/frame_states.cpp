@@ -29,7 +29,12 @@ FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
 
 FrameStateBuilder::~FrameStateBuilder()
 {
-    for (auto state : stateInfos_) {
+    for (auto state : bcEndStateInfos_) {
+        if (state != nullptr) {
+            delete state;
+        }
+    }
+    for (auto state : bbBeginStateInfos_) {
         if (state != nullptr) {
             delete state;
         }
@@ -38,7 +43,8 @@ FrameStateBuilder::~FrameStateBuilder()
         delete liveOutResult_;
     }
     liveOutResult_ = nullptr;
-    stateInfos_.clear();
+    bcEndStateInfos_.clear();
+    bbBeginStateInfos_.clear();
     builder_ = nullptr;
 }
 
@@ -129,7 +135,7 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
 bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc)
 {
     // liveout next
-    auto frameInfo = GetOrOCreateStateInfo(predPc);
+    auto frameInfo = GetOrOCreateBCEndStateInfo(predPc);
     FrameStateInfo *predFrameInfo = liveOutResult_;
     bool changed = frameInfo->MergeLiveout(predFrameInfo);
     if (!changed) {
@@ -189,7 +195,7 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
     if (!changed) {
         return changed;
     }
-    auto predLiveout = GetOrOCreateStateInfo(predBb->end);
+    auto predLiveout = GetOrOCreateBCEndStateInfo(predBb->end);
     // replace phi
     if (bb->valueSelectorAccGate != Circuit::NullGate()) {
         auto phi = bb->valueSelectorAccGate;
@@ -222,7 +228,7 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
     auto &iterator = bb.GetBytecodeIterator();
     iterator.GotoEnd();
     ASSERT(bb.end == iterator.Index());
-    auto liveout = GetOrOCreateStateInfo(bb.end);
+    auto liveout = GetOrOCreateBCEndStateInfo(bb.end);
     liveOutResult_->CopyFrom(liveout);
     while (true) {
         auto &bytecodeInfo = iterator.GetBytecodeInfo();
@@ -234,6 +240,8 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
         auto prevPc = iterator.Index();
         changed |= MergeIntoPredBC(prevPc);
     }
+
+    SaveBBBeginStateInfo(bbId);
 
     bool defPhi = bb.valueSelectorAccGate != Circuit::NullGate() ||
         bb.vregToValSelectorGate.size() != 0;
@@ -275,8 +283,9 @@ void FrameStateBuilder::ComputeLiveState()
 void FrameStateBuilder::BuildFrameState()
 {
     argAcc_.CollectArgs();
-    stateInfos_.resize(builder_->GetLastBcIndex() + 1, nullptr); // 1: +1 pcOffsets size
+    bcEndStateInfos_.resize(builder_->GetLastBcIndex() + 1, nullptr); // 1: +1 pcOffsets size
     auto size = builder_->GetBasicBlockCount();
+    bbBeginStateInfos_.resize(size, nullptr);
     liveOutResult_ = CreateEmptyStateInfo();
     BuildPostOrderList(size);
     ComputeLiveState();
@@ -316,6 +325,10 @@ void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &byt
     for (const auto &out: bytecodeInfo.vregOut) {
         UpdateVirtualRegister(out, Circuit::NullGate());
     }
+    if (bytecodeInfo.GetOpcode() == EcmaOpcode::RESUMEGENERATOR) {
+        UpdateVirtualRegistersOfResume(gate);
+    }
+
     // variable use
     if (bytecodeInfo.AccIn()) {
         auto id = bytecodeInfo.inputs.size();
@@ -329,6 +342,9 @@ void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &byt
             GateRef def = gateAcc_.GetValueIn(gate, i);
             UpdateVirtualRegister(vreg, def);
         }
+    }
+    if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8) {
+        UpdateVirtualRegistersOfSuspend(gate);
     }
 }
 
@@ -345,11 +361,49 @@ void FrameStateBuilder::BindGuard(size_t size)
                 auto index = iterator.Index();
                 auto gate = builder_->GetGateByBcIndex(index);
                 auto pcOffset = builder_->GetPcOffset(index);
-                auto stateInfo = GetOrOCreateStateInfo(index - 1); // 1: prev pc
+                auto stateInfo = GetCurrentFrameInfo(bb, index);
                 BindGuard(gate, pcOffset, stateInfo);
             }
             return true;
         });
+    }
+}
+
+FrameStateInfo *FrameStateBuilder::GetCurrentFrameInfo(BytecodeRegion &bb, uint32_t bcId)
+{
+    if (bcId == bb.start) {
+        return GetBBBeginStateInfo(bb.id);
+    } else {
+        return GetOrOCreateBCEndStateInfo(bcId - 1); // 1: prev pc
+    }
+}
+
+void FrameStateBuilder::SaveBBBeginStateInfo(size_t bbId)
+{
+    if (bbBeginStateInfos_[bbId] == nullptr) {
+        bbBeginStateInfos_[bbId] = CreateEmptyStateInfo();
+    }
+    bbBeginStateInfos_[bbId]->CopyFrom(liveOutResult_);
+}
+
+void FrameStateBuilder::UpdateVirtualRegistersOfSuspend(GateRef gate)
+{
+    auto saveGate = gateAcc_.GetDep(gate);
+    while (gateAcc_.GetOpCode(saveGate) == OpCode::SAVE_REGISTER) {
+        auto vreg = static_cast<size_t>(gateAcc_.GetBitField(saveGate));
+        auto def = gateAcc_.GetValueIn(saveGate, 0);
+        UpdateVirtualRegister(vreg, def);
+        saveGate = gateAcc_.GetDep(saveGate);
+    }
+}
+
+void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
+{
+    auto restoreGate = gateAcc_.GetDep(gate);
+    while (gateAcc_.GetOpCode(restoreGate) == OpCode::RESTORE_REGISTER) {
+        auto vreg = static_cast<size_t>(gateAcc_.GetBitField(restoreGate));
+        UpdateVirtualRegister(vreg, Circuit::NullGate());
+        restoreGate = gateAcc_.GetDep(restoreGate);
     }
 }
 }
