@@ -53,8 +53,7 @@ CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
 Node *Node::NewNode(const EcmaVM *vm, size_t id, size_t index, CString *name, NodeType type, size_t size,
                     TaggedObject *entry, bool isLive)
 {
-    auto node = const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())
-                    ->New<Node>(id, index, name, type, size, 0, NewAddress<TaggedObject>(entry), isLive);
+    auto node = vm->GetChunk()->New<Node>(id, index, name, type, size, 0, NewAddress<TaggedObject>(entry), isLive);
     if (UNLIKELY(node == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -64,7 +63,7 @@ Node *Node::NewNode(const EcmaVM *vm, size_t id, size_t index, CString *name, No
 
 Edge *Edge::NewEdge(const EcmaVM *vm, uint64_t id, EdgeType type, Node *from, Node *to, CString *name)
 {
-    auto edge = const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())->New<Edge>(id, type, from, to, name);
+    auto edge = vm->GetChunk()->New<Edge>(id, type, from, to, name);
     if (UNLIKELY(edge == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -75,10 +74,10 @@ Edge *Edge::NewEdge(const EcmaVM *vm, uint64_t id, EdgeType type, Node *from, No
 HeapSnapshot::~HeapSnapshot()
 {
     for (Node *node : nodes_) {
-        const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(node);
+        vm_->GetChunk()->Delete(node);
     }
     for (Edge *edge : edges_) {
-        const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(edge);
+        vm_->GetChunk()->Delete(edge);
     }
     nodes_.clear();
     edges_.clear();
@@ -119,6 +118,7 @@ void HeapSnapshot::UpdateNode(bool isInFinish)
     FillNodes(isInFinish);
     for (auto iter = nodes_.begin(); iter != nodes_.end();) {
         if (!(*iter)->IsLive()) {
+            entryMap_.FindAndEraseNode((*iter)->GetAddress());
             iter = nodes_.erase(iter);
             nodeCount_--;
         } else {
@@ -186,11 +186,10 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject* forward_address)
 {
     int sequenceId = -1;
     uint64_t traceNodeId = 0;
-    Node *node = entryMap_.FindAndEraseNode(address);
+    Node *node = entryMap_.FindEntry(address);
     if (node != nullptr) {
         sequenceId = static_cast<int>(node->GetId());
         traceNodeId = node->GetStackTraceId();
-        EraseNodeUnique(node);
     }
     node = GenerateNode(JSTaggedValue(forward_address), sequenceId);
     if (node != nullptr) {
@@ -797,35 +796,30 @@ void HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
 
 Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId, bool isInFinish)
 {
-    Node *node = nullptr;
-    auto originStr = static_cast<EcmaString *>(entry.GetTaggedObject());
-    size_t selfsize = EcmaStringAccessor(originStr).ObjectSize();
-    CString strContent;
-    if (isInFinish) {
-        strContent.append(EntryVisitor::ConvertKey(entry));
-    } else {
-        strContent.append(EntryVisitor::ConvertKey(vm_->GetFactory()->GetEmptyString().GetTaggedValue()));
-    }
-
-    node = Node::NewNode(vm_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,
-                         entry.GetTaggedObject());
-    Node *existNode = entryMap_.FindOrInsertNode(node);  // Fast Index
-    if (existNode == node) {
-        if (sequenceId == sequenceId_ + SEQ_STEP) {
-            sequenceId_ = sequenceId;  // Odd Digit
-        }
-        InsertNodeUnique(node);
-    } else {
+    Node *existNode = entryMap_.FindEntry(reinterpret_cast<Address>(entry.GetTaggedObject()));  // Fast Index
+    if (existNode != nullptr) {
         if (isInFinish) {
-            existNode->SetName(GetString(strContent));
+            existNode->SetName(GetString(EntryVisitor::ConvertKey(entry)));
         }
         existNode->SetLive(true);
-    }
-    ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
-    if (existNode != node) {
-        const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(node);
         return nullptr;
     }
+    // Allocation Event will generate string node for "".
+    // When we need to serialize and isFinish is true, the nodeStr will be given the actual string content.
+    auto originStr = static_cast<EcmaString *>(entry.GetTaggedObject());
+    size_t selfsize = EcmaStringAccessor(originStr).ObjectSize();
+    CString strContent = "";
+    CString *nodeStr = &strContent;
+    if (isInFinish) {
+        nodeStr = GetString(EntryVisitor::ConvertKey(entry));
+    }
+    Node *node = Node::NewNode(vm_, sequenceId, nodeCount_, nodeStr, NodeType::PRIM_STRING, selfsize,
+                               entry.GetTaggedObject());
+    if (sequenceId == sequenceId_ + SEQ_STEP) {
+        sequenceId_ = sequenceId;  // Odd Digit
+    }
+    entryMap_.InsertEntry(node);
+    InsertNodeUnique(node);
     return node;
 }
 
