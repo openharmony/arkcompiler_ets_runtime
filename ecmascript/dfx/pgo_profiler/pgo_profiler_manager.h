@@ -16,32 +16,76 @@
 #ifndef ECMASCRIPT_DFX_PGO_PROFILER_MANAGER_H
 #define ECMASCRIPT_DFX_PGO_PROFILER_MANAGER_H
 
-#include <unordered_map>
+#include <algorithm>
+#include <memory>
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/mem/native_area_allocator.h"
+#include "ecmascript/taskpool/task.h"
 
 namespace panda::ecmascript {
 /*
  * Support statistics of JS Function call heat. Save the method ID whose calls are less than MIN_COUNT.
  *
  * The saving format is as follows:
- * "recordName1:methodId1/methodCount,methodId2/methodCount,methodId3/methodCount......"
- * "recordName2:methodId1/methodCount,methodId2/methodCount,methodId3/methodCount......"
+ * "recordName1:[methodId/count/name,methodId/count/name......]"
+ * "recordName2:[methodId/count/name,methodId/count/name,methodId/count/name......]"
  *                                 "......"
  * */
+class MethodProfilerInfo {
+public:
+    MethodProfilerInfo(uint32_t count, const std::string &methodName) : count_(count), methodName_(methodName) {}
+
+    void IncreaseCount()
+    {
+        count_++;
+    }
+
+    void ClearCount()
+    {
+        count_ = 0;
+    }
+
+    void AddCount(uint32_t count)
+    {
+        count_ += count;
+    }
+
+    uint32_t GetCount() const
+    {
+        return count_;
+    }
+    const std::string &GetMethodName() const
+    {
+        return methodName_;
+    }
+
+    NO_COPY_SEMANTIC(MethodProfilerInfo);
+    NO_MOVE_SEMANTIC(MethodProfilerInfo);
+
+private:
+    uint32_t count_ {0};
+    std::string methodName_;
+};
+
 class PGOProfiler {
 public:
-    PGOProfiler(bool isEnable) : isEnable_(isEnable) {};
-    virtual ~PGOProfiler() = default;
-
     NO_COPY_SEMANTIC(PGOProfiler);
     NO_MOVE_SEMANTIC(PGOProfiler);
 
     void Sample(JSTaggedType value);
 private:
+    PGOProfiler(EcmaVM *vm, bool isEnable)
+        : isEnable_(isEnable), chunk_(vm->GetNativeAreaAllocator()), profilerMap_(&chunk_) {};
+    virtual ~PGOProfiler();
+
+    static constexpr uint32_t MERGED_EVERY_COUNT = 10;
     bool isEnable_ {false};
-    std::unordered_map<CString, std::unordered_map<EntityId, uint32_t>> profilerMap_;
+    Chunk chunk_;
+    ChunkUnorderedMap<CString, ChunkUnorderedMap<EntityId, MethodProfilerInfo *> *> profilerMap_;
+    uint32_t methodCount_ {0};
     friend class PGOProfilerManager;
 };
 
@@ -53,19 +97,24 @@ public:
         return &instance;
     }
 
-    void Initialize(bool isEnable, const std::string &outDir);
+    PGOProfilerManager() = default;
+    ~PGOProfilerManager() = default;
 
-    void Destroy()
+    NO_COPY_SEMANTIC(PGOProfilerManager);
+    NO_MOVE_SEMANTIC(PGOProfilerManager);
+
+    void Initialize(uint32_t hotnessThreshold, const std::string &outDir);
+    void InitializeData();
+
+    void Destroy();
+
+    // Factory
+    PGOProfiler *Build(EcmaVM *vm, bool isEnable)
     {
-        if (!isEnable_) {
-            return;
+        if (isEnable) {
+            InitializeData();
         }
-        SaveProfiler();
-    }
-
-    PGOProfiler *Build(bool isEnable)
-    {
-        return new PGOProfiler(isEnable && isEnable_);
+        return new PGOProfiler(vm, isEnable);
     }
 
     void Destroy(PGOProfiler *profiler)
@@ -76,17 +125,42 @@ public:
         }
     }
 
-private:
-    static constexpr uint32_t MIN_COUNT = 1;
-
     void Merge(PGOProfiler *profile);
-    void SaveProfiler();
-    std::string ProcessProfile();
+    void TerminateSaveTask();
+    void PostSaveTask();
 
-    os::memory::Mutex mutex_;
+private:
+    class SaveTask : public Task {
+    public:
+        SaveTask(int32_t id) : Task(id) {};
+        virtual ~SaveTask() = default;
+
+        bool Run([[maybe_unused]] uint32_t threadIndex) override
+        {
+            PGOProfilerManager::GetInstance()->StartSaveTask(this);
+            return true;
+        }
+
+        TaskType GetTaskType() override
+        {
+            return TaskType::PGO_SAVE_TASK;
+        }
+
+        NO_COPY_SEMANTIC(SaveTask);
+        NO_MOVE_SEMANTIC(SaveTask);
+    };
+
+    void StartSaveTask(SaveTask *task);
+    void SaveProfiler(SaveTask *task = nullptr);
+    void ProcessProfile(std::ofstream &fileStream, SaveTask *task);
+
     bool isEnable_ {false};
+    uint32_t hotnessThreshold_ {2};
     std::string outDir_;
-    std::unordered_map<CString, std::unordered_map<EntityId, uint32_t>> globalProfilerMap_;
+    std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
+    std::unique_ptr<Chunk> chunk_;
+    ChunkUnorderedMap<CString, ChunkUnorderedMap<EntityId, MethodProfilerInfo *> *> *globalProfilerMap_;
+    os::memory::Mutex mutex_;
 };
 
 } // namespace panda::ecmascript
