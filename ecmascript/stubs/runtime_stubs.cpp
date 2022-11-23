@@ -2159,6 +2159,13 @@ JSTaggedType RuntimeStubs::FloatATan(double x)
     return JSTaggedValue(result).GetRawData();
 }
 
+JSTaggedType RuntimeStubs::FloatFloor(double x)
+{
+    ASSERT(!std::isnan(x));
+    double result = std::floor(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
 int32_t RuntimeStubs::DoubleToInt(double x)
 {
     return base::NumberHelper::DoubleToInt(x, base::INT32_BITS);

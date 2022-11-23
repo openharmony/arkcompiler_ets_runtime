@@ -1234,6 +1234,20 @@ DEF_CALL_SIGNATURE(FloatATan)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(FloatFloor)
+{
+    // 1 : 1 input parameters
+    CallSignature index("FloatFloor", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(FindElementWithCache)
 {
     // 4 : 4 input parameters

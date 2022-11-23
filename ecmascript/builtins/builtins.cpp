@@ -1502,7 +1502,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathClass);
-    SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE);
+    SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(ABS)));
     SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(ACOS)));
     SetFunction(env, mathObject, "acosh", Math::Acosh, FunctionLength::ONE);
     SetFunction(env, mathObject, "asin", Math::Asin, FunctionLength::ONE);
@@ -1517,7 +1517,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     SetFunction(env, mathObject, "cosh", Math::Cosh, FunctionLength::ONE);
     SetFunction(env, mathObject, "exp", Math::Exp, FunctionLength::ONE);
     SetFunction(env, mathObject, "expm1", Math::Expm1, FunctionLength::ONE);
-    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE);
+    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(FLOOR)));
     SetFunction(env, mathObject, "fround", Math::Fround, FunctionLength::ONE);
     SetFunction(env, mathObject, "hypot", Math::Hypot, FunctionLength::TWO);
     SetFunction(env, mathObject, "imul", Math::Imul, FunctionLength::TWO);

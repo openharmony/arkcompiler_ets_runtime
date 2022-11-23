@@ -49,6 +49,8 @@ namespace panda::ecmascript::kungfu {
     V(SIN)                                          \
     V(ACOS)                                         \
     V(ATAN)                                         \
+    V(ABS)                                          \
+    V(FLOOR)                                        \
 
 class BuiltinsStubCSigns {
 public:

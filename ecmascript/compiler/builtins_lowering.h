@@ -34,8 +34,11 @@ public:
 private:
     void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
+    GateRef IntToTaggedIntPtr(GateRef x);
     void LowerTypedSqrt(GateRef gate);
     GateRef TypedSqrt(GateRef gate);
+    void LowerTypedAbs(GateRef gate);
+    GateRef TypedAbs(GateRef gate);
 
     Circuit *circuit_ {nullptr};
     CircuitBuilder builder_;
