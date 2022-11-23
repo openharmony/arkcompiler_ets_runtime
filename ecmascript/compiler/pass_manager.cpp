@@ -69,20 +69,22 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName << "] log:" << "\033[0m";
         }
 
-        bool hasTyps = jsPandaFile->HasTSTypes(recordName);
+        bool hasTypes = jsPandaFile->HasTSTypes(recordName);
         Circuit circuit(cmpCfg->Is64Bit());
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
-                                       info.GetByteCodes(), hasTyps, enableMethodLog && log_->OutputCIR(),
+                                       info.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
                                        EnableTypeLowering(), fullName, recordName);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();
         }
 
-        PassData data(&builder, &circuit, &info, log_, fullName, methodLiteral, methodOffset);
+        PassData data(&builder, &circuit, &info, log_, fullName,
+                      methodInfoIndex, hasTypes, recordName,
+                      methodLiteral, methodOffset);
         PassRunner<PassData> pipeline(&data);
         if (EnableTypeInfer()) {
-            pipeline.RunPass<TypeInferPass>(methodInfoIndex, hasTyps);
+            pipeline.RunPass<TypeInferPass>();
         }
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         if (EnableTypeLowering()) {

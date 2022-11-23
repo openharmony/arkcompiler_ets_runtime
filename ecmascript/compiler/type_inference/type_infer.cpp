@@ -280,6 +280,12 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::GETITERATOR_IMM8:
         case EcmaOpcode::GETITERATOR_IMM16:
             return InferGetIterator(gate);
+        case EcmaOpcode::STMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
+            return InferStModuleVar(gate);
+        case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+            return InferLdLocalModuleVar(gate);
         default:
             break;
     }
@@ -855,6 +861,30 @@ bool TypeInfer::InferStLexVarDyn(GateRef gate)
         }
     }
     return false;
+}
+
+bool TypeInfer::InferStModuleVar(GateRef gate)
+{
+    auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+    auto defineGate = gateAccessor_.GetValueIn(gate, 1);
+    auto defineType = gateAccessor_.GetGateType(defineGate);
+    if (!defineType.IsAnyType()) {
+        tsManager_->AddTypeToLocalModuleVarGtMap(jsPandaFile, recordName_, index, defineType.GetGTRef());
+        return true;
+    }
+    return false;
+}
+
+bool TypeInfer::InferLdLocalModuleVar(GateRef gate)
+{
+    auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+    if (!tsManager_->HasExportGT(jsPandaFile, recordName_, index)) {
+        return UpdateType(gate, GateType::AnyType());
+    }
+    auto type = tsManager_->GetGTFromModuleMap(jsPandaFile, recordName_, index);
+    return UpdateType(gate, type);
 }
 
 bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
