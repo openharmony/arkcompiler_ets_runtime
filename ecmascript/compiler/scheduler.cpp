@@ -12,12 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "ecmascript/compiler/scheduler.h"
 #include <cmath>
 #include <stack>
-
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
 void Scheduler::CalculateDominatorTree(const Circuit *circuit,
@@ -116,9 +116,8 @@ void Scheduler::CalculateDominatorTree(const Circuit *circuit,
     }
 }
 
-std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
-                                                 [[maybe_unused]] const std::string& methodName,
-                                                 [[maybe_unused]] bool enableLog)
+void Scheduler::Run(const Circuit *circuit, ControlFlowGraph &result,
+                    [[maybe_unused]] const std::string& methodName, [[maybe_unused]] bool enableLog)
 {
 #ifndef NDEBUG
     if (!Verifier::Run(circuit, methodName, enableLog)) {
@@ -130,7 +129,8 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
     Scheduler::CalculateDominatorTree(circuit, bbGatesList, bbGatesAddrToIdx, immDom);
-    std::vector<std::vector<GateRef>> result(bbGatesList.size());
+    ASSERT(result.size() == 0);
+    result.resize(bbGatesList.size());
     for (size_t idx = 0; idx < bbGatesList.size(); idx++) {
         result[idx].push_back(bbGatesList[idx]);
     }
@@ -200,8 +200,8 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
     };
     {
         std::vector<GateRef> order;
-        auto lowerBound =
-            Scheduler::CalculateSchedulingLowerBound(circuit, bbGatesAddrToIdx, lowestCommonAncestor, &order).value();
+        std::unordered_map<GateRef, size_t> lowerBound;
+        Scheduler::CalculateSchedulingLowerBound(circuit, bbGatesAddrToIdx, lowestCommonAncestor, lowerBound, &order);
         for (const auto &schedulableGate : order) {
             result[lowerBound.at(schedulableGate)].push_back(schedulableGate);
         }
@@ -226,17 +226,15 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
     if (enableLog) {
         Print(&result, circuit);
     }
-    return result;
 }
 
-std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulingUpperBound(
-    const Circuit *circuit,
-    const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-    const std::function<bool(size_t, size_t)> &isAncestor,
-    const std::vector<GateRef> &schedulableGatesList)
+bool Scheduler::CalculateSchedulingUpperBound(const Circuit *circuit,
+                                              const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                              const std::function<bool(size_t, size_t)> &isAncestor,
+                                              const std::vector<GateRef> &schedulableGatesList,
+                                              std::unordered_map<GateRef, size_t> &upperBound)
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
-    std::unordered_map<GateRef, size_t> upperBound;
     struct DFSState {
         GateRef curGate = Circuit::NullGate();
         std::vector<GateRef> predGates;
@@ -296,9 +294,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
                 }
                 auto predUpperBound = returnValue.value();
                 if (!isAncestor(curUpperBound, predUpperBound) && !isAncestor(predUpperBound, curUpperBound)) {
-                    LOG_COMPILER(ERROR) << "[Verifier][Error] Scheduling upper bound of gate (id="
-                                        << GateAccessor(const_cast<Circuit*>(circuit)).GetId(curGate)
-                                        << ") does not exist";
+                    PrintUpperBoundError(circuit, curGate, predUpperBound, curUpperBound);
                     returnValue = std::nullopt;
                     break;
                 }
@@ -321,18 +317,30 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
             }
         }
         if (!returnValue.has_value()) {
-            return std::nullopt;
+            return false;
         }
     }
-    return upperBound;
+    return true;
 }
 
-std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
-    const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-    const std::function<size_t(size_t, size_t)> &lowestCommonAncestor, std::vector<GateRef> *order)
+void Scheduler::PrintUpperBoundError(const Circuit *circuit, GateRef curGate,
+                                     GateRef predUpperBound, GateRef curUpperBound)
+{
+    GateAccessor ac(const_cast<Circuit*>(circuit));
+    LOG_COMPILER(ERROR) << "[Verifier][Error] Scheduling upper bound of gate (id="
+                        << ac.GetId(curGate)
+                        << ") does not exist, current-upper-bound = "
+                        << curUpperBound << ", pred-upper-bound = "
+                        << predUpperBound << ", there is no dominator relationship between them.";
+}
+
+void Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
+                                              const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                              const std::function<size_t(size_t, size_t)> &lowestCommonAncestor,
+                                              std::unordered_map<GateRef, size_t> &lowerBound,
+                                              std::vector<GateRef> *order)
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
-    std::unordered_map<GateRef, size_t> lowerBound;
     std::unordered_map<GateRef, size_t> useCount;
     std::vector<GateRef> bbAndFixedGatesList;
     for (const auto &item : bbGatesAddrToIdx) {
@@ -434,7 +442,6 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
             ++idx;
         }
     }
-    return lowerBound;
 }
 
 void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circuit *circuit)
