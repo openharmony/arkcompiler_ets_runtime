@@ -86,7 +86,7 @@ public:
         auto stubModule = data->GetStubModule();
         CreateCodeGen(stubModule, enableLog);
         CodeGenerator codegen(llvmImpl_, "stubs");
-        codegen.RunForStub(data->GetCircuit(), data->GetScheduleResult(), index, data->GetCompilationConfig());
+        codegen.RunForStub(data->GetCircuit(), data->GetConstScheduleResult(), index, data->GetCompilationConfig());
         return true;
     }
 private:
@@ -105,13 +105,14 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
         Circuit circuit(cconfig->Is64Bit());
         Stub stub(callSigns[i], &circuit);
         ASSERT(callSigns[i]->HasConstructor());
-        StubBuilder* stubBuilder = static_cast<StubBuilder*>(
-            callSigns[i]->GetConstructor()(reinterpret_cast<void*>(stub.GetEnvironment())));
+        void* env = reinterpret_cast<void*>(stub.GetEnvironment());
+        StubBuilder* stubBuilder = static_cast<StubBuilder*>(callSigns[i]->GetConstructor()(env));
         stub.SetStubBuilder(stubBuilder);
 
         if (log->CertainMethod()) {
             enableMethodLog = logList->IncludesMethod(stub.GetMethodName());
         }
+        log->SetEnableMethodLog(enableMethodLog);
 
         StubPassData data(&stub, module, log);
         PassRunner<StubPassData> pipeline(&data);
@@ -146,6 +147,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
         RunPipeline(&bcStubModule);
         generator.AddModule(&bcStubModule, &bcStubAssembler);
         res++;
+
         LOG_COMPILER(INFO) << "compiling common stubs";
         LLVMModule comStubModule("com_stub", triple_, enablePGOProfiler_);
         LLVMAssembler comStubAssembler(comStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
@@ -153,6 +155,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
         RunPipeline(&comStubModule);
         generator.AddModule(&comStubModule, &comStubAssembler);
         res++;
+
         LOG_COMPILER(INFO) << "compiling builtins stubs";
         LLVMModule builtinsStubModule("builtins_stub", triple_, enablePGOProfiler_);
         LLVMAssembler builtinsStubAssembler(builtinsStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));

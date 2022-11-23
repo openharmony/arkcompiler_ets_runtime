@@ -27,18 +27,26 @@ public:
                                        std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
                                        std::vector<size_t> &immDom);
 
-    static ControlFlowGraph Run(const Circuit *circuit, [[maybe_unused]] const std::string& methodName = "",
-                                bool enableLog = false);
+    static void Run(const Circuit *circuit, ControlFlowGraph &result,
+                    [[maybe_unused]] const std::string& methodName = "", bool enableLog = false);
 
-    static std::optional<std::unordered_map<GateRef, size_t>> CalculateSchedulingUpperBound(const Circuit *circuit,
-        const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-        const std::function<bool(size_t, size_t)> &isAncestor, const std::vector<GateRef> &schedulableGatesList);
+    static bool CalculateSchedulingUpperBound(const Circuit *circuit,
+                                              const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                              const std::function<bool(size_t, size_t)> &isAncestor,
+                                              const std::vector<GateRef> &schedulableGatesList,
+                                              std::unordered_map<GateRef, size_t> &upperBound);
 
-    static std::optional<std::unordered_map<GateRef, size_t>> CalculateSchedulingLowerBound(const Circuit *circuit,
-        const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-        const std::function<size_t(size_t, size_t)> &lowestCommonAncestor, std::vector<GateRef> *order = nullptr);
+    static void CalculateSchedulingLowerBound(const Circuit *circuit,
+                                              const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                              const std::function<size_t(size_t, size_t)> &lowestCommonAncestor,
+                                              std::unordered_map<GateRef, size_t> &lowerBound,
+                                              std::vector<GateRef> *order = nullptr);
 
     static void Print(const ControlFlowGraph *cfg, const Circuit *circuit);
+
+private:
+    static void PrintUpperBoundError(const Circuit *circuit, GateRef curGate,
+                                     GateRef predUpperBound, GateRef curUpperBound);
 };
 };  // namespace panda::ecmascript::kungfu
 
