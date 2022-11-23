@@ -513,7 +513,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
 }
 
 int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                               const void *buffer, size_t size)
+                               const void *buffer, size_t size, bool excuteFromJob)
 {
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is "instantiated" or "evaluated".
@@ -523,7 +523,7 @@ int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule
     CVector<JSHandle<SourceTextModule>> stack;
     // 4. Let result be InnerModuleEvaluation(module, stack, 0)
     JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
-    int result = SourceTextModule::InnerModuleEvaluation(thread, moduleRecord, stack, 0, buffer, size);
+    int result = SourceTextModule::InnerModuleEvaluation(thread, moduleRecord, stack, 0, buffer, size, excuteFromJob);
     // 5. If result is an abrupt completion, then
     if (thread->HasPendingException()) {
         // a. For each module m in stack, do
@@ -552,7 +552,7 @@ int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule
 
 int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
                                             CVector<JSHandle<SourceTextModule>> &stack, int index,
-                                            const void *buffer, size_t size)
+                                            const void *buffer, size_t size, bool excuteFromJob)
 {
     // 1. If module is not a Source Text Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
@@ -630,7 +630,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
     }
 
     // 11. Perform ? ModuleExecution(module).
-    SourceTextModule::ModuleExecution(thread, module, buffer, size);
+    SourceTextModule::ModuleExecution(thread, module, buffer, size, excuteFromJob);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
     // 12. Assert: module occurs exactly once in stack.
     // 13. Assert: module.[[DFSAncestorIndex]] is less than or equal to module.[[DFSIndex]].
@@ -659,7 +659,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
 }
 
 void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                       const void *buffer, size_t size)
+                                       const void *buffer, size_t size, bool excuteFromJob)
 {
     JSTaggedValue moduleFileName = module->GetEcmaModuleFilename();
     ASSERT(moduleFileName.IsString());
@@ -687,7 +687,7 @@ void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTe
         LOG_ECMA(FATAL) << "open jsPandaFile " << moduleFilenameStr << " error";
         UNREACHABLE();
     }
-    JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint);
+    JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint, excuteFromJob);
 }
 
 void SourceTextModule::AddImportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,

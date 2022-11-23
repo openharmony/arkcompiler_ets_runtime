@@ -391,7 +391,16 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModule)
 
 HWTEST_F_L0(EcmaModuleTest, PreventExtensions_IsExtensible)
 {
-    EXPECT_FALSE(ModuleNamespace::IsExtensible());
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<LocalExportEntry> localExportEntry1 = objectFactory->NewLocalExportEntry();
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 2);
+    JSHandle<LocalExportEntry> localExportEntry2 = objectFactory->NewLocalExportEntry();
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry2, 1, 2);
+    JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries());
+    JSHandle<ModuleNamespace> np =
+    ModuleNamespace::ModuleNamespaceCreate(thread, JSHandle<JSTaggedValue>::Cast(module), localExportEntries);
+    EXPECT_FALSE(np->IsExtensible());
     EXPECT_TRUE(ModuleNamespace::PreventExtensions());
 }
 

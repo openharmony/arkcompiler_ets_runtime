@@ -299,7 +299,8 @@ inline bool JSTaggedValue::IsExtensible(JSThread *thread) const
         return JSProxy::IsExtensible(thread, JSHandle<JSProxy>(thread, *this));
     }
     if (UNLIKELY(IsModuleNamespace())) {
-        return ModuleNamespace::IsExtensible();
+        ModuleNamespace* ns = ModuleNamespace::Cast(this->GetTaggedObject());
+        return ns->IsExtensible();
     }
 
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsExtensible();

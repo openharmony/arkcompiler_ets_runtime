@@ -225,7 +225,7 @@ JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSTaggedValue re
     NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
     int entry = dict->FindEntry(referencing);
     LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: "
-                                    << ConvertToString(EcmaString::Cast(referencing.GetTaggedObject()));
+                                    << ConvertToString(referencing);
     JSTaggedValue result = dict->GetValue(entry);
     return JSHandle<SourceTextModule>(vm_->GetJSThread(), result);
 }

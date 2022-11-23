@@ -1237,16 +1237,12 @@ JSTaggedValue RuntimeStubs::RuntimeToNumeric(JSThread *thread, const JSHandle<JS
     return JSTaggedValue::ToNumeric(thread, value).GetTaggedValue();
 }
 
-// specifier = "./test.js"
 JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandle<JSTaggedValue> &specifier,
     const JSHandle<JSTaggedValue> &func)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
-
-    // 5. Let specifierString be Completion(ToString(specifier))
-    JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
 
     // get current filename
     Method *method = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetCallTarget();
@@ -1281,16 +1277,14 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, promiseFunc);
 
-    // 6. IfAbruptRejectPromise(specifierString, promiseCapability).
-    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, specifierString, promiseCapability);
     JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
 
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(5); // 5: 5 means parameters stored in array
     argv->Set(thread, 0, promiseCapability->GetResolve());
-    argv->Set(thread, 1, promiseCapability->GetReject()); // 1 : first argument
-    argv->Set(thread, 2, dirPath); // 2: second argument
-    argv->Set(thread, 3, specifierString); // 3 : third argument
-    argv->Set(thread, 4, recordName); // 4 : fourth argument
+    argv->Set(thread, 1, promiseCapability->GetReject());    // 1 : first argument
+    argv->Set(thread, 2, dirPath);                           // 2: second argument
+    argv->Set(thread, 3, specifier);                         // 3 : third argument
+    argv->Set(thread, 4, recordName);                        // 4 : fourth argument
 
     JSHandle<JSFunction> dynamicImportJob(env->GetDynamicImportJob());
     job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, dynamicImportJob, argv);
@@ -1745,7 +1739,6 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<
         JSTaggedValue value = frameHandler.GetVRegValue(firstArgIdx + i);
         args->Set(thread, i, value);
     }
-
     auto tagged = RuntimeOptConstruct(thread, func, newTarget, preArgs, args);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return tagged;
@@ -2395,7 +2388,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t ar
     for (size_t i = 0; i < arrLength; ++i) {
         args->Set(thread, i, GetArg(argv, argc, i + firstArgOffset));
     }
-
     JSTaggedValue object = RuntimeOptConstruct(thread, ctor, ctor, undefined, args);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!object.IsUndefined() && !object.IsECMAObject() && !JSHandle<JSFunction>(ctor)->IsBase()) {
