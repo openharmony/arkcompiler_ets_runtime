@@ -23,7 +23,7 @@ class ContainersLinkedListStubBuilder : public StubBuilder {
 public:
     explicit ContainersLinkedListStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~ContainersLinkedListStubBuilder() = default;
+    ~ContainersLinkedListStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersLinkedListStubBuilder);
     NO_COPY_SEMANTIC(ContainersLinkedListStubBuilder);
     void GenerateCircuit() override {}

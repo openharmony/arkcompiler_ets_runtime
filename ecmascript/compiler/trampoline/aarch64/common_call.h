@@ -106,7 +106,7 @@ private:
     static void PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
                                     Register thisObj, Register newTarget, Register currentSp);
     static void PopJSFunctionArgs(ExtendedAssembler *assembler, Register expectedNumArgs, Register actualNumArgs);
-    static void PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp);
+    static void PushJSFunctionEntryFrame(ExtendedAssembler *assembler, Register prevFp);
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);

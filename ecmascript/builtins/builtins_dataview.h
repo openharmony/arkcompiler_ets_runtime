@@ -50,7 +50,7 @@ public:
     // 25.3.4.5 DataView.prototype.getBigInt64 ( byteOffset [ , littleEndian ] )
     static JSTaggedValue GetBigInt64(EcmaRuntimeCallInfo *argv);
     // 25.3.4.6 DataView.prototype.getBigUint64 ( byteOffset [ , littleEndian ] )
-    static JSTaggedValue GetBigUint64 (EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue GetBigUint64(EcmaRuntimeCallInfo *argv);
     // 24.2.4.13 DataView.prototype.setFloat32 ( byteOffset, value [ , littleEndian ] )
     static JSTaggedValue SetFloat32(EcmaRuntimeCallInfo *argv);
     // 24.2.4.14 DataView.prototype.setFloat64 ( byteOffset, value [ , littleEndian ] )

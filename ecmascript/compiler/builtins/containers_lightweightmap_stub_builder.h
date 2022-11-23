@@ -23,7 +23,7 @@ class ContainersLightWeightMapStubBuilder : public StubBuilder {
 public:
     explicit ContainersLightWeightMapStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~ContainersLightWeightMapStubBuilder() = default;
+    ~ContainersLightWeightMapStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersLightWeightMapStubBuilder);
     NO_COPY_SEMANTIC(ContainersLightWeightMapStubBuilder);
     void GenerateCircuit() override {}

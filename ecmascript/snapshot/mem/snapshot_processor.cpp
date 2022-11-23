@@ -1227,7 +1227,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
             ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
         } else {
             liveObjectSize = fileRegion->AliveObject();
-            size_t freeObjSize = region->end_ - region->packedData_.begin_- liveObjectSize;
+            size_t freeObjSize = region->end_ - region->packedData_.begin_ - liveObjectSize;
             ASSERT(freeObjSize >= 0);
             // if region remain 8 bytes which is added to wasted,
             // we should subtract it when calculate region index

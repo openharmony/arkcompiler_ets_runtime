@@ -1087,7 +1087,7 @@ void OptimizedCall::PopJSFunctionArgs(ExtendedAssembler *assembler, Register exp
     __ Addq(FRAME_SLOT_SIZE, rsp); // 8: skip expectedNumArgs
 }
 
-void OptimizedCall::PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp)
+void OptimizedCall::PushJSFunctionEntryFrame(ExtendedAssembler *assembler, Register prevFp)
 {
     __ PushCppCalleeSaveRegisters();
     __ Pushq(rdi);

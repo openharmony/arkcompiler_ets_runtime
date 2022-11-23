@@ -1191,7 +1191,7 @@ public:
     inline bool IsFreeObject() const
     {
         JSType t = GetObjectType();
-        return (JSType::FREE_OBJECT_WITH_ONE_FIELD <= t) && (t <= JSType::FREE_OBJECT_WITH_TWO_FIELD);
+        return (t >= JSType::FREE_OBJECT_WITH_ONE_FIELD) && (t <= JSType::FREE_OBJECT_WITH_TWO_FIELD);
     }
 
     inline bool IsFreeObjectWithShortField() const

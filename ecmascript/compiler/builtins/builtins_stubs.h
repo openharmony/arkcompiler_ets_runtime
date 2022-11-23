@@ -29,10 +29,10 @@ public:
         :StubBuilder(parent) {}
     BuiltinsStubBuilder(CallSignature *callSignature, Environment *env)
         : StubBuilder(callSignature, env) {}
-    ~BuiltinsStubBuilder() = default;
+    ~BuiltinsStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsStubBuilder);
-    virtual void GenerateCircuit() = 0;
+    virtual void GenerateCircuit() override = 0;
 
     inline GateRef GetGlue(GateRef info)
     {

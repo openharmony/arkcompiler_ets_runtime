@@ -23,7 +23,7 @@ class ContainersHashSetStubBuilder : public StubBuilder {
 public:
     explicit ContainersHashSetStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~ContainersHashSetStubBuilder() = default;
+    ~ContainersHashSetStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersHashSetStubBuilder);
     NO_COPY_SEMANTIC(ContainersHashSetStubBuilder);
     void GenerateCircuit() override {}

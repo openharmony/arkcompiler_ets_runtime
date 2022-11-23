@@ -37,7 +37,7 @@ public:
         bool hasTSTypes {false};
         uint32_t typeSummaryOffset {0};
 
-        bool HasTSTypes () const
+        bool HasTSTypes() const
         {
             return hasTSTypes;
         }

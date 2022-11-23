@@ -817,7 +817,7 @@ void OptimizedCall::PopJSFunctionArgs(ExtendedAssembler *assembler, Register exp
     __ Bind(&aligned);
 }
 
-void OptimizedCall::PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Register prevFp)
+void OptimizedCall::PushJSFunctionEntryFrame(ExtendedAssembler *assembler, Register prevFp)
 {
     Register fp(X29);
     Register sp(SP);
