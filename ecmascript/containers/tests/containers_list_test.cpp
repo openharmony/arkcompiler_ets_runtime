@@ -516,98 +516,81 @@ HWTEST_F_L0(ContainersListTest, ProxyOfLength)
     }
 }
 
-HWTEST_F_L0(ContainersListTest,
-    ExceptionOfAddInsertGetSetGetFirstGetLastHasIsEmptyGetIndexOfGetLastIndexOfForEachClear)
+HWTEST_F_L0(ContainersListTest, ExceptionReturn)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Add);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Insert);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Get);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Set);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, GetFirst);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, GetLast);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Has);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, IsEmpty);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, GetIndexOf);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, GetLastIndexOf);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Clear);
+
     JSHandle<JSAPIList> list = CreateJSAPIList();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test Add exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Add, callInfo);
-    
-    // test Insert, Get and Set exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Insert, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Get, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Set, callInfo);
-    callInfo->SetThis(list.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Insert, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Get, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Set, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-
-    // test GetFirst exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetFirst, callInfo);
-
-    // test GetLast exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetLast, callInfo);
-
-    // test Has exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Has, callInfo);
-
-    // test IsEmpty exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, IsEmpty, callInfo);
-
-    // test GetIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetIndexOf, callInfo);
-
-    // test GetLastIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetIndexOf, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ForEach, callInfo);
-
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Clear, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(list.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersList, Insert, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(list.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersList, Get, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(list.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersList, Set, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersListTest,
-    SpecialReturnOfRemoveByIndexRemoveReplaceAllElementsEqualSortConvertToArrayGetSubListLength)
+HWTEST_F_L0(ContainersListTest, SpecialReturn)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, RemoveByIndex);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, ReplaceAllElements);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Equal);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Sort);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Remove);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, ConvertToArray);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, Length);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersList, GetSubList);
+
     JSHandle<JSAPIList> list = CreateJSAPIList();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-    
-    // test RemoveByIndex and Equal exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, RemoveByIndex, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ReplaceAllElements, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Equal, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Sort, callInfo);
-    callInfo->SetThis(list.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, RemoveByIndex, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ReplaceAllElements, callInfo);
-    
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
-    JSTaggedValue result = ContainersList::Equal(callInfo);
-    TestHelper::TearDownFrame(thread, prev);
-    EXPECT_EQ(result, JSTaggedValue::False());
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(list.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersList, RemoveByIndex, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(list.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersList, ReplaceAllElements, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(list.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetSubList, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(list.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(0));
+        CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetSubList, callInfo);
+    }
 
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Remove exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Remove, callInfo);
-
-    // test ConvertToArray exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, ConvertToArray, callInfo);
-
-    // test Length exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, Length, callInfo);
-
-    // test GetSubList exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetSubList, callInfo);
-    callInfo->SetThis(list.GetTaggedValue());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetSubList, callInfo);
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersList, GetSubList, callInfo);
+    // test equal hole and hole
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(list.GetTaggedValue());
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersList::Equal(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, JSTaggedValue::False());
+    }
 }
 }  // namespace panda::test

@@ -483,82 +483,78 @@ HWTEST_F_L0(ContainersPlainArrayTest, ProxyOfGetSize)
     }
 }
 
-HWTEST_F_L0(ContainersPlainArrayTest,
-    ExceptionReturnOfAddHasGetGetIndexOfKeyClearCloneGetIteratorObjForEachToStringGetIndexOfValue)
+HWTEST_F_L0(ContainersPlainArrayTest, ExceptionReturn1)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, Add);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, Has);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, Get);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfKey);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, Clear);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, Clone);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, GetIteratorObj);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, ToString);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfValue);
+
     JSHandle<JSAPIPlainArray> plianArray = CreateJSAPIPlainArray();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test Add, Has, Get and GetIndexOfKey exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Add, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Has, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Get, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfKey, callInfo);
-    callInfo->SetThis(plianArray.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Add, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Has, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Get, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfKey, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Clear, callInfo);
-
-    // test Clone exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Clone, callInfo);
-
-    // test GetIteratorObj exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIteratorObj, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, ForEach, callInfo);
-
-    // test ToString exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, ToString, callInfo);
-
-    // test GetIndexOfValue exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfValue, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Add, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Has, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Get, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetIndexOfKey, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersPlainArrayTest,
-    ExceptionReturnOfGetKeyAtRemoveRemoveAtSetValueAtGetValueAtIsEmptyRemoveRangeFromGetSize)
+HWTEST_F_L0(ContainersPlainArrayTest, ExceptionReturn2)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, GetKeyAt);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, Remove);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, RemoveAt);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, SetValueAt);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, GetValueAt);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, IsEmpty);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, RemoveRangeFrom);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersPlainArray, GetSize);
+
     JSHandle<JSAPIPlainArray> plianArray = CreateJSAPIPlainArray();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test GetKeyAt, Remove, ReomveAt, SetValueAt, GetValueAt exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetKeyAt, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Remove, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, RemoveAt, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, SetValueAt, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetValueAt, callInfo);
-    callInfo->SetThis(plianArray.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetKeyAt, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Remove, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, RemoveAt, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, SetValueAt, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetValueAt, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test IsEmpty exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, IsEmpty, callInfo);
-
-    // test RemoveRangeFrom exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, RemoveRangeFrom, callInfo);
-
-    // test GetSize exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetSize, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetKeyAt, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, Remove, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, RemoveAt, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, SetValueAt, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(plianArray.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, GetValueAt, callInfo);
+    }
 }
 }

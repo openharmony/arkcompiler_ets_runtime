@@ -575,94 +575,60 @@ HWTEST_F_L0(ContainersLightWeightSetTest, ProxyOfGetSizeAndHasHash)
     TestHelper::TearDownFrame(thread, prev2);
 }
 
-HWTEST_F_L0(ContainersLightWeightSetTest,
-    ExceptionReturnOfAddAllGetValueAtHasAllIncreaseCapacityToAddIsEmptyHasHasHashEqualGetIteratorObj)
+HWTEST_F_L0(ContainersLightWeightSetTest, ExceptionReturn1)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, AddAll);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, GetValueAt);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, HasAll);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, IncreaseCapacityTo);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, Add);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, IsEmpty);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, Has);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, HasHash);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, Equal);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, GetIteratorObj);
+
     JSHandle<JSAPILightWeightSet> lightWeightSet = CreateJSAPILightWeightSet();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test AddAll, GetValueAt, HasAll, IncreaseCapacityTo exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, AddAll, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, GetValueAt, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, HasAll, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, IncreaseCapacityTo, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, GetValueAt, callInfo);
-    callInfo->SetThis(lightWeightSet.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, AddAll, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, GetValueAt, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, HasAll, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, IncreaseCapacityTo, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, GetValueAt, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Add exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, Add, callInfo);
-
-    // test IsEmpty exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, IsEmpty, callInfo);
-
-    // test Has exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, Has, callInfo);
-
-    // test HasHash exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, HasHash, callInfo);
-
-    // test Equal exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, Equal, callInfo);
-
-    // test GetIteratorObj exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, GetIteratorObj, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(lightWeightSet.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, AddAll, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(lightWeightSet.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, GetValueAt, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(lightWeightSet.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, HasAll, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(lightWeightSet.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, IncreaseCapacityTo, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersLightWeightSetTest,
-    ExceptionReturnOfRemoveAtValuesEntriesForEachGetIndexOfRemoveClearToStringToArrayGetSize)
+HWTEST_F_L0(ContainersLightWeightSetTest, ExceptionReturn2)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, RemoveAt);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, Values);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, Entries);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, GetIndexOf);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, Remove);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, Clear);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, ToString);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, ToArray);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLightWeightSet, GetSize);
+
     JSHandle<JSAPILightWeightSet> lightWeightSet = CreateJSAPILightWeightSet();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test RemoveAt exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, RemoveAt, callInfo);
-    callInfo->SetThis(lightWeightSet.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, RemoveAt, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Values exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, Values, callInfo);
-
-    // test Entries exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, Entries, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, ForEach, callInfo);
-
-    // test GetIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, GetIndexOf, callInfo);
-
-    // test Remove exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, Remove, callInfo);
-
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, Clear, callInfo);
-
-    // test ToString exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, ToString, callInfo);
-
-    // test ToArray exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, ToArray, callInfo);
-
-    // test GetSize exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, GetSize, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(lightWeightSet.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, RemoveAt, callInfo);
+    }
 }
 }  // namespace panda::test

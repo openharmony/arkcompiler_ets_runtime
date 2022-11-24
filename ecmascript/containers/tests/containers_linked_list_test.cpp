@@ -520,96 +520,56 @@ HWTEST_F_L0(ContainersLinkedListTest, ProxyOfLength)
     }
 }
 
-HWTEST_F_L0(ContainersLinkedListTest,
-    ExceptionReturnOfInsertGetAddAddFirstGetFirstGetLastLengthClearCloneHasGetIndexOfGetLastIndexOf)
+HWTEST_F_L0(ContainersLinkedListTest, ExceptionReturn1)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Insert);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Get);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Add);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, AddFirst);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, GetFirst);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, GetLast);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Length);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Clear);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Clone);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Has);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, GetIndexOf);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, GetLastIndexOf);
+
     JSHandle<JSAPILinkedList> linkedlist = CreateJSAPILinkedList();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test Insert, Get exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Insert, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Get, callInfo);
-    callInfo->SetThis(linkedlist.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Insert, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Get, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Add exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Add, callInfo);
-
-    // test AddFirst exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, AddFirst, callInfo);
-
-    // test GetFirst exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, GetFirst, callInfo);
-
-    // test GetLast exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, GetLast, callInfo);
-
-    // test Length exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Length, callInfo);
-
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Clear, callInfo);
-
-    // test Clone exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Clone, callInfo);
-
-    // test Has exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Has, callInfo);
-
-    // test GetIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, GetIndexOf, callInfo);
-
-    // test GetLastIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, GetLastIndexOf, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(linkedlist.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Insert, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(linkedlist.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Get, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersLinkedListTest,
-    ExceptionReturnOfRemoveByIndexSetRemoveRemoveFirstRemoveFirstFoundRemoveLastRemoveLastFoundConvertToArrayForEach)
+HWTEST_F_L0(ContainersLinkedListTest, ExceptionReturn2)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, RemoveByIndex);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Set);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, Remove);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, RemoveFirst);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, RemoveFirstFound);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, RemoveLast);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, RemoveLastFound);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, ConvertToArray);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersLinkedList, ForEach);
+
     JSHandle<JSAPILinkedList> linkedlist = CreateJSAPILinkedList();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test RemoveByIndex, Set exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, RemoveByIndex, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Set, callInfo);
-    callInfo->SetThis(linkedlist.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, RemoveByIndex, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Set, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Remove exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Remove, callInfo);
-
-    // test RemoveFirst exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, RemoveFirst, callInfo);
-
-    // test RemoveFirstFound exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, RemoveFirstFound, callInfo);
-
-    // test RemoveLast exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, RemoveLast, callInfo);
-
-    // test RemoveLastFound exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, RemoveLastFound, callInfo);
-
-    // test ConvertToArray exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, ConvertToArray, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, ForEach, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(linkedlist.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, RemoveByIndex, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(linkedlist.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, Set, callInfo);
+    }
 }
 }  // namespace panda::test

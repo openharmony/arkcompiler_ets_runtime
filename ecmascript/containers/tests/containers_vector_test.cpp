@@ -882,146 +882,122 @@ HWTEST_F_L0(ContainersVectorTest, ProxyOfGetSizeSetLength)
     }
 }
 
-HWTEST_F_L0(ContainersVectorTest,
-    ExceptionReturnOfInsertSetLengthIncreaseCapacityToGetGetIndexFromAddGetCapacityGetIndexOfIsEmpty)
+HWTEST_F_L0(ContainersVectorTest, ExceptionReturn1)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Insert);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, SetLength);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, IncreaseCapacityTo);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Get);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetIndexFrom);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Add);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetCapacity);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetIndexOf);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, IsEmpty);
+ 
     JSHandle<JSAPIVector> vector = CreateJSAPIVector();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test Insert, SetLength, IncreaseCapacityTo, Get, GetIndexFrom exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Insert, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SetLength, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, IncreaseCapacityTo, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Get, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIndexFrom, callInfo);
-    callInfo->SetThis(vector.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Insert, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SetLength, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, IncreaseCapacityTo, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Get, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIndexFrom, callInfo);
-    callInfo->SetCallArg(0, JSTaggedValue(-1));
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SetLength, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Add exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Add, callInfo);
-
-    // test GetCapacity exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetCapacity, callInfo);
-
-    // test GetIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIndexOf, callInfo);
-
-    // test IsEmpty exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, IsEmpty, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Insert, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SetLength, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, IncreaseCapacityTo, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Get, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIndexFrom, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(-1));
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SetLength, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersVectorTest,
-    ExceptionReturnOfGetLastIndexFromRemoveByIndexRemoveByRangeGetLastElementGetLastIndexOfRemove)
+HWTEST_F_L0(ContainersVectorTest, ExceptionReturn2)
 {
-    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test GetLastIndexFrom, RemoveByIndex, RemoveByRange exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastIndexFrom, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByIndex, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByRange, callInfo);
-    callInfo->SetThis(vector.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastIndexFrom, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByIndex, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByRange, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetLastIndexFrom);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, RemoveByIndex);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, RemoveByRange);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetLastElement);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetLastIndexOf);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Remove);
     
-    // test GetLastElement exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastElement, callInfo);
-
-    // test GetLastIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastIndexOf, callInfo);
-
-    // test Remove exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Remove, callInfo);
+    JSHandle<JSAPIVector> vector = CreateJSAPIVector();
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetLastIndexFrom, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByIndex, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, RemoveByRange, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersVectorTest,
-    ExceptionReturnOfSetSubVectorReplaceAllElementsToStringGetSizeForEachTrimToCurrentLengthClear)
+HWTEST_F_L0(ContainersVectorTest, ExceptionReturn3)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Set);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, SubVector);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, ReplaceAllElements);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, ToString);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetSize);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, TrimToCurrentLength);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Clear);
+
     JSHandle<JSAPIVector> vector = CreateJSAPIVector();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test Set, SubVector, ReplaceAllElement exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Set, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SubVector, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ReplaceAllElements, callInfo);
-    callInfo->SetThis(vector.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Set, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SubVector, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ReplaceAllElements, callInfo);
-    callInfo->SetCallArg(0, JSTaggedValue(-1));
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Set, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test ToString exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ToString, callInfo);
-
-    // test GetSize exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetSize, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ForEach, callInfo);
-
-    // test TrimToCurrentLength exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, TrimToCurrentLength, callInfo);
-
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Clear, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Set, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, SubVector, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ReplaceAllElements, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(vector.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(-1));
+        CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Set, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersVectorTest,
-    ExceptionReturnOfCloneHasCopyToArrayConvertToArrayGetFirstElementSortGetIteratorObj)
+HWTEST_F_L0(ContainersVectorTest, ExceptionReturn4)
 {
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-    
-    // test Clone exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Clone, callInfo);
-
-    // test Has exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Has, callInfo);
-
-    // test CopyToArray exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, CopyToArray, callInfo);
-
-    // test ConvertToArray exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, ConvertToArray, callInfo);
-
-    // test GetFirstElement exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetFirstElement, callInfo);
-
-    // test Sort exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, Sort, callInfo);
-
-    // test GetIteratorObj exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersVector, GetIteratorObj, callInfo);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Clone);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Has);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, CopyToArray);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, ConvertToArray);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetFirstElement);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, Sort);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersVector, GetIteratorObj);
 }
 } // namespace panda::test
