@@ -644,10 +644,22 @@ public:
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ObjectWithFunction fail";
         EXPECT_TRUE(res->IsObject()) << "[NotJSFunction] Deserialize ObjectWithFunction fail";
 
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("2"));
-        OperationResult result = JSObject::GetProperty(thread, res, key);
-        JSHandle<JSTaggedValue> value = result.GetRawValue();
-        EXPECT_TRUE(value->IsJSFunction());
+        JSHandle<JSTaggedValue> key1(factory->NewFromASCII("2"));
+        OperationResult result1 = JSObject::GetProperty(thread, res, key1);
+        JSHandle<JSTaggedValue> value1 = result1.GetRawValue();
+        EXPECT_TRUE(value1->IsJSFunction());
+        JSHandle<JSTaggedValue> key2(factory->NewFromASCII("abc"));
+        OperationResult result2 = JSObject::GetProperty(thread, res, key2);
+        JSHandle<JSTaggedValue> value2 = result2.GetRawValue();
+        EXPECT_TRUE(value2->IsString());
+        JSHandle<JSTaggedValue> key3(factory->NewFromASCII("4"));
+        OperationResult result3 = JSObject::GetProperty(thread, res, key3);
+        JSHandle<JSTaggedValue> value3 = result3.GetRawValue();
+        EXPECT_TRUE(value3->IsJSFunction());
+        JSHandle<JSTaggedValue> key4(factory->NewFromASCII("key"));
+        OperationResult result4 = JSObject::GetProperty(thread, res, key4);
+        JSHandle<JSTaggedValue> value4 = result4.GetRawValue();
+        EXPECT_TRUE(value4->IsString());
         Destroy();
     }
 
@@ -1363,6 +1375,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeTaggedArray)
     t1.join();
     delete serializer;
 };
+
 JSPandaFile *CreateJSPandaFile(const char *source, const CString filename)
 {
     pandasm::Parser parser;
@@ -1374,6 +1387,7 @@ JSPandaFile *CreateJSPandaFile(const char *source, const CString filename)
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
     return pf;
 }
+
 HWTEST_F_L0(JSSerializerTest, SerializeConstantPool)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1386,20 +1400,20 @@ HWTEST_F_L0(JSSerializerTest, SerializeConstantPool)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     EXPECT_TRUE(pf != nullptr);
 
-    JSHandle<ConstantPool> constpool = factory->NewConstantPool(6);
+    JSHandle<ConstantPool> constPool = factory->NewConstantPool(6);
     JSHandle<JSFunction> funcFunc(env->GetFunctionFunction());
     JSHandle<JSFunction> dateFunc(env->GetDateFunction());
     JSHandle<EcmaString> str1 = factory->NewFromASCII("str11");
     JSHandle<EcmaString> str2 = factory->NewFromASCII("str22");
-    constpool->SetObjectToCache(thread, 0, funcFunc.GetTaggedValue());
-    constpool->SetObjectToCache(thread, 1, dateFunc.GetTaggedValue());
-    constpool->SetObjectToCache(thread, 2, str1.GetTaggedValue());
-    constpool->SetObjectToCache(thread, 3, str2.GetTaggedValue());
-    constpool->SetJSPandaFile(pf);
-    EXPECT_TRUE(constpool.GetTaggedValue().IsConstantPool());
+    constPool->SetObjectToCache(thread, 0, funcFunc.GetTaggedValue());
+    constPool->SetObjectToCache(thread, 1, dateFunc.GetTaggedValue());
+    constPool->SetObjectToCache(thread, 2, str1.GetTaggedValue());
+    constPool->SetObjectToCache(thread, 3, str2.GetTaggedValue());
+    constPool->SetJSPandaFile(pf);
+    EXPECT_TRUE(constPool.GetTaggedValue().IsConstantPool());
 
     JSSerializer *serializer = new JSSerializer(thread);
-    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(constpool));
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(constPool));
     EXPECT_TRUE(success);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
@@ -1407,10 +1421,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeConstantPool)
     t1.join();
     delete serializer;
 };
+
 static void TestFunc()
 {
     return;
 }
+
 HWTEST_F_L0(JSSerializerTest, SerializeMethod)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1426,6 +1442,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod)
     t1.join();
     delete serializer;
 };
+
 HWTEST_F_L0(JSSerializerTest, SerializeFunction)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1448,11 +1465,24 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> function = env->GetFunctionFunction();
-    EXPECT_TRUE(function->IsJSFunction());
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("2"));
+    JSHandle<JSTaggedValue> function1 = env->GetFunctionFunction();
+    EXPECT_TRUE(function1->IsJSFunction());
+    JSHandle<JSTaggedValue> function2 = env->GetFunctionFunction();
+    EXPECT_TRUE(function2->IsJSFunction());
+    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("1"));
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("2"));
+    JSHandle<JSTaggedValue> key3(factory->NewFromASCII("abc"));
+    JSHandle<JSTaggedValue> key4(factory->NewFromASCII("4"));
+    JSHandle<JSTaggedValue> key5(factory->NewFromASCII("key"));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(12345));
+    JSHandle<JSTaggedValue> value2(factory->NewFromASCII("def"));
+    JSHandle<JSTaggedValue> value3(factory->NewFromASCII("value"));
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key, function);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key1, value1);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key2, function1);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key3, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, function2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key5, value3);
 
     JSSerializer *serializer = new JSSerializer(thread);
     bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>(obj));
