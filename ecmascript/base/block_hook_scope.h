@@ -25,6 +25,11 @@ public:
     ~BlockHookScope();
     NO_COPY_SEMANTIC(BlockHookScope);
     NO_MOVE_SEMANTIC(BlockHookScope);
+
+#ifdef BLOCK_HOOK
+private:
+    bool previousState_ {true};
+#endif
 };
 }
 #endif  // BLOCK_HOOK_SCOPE_H
