@@ -227,7 +227,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
                                                        const CString &entryPoint,
                                                        JSHandle<ConstantPool> constpool)
 {
-    auto recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(entryPoint);
+    auto &recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(entryPoint);
     if (recordInfo.IsParsedConstpoolOfCurrentVM(vm)) {
         return;
     }
