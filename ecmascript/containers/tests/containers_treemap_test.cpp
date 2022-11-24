@@ -1395,73 +1395,33 @@ HWTEST_F_L0(ContainersTreeMapTest, ProxyOfGetLength)
     }
 }
 
-HWTEST_F_L0(ContainersTreeMapTest,
-    ExceptionReturnOfSetAllSetGetRemoveHasKeyHasValueGetFirstKeyGetLastKeyClearGetLowerKeyGetHigherKey)
+HWTEST_F_L0(ContainersTreeMapTest, ExceptionReturn1)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, SetAll);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, Set);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, Get);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, Remove);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, HasKey);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, HasValue);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, GetFirstKey);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, GetLastKey);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, Clear);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, GetLowerKey);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, GetHigherKey);
+
     JSHandle<JSAPITreeMap> treeMap = CreateJSAPITreeMap();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test SetAll exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, SetAll, callInfo);
-    callInfo->SetThis(treeMap.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, SetAll, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Set exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Set, callInfo);
-
-    // test Get exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Get, callInfo);
-
-    // test Remove exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Remove, callInfo);
-
-    // test HasKey exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, HasKey, callInfo);
-
-    // test HasValue exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, HasValue, callInfo);
-
-    // test GetFirstKey exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetFirstKey, callInfo);
-
-    // test GetLastKey exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetLastKey, callInfo);
-
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Clear, callInfo);
-
-    // test GetLowerKey exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetLowerKey, callInfo);
-
-    // test GetHigherKey exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetHigherKey, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(treeMap.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, SetAll, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersTreeMapTest,
-    ExceptionReturnOfReplaceForEachGetLengthIsEmpty)
+HWTEST_F_L0(ContainersTreeMapTest, ExceptionReturn2)
 {
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-    
-    // test Replace exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, Replace, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, ForEach, callInfo);
-
-    // test GetLength exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, GetLength, callInfo);
-
-    // test IsEmpty exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, IsEmpty, callInfo);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, Replace);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, GetLength);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeMap, IsEmpty);
 }
 }  // namespace panda::test

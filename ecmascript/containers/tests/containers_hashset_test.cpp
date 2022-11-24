@@ -435,39 +435,16 @@ HWTEST_F_L0(ContainersHashSetTest, ProxyOfGetLength)
     }
 }
 
-HWTEST_F_L0(ContainersHashSetTest,
-    ExceptionReturnOfValuesEntriesAddRemoveHasClearGetLengthIsEmptyForEach)
+HWTEST_F_L0(ContainersHashSetTest, ExceptionReturn)
 {
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test Values exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Values, callInfo);
-
-    // test Entries exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Entries, callInfo);
-
-    // test Add exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Add, callInfo);
-
-    // test Remove exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Remove, callInfo);
-
-    // test Has exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Has, callInfo);
-
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, Clear, callInfo);
-
-    // test GetLength exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, GetLength, callInfo);
-
-    // test IsEmpty exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, IsEmpty, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, ForEach, callInfo);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, Values);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, Entries);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, Add);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, Remove);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, Has);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, Clear);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, GetLength);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, IsEmpty);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashSet, ForEach);
 }
 }
