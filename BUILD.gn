@@ -265,6 +265,9 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_UNIX",
       "PANDA_USE_FUTEX",
     ]
+    if (host_os == "mac") {
+      defines += [ "DISABLE_ASM_INTERPRETER" ]
+    }
   } else if (target_os == "ios") {
     defines += [
       "PANDA_TARGET_IOS",
