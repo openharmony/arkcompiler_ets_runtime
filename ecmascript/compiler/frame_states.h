@@ -111,15 +111,23 @@ private:
     void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo);
     bool MergeIntoPredBC(uint32_t predPc);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
-    FrameStateInfo *GetOrOCreateStateInfo(uint32_t bcIndex)
+    FrameStateInfo *GetOrOCreateBCEndStateInfo(uint32_t bcIndex)
     {
-        auto currentInfo = stateInfos_[bcIndex];
+        auto currentInfo = bcEndStateInfos_[bcIndex];
         if (currentInfo == nullptr) {
             currentInfo = CreateEmptyStateInfo();
-            stateInfos_[bcIndex] = currentInfo;
+            bcEndStateInfos_[bcIndex] = currentInfo;
         }
         return currentInfo;
     }
+    FrameStateInfo *GetBBBeginStateInfo(size_t bbId) const
+    {
+        return bbBeginStateInfos_.at(bbId);
+    }
+    void UpdateVirtualRegistersOfSuspend(GateRef gate);
+    void UpdateVirtualRegistersOfResume(GateRef gate);
+    void SaveBBBeginStateInfo(size_t bbId);
+    FrameStateInfo *GetCurrentFrameInfo(BytecodeRegion &bb, uint32_t bcId);
     GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
 
     BytecodeCircuitBuilder *builder_{nullptr};
@@ -129,7 +137,8 @@ private:
     Circuit *circuit_ {nullptr};
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
-    std::vector<FrameStateInfo *> stateInfos_;
+    std::vector<FrameStateInfo *> bcEndStateInfos_;
+    std::vector<FrameStateInfo *> bbBeginStateInfos_;
     std::vector<size_t> postOrderList_;
 };
 }  // panda::ecmascript::kungfu
