@@ -5713,6 +5713,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue value = GET_ACC();
 
+        SAVE_ACC();
         SlowRuntimeStub::StModuleVar(thread, index, value);
         RESTORE_ACC();
         DISPATCH(STMODULEVAR_IMM8);
@@ -5724,6 +5725,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         JSTaggedValue value = GET_ACC();
 
+        SAVE_ACC();
         SlowRuntimeStub::StModuleVar(thread, index, value);
         RESTORE_ACC();
         DISPATCH(WIDE_STMODULEVAR_PREF_IMM16);
