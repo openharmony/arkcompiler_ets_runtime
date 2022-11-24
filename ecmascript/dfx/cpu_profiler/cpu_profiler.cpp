@@ -373,7 +373,7 @@ void CpuProfiler::GetNativeStack(FrameHandler &frameHandler, char *functionName,
 {
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     // napi method
     if (function->IsCallNative()) {
         JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
@@ -389,7 +389,7 @@ void CpuProfiler::GetNativeStack(FrameHandler &frameHandler, char *functionName,
             return;
         }
     }
-    if (extraInfoValue.IsJSNativePointer()) {
+    if (extraInfoValue.CheckIsJSNativePointer()) {
         stream << JSNativePointer::Cast(extraInfoValue.GetTaggedObject())->GetExternalPointer();
         CheckAndCopy(functionName, size, "arkui(");
         const uint8_t arkuiBeginLength = 6; // 6:the length of "arkui("
