@@ -50,6 +50,7 @@ namespace panda::ecmascript {
 } // namespace panda::ecmascript
 
 namespace panda::test {
+using panda::ecmascript::EcmaRuntimeCallInfo;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CONTAINERS_API_EXCEPTION_TEST(className, methodName, callInfoName)          \
@@ -59,6 +60,23 @@ namespace panda::test {
     TestHelper::TearDownFrame(thread, testPrev);                                    \
     EXPECT_EQ(testResult, JSTaggedValue::Exception());                              \
     EXPECT_EXCEPTION();                                                             \
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(className, methodName)   \
+{                                                                            \
+    auto callInfo = NewEmptyCallInfo(thread);                                \
+    CONTAINERS_API_EXCEPTION_TEST(className, methodName, callInfo);          \
+}
+
+[[maybe_unused]] static EcmaRuntimeCallInfo* NewEmptyCallInfo(JSThread *thread)
+{
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(JSTaggedValue::Undefined());
+    callInfo->SetCallArg(0, JSTaggedValue::Hole());
+    callInfo->SetCallArg(1, JSTaggedValue::Hole());
+    return callInfo;
 }
 } // namespace panda::test
     

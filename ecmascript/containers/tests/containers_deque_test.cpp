@@ -305,42 +305,17 @@ HWTEST_F_L0(ContainersDequeTest, ProxyOfGetSize)
     }
 }
 
-HWTEST_F_L0(ContainersDequeTest,
-    ExceptionReturnOfInsertFrontInsertEndGetFirstGetLastHasPopFirstPopLastForEachGetIteratorObjGetSize)
+HWTEST_F_L0(ContainersDequeTest, ExceptionReturn)
 {
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-    
-    // test InsertFront exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, InsertFront, callInfo);
-
-    // test InsertEnd exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, InsertEnd, callInfo);
-
-    // test GetFirst exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, GetFirst, callInfo);
-
-    // test GetLast exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, GetLast, callInfo);
-
-    // test Has exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, Has, callInfo);
-
-    // test PopFirst exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, PopFirst, callInfo);
-
-    // test PopLast exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, PopLast, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, ForEach, callInfo);
-
-    // test GetIteratorObj exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, GetIteratorObj, callInfo);
-
-    // test GetSize exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, GetSize, callInfo);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, InsertFront);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, InsertEnd);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, GetFirst);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, GetLast);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, Has);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, PopFirst);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, PopLast);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, GetIteratorObj);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersDeque, GetSize);
 }
 }  // namespace panda::test

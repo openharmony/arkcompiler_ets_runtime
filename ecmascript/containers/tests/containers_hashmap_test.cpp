@@ -975,58 +975,27 @@ HWTEST_F_L0(ContainersHashMapTest, ProxyOfGetLength)
     }
 }
 
-HWTEST_F_L0(ContainersHashMapTest,
-    ExceptionReturnOfSetAllKeysValuesEntriesForEachSetGetRemoveHasKeyHasValueReplaceClearGetLength)
+HWTEST_F_L0(ContainersHashMapTest, ExceptionReturn)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, SetAll);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, Keys);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, Values);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, Entries);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, Set);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, Get);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, Remove);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, HasKey);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, HasValue);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, Replace);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, Clear);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersHashMap, GetLength);
+
     JSHandle<JSAPIHashMap> treeMap = CreateJSAPIHashMap();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test SetAll exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, SetAll, callInfo);
-    callInfo->SetThis(treeMap.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, SetAll, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Keys exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Keys, callInfo);
-
-    // test Values exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Values, callInfo);
-
-    // test Entries exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Entries, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, ForEach, callInfo);
-
-    // test Set exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Set, callInfo);
-
-    // test Get exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Get, callInfo);
-
-    // test Remove exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Remove, callInfo);
-
-    // test HasKey exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, HasKey, callInfo);
-
-    // test HasValue exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, HasValue, callInfo);
-
-    // test Replace exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Replace, callInfo);
-
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, Clear, callInfo);
-
-    // test GetLength exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, GetLength, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(treeMap.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, SetAll, callInfo);
+    }
 }
 } // namespace panda::test
