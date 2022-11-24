@@ -18,8 +18,6 @@
 
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_loader.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/jspandafile/bytecode_inst/old_instruction.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -60,16 +58,49 @@ enum class LexicalEnvStatus : uint8_t {
     REALITY_LEXENV
 };
 
-struct LexEnv {
-    explicit LexEnv(uint32_t methodIdx, uint32_t num, LexicalEnvStatus lexEnvStatus)
-        : outmethodId(methodIdx), lexVarTypes(num, GateType::AnyType()),
-          status(lexEnvStatus)
+class LexEnv {
+public:
+    LexEnv() = default;
+    ~LexEnv() = default;
+
+    static constexpr uint32_t DEFAULT_ROOT = std::numeric_limits<uint32_t>::max();
+
+    inline void Inilialize(uint32_t outMethodId, uint32_t numOfLexVars, LexicalEnvStatus status)
     {
+        outMethodId_ = outMethodId;
+        lexVarTypes_.resize(numOfLexVars, GateType::AnyType());
+        status_ = status;
     }
 
-    uint32_t outmethodId { 0 };
-    std::vector<GateType> lexVarTypes {};
-    LexicalEnvStatus status { LexicalEnvStatus::VIRTUAL_LEXENV };
+    inline uint32_t GetOutMethodId() const
+    {
+        return outMethodId_;
+    }
+
+    inline LexicalEnvStatus GetLexEnvStatus() const
+    {
+        return status_;
+    }
+
+    inline GateType GetLexVarType(uint32_t slot) const
+    {
+        if (slot < lexVarTypes_.size()) {
+            return lexVarTypes_[slot];
+        }
+        return GateType::AnyType();
+    }
+
+    inline void SetLexVarType(uint32_t slot, const GateType &type)
+    {
+        if (slot < lexVarTypes_.size()) {
+            lexVarTypes_[slot] = type;
+        }
+    }
+
+private:
+    uint32_t outMethodId_ { DEFAULT_ROOT };
+    std::vector<GateType> lexVarTypes_ {};
+    LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
 };
 
 // each method in the abc file corresponds to one MethodInfo and
@@ -79,20 +110,86 @@ struct MethodPcInfo {
     uint32_t methodsSize {0};
 };
 
-struct MethodInfo {
-    explicit MethodInfo(size_t methodIdx, size_t methodPcIdx, uint32_t outMethodIdx, uint32_t num = 0,
+class MethodInfo {
+public:
+    explicit MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx, uint32_t num = 0,
                         LexicalEnvStatus lexEnvStatus = LexicalEnvStatus::VIRTUAL_LEXENV)
-        : methodInfoIndex(methodIdx), methodPcInfoIndex(methodPcIdx),
-          lexEnv(outMethodIdx, num, lexEnvStatus)
+        : methodInfoIndex_(methodInfoIndex), methodPcInfoIndex_(methodPcInfoIndex), outMethodId_(outMethodIdx),
+          numOfLexVars_(num), status_(lexEnvStatus)
     {
     }
 
+    ~MethodInfo() = default;
+
+    inline uint32_t GetOutMethodId() const
+    {
+        return outMethodId_;
+    }
+
+    inline uint32_t SetOutMethodId(uint32_t outMethodId)
+    {
+        return outMethodId_ = outMethodId;
+    }
+
+    inline uint32_t GetNumOfLexVars() const
+    {
+        return numOfLexVars_;
+    }
+
+    inline uint32_t SetNumOfLexVars(uint32_t numOfLexVars)
+    {
+        return numOfLexVars_ = numOfLexVars;
+    }
+
+    inline LexicalEnvStatus GetLexEnvStatus() const
+    {
+        return status_;
+    }
+
+    inline LexicalEnvStatus SetLexEnvStatus(LexicalEnvStatus status)
+    {
+        return status_ = status;
+    }
+
+    inline uint32_t GetMethodPcInfoIndex() const
+    {
+        return methodPcInfoIndex_;
+    }
+
+    inline uint32_t SetMethodPcInfoIndex(uint32_t methodPcInfoIndex)
+    {
+        return methodPcInfoIndex_ = methodPcInfoIndex;
+    }
+
+    inline uint32_t GetMethodInfoIndex() const
+    {
+        return methodInfoIndex_;
+    }
+
+    inline uint32_t SetMethodInfoIndex(uint32_t methodInfoIndex)
+    {
+        return methodInfoIndex_ = methodInfoIndex;
+    }
+
+    inline void AddInnerMethod(uint32_t offset)
+    {
+        innerMethods_.emplace_back(offset);
+    }
+
+    inline const std::vector<uint32_t> &GetInnerMethods() const
+    {
+        return innerMethods_;
+    }
+
+private:
     // used to record the index of the current MethodInfo to speed up the lookup of lexEnv
-    size_t methodInfoIndex { 0 };
+    uint32_t methodInfoIndex_ { 0 };
     // used to obtain MethodPcInfo from the vector methodPcInfos of struct BCInfo
-    size_t methodPcInfoIndex { 0 };
-    std::vector<uint32_t> innerMethods {};
-    LexEnv lexEnv;
+    uint32_t methodPcInfoIndex_ { 0 };
+    std::vector<uint32_t> innerMethods_ {};
+    uint32_t outMethodId_ { LexEnv::DEFAULT_ROOT };
+    uint32_t numOfLexVars_ { 0 };
+    LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
 };
 
 enum class ConstantPoolIndexType : uint8_t {
@@ -222,7 +319,7 @@ public:
                 methodCompiledOrder.pop();
                 methodOffsetToRecordName_.emplace(compilingMethod, recordNames_[i]);
                 auto &methodInfo = methodList_.at(compilingMethod);
-                auto &methodPcInfo = methodPcInfos_[methodInfo.methodPcInfoIndex];
+                auto &methodPcInfo = methodPcInfos_[methodInfo.GetMethodPcInfoIndex()];
                 auto methodLiteral = jsPandaFile->FindMethodLiteral(compilingMethod);
                 const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
                 if (FilterMethod(recordNames_[i], methodLiteral, methodPcInfo)) {
@@ -230,9 +327,9 @@ public:
                     LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
                 } else {
                     cb(recordNames_[i], methodName, methodLiteral, compilingMethod,
-                       methodPcInfo, methodInfo.methodInfoIndex);
+                       methodPcInfo, methodInfo.GetMethodInfoIndex());
                 }
-                auto &innerMethods = methodInfo.innerMethods;
+                auto &innerMethods = methodInfo.GetInnerMethods();
                 for (auto it : innerMethods) {
                     methodCompiledOrder.push(it);
                 }
@@ -274,7 +371,22 @@ public:
 private:
     uint32_t GetTargetLexEnv(uint32_t methodId, uint32_t level) const;
 
-    std::vector<LexEnv *> lexEnvs_ {};
+    inline uint32_t GetOutMethodId(uint32_t methodId) const
+    {
+        return lexEnvs_[methodId].GetOutMethodId();
+    }
+
+    inline LexicalEnvStatus GetLexEnvStatus(uint32_t methodId) const
+    {
+        return lexEnvs_[methodId].GetLexEnvStatus();
+    }
+
+    inline bool HasDefaultRoot(uint32_t methodId) const
+    {
+        return GetOutMethodId(methodId) == LexEnv::DEFAULT_ROOT;
+    }
+
+    std::vector<LexEnv> lexEnvs_ {};
 };
 
 class BytecodeInfoCollector {
@@ -325,12 +437,11 @@ private:
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
     void ProcessClasses();
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr, const MethodLiteral *method);
-    void SetMethodPcInfoIndex(uint32_t methodOffset, size_t index);
+    void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo);
     void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset);
     void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset);
     void CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index);
     void NewLexEnvWithSize(const MethodLiteral *method, uint64_t numOfLexVars);
-
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
     void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
     void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
