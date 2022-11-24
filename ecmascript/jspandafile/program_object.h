@@ -74,7 +74,7 @@ public:
         LOG_ECMA_IF(mainIndex == nullptr, FATAL) << "Unknown methodId: " << id.GetOffset();
         auto constpoolSize = mainIndex->method_idx_size;
 
-        JSHandle<ConstantPool> constpool;
+        JSHandle<ConstantPool> constpool(vm->GetJSThread(), JSTaggedValue::Hole());
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         if (isLoadedAOT) {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
@@ -83,7 +83,8 @@ public:
             LOG_FULL(FATAL) << "Aot don't support Windows and MacOS platform";
             UNREACHABLE();
 #endif
-        } else {
+        }
+        if (constpool.GetTaggedValue().IsHole()) {
             ObjectFactory *factory = vm->GetFactory();
             constpool = factory->NewConstantPool(constpoolSize);
         }
