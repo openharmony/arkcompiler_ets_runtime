@@ -500,6 +500,8 @@ public:
     // [[OwnPropertyKeys]]
     static JSHandle<TaggedArray> GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj);
 
+    static JSHandle<TaggedArray> GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj);
+
     // 9.1.13 ObjectCreate
     static JSHandle<JSObject> ObjectCreate(JSThread *thread, const JSHandle<JSObject> &proto);
 
@@ -575,8 +577,12 @@ public:
 
     static JSHandle<TaggedArray> GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                                     uint32_t numOfElements, uint32_t *keys);
+    static void GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+                                   const JSHandle<TaggedArray> &keyArray);
     static JSHandle<TaggedArray> GetAllEnumKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                                 uint32_t numOfKeys, uint32_t *keys);
+    static void GetAllEnumKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+                               const JSHandle<TaggedArray> &keyArray);
 
     static void AddAccessor(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<AccessorData> &value, PropertyAttributes attr);

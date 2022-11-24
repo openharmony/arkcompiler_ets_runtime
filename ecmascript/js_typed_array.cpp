@@ -322,6 +322,42 @@ JSHandle<TaggedArray> JSTypedArray::OwnPropertyKeys(JSThread *thread, const JSHa
     return factory->CopyArray(nameList, length, copyLength);
 }
 
+JSHandle<TaggedArray> JSTypedArray::OwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &typedarray)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 1. Let keys be a new empty List.
+    // 2. Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
+    // [[TypedArrayName]] internal slots.
+    // 3. Let len be the value of O’s [[ArrayLength]] internal slot.
+    JSHandle<JSTypedArray> arrayObj(typedarray);
+    JSHandle<TaggedArray> objKeys = JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>::Cast(arrayObj));
+    uint32_t objKeysLen = objKeys->GetLength();
+    uint32_t bufferKeysLen = arrayObj->GetArrayLength();
+    uint32_t length = objKeysLen + bufferKeysLen;
+    JSHandle<TaggedArray> nameList = factory->NewTaggedArray(length);
+
+    // 4. For each integer i starting with 0 such that i < len, in ascending order,
+    //   a. Add ToString(i) as the last element of keys.
+    uint32_t copyLength = 0;
+    for (uint32_t k = 0; k < bufferKeysLen; k++) {
+        auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(k));
+        nameList->Set(thread, copyLength, key);
+        copyLength++;
+    }
+
+    // 5. For each own property key P of O such that Type(P) is String and P is not an integer index, in
+    // property creation order
+    //   a. Add P as the last element of keys.
+    for (uint32_t i = 0; i < objKeysLen; i++) {
+        JSTaggedValue key = objKeys->Get(i);
+        nameList->Set(thread, copyLength, key);
+        copyLength++;
+    }
+
+    // 7. Return keys.
+    return factory->CopyArray(nameList, length, copyLength);
+}
+
 // 9.4.5.7 IntegerIndexedObjectCreate (prototype, internalSlotsList)
 
 // 9.4.5.8 IntegerIndexedElementGet ( O, index )

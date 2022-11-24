@@ -34,6 +34,8 @@ public:
 
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPIStack> &obj);
 
+    static JSHandle<TaggedArray> OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIStack> &obj);
+
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj, const JSHandle<JSTaggedValue> &key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj,
                                        const JSHandle<JSTaggedValue> &key);

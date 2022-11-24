@@ -157,14 +157,39 @@ bool JSAPIQueue::Has(JSTaggedValue value) const
 JSHandle<TaggedArray> JSAPIQueue::OwnKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj)
 {
     uint32_t length = obj->GetLength().GetArrayLength();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys = factory->NewTaggedArray(length);
+    
+    JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
+    ASSERT(!oldElements->IsDictionaryMode());
+    uint32_t oldCapacity = oldElements->GetLength();
+    uint32_t newCapacity = ComputeCapacity(oldCapacity);
+    uint32_t front = obj->GetFront();
+    uint32_t tail = obj->GetTail();
+    JSHandle<TaggedArray> newElements =
+        thread->GetEcmaVM()->GetFactory()->CopyQueue(oldElements, newCapacity, front, tail);
+    obj->SetFront(0);
+    obj->SetTail(length);
+    obj->SetElements(thread, newElements);
 
-    for (uint32_t i = 0; i < length; i++) {
-        keys->Set(thread, i, JSTaggedValue(i));
-    }
+    return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>::Cast(obj));
+}
 
-    return keys;
+JSHandle<TaggedArray> JSAPIQueue::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj)
+{
+    uint32_t length = obj->GetLength().GetArrayLength();
+    
+    JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
+    ASSERT(!oldElements->IsDictionaryMode());
+    uint32_t oldCapacity = oldElements->GetLength();
+    uint32_t newCapacity = ComputeCapacity(oldCapacity);
+    uint32_t front = obj->GetFront();
+    uint32_t tail = obj->GetTail();
+    JSHandle<TaggedArray> newElements =
+        thread->GetEcmaVM()->GetFactory()->CopyQueue(oldElements, newCapacity, front, tail);
+    obj->SetFront(0);
+    obj->SetTail(length);
+    obj->SetElements(thread, newElements);
+
+    return JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>::Cast(obj));
 }
 
 bool JSAPIQueue::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,

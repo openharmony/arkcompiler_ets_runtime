@@ -33,15 +33,12 @@ public:
 
     static bool CheckObjProto(const JSThread *thread, const JSHandle<JSForInIterator> &it);
 
-    static void FastGetAllEnumKeys(const JSThread *thread, const JSHandle<JSForInIterator> &it,
-                                   const JSHandle<JSTaggedValue> &object);
-
-    static void SlowGetAllEnumKeys(JSThread *thread, const JSHandle<JSForInIterator> &it,
-                                   const JSHandle<JSTaggedValue> &object);
+    static void GetAllEnumKeys(JSThread *thread, const JSHandle<JSForInIterator> &it,
+                               const JSHandle<JSTaggedValue> &object);
 
     static constexpr size_t OBJECT_OFFSET = JSObject::SIZE;
     ACCESSORS(Object, OBJECT_OFFSET, VISITED_KEYS_OFFSET)
-    ACCESSORS(VisitedKeys, VISITED_KEYS_OFFSET, REMAINING_KEYS_OFFSET)
+    ACCESSORS(VisitedObjs, VISITED_KEYS_OFFSET, REMAINING_KEYS_OFFSET)
     ACCESSORS(RemainingKeys, REMAINING_KEYS_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -49,6 +46,7 @@ public:
     // define BitField
     static constexpr size_t WAS_VISITED_BITS = 3;
     FIRST_BIT_FIELD(BitField, WasVisited, bool, WAS_VISITED_BITS)
+    NEXT_BIT_FIELD(BitField, HasVisitObjs, bool, 1, WasVisited)
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, OBJECT_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()

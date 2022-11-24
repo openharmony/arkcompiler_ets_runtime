@@ -477,6 +477,7 @@ public:
     static JSTaggedValue GetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static bool PreventExtensions(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static JSHandle<TaggedArray> GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static JSHandle<TaggedArray> GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static bool HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key);
     static bool HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key);
     static bool HasOwnProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
@@ -692,6 +693,7 @@ private:
     static bool HasContainerProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &key);
     static JSHandle<TaggedArray> GetOwnContainerPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static JSHandle<TaggedArray> GetOwnContainerEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static bool GetContainerProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &key, PropertyDescriptor &desc);
     static OperationResult GetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,

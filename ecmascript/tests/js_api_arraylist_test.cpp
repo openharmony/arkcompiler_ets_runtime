@@ -631,7 +631,8 @@ HWTEST_F_L0(JSAPIArrayListTest, OwnKeys)
     JSHandle<TaggedArray> keys = JSAPIArrayList::OwnKeys(thread, arrayList);
     uint32_t length = arrayList->GetLength().GetArrayLength();
     for (uint32_t i = 0; i < length; i++) {
-        EXPECT_EQ(keys->Get(i), JSTaggedValue(i));
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
+            EcmaString::Cast(keys->Get(i).GetTaggedObject())));
     }
 }
 
