@@ -53,14 +53,14 @@ void PGOProfiler::Sample(JSTaggedType value)
                 auto info = result->second;
                 info->IncreaseCount();
             } else {
-                auto info = chunk_.New<MethodProfilerInfo>(1, jsMethod->ParseFunctionName());
+                auto info = chunk_.New<MethodProfilerInfo>(1, std::string(jsMethod->GetMethodName()));
                 methodCountMap->emplace(jsMethod->GetMethodId(), info);
                 methodCount_++;
             }
         } else {
             ChunkUnorderedMap<EntityId, MethodProfilerInfo *> *methodsCountMap =
                 chunk_.New<ChunkUnorderedMap<EntityId, MethodProfilerInfo *>>(&chunk_);
-            auto info = chunk_.New<MethodProfilerInfo>(1, jsMethod->ParseFunctionName());
+            auto info = chunk_.New<MethodProfilerInfo>(1, std::string(jsMethod->GetMethodName()));
             methodsCountMap->emplace(jsMethod->GetMethodId(), info);
             profilerMap_.emplace(recordName, methodsCountMap);
             methodCount_++;
