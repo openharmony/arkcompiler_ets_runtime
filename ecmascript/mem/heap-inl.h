@@ -18,6 +18,7 @@
 
 #include "ecmascript/mem/heap.h"
 
+#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/allocator-inl.h"
@@ -30,6 +31,7 @@
 #include "ecmascript/mem/mem_map_allocator.h"
 
 namespace panda::ecmascript {
+using BlockHookScope = base::BlockHookScope;
 #define CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, space, message)                                         \
     if (UNLIKELY((object) == nullptr)) {                                                                    \
         size_t oomOvershootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();   \
@@ -304,6 +306,7 @@ void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     if (tracker_ != nullptr) {
+        BlockHookScope blockScope;
         tracker_->AllocationEvent(address);
     }
 #endif
@@ -313,6 +316,7 @@ void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] Tagg
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     if (tracker_ != nullptr) {
+        BlockHookScope blockScope;
         tracker_->MoveEvent(address, forwardAddress);
     }
 #endif

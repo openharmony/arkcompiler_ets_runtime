@@ -15,6 +15,7 @@
 
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
+#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_vm.h"
@@ -56,6 +57,7 @@ void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat,
 void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress,
                                  bool isVmMode, bool isPrivate)
 {
+    ecmascript::base::BlockHookScope blockScope;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress, isVmMode, isPrivate);
@@ -111,6 +113,7 @@ bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 bool DFXJSNApi::StartHeapTracking(const EcmaVM *vm, double timeInterval, bool isVmMode,
                                   Stream *stream, bool traceAllocation, bool newThread)
 {
+    ecmascript::base::BlockHookScope blockScope;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     return heapProfile->StartHeapTracking(timeInterval, isVmMode, stream, traceAllocation, newThread);
@@ -118,6 +121,7 @@ bool DFXJSNApi::StartHeapTracking(const EcmaVM *vm, double timeInterval, bool is
 
 bool DFXJSNApi::UpdateHeapTracking(const EcmaVM *vm, Stream *stream)
 {
+    ecmascript::base::BlockHookScope blockScope;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     return heapProfile->UpdateHeapTracking(stream);
@@ -131,6 +135,7 @@ bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, const std::string &filePath, 
 
 bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, Stream* stream, Progress *progress, bool newThread)
 {
+    ecmascript::base::BlockHookScope blockScope;
     bool result = false;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
