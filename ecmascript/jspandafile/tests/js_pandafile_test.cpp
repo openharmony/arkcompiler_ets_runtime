@@ -304,4 +304,18 @@ HWTEST_F_L0(JSPandaFileTest, GetFileUniqId)
         sizeof(panda_file::File::Header))));
     JSPandaFileManager::RemoveJSPandaFile(pf);
 }
+
+HWTEST_F_L0(JSPandaFileTest, IsParsedConstpoolOfCurrentVM)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test.pa";
+    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    auto &recordInfo = pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
+    EXPECT_TRUE(!recordInfo.IsParsedConstpoolOfCurrentVM(instance));
+    recordInfo.SetParsedConstpoolVM(instance);
+    EXPECT_TRUE(pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME).IsParsedConstpoolOfCurrentVM(instance));
+    JSPandaFileManager::RemoveJSPandaFile(pf);
+}
 }  // namespace panda::test
