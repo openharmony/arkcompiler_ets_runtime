@@ -208,6 +208,113 @@ bool StubFileInfo::Load(EcmaVM *vm)
     return true;
 }
 
+AnFileDataManager *AnFileDataManager::GetInstance()
+{
+    static AnFileDataManager anFileDataManager;
+    return &anFileDataManager;
+}
+
+AnFileDataManager::~AnFileDataManager()
+{
+    os::memory::LockHolder lock(lock_);
+    auto iter = loadedData_.begin();
+    while (iter != loadedData_.end()) {
+        void *poolAddr = iter->second->poolAddr;
+        size_t poolSize = iter->second->poolSize;
+        MemMapAllocator::GetInstance()->Free(poolAddr, poolSize, false);
+        iter = loadedData_.erase(iter);
+    }
+}
+
+bool AnFileDataManager::SafeLoad(const std::string &filename)
+{
+    if (!AOTFileInfo::VerifyFilePath(filename)) {
+        LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
+                            << "please execute ark_aot_compiler with options --aot-file.";
+        UNREACHABLE();
+        return false;
+    }
+
+    os::memory::LockHolder lock(lock_);
+    const CString &cstrFileName = ConvertToString(filename);
+    const std::shared_ptr<AnFileData const> anFileData = UnsafeFind(cstrFileName);
+    if (anFileData != nullptr) {
+        return true;
+    }
+    if (!UnsafeLoadData(cstrFileName)) {
+        return false;
+    }
+    return true;
+}
+
+std::shared_ptr<const AnFileDataManager::AnFileData> AnFileDataManager::UnsafeFind(const CString &filename) const
+{
+    // note: This method is not thread-safe
+    // need to ensure that the instance of AnFileDataManager has been locked before use
+    const auto iter = loadedData_.find(filename);
+    if (iter == loadedData_.end()) {
+        return nullptr;
+    }
+    return iter->second;
+}
+
+std::shared_ptr<const AnFileDataManager::AnFileData> AnFileDataManager::SafeGetAnFileData(const CString &filename)
+{
+    os::memory::LockHolder lock(lock_);
+    return UnsafeFind(filename);
+}
+
+bool AnFileDataManager::UnsafeLoadData(const CString &filename)
+{
+    std::ifstream file(filename.c_str(), std::ofstream::binary);
+    if (!file.good()) {
+        LOG_COMPILER(ERROR) << "Fail to load an file: " << filename.c_str();
+        file.close();
+        return false;
+    }
+
+    std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> anVersion;
+    file.read(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
+    if (anVersion != AOTFileManager::AOT_VERSION) {
+        auto convToStr = [] (std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> version) -> std::string {
+            std::string ret = "";
+            for (size_t i = 0; i < AOTFileManager::AOT_VERSION_SIZE; ++i) {
+                if (i) {
+                    ret += ".";
+                }
+                ret += std::to_string(version[i]);
+            }
+            return ret;
+        };
+        LOG_COMPILER(ERROR) << "Load an file failed, an file version is incorrect, "
+                            << "expected version is " << convToStr(AOTFileManager::AOT_VERSION)
+                            << ", but got " << convToStr(anVersion);
+        file.close();
+        return false;
+    }
+
+    std::shared_ptr<AnFileData> data = std::make_shared<AnFileData>(AnFileData());
+    loadedData_[filename] = data;
+    file.read(reinterpret_cast<char *>(&data->entryNum), sizeof(data->entryNum));
+    data->entries.resize(data->entryNum);
+    file.read(reinterpret_cast<char *>(data->entries.data()), sizeof(AOTFileInfo::FuncEntryDes) * data->entryNum);
+    file.read(reinterpret_cast<char *>(&data->moduleNum), sizeof(data->moduleNum));
+    data->des.resize(data->moduleNum);
+    file.read(reinterpret_cast<char *>(&data->totalCodeSize), sizeof(data->totalCodeSize));
+
+    int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
+    auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(data->totalCodeSize, 256_KB), 0, false, prot);
+    data->poolAddr = pool.GetMem();
+    data->poolSize = pool.GetSize();
+
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
+    uint32_t curUnitOffset = 0;
+    for (size_t i = 0; i < data->moduleNum; i++) {
+        data->des[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
+    }
+    return true;
+}
+
 void AnFileInfo::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&snapshotConstantPool_)));
@@ -268,43 +375,19 @@ void AnFileInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
 #endif
 }
 
-bool AnFileInfo::Load(EcmaVM *vm, const std::string &filename)
+bool AnFileInfo::Load(const std::string &filename)
 {
-    if (!VerifyFilePath(filename)) {
-        LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
-                            << "please execute ark_aot_compiler with options --aot-file.";
-        UNREACHABLE();
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    if (!anFileDataManager->SafeLoad(filename)) {
         return false;
     }
-    std::ifstream file(filename.c_str(), std::ofstream::binary);
-    if (!file.good()) {
-        LOG_COMPILER(ERROR) << "Fail to load aot file: " << filename.c_str();
-        file.close();
-        return false;
-    }
-    std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> anVersion;
-    file.read(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
-    if (anVersion != vm->GetAOTFileManager()->AOT_VERSION) {
-        LOG_COMPILER(ERROR) << "Load aot file failed";
-        file.close();
-        return false;
-    }
-    file.read(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
-    entries_.resize(entryNum_);
-    file.read(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
-    file.read(reinterpret_cast<char *>(&moduleNum_), sizeof(moduleNum_));
-    des_.resize(moduleNum_);
-    uint32_t totalCodeSize = 0;
-    file.read(reinterpret_cast<char *>(&totalCodeSize), sizeof(totalCodeSize_));
-    [[maybe_unused]] EcmaHandleScope handleScope(vm->GetAssociatedJSThread());
-    int prot = PROT_READ | PROT_WRITE | PROT_EXEC;
-    auto pool = MemMapAllocator::GetInstance()->Allocate(AlignUp(totalCodeSize, 256_KB), 0, false, prot);
-    vm->GetAOTFileManager()->SetAOTmmap(pool.GetMem(), pool.GetSize());
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
-    uint32_t curUnitOffset = 0;
-    for (size_t i = 0; i < moduleNum_; i++) {
-        des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
-    }
+    data_ = anFileDataManager->SafeGetAnFileData(ConvertToString(filename));
+    entryNum_ = data_->entryNum;
+    entries_ = data_->entries;
+    moduleNum_ = data_->moduleNum;
+    totalCodeSize_ = data_->totalCodeSize;
+    des_ = data_->des;
+
     for (size_t i = 0; i < entries_.size(); i++) {
         FuncEntryDes& funcDes = entries_[i];
         auto moduleDes = des_[funcDes.moduleIndex_];
@@ -313,7 +396,7 @@ bool AnFileInfo::Load(EcmaVM *vm, const std::string &filename)
             mainEntryMap_[funcDes.indexInKindOrMethodId_] = funcDes.codeAddr_;
         }
     }
-    file.close();
+
     LOG_COMPILER(INFO) << "loaded aot file: " << filename.c_str();
     isLoad_ = true;
     return true;
@@ -329,14 +412,13 @@ bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry
     return true;
 }
 
-
 void AOTFileInfo::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&machineCodeObj_)));
 }
 
 bool AOTFileInfo::VerifyFilePath([[maybe_unused]] const std::string &filePath,
-    [[maybe_unused]] bool toGenerate) const
+    [[maybe_unused]] bool toGenerate)
 {
 #ifndef PANDA_TARGET_WINDOWS
     if (filePath.size() > PATH_MAX) {
@@ -369,7 +451,7 @@ void AOTFileManager::LoadStubFile()
 void AOTFileManager::LoadAnFile(const std::string &fileName)
 {
     AnFileInfo anFileInfo_;
-    if (!anFileInfo_.Load(vm_, fileName)) {
+    if (!anFileInfo_.Load(fileName)) {
         return;
     }
     AddAnFileInfo(anFileInfo_);
@@ -600,6 +682,12 @@ void AOTFileManager::AddSnapshotConstantPool(JSTaggedValue snapshotConstantPool)
 
 JSHandle<JSTaggedValue> AOTFileManager::GetSnapshotConstantPool(const JSPandaFile *jsPandaFile)
 {
+    // In some appilication, only the main vm will load '.an' file currently
+    // return the constantpool with HOLE value when other worker try to obtain the
+    // snapshot constantpool from aot_file_manager.
+    if (anFileInfos_.size() == 0) {
+        return JSHandle<JSTaggedValue>(vm_->GetJSThread(), JSTaggedValue::Hole());
+    }
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
     const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
     return anFileInfo.GetSnapshotConstantPool();
@@ -610,9 +698,6 @@ AOTFileManager::~AOTFileManager()
     if (arkStackMapParser_ != nullptr) {
         delete arkStackMapParser_;
         arkStackMapParser_ = nullptr;
-    }
-    for (size_t i = 0; i < aotAddrs_.size(); i++) {
-        MemMapAllocator::GetInstance()->Free(aotAddrs_[i].first, aotAddrs_[i].second, false);
     }
     for (size_t i = 0; i < stubAddrs_.size(); i++) {
         MemMapAllocator::GetInstance()->Free(stubAddrs_[i].first, stubAddrs_[i].second, false);
