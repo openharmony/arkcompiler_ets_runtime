@@ -342,118 +342,69 @@ HWTEST_F_L0(ContainersArrayListTest, ProxyOfGetSetAndGetSize)
     }
 }
 
-HWTEST_F_L0(ContainersArrayListTest,
-    ExceptionReturnOfInsertIncreaseCapacityToAddClearCloneHasGetCapacityTrimToCurrentLengthGet)
+HWTEST_F_L0(ContainersArrayListTest, ExceptionReturn1)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Insert);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, IncreaseCapacityTo);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Add);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Clear);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Clone);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Has);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, GetCapacity);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, TrimToCurrentLength);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Get);
+
     JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test Insert and IncreaseCapacityTo exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Insert, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, IncreaseCapacityTo, callInfo);
-    callInfo->SetThis(arrayList.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Insert, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, IncreaseCapacityTo, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Add exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Add, callInfo);
-
-    // test Clear exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Clear, callInfo);
-
-    // test Clone exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Clone, callInfo);
-
-    // test Has exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Has, callInfo);
-
-    // test GetCapacity exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, GetCapacity, callInfo);
-
-    // test TrimToCurrentLength exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, TrimToCurrentLength, callInfo);
-
-    // test Get exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Get, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(arrayList.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Insert, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(arrayList.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, IncreaseCapacityTo, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersArrayListTest,
-    ExceptionReturnOfRemoveByIndexReplaceAllElementsGetIndexOfIsEmptyGetLastIndexOfRemoveRemoveByRange)
+HWTEST_F_L0(ContainersArrayListTest, ExceptionReturn2)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, RemoveByIndex);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, ReplaceAllElements);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, GetIndexOf);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, IsEmpty);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, GetLastIndexOf);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Remove);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, RemoveByRange);
+
     JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test RemoveByIndex and ReplaceAllElements exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, RemoveByIndex, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, ReplaceAllElements, callInfo);
-    callInfo->SetThis(arrayList.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, RemoveByIndex, callInfo);
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, ReplaceAllElements, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test GetIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, GetIndexOf, callInfo);
-
-    // test IsEmpty exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, IsEmpty, callInfo);
-
-    // test GetLastIndexOf exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, GetLastIndexOf, callInfo);
-
-    // test Remove exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Remove, callInfo);
-
-    // test RemoveByRange exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, RemoveByRange, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(arrayList.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, RemoveByIndex, callInfo);
+    }
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(arrayList.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, ReplaceAllElements, callInfo);
+    }
 }
 
-HWTEST_F_L0(ContainersArrayListTest,
-    ExceptionReturnOfSortSetSubArrayListGetSizeConvertToArrayForEachGetIteratorObj)
+HWTEST_F_L0(ContainersArrayListTest, ExceptionReturn3)
 {
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Sort);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, Set);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, SubArrayList);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, GetSize);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, ConvertToArray);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersArrayList, GetIteratorObj);
+
     JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList();
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-
-    // test Sort exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Sort, callInfo);
-    callInfo->SetThis(arrayList.GetTaggedValue());
-    callInfo->SetCallArg(0, JSTaggedValue::Hole());
-    callInfo->SetCallArg(1, JSTaggedValue::Hole());
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Sort, callInfo);
-
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    
-    // test Set exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Set, callInfo);
-
-    // test SubArrayList exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, SubArrayList, callInfo);
-
-    // test GetSize exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, GetSize, callInfo);
-
-    // test ConvertToArray exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, ConvertToArray, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, ForEach, callInfo);
-
-    // test GetIteratorObj exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, GetIteratorObj, callInfo);
+    {
+        auto callInfo = NewEmptyCallInfo(thread);
+        callInfo->SetThis(arrayList.GetTaggedValue());
+        CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, Sort, callInfo);
+    }
 }
 }  // namespace panda::test

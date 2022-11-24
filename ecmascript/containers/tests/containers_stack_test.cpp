@@ -294,36 +294,15 @@ HWTEST_F_L0(ContainersStackTest, ProxyOfGetLength)
     }
 }
 
-HWTEST_F_L0(ContainersStackTest,
-    ExceptionReturnOfIsEmptyPushPeekLocatePopForEachIteratorGetLength)
+HWTEST_F_L0(ContainersStackTest, ExceptionReturn)
 {
-    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    callInfo->SetFunction(JSTaggedValue::Undefined());
-    callInfo->SetThis(JSTaggedValue::Undefined());
-    callInfo->SetCallArg(0, JSTaggedValue(0));
-    
-    // test IsEmpty exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, IsEmpty, callInfo);
-
-    // test Push exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Push, callInfo);
-
-    // test Peek exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Peek, callInfo);
-
-    // test Locate exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Locate, callInfo);
-
-    // test Pop exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Pop, callInfo);
-
-    // test ForEach exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, ForEach, callInfo);
-
-    // test Iterator exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, Iterator, callInfo);
-
-    // test GetLength exception
-    CONTAINERS_API_EXCEPTION_TEST(ContainersStack, GetLength, callInfo);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersStack, IsEmpty);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersStack, Push);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersStack, Peek);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersStack, Locate);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersStack, Pop);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersStack, ForEach);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersStack, Iterator);
+    CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersStack, GetLength);
 }
 }  // namespace panda::test
