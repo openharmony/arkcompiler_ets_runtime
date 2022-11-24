@@ -49,7 +49,7 @@ enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WE
 
 class Node {
 public:
-    explicit Node(uint64_t id, uint64_t index, CString *name, NodeType type, size_t size, uint64_t traceId,
+    explicit Node(uint64_t id, uint64_t index, const CString *name, NodeType type, size_t size, uint64_t traceId,
                   Address address, bool isLive = true)
         : id_(id),
           index_(index),
@@ -120,7 +120,7 @@ public:
     {
         traceId_ = traceId;
     }
-    static Node *NewNode(const EcmaVM *vm, size_t id, size_t index, CString *name, NodeType type, size_t size,
+    static Node *NewNode(const EcmaVM *vm, size_t id, size_t index, const CString *name, NodeType type, size_t size,
                          TaggedObject *entry, bool isLive = true);
     template<typename T>
     static Address NewAddress(T *addr)
@@ -133,7 +133,7 @@ public:
 private:
     uint64_t id_ {0};  // Range from 1
     uint64_t index_ {0};
-    CString *name_ {nullptr};
+    const CString *name_ {nullptr};
     NodeType type_ {NodeType::INVALID};
     size_t size_ {0};
     size_t edgeCount_ {0};
@@ -366,8 +366,8 @@ public:
 
     void PrepareSnapshot();
     void UpdateNode(bool isInFinish = false);
-    Node *AddNode(TaggedObject* address);
-    void MoveNode(uintptr_t address, TaggedObject* forward_address);
+    Node *AddNode(TaggedObject *address, size_t size);
+    void MoveNode(uintptr_t address, TaggedObject *forwardAddress, size_t size);
     void RecordSampleTime();
     bool FinishSnapshot();
     void PushHeapStat(Stream* stream);
@@ -454,9 +454,9 @@ public:
 
 private:
     void FillNodes(bool isInFinish = false);
-    Node *GenerateNode(JSTaggedValue entry, int sequenceId = -1, bool isInFinish = false);
-    Node *GeneratePrivateStringNode(int sequenceId);
-    Node *GenerateStringNode(JSTaggedValue entry, int sequenceId, bool isInFinish = false);
+    Node *GenerateNode(JSTaggedValue entry, size_t size = 0, int sequenceId = -1, bool isInFinish = false);
+    Node *GeneratePrivateStringNode(size_t size, int sequenceId);
+    Node *GenerateStringNode(JSTaggedValue entry, size_t size, int sequenceId, bool isInFinish = false);
     void FillEdges();
     void BridgeAllReferences();
     CString *GenerateEdgeName(TaggedObject *from, TaggedObject *to);

@@ -364,8 +364,8 @@ public:
         tracker_ = nullptr;
     }
 
-    inline void OnAllocateEvent(TaggedObject* address);
-    inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress);
+    inline void OnAllocateEvent(TaggedObject* address, size_t size);
+    inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
     void AddToKeptObjects(JSHandle<JSTaggedValue> value) const;
     void ClearKeptObjects() const;
     /*
