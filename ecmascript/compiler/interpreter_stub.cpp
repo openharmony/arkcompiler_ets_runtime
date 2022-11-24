@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
@@ -525,35 +526,17 @@ DECLARE_ASM_HANDLER(HandleMod2Imm8V8)
 
 DECLARE_ASM_HANDLER(HandleEqImm8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    // fast path
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    result = FastEqual(left, acc);
-    Label isHole(env);
-    Label notHole(env);
-    Label dispatch(env);
-    Branch(TaggedIsHole(*result), &isHole, &notHole);
-    Bind(&isHole);
-    {
-        // slow path
-        result = CallRuntime(glue, RTSTUB_ID(Eq), { left, acc });
-        CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(EQ_IMM8_V8));
-    }
-    Bind(&notHole);
-    {
-        varAcc = *result;
-        Jump(&dispatch);
-    }
-    Bind(&dispatch);
-    DISPATCH_WITH_ACC(EQ_IMM8_V8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Equal(glue, left, acc);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(EQ_IMM8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleJequndefinedImm16)
 {
     DISPATCH(NOP);
 }
+
 DECLARE_ASM_HANDLER(HandleJequndefinedImm8)
 {
     DISPATCH(NOP);
@@ -561,40 +544,10 @@ DECLARE_ASM_HANDLER(HandleJequndefinedImm8)
 
 DECLARE_ASM_HANDLER(HandleNoteqImm8V8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    // fast path
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    result = FastEqual(left, acc);
-    Label isHole(env);
-    Label notHole(env);
-    Label dispatch(env);
-    Branch(TaggedIsHole(*result), &isHole, &notHole);
-    Bind(&isHole);
-    {
-        // slow path
-        result = CallRuntime(glue, RTSTUB_ID(NotEq), { left, acc });
-        CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(NOTEQ_IMM8_V8));
-    }
-    Bind(&notHole);
-    {
-        Label resultIsTrue(env);
-        Label resultNotTrue(env);
-        Branch(TaggedIsTrue(*result), &resultIsTrue, &resultNotTrue);
-        Bind(&resultIsTrue);
-        {
-            varAcc = TaggedFalse();
-            Jump(&dispatch);
-        }
-        Bind(&resultNotTrue);
-        {
-            varAcc = TaggedTrue();
-            Jump(&dispatch);
-        }
-    }
-    Bind(&dispatch);
-    DISPATCH_WITH_ACC(NOTEQ_IMM8_V8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.NotEqual(glue, left, acc);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NOTEQ_IMM8_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleLessImm8V8)

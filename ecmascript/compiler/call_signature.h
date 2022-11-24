@@ -313,6 +313,7 @@ private:
     V(Mod)                                  \
     V(TypeOf)                               \
     V(Equal)                                \
+    V(NotEqual)                             \
     V(SetPropertyByName)                    \
     V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \

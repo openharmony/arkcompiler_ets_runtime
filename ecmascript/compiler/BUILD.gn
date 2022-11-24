@@ -70,6 +70,7 @@ source_set("libark_jsoptimizer_set") {
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
     "new_object_stub_builder.cpp",
+    "operations_stub_builder.cpp",
     "pass_manager.cpp",
     "rt_call_signature.cpp",
     "scheduler.cpp",

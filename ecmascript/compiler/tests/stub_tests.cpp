@@ -1332,7 +1332,7 @@ HWTEST_F_L0(StubTest, FastEqualTest)
     FastRuntimeStub::SetPropertyByIndex<true>(thread, obj1.GetTaggedValue(), 1, JSTaggedValue(1));
     FastRuntimeStub::SetPropertyByIndex<true>(thread, obj2.GetTaggedValue(), 1, JSTaggedValue(1));
     auto resI = fn(thread->GetGlueAddr(), obj1.GetTaggedValue().GetRawData(), obj2.GetTaggedValue().GetRawData());
-    auto expectI = FastRuntimeStub::FastEqual(obj1.GetTaggedValue(), obj2.GetTaggedValue());
+    auto expectI = JSTaggedValue(FastRuntimeStub::FastStrictEqual(obj1.GetTaggedValue(), obj2.GetTaggedValue()));
     EXPECT_EQ(resI, expectI);
 }
 

@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_array.h"
@@ -82,10 +83,19 @@ void TypeOfStubBuilder::GenerateCircuit()
 void EqualStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
-    GateRef y = TaggedArgument(2);
-    Return(FastEqual(x, y));
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Equal(glue, x, y));
+}
+
+void NotEqualStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.NotEqual(glue, x, y));
 }
 
 void GetPropertyByIndexStubBuilder::GenerateCircuit()
