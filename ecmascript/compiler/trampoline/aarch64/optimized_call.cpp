@@ -346,7 +346,9 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       lexEnv             |               v
+//               |       lexEnv             |               |
+//               |--------------------------|               |
+//               |       call-target        |               v
 //               +--------------------------+ ---------------
 
 void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)

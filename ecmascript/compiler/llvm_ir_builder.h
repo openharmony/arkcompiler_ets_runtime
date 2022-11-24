@@ -263,7 +263,7 @@ private:
     LLVMValueRef GetCurrentSP();
     LLVMValueRef ReadRegister(LLVMModuleRef &module, LLVMBuilderRef &builder,
         LLVMMetadataRef meta);
-    void GenPrologue(LLVMModuleRef &module, LLVMBuilderRef &builder);
+    void GenPrologue();
     LLVMBasicBlockRef EnsureLBB(BasicBlock *bb) const;
     BasicBlockImpl *EnsureBBImpl(BasicBlock *bb) const;
     void SetToCfg(BasicBlock *bb) const;
@@ -330,13 +330,15 @@ private:
     CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
     void ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueRef &bcOffset, const std::vector<GateRef> &inList,
                                     CallExceptionKind kind);
-    void SaveLexicalEnvOnFrame(LLVMValueRef value);
+    void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
+    void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
+    void SaveFrameTypeOnFrame(FrameType frameType);
     LLVMTypeRef GetExperimentalDeoptTy();
     LLVMValueRef GetExperimentalDeopt(LLVMModuleRef &module);
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
     const Circuit *circuit_ {nullptr};
-    const GateAccessor acc_;
+    GateAccessor acc_;
     BasicBlock *currentBb_ {nullptr};
     int lineNumber_ {0};
 
