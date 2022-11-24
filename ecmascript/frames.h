@@ -138,12 +138,6 @@ enum class FrameType: uintptr_t {
     BUILTIN_LAST = BUILTIN_ENTRY_FRAME,
 };
 
-enum class ReservedSlots: int {
-    OPTIMIZED_RESERVED_SLOT = 1,
-    OPTIMIZED_JS_FUNCTION_RESERVED_SLOT = 2,
-    OPTIMIZED_ENTRY_RESERVED_SLOT = 2,
-};
-
 enum class JSCallMode : uintptr_t {
     CALL_ARG0 = 0,
     CALL_ARG1,
@@ -187,6 +181,11 @@ public:
     static size_t GetPrevOffset()
     {
         return MEMBER_OFFSET(OptimizedFrame, prevFp);
+    }
+    static size_t ComputeReservedSize(size_t slotSize)
+    {
+        size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::TypeIndex);
+        return slotSize * slotOffset;
     }
 private:
     enum class Index : size_t {
@@ -359,11 +358,14 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       lexEnv             |               v
+//               |       lexEnv             |               |
+//               |--------------------------|               |
+//               |       call-target        |               v
 //               +--------------------------+ ---------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+                                                             JSTaggedValue,
                                                              JSTaggedValue,
                                                              base::AlignedPointer,
                                                              base::AlignedPointer,
@@ -371,7 +373,8 @@ struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::Tagg
 public:
     static constexpr size_t ENV_SLOT_DIFF = 2;
     enum class Index : size_t {
-        EnvIndex = 0,
+        JSFuncIndex = 0,
+        EnvIndex,
         TypeIndex,
         PrevFpIndex,
         ReturnAddrIndex,
@@ -425,6 +428,16 @@ public:
     {
         return MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp);
     }
+    static size_t ComputeReservedEnvOffset(size_t slotSize)
+    {
+        size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::EnvIndex);
+        return slotSize * slotOffset;
+    }
+    static size_t ComputeReservedJSFuncOffset(size_t slotSize)
+    {
+        size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::JSFuncIndex);
+        return slotSize * slotOffset;
+    }
     friend class FrameIterator;
     void GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const;
     void GetFuncCalleeRegAndOffset(
@@ -439,6 +452,7 @@ private:
     }
 
     // dynamic callee saveregisters for x86-64
+    alignas(EAS) JSTaggedValue jsFunc {JSTaggedValue::Undefined()};
     alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
@@ -460,31 +474,56 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionFrame),
 //          |    preLeaveFrameFp       |                 v
 //          +--------------------------+ -----------------
 
-struct OptimizedEntryFrame {
+struct OptimizedEntryFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
+                                                        base::AlignedPointer,
+                                                        base::AlignedPointer,
+                                                        base::AlignedPointer> {
 public:
     enum class CallType : size_t {
         CALL_FUNC = 0,
         CALL_NEW,
     };
-    OptimizedEntryFrame() = default;
-    ~OptimizedEntryFrame() = default;
-    JSTaggedType *preLeaveFrameFp;
-    [[maybe_unused]] FrameType type;
-    JSTaggedType *prevFp;
+
+    enum class Index : size_t {
+        PreLeaveFrameFpIndex = 0,
+        TypeIndex,
+        PrevFpIndex,
+        NumOfMembers
+    };
+
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(OptimizedEntryFrame, type);
+    }
+
+    static size_t GetLeaveFrameFpOffset()
+    {
+        return MEMBER_OFFSET(OptimizedEntryFrame, preLeaveFrameFp);
+    }
 
     inline JSTaggedType* GetPrevFrameFp()
     {
         return preLeaveFrameFp;
     }
+
+    static size_t ComputeReservedSize(size_t slotSize)
+    {
+        size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::PreLeaveFrameFpIndex);
+        return slotSize * slotOffset;
+    }
     friend class FrameIterator;
 
 private:
+    alignas(EAS) JSTaggedType *preLeaveFrameFp {nullptr};
+    alignas(EAS) [[maybe_unused]] FrameType type {0};
+    alignas(EAS) [[maybe_unused]] JSTaggedType *prevFp {nullptr};
     static OptimizedEntryFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<OptimizedEntryFrame *>(reinterpret_cast<uintptr_t>(sp) -
             MEMBER_OFFSET(OptimizedEntryFrame, prevFp));
     }
 };
+STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedEntryFrame), OptimizedEntryFrame::SizeArch32, OptimizedEntryFrame::SizeArch64);
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct InterpretedFrameBase : public base::AlignedStruct<base::AlignedPointer::Size(),

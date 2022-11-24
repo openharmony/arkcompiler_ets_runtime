@@ -530,7 +530,9 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       lexEnv             |               v
+//               |       lexEnv             |               |
+//               |--------------------------|               |
+//               |       call-target        |               v
 //               +--------------------------+ ---------------
 void OptimizedCall::JSCallNew(ExtendedAssembler *assembler)
 {
