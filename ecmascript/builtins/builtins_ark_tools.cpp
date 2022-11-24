@@ -15,12 +15,19 @@
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/mem/tagged_object-inl.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 
 namespace panda::ecmascript::builtins {
 using StringHelper = base::StringHelper;
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+constexpr char FILEDIR[] = "/data/storage/el2/base/files/";
+#endif
 JSTaggedValue BuiltinsArkTools::ObjectDump(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -110,4 +117,58 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->CollectGarbage(TriggerGCType::FULL_GC);
     return JSTaggedValue::True();
 }
+
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+JSTaggedValue BuiltinsArkTools::StartCpuProFiler(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    auto vm = thread->GetEcmaVM();
+    JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
+    std::string fileName = EcmaStringAccessor(str).ToStdString() + ".json";
+    if (!CreateFile(fileName)) {
+        LOG_ECMA(ERROR) << "CreateFile failed " << fileName;
+    }
+    DFXJSNApi::StartCpuProfilerForFile(vm, fileName);
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::StopCpuProFiler(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    auto vm = thread->GetEcmaVM();
+    DFXJSNApi::StopCpuProfilerForFile(vm);
+
+    return JSTaggedValue::Undefined();
+}
+
+bool BuiltinsArkTools::CreateFile(std::string &fileName)
+{
+    std::string path = FILEDIR + fileName;
+    if (access(path.c_str(), F_OK) == 0) {
+        if (access(path.c_str(), W_OK) == 0) {
+            fileName = path;
+            return true;
+        }
+        LOG_ECMA(ERROR) << "file create failed, W_OK false";
+        return false;
+    }
+    const mode_t defaultMode = S_IRUSR | S_IWUSR | S_IRGRP; // -rw-r--
+    int fd = creat(path.c_str(), defaultMode);
+    if (fd == -1) {
+        fd = creat(fileName.c_str(), defaultMode);
+        if (fd == -1) {
+            LOG_ECMA(ERROR) << "file create failed, errno = "<< errno;
+            return false;
+        }
+        return true;
+    } else {
+        fileName = path;
+        close(fd);
+        return true;
+    }
+}
+#endif
 }  // namespace panda::ecmascript::builtins
