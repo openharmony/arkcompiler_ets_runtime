@@ -16,9 +16,11 @@
 #include "ecmascript/frames.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
@@ -769,7 +771,7 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
             LOG_ECMA(ERROR) << "FrameType ERROR, addr: " << currentPtr << ", frameType: " << frameType;
             return false;
         }
-        if (frameType == (uintptr_t)(FrameType::ASM_INTERPRETER_ENTRY_FRAME)) {
+        if (static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME) {
             break;
         }
         currentPtr -= typeOffset;
@@ -788,12 +790,114 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
     *sp = currentPtr;
     return true;
 }
+
+void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t &strIdx, char *outStr, size_t strLen)
+{
+    // note: big endian
+    for (size_t i = 0; prefix[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
+        outStr[strIdx++] = prefix[i];
+    }
+    size_t start = GET_MESSAGE_STRING_ID(HandleLdundefined);
+    size_t bytecode = fullBytecode & 0xff;  // 0xff: last byte
+    const char *bytecodeName = MessageString::GetMessageString(start + bytecode).c_str();
+    for (size_t i = 0; bytecodeName[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
+        outStr[strIdx++] = bytecodeName[i];
+    }
+    if (start + bytecode == GET_MESSAGE_STRING_ID(HandleDeprecated) ||
+        start + bytecode == GET_MESSAGE_STRING_ID(HandleWide) ||
+        start + bytecode == GET_MESSAGE_STRING_ID(HandleThrow)) {
+        size_t startSecond = start;
+        if (start + bytecode == GET_MESSAGE_STRING_ID(HandleDeprecated)) {
+            startSecond = GET_MESSAGE_STRING_ID(HandleDeprecatedLdlexenvPrefNone);
+        } else if (start + bytecode == GET_MESSAGE_STRING_ID(HandleWide)) {
+            startSecond = GET_MESSAGE_STRING_ID(HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8);
+        } else if (start + bytecode == GET_MESSAGE_STRING_ID(HandleThrow)) {
+            startSecond = GET_MESSAGE_STRING_ID(HandleThrowPrefNone);
+        }
+        size_t bytecodeSecond = (fullBytecode >> 8) & 0xff;  // 8, 0xff: second last byte
+        const char *bytecodeNameSecond = MessageString::GetMessageString(startSecond + bytecodeSecond).c_str();
+        if (strIdx < strLen - 1) {  // 1: last '\0'
+            outStr[strIdx++] = '/';
+        }
+        for (size_t i = 0; bytecodeNameSecond[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
+            outStr[strIdx++] = bytecodeNameSecond[i];
+        }
+    }
+    outStr[strIdx] = '\0';
+}
+
+bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool outJSInfo, char *outStr, size_t strLen)
+{
+    // bytecodePc: X20 in ARM
+    // fp: X29 in ARM
+    // outJSInfo: not async-safe, more info
+    uintptr_t currentPtr = *fp;
+    currentPtr -= sizeof(FrameType);
+    uintptr_t frameType = 0;
+    if (!ReadUintptrFromAddr(pid, currentPtr, frameType)) {
+        return false;
+    }
+    if (static_cast<FrameType>(frameType) != FrameType::ASM_INTERPRETER_FRAME) {
+        return false;
+    }
+    size_t strIndex = 0;
+    uintptr_t registerBytecode = 0;
+    if (!ReadUintptrFromAddr(pid, *bytecodePc, registerBytecode)) {
+        return false;
+    }
+    CopyBytecodeInfoToBuffer("RegisterBytecode:", registerBytecode, strIndex, outStr, strLen);
+    uintptr_t typeOffset = MEMBER_OFFSET(AsmInterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+    uintptr_t pcOffset = MEMBER_OFFSET(AsmInterpretedFrame, pc);
+    currentPtr -= typeOffset;
+    currentPtr += pcOffset;
+    uintptr_t framePc = 0;
+    uintptr_t frameBytecode = 0;
+    if (!ReadUintptrFromAddr(pid, currentPtr, framePc)) {
+        return false;
+    }
+    if (!ReadUintptrFromAddr(pid, framePc, frameBytecode)) {
+        return false;
+    }
+    CopyBytecodeInfoToBuffer(" FrameBytecode:", frameBytecode, strIndex, outStr, strLen);
+    if (outJSInfo) {
+        uintptr_t functionOffset = MEMBER_OFFSET(AsmInterpretedFrame, function);
+        currentPtr -= pcOffset;
+        currentPtr += functionOffset;
+        uintptr_t functionAddress = 0;
+        if (!ReadUintptrFromAddr(pid, currentPtr, functionAddress)) {
+            return false;
+        }
+        JSTaggedValue functionValue(static_cast<JSTaggedType>(functionAddress));
+        Method *method = ECMAObject::Cast(functionValue.GetTaggedObject())->GetCallTarget();
+        auto bytecodeOffset = static_cast<uint32_t>(reinterpret_cast<uint8_t *>(*bytecodePc) -
+                                                    method->GetBytecodeArray());
+        std::string info = JsStackInfo::BuildMethodTrace(method, bytecodeOffset);
+        const char *infoChar = info.c_str();
+        if (strIndex < strLen - 1) {  // 1: last '\0'
+            outStr[strIndex++] = ' ';
+        }
+        for (size_t i = 0; infoChar[i] != '\0' && strIndex < strLen - 1; i++) {  // 1: last '\0'
+            outStr[strIndex++] = infoChar[i];
+        }
+        outStr[strIndex] = '\0';
+    }
+    return true;
+}
 }  // namespace panda::ecmascript
 
 __attribute__((visibility("default"))) int step_ark_managed_native_frame(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz)
 {
     if (panda::ecmascript::StepArkManagedNativeFrame(pid, pc, fp, sp, buf, buf_sz)) {
+        return 1;
+    }
+    return -1;
+}
+
+__attribute__((visibility("default"))) int get_ark_js_heap_crash_info(
+    int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz)
+{
+    if (panda::ecmascript::GetArkJSHeapCrashInfo(pid, x20, fp, out_js_info != 0, buf, buf_sz)) {
         return 1;
     }
     return -1;
