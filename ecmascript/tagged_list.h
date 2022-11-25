@@ -48,7 +48,7 @@ public:
     int FindIndexByElement(const JSTaggedValue &element);
     int FindLastIndexByElement(const JSTaggedValue &element);
     int FindDataIndexByNodeIndex(int index) const;
-    void MapNodeIndexToDataIndex(int* nodeIndexMapToDataIndex, int length);
+    void MapNodeIndexToDataIndex(std::vector<int> &nodeIndexMapToDataIndex, int length);
     void RemoveNode(JSThread *thread, int prevDataIndex);
     int FindPrevNodeByIndex(int index) const;
     int FindPrevNodeByValue(const JSTaggedValue &element);
