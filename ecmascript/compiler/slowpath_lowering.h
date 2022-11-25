@@ -119,7 +119,7 @@ public:
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
           enableLog_(enableLog), methodName_(name)
     {
-        enableBcTrace_ = cmpCfg->IsEnableByteCodeTrace();
+        traceBc_ = cmpCfg->IsTraceBC();
     }
     ~SlowPathLowering() = default;
     void CallRuntimeLowering();
@@ -129,9 +129,9 @@ public:
         return enableLog_;
     }
 
-    bool IsEnableByteCodeTrace() const
+    bool IsTraceBC() const
     {
-        return enableBcTrace_;
+        return traceBc_;
     }
 
 private:
@@ -300,7 +300,7 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_;
     bool enableLog_ {false};
-    bool enableBcTrace_ {false};
+    bool traceBc_ {false};
     std::string methodName_;
 };
 }  // panda::ecmascript::kungfu

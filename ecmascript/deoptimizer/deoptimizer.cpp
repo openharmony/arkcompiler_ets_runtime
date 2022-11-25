@@ -227,13 +227,22 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     return true;
 }
 
+void Deoptimizier::Dump(Method* method)
+{
+    if (traceDeopt_) {
+        std::string data = JsStackInfo::BuildMethodTrace(method, pc_);
+        LOG_COMPILER(INFO) << "Deoptimize" << data;
+        const uint8_t *pc = method->GetBytecodeArray() + pc_;
+        BytecodeInstruction inst(pc);
+        LOG_COMPILER(INFO) << inst;
+    }
+}
+
 JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 {
     JSTaggedValue callTarget = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
     auto method = GetMethod(callTarget);
-    std::string data = JsStackInfo::BuildMethodTrace(method, pc_);
-
-    LOG_COMPILER(DEBUG) << "Deoptimize" << data;
+    Dump(method);
     ASSERT(thread_ != nullptr);
 
     FrameWriter frameWriter(this);
