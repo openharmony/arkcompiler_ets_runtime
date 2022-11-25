@@ -275,8 +275,7 @@ public:
                 if (prePos == -1) {
                     return "";
                 }
-                // Add the two characters found to start searching again
-                prePos += 2;
+                prePos += 2; // 2 : add the two characters found to start searching again
             }
         }
         int findEndPos = 0;

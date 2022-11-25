@@ -269,8 +269,8 @@ void AssemblerAarch64::Ldr(const Register &rt, const MemoryOperand &operand, Sca
         uint64_t imm = GetImmOfLdr(operand, scale, regX);
         bool isSigned = operand.GetAddrMode() != AddrMode::OFFSET;
         // 30: 30bit indicate the size of LDR Reg, and Ldrb and Ldrh do not need it
-        uint32_t instructionCode = ((regX && (scale == Scale::Q)) << 30) | op | LoadAndStoreImm(imm, isSigned)
-                                   | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+        uint32_t instructionCode = ((regX && (scale == Scale::Q)) << 30) | op | LoadAndStoreImm(imm, isSigned) |
+                                    Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
         EmitU32(instructionCode);
     } else {
         ASSERT(operand.GetExtendOption() != Extend::NO_EXTEND);
@@ -281,8 +281,8 @@ void AssemblerAarch64::Ldr(const Register &rt, const MemoryOperand &operand, Sca
             (operand.GetExtendOption() << LDR_STR_Extend_LOWBITS) & LDR_STR_Extend_MASK;
         uint32_t shiftField = (shift << LDR_STR_S_LOWBITS) & LDR_STR_S_MASK;
         // 30: 30bit indicate the size of LDR Reg, and Ldrb and Ldrh do not need it
-        uint32_t instructionCode = ((regX && (scale == Scale::Q)) << 30) | op | Rm(rm.GetId())
-                                   | extendField | shiftField | Rn(rn.GetId()) | Rt(rt.GetId());
+        uint32_t instructionCode = ((regX && (scale == Scale::Q)) << 30) | op | Rm(rm.GetId()) |
+                                    extendField | shiftField | Rn(rn.GetId()) | Rt(rt.GetId());
         EmitU32(instructionCode);
     }
 }
@@ -331,8 +331,8 @@ void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
                 UNREACHABLE();
         }
         // 30: 30bit indicate the size of LDR Reg
-        uint32_t instructionCode = (regX << 30) | op | LoadAndStoreImm(imm, isSigned)
-                                   | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+        uint32_t instructionCode = (regX << 30) | op | LoadAndStoreImm(imm, isSigned) |
+                                   Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
         EmitU32(instructionCode);
         return;
     }
@@ -346,8 +346,8 @@ void AssemblerAarch64::Ldur(const Register &rt, const MemoryOperand &operand)
     ASSERT(operand.IsImmediateOffset());
     uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
     // 30: 30bit indicate the size of LDUR Reg
-    uint32_t instructionCode = (regX << 30) | op | LoadAndStoreImm(imm, true)
-                               | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    uint32_t instructionCode = (regX << 30) | op | LoadAndStoreImm(imm, true) |
+                               Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
     EmitU32(instructionCode);
 }
 
@@ -358,8 +358,8 @@ void AssemblerAarch64::Stur(const Register &rt, const MemoryOperand &operand)
     ASSERT(operand.IsImmediateOffset());
     uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
     // 30: 30bit indicate the size of LDUR Reg
-    uint32_t instructionCode = (regX << 30) | op | LoadAndStoreImm(imm, true)
-                               | Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
+    uint32_t instructionCode = (regX << 30) | op | LoadAndStoreImm(imm, true) |
+                               Rn(operand.GetRegBase().GetId()) | Rt(rt.GetId());
     EmitU32(instructionCode);
 }
 

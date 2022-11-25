@@ -1206,8 +1206,8 @@ bool SubgraphRewriteRuleCP::RunAdd(GateRef gate)
     GateAccessor acc(circuit_);
     const auto &operandA = acc_.GetIn(gate, 0);
     const auto &operandB = acc_.GetIn(gate, 1);
-    if (acc_.GetOpCode(operandA) == OpCode(OpCode::CONSTANT)
-        && acc_.GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
+    if (acc_.GetOpCode(operandA) == OpCode(OpCode::CONSTANT) &&
+        acc_.GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
         acc_.DeleteIn(gate, 0);
         acc_.DeleteIn(gate, 1);
         acc_.SetOpCode(gate, OpCode(OpCode::CONSTANT));
@@ -1225,8 +1225,8 @@ bool SubgraphRewriteRuleCP::RunSub(GateRef gate)
     GateAccessor acc(circuit_);
     const auto &operandA = acc_.GetIn(gate, 0);
     const auto &operandB = acc_.GetIn(gate, 1);
-    if (acc_.GetOpCode(operandA) == OpCode(OpCode::CONSTANT)
-        && acc_.GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
+    if (acc_.GetOpCode(operandA) == OpCode(OpCode::CONSTANT) &&
+        acc_.GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
         acc_.DeleteIn(gate, 0);
         acc_.DeleteIn(gate, 1);
         acc_.SetOpCode(gate, OpCode(OpCode::CONSTANT));

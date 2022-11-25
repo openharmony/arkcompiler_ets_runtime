@@ -23,7 +23,7 @@
 namespace panda::ecmascript {
 class CheckAndCallScope {
 public:
-    CheckAndCallScope(JSThread *thread) : thread_(thread)
+    explicit CheckAndCallScope(JSThread *thread) : thread_(thread)
     {
         thread_->SetCheckAndCallEnterState(true);
     }

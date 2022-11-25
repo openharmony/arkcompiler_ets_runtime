@@ -239,7 +239,7 @@ class Partition;
 class PartitionNode {
 public:
     PartitionNode();
-    PartitionNode(GateRef gate);
+    explicit PartitionNode(GateRef gate);
     ~PartitionNode() = default;
     std::shared_ptr<PartitionNode> GetPrev() const;
     std::shared_ptr<PartitionNode> GetNext() const;

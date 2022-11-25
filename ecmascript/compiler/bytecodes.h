@@ -144,7 +144,7 @@ private:
     BytecodeMetaData() = default;
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(BytecodeMetaData);
     DEFAULT_COPY_SEMANTIC(BytecodeMetaData);
-    BytecodeMetaData(uint32_t value) : value_(value) {}
+    explicit BytecodeMetaData(uint32_t value) : value_(value) {}
 
     static BytecodeMetaData InitBytecodeMetaData(const uint8_t *pc);
 

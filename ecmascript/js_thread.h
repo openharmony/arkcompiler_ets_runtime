@@ -181,7 +181,7 @@ public:
     using PGOStatusBits = MarkStatusBits::NextField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_NUM>;
     using ThreadId = uint32_t;
 
-    JSThread(EcmaVM *vm);
+    explicit JSThread(EcmaVM *vm);
 
     PUBLIC_API ~JSThread();
 

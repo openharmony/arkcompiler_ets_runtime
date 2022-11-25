@@ -21,7 +21,7 @@ class ICStubBuilder : public StubBuilder {
 public:
     explicit ICStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~ICStubBuilder() = default;
+    ~ICStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ICStubBuilder);
     NO_COPY_SEMANTIC(ICStubBuilder);
     void GenerateCircuit() override {}

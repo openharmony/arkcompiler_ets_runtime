@@ -1313,8 +1313,8 @@ public:
             case Opcode::FLDAI_64_IMM64:
                 return ((Flags::FLOAT | Flags::ACC_WRITE) & flag) == flag;
             case Opcode::LDA_STR_ID32:
-                return ((Flags::STRING_ID | Flags::LANGUAGE_TYPE | Flags::MAYBE_DYNAMIC | Flags::ACC_WRITE) & flag)
-                    == flag;
+                return ((Flags::STRING_ID | Flags::LANGUAGE_TYPE | Flags::MAYBE_DYNAMIC | Flags::ACC_WRITE) & flag) ==
+                    flag;
             case Opcode::LDA_CONST_V8_ID32:
                 return ((Flags::LITERALARRAY_ID | Flags::ACC_NONE) & flag) == flag;
             case Opcode::LDA_TYPE_ID16:
@@ -1506,8 +1506,8 @@ public:
             case Opcode::LENARR_V8:
                 return ((Flags::ACC_WRITE) & flag) == flag;
             case Opcode::NEWARR_V4_V4_ID16:
-                return ((Flags::TYPE_ID | Flags::LANGUAGE_TYPE | Flags::INITIALIZE_TYPE | Flags::ACC_NONE) & flag)
-                    == flag;
+                return ((Flags::TYPE_ID | Flags::LANGUAGE_TYPE | Flags::INITIALIZE_TYPE | Flags::ACC_NONE) & flag) ==
+                    flag;
             case Opcode::NEWOBJ_V8_ID16:
                 return ((Flags::TYPE_ID | Flags::INITIALIZE_TYPE | Flags::ACC_NONE) & flag) == flag;
             case Opcode::INITOBJ_SHORT_V4_V4_ID16:

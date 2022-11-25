@@ -366,8 +366,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 EcmaString *str = factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii,
                                                                        MemSpaceType::OLD_SPACE);
                 jt = JSTaggedValue(str);
-                uint32_t index = 0;
-                if (JSTaggedValue::ToElementIndex(jt, &index) && ppos % pairSize == 0) {
+                uint32_t elementIndex = 0;
+                if (JSTaggedValue::ToElementIndex(jt, &elementIndex) && ppos % pairSize == 0) {
                     flag = true;
                 }
                 break;

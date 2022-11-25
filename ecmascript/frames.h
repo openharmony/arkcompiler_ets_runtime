@@ -199,8 +199,8 @@ private:
 
     static OptimizedFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
-        return reinterpret_cast<OptimizedFrame *>(reinterpret_cast<uintptr_t>(sp)
-            - MEMBER_OFFSET(OptimizedFrame, prevFp));
+        return reinterpret_cast<OptimizedFrame *>(reinterpret_cast<uintptr_t>(sp) -
+            MEMBER_OFFSET(OptimizedFrame, prevFp));
     }
     inline JSTaggedType* GetPrevFrameFp()
     {
@@ -255,8 +255,8 @@ private:
 
     static OptimizedJSFunctionUnfoldArgVFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
-        return reinterpret_cast<OptimizedJSFunctionUnfoldArgVFrame *>(reinterpret_cast<uintptr_t>(sp)
-            - MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp));
+        return reinterpret_cast<OptimizedJSFunctionUnfoldArgVFrame *>(reinterpret_cast<uintptr_t>(sp) -
+            MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp));
     }
     inline JSTaggedType* GetPrevFrameFp() const
     {
@@ -318,8 +318,8 @@ private:
 
     static OptimizedJSFunctionArgConfigFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
-        return reinterpret_cast<OptimizedJSFunctionArgConfigFrame *>(reinterpret_cast<uintptr_t>(sp)
-            - MEMBER_OFFSET(OptimizedJSFunctionArgConfigFrame, prevFp));
+        return reinterpret_cast<OptimizedJSFunctionArgConfigFrame *>(reinterpret_cast<uintptr_t>(sp) -
+            MEMBER_OFFSET(OptimizedJSFunctionArgConfigFrame, prevFp));
     }
     inline JSTaggedType* GetPrevFrameFp()
     {
@@ -434,8 +434,8 @@ public:
 private:
     static OptimizedJSFunctionFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
-        return reinterpret_cast<OptimizedJSFunctionFrame *>(reinterpret_cast<uintptr_t>(sp)
-            - MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp));
+        return reinterpret_cast<OptimizedJSFunctionFrame *>(reinterpret_cast<uintptr_t>(sp) -
+            MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp));
     }
 
     // dynamic callee saveregisters for x86-64

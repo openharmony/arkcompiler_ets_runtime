@@ -606,15 +606,15 @@ void Heap::RecomputeLimits()
                                                                    maxGlobalSize, newSpaceCapacity, growingFactor);
     globalSpaceAllocLimit_ = newGlobalSpaceLimit;
     oldSpace_->SetInitialCapacity(newOldSpaceLimit);
-    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_
-                                   + nativeAreaAllocator_->GetNativeMemoryUsage();
+    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_ +
+                                   nativeAreaAllocator_->GetNativeMemoryUsage();
     globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(globalSpaceNativeSize, MIN_HEAP_SIZE,
                                                                   maxGlobalSize, newSpaceCapacity, growingFactor);
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_
         << " globalSpaceNativeLimit_:" << globalSpaceNativeLimit_;
-    if ((oldSpace_->GetHeapObjectSize() * 1.0 / SHRINK_OBJECT_SURVIVAL_RATE) < oldSpace_->GetCommittedSize()
-         && (oldSpace_->GetCommittedSize() / 2) > newOldSpaceLimit) {
+    if ((oldSpace_->GetHeapObjectSize() * 1.0 / SHRINK_OBJECT_SURVIVAL_RATE) < oldSpace_->GetCommittedSize() &&
+        (oldSpace_->GetCommittedSize() / 2) > newOldSpaceLimit) {
         OPTIONAL_LOG(ecmaVm_, INFO) << " Old space heap object size is too much lower than committed size"
                                     << " heapObjectSize: "<< oldSpace_->GetHeapObjectSize()
                                     << " Committed Size: " << oldSpace_->GetCommittedSize();
@@ -673,19 +673,19 @@ void Heap::TryTriggerConcurrentMarking()
     size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
     size_t globalHeapObjectSize = GetHeapObjectSize();
     size_t oldSpaceAllocLimit = oldSpace_->GetInitialCapacity();
-    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_
-                                   + nativeAreaAllocator_->GetNativeMemoryUsage();
+    size_t globalSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_ +
+                                   nativeAreaAllocator_->GetNativeMemoryUsage();
     if (oldSpaceConcurrentMarkSpeed == 0 || oldSpaceAllocSpeed == 0) {
-        if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit ||  globalHeapObjectSize >= globalSpaceAllocLimit_
-            || globalSpaceNativeSize >= globalSpaceNativeLimit_) {
+        if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit ||  globalHeapObjectSize >= globalSpaceAllocLimit_ ||
+            globalSpaceNativeSize >= globalSpaceNativeLimit_) {
             markType_ = MarkType::MARK_FULL;
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first full mark";
             TriggerConcurrentMarking();
             return;
         }
     } else {
-        if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_
-            || globalSpaceNativeSize >= globalSpaceNativeLimit_) {
+        if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_ ||
+            globalSpaceNativeSize >= globalSpaceNativeLimit_) {
             isFullMarkNeeded = true;
         }
         oldSpaceAllocToLimitDuration = (oldSpaceAllocLimit - oldSpaceHeapObjectSize) / oldSpaceAllocSpeed;
@@ -709,21 +709,21 @@ void Heap::TryTriggerConcurrentMarking()
         }
         return;
     }
-    newSpaceAllocToLimitDuration = (activeSemiSpace_->GetInitialCapacity() - activeSemiSpace_->GetCommittedSize())
-        / newSpaceAllocSpeed;
+    newSpaceAllocToLimitDuration = (activeSemiSpace_->GetInitialCapacity() - activeSemiSpace_->GetCommittedSize()) /
+        newSpaceAllocSpeed;
     newSpaceMarkDuration = activeSemiSpace_->GetHeapObjectSize() / newSpaceConcurrentMarkSpeed;
     // newSpaceRemainSize means the predicted size which can be allocated after the semi concurrent mark.
     newSpaceRemainSize = (newSpaceAllocToLimitDuration - newSpaceMarkDuration) * newSpaceAllocSpeed;
 
     if (isFullMarkNeeded) {
-        if (oldSpaceMarkDuration < newSpaceAllocToLimitDuration
-            && oldSpaceMarkDuration < oldSpaceAllocToLimitDuration) {
+        if (oldSpaceMarkDuration < newSpaceAllocToLimitDuration &&
+            oldSpaceMarkDuration < oldSpaceAllocToLimitDuration) {
             markType_ = MarkType::MARK_FULL;
             TriggerConcurrentMarking();
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark by speed";
         } else {
-            if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_
-                || globalSpaceNativeSize >= globalSpaceNativeLimit_) {
+            if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_  ||
+                globalSpaceNativeSize >= globalSpaceNativeLimit_) {
                 markType_ = MarkType::MARK_FULL;
                 TriggerConcurrentMarking();
                 OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark by limit";

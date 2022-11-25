@@ -132,7 +132,7 @@ public:
 private:
     class SaveTask : public Task {
     public:
-        SaveTask(int32_t id) : Task(id) {};
+        explicit SaveTask(int32_t id) : Task(id) {};
         virtual ~SaveTask() override = default;
 
         bool Run([[maybe_unused]] uint32_t threadIndex) override

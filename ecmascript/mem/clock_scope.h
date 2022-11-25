@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_MEM_CLOCK_SCOPE_H
 #define ECMASCRIPT_MEM_CLOCK_SCOPE_H
 
-#include "time.h"
-#include "chrono"
+#include <ctime>
+#include <chrono>
 
 namespace panda::ecmascript {
 class ClockScope {

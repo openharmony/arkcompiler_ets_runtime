@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_DFX_NATIVE_DFX_BACKTRACE_H
 #define ECMASCRIPT_DFX_NATIVE_DFX_BACKTRACE_H
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace panda::ecmascript {
 void PrintBacktrace(uintptr_t value);

@@ -34,7 +34,7 @@ public:
         std::function<void(const FrameHandler *, std::string_view, Local<JSValueRef>)>;
     using SingleStepperFunc = std::function<void()>;
 
-    JsDebuggerManager(const EcmaVM *vm) : hotReloadManager_(vm)
+    explicit JsDebuggerManager(const EcmaVM *vm) : hotReloadManager_(vm)
     {
         jsThread_ = vm->GetJSThread();
     }

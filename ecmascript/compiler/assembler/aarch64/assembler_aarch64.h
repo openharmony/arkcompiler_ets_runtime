@@ -76,7 +76,7 @@ private:
 
 class VectorRegister {
 public:
-    VectorRegister(VectorRegisterId reg, Scale scale = D) : reg_(reg), scale_(scale) {};
+    explicit VectorRegister(VectorRegisterId reg, Scale scale = D) : reg_(reg), scale_(scale) {};
     
     inline VectorRegisterId GetId() const
     {

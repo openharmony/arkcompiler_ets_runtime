@@ -30,7 +30,7 @@ static constexpr int32_t GLOBAL_TASK_ID = 0;
 
 class Task {
 public:
-    Task(int32_t id) : id_(id) {};
+    explicit Task(int32_t id) : id_(id) {};
     virtual ~Task() = default;
     virtual bool Run(uint32_t threadIndex) = 0;
 

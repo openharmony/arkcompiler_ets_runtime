@@ -188,8 +188,8 @@ public:
 
     inline static bool HasPrototype(FunctionKind kind)
     {
-        return (kind >= FunctionKind::BASE_CONSTRUCTOR) && (kind <= FunctionKind::ASYNC_GENERATOR_FUNCTION)
-            && (kind != FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
+        return (kind >= FunctionKind::BASE_CONSTRUCTOR) && (kind <= FunctionKind::ASYNC_GENERATOR_FUNCTION) &&
+            (kind != FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
     }
 
     inline static bool HasAccessor(FunctionKind kind)

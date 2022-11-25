@@ -22,7 +22,7 @@ namespace panda::ecmascript {
 class RememberedSet {
 public:
     static constexpr size_t GCBITSET_DATA_OFFSET = sizeof(size_t);
-    RememberedSet(size_t size) : size_(size) {}
+    explicit RememberedSet(size_t size) : size_(size) {}
 
     NO_COPY_SEMANTIC(RememberedSet);
     NO_MOVE_SEMANTIC(RememberedSet);

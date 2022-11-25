@@ -566,8 +566,8 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, R
     // 4 : 4 means JSType::JS_FUNCTION_FIRST
     __ Sub(jstype, jstype, Immediate(static_cast<int>(JSType::JS_FUNCTION_FIRST)));
     // 9 : 9 means JSType::JS_FUNCTION_LAST - JSType::JS_FUNCTION_FIRST + 1
-    __ Cmp(jstype, Immediate(static_cast<int>(JSType::JS_FUNCTION_LAST)
-            - static_cast<int>(JSType::JS_FUNCTION_FIRST) + 1));
+    __ Cmp(jstype, Immediate(static_cast<int>(JSType::JS_FUNCTION_LAST) -
+        static_cast<int>(JSType::JS_FUNCTION_FIRST) + 1));
     __ B(Condition::HS, notJSFunction);
 }
 

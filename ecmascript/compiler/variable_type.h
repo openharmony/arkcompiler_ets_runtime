@@ -113,26 +113,22 @@ public:
 
     bool operator<(const VariableType &rhs) const
     {
-        return (machineType_ < rhs.machineType_)
-            || (machineType_ == rhs.machineType_ && gateType_ < rhs.gateType_);
+        return (machineType_ < rhs.machineType_) || (machineType_ == rhs.machineType_ && gateType_ < rhs.gateType_);
     }
 
     bool operator>(const VariableType &rhs) const
     {
-        return (machineType_ > rhs.machineType_)
-            || (machineType_ == rhs.machineType_ && gateType_ > rhs.gateType_);
+        return (machineType_ > rhs.machineType_) || (machineType_ == rhs.machineType_ && gateType_ > rhs.gateType_);
     }
 
     bool operator<=(const VariableType &rhs) const
     {
-        return (machineType_ < rhs.machineType_)
-            || (machineType_ == rhs.machineType_ && gateType_ <= rhs.gateType_);
+        return (machineType_ < rhs.machineType_) || (machineType_ == rhs.machineType_ && gateType_ <= rhs.gateType_);
     }
 
     bool operator>=(const VariableType &rhs) const
     {
-        return (machineType_ > rhs.machineType_)
-            || (machineType_ == rhs.machineType_ && gateType_ >= rhs.gateType_);
+        return (machineType_ > rhs.machineType_) || (machineType_ == rhs.machineType_ && gateType_ >= rhs.gateType_);
     }
 
 private:

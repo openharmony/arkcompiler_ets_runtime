@@ -370,8 +370,7 @@ ARK_INLINE uintptr_t* OptimizedJSFunctionFrame::ComputePrevFrameSp(const FrameIt
     const JSTaggedType *sp = it.GetSp();
     int delta = it.ComputeDelta();
     ASSERT((delta > 0) && (delta % sizeof(uintptr_t) == 0));
-    uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(sp))
-            + delta / sizeof(uintptr_t);
+    uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(sp)) + delta / sizeof(uintptr_t);
     return preFrameSp;
 }
 

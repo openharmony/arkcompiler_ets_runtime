@@ -18,7 +18,7 @@
 
 #include <chrono>
 #include <cstring>
-#include <time.h>
+#include <ctime>
 
 #include "libpandabase/macros.h"
 #include "ecmascript/mem/mem_common.h"

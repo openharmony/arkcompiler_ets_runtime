@@ -456,8 +456,8 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
 
     // Set dateTimeFormat.[[locale]].
     if (!hour12->IsUndefined() || hourCycle != HourCycleOption::UNDEFINED) {
-        if ((resolvedLocale.extensions.find("hc") != resolvedLocale.extensions.end())
-            && (dtfHourCycle != OptionToHourCycle((resolvedLocale.extensions.find("hc")->second)))) {
+        if ((resolvedLocale.extensions.find("hc") != resolvedLocale.extensions.end()) &&
+            (dtfHourCycle != OptionToHourCycle((resolvedLocale.extensions.find("hc")->second)))) {
             resolvedIcuLocaleCopy.setUnicodeKeywordValue("hc", nullptr, status);
             ASSERT_PRINT(U_SUCCESS(status), "resolvedIcuLocaleCopy set hc failed");
         }
@@ -1344,9 +1344,9 @@ std::string JSDateTimeFormat::ConstructGMTTimeZoneID(const std::string &input)
     }
     std::string ret = "Etc/GMT";
     int timeZoneOffsetFlag = 7; // The offset of time zone flag, to match RegExp starting with the correct string
-    if (regex_match(input.substr(timeZoneOffsetFlag), std::regex("[+-][1][0-4]"))
-        || (regex_match(input.substr(timeZoneOffsetFlag), std::regex("[+-][0-9]"))
-        || input.substr(timeZoneOffsetFlag) == "0")) {
+    if (regex_match(input.substr(timeZoneOffsetFlag), std::regex("[+-][1][0-4]")) ||
+        (regex_match(input.substr(timeZoneOffsetFlag), std::regex("[+-][0-9]")) ||
+        input.substr(timeZoneOffsetFlag) == "0")) {
         return ret + input.substr(timeZoneOffsetFlag);
     }
     return "";
