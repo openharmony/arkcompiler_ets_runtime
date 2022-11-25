@@ -86,8 +86,8 @@ enum CommandValues {
     OPTION_COMPILER_LOG_TIME,
     OPTION_IS_WORKER,
     OPTION_BUILTINS_DTS,
-    OPTION_ENABLE_BC_TRACE,
-    OPTION_ENABLE_DEOPT_TRACE,
+    OPTION_TRACE_BC,
+    OPTION_TRACE_DEOPT,
     OPTION_LOG_LEVEL,
     OPTION_LOG_DEBUG,
     OPTION_LOG_INFO,
@@ -601,19 +601,19 @@ public:
         return builtinsDTS_;
     }
 
-    void SetEnableByteCodeTrace(bool value)
+    void SetTraceBc(bool value)
     {
-        enablebcTrace_ = value;
+        traceBc_ = value;
     }
 
-    bool IsEnableByteCodeTrace() const
+    bool IsTraceBC() const
     {
-        return enablebcTrace_;
+        return traceBc_;
     }
 
-    bool WasSetEnableByteCodeTrace() const
+    bool WasSetTraceBc() const
     {
-        return WasOptionSet(OPTION_ENABLE_BC_TRACE);
+        return WasOptionSet(OPTION_TRACE_BC);
     }
 
 
@@ -812,14 +812,14 @@ public:
         wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
     }
 
-    void SetEnableDeoptTrace(bool value)
+    void SetTraceDeopt(bool value)
     {
-        enableDeoptTrace_ = value;
+        traceDeopt_= value;
     }
 
-    bool IsEnableDeoptTrace() const
+    bool GetTraceDeopt() const
     {
-        return enableDeoptTrace_;
+        return traceDeopt_;
     }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
@@ -870,7 +870,7 @@ private:
     bool printAnyTypes_ {false};
     bool isWorker_ {false};
     std::string builtinsDTS_ {""};
-    bool enablebcTrace_ {false};
+    bool traceBc_ {false};
     std::string logLevel_ {"error"};
     arg_list_t logDebug_ {{"all"}};
     arg_list_t logInfo_ {{"all"}};
@@ -888,7 +888,7 @@ private:
     bool enablePGOProfiler_ {false};
     uint32_t pgoHotnessThreshold_ {2};
     std::string pgoProfilerPath_ {""};
-    bool enableDeoptTrace_ {false};
+    bool traceDeopt_{false};
 };
 }  // namespace panda::ecmascript
 

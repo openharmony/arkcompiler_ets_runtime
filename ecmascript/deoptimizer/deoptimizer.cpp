@@ -229,7 +229,7 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
 void Deoptimizier::Dump(Method* method)
 {
-    if (enableDeoptTrace_) {
+    if (traceDeopt_) {
         std::string data = JsStackInfo::BuildMethodTrace(method, pc_);
         LOG_COMPILER(INFO) << "Deoptimize" << data;
         const uint8_t *pc = method->GetBytecodeArray() + pc_;

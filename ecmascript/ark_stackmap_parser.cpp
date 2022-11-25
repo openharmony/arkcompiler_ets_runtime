@@ -15,7 +15,7 @@
 #include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/aot_file_manager.h"
 
 namespace panda::ecmascript::kungfu {

@@ -134,8 +134,8 @@ public:
         TRIPLE_ARM32,
     };
 
-    CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isEnableBcTrace = false)
-        : triple_(GetTripleFromString(triple)), isEnableBcTrace_(isEnableBcTrace), enablePGOProfiler_(enablePGOProfiler)
+    CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false)
+        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler)
     {
     }
     ~CompilationConfig() = default;
@@ -165,9 +165,9 @@ public:
         return triple_;
     }
 
-    bool IsEnableByteCodeTrace() const
+    bool IsTraceBC() const
     {
-        return isEnableBcTrace_;
+        return isTraceBc_;
     }
 
     bool IsEnablePGOProfiler() const
@@ -192,7 +192,7 @@ private:
         UNREACHABLE();
     }
     Triple triple_;
-    bool isEnableBcTrace_;
+    bool isTraceBc_;
     bool enablePGOProfiler_;
 };
 

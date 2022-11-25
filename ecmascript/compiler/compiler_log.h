@@ -30,7 +30,7 @@
 namespace panda::ecmascript::kungfu {
 class CompilerLog {
 public:
-    explicit CompilerLog(const std::string &logOpt, bool enableBCTrace = false);
+    explicit CompilerLog(const std::string &logOpt, bool TraceBC = false);
     ~CompilerLog() = default;
 
     bool AllMethod() const
@@ -68,9 +68,9 @@ public:
         return outputType_;
     }
 
-    bool IsEnableByteCodeTrace() const
+    bool IsTraceBC() const
     {
-        return enableBCTrace_;
+        return traceBc_;
     }
 
     bool GetEnableCompilerLogTime() const
@@ -120,7 +120,7 @@ private:
     bool outputLLIR_ {false};
     bool outputASM_ {false};
     bool outputType_ {false};
-    bool enableBCTrace_ {false};
+    bool traceBc_ {false};
     bool compilerLogTime_ {true};
     bool enableMethodLog_ {false};
     std::map<std::string, double> timePassMap_ {};
