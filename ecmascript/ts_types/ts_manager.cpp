@@ -282,7 +282,7 @@ GlobalTSTypeRef TSManager::GetUnionTypeByIndex(GlobalTSTypeRef gt, int index) co
 TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
 {
     uint32_t moduleId = gt.GetModuleId();
-    if (static_cast<MTableIdx>(moduleId) != MTableIdx::PRIMITIVE) {
+    if (moduleId != static_cast<uint32_t>(MTableIdx::PRIMITIVE)) {
         JSHandle<JSTaggedValue> type = GetTSType(gt);
         if (type->IsTSType()) {
             JSHandle<TSType> tsType(type);
