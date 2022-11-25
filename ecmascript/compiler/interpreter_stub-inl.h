@@ -692,7 +692,6 @@ GateRef InterpreterToolsStubBuilder::GetStringId(const StringIdInfo &info)
             if (info.length == StringIdInfo::Length::BITS_16) {
                 stringId = ZExtInt16ToInt32(ReadInst16_0(info.pc));
             } else {
-                stringId = 0;
                 std::abort();
             }
             break;
@@ -703,7 +702,6 @@ GateRef InterpreterToolsStubBuilder::GetStringId(const StringIdInfo &info)
             } else if (info.length == StringIdInfo::Length::BITS_32) {
                 stringId = ReadInst32_1(info.pc);
             } else {
-                stringId = 0;
                 std::abort();
             }
             break;
@@ -712,13 +710,11 @@ GateRef InterpreterToolsStubBuilder::GetStringId(const StringIdInfo &info)
             if (info.length == StringIdInfo::Length::BITS_16) {
                 stringId = ZExtInt16ToInt32(ReadInst16_2(info.pc));
             } else {
-                stringId = 0;
                 std::abort();
             }
             break;
         }
         default: {
-            stringId = 0;
             std::abort();
             break;
         }

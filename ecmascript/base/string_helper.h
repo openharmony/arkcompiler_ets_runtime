@@ -261,31 +261,31 @@ public:
         if (srcStr.find('\n') == std::string::npos) {
             escape = false;
         }
-        int prePos = 0;
+        size_t prePos = 0;
         int findPrePos = lineNumber - 1;
         for (int i = 0; i < findPrePos; i++) {
             if (escape) {
                 prePos = srcStr.find('\n', prePos);
-                if (prePos == -1) {
+                if (prePos == std::string::npos) {
                     return "";
                 }
                 prePos += 1;
             } else {
                 prePos = srcStr.find("\\n", prePos);
-                if (prePos == -1) {
+                if (prePos == std::string::npos) {
                     return "";
                 }
                 // Add the two characters found to start searching again
                 prePos += 2;
             }
         }
-        int findEndPos = 0;
+        size_t findEndPos = 0;
         if (escape) {
             findEndPos = srcStr.find('\n', prePos);
         } else {
             findEndPos = srcStr.find("\\n", prePos);
         }
-        if (findEndPos == -1) {
+        if (findEndPos == std::string::npos) {
             return srcStr.substr(prePos, srcStr.length() - prePos);
         }
         ASSERT(findEndPos > prePos);

@@ -37,6 +37,7 @@ public:
 
         const ConstUseIterator operator++()
         {
+            ASSERT(out_ != nullptr);
             if (!out_->IsNextOutNull()) {
                 out_ = out_->GetNextOutConst();
                 return *this;
@@ -93,6 +94,7 @@ public:
 
         const UseIterator& operator++()
         {
+            ASSERT(out_ != nullptr);
             out_ = out_->IsNextOutNull() ? nullptr
                                          : out_->GetNextOut();
             return *this;

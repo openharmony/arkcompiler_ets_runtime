@@ -56,7 +56,7 @@ void BytecodeCircuitBuilder::CollectRegionInfo(uint32_t bcIndex)
 {
     auto pc = pcOffsets_[bcIndex];
     auto &info = infoData_[bcIndex];
-    int32_t offset;
+    int32_t offset = 0;
     if (info.IsJump()) {
         switch (info.GetOpcode()) {
             case EcmaOpcode::JEQZ_IMM8:
