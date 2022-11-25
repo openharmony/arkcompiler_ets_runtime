@@ -28,6 +28,7 @@ host_unittest_action("BaseTest") {
     "gc_ring_buffer_test.cpp",
     "json_parser_test.cpp",
     "json_stringifier_test.cpp",
+    "math_helper_test.cpp",
     "number_helper_test.cpp",
     "string_helper_test.cpp",
     "typed_array_helper_test.cpp",
