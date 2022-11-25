@@ -93,7 +93,20 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
     if (module->GetTypes() == ModuleTypes::CJSMODULE) {
         JSHandle<JSTaggedValue> cjsModuleName(thread, module->GetEcmaModuleFilename());
-        return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+        JSTaggedValue cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+        // if cjsModule is not CjsExports, means cjs uses default exports.
+        if (!cjsExports.IsCjsExports()) {
+            if (cjsExports.IsHole()) {
+            LOG_FULL(FATAL) << "CAN NOT SEARCH FROM CJSMODULECACHE";
+            }
+            return cjsExports;
+        }
+        int32_t idx = binding->GetIndex();
+        JSObject *cjsObject = JSObject::Cast(cjsExports);
+        JSHClass *jsHclass = cjsObject->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr = layoutInfo->GetAttr(idx);
+        return cjsObject->GetProperty(jsHclass, attr);
     }
     return SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread,
                                                                                     binding->GetIndex(), false);
@@ -502,7 +515,12 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
         requiredModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread,
             JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
     }
-
+    // if requiredModule is CommonJS
+    if (requiredModule->GetTypes() == ModuleTypes::CJSMODULE) {
+        JSHandle<JSTaggedValue> cjsModuleName(thread, requiredModule->GetEcmaModuleFilename());
+        return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+    }
+    // if requiredModule is ESM
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModule);
     ASSERT(moduleNamespace->IsModuleNamespace());
     return moduleNamespace.GetTaggedValue();

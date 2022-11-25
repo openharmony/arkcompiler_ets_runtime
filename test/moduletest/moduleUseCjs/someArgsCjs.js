@@ -19,11 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-import cjs from "./Cjs"
-import * as ns from "./someArgsCjs"
-import {json, fun} from "./someArgsCjs"
-
-print(JSON.stringify(cjs));
-print(JSON.stringify(json));
-fun();
-print(ns.tag);
+module.exports.json = "moduleJson";
+module.exports.fun = function foo1 () {
+    print("jscall 1");
+};
+exports.tag = true;
