@@ -55,6 +55,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                             "Default: \"none\"\n"
     "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
     "--enable-bytecode-trace: enable tracing bytecode for aot runtime. Default: false\n"
+    "--enable-deopt-trace: enable tracing deopt for aot runtime. Default: false\n"
     "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
     "--enable-force-gc: enable force gc when allocating object. Default: true\n"
     "--enable-ic: switch of inline cache. Default: true\n"
@@ -122,6 +123,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"enable-bytecode-trace", required_argument, nullptr, OPTION_ENABLE_BC_TRACE},
+        {"enable-deopt-trace", required_argument, nullptr, OPTION_ENABLE_DEOPT_TRACE},
         {"enable-cpuprofiler", required_argument, nullptr, OPTION_ENABLE_CPUPROFILER},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
@@ -264,6 +266,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableByteCodeTrace(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_DEOPT_TRACE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableDeoptTrace(argBool);
                 } else {
                     return false;
                 }

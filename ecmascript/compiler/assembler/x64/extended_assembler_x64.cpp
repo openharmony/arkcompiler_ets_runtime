@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/compiler/assembler/x64/extended_assembler_x64.h"
-#include "ecmascript/calleeReg.h"
+#include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/frames.h"
 
 namespace panda::ecmascript::x64 {

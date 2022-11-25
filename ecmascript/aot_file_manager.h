@@ -16,7 +16,7 @@
 #define ECMASCRIPT_AOT_FILE_MANAGER_H
 
 #include "ecmascript/ark_stackmap.h"
-#include "ecmascript/calleeReg.h"
+#include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/compiler/binary_section.h"
