@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_DEOPTIMIZER_H
 #define ECMASCRIPT_DEOPTIMIZER_H
 #include "ecmascript/base/aligned_struct.h"
-#include "ecmascript/calleeReg.h"
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/llvm_stackmap_type.h"
@@ -92,6 +92,8 @@ public:
     {
         kungfu::CalleeReg callreg;
         numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
+        JSRuntimeOptions options = thread_->GetEcmaVM()->GetJSOptions();
+        enableDeoptTrace_ = options.IsEnableDeoptTrace();
     }
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
@@ -136,6 +138,7 @@ private:
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
+    void Dump(Method* method);
     JSThread *thread_ {nullptr};
     uintptr_t *calleeRegAddr_ {nullptr};
     size_t numCalleeRegs_ {0};
@@ -147,6 +150,7 @@ private:
     JSTaggedValue env_ {JSTaggedValue::Undefined()};
     size_t frameArgc_ {0};
     JSTaggedType *frameArgvs_ {nullptr};
+    bool enableDeoptTrace_ {false};
 };
 
 }  // namespace panda::ecmascript

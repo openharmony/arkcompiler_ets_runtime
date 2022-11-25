@@ -87,6 +87,7 @@ enum CommandValues {
     OPTION_IS_WORKER,
     OPTION_BUILTINS_DTS,
     OPTION_ENABLE_BC_TRACE,
+    OPTION_ENABLE_DEOPT_TRACE,
     OPTION_LOG_LEVEL,
     OPTION_LOG_DEBUG,
     OPTION_LOG_INFO,
@@ -810,6 +811,16 @@ public:
     {
         wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
     }
+
+    void SetEnableDeoptTrace(bool value)
+    {
+        enableDeoptTrace_ = value;
+    }
+
+    bool IsEnableDeoptTrace() const
+    {
+        return enableDeoptTrace_;
+    }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -877,6 +888,7 @@ private:
     bool enablePGOProfiler_ {false};
     uint32_t pgoHotnessThreshold_ {2};
     std::string pgoProfilerPath_ {""};
+    bool enableDeoptTrace_ {false};
 };
 }  // namespace panda::ecmascript
 
