@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_DEOPTIMIZER_H
-#define ECMASCRIPT_DEOPTIMIZER_H
+#ifndef ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H
+#define ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H
+
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
@@ -93,7 +94,7 @@ public:
         kungfu::CalleeReg callreg;
         numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
         JSRuntimeOptions options = thread_->GetEcmaVM()->GetJSOptions();
-        enableDeoptTrace_ = options.IsEnableDeoptTrace();
+        traceDeopt_= options.GetTraceDeopt();
     }
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
@@ -150,8 +151,8 @@ private:
     JSTaggedValue env_ {JSTaggedValue::Undefined()};
     size_t frameArgc_ {0};
     JSTaggedType *frameArgvs_ {nullptr};
-    bool enableDeoptTrace_ {false};
+    bool traceDeopt_{false};
 };
 
 }  // namespace panda::ecmascript
-#endif // ECMASCRIPT_DEOPTIMIZER_H
+#endif // ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H

@@ -22,7 +22,7 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"

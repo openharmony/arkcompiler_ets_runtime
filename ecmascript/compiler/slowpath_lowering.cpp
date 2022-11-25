@@ -3381,7 +3381,7 @@ void SlowPathLowering::LowerWideStPatchVar(GateRef gate, GateRef glue)
 
 void SlowPathLowering::DebugPrintBC(GateRef gate, GateRef glue)
 {
-    if (enableBcTrace_) {
+    if (traceBc_) {
         EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
         auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
         GateRef constOpcode = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(ecmaOpcodeGate));

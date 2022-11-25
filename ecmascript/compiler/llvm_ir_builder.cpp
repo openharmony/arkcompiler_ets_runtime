@@ -22,7 +22,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"

@@ -15,7 +15,7 @@
 
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/type_lowering.h"
-#include "ecmascript/deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
 

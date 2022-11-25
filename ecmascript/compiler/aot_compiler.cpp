@@ -87,7 +87,7 @@ int Main(const int argc, const char **argv)
         std::string logOption = runtimeOptions.GetCompilerLogOption();
         std::string logMethodsList = runtimeOptions.GetMethodsListForLog();
         bool compilerLogTime = runtimeOptions.IsEnableCompilerLogTime();
-        bool isEnableBcTrace = runtimeOptions.IsEnableByteCodeTrace();
+        bool isTraceBC = runtimeOptions.IsTraceBC();
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
@@ -95,7 +95,7 @@ int Main(const int argc, const char **argv)
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
         
-        CompilerLog log(logOption, isEnableBcTrace);
+        CompilerLog log(logOption, isTraceBC);
         log.SetEnableCompilerLogTime(compilerLogTime);
         AotMethodLogList logList(logMethodsList);
         AOTFileGenerator generator(&log, &logList, vm);

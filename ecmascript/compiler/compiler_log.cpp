@@ -16,7 +16,7 @@
 #include "ecmascript/compiler/compiler_log.h"
 
 namespace panda::ecmascript::kungfu {
-CompilerLog::CompilerLog(const std::string &logOpt, bool enableBCTrace)
+CompilerLog::CompilerLog(const std::string &logOpt, bool TraceBC)
 {
     outputCIR_ = logOpt.find("cir") != std::string::npos ||
         logOpt.find("0") != std::string::npos;
@@ -31,7 +31,7 @@ CompilerLog::CompilerLog(const std::string &logOpt, bool enableBCTrace)
         logOpt.find("cer") != std::string::npos;
     noneMethod_ = logOpt.find("all") == std::string::npos &&
         logOpt.find("cer") == std::string::npos;
-    enableBCTrace_ = enableBCTrace;
+    traceBc_ = TraceBC;
 }
 
 bool MethodLogList::IncludesMethod(const std::string &methodName) const
