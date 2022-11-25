@@ -32,15 +32,15 @@ void HeapTrackerSample::Run()
     }
 }
 
-void HeapTracker::AllocationEvent(TaggedObject* address)
+void HeapTracker::AllocationEvent(TaggedObject *address, size_t size)
 {
     Node *node;
     if (snapshot_ != nullptr) {
-        node = snapshot_->AddNode(address);
+        node = snapshot_->AddNode(address, size);
         if (node != nullptr && snapshot_->trackAllocations()) {
-            int size = static_cast<int>(node->GetSelfSize());
+            int selfSize = static_cast<int>(node->GetSelfSize());
             int sequenceId = static_cast<int>(node->GetId());
-            int traceId = snapshot_->AddTraceNode(sequenceId, size);
+            int traceId = snapshot_->AddTraceNode(sequenceId, selfSize);
             if (traceId != -1) {
                 node->SetTraceId(static_cast<uint64_t>(traceId));
             }
@@ -48,10 +48,10 @@ void HeapTracker::AllocationEvent(TaggedObject* address)
     }
 }
 
-void HeapTracker::MoveEvent(uintptr_t address, TaggedObject* forward_address)
+void HeapTracker::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size)
 {
     if (snapshot_ != nullptr) {
-        snapshot_->MoveNode(address, forward_address);
+        snapshot_->MoveNode(address, forwardAddress, size);
     }
 }
 }  // namespace panda::ecmascript

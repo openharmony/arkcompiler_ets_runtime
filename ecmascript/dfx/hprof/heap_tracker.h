@@ -83,8 +83,8 @@ public:
         sample_.Stop();
     }
 
-    void AllocationEvent(TaggedObject* address);
-    void MoveEvent(uintptr_t address, TaggedObject* forward_address);
+    void AllocationEvent(TaggedObject *address, size_t size);
+    void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size);
 
     NO_COPY_SEMANTIC(HeapTracker);
     NO_MOVE_SEMANTIC(HeapTracker);
