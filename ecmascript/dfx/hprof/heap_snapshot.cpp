@@ -50,7 +50,7 @@ CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
     return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
 }
 
-Node *Node::NewNode(const EcmaVM *vm, size_t id, size_t index, CString *name, NodeType type, size_t size,
+Node *Node::NewNode(const EcmaVM *vm, size_t id, size_t index, const CString *name, NodeType type, size_t size,
                     TaggedObject *entry, bool isLive)
 {
     auto node = vm->GetChunk()->New<Node>(id, index, name, type, size, 0, NewAddress<TaggedObject>(entry), isLive);
@@ -177,12 +177,12 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
     stream->UpdateLastSeenObjectId(sequenceId);
 }
 
-Node *HeapSnapshot::AddNode(TaggedObject* address)
+Node *HeapSnapshot::AddNode(TaggedObject* address, size_t size)
 {
-    return GenerateNode(JSTaggedValue(address));
+    return GenerateNode(JSTaggedValue(address), size);
 }
 
-void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject* forward_address)
+void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject* forwardAddress, size_t size)
 {
     int sequenceId = -1;
     uint64_t traceNodeId = 0;
@@ -191,7 +191,7 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject* forward_address)
         sequenceId = static_cast<int>(node->GetId());
         traceNodeId = node->GetStackTraceId();
     }
-    node = GenerateNode(JSTaggedValue(forward_address), sequenceId);
+    node = GenerateNode(JSTaggedValue(forwardAddress), size, sequenceId);
     if (node != nullptr) {
         node->SetTraceId(traceNodeId);
     }
@@ -552,12 +552,12 @@ void HeapSnapshot::FillNodes(bool isInFinish)
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
         heap->IterateOverObjects([this, &isInFinish](TaggedObject *obj) {
-            GenerateNode(JSTaggedValue(obj), -1, isInFinish);
+            GenerateNode(JSTaggedValue(obj), 0, -1, isInFinish);
         });
     }
 }
 
-Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, int sequenceId, bool isInFinish)
+Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceId, bool isInFinish)
 {
     Node *node = nullptr;
     if (sequenceId == -1) {
@@ -569,9 +569,9 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, int sequenceId, bool isInF
         }
         if (entry.IsString()) {
             if (isPrivate_) {
-                node = GeneratePrivateStringNode(sequenceId);
+                node = GeneratePrivateStringNode(size, sequenceId);
             } else {
-                node = GenerateStringNode(entry, sequenceId, isInFinish);
+                node = GenerateStringNode(entry, size, sequenceId, isInFinish);
             }
             if (node == nullptr) {
                 LOG_ECMA(DEBUG) << "string node nullptr";
@@ -584,8 +584,9 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, int sequenceId, bool isInF
             Address addr = reinterpret_cast<Address>(obj);
             Node *existNode = entryMap_.FindEntry(addr);  // Fast Index
             if (existNode == nullptr) {
+                size_t selfSize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
                 node = Node::NewNode(vm_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
-                                     obj->GetClass()->SizeFromJSHClass(obj), obj);
+                    selfSize, obj);
                 if (sequenceId == sequenceId_ + SEQ_STEP) {
                     sequenceId_ = sequenceId;  // Odd Digit
                 }
@@ -794,8 +795,10 @@ void HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
     return;
 }
 
-Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId, bool isInFinish)
+Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, int sequenceId, bool isInFinish)
 {
+    static const CString EMPTY_STRING;
+
     Node *existNode = entryMap_.FindEntry(reinterpret_cast<Address>(entry.GetTaggedObject()));  // Fast Index
     if (existNode != nullptr) {
         if (isInFinish) {
@@ -805,15 +808,14 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId, bool
         return nullptr;
     }
     // Allocation Event will generate string node for "".
-    // When we need to serialize and isFinish is true, the nodeStr will be given the actual string content.
+    // When we need to serialize and isFinish is true, the nodeName will be given the actual string content.
     auto originStr = static_cast<EcmaString *>(entry.GetTaggedObject());
-    size_t selfsize = EcmaStringAccessor(originStr).ObjectSize();
-    CString strContent = "";
-    CString *nodeStr = &strContent;
+    size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).ObjectSize();
+    const CString *nodeName = &EMPTY_STRING;
     if (isInFinish) {
-        nodeStr = GetString(EntryVisitor::ConvertKey(entry));
+        nodeName = GetString(EntryVisitor::ConvertKey(entry));
     }
-    Node *node = Node::NewNode(vm_, sequenceId, nodeCount_, nodeStr, NodeType::PRIM_STRING, selfsize,
+    Node *node = Node::NewNode(vm_, sequenceId, nodeCount_, nodeName, NodeType::PRIM_STRING, selfsize,
                                entry.GetTaggedObject());
     if (sequenceId == sequenceId_ + SEQ_STEP) {
         sequenceId_ = sequenceId;  // Odd Digit
@@ -823,7 +825,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, int sequenceId, bool
     return node;
 }
 
-Node *HeapSnapshot::GeneratePrivateStringNode(int sequenceId)
+Node *HeapSnapshot::GeneratePrivateStringNode(size_t size, int sequenceId)
 {
     if (privateStringNode_ != nullptr) {
         return privateStringNode_;
@@ -831,7 +833,7 @@ Node *HeapSnapshot::GeneratePrivateStringNode(int sequenceId)
     Node *node = nullptr;
     JSTaggedValue stringValue = vm_->GetJSThread()->GlobalConstants()->GetStringString();
     auto originStr = static_cast<EcmaString *>(stringValue.GetTaggedObject());
-    size_t selfsize = EcmaStringAccessor(originStr).ObjectSize();
+    size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).ObjectSize();
     CString strContent;
     strContent.append(EntryVisitor::ConvertKey(stringValue));
     node = Node::NewNode(vm_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,

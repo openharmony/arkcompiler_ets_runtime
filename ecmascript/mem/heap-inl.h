@@ -147,7 +147,7 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
 {
     auto object = AllocateYoungOrHugeObject(size);
     object->SetClass(hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
+    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
 
@@ -194,7 +194,7 @@ TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
     auto object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
     object->SetClass(hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
+    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
 
@@ -213,7 +213,7 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
     auto object = reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
     object->SetClass(hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
+    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
 
@@ -232,7 +232,7 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
     auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
     object->SetClass(hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
+    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
 
@@ -245,7 +245,7 @@ TaggedObject *Heap::AllocateClassClass(JSHClass *hclass, size_t size)
         UNREACHABLE();
     }
     *reinterpret_cast<MarkWordType *>(ToUintPtr(object)) = reinterpret_cast<MarkWordType>(hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
+    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
 
@@ -278,7 +278,7 @@ TaggedObject *Heap::AllocateHugeObject(JSHClass *hclass, size_t size)
     CheckAndTriggerOldGC(size);
     auto object = AllocateHugeObject(size);
     object->SetClass(hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
+    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
 
@@ -288,7 +288,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
     auto object = reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, machineCodeSpace_, "Heap::AllocateMachineCodeObject");
     object->SetClass(hclass);
-    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object));
+    OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);
     return object;
 }
 
@@ -302,22 +302,23 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
     return object;
 }
 
-void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address)
+void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unused]] size_t size)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     if (tracker_ != nullptr) {
         BlockHookScope blockScope;
-        tracker_->AllocationEvent(address);
+        tracker_->AllocationEvent(address, size);
     }
 #endif
 }
 
-void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress)
+void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
+    [[maybe_unused]] size_t size)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     if (tracker_ != nullptr) {
         BlockHookScope blockScope;
-        tracker_->MoveEvent(address, forwardAddress);
+        tracker_->MoveEvent(address, forwardAddress, size);
     }
 #endif
 }
