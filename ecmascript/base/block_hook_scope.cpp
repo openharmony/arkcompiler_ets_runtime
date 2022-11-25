@@ -24,14 +24,14 @@ namespace panda::ecmascript::base {
 BlockHookScope::BlockHookScope()
 {
 #ifdef BLOCK_HOOK
-    __set_hook_flag(false);
+   previousState_ = __set_hook_flag(false);
 #endif
 }
 
 BlockHookScope::~BlockHookScope()
 {
 #ifdef BLOCK_HOOK
-    __set_hook_flag(true);
+    __set_hook_flag(previousState_);
 #endif
 }
 }  // namespace panda::ecmascript::base
