@@ -387,8 +387,10 @@ ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
     const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     OptimizedJSFunctionFrame *frame = OptimizedJSFunctionFrame::GetFrameFromSp(it.GetSp());
-    uintptr_t *envPtr = reinterpret_cast<uintptr_t *>(frame);
-    uintptr_t envslot = ToUintPtr(envPtr);
+    uintptr_t *jsFuncPtr = reinterpret_cast<uintptr_t *>(frame);
+    uintptr_t jsFuncSlot = ToUintPtr(jsFuncPtr);
+    uintptr_t envslot = jsFuncSlot + sizeof(uintptr_t);
+    visitor(Root::ROOT_FRAME, ObjectSlot(jsFuncSlot));
     visitor(Root::ROOT_FRAME, ObjectSlot(envslot));
 
     uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);
@@ -610,8 +612,8 @@ bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typ
             prevOffset = OptimizedFrame::GetPrevOffset();
             break;
         case (uintptr_t)(FrameType::OPTIMIZED_ENTRY_FRAME):
-            typeOffset = MEMBER_OFFSET(OptimizedEntryFrame, type);
-            prevOffset = MEMBER_OFFSET(OptimizedEntryFrame, preLeaveFrameFp);
+            typeOffset = OptimizedEntryFrame::GetTypeOffset();
+            prevOffset = OptimizedEntryFrame::GetLeaveFrameFpOffset();
             break;
         case (uintptr_t)(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME):
             typeOffset = OptimizedJSFunctionUnfoldArgVFrame::GetTypeOffset();
