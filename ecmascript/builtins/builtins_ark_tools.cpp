@@ -163,6 +163,7 @@ bool BuiltinsArkTools::CreateFile(std::string &fileName)
             LOG_ECMA(ERROR) << "file create failed, errno = "<< errno;
             return false;
         }
+        close(fd);
         return true;
     } else {
         fileName = path;

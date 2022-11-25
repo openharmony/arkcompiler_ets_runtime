@@ -531,7 +531,7 @@ private:
     GateRef FastBinaryOp(GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp);
     void InitializeArguments();
-    CallSignature *callSignature_;
+    CallSignature *callSignature_ {nullptr};
     Environment *env_;
 };
 }  // namespace panda::ecmascript::kungfu

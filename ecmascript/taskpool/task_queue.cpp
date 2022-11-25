@@ -49,7 +49,6 @@ void TaskQueue::TerminateTask(int32_t id, TaskType type)
             continue;
         }
         if (type != TaskType::ALL && type != (*iter)->GetTaskType()) {
-            iter++;
             continue;
         }
         (*iter)->Terminated();
