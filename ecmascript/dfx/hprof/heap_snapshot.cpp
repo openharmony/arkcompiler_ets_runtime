@@ -217,7 +217,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "COWArray[");
         case JSType::HCLASS:
             return GetString("HiddenClass");
-        case JSType::STRING:
+        case JSType::LINE_STRING:
+        case JSType::TREE_STRING:
             return GetString("BaseString");
         case JSType::JS_OBJECT: {
             CString objName = CString("JSOBJECT(Ctor=");  // Ctor-name
@@ -810,7 +811,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, int seq
     // Allocation Event will generate string node for "".
     // When we need to serialize and isFinish is true, the nodeName will be given the actual string content.
     auto originStr = static_cast<EcmaString *>(entry.GetTaggedObject());
-    size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).ObjectSize();
+    size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).GetFlatStringSize();
     const CString *nodeName = &EMPTY_STRING;
     if (isInFinish) {
         nodeName = GetString(EntryVisitor::ConvertKey(entry));
@@ -833,7 +834,7 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size, int sequenceId)
     Node *node = nullptr;
     JSTaggedValue stringValue = vm_->GetJSThread()->GlobalConstants()->GetStringString();
     auto originStr = static_cast<EcmaString *>(stringValue.GetTaggedObject());
-    size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).ObjectSize();
+    size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).GetFlatStringSize();
     CString strContent;
     strContent.append(EntryVisitor::ConvertKey(stringValue));
     node = Node::NewNode(vm_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,

@@ -366,8 +366,12 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 return tagValue;
             }
             // If Type(value) is String, return QuoteJSONString(value).
-            case JSType::STRING: {
-                CString str = ConvertToString(*JSHandle<EcmaString>(valHandle), StringConvertedUsage::LOGICOPERATION);
+            case JSType::LINE_STRING:
+            case JSType::TREE_STRING: {
+                JSHandle<EcmaString> strHandle = JSHandle<EcmaString>(valHandle);
+                auto string = JSHandle<EcmaString>(thread_,
+                    EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));
+                CString str = ConvertToString(*string, StringConvertedUsage::LOGICOPERATION);
                 str = ValueToQuotedString(str);
                 result_ += str;
                 return tagValue;

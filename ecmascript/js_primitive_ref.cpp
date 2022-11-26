@@ -51,14 +51,16 @@ bool JSPrimitiveRef::StringGetIndexProperty(const JSThread *thread, const JSHand
 {
     uint16_t tmpChar;
     {
-        DISALLOW_GARBAGE_COLLECTION;
-        EcmaString *str = EcmaString::Cast(JSPrimitiveRef::Cast(*obj)->GetValue().GetTaggedObject());
-        if (EcmaStringAccessor(str).GetLength() <= index) {
+        JSHandle<EcmaString> strHandle = JSHandle<EcmaString>(thread,
+            EcmaString::Cast(JSPrimitiveRef::Cast(*obj)->GetValue()));
+        JSHandle<EcmaString> strFlat = JSHandle<EcmaString>(thread,
+            EcmaStringAccessor::Flatten(thread->GetEcmaVM(), strHandle));
+        if (EcmaStringAccessor(strFlat).GetLength() <= index) {
             return false;
         }
         // 10. Let resultStr be a String value of length 1, containing one code unit from str, specifically the code
         // unit at index index
-        tmpChar = EcmaStringAccessor(str).Get(index);;
+        tmpChar = EcmaStringAccessor(strFlat).Get(index);
     }
     JSHandle<JSTaggedValue> value(thread->GetEcmaVM()->GetFactory()->NewFromUtf16(&tmpChar, 1));
     // 11. Return a PropertyDescriptor{ [[Value]]: resultStr, [[Enumerable]]: true, [[Writable]]: false,

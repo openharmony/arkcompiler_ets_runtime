@@ -205,7 +205,7 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind)
     JSHandle<JSTaggedValue> resultFuncHandle(thread, *resultFunc);
     JSHandle<EcmaString> resultName(JSObject::GetProperty(thread, resultFuncHandle, nameKey).GetValue());
     JSHandle<EcmaString> boundTarget = factory->NewFromASCII("bound target");
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultName, *boundTarget), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultName, boundTarget), 0);
     // test length property
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
     JSHandle<JSTaggedValue> resultLength(JSObject::GetProperty(thread, resultFuncHandle, lengthKey).GetValue());
@@ -260,7 +260,7 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind1)
     JSHandle<JSTaggedValue> resultFuncHandle(thread, *resultFunc);
     JSHandle<EcmaString> resultName(JSObject::GetProperty(thread, resultFuncHandle, nameKey).GetValue());
     JSHandle<EcmaString> rulerName = factory->NewFromASCII("bound target1");
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultName, *rulerName), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultName, rulerName), 0);
     // test length property
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
     JSHandle<JSTaggedValue> resultLength(JSObject::GetProperty(thread, resultFuncHandle, lengthKey).GetValue());
@@ -316,7 +316,7 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeBind2)
     JSHandle<JSTaggedValue> resultFuncHandle(resultFunc);
     JSHandle<EcmaString> resultName(JSObject::GetProperty(thread, resultFuncHandle, nameKey).GetValue());
     JSHandle<EcmaString> rulerName = factory->NewFromASCII("bound ");
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultName, *rulerName), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultName, rulerName), 0);
     // test length property
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
     JSHandle<JSTaggedValue> resultLength(JSObject::GetProperty(thread, resultFuncHandle, lengthKey).GetValue());
@@ -453,7 +453,7 @@ HWTEST_F_L0(BuiltinsFunctionTest, FunctionPrototypeToString)
     JSTaggedValue result = BuiltinsFunction::FunctionPrototypeToString(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    JSTaggedValue test = factory->NewFromASCII("function call() { [native code] }").GetTaggedValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultHandle, reinterpret_cast<EcmaString *>(test.GetRawData())), 0);
+    JSHandle<EcmaString> test = factory->NewFromASCII("function call() { [native code] }");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 }  // namespace panda::test

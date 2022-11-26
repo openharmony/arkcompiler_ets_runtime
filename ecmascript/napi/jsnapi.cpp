@@ -917,9 +917,10 @@ int32_t StringRef::Length()
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
 }
 
-int32_t StringRef::Utf8Length()
+int32_t StringRef::Utf8Length(const EcmaVM *vm)
 {
-    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetUtf8Length();
+    JSHandle<EcmaString> strHandle(vm->GetJSThread(), EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(this)));
+    return EcmaStringAccessor(EcmaStringAccessor::Flatten(vm, strHandle)).GetUtf8Length();
 }
 
 int StringRef::WriteUtf8(char *buffer, int length, bool isWriteBuffer)

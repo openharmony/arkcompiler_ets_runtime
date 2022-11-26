@@ -553,7 +553,7 @@ JSTaggedValue BuiltinsRegExp::MatchAll(EcmaRuntimeCallInfo *argv)
     // 10. Else, let global be false.
     JSHandle<EcmaString> gString(globalConstants->GetHandledGString());
     bool global = false;
-    if (EcmaStringAccessor::IndexOf(*flagsStrHandle, *gString) != -1) {
+    if (EcmaStringAccessor::IndexOf(ecmaVm, flagsStrHandle, gString) != -1) {
         global = true;
     }
 
@@ -561,7 +561,7 @@ JSTaggedValue BuiltinsRegExp::MatchAll(EcmaRuntimeCallInfo *argv)
     // 12. Else, let fullUnicode be false.
     JSHandle<EcmaString> uString(globalConstants->GetHandledUString());
     bool fullUnicode = false;
-    if (EcmaStringAccessor::IndexOf(*flagsStrHandle, *uString) != -1) {
+    if (EcmaStringAccessor::IndexOf(ecmaVm, flagsStrHandle, uString) != -1) {
         fullUnicode = true;
     }
 
@@ -1106,11 +1106,11 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
     // 9. If flags contains "u", let unicodeMatching be true.
     // 10. Else, let unicodeMatching be false.
     JSHandle<EcmaString> uStringHandle(globalConstants->GetHandledUString());
-    bool unicodeMatching = (EcmaStringAccessor::IndexOf(*flags, *uStringHandle) != -1);
+    bool unicodeMatching = (EcmaStringAccessor::IndexOf(ecmaVm, flags, uStringHandle) != -1);
     // 11. If flags contains "y", let newFlags be flags.
     JSHandle<EcmaString> newFlagsHandle;
     JSHandle<EcmaString> yStringHandle = JSHandle<EcmaString>::Cast(globalConstants->GetHandledYString());
-    if (EcmaStringAccessor::IndexOf(*flags, *yStringHandle) != -1) {
+    if (EcmaStringAccessor::IndexOf(ecmaVm, flags, yStringHandle) != -1) {
         newFlagsHandle = flags;
     } else {
         // 12. Else, let newFlags be the string that is the concatenation of flags and "y".

@@ -166,7 +166,8 @@ HWTEST_F_L0(BuiltinsReflectTest, ReflectConstruct)
     JSHandle<JSTaggedValue> taggedResult(thread, result);
     JSHandle<JSPrimitiveRef> refResult = JSHandle<JSPrimitiveRef>::Cast(taggedResult);
     JSHandle<EcmaString> ruler = factory->NewFromASCII("ReflectConstruct");
-    ASSERT_EQ(EcmaStringAccessor::Compare(EcmaString::Cast(refResult->GetValue().GetTaggedObject()), *ruler), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        JSHandle<EcmaString>(thread, EcmaString::Cast(refResult->GetValue())), ruler), 0);
     TestHelper::TearDownFrame(thread, prev);
 }
 
@@ -431,17 +432,17 @@ HWTEST_F_L0(BuiltinsReflectTest, ReflectOwnKeys)
     JSHandle<JSTaggedValue> resultKey0(thread, JSTaggedValue(0));
     JSHandle<JSTaggedValue> resultValue0 =
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(resultArray), resultKey0).GetValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        reinterpret_cast<EcmaString *>(resultValue0.GetTaggedValue().GetTaggedObject()),
-        reinterpret_cast<EcmaString *>(key0.GetTaggedValue().GetTaggedObject())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        JSHandle<EcmaString>(resultValue0),
+        JSHandle<EcmaString>(key0)),
         0);
     // test array[1]
     JSHandle<JSTaggedValue> resultKey1(thread, JSTaggedValue(1));
     JSHandle<JSTaggedValue> resultValue1 =
         JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(resultArray), resultKey1).GetValue();
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        reinterpret_cast<EcmaString *>(resultValue1.GetTaggedValue().GetTaggedObject()),
-        reinterpret_cast<EcmaString *>(key1.GetTaggedValue().GetTaggedObject())),
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        JSHandle<EcmaString>(resultValue1),
+        JSHandle<EcmaString>(key1)),
         0);
     TestHelper::TearDownFrame(thread, prev);
 }

@@ -126,36 +126,42 @@ JSTaggedValue FastRuntimeStub::FastEqual(JSTaggedValue left, JSTaggedValue right
     return JSTaggedValue::Hole();
 }
 
-bool FastRuntimeStub::FastStrictEqual(JSTaggedValue left, JSTaggedValue right)
+JSTaggedValue FastRuntimeStub::FastStrictEqual(JSTaggedValue left, JSTaggedValue right)
 {
     if (left.IsNumber()) {
         if (right.IsNumber()) {
             double dLeft = left.IsInt() ? left.GetInt() : left.GetDouble();
             double dRight = right.IsInt() ? right.GetInt() : right.GetDouble();
-            return JSTaggedValue::StrictNumberEquals(dLeft, dRight);
+            return JSTaggedValue::StrictNumberEquals(dLeft, dRight) ? JSTaggedValue::True() : JSTaggedValue::False();
         }
-        return false;
+        return JSTaggedValue::False();
     }
     if (right.IsNumber()) {
-        return false;
+        return JSTaggedValue::False();
     }
     if (left == right) {
-        return true;
+        return JSTaggedValue::True();
     }
     if (left.IsString() && right.IsString()) {
-        return EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(left.GetTaggedObject()),
-                                                   static_cast<EcmaString *>(right.GetTaggedObject()));
+        auto leftStr = static_cast<EcmaString *>(left.GetTaggedObject());
+        auto rightStr = static_cast<EcmaString *>(right.GetTaggedObject());
+        if (EcmaStringAccessor(leftStr).IsFlat() && EcmaStringAccessor(rightStr).IsFlat()) {
+            return EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(left.GetTaggedObject()),
+                                                       static_cast<EcmaString *>(right.GetTaggedObject())) ?
+                JSTaggedValue::True() : JSTaggedValue::False();
+        }
+        return JSTaggedValue::Hole();
     }
     if (left.IsBigInt()) {
         if (right.IsBigInt()) {
-            return BigInt::Equal(left, right);
+            return BigInt::Equal(left, right) ? JSTaggedValue::True() : JSTaggedValue::False();
         }
-        return false;
+        return JSTaggedValue::False();
     }
     if (right.IsBigInt()) {
-        return false;
+        return JSTaggedValue::False();
     }
-    return false;
+    return JSTaggedValue::False();
 }
 
 bool FastRuntimeStub::IsSpecialIndexedObj(JSType jsType)

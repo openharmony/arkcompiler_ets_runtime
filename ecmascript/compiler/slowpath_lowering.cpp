@@ -1692,9 +1692,17 @@ GateRef SlowPathLowering::FastStrictEqual(GateRef glue, GateRef left, GateRef ri
         builder_.Branch(builder_.Equal(builder_.GetLengthFromString(left), builder_.GetLengthFromString(right)),
             &hashcodeCompare, &exit);
         builder_.Bind(&hashcodeCompare);
-        builder_.Branch(
-            builder_.Equal(builder_.GetHashcodeFromString(glue, left), builder_.GetHashcodeFromString(glue, right)),
-            &contentsCompare, &exit);
+        Label leftNotNeg(&builder_);
+        GateRef leftHash = builder_.TryGetHashcodeFromString(left);
+        GateRef rightHash = builder_.TryGetHashcodeFromString(right);
+        builder_.Branch(builder_.Equal(leftHash, builder_.Int64(-1)), &contentsCompare, &leftNotNeg);
+        builder_.Bind(&leftNotNeg);
+        {
+            Label rightNotNeg(&builder_);
+            builder_.Branch(builder_.Equal(rightHash, builder_.Int64(-1)), &contentsCompare, &rightNotNeg);
+            builder_.Bind(&rightNotNeg);
+            builder_.Branch(builder_.Equal(leftHash, rightHash), &contentsCompare, &exit);
+        }
         builder_.Bind(&contentsCompare);
         {
             GateRef stringEqual = LowerCallRuntime(glue, RTSTUB_ID(StringEqual), { left, right }, true);
@@ -3108,7 +3116,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate, GateRef glue)
         {
             Label objIsString(&builder_);
             Label objNotString(&builder_);
-            builder_.Branch(builder_.IsJsType(obj, JSType::STRING), &objIsString, &objNotString);
+            builder_.Branch(builder_.TaggedObjectIsString(obj), &objIsString, &objNotString);
             builder_.Bind(&objIsString);
             {
                 result = builder_.Load(VariableType::JS_POINTER(), gConstAddr,

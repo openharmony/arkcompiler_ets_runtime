@@ -69,9 +69,9 @@ public:
             JSHandle<JSTaggedValue> valueY = GetCallArg(argv, 1);
 
             if (valueX->IsString() && valueY->IsString()) {
-                auto xString = static_cast<EcmaString *>(valueX->GetTaggedObject());
-                auto yString = static_cast<EcmaString *>(valueY->GetTaggedObject());
-                int result = EcmaStringAccessor::Compare(xString, yString);
+                auto xHandle = JSHandle<EcmaString>(valueX);
+                auto yHandle = JSHandle<EcmaString>(valueY);
+                int result = EcmaStringAccessor::Compare(thread->GetEcmaVM(), xHandle, yHandle);
                 if (result < 0) {
                     return JSTaggedValue(1);
                 }

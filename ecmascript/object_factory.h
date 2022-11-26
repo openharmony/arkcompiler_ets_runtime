@@ -503,6 +503,11 @@ public:
     JSHandle<EcmaString> NewFromUtf16LiteralCompress(const uint16_t *utf16Data, uint32_t utf16Len);
     JSHandle<EcmaString> NewFromUtf16LiteralNotCompress(const uint16_t *utf16Data, uint32_t utf16Len);
 
+    inline EcmaString *AllocLineStringObject(size_t size);
+    inline EcmaString *AllocOldSpaceLineStringObject(size_t size);
+    inline EcmaString *AllocNonMovableLineStringObject(size_t size);
+    inline EcmaString *AllocTreeStringObject();
+
     JSHandle<EcmaString> ConcatFromString(const JSHandle<EcmaString> &firstString,
                                           const JSHandle<EcmaString> &secondString);
 
@@ -656,9 +661,6 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const JSHandle<EcmaString> &firstString,
                                                   const JSHandle<EcmaString> &secondString);
 
-    inline EcmaString *AllocStringObject(size_t size);
-    inline EcmaString *AllocOldSpaceStringObject(size_t size);
-    inline EcmaString *AllocNonMovableStringObject(size_t size);
     JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
 
     JSHandle<JSHClass> CreateJSArguments();

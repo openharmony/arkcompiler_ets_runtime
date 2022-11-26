@@ -1012,8 +1012,26 @@ inline GateRef StubBuilder::IsSymbol(GateRef obj)
 
 inline GateRef StubBuilder::IsString(GateRef obj)
 {
+    return env_->GetBuilder()->TaggedObjectIsString(obj);
+}
+
+inline GateRef StubBuilder::IsLineString(GateRef obj)
+{
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::STRING)));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING)));
+}
+
+inline GateRef StubBuilder::IsTreeString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TREE_STRING)));
+}
+
+inline GateRef StubBuilder::TreeStringIsFlat(GateRef string)
+{
+    GateRef second = GetSecondFromTreeString(string);
+    GateRef len = GetLengthFromString(second);
+    return Int32Equal(len, Int32(0));
 }
 
 inline GateRef StubBuilder::TaggedObjectIsBigInt(GateRef obj)
@@ -1334,6 +1352,18 @@ inline GateRef StubBuilder::GetLengthFromString(GateRef value)
 {
     GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
     return Int32LSR(len, Int32(2));  // 2 : 2 means len must be right shift 2 bits
+}
+
+inline GateRef StubBuilder::GetFirstFromTreeString(GateRef string)
+{
+    GateRef offset = IntPtr(TreeEcmaString::FIRST_OFFSET);
+    return Load(VariableType::JS_POINTER(), string, offset);
+}
+
+inline GateRef StubBuilder::GetSecondFromTreeString(GateRef string)
+{
+    GateRef offset = IntPtr(TreeEcmaString::SECOND_OFFSET);
+    return Load(VariableType::JS_POINTER(), string, offset);
 }
 
 inline void StubBuilder::SetBitFieldToHClass(GateRef glue, GateRef hClass, GateRef bitfield)
@@ -1999,12 +2029,12 @@ inline GateRef StubBuilder::GetBuiltinId(GateRef method)
 
 inline GateRef StubBuilder::ComputeSizeUtf8(GateRef length)
 {
-    return PtrAdd(IntPtr(EcmaString::DATA_OFFSET), length);
+    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), length);
 }
 
 inline GateRef StubBuilder::ComputeSizeUtf16(GateRef length)
 {
-    return PtrAdd(IntPtr(EcmaString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
+    return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), PtrMul(length, IntPtr(sizeof(uint16_t))));
 }
 
 inline GateRef StubBuilder::AlignUp(GateRef x, GateRef alignment)
@@ -2028,6 +2058,11 @@ inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bo
 inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
 {
     Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::HASHCODE_OFFSET), rawHashcode);
+}
+
+inline GateRef StubBuilder::TryGetHashcodeFromString(GateRef string)
+{
+    return env_->GetBuilder()->TryGetHashcodeFromString(string);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

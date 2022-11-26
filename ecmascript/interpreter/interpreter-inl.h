@@ -2050,8 +2050,17 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << " v" << v0;
         JSTaggedValue left = GET_VREG_VALUE(v0);
         JSTaggedValue right = GET_ACC();
-        bool res = FastRuntimeStub::FastStrictEqual(left, right);
-        SET_ACC(JSTaggedValue(!res));
+        JSTaggedValue res = FastRuntimeStub::FastStrictEqual(left, right);
+        if (!res.IsHole()) {
+            res = res.IsTrue() ? JSTaggedValue::False() : JSTaggedValue::True();
+            SET_ACC(res);
+        } else {
+            // slow path
+            SAVE_PC();
+            res = SlowRuntimeStub::NotEq(thread, left, right);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+        }
         DISPATCH(STRICTNOTEQ_IMM8_V8);
     }
     HANDLE_OPCODE(STRICTEQ_IMM8_V8) {
@@ -2060,8 +2069,16 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                    << " v" << v0;
         JSTaggedValue left = GET_VREG_VALUE(v0);
         JSTaggedValue right = GET_ACC();
-        bool res = FastRuntimeStub::FastStrictEqual(left, right);
-        SET_ACC(JSTaggedValue(res));
+        JSTaggedValue res = FastRuntimeStub::FastStrictEqual(left, right);
+        if (!res.IsHole()) {
+            SET_ACC(res);
+        } else {
+            // slow path
+            SAVE_PC();
+            res = SlowRuntimeStub::Eq(thread, left, right);
+            INTERPRETER_RETURN_IF_ABRUPT(res);
+            SET_ACC(res);
+        }
         DISPATCH(STRICTEQ_IMM8_V8);
     }
     HANDLE_OPCODE(CREATEITERRESULTOBJ_V8_V8) {

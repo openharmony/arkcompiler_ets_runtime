@@ -279,7 +279,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_001)
 
     JSHandle<EcmaString> handleStr(thread, result);
     JSHandle<EcmaString> resultStr = factory->NewFromUtf8("2020/11/1周日 24:00:00 – 2021/7/1周四 24:00:00");
-    EXPECT_EQ(EcmaStringAccessor::Compare(*handleStr, *resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleStr, resultStr), 0);
 }
 
 // FormatRange(en)
@@ -304,7 +304,7 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRange_002)
 
     JSHandle<EcmaString> handleStr(thread, result);
     JSHandle<EcmaString> resultStr = factory->NewFromUtf8("Fri, 1/1/2021, 24:00:00 – Mon, 3/1/2021, 24:00:00");
-    EXPECT_EQ(EcmaStringAccessor::Compare(*handleStr, *resultStr), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleStr, resultStr), 0);
 }
 
 HWTEST_F_L0(BuiltinsDateTimeFormatTest, FormatRangeToParts)

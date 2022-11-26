@@ -26,25 +26,32 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
-EcmaString *ObjectFactory::AllocNonMovableStringObject(size_t size)
+EcmaString *ObjectFactory::AllocNonMovableLineStringObject(size_t size)
 {
     NewObjectHook();
     return reinterpret_cast<EcmaString *>(heap_->AllocateNonMovableOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetStringClass().GetTaggedObject()), size));
+        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
-EcmaString *ObjectFactory::AllocStringObject(size_t size)
+EcmaString *ObjectFactory::AllocLineStringObject(size_t size)
 {
     NewObjectHook();
     return reinterpret_cast<EcmaString *>(heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetStringClass().GetTaggedObject()), size));
+        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
-EcmaString *ObjectFactory::AllocOldSpaceStringObject(size_t size)
+EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
 {
     NewObjectHook();
     return reinterpret_cast<EcmaString *>(heap_->AllocateOldOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetStringClass().GetTaggedObject()), size));
+        JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
+}
+
+EcmaString *ObjectFactory::AllocTreeStringObject()
+{
+    NewObjectHook();
+    return reinterpret_cast<EcmaString *>(heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetTreeStringClass().GetTaggedObject()), TreeEcmaString::SIZE));
 }
 
 JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointer,

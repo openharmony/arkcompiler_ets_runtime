@@ -269,9 +269,9 @@ ComparisonResult CompareOp::Compare(JSThread *thread, JSTaggedValue left,
             break;
         }
         case CompareOpType::STRING_STRING: {
-            auto xString = static_cast<EcmaString *>(left.GetTaggedObject());
-            auto yString = static_cast<EcmaString *>(right.GetTaggedObject());
-            int result = EcmaStringAccessor::Compare(xString, yString);
+            JSHandle<EcmaString> xHandle(thread, left);
+            JSHandle<EcmaString> yHandle(thread, right);
+            int result = EcmaStringAccessor::Compare(thread->GetEcmaVM(), xHandle, yHandle);
             if (result < 0) {
                 ret =  ComparisonResult::LESS;
             } else if (result == 0) {
