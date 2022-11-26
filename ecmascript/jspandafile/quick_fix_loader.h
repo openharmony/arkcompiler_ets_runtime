@@ -34,6 +34,11 @@ public:
     bool UnloadPatch(JSThread *thread, const CString &patchFileName);
 
 private:
+    struct IndexInfo {
+        uint32_t constpoolNum {UINT32_MAX};
+        uint32_t constpoolIndex {UINT32_MAX};
+        uint32_t literalIndex {UINT32_MAX};
+    };
     bool LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile, const JSPandaFile *patchFile);
     bool ReplaceMethod(JSThread *thread,
                        const JSPandaFile *baseFile,
@@ -43,6 +48,8 @@ private:
                             Method *destMethod,
                             MethodLiteral *srcMethodLiteral,
                             JSTaggedValue srcConstpool);
+    CUnorderedMap<CString, IndexInfo> GenerateCachedMethods(JSThread *thread, const JSPandaFile *baseFile,
+        const JSPandaFile *patchFile, const CMap<int32_t, JSTaggedValue> &baseConstpoolValues);
 
     void InsertBaseClassMethodInfo(uint32_t constpoolNum,
                                    uint32_t constpoolIndex,
