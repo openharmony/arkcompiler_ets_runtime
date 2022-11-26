@@ -136,7 +136,7 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBun
             case FrameType::LEAVE_FRAME:
                 break;
             default: {
-                LOG_ECMA(FATAL) << "frame type error!";
+                LOG_FULL(FATAL) << "frame type error!";
                 UNREACHABLE();
             }
         }

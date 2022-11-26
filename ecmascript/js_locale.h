@@ -385,7 +385,7 @@ public:
             sequence = nullptr;
             return false;
         }
-        int32_t size;
+        int32_t size = 0;
         const char *element = sequence->next(&size, status);
         while (U_SUCCESS(status) && element != nullptr) {
             if (strcmp(outdatedType, element) == 0) {

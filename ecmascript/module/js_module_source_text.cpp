@@ -684,7 +684,7 @@ void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTe
     }
 
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(FATAL) << "open jsPandaFile " << moduleFilenameStr << " error";
+        LOG_FULL(FATAL) << "open jsPandaFile " << moduleFilenameStr << " error";
         UNREACHABLE();
     }
     JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint);

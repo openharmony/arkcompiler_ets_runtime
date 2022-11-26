@@ -241,7 +241,7 @@ public:
     {
         FuncEntryDes des;
         if (memset_s(&des, sizeof(des), 0, sizeof(des)) != EOK) {
-            LOG_FULL(FATAL) << "memset failed";
+            LOG_FULL(FATAL) << "memset_s failed";
             return;
         }
         des.kind_ = kind;
