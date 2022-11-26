@@ -43,15 +43,13 @@ public:
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                  const JSHandle<TaggedArray> &exportStarSet);
 
-    // 15.2.1.16.3 ResolveExport(exportName, resolveSet)
+    // 15.2.1.16.3 ResolveExport(exportName, resolveVector)
     static JSHandle<JSTaggedValue> ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
         const JSHandle<JSTaggedValue> &exportName,
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet);
-    static JSHandle<JSTaggedValue> ResolveCjsExport(JSThread *thread,
-        const JSHandle<SourceTextModule> &module,
-        const JSHandle<JSTaggedValue> &cjsModule,
-        const JSHandle<JSTaggedValue> &exportName,
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet);
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector);
+    static JSHandle<JSTaggedValue> ResolveCjsExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                                    const JSHandle<JSTaggedValue> &cjsModule,
+                                                    const JSHandle<JSTaggedValue> &exportName);
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
                                         CVector<JSHandle<SourceTextModule>> &stack, int index);
@@ -128,7 +126,7 @@ public:
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module,
                                                          CVector<std::pair<JSHandle<SourceTextModule>,
-                                                         JSHandle<JSTaggedValue>>> &resolveSet);
+                                                         JSHandle<JSTaggedValue>>> &resolveVector);
     static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
     static constexpr size_t DEFAULT_ARRAY_CAPACITY = 2;
 private:
@@ -140,19 +138,19 @@ private:
                                                      const JSHandle<SourceTextModule> &module,
                                                      JSMutableHandle<JSTaggedValue> &starResolution,
                                                      CVector<std::pair<JSHandle<SourceTextModule>,
-                                                     JSHandle<JSTaggedValue>>> &resolveSet);
+                                                     JSHandle<JSTaggedValue>>> &resolveVector);
     template <typename T>
     static void AddExportName(JSThread *thread, const JSTaggedValue &exportEntry, CVector<std::string> &exportedNames);
     static JSHandle<JSTaggedValue> ResolveLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
                                                       const JSHandle<JSTaggedValue> &exportName,
                                                       const JSHandle<SourceTextModule> &module);
     static JSHandle<JSTaggedValue> ResolveCjsLocalExport(JSThread *thread,
-                                                         LayoutInfo *layoutInfo,
+                                                         JSHandle<LayoutInfo> layoutInfo,
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module);
     static bool CheckCircularImport(const JSHandle<SourceTextModule> &module,
         const JSHandle<JSTaggedValue> &exportName,
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet);
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector);
     static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
