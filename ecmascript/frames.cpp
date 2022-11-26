@@ -296,7 +296,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc
             return 0;
         }
         default: {
-            LOG_ECMA(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "frame type error!";
         }
     }
 }
@@ -323,7 +323,7 @@ uintptr_t FrameIterator::GetPrevFrame() const
             break;
         }
         default: {
-            LOG_ECMA(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "frame type error!";
         }
     }
     return end;
