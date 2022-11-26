@@ -25,6 +25,7 @@ enum class DefaultsOption : uint8_t { DATE = 0x01, TIME, ALL };
 enum class HourCycleOption : uint8_t { H11 = 0x01, H12, H23, H24, UNDEFINED, EXCEPTION };
 enum class RequiredOption : uint8_t { DATE = 0x01, TIME, ANY };
 enum class Value : uint8_t { SHARED, START_RANGE, END_RANGE };
+enum class IcuCacheType : uint8_t {NOT_CACHE, DEFAULT, DATE, TIME};
 
 constexpr int CAPACITY_3 = 3;
 constexpr int CAPACITY_4 = 4;
@@ -128,7 +129,8 @@ public:
     static JSHandle<JSDateTimeFormat> InitializeDateTimeFormat(JSThread *thread,
                                                                const JSHandle<JSDateTimeFormat> &dateTimeFormat,
                                                                const JSHandle<JSTaggedValue> &locales,
-                                                               const JSHandle<JSTaggedValue> &options);
+                                                               const JSHandle<JSTaggedValue> &options,
+                                                               IcuCacheType type = IcuCacheType::NOT_CACHE);
 
     // 13.1.2 ToDateTimeOptions (options, required, defaults)
     static JSHandle<JSObject> ToDateTimeOptions(JSThread *thread, const JSHandle<JSTaggedValue> &options,

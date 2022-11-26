@@ -295,6 +295,8 @@ EcmaVM::~EcmaVM()
             const_cast<JSPandaFile *>(jsPandaFile)->DeleteParsedConstpoolVM(this);
         }
     }
+    // clear icu cache
+    ClearIcuCache();
 
     if (gcStats_ != nullptr) {
         if (options_.EnableGCStatsPrint()) {
