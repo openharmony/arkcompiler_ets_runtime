@@ -264,7 +264,7 @@ void *JSPandaFileManager::JSPandaFileAllocator::AllocateBuffer(size_t size)
     }
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     if (memset_s(ptr, size, INVALID_VALUE, size) != EOK) {
-        LOG_ECMA_MEM(FATAL) << "memset failed";
+        LOG_ECMA_MEM(FATAL) << "memset_s failed";
         UNREACHABLE();
     }
 #endif

@@ -265,7 +265,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModuleWithMerge(con
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName.c_str());
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(FATAL) << "open jsPandaFile " << moduleFileName << " error";
+        LOG_FULL(FATAL) << "open jsPandaFile " << moduleFileName << " error";
         UNREACHABLE();
     }
 
@@ -289,7 +289,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
         if (AOTFileManager::GetAbsolutePath(referencingModule, moduleFileName)) {
             referencingHandle = factory->NewFromUtf8(moduleFileName);
         } else {
-            LOG_ECMA(FATAL) << "absolute " << referencingModule << " path error";
+            LOG_FULL(FATAL) << "absolute " << referencingModule << " path error";
             UNREACHABLE();
         }
     }
@@ -303,7 +303,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const CStrin
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(FATAL) << "open jsPandaFile " << moduleFileName << " error";
+        LOG_FULL(FATAL) << "open jsPandaFile " << moduleFileName << " error";
         UNREACHABLE();
     }
 
@@ -327,7 +327,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(const void *
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename,
                                                            JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(FATAL) << "open jsPandaFile " << filename << " error";
+        LOG_FULL(FATAL) << "open jsPandaFile " << filename << " error";
         UNREACHABLE();
     }
 
@@ -344,7 +344,7 @@ JSHandle<SourceTextModule> ModuleManager::ResolveModule(JSThread *thread, const 
     } else if (jsPandaFile->IsModule()) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
     } else {
-        LOG_ECMA(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
+        LOG_FULL(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
         UNREACHABLE();
     }
 
@@ -367,7 +367,7 @@ JSHandle<SourceTextModule> ModuleManager::ResolveModuleWithMerge(
     } else if (jsPandaFile->IsModule(recordName)) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordName, moduleFileName);
     } else {
-        LOG_ECMA(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
+        LOG_FULL(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
         UNREACHABLE();
     }
 

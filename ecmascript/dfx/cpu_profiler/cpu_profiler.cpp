@@ -470,11 +470,11 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         fp = reinterpret_cast<void*>(mcontext.regs[29]); // FP is an alias for x29.
         sp = reinterpret_cast<void*>(mcontext.sp);
 #else
-        LOG_ECMA(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
+        LOG_FULL(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
         return;
 #endif
         if (reinterpret_cast<uint64_t*>(sp) > reinterpret_cast<uint64_t*>(fp)) {
-            LOG_ECMA(FATAL) << "sp > fp, stack frame exception";
+            LOG_FULL(FATAL) << "sp > fp, stack frame exception";
         }
         if (profiler->CheckFrameType(thread, reinterpret_cast<JSTaggedType *>(fp))) {
             FrameHandler frameHandler(thread, fp);
@@ -524,7 +524,7 @@ bool CpuProfiler::IsAddrAtStub(void *context)
 #elif defined(PANDA_TARGET_ARM64)
     pc = static_cast<uint64_t>(mcontext.pc);
 #else
-    LOG_ECMA(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
+    LOG_FULL(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
     return true;
 #endif
     AOTFileManager *loader = vm_->GetAOTFileManager();

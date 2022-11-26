@@ -304,7 +304,7 @@ void JSThread::ShrinkHandleStorage(int prevIndex)
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     uintptr_t size = ToUintPtr(handleScopeStorageEnd_) - ToUintPtr(handleScopeStorageNext_);
     if (memset_s(handleScopeStorageNext_, size, 0, size) != EOK) {
-        LOG_FULL(FATAL) << "memcpy_s failed";
+        LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
     }
     for (int32_t i = currentHandleStorageIndex_ + 1; i < lastIndex; i++) {
@@ -312,7 +312,7 @@ void JSThread::ShrinkHandleStorage(int prevIndex)
                      NODE_BLOCK_SIZE * sizeof(JSTaggedType), 0,
                      NODE_BLOCK_SIZE * sizeof(JSTaggedType)) !=
                      EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
+            LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
         }
     }
@@ -446,7 +446,7 @@ size_t JSThread::GetAsmStackLimit()
     // when push other data.
     result += EcmaParamConfiguration::GetDefaultReservedStackSize();
     if (threadStackStart <= result) {
-        LOG_ECMA(FATAL) << "Too small stackSize to run jsvm";
+        LOG_FULL(FATAL) << "Too small stackSize to run jsvm";
     }
     return result;
 #else

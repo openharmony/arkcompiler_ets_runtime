@@ -657,19 +657,14 @@ bool AOTFileManager::GetAbsolutePath(const std::string &relativePath, std::strin
     char buffer[PATH_MAX] = {0};
 #ifndef PANDA_TARGET_WINDOWS
     auto path = realpath(relativePath.c_str(), buffer);
-    if (path == nullptr) {
-        return false;
-    }
-    absPath = std::string(path);
-    return true;
 #else
     auto path = _fullpath(buffer, relativePath.c_str(), sizeof(buffer) - 1);
+#endif
     if (path == nullptr) {
         return false;
     }
     absPath = std::string(buffer);
     return true;
-#endif
 }
 
 void BinaryBufferParser::ParseBuffer(void *dst, uint32_t count)
