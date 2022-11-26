@@ -639,7 +639,7 @@ JSHandle<JSForInIterator> ObjectFactory::NewJSForinIterator(const JSHandle<JSTag
 
     JSHandle<JSForInIterator> it = JSHandle<JSForInIterator>::Cast(NewJSObject(hclass));
     it->SetObject(thread_, obj);
-    it->SetVisitedKeys(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
+    it->SetVisitedObjs(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
     it->SetRemainingKeys(thread_, thread_->GlobalConstants()->GetEmptyTaggedQueue());
     it->ClearBitField();
     return it;

@@ -1683,8 +1683,8 @@ void JSForInIterator::Dump(std::ostream &os) const
     os << "\n";
     os << " - WasVisited : " << GetWasVisited();
     os << "\n";
-    os << " - VisitedKeys : ";
-    GetVisitedKeys().DumpTaggedValue(os);
+    os << " - VisitedObjs : ";
+    GetVisitedObjs().DumpTaggedValue(os);
     os << "\n";
     os << " - RemainingKeys : ";
     GetRemainingKeys().DumpTaggedValue(os);
@@ -4168,7 +4168,7 @@ void JSForInIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 {
     vec.push_back(std::make_pair(CString("Object"), GetObject()));
     vec.push_back(std::make_pair(CString("WasVisited"), JSTaggedValue(GetWasVisited())));
-    vec.push_back(std::make_pair(CString("VisitedKeys"), GetVisitedKeys()));
+    vec.push_back(std::make_pair(CString("VisitedObjs"), GetVisitedObjs()));
     vec.push_back(std::make_pair(CString("RemainingKeys"), GetRemainingKeys()));
     JSObject::DumpForSnapshot(vec);
 }

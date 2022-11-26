@@ -77,6 +77,7 @@ public:
                                const JSHandle<JSTaggedValue> &key);
     // 9.4.5.6 [[OwnPropertyKeys]] ( )
     static JSHandle<TaggedArray> OwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &typedarray);
+    static JSHandle<TaggedArray> OwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &typedarray);
     // 9.4.5.7 IntegerIndexedObjectCreate (prototype, internalSlotsList)
     // 9.4.5.8 IntegerIndexedElementGet ( O, index )
     static OperationResult IntegerIndexedElementGet(JSThread *thread, const JSHandle<JSTaggedValue> &typedarray,

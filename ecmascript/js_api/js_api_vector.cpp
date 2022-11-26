@@ -400,15 +400,12 @@ bool JSAPIVector::Has(const JSTaggedValue &value) const
 
 JSHandle<TaggedArray> JSAPIVector::OwnKeys(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
-    int32_t length = obj->GetSize();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys = factory->NewTaggedArray(length);
+    return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>::Cast(obj));
+}
 
-    for (int32_t i = 0; i < length; i++) {
-        keys->Set(thread, i, JSTaggedValue(i));
-    }
-
-    return keys;
+JSHandle<TaggedArray> JSAPIVector::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIVector> &obj)
+{
+    return JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>::Cast(obj));
 }
 
 bool JSAPIVector::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIVector> &obj,

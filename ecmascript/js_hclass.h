@@ -306,6 +306,7 @@ public:
     using InlinedPropsStartBits = NumberOfPropsBits::NextField<uint32_t,
             OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED>; // 15
     using ObjectSizeInWordsBits = InlinedPropsStartBits::NextField<uint32_t, OFFSET_MAX_OBJECT_SIZE_IN_WORDS>; // 30
+    using HasDeletePropertyBit = ObjectSizeInWordsBits::NextFlag;
 
     static JSHClass *Cast(const TaggedObject *object);
 
@@ -1500,6 +1501,16 @@ public:
         }
     }
 
+    inline void SetHasDeleteProperty(bool flag) const
+    {
+        HasDeletePropertyBit::Set<uint32_t>(flag, GetBitField1Addr());
+    }
+
+    inline bool HasDeleteProperty() const
+    {
+        uint32_t bits = GetBitField1();
+        return HasDeletePropertyBit::Decode(bits);
+    }
     static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);
     ACCESSORS(Layout, LAYOUT_OFFSET, TRANSTIONS_OFFSET);
@@ -1542,6 +1553,11 @@ private:
     uint32_t *GetBitFieldAddr() const
     {
         return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD_OFFSET);
+    }
+
+    uint32_t *GetBitField1Addr() const
+    {
+        return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD1_OFFSET);
     }
     friend class RuntimeStubs;
 };

@@ -130,10 +130,9 @@ JSHandle<TaggedArray> TaggedList<Derived>::OwnKeys(JSThread *thread, const JSHan
     JSHandle<TaggedArray> keys = factory->NewTaggedArray(length);
 
     for (uint32_t i = 0; i < length; i++) {
-        JSTaggedValue elementData = JSTaggedValue(i);
-        keys->Set(thread, i, elementData);
+        auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+        keys->Set(thread, i, key);
     }
-
     return keys;
 }
 

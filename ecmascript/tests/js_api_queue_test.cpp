@@ -164,7 +164,8 @@ HWTEST_F_L0(JSAPIQueueTest, OwnKeys)
     JSHandle<TaggedArray> arrayKey = JSAPIQueue::OwnKeys(thread, jsQueue);
     EXPECT_EQ(arrayKey->GetLength(), DEFAULT_LENGTH);
     for (int32_t i = 0; i < static_cast<int32_t>(DEFAULT_LENGTH); i++) {
-        EXPECT_EQ(arrayKey->Get(i).GetInt(), i);
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
+            EcmaString::Cast(arrayKey->Get(i).GetTaggedObject())));
     }
 }
 

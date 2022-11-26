@@ -132,6 +132,17 @@ if (globalThis["ArkPrivate"] != undefined) {
             print("Deque forEach throw error fail");
         }
     }
+    let test1 = new Deque();
+    for (let k = 0; k < 10; k++) {
+        test1.insertEnd(k);
+    }
+    var keyName = "";
+    for (const key in test1) {
+        keyName += key;
+    }
+    if (keyName != "0123456789") {
+        print("Deque for in fail")
+    }
     if (!flag) {
         print("Test Deque success!!!");
     } else {

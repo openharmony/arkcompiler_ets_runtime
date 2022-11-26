@@ -201,8 +201,6 @@ bool JSAPIDeque::Has(JSTaggedValue value) const
 JSHandle<TaggedArray> JSAPIDeque::OwnKeys(JSThread *thread, const JSHandle<JSAPIDeque> &deque)
 {
     uint32_t length = deque->GetSize();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys = factory->NewTaggedArray(length);
     
     JSHandle<TaggedArray> oldElements(thread, deque->GetElements());
     ASSERT(!oldElements->IsDictionaryMode());
@@ -210,18 +208,32 @@ JSHandle<TaggedArray> JSAPIDeque::OwnKeys(JSThread *thread, const JSHandle<JSAPI
     uint32_t newCapacity = ComputeCapacity(oldCapacity);
     uint32_t firstIndex = deque->GetFirst();
     uint32_t lastIndex = deque->GetLast();
-    uint32_t size = deque->GetSize();
     JSHandle<TaggedArray> newElements =
-        thread->GetEcmaVM()->GetFactory()->CopyDeque(oldElements, newCapacity, size, firstIndex, lastIndex);
+        thread->GetEcmaVM()->GetFactory()->CopyDeque(oldElements, newCapacity, length, firstIndex, lastIndex);
     deque->SetFirst(0);
-    deque->SetLast(size);
+    deque->SetLast(length);
     deque->SetElements(thread, newElements);
 
-    for (uint32_t i = 0; i < size; i++) {
-        keys->Set(thread, i, JSTaggedValue(i));
-    }
+    return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>::Cast(deque));
+}
 
-    return keys;
+JSHandle<TaggedArray> JSAPIDeque::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIDeque> &deque)
+{
+    uint32_t length = deque->GetSize();
+    
+    JSHandle<TaggedArray> oldElements(thread, deque->GetElements());
+    ASSERT(!oldElements->IsDictionaryMode());
+    uint32_t oldCapacity = oldElements->GetLength();
+    uint32_t newCapacity = ComputeCapacity(oldCapacity);
+    uint32_t firstIndex = deque->GetFirst();
+    uint32_t lastIndex = deque->GetLast();
+    JSHandle<TaggedArray> newElements =
+        thread->GetEcmaVM()->GetFactory()->CopyDeque(oldElements, newCapacity, length, firstIndex, lastIndex);
+    deque->SetFirst(0);
+    deque->SetLast(length);
+    deque->SetElements(thread, newElements);
+
+    return JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>::Cast(deque));
 }
 
 bool JSAPIDeque::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIDeque> &deque,

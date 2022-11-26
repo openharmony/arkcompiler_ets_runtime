@@ -51,6 +51,8 @@ public:
     // 9.4.6.10[[OwnPropertyKeys]]
     static JSHandle<TaggedArray> OwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &proxy);
 
+    static JSHandle<TaggedArray> OwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+
     bool ValidateKeysAvailable(JSThread *thread, const JSHandle<TaggedArray> &exports);
 
     static constexpr size_t MODULE_OFFSET = JSObject::SIZE;

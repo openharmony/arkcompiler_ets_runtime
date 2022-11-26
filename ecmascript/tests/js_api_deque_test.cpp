@@ -278,7 +278,8 @@ HWTEST_F_L0(JSAPIDequeTest, OwnKeys)
     EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());
     EXPECT_TRUE(keyArray->GetLength() == elementsNums);
     for (uint32_t i = 0; i < elementsNums; i++) {
-        EXPECT_EQ(keyArray->Get(i), toor->Get(i));
+        ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*(base::NumberHelper::NumberToString(thread, JSTaggedValue(i))),
+            EcmaString::Cast(keyArray->Get(i).GetTaggedObject())));
     }
 }
 }  // namespace panda::test

@@ -394,15 +394,12 @@ bool JSAPIArrayList::Has(const JSTaggedValue value) const
 
 JSHandle<TaggedArray> JSAPIArrayList::OwnKeys(JSThread *thread, const JSHandle<JSAPIArrayList> &obj)
 {
-    uint32_t length = obj->GetLength().GetArrayLength();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys = factory->NewTaggedArray(length);
+    return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>::Cast(obj));
+}
 
-    for (uint32_t i = 0; i < length; i++) {
-        keys->Set(thread, i, JSTaggedValue(i));
-    }
-
-    return keys;
+JSHandle<TaggedArray> JSAPIArrayList::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIArrayList> &obj)
+{
+    return JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>::Cast(obj));
 }
 
 bool JSAPIArrayList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
