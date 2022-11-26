@@ -257,17 +257,17 @@ public:
         if (lineNumber < 1) {
             return "";
         }
-        int prePos = 0;
+        size_t prePos = 0;
         int findPrePos = lineNumber - 1;
         for (int i = 0; i < findPrePos; i++) {
             prePos = srcStr.find('\n', prePos);
-            if (prePos == -1) {
+            if (prePos == std::string::npos) {
                 return "";
             }
             prePos += 1;
         }
-        int findEndPos = srcStr.find('\n', prePos);
-        if (findEndPos == -1) {
+        size_t findEndPos = srcStr.find('\n', prePos);
+        if (findEndPos == std::string::npos) {
             return srcStr.substr(prePos, srcStr.length() - prePos);
         }
         ASSERT(findEndPos > prePos);
