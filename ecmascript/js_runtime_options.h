@@ -82,9 +82,12 @@ enum CommandValues {
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_ASSERT_TYPES,
     OPTION_PRINT_ANY_TYPES,
+    OPTION_COMPILER_LOG_SNAPSHOT,
+    OPTION_COMPILER_LOG_TIME,
     OPTION_IS_WORKER,
     OPTION_BUILTINS_DTS,
-    OPTION_ENABLE_BC_TRACE,
+    OPTION_TRACE_BC,
+    OPTION_TRACE_DEOPT,
     OPTION_LOG_LEVEL,
     OPTION_LOG_DEBUG,
     OPTION_LOG_INFO,
@@ -423,6 +426,36 @@ public:
             GetCompilerLogOption().find("all") == std::string::npos;
     }
 
+    void SetCompilerLogSnapshot(bool value)
+    {
+        compilerLogSnapshot_ = value;
+    }
+
+    bool IsEnableCompilerLogSnapshot() const
+    {
+        return compilerLogSnapshot_;
+    }
+
+    bool WasSetCompilerLogSnapshot() const
+    {
+        return WasOptionSet(OPTION_COMPILER_LOG_SNAPSHOT);
+    }
+
+    void SetCompilerLogTime(bool value)
+    {
+        compilerLogTime_ = value;
+    }
+
+    bool IsEnableCompilerLogTime() const
+    {
+        return compilerLogTime_;
+    }
+
+    bool WasSetCompilerLogTime() const
+    {
+        return WasOptionSet(OPTION_COMPILER_LOG_TIME);
+    }
+
     uint64_t GetSerializerBufferSizeLimit() const
     {
         return serializerBufferSizeLimit_;
@@ -568,20 +601,21 @@ public:
         return builtinsDTS_;
     }
 
-    void SetEnableByteCodeTrace(bool value)
+    void SetTraceBc(bool value)
     {
-        enablebcTrace_ = value;
+        traceBc_ = value;
     }
 
-    bool IsEnableByteCodeTrace() const
+    bool IsTraceBC() const
     {
-        return enablebcTrace_;
+        return traceBc_;
     }
 
-    bool WasSetEnableByteCodeTrace() const
+    bool WasSetTraceBc() const
     {
-        return WasOptionSet(OPTION_ENABLE_BC_TRACE);
+        return WasOptionSet(OPTION_TRACE_BC);
     }
+
 
     std::string GetLogLevel() const
     {
@@ -777,6 +811,16 @@ public:
     {
         wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
     }
+
+    void SetTraceDeopt(bool value)
+    {
+        traceDeopt_= value;
+    }
+
+    bool GetTraceDeopt() const
+    {
+        return traceDeopt_;
+    }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -819,12 +863,14 @@ private:
     bool startupTime_ {false};
     std::string compilerLogOpt_ {"none"};
     std::string compilerLogMethods_ {"none"};
+    bool compilerLogSnapshot_ {false};
+    bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
     bool assertTypes_ {false};
     bool printAnyTypes_ {false};
     bool isWorker_ {false};
     std::string builtinsDTS_ {""};
-    bool enablebcTrace_ {false};
+    bool traceBc_ {false};
     std::string logLevel_ {"error"};
     arg_list_t logDebug_ {{"all"}};
     arg_list_t logInfo_ {{"all"}};
@@ -842,6 +888,7 @@ private:
     bool enablePGOProfiler_ {false};
     uint32_t pgoHotnessThreshold_ {2};
     std::string pgoProfilerPath_ {""};
+    bool traceDeopt_{false};
 };
 }  // namespace panda::ecmascript
 

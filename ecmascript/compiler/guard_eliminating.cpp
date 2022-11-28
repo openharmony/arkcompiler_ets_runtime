@@ -44,6 +44,10 @@ void GuardEliminating::ProcessTwoConditions(GateRef gate, std::set<GateRef> &con
         return;
     }
     if (conditionSet.count(left) > 0 && conditionSet.count(right) > 0) {
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
+                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+        }
         acc_.DeleteGuardAndFrameState(gate);
     } else if (conditionSet.count(left) > 0) {
         acc_.ReplaceValueIn(guard, right, 0);
@@ -63,6 +67,10 @@ void GuardEliminating::ProcessOneCondition(GateRef gate, std::set<GateRef> &cond
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     auto condition = acc_.GetValueIn(guard, 0);
     if (conditionSet.count(condition) > 0) {
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
+                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+        }
         acc_.DeleteGuardAndFrameState(gate);
     } else {
         conditionSet.insert(condition);
@@ -102,6 +110,10 @@ void GuardEliminating::RemoveOneTrusted(GateRef gate)
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     auto condition = acc_.GetValueIn(guard);
     if (condition == builder_.Boolean(true)) {
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
+                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+        }
         acc_.DeleteGuardAndFrameState(gate);
     }
 }
@@ -114,6 +126,10 @@ void GuardEliminating::RemoveTwoTrusted(GateRef gate)
     auto left = acc_.GetValueIn(condition, 0);
     auto right = acc_.GetValueIn(condition, 1);
     if (left == builder_.Boolean(true) && right == builder_.Boolean(true)) {
+        if (IsLogEnabled()) {
+            LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
+                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+        }
         acc_.DeleteGuardAndFrameState(gate);
     } else if (left == builder_.Boolean(true)) {
         acc_.ReplaceValueIn(guard, right, 0);
@@ -128,9 +144,9 @@ void GuardEliminating::TrustedTypePropagate(std::queue<GateRef>& workList, const
     while (!workList.empty()) {
         auto gate = workList.front();
         workList.pop();
-        std::vector<GateRef> outs;
-        acc_.GetOutVector(gate, outs);
-        for (auto phi : outs) {
+        auto uses = acc_.Uses(gate);
+        for (auto i = uses.begin(); i != uses.end(); i++) {
+            GateRef phi = *i;
             if ((acc_.GetOpCode(phi) != OpCode::VALUE_SELECTOR) ||
                 (acc_.GetGateType(phi) != acc_.GetGateType(gate))) {
                 continue;
@@ -170,18 +186,22 @@ void GuardEliminating::RemoveTrustedTypeCheck(const std::vector<GateRef>& guarde
 void GuardEliminating::Run()
 {
     // eliminate duplicate typecheck
-    GlobalValueNumbering(circuit_).Run();
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+    }
+
+    GlobalValueNumbering(circuit_, IsLogEnabled()).Run();
 
     // calculate dominator tree
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
-    std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit_);
+    Scheduler::CalculateDominatorTree(circuit_, bbGatesList, bbGatesAddrToIdx, immDom);
     std::vector<std::vector<size_t>> domTree(immDom.size(), std::vector<size_t>(0));
     for (size_t idx = 1; idx < immDom.size(); ++idx) {
         domTree[immDom[idx]].emplace_back(idx);
     }
-    
+
     // dfs the dominator tree to eliminate guard
     // which is domined by another guard with same condition
     std::set<GateRef> conditionSet;
@@ -250,7 +270,7 @@ void GuardEliminating::Run()
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
-        circuit_->PrintAllGates(*bcBuilder_);
+        circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
 }

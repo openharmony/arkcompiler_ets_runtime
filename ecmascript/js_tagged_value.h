@@ -68,6 +68,7 @@ using JSTaggedType = uint64_t;
 //    Undefined:   [56 bits 0] | 0x02          // 0010
 //    Null:        [56 bits 0] | 0x03          // 0011
 //    Hole:        [56 bits 0] | 0x05          // 0101
+//    Optimized:   [56 bits 0] | 0x0C          // 1100
 
 class JSTaggedValue {
 public:
@@ -89,6 +90,7 @@ public:
     static constexpr JSTaggedType TAG_SPECIAL = 0x02ULL;
     static constexpr JSTaggedType TAG_BOOLEAN = 0x04ULL;
     static constexpr JSTaggedType TAG_EXCEPTION = 0x08ULL;
+    static constexpr JSTaggedType TAG_OPTIMIZED_OUT = 0x12ULL;
     // tag mask
     static constexpr JSTaggedType TAG_SPECIAL_MASK = TAG_MARK | TAG_SPECIAL;
     static constexpr JSTaggedType TAG_BOOLEAN_MASK = TAG_SPECIAL | TAG_BOOLEAN;
@@ -102,7 +104,9 @@ public:
     static constexpr JSTaggedType VALUE_UNDEFINED = TAG_SPECIAL;
     static constexpr JSTaggedType VALUE_EXCEPTION = TAG_SPECIAL | TAG_EXCEPTION;
     static constexpr JSTaggedType VALUE_ZERO = TAG_INT | 0x00ULL;
+    static constexpr JSTaggedType VALUE_OPTIMIZED_OUT = TAG_SPECIAL | TAG_OPTIMIZED_OUT;
 
+    static constexpr size_t INT_SIGN_BIT_OFFSET = 31;
     static constexpr size_t DOUBLE_ENCODE_OFFSET_BIT = 48;
     static constexpr JSTaggedType DOUBLE_ENCODE_OFFSET = 1ULL << DOUBLE_ENCODE_OFFSET_BIT;
 
@@ -493,6 +497,7 @@ public:
     bool IsString() const;
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
+    bool IsByteArray() const;
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
     bool IsLinkedNode() const;
@@ -639,7 +644,6 @@ public:
     bool IsTSUnionType() const;
     bool IsTSInterfaceType() const;
     bool IsTSClassInstanceType() const;
-    bool IsTSImportType() const;
     bool IsTSFunctionType() const;
     bool IsTSArrayType() const;
     bool IsTSIteratorInstanceType() const;

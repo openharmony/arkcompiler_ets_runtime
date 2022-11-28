@@ -282,9 +282,19 @@ const Properties& OpCode::GetProperties() const
             static const Properties ps { I1, NO_STATE, NO_DEPEND, VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
+        // ts type lowering relate IR
+        case TYPED_CALL_CHECK: {
+            static const Properties ps { I1, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND, MANY_VALUE(ANYVALUE), NO_ROOT };
+            return ps;
+        }
         case TYPED_BINARY_OP: {
             static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
                                          VALUE(ANYVALUE, ANYVALUE, I8), NO_ROOT };
+            return ps;
+        }
+        case TYPED_CALL: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         MANY_VALUE(ANYVALUE), NO_ROOT };
             return ps;
         }
         case TYPE_CONVERT: {
@@ -330,6 +340,11 @@ const Properties& OpCode::GetProperties() const
         }
         case GET_ENV: {
             static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, NO_VALUE, NO_ROOT };
+            return ps;
+        }
+        case CONSTRUCT: {
+            static const Properties ps { FLEX, STATE(OpCode(GENERAL_STATE)), ONE_DEPEND,
+                                         MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT };
             return ps;
         }
         default:
@@ -433,7 +448,9 @@ std::string OpCode::Str() const
         {SAVE_REGISTER, "SAVE_REGISTER"},
         {OBJECT_TYPE_CHECK, "OBJECT_TYPE_CHECK"},
         {TYPE_CHECK, "TYPE_CHECK"},
+        {TYPED_CALL_CHECK, "TYPED_CALL_CHECK"},
         {TYPED_BINARY_OP, "TYPED_BINARY_OP"},
+        {TYPED_CALL, "TYPED_CALL"},
         {TYPE_CONVERT, "TYPE_CONVERT"},
         {TYPED_UNARY_OP, "TYPED_UNARY_OP"},
         {TO_LENGTH, "TO_LENGTH"},
@@ -443,6 +460,7 @@ std::string OpCode::Str() const
         {LOAD_PROPERTY, "LOAD_PROPERTY"},
         {STORE_ELEMENT, "STORE_ELEMENT"},
         {STORE_PROPERTY, "STORE_PROPERTY"},
+        {CONSTRUCT, "CONSTRUCT"},
     };
     if (strMap.count(op_) > 0) {
         return strMap.at(op_);
@@ -454,21 +472,24 @@ size_t OpCode::GetStateCount(BitField bitfield) const
 {
     auto properties = GetProperties();
     auto stateProp = properties.statesIn;
-    return stateProp.has_value() ? (stateProp->second ? bitfield : stateProp->first.size()) : 0;
+    auto count = GateBitFieldAccessor::GetStateCount(bitfield);
+    return stateProp.has_value() ? (stateProp->second ? count : stateProp->first.size()) : 0;
 }
 
 size_t OpCode::GetDependCount(BitField bitfield) const
 {
     auto properties = GetProperties();
     auto dependProp = properties.dependsIn;
-    return (dependProp == MANY_DEPEND) ? bitfield : dependProp;
+    auto count = GateBitFieldAccessor::GetDependCount(bitfield);
+    return (dependProp == MANY_DEPEND) ? count : dependProp;
 }
 
 size_t OpCode::GetInValueCount(BitField bitfield) const
 {
     auto properties = GetProperties();
     auto valueProp = properties.valuesIn;
-    return valueProp.has_value() ? (valueProp->second ? bitfield : valueProp->first.size()) : 0;
+    auto count = GateBitFieldAccessor::GetInValueCount(bitfield);
+    return valueProp.has_value() ? (valueProp->second ? count : valueProp->first.size()) : 0;
 }
 
 size_t OpCode::GetRootCount([[maybe_unused]] BitField bitfield) const
@@ -481,6 +502,11 @@ size_t OpCode::GetRootCount([[maybe_unused]] BitField bitfield) const
 size_t OpCode::GetOpCodeNumIns(BitField bitfield) const
 {
     return GetStateCount(bitfield) + GetDependCount(bitfield) + GetInValueCount(bitfield) + GetRootCount(bitfield);
+}
+
+size_t OpCode::GetInValueStarts(BitField bitfield) const
+{
+    return GetStateCount(bitfield) + GetDependCount(bitfield);
 }
 
 MachineType OpCode::GetMachineType() const
@@ -574,7 +600,7 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckStateInput() const
 
 std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput(bool isArch64) const
 {
-    size_t valueStart = GetStateCount() + GetDependCount();
+    size_t valueStart = GetInValueStarts();
     size_t valueEnd = valueStart + GetInValueCount();
     for (size_t idx = valueStart; idx < valueEnd; idx++) {
         auto expectedIn = GetOpCode().GetInMachineType(GetBitField(), idx);
@@ -1056,6 +1082,12 @@ Out *Gate::GetOut(size_t idx)
     return &reinterpret_cast<Out *>(this)[-1 - idx];
 }
 
+const Out *Gate::GetOutConst(size_t idx) const
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    return &reinterpret_cast<const Out *>(this)[-1 - idx];
+}
+
 Out *Gate::GetFirstOut()
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -1159,6 +1191,11 @@ GateType Gate::GetGateType() const
 size_t Gate::GetNumIns() const
 {
     return GetOpCodeNumIns(GetOpCode(), GetBitField());
+}
+
+size_t Gate::GetInValueStarts() const
+{
+    return GetStateCount() + GetDependCount();
 }
 
 size_t Gate::GetStateCount() const
@@ -1393,7 +1430,8 @@ bool OpCode::IsGeneralState() const
             (op_ == OpCode::TYPED_BINARY_OP) || (op_ == OpCode::TYPE_CONVERT) || (op_ == OpCode::TYPED_UNARY_OP) ||
             (op_ == OpCode::TO_LENGTH) || (op_ == OpCode::HEAP_ALLOC) ||
             (op_ == OpCode::LOAD_ELEMENT) || (op_ == OpCode::LOAD_PROPERTY) ||
-            (op_ == OpCode::STORE_ELEMENT) || (op_ == OpCode::STORE_PROPERTY));
+            (op_ == OpCode::STORE_ELEMENT) || (op_ == OpCode::STORE_PROPERTY) ||
+            (op_ == OpCode::TYPED_CALL));
 }
 
 bool OpCode::IsTerminalState() const

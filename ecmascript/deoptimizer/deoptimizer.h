@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_DEOPTIMIZER_H
-#define ECMASCRIPT_DEOPTIMIZER_H
+#ifndef ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H
+#define ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H
+
 #include "ecmascript/base/aligned_struct.h"
-#include "ecmascript/calleeReg.h"
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/llvm_stackmap_type.h"
@@ -92,6 +93,8 @@ public:
     {
         kungfu::CalleeReg callreg;
         numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
+        JSRuntimeOptions options = thread_->GetEcmaVM()->GetJSOptions();
+        traceDeopt_= options.GetTraceDeopt();
     }
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
@@ -123,12 +126,20 @@ private:
         return GetFrameArgv(static_cast<size_t>(index));
     }
     bool CollectVirtualRegisters(Method* method, FrameWriter *frameWriter);
-    bool hasDeoptValue(int32_t index)
+    bool HasDeoptValue(int32_t index) const
     {
         return deoptVregs_.find(static_cast<kungfu::OffsetType>(index)) != deoptVregs_.end();
     }
+    JSTaggedValue GetDeoptValue(int32_t index) const
+    {
+        if (!HasDeoptValue(index)) {
+            return JSTaggedValue::Undefined();
+        }
+        return deoptVregs_.at(static_cast<kungfu::OffsetType>(index));
+    }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
+    void Dump(Method* method);
     JSThread *thread_ {nullptr};
     uintptr_t *calleeRegAddr_ {nullptr};
     size_t numCalleeRegs_ {0};
@@ -140,7 +151,8 @@ private:
     JSTaggedValue env_ {JSTaggedValue::Undefined()};
     size_t frameArgc_ {0};
     JSTaggedType *frameArgvs_ {nullptr};
+    bool traceDeopt_{false};
 };
 
 }  // namespace panda::ecmascript
-#endif // ECMASCRIPT_DEOPTIMIZER_H
+#endif // ECMASCRIPT_DEOPTIMIZER_DEOPTIMIZER_H

@@ -169,6 +169,11 @@ GateRef CircuitBuilder::Int32Equal(GateRef x, GateRef y)
     return Equal(x, y);
 }
 
+GateRef CircuitBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32GreaterThan(x, y) : Int64GreaterThan(x, y);
+}
+
 template<OpCode::Op Op, MachineType Type>
 GateRef CircuitBuilder::BinaryOp(GateRef x, GateRef y)
 {
@@ -266,6 +271,15 @@ GateRef CircuitBuilder::TaggedIsObject(GateRef x)
 GateRef CircuitBuilder::TaggedIsNumber(GateRef x)
 {
     return BoolNot(TaggedIsObject(x));
+}
+
+GateRef CircuitBuilder::DoubleIsINF(GateRef x)
+{
+    GateRef infinity = Double(base::POSITIVE_INFINITY);
+    GateRef negativeInfinity = Double(-base::POSITIVE_INFINITY);
+    GateRef diff1 = DoubleEqual(x, infinity);
+    GateRef diff2 = DoubleEqual(x, negativeInfinity);
+    return BoolOr(diff1, diff2);
 }
 
 GateRef CircuitBuilder::TaggedIsHole(GateRef x)
@@ -480,14 +494,25 @@ GateRef CircuitBuilder::GetGlobalConstantString(ConstantIndex index)
 // object operation
 GateRef CircuitBuilder::LoadHClass(GateRef object)
 {
-    GateRef offset = IntPtr(0);
+    GateRef offset = IntPtr(TaggedObject::HCLASS_OFFSET);
     return Load(VariableType::JS_POINTER(), object, offset);
+}
+
+void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
+{
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
 }
 
 GateRef CircuitBuilder::IsJsType(GateRef obj, JSType type)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Equal(objectType, Int32(static_cast<int32_t>(type)));
+}
+
+inline GateRef CircuitBuilder::IsDictionaryMode(GateRef object)
+{
+    GateRef type = GetObjectType(LoadHClass(object));
+    return Int32Equal(type, Int32(static_cast<int32_t>(JSType::TAGGED_DICTIONARY)));
 }
 
 GateRef CircuitBuilder::GetObjectType(GateRef hClass)
@@ -613,6 +638,16 @@ GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
     return ret;
 }
 
+GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
+{
+    // NOTE: check for special case of string and TAGGED_ARRAY
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    GateRef objectSizeInWords = Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::ObjectSizeInWordsBits::START_BIT)),
+        Int32((1LU << JSHClass::ObjectSizeInWordsBits::SIZE) - 1));
+    return PtrMul(ZExtInt32ToPtr(objectSizeInWords), IntPtr(JSTaggedValue::TaggedTypeSize()));
+}
+
 template<TypedBinOp Op>
 GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType)
 {
@@ -637,6 +672,34 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
     currentLabel->SetControl(numberUnaryOp);
     currentLabel->SetDepend(numberUnaryOp);
     return numberUnaryOp;
+}
+
+template<TypedLoadOp Op>
+GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
+{
+    auto opIdx = static_cast<uint64_t>(Op);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_ELEMENT), opIdx,
+                                     { currentControl, currentDepend, receiver, index }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+template<TypedStoreOp Op>
+GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value)
+{
+    auto opIdx = static_cast<uint64_t>(Op);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_ELEMENT), opIdx,
+                                     { currentControl, currentDepend, receiver, index, value }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
 }
 
 // Number operator
@@ -800,6 +863,30 @@ void CircuitBuilder::SetDepend(GateRef depend)
 void CircuitBuilder::SetState(GateRef state)
 {
     GetCurrentLabel()->SetControl(state);
+}
+
+// ctor is base but not builtin
+inline GateRef CircuitBuilder::IsBase(GateRef ctor)
+{
+    GateRef method = GetMethodFromFunction(ctor);
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), method, extraLiteralInfoOffset);
+
+    GateRef kind = Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
+                            Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1));
+    return Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
+}
+
+inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef x, BuiltinsStubCSigns::ID id)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef idGate = Int8(static_cast<int8_t>(id));
+    auto numberMathOp = TypedCallOperator(MachineType::I64, currentControl, currentDepend, {x, idGate});
+    currentLabel->SetControl(numberMathOp);
+    currentLabel->SetDepend(numberMathOp);
+    return numberMathOp;
 }
 
 void Label::Seal()

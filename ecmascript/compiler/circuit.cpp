@@ -16,6 +16,7 @@
 #include "ecmascript/base/mem_mmap.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/ecma_opcode_des.h"
 
 namespace panda::ecmascript::kungfu {
 Circuit::Circuit(bool isArch64) : space_(nullptr), circuitSize_(0), gateCount_(0), time_(1),
@@ -125,14 +126,15 @@ void Circuit::PrintAllGates() const
     }
 }
 
-void Circuit::PrintAllGates(BytecodeCircuitBuilder &builder) const
+void Circuit::PrintAllGatesWithBytecode() const
 {
     std::vector<GateRef> gateList;
     GetAllGates(gateList);
     for (const auto &gate : gateList) {
-        auto item = builder.GetGateToBytecode().find(gate);
-        if (item != builder.GetGateToBytecode().end()) {
-            std::string bytecodeStr = builder.GetBytecodeStr(gate);
+        if (GetOpCode(gate) == OpCode::JS_BYTECODE) {
+            BitField bitField = GetBitField(gate);
+            auto opcode = GateBitFieldAccessor::GetByteCodeOpcode(bitField);
+            std::string bytecodeStr = GetEcmaOpcodeStr(opcode);
             LoadGatePtrConst(gate)->PrintByteCode(bytecodeStr);
         } else {
             LoadGatePtrConst(gate)->Print();
@@ -148,7 +150,10 @@ void Circuit::GetAllGates(std::vector<GateRef>& gateList) const
     for (size_t out = sizeof(Gate); out < circuitSize_;
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         out += Gate::GetGateSize(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetIndex() + 1)) {
-        gateList.push_back(GetGateRef(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetGateConst()));
+        auto gatePtr = reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetGateConst();
+        if (!gatePtr->GetOpCode().IsNop()) {
+            gateList.push_back(GetGateRef(gatePtr));
+        }
     }
 }
 
@@ -265,16 +270,6 @@ bool Circuit::IsSelector(GateRef gate) const
         return curGate->GetOpCode() == OpCode::VALUE_SELECTOR;
     }
     return false;
-}
-
-std::vector<GateRef> Circuit::GetInVector(GateRef gate) const
-{
-    std::vector<GateRef> result;
-    const Gate *curGate = LoadGatePtrConst(gate);
-    for (size_t idx = 0; idx < curGate->GetNumIns(); idx++) {
-        result.push_back(GetGateRef(curGate->GetInGateConst(idx)));
-    }
-    return result;
 }
 
 GateRef Circuit::GetIn(GateRef gate, size_t idx) const
@@ -471,5 +466,23 @@ GateRef Circuit::GetConstantDataGate(BitField bitfield, GateType type)
 size_t Circuit::GetGateCount() const
 {
     return gateCount_;
+}
+
+void Circuit::PushFrameState()
+{
+    auto returnList = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
+    auto argList = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+
+    const Gate *returnListGate = LoadGatePtrConst(returnList);
+    const Gate *argListGate = LoadGatePtrConst(argList);
+
+    innerMethodReturnFirstOut_ = returnListGate->GetFirstOutConst();
+    innerMethodArgFirstOut_ = argListGate->GetFirstOutConst();
+}
+
+void Circuit::PopFrameState()
+{
+    innerMethodReturnFirstOut_ = nullptr;
+    innerMethodArgFirstOut_ = nullptr;
 }
 }  // namespace panda::ecmascript::kungfu

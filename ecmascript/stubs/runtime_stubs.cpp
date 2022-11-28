@@ -22,7 +22,7 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
@@ -2123,15 +2123,46 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
     return index;
 }
 
-JSTaggedType RuntimeStubs::AotFloatMod(double x, double y)
+JSTaggedType RuntimeStubs::FloatMod(double x, double y)
 {
     double result = std::fmod(x, y);
     return JSTaggedValue(result).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::FloatMod(double x, double y)
+JSTaggedType RuntimeStubs::FloatSqrt(double x)
 {
-    double result = std::fmod(x, y);
+    double result = std::sqrt(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatCos(double x)
+{
+    double result = std::cos(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatSin(double x)
+{
+    double result = std::sin(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatACos(double x)
+{
+    double result = std::acos(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatATan(double x)
+{
+    double result = std::atan(x);
+    return JSTaggedValue(result).GetRawData();
+}
+
+JSTaggedType RuntimeStubs::FloatFloor(double x)
+{
+    ASSERT(!std::isnan(x));
+    double result = std::floor(x);
     return JSTaggedValue(result).GetRawData();
 }
 

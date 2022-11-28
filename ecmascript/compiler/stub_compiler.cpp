@@ -33,8 +33,8 @@
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
-    explicit StubPassData(Stub *stub, LLVMModule *module, const CompilerLog *log, bool enableMethodLog)
-        : PassData(nullptr, log, enableMethodLog, "stubs"), module_(module), stub_(stub) {}
+    explicit StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log)
+        : PassData(nullptr, nullptr, nullptr, log, "stubs"), module_(module), stub_(stub) {}
     ~StubPassData() = default;
 
     const CompilationConfig *GetCompilationConfig() const
@@ -82,11 +82,11 @@ public:
 
     bool Run(StubPassData *data, size_t index)
     {
-        bool enableLog =  data->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        bool enableLog =  data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         auto stubModule = data->GetStubModule();
         CreateCodeGen(stubModule, enableLog);
         CodeGenerator codegen(llvmImpl_, "stubs");
-        codegen.RunForStub(data->GetCircuit(), data->GetScheduleResult(), index, data->GetCompilationConfig());
+        codegen.RunForStub(data->GetCircuit(), data->GetConstScheduleResult(), index, data->GetCompilationConfig());
         return true;
     }
 private:
@@ -96,7 +96,7 @@ private:
 void StubCompiler::RunPipeline(LLVMModule *module) const
 {
     auto callSigns = module->GetCSigns();
-    const CompilerLog *log = GetLog();
+    CompilerLog *log = GetLog();
     auto logList = GetLogList();
     auto cconfig = module->GetCompilationConfig();
 
@@ -105,15 +105,16 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
         Circuit circuit(cconfig->Is64Bit());
         Stub stub(callSigns[i], &circuit);
         ASSERT(callSigns[i]->HasConstructor());
-        StubBuilder* stubBuilder = static_cast<StubBuilder*>(
-            callSigns[i]->GetConstructor()(reinterpret_cast<void*>(stub.GetEnvironment())));
+        void* env = reinterpret_cast<void*>(stub.GetEnvironment());
+        StubBuilder* stubBuilder = static_cast<StubBuilder*>(callSigns[i]->GetConstructor()(env));
         stub.SetStubBuilder(stubBuilder);
 
         if (log->CertainMethod()) {
             enableMethodLog = logList->IncludesMethod(stub.GetMethodName());
         }
+        log->SetEnableMethodLog(enableMethodLog);
 
-        StubPassData data(&stub, module, log, enableMethodLog);
+        StubPassData data(&stub, module, log);
         PassRunner<StubPassData> pipeline(&data);
         pipeline.RunPass<StubBuildCircuitPass>();
         pipeline.RunPass<VerifierPass>();
@@ -135,7 +136,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
 {
     InitializeCS();
     size_t res = 0;
-    const CompilerLog *log = GetLog();
+    CompilerLog *log = GetLog();
     const MethodLogList *logList = GetLogList();
     StubFileGenerator generator(log, logList, triple_, enablePGOProfiler_);
     if (!filePath_.empty()) {
@@ -146,6 +147,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
         RunPipeline(&bcStubModule);
         generator.AddModule(&bcStubModule, &bcStubAssembler);
         res++;
+
         LOG_COMPILER(INFO) << "compiling common stubs";
         LLVMModule comStubModule("com_stub", triple_, enablePGOProfiler_);
         LLVMAssembler comStubAssembler(comStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
@@ -153,6 +155,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
         RunPipeline(&comStubModule);
         generator.AddModule(&comStubModule, &comStubAssembler);
         res++;
+
         LOG_COMPILER(INFO) << "compiling builtins stubs";
         LLVMModule builtinsStubModule("builtins_stub", triple_, enablePGOProfiler_);
         LLVMAssembler builtinsStubAssembler(builtinsStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));

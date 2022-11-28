@@ -803,6 +803,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(dict)
                 break;
             }
+            case JSType::BYTE_ARRAY: {
+                JSHandle<ByteArray> byteArray = factory->NewByteArray(4, 8);
+                DUMP_FOR_HANDLE(byteArray)
+                break;
+            }
             case JSType::COW_TAGGED_ARRAY: {
                 JSHandle<COWTaggedArray> dict = factory->NewCOWTaggedArray(4);
                 DUMP_FOR_HANDLE(dict)
@@ -965,12 +970,6 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSInterfaceType::SIZE, 3U);
                 JSHandle<TSInterfaceType> interfaceType = factory->NewTSInterfaceType();
                 DUMP_FOR_HANDLE(interfaceType)
-                break;
-            }
-            case JSType::TS_IMPORT_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSImportType::SIZE, 3U);
-                JSHandle<TSImportType> importType = factory->NewTSImportType();
-                DUMP_FOR_HANDLE(importType)
                 break;
             }
             case JSType::TS_CLASS_INSTANCE_TYPE: {

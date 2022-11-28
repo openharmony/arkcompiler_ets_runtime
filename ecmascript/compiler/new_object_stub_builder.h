@@ -22,6 +22,8 @@ class NewObjectStubBuilder : public StubBuilder {
 public:
     explicit NewObjectStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
+    explicit NewObjectStubBuilder(Environment *env)
+        : StubBuilder(env) {}
     ~NewObjectStubBuilder() = default;
     NO_MOVE_SEMANTIC(NewObjectStubBuilder);
     NO_COPY_SEMANTIC(NewObjectStubBuilder);
@@ -38,10 +40,12 @@ public:
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
     void AllocStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
+    void HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType);
+    void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
+                           bool isEmptyArray);
+    void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
 private:
     void AllocateInYoung(Variable *result, Label *exit);
-    void InitializeWithSpeicalValue(Label *exit,
-        GateRef object, GateRef value, GateRef start, GateRef end);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
     GateRef glue_ {0};

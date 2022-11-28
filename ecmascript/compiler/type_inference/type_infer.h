@@ -20,18 +20,28 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+enum InferState : uint8_t {
+    NOT_INFERED = 0, // gate has not been infered
+    INITAILIZED, // infer-state has been reseted, either any or non-any
+    NORMAL_INFERED, // gate has been infered to non-any type
+    ANY_INFERED, // gate has been infered to any, not a final result
+};
+
 class TypeInfer {
 public:
     TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
-              const JSHandle<JSTaggedValue> &constantPool, TSManager *tsManager,
-              LexEnvManager *lexEnvManager, size_t methodId, bool enableLog,
-              const std::string& name)
-        : builder_(builder), circuit_(circuit), constantPool_(constantPool), gateAccessor_(circuit),
-          tsManager_(tsManager), lexEnvManager_(lexEnvManager), methodId_(methodId), enableLog_(enableLog),
-          methodName_(name)
+              CompilationInfo *info, size_t methodId, bool enableLog,
+              const std::string& name, const CString &recordName)
+        : builder_(builder), circuit_(circuit),
+          gateAccessor_(circuit),
+          tsManager_(info->GetTSManager()),
+          lexEnvManager_(info->GetLexEnvManager()),
+          methodId_(methodId), enableLog_(enableLog),
+          methodName_(name), recordName_(recordName)
     {
     }
 
@@ -81,17 +91,24 @@ private:
     bool InferNewObject(GateRef gate);
     bool SetStGlobalBcType(GateRef gate, bool hasIC = false);
     bool InferLdStr(GateRef gate);
-    bool InferCallFunction(GateRef gate, bool isDeprecated = false);
+    bool InferCallFunction(GateRef gate);
     bool InferLdObjByValue(GateRef gate);
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);
     bool InferSuperCall(GateRef gate);
+    bool InferSuperPropertyByName(GateRef gate);
+    bool InferSuperPropertyByValue(GateRef gate);
     bool InferTryLdGlobalByName(GateRef gate);
     bool InferLdLexVarDyn(GateRef gate);
     bool InferStLexVarDyn(GateRef gate);
+    bool InferStModuleVar(GateRef gate);
+    bool InferLdLocalModuleVar(GateRef gate);
     bool IsNewLexEnv(EcmaOpcode opcode) const;
     bool InferGetIterator(GateRef gate);
     bool InferLoopBeginPhiGate(GateRef gate);
+    bool GetObjPropWithName(GateRef gate, GateType objType, uint64_t index);
+    bool GetSuperProp(GateRef gate, uint64_t index, bool isString = true);
+    GlobalTSTypeRef ConvertPrimitiveToBuiltin(const GateType &gateType);
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
@@ -113,7 +130,13 @@ private:
 
     inline bool ShouldInferWithLdObjByName(const GateType &type) const
     {
-        return ShouldInferWithLdObjByValue(type) || tsManager_->IsIteratorInstanceTypeKind(type);
+        return ShouldInferWithLdObjByValue(type) || tsManager_->IsIteratorInstanceTypeKind(type) ||
+            tsManager_->IsInterfaceTypeKind(type);
+    }
+
+    inline bool ShouldConvertToBuiltinArray(const GateType &type) const
+    {
+        return tsManager_->IsArrayTypeKind(type) && tsManager_->IsBuiltinsDTSEnabled();
     }
 
     void PrintAllByteCodesTypes() const;
@@ -124,9 +147,19 @@ private:
     std::string CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
                                        const std::string &logPreFix) const;
 
+    const BytecodeInfo &GetByteCodeInfo(const GateRef gate) const
+    {
+        const auto bcIndex = jsgateToBytecode_.at(gate);
+        return builder_->GetBytecodeInfo(bcIndex);
+    }
+
+    bool IsByteCodeGate(const GateRef gate) const
+    {
+        return jsgateToBytecode_.find(gate) != jsgateToBytecode_.end();
+    }
+
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
-    JSHandle<ConstantPool> constantPool_;
     GateAccessor gateAccessor_;
     TSManager *tsManager_ {nullptr};
     LexEnvManager *lexEnvManager_ {nullptr};
@@ -134,7 +167,9 @@ private:
     bool enableLog_ {false};
     std::string methodName_;
     std::map<uint16_t, GateType> stringIdToGateType_;
-    std::map<GateRef, bool> phiState_;
+    std::unordered_map<GateRef, uint32_t> jsgateToBytecode_ {};
+    std::map<GateRef, InferState> phiState_;
+    const CString &recordName_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H

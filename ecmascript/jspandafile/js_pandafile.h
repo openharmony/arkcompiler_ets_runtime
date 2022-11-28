@@ -23,6 +23,7 @@
 #include "ecmascript/mem/c_containers.h"
 
 #include "libpandafile/file.h"
+#include "libpandafile/file_items.h"
 namespace panda {
 namespace ecmascript {
 class JSPandaFile {
@@ -62,7 +63,7 @@ public:
     };
     static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
-    static constexpr char PATCH_ENTRY_FUNCTION[] = "_GLOBAL::patch_main_0";
+    static constexpr char PATCH_MAIN_FUNCTION[] = "_GLOBAL::patch_main_0";
     static constexpr char PATCH_FUNCTION_NAME_0[] = "patch_main_0";
     static constexpr char PATCH_FUNCTION_NAME_1[] = "patch_main_1";
 
@@ -304,6 +305,8 @@ public:
             recordInfo.second.vmListOfParsedConstPool.erase(vm);
         }
     }
+    static FunctionKind PUBLIC_API GetFunctionKind(panda_file::FunctionKind funcKind);
+    static FunctionKind GetFunctionKind(ConstPoolType type);
 
 private:
     void InitializeUnMergedPF();

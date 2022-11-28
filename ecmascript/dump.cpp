@@ -218,6 +218,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "BigInt64 Array";
         case JSType::JS_BIGUINT64_ARRAY:
             return "BigUint64 Array";
+        case JSType::BYTE_ARRAY:
+            return "ByteArray";
         case JSType::JS_ARGUMENTS:
             return "Arguments";
         case JSType::JS_PROXY:
@@ -346,8 +348,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "TSClassType";
         case JSType::TS_INTERFACE_TYPE:
             return "TSInterfaceType";
-        case JSType::TS_IMPORT_TYPE:
-            return "TSImportType";
         case JSType::TS_CLASS_INSTANCE_TYPE:
             return "TSClassInstanceType";
         case JSType::TS_UNION_TYPE:
@@ -656,6 +656,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::BIGINT:
             BigInt::Cast(obj)->Dump(os);
             break;
+        case JSType::BYTE_ARRAY:
+            ByteArray::Cast(obj)->Dump(os);
+            break;
         case JSType::JS_PROXY:
             JSProxy::Cast(obj)->Dump(os);
             break;
@@ -860,9 +863,6 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::TS_INTERFACE_TYPE:
             TSInterfaceType::Cast(obj)->Dump(os);
-            break;
-        case JSType::TS_IMPORT_TYPE:
-            TSImportType::Cast(obj)->Dump(os);
             break;
         case JSType::TS_CLASS_INSTANCE_TYPE:
             TSClassInstanceType::Cast(obj)->Dump(os);
@@ -2087,6 +2087,12 @@ void JSTypedArray::Dump(std::ostream &os) const
     JSObject::Dump(os);
 }
 
+void ByteArray::Dump(std::ostream &os) const
+{
+    os << " - length: " << GetLength();
+    os << " - size: " << GetSize();
+}
+
 void JSRegExp::Dump(std::ostream &os) const
 {
     os << "\n";
@@ -3062,44 +3068,6 @@ void TSInterfaceType::Dump(std::ostream &os) const
     }
 }
 
-void TSImportType::Dump(std::ostream &os) const
-{
-    os << " - Dump Import Type - " << "\n";
-    os << " - TSImportType globalTSTypeRef: ";
-    GlobalTSTypeRef gt = GetGT();
-    uint64_t globalTSTypeRef = gt.GetType();
-    os << globalTSTypeRef;
-    os << "\n";
-    os << " - TSImportType moduleId: ";
-    uint32_t moduleId = gt.GetModuleId();
-    os << moduleId;
-    os << "\n";
-    os << " - TSImportType localTypeId: ";
-    uint32_t localTypeId = gt.GetLocalId();
-    os << localTypeId;
-    os << "\n";
-    os << " -------------------------------------------- ";
-    os << " - Target Type: ";
-    GlobalTSTypeRef targetGT = GetTargetGT();
-    uint64_t targetGTValue = targetGT.GetType();
-    os << " - TargetTypeGT: ";
-    os << targetGTValue;
-    os << "\n";
-    os << " - Target Type moduleId: ";
-    uint32_t targetModuleId = targetGT.GetModuleId();
-    os << targetModuleId;
-    os << "\n";
-    os << " - Target Type localTypeId: ";
-    uint32_t targetLocalTypeId = targetGT.GetLocalId();
-    os << targetLocalTypeId;
-    os << "\n";
-    os << " -------------------------------------------- ";
-    os << " - Taget Type Path: ";
-    JSTaggedValue importPath = GetImportPath();
-    importPath.DumpTaggedValue(os);
-    os << "\n";
-}
-
 void TSClassInstanceType::Dump(std::ostream &os) const
 {
     os << " - Dump ClassInstance Type - " << "\n";
@@ -3181,9 +3149,10 @@ void TSFunctionType::Dump(std::ostream &os) const
             os << " - Visibility: protected";
             break;
     }
-    os << " | Static: " << std::boolalpha << GetStatic();
-    os << " | Async: " << std::boolalpha << GetAsync();
-    os << " | Generator: " << std::boolalpha << GetGenerator();
+    os << " | IsStatic: " << std::boolalpha << GetStatic();
+    os << " | IsAsync: " << std::boolalpha << GetAsync();
+    os << " | IsGenerator: " << std::boolalpha << GetGenerator();
+    os << " | IsGetterSetter: " << std::boolalpha << GetIsGetterSetter();
     os << "\n";
 }
 
@@ -3563,6 +3532,9 @@ static void DumpObject(TaggedObject *obj,
         case JSType::BIGINT:
             BigInt::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::BYTE_ARRAY:
+            ByteArray::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_PROXY:
             JSProxy::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -3870,9 +3842,6 @@ static void DumpObject(TaggedObject *obj,
                 return;
             case JSType::TS_INTERFACE_TYPE:
                 TSInterfaceType::Cast(obj)->DumpForSnapshot(vec);
-                return;
-            case JSType::TS_IMPORT_TYPE:
-                TSImportType::Cast(obj)->DumpForSnapshot(vec);
                 return;
             case JSType::TS_CLASS_INSTANCE_TYPE:
                 TSClassInstanceType::Cast(obj)->DumpForSnapshot(vec);
@@ -4387,6 +4356,12 @@ void JSTypedArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>
     vec.push_back(std::make_pair(CString("byte-length"), JSTaggedValue(GetByteLength())));
     vec.push_back(std::make_pair(CString("byte-offset"), JSTaggedValue(GetByteOffset())));
     vec.push_back(std::make_pair(CString("array-length"), JSTaggedValue(GetArrayLength())));
+}
+
+void ByteArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.push_back(std::make_pair(CString("length"), JSTaggedValue(GetLength())));
+    vec.push_back(std::make_pair(CString("size"), JSTaggedValue(GetSize())));
 }
 
 void JSRegExp::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4983,11 +4958,6 @@ void TSInterfaceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 void TSClassInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.push_back(std::make_pair(CString("ClassGT"), JSTaggedValue(GetClassGT().GetType())));
-}
-
-void TSImportType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
-{
-    vec.push_back(std::make_pair(CString("ImportTypePath"), GetImportPath()));
 }
 
 void TSUnionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

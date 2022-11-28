@@ -94,6 +94,8 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(ConstantIndex::STRING_CLASS_INDEX, factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::STRING));
     SetConstant(ConstantIndex::ARRAY_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
+    SetConstant(ConstantIndex::BYTE_ARRAY_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));
     SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_POOL));
     SetConstant(ConstantIndex::AOT_LITERAL_INFO_CLASS_INDEX,
@@ -204,8 +206,6 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(ConstantIndex::TS_CLASS_INSTANCE_TYPE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TSClassInstanceType::SIZE,
                                                  JSType::TS_CLASS_INSTANCE_TYPE));
-    SetConstant(ConstantIndex::TS_IMPORT_TYPE_CLASS_INDEX,
-                factory->NewEcmaReadOnlyHClass(hClass, TSImportType::SIZE, JSType::TS_IMPORT_TYPE));
     SetConstant(ConstantIndex::TS_FUNCTION_TYPE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TSFunctionType::SIZE, JSType::TS_FUNCTION_TYPE));
     SetConstant(ConstantIndex::TS_ARRAY_TYPE_CLASS_INDEX,

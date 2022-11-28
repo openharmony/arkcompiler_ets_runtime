@@ -16,10 +16,10 @@
 #ifndef ECMASCRIPT_TS_TYPES_TS_MANAGER_H
 #define ECMASCRIPT_TS_TYPES_TS_MANAGER_H
 
-#include "ecmascript/mem/c_string.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
+#include "ecmascript/compiler/bytecode_info_collector.h"
 
 namespace panda::ecmascript {
 enum class MTableIdx : uint8_t {
@@ -28,6 +28,105 @@ enum class MTableIdx : uint8_t {
     INFERRED_UNTION,
     NUM_OF_DEFAULT_TABLES,
 };
+
+enum class PropertyType : uint8_t {
+    NORMAL = 0,
+    STATIC,
+    OTHERS,
+};
+
+/* Since AOT allows loading lib_ark_builtins.d.ts optionally, the localId of the GlobalTSTypeRef
+ * (abbreviated as GT) of one builtin object will be different in different cases.
+ *
+ * In case where AOT does not load lib_ark_builtins.d.ts, builtin objects will be assigned localIds
+ * according to the following enum order. For example, the GT of FUNCTION will be (1, 21), where 1
+ * is the index of builtin TSTypeTable. Note that in this case, it is prohibited to get TSType from
+ * builtin TSTypeTable.
+ *
+ * In case where AOT has loaded lib_ark_builtins.d.ts, builtin objects will be assigned localIds in
+ * the order in which they appear in bytecodes. To identify types of builtin objects, the following
+ * enum is required as a parameter to the TSManager::GetBuiltinOffset to help to get the GT of some
+ * builtin object.
+ */
+enum class BuiltinTypeId : uint8_t {  // keep the same with enum BuiltinType in ets_frontend
+    NUM_INDEX_IN_SUMMARY = 0,
+    BUILTIN_OFFSET = 20,
+    FUNCTION,
+    RANGE_ERROR,
+    ERROR,
+    OBJECT,
+    SYNTAX_ERROR,
+    TYPE_ERROR,
+    REFERENCE_ERROR,
+    URI_ERROR,
+    SYMBOL,
+    EVAL_ERROR,
+    NUMBER,
+    PARSE_FLOAT,
+    DATE,
+    BOOLEAN,
+    BIG_INT,
+    PARSE_INT,
+    WEAK_MAP,
+    REG_EXP,
+    SET,
+    MAP,
+    WEAK_REF,
+    WEAK_SET,
+    FINALIZATION_REGISTRY,
+    ARRAY,
+    UINT8_CLAMPED_ARRAY,
+    UINT8_ARRAY,
+    TYPED_ARRAY,
+    INT8_ARRAY,
+    UINT16_ARRAY,
+    UINT32_ARRAY,
+    INT16_ARRAY,
+    INT32_ARRAY,
+    FLOAT32_ARRAY,
+    FLOAT64_ARRAY,
+    BIG_INT64_ARRAY,
+    BIG_UINT64_ARRAY,
+    SHARED_ARRAY_BUFFER,
+    DATA_VIEW,
+    STRING,
+    ARRAY_BUFFER,
+    EVAL,
+    IS_FINITE,
+    ARK_PRIVATE,
+    PRINT,
+    DECODE_URI,
+    DECODE_URI_COMPONENT,
+    IS_NAN,
+    ENCODE_URI,
+    JS_NAN,
+    GLOBAL_THIS,
+    ENCODE_URI_COMPONENT,
+    JS_INFINITY,
+    MATH,
+    JSON,
+    ATOMICS,
+    UNDEFINED,
+    REFLECT,
+    PROMISE,
+    PROXY,
+    GENERATOR_FUNCTION,
+    INTL,
+    NUM_OF_BUILTIN_TYPES = INTL - BUILTIN_OFFSET,
+    TYPED_ARRAY_FIRST = UINT8_CLAMPED_ARRAY,
+    TYPED_ARRAY_LAST = BIG_UINT64_ARRAY,
+};
+
+struct LocalModuleInfo {
+    const JSPandaFile *jsPandaFile {nullptr}; // there may be serval merged abc files.
+    const CString recordName {""}; // distinguish different files which are all merged to a abc file.
+    uint32_t index {0}; // bytecode "ldlocalmodulevar index", importVar index is unique in the same recordName.
+    bool operator < (const LocalModuleInfo &localModuleInfo) const
+    {
+        return index < localModuleInfo.index;
+    }
+};
+
 class TSModuleTable : public TaggedArray {
 public:
 
@@ -37,9 +136,10 @@ public:
     static constexpr int ELEMENTS_LENGTH = 3;
     static constexpr int NUMBER_OF_TABLES_INDEX = 0;
     static constexpr int INCREASE_CAPACITY_RATE = 2;
-    static constexpr int DEFAULT_NUMBER_OF_TABLES = 4; // primitive table, builtins table, infer table and runtime table
+    // primitive table, builtins table, infer table and runtime table
+    static constexpr int DEFAULT_NUMBER_OF_TABLES = 4;
     // first +1 means reserve a table from pandafile, second +1 menas the NUMBER_OF_TABLES_INDEX
-    static constexpr int DEFAULT_TABLE_CAPACITY =  (DEFAULT_NUMBER_OF_TABLES + 1) * ELEMENTS_LENGTH + 1;
+    static constexpr int DEFAULT_TABLE_CAPACITY = (DEFAULT_NUMBER_OF_TABLES + 1) * ELEMENTS_LENGTH + 1;
     static constexpr int PRIMITIVE_TABLE_ID = 0;
     static constexpr int BUILTINS_TABLE_ID = 1;
     static constexpr int INFER_TABLE_ID = 2;
@@ -78,7 +178,7 @@ public:
         return entry * ELEMENTS_LENGTH + TYPE_TABLE_OFFSET;
     }
 
-    static JSHandle<TSTypeTable> GenerateBuiltinsTypeTable(JSThread *thread);
+    static void GenerateBuiltinsTypeTable(JSThread *thread);
 
 private:
 
@@ -105,17 +205,10 @@ public:
 
     void Initialize();
 
-    void PUBLIC_API DecodeTSTypes(const JSPandaFile *jsPandaFile);
-
-    void InitTypeTables(const JSPandaFile *jsPandaFile, const CString &recordName);
+    std::tuple<JSHandle<TSTypeTable>, uint32_t> GenerateTSTypeTable(const JSPandaFile *jsPandaFile,
+                                                                    const CString &recordName);
 
     void AddTypeTable(JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaString> amiPath);
-
-    void Link();
-
-    void LinkTSTypeTable(JSHandle<TSTypeTable> table);
-
-    void LinkInRange(JSHandle<TSModuleTable> moduleTable, int start, int end);
 
     void Dump();
 
@@ -137,15 +230,15 @@ public:
         return table->GetNumberOfTSTypeTables();
     }
 
-    JSHandle<EcmaString> GenerateAmiPath(JSHandle<EcmaString> cur, JSHandle<EcmaString> rel) const;
+    void GenerateBuiltinSummary();
 
-    JSHandle<EcmaString> GenerateImportVar(JSHandle<EcmaString> import) const;
-
-    JSHandle<EcmaString> GenerateImportRelativePath(JSHandle<EcmaString> importRel) const;
-
-    GlobalTSTypeRef PUBLIC_API CreateGT(const panda_file::File &pf, const uint32_t localId) const;
-
-    GlobalTSTypeRef PUBLIC_API GetImportTypeTargetGT(GlobalTSTypeRef gt) const;
+    inline uint32_t GetBuiltinOffset(uint32_t index) const
+    {
+        if (index == static_cast<uint32_t>(BuiltinTypeId::NUM_INDEX_IN_SUMMARY)) {
+            return builtinOffsets_[index];
+        }
+        return builtinOffsets_[index - static_cast<uint32_t>(BuiltinTypeId::BUILTIN_OFFSET)];
+    }
 
     inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSTaggedValue propertyName) const
     {
@@ -199,9 +292,32 @@ public:
         return GetIteratorInstanceElementGt(gt);
     }
 
+    bool PUBLIC_API IsStaticFunc(GlobalTSTypeRef gt) const;
+
+    GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                JSHandle<EcmaString> propertyName,
+                                                PropertyType propType) const;
+
+    inline GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                       JSTaggedValue propertyName,
+                                                       PropertyType propType) const
+    {
+        return GetSuperPropType(gt, JSHandle<EcmaString>(vm_->GetJSThread(), propertyName), propType);
+    }
+
+    GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
+                                                const uint64_t key,
+                                                PropertyType propType) const;
+
     GlobalTSTypeRef PUBLIC_API GetFuncParameterTypeGT(GlobalTSTypeRef gt, int index) const;
 
     GlobalTSTypeRef PUBLIC_API GetFuncThisGT(GlobalTSTypeRef gt) const;
+
+    void PUBLIC_API SetFuncMethodOffset(GlobalTSTypeRef gt, uint32_t methodOffset);
+
+    uint32_t PUBLIC_API GetFuncMethodOffset(GlobalTSTypeRef gt) const;
+
+    bool PUBLIC_API IsGetterSetterFunc(GlobalTSTypeRef gt) const;
 
     inline GlobalTSTypeRef PUBLIC_API GetFuncReturnValueTypeGT(kungfu::GateType gateType) const
     {
@@ -210,6 +326,8 @@ public:
     }
 
     GlobalTSTypeRef PUBLIC_API GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const;
+
+    std::string PUBLIC_API GetFuncName(kungfu::GateType gt) const;
 
     inline GlobalTSTypeRef PUBLIC_API GetArrayParameterTypeGT(kungfu::GateType gateType) const
     {
@@ -249,11 +367,38 @@ public:
         return classTypeIhcIndexMap_;
     }
 
-    void GenerateStaticHClass(JSHandle<TSTypeTable> tsTypeTable, const JSPandaFile *jsPandaFile);
+    void GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle<TSClassType> classType);
 
     JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
+
+    int GetHClassIndexByClassGT(const kungfu::GateType &gateType) const
+    {
+        if (!IsClassTypeKind(gateType)) {
+            return -1;
+        }
+        GlobalTSTypeRef classGT = gateType.GetGTRef();
+        auto it = classTypeIhcIndexMap_.find(classGT);
+        if (it == classTypeIhcIndexMap_.end()) {
+            return -1;
+        } else {
+            return it->second;
+        }
+    }
+
+    inline bool IsUserDefinedClassTypeKind(const kungfu::GateType &gateType) const
+    {
+        GlobalTSTypeRef gt = gateType.GetGTRef();
+        return IsUserDefinedClassTypeKind(gt);
+    }
+
+    inline bool IsUserDefinedClassTypeKind(const GlobalTSTypeRef &gt) const
+    {
+        uint32_t m = gt.GetModuleId();
+        return (IsClassTypeKind(gt)) &&
+               (m != TSModuleTable::BUILTINS_TABLE_ID);
+    }
 
     EcmaVM *GetEcmaVM() const
     {
@@ -278,35 +423,66 @@ public:
     V(IteratorInstance, TSTypeKind::ITERATOR_INSTANCE)  \
 
 #define IS_TSTYPEKIND(NAME, TSTYPEKIND)                                                \
-    bool inline PUBLIC_API Is##NAME##TypeKind(const kungfu::GateType &gateType) const  \
+    inline bool PUBLIC_API Is##NAME##TypeKind(const kungfu::GateType &gateType) const  \
     {                                                                                  \
         GlobalTSTypeRef gt = gateType.GetGTRef();                                      \
+        return GetTypeKind(gt) == (TSTYPEKIND);                                        \
+    }                                                                                  \
+                                                                                       \
+    inline bool PUBLIC_API Is##NAME##TypeKind(const GlobalTSTypeRef &gt) const         \
+    {                                                                                  \
         return GetTypeKind(gt) == (TSTYPEKIND);                                        \
     }
 
     IS_TSTYPEKIND_METHOD_LIST(IS_TSTYPEKIND)
 #undef IS_TSTYPEKIND
 
-    static constexpr int BUILTIN_ARRAY_ID = 24;
-    static constexpr int BUILTIN_TYPED_ARRAY_FIRST_ID = 25;
-    static constexpr int BUILTIN_TYPED_ARRAY_LAST_ID = 36;
-    static constexpr int BUILTIN_FLOAT32_ARRAY_ID = 33;
-
     bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
 
-    void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, panda_file::File::EntityId offset,
-                                        GlobalTSTypeRef gt)
+    inline void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, uint32_t offset,
+                                               GlobalTSTypeRef gt)
     {
         auto key = std::make_pair(jsPandaFile, offset);
         literalOffsetGTMap_.emplace(key, gt);
     }
 
-    GlobalTSTypeRef GetGTFromOffset(const JSPandaFile *jsPandaFile, panda_file::File::EntityId offset) const
+    inline bool HasCreatedGT(const JSPandaFile *jsPandaFile, uint32_t offset) const
+    {
+        auto key = std::make_pair(jsPandaFile, offset);
+        return literalOffsetGTMap_.find(key) != literalOffsetGTMap_.end();
+    }
+
+    inline GlobalTSTypeRef GetGTFromOffset(const JSPandaFile *jsPandaFile, uint32_t offset) const
     {
         auto key = std::make_pair(jsPandaFile, offset);
         return literalOffsetGTMap_.at(key);
+    }
+
+    inline void AddTypeToLocalModuleVarGtMap(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                             uint32_t index, GlobalTSTypeRef gt)
+    {
+        LocalModuleInfo key = {jsPandaFile, recordName, index};
+        if (localModuleVarGtMap_.find(key) == localModuleVarGtMap_.end()) {
+            localModuleVarGtMap_.emplace(key, gt);
+        } else {
+            localModuleVarGtMap_[key] = gt;
+        }
+    }
+
+    inline bool HasExportGT(const JSPandaFile *jsPandaFile, const CString &recordName,
+                            uint32_t index)
+    {
+        LocalModuleInfo key = {jsPandaFile, recordName, index};
+        return localModuleVarGtMap_.find(key) != localModuleVarGtMap_.end();
+    }
+
+    inline GlobalTSTypeRef GetGTFromModuleMap(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                              uint32_t index)
+    {
+        LocalModuleInfo key = {jsPandaFile, recordName, index};
+        return localModuleVarGtMap_.at(key);
     }
 
     bool IsTSIterator(GlobalTSTypeRef gt) const
@@ -330,111 +506,41 @@ public:
     // not consider [[prototype]] properties and accessor, -1: not find
     int PUBLIC_API GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key);
 
-    enum class SnapshotInfoType : uint8_t {
-        STRING = 0,
-        METHOD,
-        SKIPPED_METHOD,
-        CLASS_LITERAL,
-        OBJECT_LITERAL,
-        ARRAY_LITERAL,
-    };
-
-    class SnapshotRecordInfo {
-    public:
-        void Iterate(const RootVisitor &v);
-
-        void AddHClass(JSTaggedType hclass)
-        {
-            hclassCache_.emplace_back(hclass);
-        }
-
-        uint32_t GetHClassCacheSize() const
-        {
-            return hclassCache_.size();
-        }
-
-        CVector<JSTaggedType>& GetHClassCache()
-        {
-            return hclassCache_;
-        }
-
-        void AddRecordLiteralIndex(uint32_t index)
-        {
-            recordLiteralIndex_.emplace_back(index);
-        }
-
-        const std::vector<uint32_t>& GetRecordLiteralIndex()
-        {
-            return recordLiteralIndex_;
-        }
-
-        void AddMethodIndex(uint32_t index)
-        {
-            recordMethodIndex_.emplace_back(index);
-        }
-
-        const std::vector<uint32_t>& GetRecordMethodIndex()
-        {
-            return recordMethodIndex_;
-        }
-
-        void AddSkippedMethodID(uint32_t methodID)
-        {
-            if (skippedMethodIDs_.find(methodID) == skippedMethodIDs_.end()) {
-                skippedMethodIDs_.insert(methodID);
-            }
-        }
-
-        bool IsSkippedMethod(uint32_t methodID)
-        {
-            if (skippedMethodIDs_.find(methodID) == skippedMethodIDs_.end()) {
-                return false;
-            }
-            return true;
-        }
-
-        bool isProcessed(uint32_t constantPoolIndex)
-        {
-            if (recordConstantPoolIndex_.find(constantPoolIndex) == recordConstantPoolIndex_.end()) {
-                recordConstantPoolIndex_.insert(constantPoolIndex);
-                return false;
-            }
-            return true;
-        }
-
-    private:
-        std::vector<uint32_t> recordLiteralIndex_ {};
-        std::vector<uint32_t> recordMethodIndex_ {};
-        std::set<uint32_t> skippedMethodIDs_ {};
-        std::set<uint32_t> recordConstantPoolIndex_ {};
-
-        // store hclass of each abc which produced from static type info
-        CVector<JSTaggedType> hclassCache_ {};
-    };
-
-    void PUBLIC_API GenerateSnapshotConstantPool(JSTaggedValue constantPool);
-
-    void PUBLIC_API AddIndexOrSkippedMethodID(SnapshotInfoType type, uint32_t index, const CString &recordName="");
-
-    void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
+    void PUBLIC_API InitSnapshotConstantPool(JSTaggedValue constantPool)
+    {
+        snapshotConstantPool_ = constantPool;
+    }
 
     JSHandle<JSTaggedValue> PUBLIC_API GetSnapshotConstantPool() const
     {
         return JSHandle<JSTaggedValue>(uintptr_t(&snapshotConstantPool_));
     }
 
+    void PUBLIC_API ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector);
+
+    void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
+
+    bool PUBLIC_API IsBuiltin(kungfu::GateType funcType) const;
+
+    bool PUBLIC_API IsBuiltinMath(kungfu::GateType funcType) const;
+
+    void RecursivelyMergeClassField(JSHandle<TSClassType> classType);
+
+    inline const JSPandaFile *GetBuiltinPandaFile() const
+    {
+        return builtinPandaFile_;
+    }
+
+    inline const CString &GetBuiltinRecordName() const
+    {
+        return builtinsRecordName_;
+    }
+
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
 
-    void RecursivelyResolveTargetType(JSHandle<TSImportType> importType);
-
-    void RecursivelyMergeClassField(JSHandle<TSClassType> classType, JSHandle<TSClassType> extendClassType);
-
     bool IsDuplicatedKey(JSHandle<TSObjLayoutInfo> extendLayout, JSTaggedValue key);
-
-    GlobalTSTypeRef GetExportGTByName(JSHandle<EcmaString> target,
-                                      JSHandle<TaggedArray> &exportTable) const;
 
     GlobalTSTypeRef PUBLIC_API AddTSTypeToInferTable(JSHandle<TSType> type) const;
 
@@ -452,13 +558,23 @@ private:
 
     void AddHClassInCompilePhase(GlobalTSTypeRef gt, JSTaggedValue hclass, uint32_t constantPoolLen)
     {
-        CVector<JSTaggedType> &hclassCache_ = snapshotRecordInfo_.GetHClassCache();
         hclassCache_.emplace_back(hclass.GetRawData());
         classTypeIhcIndexMap_[gt] = constantPoolLen + hclassCache_.size() - 1;
     }
 
     void CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
-                            JSHandle<ConstantPool> snapshotConstantPool);
+                            JSHandle<ConstantPool> snapshotConstantPool,
+                            kungfu::BytecodeInfoCollector *bcInfoCollector);
+
+    inline void SetBuiltinPandaFile(JSPandaFile *jsPandaFile)
+    {
+        builtinPandaFile_ = jsPandaFile;
+    }
+
+    inline void SetBuiltinRecordName(CString &builtinsRecordName)
+    {
+        builtinsRecordName_ = builtinsRecordName;
+    }
 
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
@@ -470,11 +586,21 @@ private:
     bool printAnyTypes_ {false};
     friend class EcmaVM;
 
-    // For snapshot
-    JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
-    SnapshotRecordInfo snapshotRecordInfo_ {};
+    // store hclass of each abc which produced from static type info
+    CVector<JSTaggedType> hclassCache_ {};
 
-    std::map<std::pair<const JSPandaFile *, panda_file::File::EntityId>, GlobalTSTypeRef> literalOffsetGTMap_ {};
+    // This constantpool is generated by pass_manager in AOT phase
+    // which can be used directly in each pass stage of AOT, such as type_infer and ts_type_lowring
+    // Finally it will be serialized into the '.ai' file, and used in runtime.
+    JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
+    std::vector<uint32_t> recordMethodIndex_ {};
+    std::vector<uint32_t> recordLiteralIndex_ {};
+
+    std::map<std::pair<const JSPandaFile *, uint32_t>, GlobalTSTypeRef> literalOffsetGTMap_ {};
+    std::vector<uint32_t> builtinOffsets_ {};
+    JSPandaFile *builtinPandaFile_ {nullptr};
+    CString builtinsRecordName_ {""};
+    std::map<LocalModuleInfo, GlobalTSTypeRef> localModuleVarGtMap_{};
 };
 }  // namespace panda::ecmascript
 

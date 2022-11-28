@@ -43,3 +43,15 @@ function tryPhi(v: number, b: number): void {
 }
 
 tryPhi(<number><Object>'a', 1);
+
+function tryLoop(v: number, b: number): void {
+    let a : number = 1;
+    let ret: number = 1;
+
+    for (var i = 0; i < b; i++) {
+        ret = a + v;
+    }
+    print(ret);
+}
+
+tryLoop(<number><Object>'a', 1);

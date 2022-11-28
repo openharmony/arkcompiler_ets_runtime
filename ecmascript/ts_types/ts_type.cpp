@@ -12,16 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ts_type.h"
+#include "ecmascript/ts_types/ts_type.h"
 
-#include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/layout_info.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/ts_types/ts_obj_layout_info.h"
-#include "ecmascript/ts_types/ts_type_table.h"
 
 namespace panda::ecmascript {
 JSHClass *TSObjectType::GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType, TSObjectTypeKind kind)
@@ -188,6 +182,73 @@ GlobalTSTypeRef TSClassType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassTyp
     return propTypeGT;
 }
 
+GlobalTSTypeRef TSClassType::GetSuperPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                                JSHandle<EcmaString> propName, PropertyType propType)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
+    GlobalTSTypeRef propTypeGT = GlobalTSTypeRef::Default();
+    GlobalTSTypeRef notExistPropGt = kungfu::GateType::UndefinedType().GetGTRef();
+    GlobalTSTypeRef superClassTypeGT = mutableClassType->GetExtensionGT();
+    if (superClassTypeGT.IsDefault()) {  // end of prototype chain
+        return notExistPropGt;
+    }
+    ASSERT(propType != PropertyType::OTHERS);
+    bool isStatic = propType == PropertyType::STATIC;
+    mutableClassType.Update(tsManager->GetTSType(superClassTypeGT).GetTaggedValue());
+    JSMutableHandle<TSObjectType> mutablePropTypes(thread, isStatic ?
+        mutableClassType->GetConstructorType() : mutableClassType->GetPrototypeType());
+    while (propTypeGT.IsDefault()) {
+        propTypeGT = TSObjectType::GetPropTypeGT(mutablePropTypes, propName);
+        GlobalTSTypeRef classTypeGT = mutableClassType->GetExtensionGT();
+        if (classTypeGT.IsDefault()) {  // end of prototype chain
+            break;
+        }
+        JSTaggedValue tmpType = tsManager->GetTSType(classTypeGT).GetTaggedValue();
+        if (tmpType.IsUndefined()) { // this is for builtin.d.abc
+            return GlobalTSTypeRef::Default();
+        }
+        mutableClassType.Update(tmpType);
+        mutablePropTypes.Update(isStatic ?
+            mutableClassType->GetConstructorType() : mutableClassType->GetPrototypeType());
+    }
+    return propTypeGT.IsDefault() ? notExistPropGt : propTypeGT;
+}
+
+GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                                    JSHandle<EcmaString> propName)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+
+    JSHandle<TSObjectType> instanceType(thread, classType->GetInstanceType());
+
+    GlobalTSTypeRef propTypeGT = TSObjectType::GetPropTypeGT(instanceType, propName);
+    if (!propTypeGT.IsDefault()) {
+        return propTypeGT;
+    }
+
+    // search on prototype chain
+    JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
+    JSMutableHandle<TSObjectType> mutablePrototypeType(thread, classType->GetPrototypeType());
+    while (propTypeGT.IsDefault()) {  // not find
+        propTypeGT = TSObjectType::GetPropTypeGT(mutablePrototypeType, propName);
+        GlobalTSTypeRef classTypeGT = mutableClassType->GetExtensionGT();
+        if (classTypeGT.IsDefault()) {  // end of prototype chain
+            break;
+        }
+
+        JSTaggedValue tmpType = tsManager->GetTSType(classTypeGT).GetTaggedValue();
+        if (tmpType.IsUndefined()) {
+            return GlobalTSTypeRef::Default();
+        }
+        mutableClassType.Update(tmpType);
+        mutablePrototypeType.Update(mutableClassType->GetPrototypeType());
+    }
+    return propTypeGT;
+}
+
 GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassInstanceType> classInstanceType,
                                                    JSHandle<EcmaString> propName)
 {
@@ -202,30 +263,7 @@ GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TS
 
     ASSERT(type->IsTSClassType());
     JSHandle<TSClassType> classType(type);
-    JSHandle<TSObjectType> instanceType(thread, classType->GetInstanceType());
-
-    GlobalTSTypeRef propTypeGT = TSObjectType::GetPropTypeGT(instanceType, propName);
-    if (!propTypeGT.IsDefault()) {
-        return propTypeGT;
-    }
-
-    // search on prototype chain
-    JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
-    JSMutableHandle<TSObjectType> mutablePrototypeType(thread, classType->GetPrototypeType());
-    while (propTypeGT.IsDefault()) {  // not find
-        propTypeGT = TSObjectType::GetPropTypeGT(mutablePrototypeType, propName);
-        classTypeGT = mutableClassType->GetExtensionGT();
-        if (classTypeGT.IsDefault()) {  // end of prototype chain
-            break;
-        }
-
-        JSTaggedValue tmpType = tsManager->GetTSType(classTypeGT).GetTaggedValue();
-        if (tmpType.IsUndefined()) {
-            return GlobalTSTypeRef::Default();
-        }
-        mutableClassType.Update(tmpType);
-        mutablePrototypeType.Update(mutableClassType->GetPrototypeType());
-    }
+    GlobalTSTypeRef propTypeGT = TSClassType::GetNonStaticPropTypeGT(thread, classType, propName);
     return propTypeGT;
 }
 
@@ -285,5 +323,44 @@ GlobalTSTypeRef TSIteratorInstanceType::GetPropTypeGT(JSThread *thread,
         return propGt;
     }
     return GlobalTSTypeRef::Default();
+}
+
+GlobalTSTypeRef TSInterfaceType::GetPropTypeGT(JSThread *thread, JSHandle<TSInterfaceType> interfaceType,
+                                               JSHandle<EcmaString> propName)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+
+    JSMutableHandle<TSInterfaceType> mutableInterfaceType(thread, interfaceType.GetTaggedValue());
+    JSMutableHandle<TSObjectType> mutableFieldsType(thread, mutableInterfaceType->GetFields());
+    GlobalTSTypeRef propTypeGT = GlobalTSTypeRef::Default();
+    propTypeGT = TSObjectType::GetPropTypeGT(mutableFieldsType, propName);
+
+    TaggedArray* extendsArray = TaggedArray::Cast(mutableInterfaceType->GetExtends().GetTaggedObject());
+    uint32_t extendsLength = extendsArray->GetLength();
+
+    for (uint32_t index = 0; index < extendsLength; index++) {
+        if (!propTypeGT.IsDefault()) {
+            return propTypeGT;
+        }
+
+        JSTaggedValue extendsValue = extendsArray->Get(index);
+        ASSERT(extendsValue.IsInt());
+        uint32_t gtRawData = extendsValue.GetInt();
+        GlobalTSTypeRef extendsGT = GlobalTSTypeRef(gtRawData);
+        JSHandle<JSTaggedValue> extendsType = tsManager->GetTSType(extendsGT);
+
+        ASSERT(extendsType->IsTSType());
+
+        if (extendsType->IsTSClassType()) {
+            JSHandle<TSClassType> innerClassType(extendsType);
+            propTypeGT = TSClassType::GetNonStaticPropTypeGT(thread, innerClassType, propName);
+        } else if (extendsType->IsTSInterfaceType()) {
+            JSHandle<TSInterfaceType> extendsInterfaceType(extendsType);
+            propTypeGT = TSInterfaceType::GetPropTypeGT(thread, extendsInterfaceType, propName);
+        }
+    }
+
+    return propTypeGT;
 }
 } // namespace panda::ecmascript

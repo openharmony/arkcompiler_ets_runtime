@@ -779,29 +779,10 @@ DEF_CALL_SIGNATURE(JSProxyCallInternalWithArgV)
 
 DEF_CALL_SIGNATURE(JSFunctionEntry)
 {
-    // 6 : 6 input parameters
-    CallSignature jsCallFunctionEntry("JSFunctionEntry", 0, 6,
+    // 5 : 5 input parameters
+    CallSignature jsCallFunctionEntry("JSFunctionEntry", 0, 5,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = jsCallFunctionEntry;
-    std::array<VariableType, 6> params = {  // 6 : 6 input parameters
-        VariableType::NATIVE_POINTER(),     // glue
-        VariableType::NATIVE_POINTER(),     // prev fp
-        VariableType::INT64(),              // expectedNumArgs
-        VariableType::INT64(),              // actualNumArgs
-        VariableType::NATIVE_POINTER(),     // argv
-        VariableType::NATIVE_POINTER(),     // codeAddr
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
-}
-
-DEF_CALL_SIGNATURE(JSFunctionReentry)
-{
-    // 5 : 5 input parameters
-    CallSignature jsCallFunctionReentry("JSFunctionReentry", 0, 5,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = jsCallFunctionReentry;
     std::array<VariableType, 5> params = {  // 5 : 5 input parameters
         VariableType::NATIVE_POINTER(),     // glue
         VariableType::INT64(),              // argc
@@ -1168,21 +1149,6 @@ DEF_CALL_SIGNATURE(InsertOldToNewRSet)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(AotFloatMod)
-{
-    // 2 : 2 input parameters
-    CallSignature index("AotFloatMod", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = index;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::FLOAT64(),
-        VariableType::FLOAT64(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(false);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(FloatMod)
 {
     // 2 : 2 input parameters
@@ -1191,6 +1157,90 @@ DEF_CALL_SIGNATURE(FloatMod)
     // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::FLOAT64(),
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(FloatSqrt)
+{
+    // 1 : 1 input parameters
+    CallSignature index("FloatSqrt", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(FloatCos)
+{
+    // 1 : 1 input parameters
+    CallSignature index("FloatCos", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(FloatSin)
+{
+    // 1 : 1 input parameters
+    CallSignature index("FloatSin", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(FloatACos)
+{
+    // 1 : 1 input parameters
+    CallSignature index("FloatACos", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(FloatATan)
+{
+    // 1 : 1 input parameters
+    CallSignature index("FloatATan", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(FloatFloor)
+{
+    // 1 : 1 input parameters
+    CallSignature index("FloatFloor", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
         VariableType::FLOAT64(),
     };
     callSign->SetParameters(params.data());

@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_CALLEE_REG_H
-#define ECMASCRIPT_COMPILER_CALLEE_REG_H
+#ifndef ECMASCRIPT_DEOPTIMIZER_CALLEE_REG_H
+#define ECMASCRIPT_DEOPTIMIZER_CALLEE_REG_H
+
 #include <map>
 #include "ecmascript/common.h"
 #include "ecmascript/llvm_stackmap_type.h"
@@ -31,14 +32,14 @@ enum class DwarfReg: DwarfRegType {
 #elif defined(PANDA_TARGET_ARM64)
 static const int MAX_CALLEE_SAVE_REIGISTER_NUM = 32;
 enum class DwarfReg: DwarfRegType {
-    D8 = 8,
-    D9 = 9,
-    D10 = 10,
-    D11 = 11,
-    D12 = 12,
-    D13 = 13,
-    D14 = 14,
-    D15 = 15,
+    D8 = 72,
+    D9 = 73,
+    D10 = 74,
+    D11 = 75,
+    D12 = 76,
+    D13 = 77,
+    D14 = 78,
+    D15 = 79,
 
     X19 = 19,
     X20 = 20,
@@ -67,4 +68,4 @@ private:
     std::map<DwarfReg, int> reg2Location_;
 };
 } // namespace panda::ecmascript
-#endif  // ECMASCRIPT_COMPILER_CALLEE_REG_H
+#endif  // ECMASCRIPT_DEOPTIMIZER_CALLEE_REG_H

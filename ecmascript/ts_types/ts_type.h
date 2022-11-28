@@ -17,13 +17,8 @@
 #define ECMASCRIPT_TS_TYPES_TS_TYPE_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/property_attributes.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
-
-#include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
 enum class TSObjectTypeKind: uint8_t {
@@ -73,6 +68,7 @@ public:
 
 private:
     JSHClass *CreateHClassByProps(JSThread *thread, JSHandle<TSObjLayoutInfo> propType) const;
+
     JSHClass *CreatePrototypeHClassByProps(JSThread *thread, JSHandle<TSObjLayoutInfo> propType) const;
 };
 
@@ -85,6 +81,12 @@ public:
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
                                          JSHandle<EcmaString> propName);
+
+    static GlobalTSTypeRef GetSuperPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                              JSHandle<EcmaString> propName, PropertyType propType);
+
+    static GlobalTSTypeRef GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                                  JSHandle<EcmaString> propName);
 
     ACCESSORS(InstanceType, INSTANCE_TYPE_OFFSET, CONSTRUCTOR_TYPE_OFFSET);
     ACCESSORS(ConstructorType, CONSTRUCTOR_TYPE_OFFSET, PROTOTYPE_TYPE_OFFSET);
@@ -123,20 +125,6 @@ public:
     DECL_DUMP()
 };
 
-class TSImportType : public TSType {
-public:
-    CAST_CHECK(TSImportType, IsTSImportType);
-
-    static constexpr size_t IMPORT_TYPE_ID_OFFSET = TSType::SIZE;
-    static constexpr size_t IMPORT_PATH_OFFSET_IN_LITERAL = 1;
-    ACCESSORS(ImportPath, IMPORT_TYPE_ID_OFFSET, TARGET_GT_OFFSET);
-    ACCESSORS_ATTACHED_TYPEREF(TargetGT, TARGET_GT_OFFSET, LAST_OFFSET);
-    DEFINE_ALIGN_SIZE(LAST_OFFSET);
-
-    DECL_VISIT_OBJECT(IMPORT_TYPE_ID_OFFSET, TARGET_GT_OFFSET)
-    DECL_DUMP()
-};
-
 class TSUnionType : public TSType {
 public:
     CAST_CHECK(TSUnionType, IsTSUnionType);
@@ -153,6 +141,12 @@ public:
 class TSInterfaceType : public TSType {
 public:
     CAST_CHECK(TSInterfaceType, IsTSInterfaceType);
+
+    // every field record name, typeIndex, accessFlag, readonly
+    static constexpr size_t FIELD_LENGTH = 4;
+
+    static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSInterfaceType> classInstanceType,
+                                         JSHandle<EcmaString> propName);
 
     static constexpr size_t EXTENDS_TYPE_ID_OFFSET = TSType::SIZE;
     ACCESSORS(Extends, EXTENDS_TYPE_ID_OFFSET, KEYS_OFFSET);
@@ -179,7 +173,8 @@ public:
     ACCESSORS(ParameterTypes, PARAMETER_TYPES_OFFSET, RETURN_GT_OFFSET);
     ACCESSORS_ATTACHED_TYPEREF(ReturnGT, RETURN_GT_OFFSET, THIS_GT_OFFSET);
     ACCESSORS_ATTACHED_TYPEREF(ThisGT, THIS_GT_OFFSET, BIT_FIELD_OFFSET);
-    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, METHOD_OFFSET_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(MethodOffset, uint32_t, METHOD_OFFSET_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     enum class Visibility : uint8_t { PUBLIC = 0, PRIVATE, PROTECTED };
@@ -189,10 +184,12 @@ public:
     static constexpr size_t STATIC_BITS = 1;
     static constexpr size_t ASYNC_BITS = 1;
     static constexpr size_t GENERATOR_BITS = 1;
+    static constexpr size_t GETTERSETTER_BITS = 1;
     FIRST_BIT_FIELD(BitField, Visibility, Visibility, VISIBILITY_BITS);
     NEXT_BIT_FIELD(BitField, Static, bool, STATIC_BITS, Visibility);
     NEXT_BIT_FIELD(BitField, Async, bool, ASYNC_BITS, Static);
     NEXT_BIT_FIELD(BitField, Generator, bool, GENERATOR_BITS, Async);
+    NEXT_BIT_FIELD(BitField, IsGetterSetter, bool, GETTERSETTER_BITS, Generator);
 
     DECL_VISIT_OBJECT(NAME_OFFSET, RETURN_GT_OFFSET)
     DECL_DUMP()

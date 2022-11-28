@@ -43,15 +43,14 @@ enum BytecodeFlags : uint32_t {
 
 enum BytecodeKind : uint32_t {
     GENERAL = 0,
-    CALL_BC = 1,
-    THROW_BC = 2,
-    RETURN_BC = 3,
-    JUMP_IMM = 4,
-    CONDITIONAL_JUMP = 5,
-    MOV = 6,
-    SET_CONSTANT = 7,
-    GENERATOR = 8,
-    DISCARDED = 9,
+    THROW_BC,
+    RETURN_BC,
+    JUMP_IMM,
+    CONDITIONAL_JUMP,
+    MOV,
+    SET_CONSTANT,
+    GENERATOR,
+    DISCARDED,
 };
 
 class BytecodeMetaData {
@@ -111,11 +110,6 @@ public:
         return GetKind() == BytecodeKind::SET_CONSTANT;
     }
 
-    bool IsCall() const
-    {
-        return GetKind() == BytecodeKind::CALL_BC;
-    }
-
     bool SupportDeopt() const
     {
         return HasFlag(BytecodeFlags::SUPPORT_DEOPT);
@@ -172,7 +166,7 @@ private:
     uint32_t value_ {0};
     friend class Bytecodes;
     friend class BytecodeInfo;
-    friend class BytecodeIterator;
+    friend class BytecodeCircuitBuilder;
 };
 
 class Bytecodes {
@@ -480,19 +474,9 @@ public:
         return metaData_.IsGeneral();
     }
 
-    bool IsCall() const
-    {
-        return metaData_.IsCall();
-    }
-
     bool IsGeneratorRelative() const
     {
         return metaData_.IsGeneratorRelative();
-    }
-
-    size_t ComputeBCOffsetInputCount() const
-    {
-        return IsCall() ? 1 : 0;
     }
 
     size_t ComputeValueInputCount() const
@@ -505,11 +489,6 @@ public:
         return (AccOut() ? 1 : 0) + vregOut.size();
     }
 
-    size_t ComputeTotalValueCount() const
-    {
-        return ComputeValueInputCount() + ComputeBCOffsetInputCount();
-    }
-
     bool IsBc(EcmaOpcode ecmaOpcode) const
     {
         return metaData_.GetOpcode() == ecmaOpcode;
@@ -520,22 +499,27 @@ public:
         return metaData_.GetOpcode();
     }
 
-    const uint8_t *GetPC() const
-    {
-        return pc_;
-    }
+    static void InitBytecodeInfo(BytecodeCircuitBuilder *builder,
+        BytecodeInfo &info, const uint8_t* pc);
 
 private:
     BytecodeMetaData metaData_ { 0 };
-    const uint8_t *pc_ {nullptr};
-    friend class BytecodeIterator;
+    friend class BytecodeCircuitBuilder;
 };
 
 class BytecodeIterator {
 public:
     BytecodeIterator() = default;
+    explicit BytecodeIterator(BytecodeCircuitBuilder *builder,
+        uint32_t start, uint32_t end)
+        : builder_(builder), start_(start), end_(end) {}
     void Reset(BytecodeCircuitBuilder *builder,
-        const uint8_t *start, const uint8_t *end);
+        uint32_t start, uint32_t end)
+    {
+        builder_ = builder;
+        start_ = start;
+        end_ = end;
+    }
 
     BytecodeIterator& operator++()
     {
@@ -559,19 +543,19 @@ public:
 
     void GotoStart()
     {
-        index_ = 0;
+        index_ = start_;
         ASSERT(InRange());
     }
 
     void GotoEnd()
     {
-        index_ = infoData_.size() - 1;
+        index_ = end_;
         ASSERT(InRange());
     }
 
     bool InRange() const
     {
-        return (index_ < static_cast<int32_t>(infoData_.size())) && (index_ >= 0);
+        return (index_ <= end_) && (index_ >= start_);
     }
 
     bool Done() const
@@ -579,45 +563,22 @@ public:
         return !InRange();
     }
 
-    const BytecodeInfo &GetBytecodeInfo() const
+    uint32_t Index() const
     {
-        return infoData_[index_];
+        return index_;
     }
 
-    size_t Index() const
-    {
-        return static_cast<size_t>(index_);
-    }
-
-    const uint8_t* CurrentPc() const
-    {
-        return GetBytecodeInfo().GetPC();
-    }
-
-    const uint8_t *PeekNextPc(size_t i) const
-    {
-        ASSERT((Index() + i) < infoData_.size());
-        return infoData_[index_ + i].GetPC();
-    }
-
-    const uint8_t *PeekPrevPc(size_t i) const
-    {
-        ASSERT((index_ - i) >= 0);
-        return infoData_[index_ - i].GetPC();
-    }
-
-    size_t GetEndBcIndex() const
-    {
-        return static_cast<size_t>(infoData_.size() - 1);
-    }
+    const BytecodeInfo &GetBytecodeInfo() const;
+    const uint8_t *PeekNextPc(size_t i) const;
+    const uint8_t *PeekPrevPc(size_t i) const;
 
 private:
-    void InitBytecodeInfo(BytecodeCircuitBuilder *builder,
-        BytecodeInfo &info, const uint8_t *pc);
-
     static constexpr int32_t INVALID_INDEX = -1;
-    int32_t index_{ INVALID_INDEX };
-    std::vector<BytecodeInfo> infoData_ {};
+
+    BytecodeCircuitBuilder *builder_ {nullptr};
+    uint32_t start_ {0};
+    uint32_t end_ {0};
+    uint32_t index_{ INVALID_INDEX };
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODES_H

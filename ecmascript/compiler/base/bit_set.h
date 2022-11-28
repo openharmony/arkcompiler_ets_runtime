@@ -40,8 +40,8 @@ public:
     ~BitSet()
     {
         if (UseWords()) {
-            delete data_.words_;
-            data_.words_ = nulltpr;
+            delete[] data_.words_;
+            data_.words_ = nullptr;
         }
     }
 
@@ -86,13 +86,13 @@ public:
     bool UnionWithChanged(const BitSet &bitset)
     {
         if (!UseWords()) {
-            auto oldValue = bitset.data_.inlineWord_;
+            auto oldValue = data_.inlineWord_;
             data_.inlineWord_ |= bitset.data_.inlineWord_;
             return data_.inlineWord_ != oldValue;
         } else {
             bool changed = false;
             for (size_t i = 0; i < wordCount_; i++) {
-                auto oldValue = bitset.data_.words_[i];
+                auto oldValue = data_.words_[i];
                 data_.words_[i] |= bitset.data_.words_[i];
                 if (!changed && data_.words_[i] != oldValue) {
                     changed = true;
@@ -104,9 +104,10 @@ public:
 
     void CopyFrom(const BitSet &other)
     {
+        ASSERT(wordCount_ == other.wordCount_);
         wordCount_ = other.wordCount_;
-        data_.inlineWord_ = other.data_.inlineWord_;
         if (!UseWords()) {
+            data_.inlineWord_ = other.data_.inlineWord_;
             return;
         }
         for (size_t i = 0; i < wordCount_; i++) {
@@ -115,7 +116,7 @@ public:
     }
 private:
     union Data {
-        uint64_t inlineWord_ {0};
+        uint64_t inlineWord_;
         uint64_t *words_ {nullptr};
     };
     static size_t SizeOf(size_t bitSize)

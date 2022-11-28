@@ -901,27 +901,31 @@ GateRef StubBuilder::TaggedToRepresentation(GateRef value)
 
 void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
 {
-    auto depend = env_->GetCurrentLabel()->GetDepend();
-    GateRef ptr = PtrAdd(base, offset);
-    GateRef result = env_->GetCircuit()->NewGate(
-        OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
-    env_->GetCurrentLabel()->SetDepend(result);
-    if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
-        auto env = GetEnvironment();
-        Label entry(env);
-        env->SubCfgEntry(&entry);
-        Label exit(env);
-        Label isHeapObject(env);
+    if (!env_->IsAsmInterp()) {
+        env_->GetBuilder()->Store(type, glue, base, offset, value);
+    } else {
+        auto depend = env_->GetCurrentLabel()->GetDepend();
+        GateRef ptr = PtrAdd(base, offset);
+        GateRef result = env_->GetCircuit()->NewGate(
+            OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
+        env_->GetCurrentLabel()->SetDepend(result);
+        if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
+            auto env = GetEnvironment();
+            Label entry(env);
+            env->SubCfgEntry(&entry);
+            Label exit(env);
+            Label isHeapObject(env);
 
-        Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
-        Bind(&isHeapObject);
-        {
-            UpdateLeaveFrameAndCallNGCRuntime(
-                glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
-            Jump(&exit);
+            Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
+            Bind(&isHeapObject);
+            {
+                UpdateLeaveFrameAndCallNGCRuntime(
+                    glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
+                Jump(&exit);
+            }
+            Bind(&exit);
+            env->SubCfgExit();
         }
-        Bind(&exit);
-        env->SubCfgExit();
     }
 }
 
@@ -4179,26 +4183,24 @@ GateRef StubBuilder::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRe
 
 GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label cacheMiss(env);
+    GateRef module = Circuit::NullGate();
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::STRING);
+}
 
-    auto cacheValue = GetObjectFromConstPool(constpool, index);
-    DEFVARIABLE(result, VariableType::JS_ANY(), cacheValue);
-    Branch(TaggedIsHole(cacheValue), &cacheMiss, &exit);
-    Bind(&cacheMiss);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(GetStringFromCache),
-            { constpool, IntToTaggedInt(index) });
-        Jump(&exit);
-    }
+GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index)
+{
+    GateRef module = Circuit::NullGate();
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::METHOD);
+}
 
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+GateRef StubBuilder::GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
+{
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::ARRAY_LITERAL);
+}
+
+GateRef StubBuilder::GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
+{
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::OBJECT_LITERAL);
 }
 
 GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)
@@ -4395,6 +4397,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label methodNotNative(env);
     Branch(Int64NotEqual(Int64And(callField, isNativeMask), Int64(0)), &methodIsNative, &methodNotNative);
     auto data = std::begin(args);
+    Label notFastBuiltinsArg0(env);
+    Label notFastBuiltinsArg1(env);
+    Label notFastBuiltinsArg2(env);
+    Label notFastBuiltinsArg3(env);
     // 3. call native
     Bind(&methodIsNative);
     {
@@ -4405,11 +4411,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         GateRef numArgs = Int32Add(actualNumArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0: {
-                Label notFastBuiltins(env);
                 thisValue = data[0];
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
-                    method, &notFastBuiltins, &exit, &result, args, mode);
-                Bind(&notFastBuiltins);
+                    method, &notFastBuiltinsArg0, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg0);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue });
                 break;
@@ -4420,11 +4425,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, thisValue });
                 break;
             case JSCallMode::CALL_THIS_ARG1: {
-                Label notFastBuiltins(env);
                 thisValue = data[1];
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
-                    method, &notFastBuiltins, &exit, &result, args, mode);
-                Bind(&notFastBuiltins);
+                    method, &notFastBuiltinsArg1, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg1);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
                 break;
@@ -4435,11 +4439,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0]});
                 break;
             case JSCallMode::CALL_THIS_ARG2: {
-                Label notFastBuiltins(env);
                 thisValue = data[2];
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
-                    method, &notFastBuiltins, &exit, &result, args, mode);
-                Bind(&notFastBuiltins);
+                    method, &notFastBuiltinsArg2, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg2);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
                 break;
@@ -4450,11 +4453,10 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, thisValue, data[0], data[1] });
                 break;
             case JSCallMode::CALL_THIS_ARG3: {
-                Label notFastBuiltins(env);
                 thisValue = data[3];
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
-                    method, &notFastBuiltins, &exit, &result, args, mode);
-                Bind(&notFastBuiltins);
+                    method, &notFastBuiltinsArg3, &exit, &result, args, mode);
+                Bind(&notFastBuiltinsArg3);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func,
                         newTarget, thisValue, data[0], data[1], data[2] }); // 2: args2

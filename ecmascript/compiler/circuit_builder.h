@@ -17,12 +17,14 @@
 #define ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_H
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_array.h"
@@ -103,7 +105,7 @@ class Variable;
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(V)                       \
     V(TruncFloatToInt64, OpCode::TRUNC_FLOAT_TO_INT64)                         \
-    V(ExtFloat32ToDouble, OpCode::FEXT)                       \
+    V(ExtFloat32ToDouble, OpCode::FEXT)                                        \
     V(TruncDoubleToFloat32, OpCode::FTRUNC)
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                              \
@@ -131,11 +133,9 @@ public:
         TRIPLE_AARCH64,
         TRIPLE_ARM32,
     };
-    // fake parameters for register r1 ~ r3
-    static constexpr int FAKE_REGISTER_PARAMTERS_ARM32 = 3;
 
-    CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isEnableBcTrace = false)
-        : triple_(GetTripleFromString(triple)), isEnableBcTrace_(isEnableBcTrace), enablePGOProfiler_(enablePGOProfiler)
+    CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false)
+        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler)
     {
     }
     ~CompilationConfig() = default;
@@ -165,9 +165,9 @@ public:
         return triple_;
     }
 
-    bool IsEnableByteCodeTrace() const
+    bool IsTraceBC() const
     {
-        return isEnableBcTrace_;
+        return isTraceBc_;
     }
 
     bool IsEnablePGOProfiler() const
@@ -192,7 +192,7 @@ private:
         UNREACHABLE();
     }
     Triple triple_;
-    bool isEnableBcTrace_;
+    bool isTraceBc_;
     bool enablePGOProfiler_;
 };
 
@@ -209,8 +209,11 @@ public:
     // low level interface
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef TypeCheck(GateType type, GateRef gate);
+    GateRef CallTargetCheck(GateRef function, GateRef id);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
+    GateRef TypedCallOperator(MachineType type, GateRef state, GateRef depend, std::vector<GateRef> inList);
+    inline GateRef TypedCallBuiltin(GateRef x, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
@@ -254,6 +257,7 @@ public:
     GateRef BinaryLogic(OpCode opcode, GateRef left, GateRef right);
     GateRef BinaryCmp(OpCode opcode, GateRef left, GateRef right, BitField condition);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
+    GateRef GetCallBuiltinId(GateRef method);
     Circuit *GetCircuit() const
     {
         return circuit_;
@@ -383,6 +387,7 @@ public:
     inline GateRef DoubleNotEqual(GateRef x, GateRef y);
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
+    inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     template<OpCode::Op Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
@@ -406,17 +411,23 @@ public:
 
     // middle ir: object operations
     GateRef ToLength(GateRef receiver);
+    template<TypedLoadOp Op>
     GateRef LoadElement(GateRef receiver, GateRef index);
+    template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef offset);
     GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);
-    GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
+    GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
+    GateRef Construct(std::vector<GateRef> args);
 
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
+    inline GateRef IsDictionaryMode(GateRef object);
+    inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     inline GateRef IsJsType(GateRef object, JSType type);
     inline GateRef GetObjectType(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
+    inline GateRef DoubleIsINF(GateRef x);
     inline GateRef IsDictionaryElement(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);
     inline GateRef IsClassPrototype(GateRef object);
@@ -429,6 +440,7 @@ public:
     inline GateRef LogicAnd(GateRef x, GateRef y);
     inline GateRef LogicOr(GateRef x, GateRef y);
     inline GateRef BothAreString(GateRef x, GateRef y);
+    inline GateRef GetObjectSizeFromHClass(GateRef hClass);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
@@ -444,6 +456,10 @@ public:
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
+    GateRef GetConstPool(GateRef jsFunc);
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type);
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef constPool, GateRef module, GateRef index,
+                                   ConstPoolType type);
     void SetEnvironment(Environment *env)
     {
         env_ = env;
@@ -486,6 +502,8 @@ public:
     static const int OPRAND_TYPE_BITS = 32;
 
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
+    GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);
+    GateRef IsBase(GateRef ctor);
 
 private:
     Circuit *circuit_ {nullptr};
@@ -524,6 +542,7 @@ public:
     inline GateRef GetControl() const;
     inline GateRef GetDepend() const;
     inline void SetDepend(GateRef depend);
+
 private:
     class LabelImpl {
     public:
@@ -574,6 +593,7 @@ private:
         {
             return depend_;
         }
+
     private:
         bool IsNeedSeal() const;
         bool IsSealed() const
@@ -596,6 +616,7 @@ private:
         std::vector<LabelImpl *> predecessors_;
         std::map<Variable *, GateRef> incompletePhis_;
     };
+
     explicit Label(LabelImpl *impl) : impl_(impl) {}
     friend class Environment;
     LabelImpl *GetRawLabel() const
@@ -680,6 +701,7 @@ public:
     inline void SubCfgEntry(Label *entry);
     inline void SubCfgExit();
     inline GateRef GetInput(size_t index) const;
+
 private:
     Label *currentLabel_ {nullptr};
     Circuit *circuit_ {nullptr};
@@ -752,6 +774,7 @@ public:
     {
         return id_;
     }
+
 private:
     Circuit* GetCircuit() const
     {

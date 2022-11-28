@@ -20,6 +20,7 @@ group("ark_aot_js_test") {
     "constructor_returns_non_object:constructor_returns_non_objectAotAction",
 
     #"dynamicimport:dynamicimportAotAction",
+    "emptyif:emptyifAotAction",
     "formatrangetoparts:formatrangetopartsAotAction",
 
     #"module:moduleAotAction",
@@ -36,7 +37,9 @@ group("ark_aot_test") {
     "aot_type_test:aot_type_test",
     "ashr:ashrAotAction",
     "asyncgenerator:asyncgeneratorAotAction",
+    "await:awaitAotAction",
     "bind:bindAotAction",
+    "builtinmath:builtinmathAotAction",
     "call_same_bytecode_func:call_same_bytecode_funcAotAction",
     "callithisrange:callithisrangeAotAction",
     "calls:callsAotAction",
@@ -67,6 +70,9 @@ group("ark_aot_test") {
     "exceptionhandler:exceptionhandlerAotAction",
     "exp:expAotAction",
     "forloop:forloopAotAction",
+
+    # "framestatesasync:framestatesasyncAotAction",
+    "framestatesphi:framestatesphiAotAction",
     "generatorcontinuefinally:generatorcontinuefinallyAotAction",
     "getiterator:getiteratorAotAction",
     "getiteratornext:getiteratornextAotAction",
@@ -78,6 +84,7 @@ group("ark_aot_test") {
     "global_this_ts:global_this_tsAotAction",
     "helloaot:helloaotAotAction",
     "inc:incAotAction",
+    "inline:inlineAotAction",
     "instanceof:instanceofAotAction",
     "isfalse:isfalseAotAction",
     "isin:isinAotAction",

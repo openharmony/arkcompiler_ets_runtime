@@ -14,12 +14,14 @@
 group("aot_type_test") {
   testonly = true
   deps = [
+    "float32Array:float32ArrayAotAction",
     "typeadd:typeaddAotAction",
     "typediv:typedivAotAction",
     "typeequal:typeequalAotAction",
     "typelogicalop:typelogicalopAotAction",
     "typemod:typemodAotAction",
     "typemul:typemulAotAction",
+    "typenewsuper:typenewsuperAotAction",
     "typenotequal:typenotequalAotAction",
     "typesub:typesubAotAction",
   ]

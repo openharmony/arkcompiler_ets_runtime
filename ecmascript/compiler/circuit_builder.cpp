@@ -153,7 +153,12 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef ind
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto guard = currentLabel->GetDepend();
-    auto currentDepend = acc_.GetDep(guard);
+    auto currentDepend = Circuit::NullGate();
+    if (acc_.GetOpCode(guard) != OpCode::GUARD) {
+        currentDepend = guard;
+    } else {
+        currentDepend = acc_.GetDep(guard);
+    }
     GateRef ret = GetCircuit()->NewGate(OpCode(OpCode::OBJECT_TYPE_CHECK), static_cast<uint64_t>(type.Value()),
                                         {currentControl, currentDepend, gate, index}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -165,6 +170,23 @@ GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate)
 {
     return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CHECK), static_cast<uint64_t>(type.Value()),
                                  {gate}, GateType::NJSValue());
+}
+
+GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto state = currentLabel->GetControl();
+    auto depend = currentLabel->GetDepend();
+    std::vector<GateRef> inLists;
+    inLists.emplace_back(state);
+    inLists.emplace_back(depend);
+    inLists.emplace_back(function);
+    inLists.emplace_back(id);
+    GateRef ret = GetCircuit()->NewGate(OpCode(OpCode::TYPED_CALL_CHECK), inLists.size() - 2, // 2: state&depend
+                                        inLists, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
 }
 
 GateRef CircuitBuilder::GetLexicalEnv(GateRef depend)
@@ -182,6 +204,14 @@ GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, 
     uint64_t operandTypes = (static_cast<uint64_t>(typeLeft.Value()) << OPRAND_TYPE_BITS) |
                           static_cast<uint64_t>(typeRight.Value());
     return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, operandTypes, inList, gateType);
+}
+
+GateRef CircuitBuilder::TypedCallOperator(MachineType type, GateRef state, GateRef depend, std::vector<GateRef> inList)
+{
+    BitField number = static_cast<BitField>(inList.size());
+    inList.insert(inList.begin(), depend);
+    inList.insert(inList.begin(), state);
+    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_CALL), type, number, inList, GateType::AnyType());
 }
 
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
@@ -443,37 +473,13 @@ GateRef CircuitBuilder::ToLength(GateRef receiver)
     return ret;
 }
 
-GateRef CircuitBuilder::HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag)
+GateRef CircuitBuilder::HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(OpCode(OpCode::HEAP_ALLOC), flag,
-                                     { currentControl, currentDepend, size }, type);
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_ELEMENT), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, index }, GateType::AnyType());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_ELEMENT), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, index, value }, GateType::AnyType());
+                                     { currentControl, currentDepend, initialHClass }, type);
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -501,6 +507,21 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef offset, GateRef 
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
+}
+
+GateRef CircuitBuilder::Construct(std::vector<GateRef> args)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    uint64_t bitfield = args.size();
+    args.insert(args.begin(), currentDepend);
+    args.insert(args.begin(), currentControl);
+    auto callGate = GetCircuit()->NewGate(OpCode(OpCode::CONSTRUCT), MachineType::I64,
+                                          bitfield, args, GateType::AnyType());
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
 }
 
 GateRef CircuitBuilder::TaggedIsString(GateRef obj)
@@ -589,6 +610,87 @@ GateRef CircuitBuilder::GetLengthFromString(GateRef value)
     return Int32LSR(len, Int32(2));  // 2 : 2 means len must be right shift 2 bits
 }
 
+GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
+{
+    GateRef method = GetMethodFromFunction(jsFunc);
+    return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+}
+
+GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type)
+{
+    GateRef constPool = GetConstPool(jsFunc);
+    GateRef module = GetModuleFromFunction(jsFunc);
+    return GetObjectFromConstPool(glue, constPool, module, index, type);
+}
+
+GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, GateRef module, GateRef index,
+                                               ConstPoolType type)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    Label cacheMiss(env_);
+    Label cache(env_);
+
+    auto cacheValue = GetValueFromTaggedArray(constPool, index);
+    DEFVAlUE(result, env_, VariableType::JS_ANY(), cacheValue);
+    Branch(TaggedIsHole(*result), &cacheMiss, &cache);
+    Bind(&cacheMiss);
+    {
+        if (type == ConstPoolType::STRING) {
+            result = CallRuntime(glue, RTSTUB_ID(GetStringFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index) });
+        } else if (type == ConstPoolType::ARRAY_LITERAL) {
+            result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index), module });
+        } else if (type == ConstPoolType::OBJECT_LITERAL) {
+            result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index), module });
+        } else {
+            result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
+                { constPool, Int32ToTaggedInt(index) });
+        }
+        Jump(&exit);
+    }
+    Bind(&cache);
+    {
+        if (type == ConstPoolType::METHOD) {
+            Label isInt(env_);
+            Branch(TaggedIsInt(*result), &isInt, &exit);
+            Bind(&isInt);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
+                    { constPool, Int32ToTaggedInt(index) });
+                Jump(&exit);
+            }
+        } else if (type == ConstPoolType::ARRAY_LITERAL) {
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
+                    { constPool, Int32ToTaggedInt(index), module });
+                Jump(&exit);
+            }
+        } else if (type == ConstPoolType::OBJECT_LITERAL)  {
+            Label isAOTLiteralInfo(env_);
+            Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+            Bind(&isAOTLiteralInfo);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
+                    { constPool, Int32ToTaggedInt(index), module });
+                Jump(&exit);
+            }
+        } else {
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
 {
     Label subentry(env_);
@@ -671,10 +773,28 @@ GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t
     return Load(type, env, valueIndex);
 }
 
+GateRef CircuitBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
+{
+    GateRef gConstAddr = PtrAdd(glue,
+        IntPtr(JSThread::GlueData::GetGlobalConstOffset(cmpCfg_->Is32Bit())));
+    auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
+    return Load(type, gConstAddr, constantIndex);
+}
+
+GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
+{
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    return Int64And(
+        Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
+        Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
+}
+
 Environment::Environment(size_t arguments, CircuitBuilder *builder)
     : circuit_(builder->GetCircuit()), circuitBuilder_(builder), arguments_(arguments)
 {
     circuitBuilder_->SetEnvironment(this);
+    SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
     for (size_t i = 0; i < arguments; i++) {
         arguments_[i] = circuitBuilder_->Arguments(i);
     }
@@ -689,6 +809,7 @@ Environment::Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder)
     : circuit_(circuit), circuitBuilder_(builder)
 {
     circuitBuilder_->SetEnvironment(this);
+    SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
     GateAccessor acc(circuit);
     entry_ = Label(NewLabel(this, acc.GetIn(hir, 0)));
     currentLabel_ = &entry_;
@@ -704,6 +825,7 @@ Environment::Environment(GateRef stateEntry, GateRef dependEntry, std::vector<Ga
     Circuit *circuit, CircuitBuilder *builder) : circuit_(circuit), circuitBuilder_(builder)
 {
     circuitBuilder_->SetEnvironment(this);
+    SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
     entry_ = Label(NewLabel(this, stateEntry));
     currentLabel_ = &entry_;
     currentLabel_->Seal();

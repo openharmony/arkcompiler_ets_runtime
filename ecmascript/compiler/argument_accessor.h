@@ -57,6 +57,10 @@ public:
     {
         return args_.at(index);
     }
+    size_t ArgsCount() const
+    {
+        return args_.size();
+    }
     void FillArgsGateType(const TypeRecorder *typeRecorder);
     void CollectArgs();
     static size_t GetFixArgsNum()
@@ -67,6 +71,7 @@ public:
 private:
     size_t GetFunctionArgIndex(const size_t currentVreg, const bool haveFunc,
                                const bool haveNewTarget, const bool haveThis) const;
+    GateRef GetTypedArgGate(const size_t argIndex) const;
 
     Circuit *circuit_ {nullptr};
     const MethodLiteral *method_ {nullptr};

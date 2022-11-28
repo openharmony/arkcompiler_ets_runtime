@@ -146,9 +146,6 @@ public:
                                  GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
     inline void DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
-    GateRef GetMethodFromConstPool(GateRef constpool, GateRef index);
-    GateRef GetArrayLiteralFromConstPool(GateRef constpool, GateRef index, GateRef module);
-    GateRef GetObjectLiteralFromConstPool(GateRef constpool, GateRef index, GateRef module);
     template <bool needPrint>
     void DebugPrintInstruction();
 private:

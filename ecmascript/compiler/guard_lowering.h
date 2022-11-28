@@ -23,11 +23,11 @@
 namespace panda::ecmascript::kungfu {
 class GuardLowering {
 public:
-    GuardLowering(BytecodeCircuitBuilder *builder, CompilationConfig *cmpCfg, Circuit *circuit, std::string name,
+    GuardLowering(CompilationConfig *cmpCfg, Circuit *circuit, std::string name,
         bool enableLog)
-        : bcBuilder_(builder), builder_(circuit, cmpCfg), circuit_(circuit),
+        : builder_(circuit, cmpCfg), circuit_(circuit),
           acc_(circuit), methodName_(name), enableLog_(enableLog) {}
-    
+
     ~GuardLowering() = default;
 
     void Run();
@@ -44,7 +44,6 @@ private:
     }
 
     void LowerGuard(GateRef gate);
-    BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     CircuitBuilder builder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

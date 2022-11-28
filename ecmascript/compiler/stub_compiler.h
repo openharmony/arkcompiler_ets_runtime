@@ -25,7 +25,7 @@ namespace panda::ecmascript::kungfu {
 class StubCompiler {
 public:
     StubCompiler(std::string &triple, std::string &filePath, size_t optLevel, size_t relocMode,
-        const CompilerLog *log, const MethodLogList *logList, bool enablePGOProfiler) : triple_(triple),
+        CompilerLog *log, const MethodLogList *logList, bool enablePGOProfiler) : triple_(triple),
         filePath_(filePath), optLevel_(optLevel), relocMode_(relocMode), log_(log), logList_(logList),
         enablePGOProfiler_(enablePGOProfiler) {}
 
@@ -33,7 +33,7 @@ public:
 
     bool BuildStubModuleAndSave() const;
 
-    const CompilerLog *GetLog() const
+    CompilerLog *GetLog() const
     {
         return log_;
     }
@@ -49,7 +49,7 @@ private:
     std::string filePath_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
-    const CompilerLog *log_ {nullptr};
+    CompilerLog *log_ {nullptr};
     const MethodLogList *logList_ {nullptr};
     bool enablePGOProfiler_ {false};
 };

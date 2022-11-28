@@ -19,6 +19,9 @@ declare function AssertType(value:any, type:string):void;
     let ans = arr[0];
     AssertType(ans, "string");
 
+    let ans2 = arr["0"]
+    AssertType(ans2, "string");
+
     class C {
         _array: Float32Array;
         constructor() {
@@ -29,5 +32,48 @@ declare function AssertType(value:any, type:string):void;
     function test(c:C) {
         AssertType(c._array[0], "number");
         AssertType(c._array[1], "number");
+        AssertType(c._array["1"], "number");
     }
+
+    let obj : {
+        10 : number,
+        10.13 : number,
+        9 : "bb"
+    } = {
+        10 : 13,
+        10.13 : 13,
+        9 : "bb"
+    }
+
+    AssertType(obj[10], "number");
+    AssertType(obj[10.13], "number");
+    AssertType(obj[9], "string");
+
+    class Stu {
+        8 : number;
+        static 9() : string {
+            return "str";
+        }
+
+        10() : number {
+            return 10;
+        }
+
+        static 9.1() : string {
+            return "9.1";
+        }
+
+        10.1() : number {
+            Stu[8] = 11;
+            return 1;
+        }
+    }
+
+    AssertType(Stu[9](), "string");
+    AssertType(Stu[9.1](), "string");
+
+    let stu = new Stu();
+    AssertType(stu[10](), "number");
+    AssertType(stu[10.1](), "number");
+    AssertType(stu[8], "number");
 }

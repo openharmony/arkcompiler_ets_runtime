@@ -26,6 +26,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "ecmascript/compiler/gate_bitfield_accessor.h"
 #include "ecmascript/compiler/type.h"
 
 #include "libpandabase/macros.h"
@@ -37,7 +38,6 @@ using GateOp = uint8_t;
 using GateMark = uint8_t;
 using TimeStamp = uint8_t;
 using SecondaryOp = uint8_t;
-using BitField = uint64_t;
 using OutIdx = uint32_t;
 using BinaryOp = uint8_t;
 class Gate;
@@ -120,6 +120,14 @@ enum class FCmpCondition : uint8_t {
     ULE,
     UNE,
     ALW_TRUE,
+};
+
+enum class TypedStoreOp : uint8_t {
+    FLOAT32ARRAY_STORE_ELEMENT,
+};
+
+enum class TypedLoadOp : uint8_t {
+    FLOAT32ARRAY_LOAD_ELEMENT,
 };
 
 class OpCode {
@@ -213,7 +221,9 @@ public:
         SAVE_REGISTER,
         OBJECT_TYPE_CHECK,
         TYPE_CHECK,
+        TYPED_CALL_CHECK,
         TYPED_BINARY_OP,
+        TYPED_CALL,
         TYPE_CONVERT,
         TYPED_UNARY_OP,
         TO_LENGTH,
@@ -223,13 +233,14 @@ public:
         LOAD_PROPERTY,
         STORE_ELEMENT,
         STORE_PROPERTY,
+        CONSTRUCT,
 
         COMMON_CIR_FIRST = NOP,
         COMMON_CIR_LAST = FRAME_STATE,
         HIGH_CIR_FIRST = JS_BYTECODE,
         HIGH_CIR_LAST = GET_EXCEPTION,
         MID_CIR_FIRST = RUNTIME_CALL,
-        MID_CIR_LAST = STORE_PROPERTY
+        MID_CIR_LAST = CONSTRUCT
     };
 
     OpCode() = default;
@@ -244,6 +255,7 @@ public:
     [[nodiscard]] size_t GetInValueCount(BitField bitfield) const;
     [[nodiscard]] size_t GetRootCount(BitField bitfield) const;
     [[nodiscard]] size_t GetOpCodeNumIns(BitField bitfield) const;
+    [[nodiscard]] size_t GetInValueStarts(BitField bitfield) const;
     [[nodiscard]] MachineType GetMachineType() const;
     [[nodiscard]] MachineType GetInMachineType(BitField bitfield, size_t idx) const;
     [[nodiscard]] OpCode GetInStateCode(size_t idx) const;
@@ -384,6 +396,7 @@ public:
     static constexpr GateRef InvalidGateRef = -1;
     [[nodiscard]] Out *GetOut(size_t idx);
     [[nodiscard]] Out *GetFirstOut();
+    [[nodiscard]] const Out *GetOutConst(size_t idx) const;
     [[nodiscard]] const Out *GetFirstOutConst() const;
     // note: GetFirstOut() is not equal to GetOut(0)
     // note: behavior of GetFirstOut() is undefined when there are no Outs
@@ -412,6 +425,7 @@ public:
     [[nodiscard]] size_t GetStateCount() const;
     [[nodiscard]] size_t GetDependCount() const;
     [[nodiscard]] size_t GetInValueCount() const;
+    [[nodiscard]] size_t GetInValueStarts() const;
     [[nodiscard]] size_t GetRootCount() const;
     [[nodiscard]] BitField GetBitField() const;
     void SetBitField(BitField bitfield);

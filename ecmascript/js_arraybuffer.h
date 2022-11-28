@@ -25,6 +25,7 @@ public:
 
     // 6.2.6.2
     static void CopyDataBlockBytes(JSTaggedValue toBlock, JSTaggedValue fromBlock, int32_t fromIndex, int32_t count);
+    static void CopyDataPointBytes(void *toBuf, void *fromBuf, int32_t fromIndex, int32_t count);
 
     void Attach(JSThread *thread, uint32_t arrayBufferByteLength, JSTaggedValue arrayBufferData);
     void Detach(JSThread *thread);

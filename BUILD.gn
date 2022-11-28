@@ -77,7 +77,6 @@ group("ark_js_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/require/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
     ]
     if (is_ohos && is_standard_system) {
       deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
@@ -111,7 +110,6 @@ group("ark_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/require/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:host_unittest",
     ]
     if (is_standard_system && !run_with_asan) {
       deps += [
@@ -441,7 +439,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_weak_map.cpp",
   "ecmascript/builtins/builtins_weak_ref.cpp",
   "ecmascript/builtins/builtins_weak_set.cpp",
-  "ecmascript/calleeReg.cpp",
+  "ecmascript/byte_array.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
   "ecmascript/containers/containers_deque.cpp",
   "ecmascript/containers/containers_errors.cpp",
@@ -458,15 +456,16 @@ ecma_source = [
   "ecmascript/containers/containers_treemap.cpp",
   "ecmascript/containers/containers_treeset.cpp",
   "ecmascript/containers/containers_vector.cpp",
+  "ecmascript/deoptimizer/calleeReg.cpp",
+  "ecmascript/deoptimizer/deoptimizer.cpp",
+  "ecmascript/deoptimizer/relocator.cpp",
   "ecmascript/dfx/pgo_profiler/pgo_profiler_loader.cpp",
   "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
-  "ecmascript/deoptimizer.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
   "ecmascript/dfx/vmstat/runtime_stat.cpp",
   "ecmascript/dfx/vm_thread_control.cpp",
   "ecmascript/dump.cpp",
-  "ecmascript/Relocator.cpp",
   "ecmascript/ecma_string.cpp",
   "ecmascript/ecma_string_table.cpp",
   "ecmascript/ecma_vm.cpp",

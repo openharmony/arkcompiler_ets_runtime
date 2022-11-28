@@ -54,7 +54,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-log-methods: specific method list for compiler log output, only used when compiler-log."
                             "Default: \"none\"\n"
     "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
-    "--enable-bytecode-trace: enable tracing bytecode for aot runtime. Default: false\n"
+    "--trace-bc: enable tracing bytecode for aot runtime. Default: false\n"
+    "--trace-deopt: enable tracing deopt for aot runtime. Default: false\n"
     "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
     "--enable-force-gc: enable force gc when allocating object. Default: true\n"
     "--enable-ic: switch of inline cache. Default: true\n"
@@ -118,8 +119,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"builtins-dts", required_argument, nullptr, OPTION_BUILTINS_DTS},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
+        {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
+        {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
-        {"enable-bytecode-trace", required_argument, nullptr, OPTION_ENABLE_BC_TRACE},
+        {"trace-bc", required_argument, nullptr, OPTION_TRACE_BC},
+        {"trace-deopt", required_argument, nullptr, OPTION_TRACE_DEOPT},
         {"enable-cpuprofiler", required_argument, nullptr, OPTION_ENABLE_CPUPROFILER},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
@@ -234,6 +238,22 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_COMPILER_LOG_OPT:
                 SetCompilerLogOption(optarg);
                 break;
+            case OPTION_COMPILER_LOG_SNAPSHOT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerLogSnapshot(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_LOG_TIME:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerLogTime(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_ENABLE_ARK_TOOLS:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -242,10 +262,18 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_ENABLE_BC_TRACE:
+            case OPTION_TRACE_BC:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
-                    SetEnableByteCodeTrace(argBool);
+                    SetTraceBc(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_TRACE_DEOPT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetTraceDeopt(argBool);
                 } else {
                     return false;
                 }

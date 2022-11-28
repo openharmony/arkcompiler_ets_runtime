@@ -12,21 +12,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "ecmascript/compiler/scheduler.h"
 #include <cmath>
 #include <stack>
-
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
-using DominatorTreeInfo = std::tuple<std::vector<GateRef>, std::unordered_map<GateRef, size_t>,
-    std::vector<size_t>>;
-DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
+void Scheduler::CalculateDominatorTree(const Circuit *circuit,
+                                       std::vector<GateRef>& bbGatesList,
+                                       std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                       std::vector<size_t> &immDom)
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
-    std::vector<GateRef> bbGatesList;
-    std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::unordered_map<GateRef, size_t> dfsTimestamp;
     std::unordered_map<GateRef, size_t> dfsFatherIdx;
     circuit->AdvanceTime();
@@ -57,7 +56,7 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
             bbGatesAddrToIdx[bbGatesList[idx]] = idx;
         }
     }
-    std::vector<size_t> immDom(bbGatesList.size());
+    immDom.resize(bbGatesList.size());
     std::vector<size_t> semiDom(bbGatesList.size());
     std::vector<std::vector<size_t> > semiDomTree(bbGatesList.size());
     {
@@ -65,10 +64,13 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         std::iota(parent.begin(), parent.end(), 0);
         std::vector<size_t> minIdx(bbGatesList.size());
         std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
-            if (parent[idx] == idx) return idx;
-            size_t unionFindSetRoot = unionFind(parent[idx]);
-            if (semiDom[minIdx[idx]] > semiDom[minIdx[parent[idx]]]) {
-                minIdx[idx] = minIdx[parent[idx]];
+            size_t pIdx = parent[idx];
+            if (pIdx == idx) {
+                return idx;
+            }
+            size_t unionFindSetRoot = unionFind(pIdx);
+            if (semiDom[minIdx[idx]] > semiDom[minIdx[pIdx]]) {
+                minIdx[idx] = minIdx[pIdx];
             }
             return parent[idx] = unionFindSetRoot;
         };
@@ -81,14 +83,15 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         semiDom[0] = semiDom.size();
         for (size_t idx = bbGatesList.size() - 1; idx >= 1; idx--) {
             std::vector<GateRef> preGates;
-            acc.GetInStateVector(bbGatesList[idx], preGates);
+            acc.GetInStates(bbGatesList[idx], preGates);
             for (const auto &predGate : preGates) {
                 if (bbGatesAddrToIdx.count(predGate) > 0) {
-                    if (bbGatesAddrToIdx[predGate] < idx) {
-                        semiDom[idx] = std::min(semiDom[idx], bbGatesAddrToIdx[predGate]);
+                    size_t preGateIdx = bbGatesAddrToIdx[predGate];
+                    if (preGateIdx < idx) {
+                        semiDom[idx] = std::min(semiDom[idx], preGateIdx);
                     } else {
-                        unionFind(bbGatesAddrToIdx[predGate]);
-                        semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[bbGatesAddrToIdx[predGate]]]);
+                        unionFind(preGateIdx);
+                        semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[preGateIdx]]);
                     }
                 }
             }
@@ -111,12 +114,10 @@ DominatorTreeInfo Scheduler::CalculateDominatorTree(const Circuit *circuit)
         }
         semiDom[0] = 0;
     }
-    return {bbGatesList, bbGatesAddrToIdx, immDom};
 }
 
-std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
-                                                 [[maybe_unused]] const std::string& methodName,
-                                                 [[maybe_unused]] bool enableLog)
+void Scheduler::Run(const Circuit *circuit, ControlFlowGraph &result,
+                    [[maybe_unused]] const std::string& methodName, [[maybe_unused]] bool enableLog)
 {
 #ifndef NDEBUG
     if (!Verifier::Run(circuit, methodName, enableLog)) {
@@ -127,8 +128,9 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
-    std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit);
-    std::vector<std::vector<GateRef>> result(bbGatesList.size());
+    Scheduler::CalculateDominatorTree(circuit, bbGatesList, bbGatesAddrToIdx, immDom);
+    ASSERT(result.size() == 0);
+    result.resize(bbGatesList.size());
     for (size_t idx = 0; idx < bbGatesList.size(); idx++) {
         result[idx].push_back(bbGatesList[idx]);
     }
@@ -198,13 +200,13 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
     };
     {
         std::vector<GateRef> order;
-        auto lowerBound =
-            Scheduler::CalculateSchedulingLowerBound(circuit, bbGatesAddrToIdx, lowestCommonAncestor, &order).value();
+        std::unordered_map<GateRef, size_t> lowerBound;
+        Scheduler::CalculateSchedulingLowerBound(circuit, bbGatesAddrToIdx, lowestCommonAncestor, lowerBound, &order);
         for (const auto &schedulableGate : order) {
             result[lowerBound.at(schedulableGate)].push_back(schedulableGate);
         }
         std::vector<GateRef> argList;
-        acc.GetOutVector(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST)), argList);
+        acc.GetOuts(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST)), argList);
         std::sort(argList.begin(), argList.end(), [&](const GateRef &lhs, const GateRef &rhs) -> bool {
             return acc.GetBitField(lhs) > acc.GetBitField(rhs);
         });
@@ -212,9 +214,9 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
             result.front().push_back(arg);
         }
         for (const auto &bbGate : bbGatesList) {
-            std::vector<GateRef> succGates;
-            acc.GetOutVector(bbGate, succGates);
-            for (const auto &succGate : succGates) {
+            auto uses = acc.Uses(bbGate);
+            for (auto i = uses.begin(); i != uses.end(); i++) {
+                GateRef succGate = *i;
                 if (acc.GetOpCode(succGate).IsFixed()) {
                     result[bbGatesAddrToIdx.at(acc.GetIn(succGate, 0))].push_back(succGate);
                 }
@@ -224,15 +226,15 @@ std::vector<std::vector<GateRef>> Scheduler::Run(const Circuit *circuit,
     if (enableLog) {
         Print(&result, circuit);
     }
-    return result;
 }
 
-std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulingUpperBound(const Circuit *circuit,
-    const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-    const std::function<bool(size_t, size_t)> &isAncestor, const std::vector<GateRef> &schedulableGatesList)
+bool Scheduler::CalculateSchedulingUpperBound(const Circuit *circuit,
+                                              const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                              const std::function<bool(size_t, size_t)> &isAncestor,
+                                              const std::vector<GateRef> &schedulableGatesList,
+                                              std::unordered_map<GateRef, size_t> &upperBound)
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
-    std::unordered_map<GateRef, size_t> upperBound;
     struct DFSState {
         GateRef curGate = Circuit::NullGate();
         std::vector<GateRef> predGates;
@@ -272,7 +274,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
         auto &rootState = dfsStack.top();
         auto &rootPredGates = rootState.predGates;
         rootState.curGate = schedulableGate;
-        acc.GetInVector(schedulableGate, rootPredGates);
+        acc.GetIns(schedulableGate, rootPredGates);
         while (!dfsStack.empty()) {
             auto &curState = dfsStack.top();
             auto &curGate = curState.curGate;
@@ -292,9 +294,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
                 }
                 auto predUpperBound = returnValue.value();
                 if (!isAncestor(curUpperBound, predUpperBound) && !isAncestor(predUpperBound, curUpperBound)) {
-                    LOG_COMPILER(ERROR) << "[Verifier][Error] Scheduling upper bound of gate (id="
-                                        << GateAccessor(const_cast<Circuit*>(circuit)).GetId(curGate)
-                                        << ") does not exist";
+                    PrintUpperBoundError(circuit, curGate, predUpperBound, curUpperBound);
                     returnValue = std::nullopt;
                     break;
                 }
@@ -313,29 +313,41 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
                 auto &newState = dfsStack.top();
                 auto &newPredGates = newState.predGates;
                 newState.curGate = predGate;
-                acc.GetInVector(predGate, newPredGates);
+                acc.GetIns(predGate, newPredGates);
             }
         }
         if (!returnValue.has_value()) {
-            return std::nullopt;
+            return false;
         }
     }
-    return upperBound;
+    return true;
 }
 
-std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
-    const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-    const std::function<size_t(size_t, size_t)> &lowestCommonAncestor, std::vector<GateRef> *order)
+void Scheduler::PrintUpperBoundError(const Circuit *circuit, GateRef curGate,
+                                     GateRef predUpperBound, GateRef curUpperBound)
+{
+    GateAccessor ac(const_cast<Circuit*>(circuit));
+    LOG_COMPILER(ERROR) << "[Verifier][Error] Scheduling upper bound of gate (id="
+                        << ac.GetId(curGate)
+                        << ") does not exist, current-upper-bound = "
+                        << curUpperBound << ", pred-upper-bound = "
+                        << predUpperBound << ", there is no dominator relationship between them.";
+}
+
+void Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
+                                              const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                              const std::function<size_t(size_t, size_t)> &lowestCommonAncestor,
+                                              std::unordered_map<GateRef, size_t> &lowerBound,
+                                              std::vector<GateRef> *order)
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
-    std::unordered_map<GateRef, size_t> lowerBound;
     std::unordered_map<GateRef, size_t> useCount;
     std::vector<GateRef> bbAndFixedGatesList;
     for (const auto &item : bbGatesAddrToIdx) {
         bbAndFixedGatesList.push_back(item.first);
-        std::vector<GateRef> succGates;
-        acc.GetOutVector(item.first, succGates);
-        for (const auto &succGate : succGates) {
+        auto uses = acc.Uses(item.first);
+        for (auto i = uses.begin(); i != uses.end(); i++) {
+            GateRef succGate = *i;
             if (acc.GetOpCode(succGate).IsFixed()) {
                 bbAndFixedGatesList.push_back(succGate);
             }
@@ -351,7 +363,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
         dfsVisitStack.push(emptyVisitState);
         auto &rootState = dfsVisitStack.top();
         auto &rootPrevGates = rootState.prevGates;
-        acc.GetInVector(gate, rootPrevGates);
+        acc.GetIns(gate, rootPrevGates);
         while (!dfsVisitStack.empty()) {
             auto &curState = dfsVisitStack.top();
             auto &prevGates = curState.prevGates;
@@ -370,7 +382,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
                 dfsVisitStack.push(emptyVisitState);
                 auto &newState = dfsVisitStack.top();
                 auto &newPrevGates = newState.prevGates;
-                acc.GetInVector(prevGate, newPrevGates);
+                acc.GetIns(prevGate, newPrevGates);
             }
             ++idx;
         }
@@ -387,7 +399,7 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
         auto &rootState = dfsFinishStack.top();
         auto &rootPrevGates = rootState.prevGates;
         rootState.curGate = gate;
-        acc.GetInVector(gate, rootPrevGates);
+        acc.GetIns(gate, rootPrevGates);
         while (!dfsFinishStack.empty()) {
             auto &curState = dfsFinishStack.top();
             auto &curGate = curState.curGate;
@@ -425,12 +437,11 @@ std::optional<std::unordered_map<GateRef, size_t>> Scheduler::CalculateSchedulin
                 auto &newState = dfsFinishStack.top();
                 auto &newPrevGates = newState.prevGates;
                 newState.curGate = prevGate;
-                acc.GetInVector(prevGate, newPrevGates);
+                acc.GetIns(prevGate, newPrevGates);
             }
             ++idx;
         }
     }
-    return lowerBound;
 }
 
 void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circuit *circuit)
@@ -439,16 +450,18 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
     std::vector<size_t> immDom;
-    std::tie(bbGatesList, bbGatesAddrToIdx, immDom) = Scheduler::CalculateDominatorTree(circuit);
+    Scheduler::CalculateDominatorTree(circuit, bbGatesList, bbGatesAddrToIdx, immDom);
     LOG_COMPILER(INFO) << "==================================== Scheduling ==================================";
     for (size_t bbIdx = 0; bbIdx < cfg->size(); bbIdx++) {
         LOG_COMPILER(INFO) << "B" << bbIdx << "_" << acc.GetOpCode((*cfg)[bbIdx].front()).Str() << ":"
                            << "  immDom=" << immDom[bbIdx];
         LOG_COMPILER(INFO) << "  pred=[";
         bool isFirst = true;
-        std::vector<GateRef> predStates;
-        acc.GetInVector((*cfg)[bbIdx].front(), predStates);
-        for (const auto &predState : predStates) {
+        //std::vector<GateRef> predStates;
+        GateRef head = cfg->at(bbIdx).front();
+        auto ins = acc.Ins(head);
+        for (auto i = ins.begin(); i != ins.end(); i++) {
+            GateRef predState = *i;
             if (acc.GetOpCode(predState).IsState() || acc.GetOpCode(predState) == OpCode::STATE_ENTRY) {
                 LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(predState);
                 isFirst = false;
@@ -456,9 +469,10 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
         }
         LOG_COMPILER(INFO) << "]  succ=[";
         isFirst = true;
-        std::vector<GateRef> succStates;
-        acc.GetOutVector((*cfg)[bbIdx].front(), succStates);
-        for (const auto &succState : succStates) {
+        GateRef h = cfg->at(bbIdx).front();
+        auto uses = acc.Uses(h);
+        for (auto i = uses.begin(); i != uses.end(); i++) {
+            GateRef succState = *i;
             if (acc.GetOpCode(succState).IsState() || acc.GetOpCode(succState) == OpCode::STATE_ENTRY) {
                 LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(succState);
                 isFirst = false;

@@ -118,7 +118,8 @@ HWTEST_F_L0(StubTest, FastAddTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -159,7 +160,8 @@ HWTEST_F_L0(StubTest, FastSubTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -196,7 +198,8 @@ HWTEST_F_L0(StubTest, FastMulTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -252,7 +255,8 @@ HWTEST_F_L0(StubTest, FastDivTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -301,7 +305,8 @@ HWTEST_F_L0(StubTest, FastModTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -369,7 +374,8 @@ HWTEST_F_L0(StubTest, TryLoadICByName)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, findFunction, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -390,7 +396,8 @@ HWTEST_F_L0(StubTest, TryLoadICByValue)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, findFunction, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -411,7 +418,8 @@ HWTEST_F_L0(StubTest, TryStoreICByName)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, findFunction, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -432,7 +440,8 @@ HWTEST_F_L0(StubTest, TryStoreICByValue)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, findFunction, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -603,7 +612,7 @@ HWTEST_F_L0(StubTest, JSEntryTest)
     /* implement stub1 */
     LLVMValueRef stub1 = LLVMAddFunction(module, "stub1", LLVMFunctionType(LLVMInt64Type(), paramTys0, 1, 0));
     LLVMAddTargetDependentFunctionAttr(stub1, "frame-pointer", "all");
-    int reservedSlotsSize = sizeof(uint64_t) * static_cast<int>(ReservedSlots::OPTIMIZED_ENTRY_RESERVED_SLOT);
+    int reservedSlotsSize = OptimizedEntryFrame::ComputeReservedSize(sizeof(uint64_t));
     LLVMAddTargetDependentFunctionAttr(stub1, "frame-reserved-slots", std::to_string(reservedSlotsSize).c_str());
 
     LLVMBasicBlockRef entryBb = LLVMAppendBasicBlock(stub1, "entry");
@@ -642,7 +651,7 @@ HWTEST_F_L0(StubTest, JSEntryTest)
     /* implement stub2 call stub3 */
     LLVMValueRef stub2 = LLVMAddFunction(module, "stub2", LLVMFunctionType(LLVMInt64Type(), paramTys0, 1, 0));
     LLVMAddTargetDependentFunctionAttr(stub2, "frame-pointer", "all");
-    int reservedSlotsSize = sizeof(uint64_t) * static_cast<int>(ReservedSlots::OPTIMIZED_ENTRY_RESERVED_SLOT);
+    int reservedSlotsSize = OptimizedEntryFrame::ComputeReservedSize(sizeof(uint64_t));
     LLVMAddTargetDependentFunctionAttr(stub2, "frame-reserved-slots", std::to_string(reservedSlotsSize).c_str());
 
     entryBb = LLVMAppendBasicBlock(stub2, "entry");
@@ -673,7 +682,7 @@ HWTEST_F_L0(StubTest, JSEntryTest)
 
     /* implement stub3 call RuntimeFunc2 */
     LLVMAddTargetDependentFunctionAttr(stub3, "frame-pointer", "all");
-    int reservedSlotsSize = sizeof(uint64_t) * static_cast<int>(ReservedSlots::OPTIMIZED_RESERVED_SLOT);
+    int reservedSlotsSize = OptimizedFrame::ComputeReservedSize(sizeof(uint64_t));
     LLVMAddTargetDependentFunctionAttr(stub3, "frame-reserved-slots", std::to_string(reservedSlotsSize).c_str());
 
     entryBb = LLVMAppendBasicBlock(stub3, "entry");
@@ -737,7 +746,7 @@ HWTEST_F_L0(StubTest, Prologue)
     /* implement main implement */
     LLVMValueRef func = LLVMAddFunction(module, "main", LLVMFunctionType(LLVMInt64Type(), nullptr, 0, 0));
     LLVMAddTargetDependentFunctionAttr(func, "frame-pointer", "all");
-    int reservedSlotsSize = sizeof(uint64_t) * static_cast<int>(ReservedSlots::OPTIMIZED_ENTRY_RESERVED_SLOT);
+    int reservedSlotsSize = OptimizedEntryFrame::ComputeReservedSize(sizeof(uint64_t));
     LLVMAddTargetDependentFunctionAttr(func, "frame-reserved-slots", std::to_string(reservedSlotsSize).c_str());
 
     LLVMBasicBlockRef entryBb = LLVMAppendBasicBlock(func, "entry");
@@ -747,7 +756,7 @@ HWTEST_F_L0(StubTest, Prologue)
     LLVMBuilderRef builderBar = LLVMCreateBuilder();
     LLVMValueRef bar = LLVMAddFunction(module, "bar", LLVMFunctionType(LLVMInt64Type(), paramTys0, 2, 0));
     LLVMAddTargetDependentFunctionAttr(bar, "frame-pointer", "all");
-    int reservedSlotsSize = sizeof(uint64_t) * static_cast<int>(ReservedSlots::OPTIMIZED_RESERVED_SLOT);
+    int reservedSlotsSize = OptimizedFrame::ComputeReservedSize(sizeof(uint64_t));
     LLVMAddTargetDependentFunctionAttr(bar, "frame-reserved-slots", std::to_string(reservedSlotsSize).c_str());
     LLVMBasicBlockRef entryBbBar = LLVMAppendBasicBlock(bar, "entry");
     LLVMPositionBuilderAtEnd(builderBar, entryBbBar);
@@ -797,7 +806,7 @@ HWTEST_F_L0(StubTest, CEntryFp)
     /* implement main call RuntimeFunc */
     LLVMValueRef func = LLVMAddFunction(module, "main", LLVMFunctionType(LLVMInt64Type(), paramTys0, 1, 0));
     LLVMAddTargetDependentFunctionAttr(func, "frame-pointer", "all");
-    int reservedSlotsSize = sizeof(uint64_t) * static_cast<int>(ReservedSlots::OPTIMIZED_ENTRY_RESERVED_SLOT);
+    int reservedSlotsSize = OptimizedEntryFrame::ComputeReservedSize(sizeof(uint64_t));
     LLVMAddTargetDependentFunctionAttr(func, "frame-reserved-slots", std::to_string(reservedSlotsSize).c_str());
     LLVMBasicBlockRef entryBb = LLVMAppendBasicBlock(func, "entry");
     LLVMPositionBuilderAtEnd(builder, entryBb);
@@ -899,7 +908,8 @@ HWTEST_F_L0(StubTest, GetPropertyByIndexStub)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -935,7 +945,8 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -973,7 +984,8 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -1011,7 +1023,8 @@ HWTEST_F_L0(StubTest, SetPropertyByNameStub)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -1048,8 +1061,9 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates2.PrintAllGates();
-    auto cfg2 = Scheduler::Run(&netOfGates2);
-    LLVMIRBuilder llvmBuilder2(&cfg2, &netOfGates2, &stubModule, getPropertyByIndexfunction,
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates2, cfg);
+    LLVMIRBuilder llvmBuilder2(&cfg, &netOfGates2, &stubModule, getPropertyByIndexfunction,
         stubModule.GetCompilationConfig(),  CallSignature::CallConv::CCallConv);
     llvmBuilder2.Build();
 
@@ -1063,7 +1077,8 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     stub1.GenerateCircuit(stubModule.GetCompilationConfig());
     bool result = Verifier::Run(&netOfGates1);
     ASSERT_TRUE(result);
-    auto cfg1 = Scheduler::Run(&netOfGates1);
+    Scheduler::ControlFlowGraph cfg1;
+    Scheduler::Run(&netOfGates1, cfg1);
     LLVMIRBuilder llvmBuilder1(&cfg1, &netOfGates1, &stubModule, getPropertyByNamefunction,
         stubModule.GetCompilationConfig(), CallSignature::CallConv::CCallConv);
     llvmBuilder1.Build();
@@ -1079,10 +1094,11 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     netOfGates.PrintAllGates();
     result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
-    auto cfg = Scheduler::Run(&netOfGates);
-    PrintCircuitByBasicBlock(cfg, netOfGates);
+    Scheduler::ControlFlowGraph cfg2;
+    Scheduler::Run(&netOfGates, cfg2);
+    PrintCircuitByBasicBlock(cfg2, netOfGates);
 
-    LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
+    LLVMIRBuilder llvmBuilder(&cfg2, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
@@ -1151,7 +1167,8 @@ HWTEST_F_L0(StubTest, FastTypeOfTest)
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
     ASSERT_TRUE(verRes);
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -1239,7 +1256,8 @@ HWTEST_F_L0(StubTest, FastEqualTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -1309,23 +1327,19 @@ HWTEST_F_L0(StubTest, JSCallTest)
     auto glue = thread->GetGlueAddr();
     int x = 1;
     int y = 2;
-    JSTaggedType argV[6] = {
+    JSTaggedType argV[5] = {
         footarget.GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue(x).GetRawData(),
         JSTaggedValue(y).GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
     };
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
 
-    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
-        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
+    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue, 2, argV,
+        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()),
+        static_cast<size_t>(OptimizedEntryFrame::CallType::CALL_FUNC));
     EXPECT_EQ(result, JSTaggedValue(3.0));
-
-    auto result1 = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
-        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 6, argV, fooEntry);
-    EXPECT_EQ(result1, JSTaggedValue(3.0));
 }
 
 HWTEST_F_L0(StubTest, JSCallTest1)
@@ -1335,17 +1349,17 @@ HWTEST_F_L0(StubTest, JSCallTest1)
     auto glue = thread->GetGlueAddr();
     int x = 1;
     int y = 2;
-    JSTaggedType argV[6] = {
+    JSTaggedType argV[5] = {
         foo2target.GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue(x).GetRawData(),
         JSTaggedValue(y).GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
     };
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
-        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo2Entry);
+    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue, 2, argV,
+        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()),
+        static_cast<size_t>(OptimizedEntryFrame::CallType::CALL_FUNC));
     EXPECT_EQ(result, JSTaggedValue(3.0));
 }
 
@@ -1356,18 +1370,18 @@ HWTEST_F_L0(StubTest, JSCallTest2)
     auto glue = thread->GetGlueAddr();
     int x = 1;
     int y = 2;
-    JSTaggedType argV[6] = {
+    JSTaggedType argV[5] = {
         foo1target.GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue(x).GetRawData(),
         JSTaggedValue(y).GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
     };
 
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
-        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, foo1Entry);
+    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue, 2, argV,
+        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()),
+        static_cast<size_t>(OptimizedEntryFrame::CallType::CALL_FUNC));
     EXPECT_EQ(result, JSTaggedValue(0x7ff9000000000000UL));
 }
 
@@ -1378,17 +1392,17 @@ HWTEST_F_L0(StubTest, JSCallNativeTest)
     auto glue = thread->GetGlueAddr();
     int x = 1;
     int y = 2;
-    JSTaggedType argV[6] = {
+    JSTaggedType argV[5] = {
         footarget.GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue(x).GetRawData(),
         JSTaggedValue(y).GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
     };
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
-        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
+    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue, 2, argV,
+        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()),
+        static_cast<size_t>(OptimizedEntryFrame::CallType::CALL_FUNC));
     EXPECT_EQ(result, JSTaggedValue::Undefined());
 }
 
@@ -1399,18 +1413,18 @@ HWTEST_F_L0(StubTest, JSCallBoundTest)
     auto glue = thread->GetGlueAddr();
     int x = 1;
     int y = 2;
-    JSTaggedType argV[6] = {
+    JSTaggedType argV[5] = {
         footarget.GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
         JSTaggedValue(x).GetRawData(),
         JSTaggedValue(y).GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
     };
 
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
-        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooEntry);
+    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue, 2, argV,
+        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()),
+        static_cast<size_t>(OptimizedEntryFrame::CallType::CALL_FUNC));
     EXPECT_EQ(result, JSTaggedValue(38.0));
 }
 
@@ -1422,31 +1436,6 @@ HWTEST_F_L0(StubTest, JSCallTest3)
     auto glue = thread->GetGlueAddr();
     int x = 1;
     int y = 2;
-    JSTaggedType argV[7] = {
-        foo2target.GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
-        JSTaggedValue(x).GetRawData(),
-        JSTaggedValue(y).GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
-        JSTaggedValue::Undefined().GetRawData(),
-    };
-    JSThread::GlueData::GetCOStubEntriesOffset(false);
-    JSThread::GlueData::GetCOStubEntriesOffset(true);
-    auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
-        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 6, 6, argV, fooProxyEntry);
-    EXPECT_EQ(result, JSTaggedValue(3.0));
-}
-
-// test for proxy method isn't undefined
-HWTEST_F_L0(StubTest, JSCallTest4)
-{
-    auto fooProxyEntry = thread->GetFastStubEntry(CommonStubCSigns::FooProxy2AOT);
-    auto foo2target = NewAotFunction(2, fooProxyEntry);
-    auto glue = thread->GetGlueAddr();
-    int x = 1;
-    int y = 2;
     JSTaggedType argV[6] = {
         foo2target.GetRawData(),
         JSTaggedValue::Undefined().GetRawData(),
@@ -1458,8 +1447,33 @@ HWTEST_F_L0(StubTest, JSCallTest4)
     JSThread::GlueData::GetCOStubEntriesOffset(false);
     JSThread::GlueData::GetCOStubEntriesOffset(true);
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    [[maybe_unused]] auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue,
-        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()), 5, 5, argV, fooProxyEntry);
+    auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue, 3, argV,
+        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()),
+        static_cast<size_t>(OptimizedEntryFrame::CallType::CALL_FUNC));
+    EXPECT_EQ(result, JSTaggedValue(3.0));
+}
+
+// test for proxy method isn't undefined
+HWTEST_F_L0(StubTest, JSCallTest4)
+{
+    auto fooProxyEntry = thread->GetFastStubEntry(CommonStubCSigns::FooProxy2AOT);
+    auto foo2target = NewAotFunction(2, fooProxyEntry);
+    auto glue = thread->GetGlueAddr();
+    int x = 1;
+    int y = 2;
+    JSTaggedType argV[5] = {
+        foo2target.GetRawData(),
+        JSTaggedValue::Undefined().GetRawData(),
+        JSTaggedValue::Undefined().GetRawData(),
+        JSTaggedValue(x).GetRawData(),
+        JSTaggedValue(y).GetRawData(),
+    };
+    JSThread::GlueData::GetCOStubEntriesOffset(false);
+    JSThread::GlueData::GetCOStubEntriesOffset(true);
+    auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
+    [[maybe_unused]] auto result = reinterpret_cast<JSFunctionEntryType>(entry)(glue, 2, argV,
+        reinterpret_cast<uintptr_t>(thread->GetCurrentSPFrame()),
+        static_cast<size_t>(OptimizedEntryFrame::CallType::CALL_FUNC));
 }
 
 HWTEST_F_L0(StubTest, RelocateTest)
@@ -1476,7 +1490,8 @@ HWTEST_F_L0(StubTest, RelocateTest)
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
     ASSERT_TRUE(verRes);
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);

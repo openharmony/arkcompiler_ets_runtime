@@ -16,7 +16,7 @@
 #define ECMASCRIPT_AOT_FILE_MANAGER_H
 
 #include "ecmascript/ark_stackmap.h"
-#include "ecmascript/calleeReg.h"
+#include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/compiler/binary_section.h"
@@ -144,7 +144,8 @@ public:
     using CallSignature = kungfu::CallSignature;
     AOTFileInfo() = default;
     virtual ~AOTFileInfo() = default;
-    bool VerifyFilePath([[maybe_unused]] const std::string &filePath, [[maybe_unused]] bool toGenerate = false) const;
+    static bool VerifyFilePath([[maybe_unused]] const std::string &filePath,
+                               [[maybe_unused]] bool toGenerate = false);
 
     struct FuncEntryDes {
         uint64_t codeAddr_;
@@ -292,13 +293,41 @@ protected:
     JSTaggedValue machineCodeObj_ {JSTaggedValue::Hole()};
 };
 
+class AnFileDataManager {
+public:
+    static AnFileDataManager *GetInstance();
+
+    ~AnFileDataManager();
+
+    struct AnFileData {
+        uint32_t entryNum {0};
+        uint32_t moduleNum {0};
+        uint32_t totalCodeSize {0};
+        std::vector<AOTFileInfo::FuncEntryDes> entries {};
+        std::vector<ModuleSectionDes> des {};
+        void *poolAddr {nullptr};
+        size_t poolSize {0};
+    };
+
+    bool SafeLoad(const std::string &filename);
+    std::shared_ptr<const AnFileData> SafeGetAnFileData(const CString &filename);
+
+private:
+    AnFileDataManager() = default;
+    std::shared_ptr<const AnFileData> UnsafeFind(const CString &filename) const;
+    bool UnsafeLoadData(const CString &filename);
+
+    os::memory::RecursiveMutex lock_;
+    std::unordered_map<const CString, std::shared_ptr<AnFileData>, CStringHash> loadedData_;
+};
+
 class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
     void Iterate(const RootVisitor &v);
     void Save(const std::string &filename);
-    bool Load(EcmaVM *vm, const std::string &filename);
+    bool Load(const std::string &filename);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
@@ -320,9 +349,11 @@ public:
         return static_cast<uintptr_t>(it->second);
     }
 
-    bool HasLoaded() const
+    bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
+
+    bool IsLoad() const
     {
-        return !mainEntryMap_.empty();
+        return isLoad_;
     }
 
     void RewriteRelcateDeoptHandler(EcmaVM *vm);
@@ -341,6 +372,8 @@ private:
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
     JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
+    std::shared_ptr<const AnFileDataManager::AnFileData> data_;
+    bool isLoad_ {false};
 };
 
 class PUBLIC_API StubFileInfo : public AOTFileInfo {
@@ -439,7 +472,9 @@ public:
     }
 
     void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
-    bool HasLoaded(const JSPandaFile *jsPandaFile) const;
+    const AnFileInfo *GetAnFileInfo(const JSPandaFile *jsPandaFile) const;
+    bool IsLoad(const JSPandaFile *jsPandaFile) const;
+    bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
                                    const AOTLiteralInfo *entryIndexes);
@@ -453,11 +488,6 @@ public:
     JSHandle<JSTaggedValue> GetSnapshotConstantPool(const JSPandaFile *jsPandaFile);
 
 private:
-    void SetAOTmmap(void *addr, size_t totalCodeSize)
-    {
-        aotAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
-    }
-
     void SetStubmmap(void *addr, size_t totalCodeSize)
     {
         stubAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
@@ -483,7 +513,6 @@ private:
     void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
                                             const AsmInterParsedOption &asmInterOpt);
 
-    std::vector<std::pair<void *, size_t>> aotAddrs_;
     std::vector<std::pair<void *, size_t>> stubAddrs_;
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};

@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_FRAME_STATE_H
 
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/compiler/base/bit_set.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
@@ -28,12 +29,22 @@ struct BytecodeRegion;
 
 class FrameStateInfo {
 public:
-    explicit FrameStateInfo(size_t numVregs) : values_(numVregs) {}
+    explicit FrameStateInfo(size_t numVregs) : values_(numVregs), liveout_(numVregs) {}
 
     void SetValuesAt(size_t index, GateRef gate)
     {
         ASSERT(index < values_.size());
         values_[index] = gate;
+    }
+
+    void SetBit(size_t index)
+    {
+        liveout_.SetBit(index);
+    }
+
+    void ClearBit(size_t index)
+    {
+        liveout_.ClearBit(index);
     }
 
     GateRef ValuesAt(size_t index) const
@@ -45,10 +56,17 @@ public:
     void CopyFrom(FrameStateInfo *other)
     {
         values_.assign(other->values_.begin(), other->values_.end());
+        liveout_.CopyFrom(other->liveout_);
+    }
+
+    bool MergeLiveout(FrameStateInfo *other)
+    {
+        return liveout_.UnionWithChanged(other->liveout_);
     }
 private:
     // [numVRegs_] [extra args] [numArgs_] [accumulator]
     std::vector<GateRef> values_ {};
+    BitSet liveout_;
 };
 
 class FrameStateBuilder {
@@ -71,6 +89,11 @@ private:
     void UpdateVirtualRegister(size_t index, GateRef gate)
     {
         liveOutResult_->SetValuesAt(index, gate);
+        if (gate == Circuit::NullGate()) {
+            liveOutResult_->ClearBit(index);
+        } else {
+            liveOutResult_->SetBit(index);
+        }
     }
     void UpdateAccumulator(GateRef gate)
     {
@@ -85,18 +108,26 @@ private:
     void BuildPostOrderList(size_t size);
     bool ComputeLiveOut(size_t bbId);
     void ComputeLiveState();
-    void ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo);
-    bool MergeIntoPredBC(const uint8_t *predPc);
+    void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo);
+    bool MergeIntoPredBC(uint32_t predPc);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
-    FrameStateInfo *GetOrOCreateStateInfo(const uint8_t *pc)
+    FrameStateInfo *GetOrOCreateBCEndStateInfo(uint32_t bcIndex)
     {
-        auto currentInfo = stateInfos_[pc];
+        auto currentInfo = bcEndStateInfos_[bcIndex];
         if (currentInfo == nullptr) {
             currentInfo = CreateEmptyStateInfo();
-            stateInfos_[pc] = currentInfo;
+            bcEndStateInfos_[bcIndex] = currentInfo;
         }
         return currentInfo;
     }
+    FrameStateInfo *GetBBBeginStateInfo(size_t bbId) const
+    {
+        return bbBeginStateInfos_.at(bbId);
+    }
+    void UpdateVirtualRegistersOfSuspend(GateRef gate);
+    void UpdateVirtualRegistersOfResume(GateRef gate);
+    void SaveBBBeginStateInfo(size_t bbId);
+    FrameStateInfo *GetCurrentFrameInfo(BytecodeRegion &bb, uint32_t bcId);
     GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
 
     BytecodeCircuitBuilder *builder_{nullptr};
@@ -106,7 +137,8 @@ private:
     Circuit *circuit_ {nullptr};
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;
-    std::map<const uint8_t *, FrameStateInfo *> stateInfos_;
+    std::vector<FrameStateInfo *> bcEndStateInfos_;
+    std::vector<FrameStateInfo *> bbBeginStateInfos_;
     std::vector<size_t> postOrderList_;
 };
 }  // panda::ecmascript::kungfu

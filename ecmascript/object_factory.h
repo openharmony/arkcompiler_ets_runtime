@@ -28,6 +28,7 @@
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/byte_array.h"
 
 namespace panda::ecmascript {
 struct MethodLiteral;
@@ -101,7 +102,6 @@ class TSTypeTable;
 class TSClassInstanceType;
 class TSFunctionType;
 class TSArrayType;
-class TSImportType;
 class TSObjLayoutInfo;
 class TSModuleTable;
 class TSFunctionType;
@@ -327,6 +327,8 @@ public:
     JSHandle<TaggedArray> NewDictionaryArray(uint32_t length);
     JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj);
 
+    JSHandle<ByteArray> NewByteArray(uint32_t length, uint32_t size);
+
     JSHandle<PropertyBox> NewPropertyBox(const JSHandle<JSTaggedValue> &name);
 
     JSHandle<ProtoChangeMarker> NewProtoChangeMarker();
@@ -474,7 +476,6 @@ public:
     JSHandle<TSClassType> NewTSClassType();
     JSHandle<TSUnionType> NewTSUnionType(uint32_t length);
     JSHandle<TSInterfaceType> NewTSInterfaceType();
-    JSHandle<TSImportType> NewTSImportType();
     JSHandle<TSClassInstanceType> NewTSClassInstanceType();
     JSHandle<TSTypeTable> NewTSTypeTable(uint32_t length);
     JSHandle<TSModuleTable> NewTSModuleTable(uint32_t length);

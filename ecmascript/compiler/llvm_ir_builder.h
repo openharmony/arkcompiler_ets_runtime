@@ -263,7 +263,7 @@ private:
     LLVMValueRef GetCurrentSP();
     LLVMValueRef ReadRegister(LLVMModuleRef &module, LLVMBuilderRef &builder,
         LLVMMetadataRef meta);
-    void GenPrologue(LLVMModuleRef &module, LLVMBuilderRef &builder);
+    void GenPrologue();
     LLVMBasicBlockRef EnsureLBB(BasicBlock *bb) const;
     BasicBlockImpl *EnsureBBImpl(BasicBlock *bb) const;
     void SetToCfg(BasicBlock *bb) const;
@@ -314,6 +314,10 @@ private:
         GLUE,
         FIRST_PARAMETER
     };
+    enum class CallExceptionKind : bool {
+        HAS_BC_OFFSET = true,
+        NO_BC_OFFSET = false
+    };
     LLVMRealPredicate ConvertLLVMPredicateFromFCMP(FCmpCondition cond);
     LLVMIntPredicate ConvertLLVMPredicateFromICMP(ICmpCondition cond);
     LLVMValueRef GetGlue(const std::vector<GateRef> &inList);
@@ -323,16 +327,18 @@ private:
     LLVMValueRef GetBCDebugStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBaseOffset(GateRef gate, LLVMValueRef glue);
-    bool NeedBCOffset(OpCode op);
+    CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
     void ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueRef &bcOffset, const std::vector<GateRef> &inList,
-                                    OpCode op);
-    void SaveLexicalEnvOnFrame(LLVMValueRef value);
+                                    CallExceptionKind kind);
+    void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
+    void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
+    void SaveFrameTypeOnFrame(FrameType frameType);
     LLVMTypeRef GetExperimentalDeoptTy();
     LLVMValueRef GetExperimentalDeopt(LLVMModuleRef &module);
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
     const Circuit *circuit_ {nullptr};
-    const GateAccessor acc_;
+    GateAccessor acc_;
     BasicBlock *currentBb_ {nullptr};
     int lineNumber_ {0};
 

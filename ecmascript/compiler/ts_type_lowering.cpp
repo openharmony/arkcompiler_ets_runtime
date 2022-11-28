@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/llvm_stackmap_parser.h"
+#include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript::kungfu {
 void TSTypeLowering::RunTSTypeLowering()
@@ -38,7 +40,7 @@ void TSTypeLowering::RunTSTypeLowering()
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
-        circuit_->PrintAllGates(*bcBuilder_);
+        circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
 }
@@ -52,7 +54,8 @@ void TSTypeLowering::VerifyGuard() const
         if (op == OpCode::JS_BYTECODE) {
             auto depend = acc_.GetDep(gate);
             if (acc_.GetOpCode(depend) == OpCode::GUARD) {
-                std::string bytecodeStr = bcBuilder_->GetBytecodeStr(gate);
+                auto opcode = acc_.GetByteCodeOpcode(gate);
+                std::string bytecodeStr = GetEcmaOpcodeStr(opcode);
                 LOG_COMPILER(ERROR) << "[ts_type_lowering][Error] the depend of ["
                                     << "id: " << acc_.GetId(gate) << ", JS_BYTECODE: " << bytecodeStr
                                     << "] should not be GUARD after ts type lowring";
@@ -75,9 +78,8 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
         }
     }
     if (op == OpCode::JS_BYTECODE) {
-        auto pc = bcBuilder_->GetJSBytecode(gate);
-        EcmaOpcode bc = bcBuilder_->PcToOpcode(pc);
-        switch (bc) {
+        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+        switch (ecmaOpcode) {
             case EcmaOpcode::ADD2_IMM8_V8:
             case EcmaOpcode::SUB2_IMM8_V8:
             case EcmaOpcode::MUL2_IMM8_V8:
@@ -96,14 +98,17 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
 
 void TSTypeLowering::Lower(GateRef gate)
 {
+    GateRef glue = acc_.GetGlueFromArgList();
+
     auto argAcc = ArgumentAccessor(circuit_);
     GateRef thisObj = argAcc.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
+    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    GateRef newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
 
-    auto pc = bcBuilder_->GetJSBytecode(gate);
-    EcmaOpcode op = bcBuilder_->PcToOpcode(pc);
+    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
-    switch (op) {
+    switch (ecmaOpcode) {
         case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypedAdd(gate);
             break;
@@ -147,13 +152,13 @@ void TSTypeLowering::Lower(GateRef gate)
             LowerTypedAshr(gate);
             break;
         case EcmaOpcode::AND2_IMM8_V8:
-            // lower JS_AND
+            LowerTypedAnd(gate);
             break;
         case EcmaOpcode::OR2_IMM8_V8:
-            // lower JS_OR
+            LowerTypedOr(gate);
             break;
         case EcmaOpcode::XOR2_IMM8_V8:
-            // lower JS_XOR
+            LowerTypedXor(gate);
             break;
         case EcmaOpcode::EXP_IMM8_V8:
             // lower JS_EXP
@@ -209,6 +214,18 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
             LowerTypedStObjByIndex(gate);
+            break;
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            LowerTypedNewObjRange(gate, glue);
+            break;
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+            LowerTypedSuperCall(gate, jsFunc, newTarget, glue);
+            break;
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            LowerCallThis1Imm8V8V8(gate);
             break;
         default:
             break;
@@ -498,6 +515,45 @@ void TSTypeLowering::LowerTypedAshr(GateRef gate)
     }
 }
 
+void TSTypeLowering::LowerTypedAnd(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_AND>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void TSTypeLowering::LowerTypedOr(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_OR>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
+void TSTypeLowering::LowerTypedXor(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        SpeculateNumbers<TypedBinOp::TYPED_XOR>(gate);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+    }
+}
+
 void TSTypeLowering::LowerTypedInc(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
@@ -618,7 +674,7 @@ void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-    if (srcType.IsPrimitiveType() && !srcType.IsStringType()) {
+    if (srcType.IsDigitablePrimitiveType()) {
         LowerPrimitiveTypeToNumber(gate);
     } else {
         acc_.DeleteGuardAndFrameState(gate);
@@ -692,9 +748,10 @@ void TSTypeLowering::LowerTypedNot(GateRef gate)
 void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    auto propIndex = acc_.GetBitField(acc_.GetValueIn(gate, 1));
+    uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    auto prop = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), propIndex);
+    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
 
     GateRef receiver = Circuit::NullGate();
     if (isThis) {
@@ -712,7 +769,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool i
         acc_.DeleteGuardAndFrameState(gate);
         return;
     }
-    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex-constantPool_->GetCacheLength());
+    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex);
 
     auto propertyOffset = tsManager_->GetPropertyOffset(hclass, prop);
     if (propertyOffset == -1) { // slowpath
@@ -741,9 +798,10 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool i
 void TSTypeLowering::LowerTypedStObjByName(GateRef gate, GateRef thisObj, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    auto propIndex = acc_.GetBitField(acc_.GetValueIn(gate, 1));
+    uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    auto prop = ConstantPool::GetStringFromCache(thread, constantPool_.GetTaggedValue(), propIndex);
+    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
 
     GateRef receiver = Circuit::NullGate();
     GateRef value = Circuit::NullGate();
@@ -764,7 +822,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, GateRef thisObj, bool i
         acc_.DeleteGuardAndFrameState(gate);
         return;
     }
-    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex-constantPool_->GetCacheLength());
+    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex);
 
     auto propertyOffset = tsManager_->GetPropertyOffset(hclass, prop);
     if (propertyOffset == -1) { // slowpath
@@ -812,8 +870,12 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
 
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
-    GateRef result = builder_.LoadElement(receiver, index);
-
+    GateRef result = Circuit::NullGate();
+    if (tsManager_->IsFloat32ArrayType(receiverType)) {
+        result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index);
+    } else {
+        UNREACHABLE();
+    }
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -845,7 +907,12 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     acc_.ReplaceIn(guard, 1, check);
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
-    builder_.StoreElement(receiver, index, value);
+
+    if (tsManager_->IsFloat32ArrayType(receiverType)) {
+        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
+    } else {
+        UNREACHABLE();
+    }
 
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, Circuit::NullGate(), builder_.GetState(), builder_.GetDepend(), removedGate);
@@ -883,5 +950,189 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
+}
+
+void TSTypeLowering::LowerTypedNewObjRange(GateRef gate, GateRef glue)
+{
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+    GateType ctorType = acc_.GetGateType(ctor);
+    if (!tsManager_->IsUserDefinedClassTypeKind(ctorType)) {
+        acc_.DeleteGuardAndFrameState(gate);
+        return;
+    }
+
+    int hclassIndex = tsManager_->GetHClassIndexByClassGT(ctorType);
+
+    // guard maybe not a GUARD
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    auto currentLabel = builder_.GetCurrentEnvironment()->GetCurrentLabel();
+    auto currentDepend = acc_.GetDep(guard);
+    currentLabel->SetDepend(currentDepend);
+
+    DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    Label allocateThisObj(&builder_);
+    Label notAllocateThisObj(&builder_);
+    Label construct(&builder_);
+
+    GateRef isBase = builder_.IsBase(ctor);
+    builder_.Branch(isBase, &allocateThisObj, &notAllocateThisObj);
+    builder_.Bind(&allocateThisObj);
+    {
+        // add TypeCheck to detect protoOrHclass is equal with ihclass,
+        // if pass TypeCheck: 1.no need to check whether hclass is valid 2.no need to check return result
+        check = builder_.ObjectTypeCheck(ctorType, ctor, builder_.IntPtr(hclassIndex));
+
+        GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
+                                              builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        thisObj = builder_.HeapAlloc(protoOrHclass, GateType::AnyType(), RegionSpaceFlag::IN_YOUNG_SPACE);
+        builder_.Jump(&construct);
+    }
+    builder_.Bind(&notAllocateThisObj);
+    {
+        check = builder_.Boolean(true);
+        builder_.Jump(&construct);
+    }
+    builder_.Bind(&construct);
+
+    acc_.ReplaceIn(guard, 1, *check);
+
+    // call constructor
+    size_t range = acc_.GetNumValueIn(gate);
+    GateRef envArg = builder_.Undefined();
+    GateRef actualArgc = builder_.Int64(range + 2);  // 2:newTaget, this
+    std::vector<GateRef> args { glue, envArg, actualArgc, ctor, ctor, *thisObj };
+    for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
+        args.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    GateRef bcIndex = builder_.Int64(acc_.GetBytecodeIndex(gate));
+    args.emplace_back(bcIndex);
+
+    GateRef constructGate = builder_.Construct(args);
+
+    acc_.SetDep(constructGate, guard);
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, constructGate, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
+void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget, GateRef glue)
+{
+    GateType ctorType = acc_.GetGateType(ctor);  // ldfunction in derived constructor get function type
+    if (!tsManager_->IsClassTypeKind(ctorType) && !tsManager_->IsFunctionTypeKind(ctorType)) {
+        acc_.DeleteGuardAndFrameState(gate);
+        return;
+    }
+
+    // guard maybe not a GUARD
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    auto currentLabel = builder_.GetCurrentEnvironment()->GetCurrentLabel();
+    auto currentDepend = acc_.GetDep(guard);
+    currentLabel->SetDepend(currentDepend);
+
+    DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    Label allocateThisObj(&builder_);
+    Label notAllocateThisObj(&builder_);
+    Label construct(&builder_);
+
+    GateRef superCtor = GetSuperConstructor(ctor);
+    GateRef isBase = builder_.IsBase(superCtor);
+
+    builder_.Branch(isBase, &allocateThisObj, &notAllocateThisObj);
+    builder_.Bind(&allocateThisObj);
+    {
+        GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), newTarget,
+                                              builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        check = builder_.IsJSHClass(protoOrHclass);
+        thisObj = builder_.HeapAlloc(protoOrHclass, GateType::AnyType(), RegionSpaceFlag::IN_YOUNG_SPACE);
+        builder_.Jump(&construct);
+    }
+    builder_.Bind(&notAllocateThisObj);
+    {
+        check = builder_.Boolean(true);
+        builder_.Jump(&construct);
+    }
+    builder_.Bind(&construct);
+
+    acc_.ReplaceIn(guard, 1, *check);
+
+    // call constructor
+    size_t range = acc_.GetNumValueIn(gate);
+    GateRef envArg = builder_.Undefined();
+    GateRef actualArgc = builder_.Int64(range + 3);  // 3: ctor, newTaget, this
+    std::vector<GateRef> args { glue, envArg, actualArgc, superCtor, newTarget, *thisObj };
+    for (size_t i = 0; i < range; ++i) {
+        args.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    GateRef bcIndex = builder_.Int64(acc_.GetBytecodeIndex(gate));
+    args.emplace_back(bcIndex);
+
+    GateRef constructGate = builder_.Construct(args);
+
+    acc_.SetDep(constructGate, guard);
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, constructGate, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
+GateRef TSTypeLowering::GetSuperConstructor(GateRef ctor)
+{
+    GateRef hclass = builder_.LoadHClass(ctor);
+    GateRef protoOffset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
+    return builder_.Load(VariableType::JS_ANY(), hclass, protoOffset);
+}
+
+void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    GateRef function = acc_.GetValueIn(gate, 2); // 2:function
+    GateRef a0 = acc_.GetValueIn(gate, 1);
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    builder_.SetDepend(acc_.GetDep(guard));
+    GateRef funcheck = builder_.CallTargetCheck(function, builder_.IntPtr(static_cast<int64_t>(id)));
+    BuiltinLowering lowering(circuit_);
+    GateRef paracheck = lowering.CheckPara(gate, id);
+    GateRef check = builder_.BoolAnd(paracheck, funcheck);
+
+    acc_.ReplaceIn(guard, 1, check);
+    builder_.SetDepend(guard);
+
+    GateRef result = builder_.TypedCallBuiltin(a0, id);
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
+BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func, GateRef receiver)
+{
+    GateType receiverType = acc_.GetGateType(receiver);
+    if (!tsManager_->IsBuiltinMath(receiverType)) {
+        return BuiltinsStubCSigns::ID::NONE;
+    }
+    GateType funcType = acc_.GetGateType(func);
+    if (!tsManager_->IsBuiltin(funcType)) {
+        return BuiltinsStubCSigns::ID::NONE;
+    }
+    std::string name = tsManager_->GetFuncName(funcType);
+    BuiltinsStubCSigns::ID id = BuiltinLowering::GetBuiltinId(name);
+    return id;
+}
+
+void TSTypeLowering::LowerCallThis1Imm8V8V8(GateRef gate)
+{
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef a0 = acc_.GetValueIn(gate, 1); // 1:parameter index
+    GateType a0Type = acc_.GetGateType(a0);
+    GateRef func = acc_.GetValueIn(gate, 2); // 2:function
+    BuiltinsStubCSigns::ID id = GetBuiltinId(func, thisObj);
+    if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
+        SpeculateCallBuiltin(gate, id);
+    } else {
+        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteGuardAndFrameState(gate);
+    }
 }
 }  // namespace panda::ecmascript

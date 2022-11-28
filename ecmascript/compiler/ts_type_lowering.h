@@ -17,18 +17,21 @@
 #define ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class TSTypeLowering {
 public:
-    TSTypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
-                   TSManager *tsManager, bool enableLog, const std::string& name,
-                   const JSHandle<JSTaggedValue> &constantPool)
-        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
-          enableLog_(enableLog), methodName_(name), constantPool_(constantPool) {}
+    TSTypeLowering(Circuit *circuit, CompilationInfo *info,
+                   bool enableLog, const std::string& name)
+        : circuit_(circuit), acc_(circuit), builder_(circuit, info->GetCompilerConfig()),
+          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
+          tsManager_(info->GetTSManager()),
+          enableLog_(enableLog),
+          methodName_(name) {}
 
     ~TSTypeLowering() = default;
 
@@ -64,6 +67,9 @@ private:
     void LowerTypedShl(GateRef gate);
     void LowerTypedShr(GateRef gate);
     void LowerTypedAshr(GateRef gate);
+    void LowerTypedAnd(GateRef gate);
+    void LowerTypedOr(GateRef gate);
+    void LowerTypedXor(GateRef gate);
     void LowerTypedInc(GateRef gate);
     void LowerTypedDec(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
@@ -76,6 +82,11 @@ private:
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
+    void LowerTypedNewObjRange(GateRef gate, GateRef glue);
+    void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget, GateRef glue);
+
+    GateRef GetSuperConstructor(GateRef ctor);
+    void LowerCallThis1Imm8V8V8(GateRef gate);
 
     // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
@@ -85,9 +96,10 @@ private:
     template<TypedUnOp Op>
     void SpeculateNumber(GateRef gate);
     void SpeculateConditionJump(GateRef gate);
+    void SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID Op);
+    BuiltinsStubCSigns::ID GetBuiltinId(GateRef func, GateRef receiver);
     template<TypedUnOp Op>
     GateRef AppendOverflowCheck(GateRef typeCheck, GateRef intVal);
-    BytecodeCircuitBuilder *bcBuilder_ {nullptr};
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
@@ -95,7 +107,6 @@ private:
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
-    JSHandle<ConstantPool> constantPool_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H

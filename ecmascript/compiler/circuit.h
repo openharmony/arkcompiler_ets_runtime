@@ -26,7 +26,6 @@
 #include "ecmascript/frames.h"
 
 #include "libpandabase/macros.h"
-
 #include "securec.h"
 
 namespace panda::ecmascript::kungfu {
@@ -48,7 +47,7 @@ public:
     GateRef NewGate(OpCode op, BitField bitfield, const std::vector<GateRef> &inList, GateType type,
                     MarkCode mark = MarkCode::NO_MARK);
     void PrintAllGates() const;
-    void PrintAllGates(BytecodeCircuitBuilder &builder) const;
+    void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
     static GateRef GetCircuitRoot(OpCode opcode);
     static GateRef NullGate();
@@ -68,6 +67,8 @@ public:
     {
         return isArch64_;
     }
+    void PushFrameState();
+    void PopFrameState();
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
@@ -92,7 +93,6 @@ private:
     void ModifyIn(GateRef gate, size_t idx, GateRef in);
     void NewIn(GateRef gate, size_t idx, GateRef in);
     std::vector<GateRef> GetOutVector(GateRef gate) const;
-    std::vector<GateRef> GetInVector(GateRef gate) const;
     bool IsFirstOutNull(GateRef gate) const;
     bool IsInGateNull(GateRef gate, size_t idx) const;
     GateRef GetIn(GateRef gate, size_t idx) const;
@@ -109,6 +109,14 @@ private:
     uint8_t *GetDataPtr(size_t offset);
     Gate *LoadGatePtr(GateRef shift);
     const Gate *LoadGatePtrConst(GateRef shift) const;
+    const Out *InnerMethodArgFirstOut() const
+    {
+        return innerMethodArgFirstOut_;
+    }
+    const Out *InnerMethodReturnFirstOut() const
+    {
+        return innerMethodReturnFirstOut_;
+    }
 
 private:
     void* space_ {nullptr};
@@ -120,8 +128,11 @@ private:
     std::map<BitField, GateRef> constantDataCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
     bool isArch64_ {false};
+    const Out *innerMethodArgFirstOut_ { nullptr };
+    const Out *innerMethodReturnFirstOut_ { nullptr };
 
     friend class GateAccessor;
+    friend class ConstGateAccessor;
     friend class Verifier;
 };
 }  // namespace panda::ecmascript::kungfu

@@ -97,9 +97,9 @@ namespace panda::ecmascript::kungfu {
 
 class TypeLowering {
 public:
-    TypeLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
+    TypeLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
                  bool enableLog, const std::string& name)
-        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
           enableLog_(enableLog), methodName_(name) {}
 
@@ -138,6 +138,9 @@ private:
     void LowerTypedShl(GateRef gate);
     void LowerTypedShr(GateRef gate);
     void LowerTypedAshr(GateRef gate);
+    void LowerTypedAnd(GateRef gate);
+    void LowerTypedOr(GateRef gate);
+    void LowerTypedXor(GateRef gate);
     void LowerTypedInc(GateRef gate);
     void LowerTypedDec(GateRef gate);
     void LowerTypedNeg(GateRef gate);
@@ -162,6 +165,9 @@ private:
     void LowerNumberShl(GateRef gate);
     void LowerNumberShr(GateRef gate);
     void LowerNumberAshr(GateRef gate);
+    void LowerNumberAnd(GateRef gate);
+    void LowerNumberOr(GateRef gate);
+    void LowerNumberXor(GateRef gate);
     void LowerNumberInc(GateRef gate);
     void LowerNumberDec(GateRef gate);
     void LowerNumberNeg(GateRef gate);
@@ -171,10 +177,22 @@ private:
     void LowerObjectTypeCheck(GateRef gate, GateRef glue);
     void LowerClassInstanceCheck(GateRef gate, GateRef glue);
     void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
+    void LowerNewObjTypeCheck(GateRef gate);
     void LowerLoadProperty(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate, GateRef glue);
-    void LowerLoadElement(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
+    void LowerLoadElement(GateRef gate);
+    void LowerFloat32ArrayLoadElement(GateRef gate);
+    void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerHeapAllocate(GateRef gate, GateRef glue);
+    void LowerHeapAllocateInYoung(GateRef gate, GateRef glue);
+    void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
+                                    GateRef start, GateRef end);
+    void LowerConstruct(GateRef gate, GateRef glue);
+    void LowerTypedCallBuitin(GateRef gate);
+    void LowerCallTargetCheck(GateRef gate);
+
+    GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 
     template<OpCode::Op Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
@@ -182,6 +200,8 @@ private:
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<OpCode::Op Op>
     GateRef ShiftNumber(GateRef left, GateRef right, GateType leftType, GateType rightType);
+    template<OpCode::Op Op>
+    GateRef LogicalNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
     GateRef CompareNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
@@ -198,7 +218,6 @@ private:
     GateRef Int32Mod(GateRef left, GateRef right);
     GateRef DoubleMod(GateRef left, GateRef right);
     GateRef IntToTaggedIntPtr(GateRef x);
-    GateRef DoubleIsINF(GateRef x);
     GateRef Less(GateRef left, GateRef right);
     GateRef LessEq(GateRef left, GateRef right);
     GateRef FastDiv(GateRef left, GateRef right);
@@ -210,7 +229,6 @@ private:
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
 
-    BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;

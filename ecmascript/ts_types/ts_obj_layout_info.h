@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_TS_TYPES_TS_OBJ_LAYOUT_INFO_H
 #define ECMASCRIPT_TS_TYPES_TS_OBJ_LAYOUT_INFO_H
 
-#include "ecmascript/js_object.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
@@ -28,7 +27,7 @@ public:
     static constexpr int NUMBER_OF_PROPERTIES_INDEX = 0;
     static constexpr int ELEMENTS_START_INDEX = 1;
     static constexpr int ENTRY_SIZE = 2;
-    static constexpr int ELEMENTS_COUNT_INDEX  = ELEMENTS_START_INDEX - 1;
+    static constexpr int ELEMENTS_COUNT_INDEX = ELEMENTS_START_INDEX - 1;
     static constexpr int ENTRY_TYPE_OFFSET = 1;
     static constexpr int ENTRY_KEY_OFFSET = 0;
 
@@ -53,14 +52,6 @@ public:
         return TaggedArray::Get(ELEMENTS_COUNT_INDEX).GetInt();
     }
 
-    inline void SetPropertyInit(const JSThread *thread, int index, const JSTaggedValue &key,
-                                                const JSTaggedValue &tsTypeId)
-    {
-        uint32_t idxInArray = GetKeyIndex(index);
-        TaggedArray::Set(thread, idxInArray + ENTRY_KEY_OFFSET, key);
-        TaggedArray::Set(thread, idxInArray + ENTRY_TYPE_OFFSET, tsTypeId);
-    }
-
     inline JSTaggedValue GetKey(int index) const
     {
         uint32_t idxInArray = GetKeyIndex(index);
@@ -73,7 +64,7 @@ public:
         return TaggedArray::Get(idxInArray);
     }
 
-    void SetKey(const JSThread *thread, int index, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
+    void SetKeyAndType(const JSThread *thread, int index, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
 
     inline uint32_t GetLength() const
     {
@@ -86,6 +77,18 @@ public:
     }
 
 private:
+    inline void SetKey(const JSThread *thread, int index, const JSTaggedValue &key)
+    {
+        uint32_t idxInArray = GetKeyIndex(index);
+        TaggedArray::Set(thread, idxInArray, key);
+    }
+
+    inline void SetTypeId(const JSThread *thread, int index, const JSTaggedValue &tsTypeId)
+    {
+        uint32_t idxInArray = GetTypeIdIndex(index);
+        TaggedArray::Set(thread, idxInArray, tsTypeId);
+    }
+
     inline uint32_t GetKeyIndex(int index) const
     {
         return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) * ENTRY_SIZE + ENTRY_KEY_OFFSET);

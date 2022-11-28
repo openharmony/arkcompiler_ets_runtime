@@ -192,7 +192,7 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     for (int32_t i = actualNumArgs - 1; i >= 0; i--) {
         JSTaggedValue value = JSTaggedValue::Undefined();
         // deopt value
-        if (hasDeoptValue(virtualIndex)) {
+        if (HasDeoptValue(virtualIndex)) {
             value = deoptVregs_.at(static_cast<kungfu::OffsetType>(virtualIndex));
         } else {
             value = GetActualFrameArgs(i);
@@ -220,22 +220,29 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
     // [call field virtual regs]
     for (int32_t i = virtualIndex; i >= 0; i--) {
-        JSTaggedValue value = JSTaggedValue::Undefined();
-        if (hasDeoptValue(virtualIndex)) {
-            value = deoptVregs_.at(static_cast<kungfu::OffsetType>(virtualIndex));
-        }
+        JSTaggedValue value = GetDeoptValue(virtualIndex);
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     return true;
 }
 
+void Deoptimizier::Dump(Method* method)
+{
+    if (traceDeopt_) {
+        std::string data = JsStackInfo::BuildMethodTrace(method, pc_);
+        LOG_COMPILER(INFO) << "Deoptimize" << data;
+        const uint8_t *pc = method->GetBytecodeArray() + pc_;
+        BytecodeInstruction inst(pc);
+        LOG_COMPILER(INFO) << inst;
+    }
+}
+
 JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 {
     JSTaggedValue callTarget = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
     auto method = GetMethod(callTarget);
-    std::string data = JsStackInfo::BuildMethodTrace(method, pc_);
-    LOG_COMPILER(DEBUG) << "Deoptimize" << data;
+    Dump(method);
     ASSERT(thread_ != nullptr);
 
     FrameWriter frameWriter(this);
@@ -243,11 +250,11 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     if (!CollectVirtualRegisters(method, &frameWriter)) {
         return JSTaggedValue::Exception().GetRawData();
     }
-    const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
     AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
+    const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
 
     JSTaggedValue thisObj = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);
-    auto acc = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::ACC_INDEX));
+    auto acc = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
     statePtr->function = callTarget;
     statePtr->acc = acc;
     statePtr->env = env_;

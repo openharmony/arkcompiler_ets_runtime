@@ -50,20 +50,6 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDA_STR_ID16:
             kind = BytecodeKind::SET_CONSTANT;
             break;
-        case EcmaOpcode::CALLARG0_IMM8:
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLTHIS0_IMM8_V8:
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-            kind = BytecodeKind::CALL_BC;
-            break;
         case EcmaOpcode::ADD2_IMM8_V8:
         case EcmaOpcode::SUB2_IMM8_V8:
         case EcmaOpcode::MUL2_IMM8_V8:
@@ -85,6 +71,9 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::SHL2_IMM8_V8:
         case EcmaOpcode::SHR2_IMM8_V8:
         case EcmaOpcode::ASHR2_IMM8_V8:
+        case EcmaOpcode::AND2_IMM8_V8:
+        case EcmaOpcode::OR2_IMM8_V8:
+        case EcmaOpcode::XOR2_IMM8_V8:
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
@@ -99,6 +88,12 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
         case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
             flags |= BytecodeFlags::SUPPORT_DEOPT;
             break;
         case EcmaOpcode::RETURNUNDEFINED:
@@ -140,7 +135,6 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     }
 
     if (kind == BytecodeKind::GENERAL ||
-        kind == BytecodeKind::CALL_BC ||
         kind == BytecodeKind::THROW_BC ||
         kind == BytecodeKind::GENERATOR) {
         flags |= BytecodeFlags::GENERAL_BC;
@@ -178,12 +172,11 @@ Bytecodes::Bytecodes()
     }
 }
 
-void BytecodeIterator::InitBytecodeInfo(
-    BytecodeCircuitBuilder *builder,
-    BytecodeInfo &info, const uint8_t *pc)
+void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
+                                    BytecodeInfo &info, const uint8_t *pc)
 {
-    auto opcode = Bytecodes::GetOpcode(pc);
-    switch (static_cast<EcmaOpcode>(opcode)) {
+    auto opcode = info.GetOpcode();
+    switch (opcode) {
         case EcmaOpcode::MOV_V4_V4: {
             uint16_t vdst = READ_INST_4_0();
             uint16_t vsrc = READ_INST_4_1();
@@ -1283,23 +1276,20 @@ void BytecodeIterator::InitBytecodeInfo(
     }
 }
 
-void BytecodeIterator::Reset(BytecodeCircuitBuilder *builder, const uint8_t *start, const uint8_t *end)
+const BytecodeInfo &BytecodeIterator::GetBytecodeInfo() const
 {
-    auto pc = start;
-    std::vector<const uint8_t*> offsets;
-    while (pc <= end) {
-        offsets.push_back(pc);
-        EcmaOpcode opcode = Bytecodes::GetOpcode(pc);
-        pc += BytecodeInstruction::Size(opcode);
-    }
-    auto bytecodes = builder->GetBytecodes();
-    infoData_.resize(offsets.size());
-    for (size_t i = 0; i < offsets.size(); i++) {
-        auto info = &infoData_[i];
-        pc = offsets[i];
-        InitBytecodeInfo(builder, *info, pc);
-        info->pc_ = pc;
-        info->metaData_ = bytecodes->GetBytecodeMetaData(pc);
-    }
+    return builder_->GetBytecodeInfo(index_);
+}
+
+const uint8_t *BytecodeIterator::PeekNextPc(size_t i) const
+{
+    ASSERT(index_ + i <= end_);
+    return builder_->GetPCByIndex(index_ + i);
+}
+
+const uint8_t *BytecodeIterator::PeekPrevPc(size_t i) const
+{
+    ASSERT(index_ - i >= start_);
+    return builder_->GetPCByIndex(index_ - i);
 }
 } // panda::ecmascript::kungfu

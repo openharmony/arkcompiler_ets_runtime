@@ -110,14 +110,16 @@ namespace panda::ecmascript::kungfu {
 
 class SlowPathLowering {
 public:
-    SlowPathLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
-                     TSManager *tsManager, bool enableLog, const std::string& name)
-        : tsManager_(tsManager), bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit),
+    SlowPathLowering(Circuit *circuit, CompilationConfig *cmpCfg,
+                     TSManager *tsManager, const MethodLiteral *methodLiteral,
+                     bool enableLog, const std::string& name)
+        : tsManager_(tsManager), methodLiteral_(methodLiteral),
+          circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
           enableLog_(enableLog), methodName_(name)
     {
-        enableBcTrace_ = cmpCfg->IsEnableByteCodeTrace();
+        traceBc_ = cmpCfg->IsTraceBC();
     }
     ~SlowPathLowering() = default;
     void CallRuntimeLowering();
@@ -127,9 +129,9 @@ public:
         return enableLog_;
     }
 
-    bool IsEnableByteCodeTrace() const
+    bool IsTraceBC() const
     {
-        return enableBcTrace_;
+        return traceBc_;
     }
 
 private:
@@ -149,12 +151,8 @@ private:
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);
     void LowerExceptionHandler(GateRef hirGate);
     // environment must be initialized
-    GateRef GetConstPool(GateRef jsFunc);
     GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef GetProfileTypeInfo(GateRef jsFunc);
-    GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
-    // environment must be initialized
-    GateRef GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type);
     // environment must be initialized
     GateRef GetHomeObjectFromJSFunction(GateRef jsFunc);
     void Lower(GateRef gate);
@@ -295,14 +293,14 @@ private:
     void LowerConstPoolData(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
-    BytecodeCircuitBuilder *bcBuilder_;
+    const MethodLiteral *methodLiteral_ {nullptr};
     Circuit *circuit_;
     GateAccessor acc_;
     ArgumentAccessor argAcc_;
     CircuitBuilder builder_;
     GateRef dependEntry_;
     bool enableLog_ {false};
-    bool enableBcTrace_ {false};
+    bool traceBc_ {false};
     std::string methodName_;
 };
 }  // panda::ecmascript::kungfu

@@ -51,7 +51,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     builder.Return(entry, depend, check);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypeCheckFramework");
+    TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeCheckFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -71,7 +71,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
     builder.Return(nadd, nadd, nadd);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypedBinaryOperatorAddFramework");
+    TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypedBinaryOperatorAddFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -91,7 +91,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
     builder.Return(nless, nless, nless);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypedBinaryOperatorLessFramework");
+    TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypedBinaryOperatorLessFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -109,7 +109,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
     builder.Return(convert, convert, convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypeConvertFramework");
+    TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeConvertFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -126,7 +126,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     Label exit(&builder);
     VariableType arg1Type(MachineType::I64, GateType::BooleanType());
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
-    TypeLowering typeLowering(nullptr, &circuit, &config, nullptr, false, "TypeOpCodeFramework");
+    TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeOpCodeFramework");
 
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
@@ -164,8 +164,10 @@ HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
     auto lengthString = builder.Load(VariableType::JS_POINTER(), globalEnv, lenthOffset);
 
     builder.Store(VariableType::JS_POINTER(), glue, array, builder.IntPtr(0), arg1);
-    builder.StoreElement(array, builder.IntPtr(0), builder.ToTaggedInt(builder.Int64(0)));
-    builder.StoreElement(array, builder.IntPtr(1), builder.ToTaggedInt(builder.Int64(1)));
+    builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(array, builder.IntPtr(0),
+        builder.ToTaggedInt(builder.Int64(0)));
+    builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(array, builder.IntPtr(1),
+        builder.ToTaggedInt(builder.Int64(1)));
     builder.StoreProperty(array, lengthString, builder.ToTaggedInt(builder.Int64(2)));
     auto length = builder.LoadProperty(array, lengthString);
     Label less2(&builder);
@@ -174,7 +176,8 @@ HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
         builder.ToTaggedInt(builder.Int64(2))));
     builder.Branch(condtion, &less2, &notLess2);
     builder.Bind(&less2);
-    auto ret = builder.LoadElement(array,  builder.IntPtr(1));
+    auto ret =
+        builder.LoadElement<ecmascript::kungfu::TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(array, builder.IntPtr(1));
     builder.Return(ret);
     builder.Bind(&notLess2);
     builder.Return(builder.Int64(-1));

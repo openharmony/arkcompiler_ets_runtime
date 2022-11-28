@@ -274,7 +274,7 @@ public:
         return { circuit_, gate };
     }
 
-    InWrapper Ins(GateRef gate)
+    InWrapper Ins(GateRef gate) const
     {
         return { circuit_, gate };
     }
@@ -299,17 +299,14 @@ public:
     }
 
     ~GateAccessor() = default;
-
-    void GetInVector(GateRef gate, std::vector<GateRef>& ins) const;
-    void GetInStateVector(GateRef gate, std::vector<GateRef>& ins) const;
-    void GetOutVector(GateRef gate, std::vector<GateRef>& outs) const;
-    void GetOutStateVector(GateRef gate, std::vector<GateRef>& outStates) const;
     void GetAllGates(std::vector<GateRef>& gates) const;
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
     bool IsGCRelated(GateRef gate) const;
     void SetOpCode(GateRef gate, OpCode::Op opcode);
     BitField GetBitField(GateRef gate) const;
+    uint32_t GetBytecodeIndex(GateRef gate) const;
+    EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void SetBitField(GateRef gate, BitField bitField);
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;
@@ -334,6 +331,7 @@ public:
     size_t GetStateCount(GateRef gate) const;
     size_t GetDependCount(GateRef gate) const;
     size_t GetInValueCount(GateRef gate) const;
+    size_t GetInValueStarts(GateRef gate) const;
     void UpdateAllUses(GateRef gate, GateRef replaceValueIn);
     void ReplaceIn(GateRef gate, size_t index, GateRef in);
     void ReplaceStateIn(GateRef gate, GateRef in, size_t index = 0);
@@ -350,6 +348,7 @@ public:
     bool IsLoopBack(GateRef gate) const;
     bool IsState(GateRef gate) const;
     bool IsConstant(GateRef gate) const;
+    bool IsConstantValue(GateRef gate, uint64_t value) const;
     bool IsTypedOperator(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
@@ -369,6 +368,9 @@ public:
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
+    GateRef GetGlueFromArgList() const;
+    void GetArgsOutVector(std::vector<GateRef>& outs) const;
+    void GetReturnOutVector(std::vector<GateRef>& outs) const;
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const
@@ -422,7 +424,106 @@ private:
         return InsIterator(circuit_, &reinterpret_cast<In *>(circuit_->LoadGatePtr(gate) + 1)[endIndex]);
     }
 
+    void GetIns(GateRef gate, std::vector<GateRef>& ins) const;
+
+    void GetOuts(GateRef gate, std::vector<GateRef>& outs) const;
+
+    void GetInStates(GateRef gate, std::vector<GateRef>& ins) const;
+
+    void GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const;
+
     Circuit *circuit_;
+
+    friend class LLVMIRBuilder;
+    friend class Scheduler;
+    friend class GuardLowering;
+    friend class ArgumentAccessor;
+    friend class BytecodeCircuitBuilder;
+};
+
+class ConstGateAccessor {
+public:
+    struct ConstInsIterator {
+        explicit ConstInsIterator(const Circuit* circuit, const In* in) : circuit_(circuit), in_(in)
+        {
+        }
+
+        GateRef operator*() const
+        {
+            return circuit_->GetGateRef(in_->GetGateConst());
+        }
+
+        const ConstInsIterator& operator++()
+        {
+            in_++;
+            return *this;
+        }
+        ConstInsIterator operator++(int)
+        {
+            ConstInsIterator tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+        OpCode GetOpCode() const
+        {
+            ASSERT(in_ != nullptr);
+            return in_->GetGateConst()->GetOpCode();
+        }
+
+        friend bool operator== (const ConstInsIterator& a, const ConstInsIterator& b)
+        {
+            return a.in_ == b.in_;
+        };
+        friend bool operator!= (const ConstInsIterator& a, const ConstInsIterator& b)
+        {
+            return a.in_ != b.in_;
+        };
+
+    private:
+        const Circuit* circuit_;
+        const In* in_;
+    };
+
+    struct ConstInWrapper {
+        const Circuit* circuit;
+        const GateRef gate;
+        auto begin()
+        {
+            return ConstGateAccessor(circuit).ConstInBegin(gate);
+        }
+        auto end()
+        {
+            return ConstGateAccessor(circuit).ConstInEnd(gate);
+        }
+    };
+
+    ConstInWrapper Ins(GateRef gate) const
+    {
+        return { circuit_, gate };
+    }
+
+    explicit ConstGateAccessor(const Circuit *circuit) : circuit_(circuit)
+    {
+    }
+
+    ~ConstGateAccessor() = default;
+
+private:
+    ConstInsIterator ConstInBegin(GateRef gate) const
+    {
+        return ConstInsIterator(circuit_, &reinterpret_cast<const In *>(circuit_->LoadGatePtrConst(gate) + 1)[0]);
+    }
+
+    ConstInsIterator ConstInEnd(GateRef gate) const
+    {
+        auto endIndex = circuit_->LoadGatePtrConst(gate)->GetNumIns();
+        return ConstInsIterator(circuit_,
+                                &reinterpret_cast<const In *>(circuit_->LoadGatePtrConst(gate) + 1)[endIndex]);
+    }
+
+    const Circuit *circuit_;
+    friend struct ConstInWrapper;
 };
 }
 #endif  // ECMASCRIPT_COMPILER_GATE_ACCESSOR_H

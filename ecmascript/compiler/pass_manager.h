@@ -22,6 +22,82 @@
 #include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript::kungfu {
+class Bytecodes;
+class LexEnvManager;
+class CompilationConfig;
+class BytecodeInfoCollector;
+
+class CompilationInfo {
+public:
+    explicit CompilationInfo(TSManager *tsManager, Bytecodes *bytecodes, LexEnvManager *lexEnvManager,
+                             CompilationConfig *cmpCfg, CompilerLog *log, const JSPandaFile *jsPandaFile,
+                             BytecodeInfoCollector* bcInfoCollector, LLVMModule *aotModule)
+        : tsManager_(tsManager), bytecodes_(bytecodes), lexEnvManager_(lexEnvManager), cmpCfg_(cmpCfg),
+          log_(log), jsPandaFile_(jsPandaFile), bcInfoCollector_(bcInfoCollector), aotModule_(aotModule)
+    {
+    }
+
+    TSManager* GetTSManager() const
+    {
+        return tsManager_;
+    }
+
+    Bytecodes* GetByteCodes() const
+    {
+        return bytecodes_;
+    }
+
+    LexEnvManager* GetLexEnvManager() const
+    {
+        return lexEnvManager_;
+    }
+
+    CompilationConfig* GetCompilerConfig() const
+    {
+        return cmpCfg_;
+    }
+
+    CompilerLog* GetCompilerLog() const
+    {
+        return log_;
+    }
+
+    const JSPandaFile* GetJSPandaFile() const
+    {
+        return jsPandaFile_;
+    }
+
+    BytecodeInfoCollector* GetBytecodeInfoCollector() const
+    {
+        return bcInfoCollector_;
+    }
+
+    LLVMModule* GetAOTModule() const
+    {
+        return aotModule_;
+    }
+
+    bool IsSkippedMethod(uint32_t methodOffset) const
+    {
+        return bcInfoCollector_->IsSkippedMethod(methodOffset);
+    }
+
+    BCInfo& GetBytecodeInfo()
+    {
+        return bcInfoCollector_->GetBytecodeInfo();
+    }
+
+private:
+    TSManager *tsManager_ {nullptr};
+    Bytecodes *bytecodes_ {nullptr};
+    LexEnvManager *lexEnvManager_ {nullptr};
+    CompilationConfig *cmpCfg_ {nullptr};
+    CompilerLog *log_ {nullptr};
+    const JSPandaFile *jsPandaFile_ {nullptr};
+    BytecodeInfoCollector *bcInfoCollector_ {nullptr};
+    LLVMModule *aotModule_ {nullptr};
+};
+
 class PassManager {
 public:
     PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
@@ -29,6 +105,7 @@ public:
                 uint32_t hotnessThreshold)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), enableTypeLowering_(enableTypeLowering),
+          enableTypeInfer_(enableTypeLowering || vm_->GetTSManager()->AssertTypes()),
           hotnessThreshold_(hotnessThreshold) {};
     PassManager() = default;
     ~PassManager() = default;
@@ -36,14 +113,17 @@ public:
     bool Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn);
 
 private:
-    JSPandaFile *CreateJSPandaFile(const CString &fileName);
-    JSHandle<JSTaggedValue> ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, const std::string &fileName);
-    bool FilterMethod(const JSPandaFile *jsPandaFile, const CString &recordName, MethodLiteral *method,
-        uint32_t methodOffset, MethodPcInfo &methodPCInfo);
+    JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
+    void ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
     bool EnableTypeLowering() const
     {
         return enableTypeLowering_;
+    }
+
+    bool EnableTypeInfer() const
+    {
+        return enableTypeInfer_;
     }
 
     EcmaVM *vm_ {nullptr};
@@ -51,10 +131,11 @@ private:
     std::string triple_ {};
     size_t optLevel_ {3}; // 3 : default backend optimization level
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
-    const CompilerLog *log_ {nullptr};
+    CompilerLog *log_ {nullptr};
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
     bool enableTypeLowering_ {true};
+    bool enableTypeInfer_ {true};
     uint32_t hotnessThreshold_ {0};
     PGOProfilerLoader profilerLoader_;
 };

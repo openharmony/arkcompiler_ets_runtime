@@ -17,6 +17,7 @@
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string_table.h"
@@ -149,7 +150,8 @@ JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, Fun
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
     if (builtinId != INVALID_BUILTINS_ID) {
-        method->SetFastBuiltinBit(true);
+        bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(static_cast<kungfu::BuiltinsStubCSigns::ID>(builtinId));
+        method->SetFastBuiltinBit(isFast);
         method->SetBuiltinId(builtinId);
     }
     method->SetNumArgsWithCallField(numArgs);
@@ -2257,6 +2259,24 @@ JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
     return array;
 }
 
+JSHandle<ByteArray> ObjectFactory::NewByteArray(uint32_t length, uint32_t size)
+{
+    size_t byteSize = ByteArray::ComputeSize(size, length);
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetByteArrayClass().GetTaggedObject());
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(arrayClass, byteSize);
+    JSHandle<ByteArray> array(thread_, header);
+
+    void *data = array->GetData();
+    if (memset_s(data, length * size, 0, length * size) != EOK) {
+        LOG_FULL(FATAL) << "memset_s failed";
+        UNREACHABLE();
+    }
+
+    array->SetLength(length);
+    array->SetSize(size);
+    return array;
+}
+
 JSHandle<LinkedNode> ObjectFactory::NewLinkedNode(int hash, const JSHandle<JSTaggedValue> &key,
                                                   const JSHandle<JSTaggedValue> &value,
                                                   const JSHandle<LinkedNode> &next)
@@ -3234,21 +3254,6 @@ JSHandle<TSClassInstanceType> ObjectFactory::NewTSClassInstanceType()
     classInstanceType->SetClassGT(GlobalTSTypeRef::Default());
 
     return classInstanceType;
-}
-
-JSHandle<TSImportType> ObjectFactory::NewTSImportType()
-{
-    NewObjectHook();
-
-    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetTSImportTypeClass().GetTaggedObject()));
-    JSHandle<TSImportType> importType(thread_, header);
-
-    importType->SetGT(GlobalTSTypeRef::Default());
-    importType->SetTargetGT(GlobalTSTypeRef::Default());
-    importType->SetImportPath(thread_, JSTaggedValue::Undefined());
-
-    return importType;
 }
 
 JSHandle<TSFunctionType> ObjectFactory::NewTSFunctionType(uint32_t length)

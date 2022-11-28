@@ -304,10 +304,8 @@ JSTaggedValue BuiltinsAtomics::AtomicReadModifyWriteCase(JSThread *thread, JSTag
                                                          DataViewType type, uint32_t indexedPosition,
                                                          EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
-    JSArrayBuffer *jsArrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
-    JSTaggedValue data = jsArrayBuffer->GetArrayBufferData();
-    void *pointer = JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer();
-    auto *block = reinterpret_cast<uint8_t *>(pointer);
+    void *pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBuf);
+    uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
     uint32_t size = argv->GetArgsNumber();
     switch (type) {
         case DataViewType::UINT8:
@@ -503,8 +501,7 @@ WaitResult BuiltinsAtomics::DoWait(JSThread *thread, JSHandle<JSTaggedValue> &ar
                                    size_t index, T execpt, double timeout)
 {
     MutexGuard lock_guard(g_mutex);
-    JSHandle<JSNativePointer> np(thread, JSHandle<JSArrayBuffer>::Cast(arrayBuffer)->GetArrayBufferData());
-    void *buffer = np->GetExternalPointer();
+    void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer.GetTaggedValue());
     ASSERT(buffer != nullptr);
     WaiterListNode *node = thread->GetEcmaVM()->GetWaiterListNode();
     node->date_ = buffer;
@@ -551,8 +548,7 @@ WaitResult BuiltinsAtomics::DoWait(JSThread *thread, JSHandle<JSTaggedValue> &ar
 
 uint32_t BuiltinsAtomics::Signal(JSHandle<JSTaggedValue> &arrayBuffer, const size_t &index, double wakeCount)
 {
-    JSTaggedValue data = JSHandle<JSArrayBuffer>::Cast(arrayBuffer)->GetArrayBufferData();
-    void *buffer = JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer();
+    void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer.GetTaggedValue());
     ASSERT(buffer != nullptr);
     MutexGuard lock_guard(g_mutex);
     auto &locationListMap = g_waitLists->locationListMap_;

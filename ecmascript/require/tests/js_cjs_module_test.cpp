@@ -19,6 +19,7 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/global_env.h"
 
 using namespace panda::ecmascript;
 namespace panda::test {

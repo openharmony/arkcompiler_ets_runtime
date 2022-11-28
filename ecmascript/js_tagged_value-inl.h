@@ -476,6 +476,11 @@ inline bool JSTaggedValue::IsTaggedArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();
 }
 
+inline bool JSTaggedValue::IsByteArray() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsByteArray();
+}
+
 inline bool JSTaggedValue::IsConstantPool() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsConstantPool();
@@ -1227,11 +1232,6 @@ inline bool JSTaggedValue::IsTSInterfaceType() const
 inline bool JSTaggedValue::IsTSUnionType() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSUnionType();
-}
-
-inline bool JSTaggedValue::IsTSImportType() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSImportType();
 }
 
 inline bool JSTaggedValue::IsTSClassInstanceType() const

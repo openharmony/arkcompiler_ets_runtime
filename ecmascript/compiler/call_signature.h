@@ -369,8 +369,13 @@ private:
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
-    V(AotFloatMod)                          \
     V(FloatMod)                             \
+    V(FloatSqrt)                            \
+    V(FloatCos)                             \
+    V(FloatSin)                             \
+    V(FloatACos)                            \
+    V(FloatATan)                            \
+    V(FloatFloor)                           \
     V(FindElementWithCache)                 \
     V(MarkingBarrier)                       \
     V(StoreBarrier)                         \
@@ -388,7 +393,6 @@ private:
     V(JSObjectGetMethod)                    \
     V(JsProxyCallInternal)                  \
     V(DeoptHandlerAsm)                      \
-    V(JSFunctionReentry)                    \
     V(JSCallNew)                            \
     V(JSCallNewWithArgV)                    \
     TEST_STUB_SIGNATRUE_LIST(V)

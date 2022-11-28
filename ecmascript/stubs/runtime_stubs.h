@@ -37,10 +37,8 @@ class JSProxy;
 class GeneratorContext;
 struct EcmaRuntimeCallInfo;
 
-using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uintptr_t prevFp, uint32_t expectedNumArgs,
-                                         uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t codeAddr);
-using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[], uintptr_t prevFp,
-                                            bool flag);
+using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
+                                              uintptr_t prevFp, size_t callType);
 
 #define RUNTIME_ASM_STUB_LIST(V)             \
     JS_CALL_TRAMPOLINE_LIST(V)               \
@@ -82,7 +80,6 @@ using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const
     V(JSProxyCallInternalWithArgV)           \
     V(OptimizedCallOptimized)                \
     V(DeoptHandlerAsm)                       \
-    V(JSFunctionReentry)                     \
     V(JSCallNew)                             \
     V(JSCallNewWithArgV)
 
@@ -96,8 +93,13 @@ using JSFunctionReentry = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const
     V(MarkingBarrier)                          \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
-    V(AotFloatMod)                             \
     V(FloatMod)                                \
+    V(FloatSqrt)                               \
+    V(FloatCos)                                \
+    V(FloatSin)                                \
+    V(FloatACos)                               \
+    V(FloatATan)                               \
+    V(FloatFloor)                              \
     V(FindElementWithCache)                    \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
@@ -348,8 +350,13 @@ public:
     static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
     static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
-    static JSTaggedType AotFloatMod(double x, double y);
     static JSTaggedType FloatMod(double x, double y);
+    static JSTaggedType FloatSqrt(double x);
+    static JSTaggedType FloatCos(double x);
+    static JSTaggedType FloatSin(double x);
+    static JSTaggedType FloatACos(double x);
+    static JSTaggedType FloatATan(double x);
+    static JSTaggedType FloatFloor(double x);
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);

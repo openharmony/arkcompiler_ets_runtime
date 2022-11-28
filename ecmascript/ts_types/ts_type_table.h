@@ -16,36 +16,19 @@
 #ifndef ECMASCRIPT_TS_TYPES_TS_TYPE_TABLE_H
 #define ECMASCRIPT_TS_TYPES_TS_TYPE_TABLE_H
 
-#include "ecmascript/tagged_array.h"
 #include "ecmascript/ts_types/ts_type.h"
-/*
- * ExportValueTable :
- *      +----------------------------------------------------------------+
- *      | symbol (if a user-define type)                                 |
- *      +----------------------------------------------------------------+
- *      | GT{module-Id: current module-Id of type-table; local-Id:xxx}   |
- *      +----------------------------------------------------------------+
- *      | symbol (if a primitive/builtin type)                           |
- *      +----------------------------------------------------------------+
- *      | GT{module-Id: module-Id(0/1) of primitive/builtin type-table}  |
- *      +----------------------------------------------------------------+
- */
+
 namespace panda::ecmascript {
 class TSTypeTable : public TaggedArray {
 public:
-    static constexpr int32_t ITEM_SIZE = 2;
-    static constexpr std::string_view ENTRY_FUNC_NAME = "func_main_0";
-    static constexpr size_t NUM_OF_TYPES_INDEX_IN_SUMMARY_LITREAL = 0;
-    static constexpr size_t TYPE_KIND_INDEX_IN_LITERAL = 0;
     static constexpr size_t RESERVE_TABLE_LENGTH = 2; // for reserve length and exportTable
     static constexpr size_t NUMBER_OF_TYPES_INDEX = 0;
     static constexpr size_t INCREASE_CAPACITY_RATE = 2;
+    static constexpr size_t DEFAULT_NUM_TYPES = 0;
     static constexpr const char* PRIMITIVE_TABLE_NAME = "primitiveTypes";
-    static constexpr const char* BUILTINS_TABLE_NAME = "ohos.lib.d.ts";
+    static constexpr const char* BUILTINS_TABLE_NAME = "lib_ark_builtins.d";
     static constexpr const char* INFER_TABLE_NAME = "inferTypes";
     static constexpr const char* RUNTIME_TABLE_NAME = "runtimeTypes";
-    static constexpr const char* DECLARED_SYMBOL_TYPES = "declaredSymbolTypes";
-    static constexpr const char* EXPORTED_SYMBOL_TYPES = "exportedSymbolTypes";
 
     inline static TSTypeTable *Cast(TaggedObject *object)
     {
@@ -53,14 +36,10 @@ public:
         return static_cast<TSTypeTable *>(object);
     }
 
-    static JSHandle<TSTypeTable> GenerateTypeTable(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                   const CString &recordName, uint32_t moduleId,
-                                                   CVector<JSHandle<EcmaString>> &recordImportModules);
+    static JSHandle<JSTaggedValue> GetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable);
 
-    static void FillLiteralOffsetGTMap(JSThread *thread, const JSPandaFile *jsPandaFile, uint32_t moduleId,
-                                       JSHandle<TaggedArray> summaryLiteral, uint32_t numTypes);
-
-    static JSHandle<TaggedArray> GetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable);
+    static void SetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable,
+                                    JSHandle<TaggedArray> exportValueTable);
 
     inline int GetNumberOfTypes() const
     {
@@ -72,24 +51,8 @@ public:
         TaggedArray::Set(thread, NUMBER_OF_TYPES_INDEX, JSTaggedValue(num));
     }
 
-    static void SetExportValueTable(JSThread *thread, const JSPandaFile *jsPandaFile, JSHandle<TSTypeTable> typeTable);
-
-    static JSHandle<TaggedArray> GenerateExportTableFromPandaFile(JSThread *thread, const JSPandaFile *jsPandaFile);
-
     static JSHandle<TSTypeTable> PushBackTypeToTable(JSThread *thread, JSHandle<TSTypeTable> &table,
                                                      const JSHandle<TSType> &type);
-
-    static JSHandle<EcmaString> GenerateVarNameAndPath(JSThread *thread, JSHandle<EcmaString> importPath,
-                                                       JSHandle<EcmaString> fileName,
-                                                       CVector<JSHandle<EcmaString>> &recordImportModules);
-
-private:
-    static JSHandle<TaggedArray> GetExportDataFromPandaFile(JSThread *thread, const JSPandaFile *jsPandaFile);
-
-    static panda_file::File::EntityId GetFileId(const panda_file::File &pf);
-
-    static void CheckModule(JSThread *thread, const TSManager* tsManager, const JSHandle<EcmaString> target,
-                            CVector<JSHandle<EcmaString>> &recordImportModules);
 };
 }  // namespace panda::ecmascript
 

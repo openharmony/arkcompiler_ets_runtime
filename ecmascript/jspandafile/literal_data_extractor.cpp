@@ -31,7 +31,7 @@ using LiteralValue = panda_file::LiteralDataAccessor::LiteralValue;
 void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                               JSMutableHandle<TaggedArray> elements,
                                               JSMutableHandle<TaggedArray> properties,
-                                              JSHandle<JSTaggedValue> constpool,
+                                              JSHandle<ConstantPool> constpool,
                                               const CString &entryPoint)
 {
     EcmaVM *vm = thread->GetEcmaVM();
@@ -102,7 +102,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                         vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(methodId));
                     method->SetConstantPool(thread, newConstpool);
                 } else {
-                    method->SetConstantPool(thread, constpool);
+                    method->SetConstantPool(thread, constpool.GetTaggedValue());
                 }
                 JSHandle<JSFunction> jsFunc =
                     DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entryPoint);
@@ -133,7 +133,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
 }
 
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreTypeForClass(JSThread *thread,
-    const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool, const CString &entryPoint)
+    const JSPandaFile *jsPandaFile, size_t index, JSHandle<ConstantPool> constpool, const CString &entryPoint)
 {
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
@@ -148,7 +148,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreTypeForClass(JSThread 
 }
 
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                               size_t index, JSHandle<JSTaggedValue> constpool,
+                                                               size_t index, JSHandle<ConstantPool> constpool,
                                                                const CString &entryPoint)
 {
     LOG_ECMA(VERBOSE) << "Panda File" << jsPandaFile->GetJSPandaFileDesc();
@@ -159,7 +159,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
 }
 
 JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
-    const JSPandaFile *jsPandaFile, size_t index, JSHandle<JSTaggedValue> constpool, const CString &entryPoint)
+    const JSPandaFile *jsPandaFile, size_t index, JSHandle<ConstantPool> constpool, const CString &entryPoint)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
@@ -324,7 +324,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                                               panda_file::File::EntityId index,
                                               JSMutableHandle<TaggedArray> elements,
                                               JSMutableHandle<TaggedArray> properties,
-                                              JSHandle<JSTaggedValue> constpool, const CString &entry)
+                                              JSHandle<ConstantPool> constpool, const CString &entry)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
@@ -395,7 +395,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                         vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(methodId));
                     method->SetConstantPool(thread, newConstpool);
                 } else {
-                    method->SetConstantPool(thread, constpool);
+                    method->SetConstantPool(thread, constpool.GetTaggedValue());
                 }
                 JSHandle<JSFunction> jsFunc = DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entry);
                 jt = jsFunc.GetTaggedValue();
@@ -426,7 +426,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
 
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                                panda_file::File::EntityId index,
-                                                               JSHandle<JSTaggedValue> constpool,
+                                                               JSHandle<ConstantPool> constpool,
                                                                const CString &entryPoint)
 {
     EcmaVM *vm = thread->GetEcmaVM();
@@ -488,7 +488,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                             vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(methodId));
                         method->SetConstantPool(thread, newConstpool);
                     } else {
-                        method->SetConstantPool(thread, constpool);
+                        method->SetConstantPool(thread, constpool.GetTaggedValue());
                     }
                     JSHandle<JSFunction> jsFunc =
                         DefineMethodInLiteral(thread, jsPandaFile, method, kind, length, entryPoint);
