@@ -199,8 +199,7 @@ int32_t EcmaString::IndexOf(Span<const T1> &lhsSp, Span<const T2> &rhsSp, int32_
 {
     ASSERT(rhsSp.size() > 0);
     auto first = static_cast<int32_t>(rhsSp[0]);
-    int32_t i;
-    for (i = pos; i <= max; i++) {
+    for (int32_t i = pos; i <= max; i++) {
         if (static_cast<int32_t>(lhsSp[i]) != first) {
             i++;
             while (i <= max && static_cast<int32_t>(lhsSp[i]) != first) {
@@ -620,7 +619,7 @@ uint32_t EcmaString::ComputeHashcode(uint32_t hashSeed) const
 /* static */
 uint32_t EcmaString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)
 {
-    uint32_t hash;
+    uint32_t hash = 0;
     if (canBeCompress) {
         hash = ComputeHashForData(utf8Data, utf8Len, 0);
     } else {

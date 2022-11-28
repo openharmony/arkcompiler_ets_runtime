@@ -131,7 +131,7 @@ private:
     inline uintptr_t Allocate(FreeObject *object, size_t size);
 
     BumpPointerAllocator bpAllocator_;
-    std::unique_ptr<FreeObjectList> freeList_;
+    std::unique_ptr<FreeObjectList> freeList_ {nullptr};
     Heap *heap_{nullptr};
     size_t allocationSizeAccumulator_ {0};
 };

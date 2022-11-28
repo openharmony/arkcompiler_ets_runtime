@@ -24,7 +24,7 @@ int ArkStackMapParser::BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsi
 {
     int slow = 0;
     int high = static_cast<int>(callsiteNum) - 1;
-    int mid;
+    int mid = 0;
     uint32_t v;
     while (slow <= high) {
         mid = (slow + high) >> 1;

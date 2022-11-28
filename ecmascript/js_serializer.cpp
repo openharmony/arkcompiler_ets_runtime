@@ -1247,12 +1247,12 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSDate()
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(dateTag)) {
         return JSHandle<JSTaggedValue>();
     }
-    double timeValue;
+    double timeValue = 0.0;
     if (!JudgeType(SerializationUID::DOUBLE) || !ReadDouble(&timeValue)) {
         return JSHandle<JSTaggedValue>();
     }
     date->SetTimeValue(thread_, JSTaggedValue(timeValue));
-    double localOffset;
+    double localOffset = 0.0;
     if (!JudgeType(SerializationUID::DOUBLE) || !ReadDouble(&localOffset)) {
         return JSHandle<JSTaggedValue>();
     }

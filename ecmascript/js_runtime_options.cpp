@@ -171,9 +171,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
     bool ret = false;
     int option = 0;
     arg_list_t argListStr;
-    uint32_t argUint32;
-    int argInt;
-    bool argBool;
+    uint32_t argUint32 = 0;
+    int argInt = 0;
+    bool argBool = false;
     static std::string COLON = ":";
 
     if (argc <= 1) {

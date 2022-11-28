@@ -295,8 +295,7 @@ private:
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             CVector<uint16_t> tmpBuf;
             const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
-            if (memcpy_s(buf, maxLength * sizeof(uint16_t), data + start, length * sizeof(uint16_t)) !=
-                EOK) {
+            if (memcpy_s(buf, maxLength * sizeof(uint16_t), data + start, length * sizeof(uint16_t)) != EOK) {
                 LOG_FULL(FATAL) << "memcpy_s failed";
                 UNREACHABLE();
             }
