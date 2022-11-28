@@ -517,7 +517,7 @@ public:
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);
-    GateRef TryStringOrSymbolToElementIndex(GateRef glue, GateRef string);
+    GateRef TryStringOrSymbolToElementIndex(GateRef glue, GateRef key);
     inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::initializer_list<GateRef>& args);
     inline GateRef DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId,
                                             const std::initializer_list<GateRef>& args);

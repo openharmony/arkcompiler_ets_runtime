@@ -140,7 +140,7 @@ void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException
     auto blockSize = items.size();
     graph_.resize(blockSize);
     // build basic block
-    int blockId = 0;
+    size_t blockId = 0;
     for (const auto &item : items) {
         auto &curBlock = GetBasicBlockById(blockId);
         curBlock.id = blockId;

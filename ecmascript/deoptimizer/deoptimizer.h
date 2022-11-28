@@ -94,7 +94,7 @@ public:
         kungfu::CalleeReg callreg;
         numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
         JSRuntimeOptions options = thread_->GetEcmaVM()->GetJSOptions();
-        traceDeopt_= options.GetTraceDeopt();
+        traceDeopt_ = options.GetTraceDeopt();
     }
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);

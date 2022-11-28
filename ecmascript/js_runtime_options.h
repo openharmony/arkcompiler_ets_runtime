@@ -814,7 +814,7 @@ public:
 
     void SetTraceDeopt(bool value)
     {
-        traceDeopt_= value;
+        traceDeopt_ = value;
     }
 
     bool GetTraceDeopt() const

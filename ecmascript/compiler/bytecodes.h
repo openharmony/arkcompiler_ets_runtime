@@ -547,7 +547,7 @@ public:
         return *this;
     }
 
-    void Goto(int32_t i)
+    void Goto(uint32_t i)
     {
         index_ = i;
     }

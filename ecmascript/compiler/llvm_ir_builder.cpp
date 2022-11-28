@@ -326,7 +326,7 @@ void LLVMIRBuilder::GenPrologue()
     }
     LLVMAddTargetDependentFunctionAttr(function_, "frame-pointer", "all");
 
-    int reservedSlotsSize = 0;
+    size_t reservedSlotsSize = 0;
     if (frameType == FrameType::OPTIMIZED_FRAME) {
         reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
