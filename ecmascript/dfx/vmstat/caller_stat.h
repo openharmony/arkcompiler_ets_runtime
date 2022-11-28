@@ -18,7 +18,7 @@
 
 #include <cstdint>
 #include <cstring>
-#include <time.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
+#include <ctime>
 
 #include "ecmascript/mem/c_string.h"
 

@@ -79,8 +79,8 @@ bool Relocator::Relocate(Elf64_Rela *sec, uintptr_t symbolAddr, uintptr_t patchA
 
 bool Relocator::HasSymStrTable() const
 {
-    return (symAndStrTabInfo_.symAddr_ >= 0) && (symAndStrTabInfo_.symSize_ >= 0)
-        && (symAndStrTabInfo_.strAddr_ >= 0) && (symAndStrTabInfo_.strSize_ >= 0);
+    return (symAndStrTabInfo_.symAddr_ >= 0) && (symAndStrTabInfo_.symSize_ >= 0) &&
+        (symAndStrTabInfo_.strAddr_ >= 0) && (symAndStrTabInfo_.strSize_ >= 0);
 }
 
 bool Relocator::HasRelocateText() const

@@ -373,23 +373,23 @@ void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeE
 
 size_t Heap::GetCommittedSize() const
 {
-    size_t result = activeSemiSpace_->GetCommittedSize()
-                    + oldSpace_->GetCommittedSize()
-                    + hugeObjectSpace_->GetCommittedSize()
-                    + nonMovableSpace_->GetCommittedSize()
-                    + machineCodeSpace_->GetCommittedSize()
-                    + snapshotSpace_->GetCommittedSize();
+    size_t result = activeSemiSpace_->GetCommittedSize() +
+                    oldSpace_->GetCommittedSize() +
+                    hugeObjectSpace_->GetCommittedSize() +
+                    nonMovableSpace_->GetCommittedSize() +
+                    machineCodeSpace_->GetCommittedSize() +
+                    snapshotSpace_->GetCommittedSize();
     return result;
 }
 
 size_t Heap::GetHeapObjectSize() const
 {
-    size_t result = activeSemiSpace_->GetHeapObjectSize()
-                    + oldSpace_->GetHeapObjectSize()
-                    + hugeObjectSpace_->GetHeapObjectSize()
-                    + nonMovableSpace_->GetHeapObjectSize()
-                    + machineCodeSpace_->GetCommittedSize()
-                    + snapshotSpace_->GetHeapObjectSize();
+    size_t result = activeSemiSpace_->GetHeapObjectSize() +
+                    oldSpace_->GetHeapObjectSize() +
+                    hugeObjectSpace_->GetHeapObjectSize() +
+                    nonMovableSpace_->GetHeapObjectSize() +
+                    machineCodeSpace_->GetCommittedSize() +
+                    snapshotSpace_->GetHeapObjectSize();
     return result;
 }
 

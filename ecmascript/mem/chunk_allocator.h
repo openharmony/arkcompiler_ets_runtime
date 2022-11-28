@@ -42,7 +42,7 @@ public:
     explicit ChunkAllocator(Chunk *chunk) : chunk_(chunk) {}
 
     template<typename U>
-    ChunkAllocator(const ChunkAllocator<U> &other) : chunk_(other.chunk_)
+    explicit ChunkAllocator(const ChunkAllocator<U> &other) : chunk_(other.chunk_)
     {
     }
     template<typename U>

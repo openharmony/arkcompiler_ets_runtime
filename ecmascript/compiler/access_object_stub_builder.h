@@ -22,7 +22,7 @@ class AccessObjectStubBuilder : public StubBuilder {
 public:
     explicit AccessObjectStubBuilder(StubBuilder *parent)
         : StubBuilder(parent) {}
-    ~AccessObjectStubBuilder() = default;
+    ~AccessObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(AccessObjectStubBuilder);
     NO_COPY_SEMANTIC(AccessObjectStubBuilder);
     void GenerateCircuit() override {}

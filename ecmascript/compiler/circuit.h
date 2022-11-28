@@ -31,7 +31,7 @@
 namespace panda::ecmascript::kungfu {
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
-    Circuit(bool isArch64 = true);
+    explicit Circuit(bool isArch64 = true);
     ~Circuit();
     Circuit(Circuit const &circuit) = default;
     Circuit &operator=(Circuit const &circuit) = default;

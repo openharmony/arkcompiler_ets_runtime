@@ -22,7 +22,7 @@
 namespace panda::ecmascript::tooling {
 class HotReloadManager {
 public:
-    HotReloadManager(const EcmaVM *vm) : vm_(vm) {}
+    explicit HotReloadManager(const EcmaVM *vm) : vm_(vm) {}
     ~HotReloadManager() = default;
 
     NO_COPY_SEMANTIC(HotReloadManager);

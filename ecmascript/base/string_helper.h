@@ -275,8 +275,7 @@ public:
                 if (prePos == std::string::npos) {
                     return "";
                 }
-                // Add the two characters found to start searching again
-                prePos += 2;
+                prePos += 2; // 2 : add the two characters found to start searching again
             }
         }
         size_t findEndPos = 0;

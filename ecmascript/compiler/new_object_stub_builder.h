@@ -24,7 +24,7 @@ public:
         : StubBuilder(parent) {}
     explicit NewObjectStubBuilder(Environment *env)
         : StubBuilder(env) {}
-    ~NewObjectStubBuilder() = default;
+    ~NewObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(NewObjectStubBuilder);
     NO_COPY_SEMANTIC(NewObjectStubBuilder);
     void GenerateCircuit() override {}

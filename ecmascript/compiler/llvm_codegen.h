@@ -262,7 +262,7 @@ class LLVMIRGeneratorImpl : public CodeGeneratorImpl {
 public:
     explicit LLVMIRGeneratorImpl(LLVMModule *module, bool enableLog)
         : module_(module), enableLog_(enableLog) {}
-    ~LLVMIRGeneratorImpl() = default;
+    ~LLVMIRGeneratorImpl() override = default;
     void GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
                              const CompilationConfig *cfg) override;
     void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
