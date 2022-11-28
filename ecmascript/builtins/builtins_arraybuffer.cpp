@@ -135,9 +135,9 @@ JSTaggedValue BuiltinsArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
     // 7. ReturnIfAbrupt(relativeStart).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t start = base::NumberHelper::DoubleInRangeInt32(relativeStart.GetNumber());
-    int32_t end;
-    int32_t first;
-    int32_t last;
+    int32_t end = 0;
+    int32_t first = 0;
+    int32_t last = 0;
     // 8. If relativeStart < 0, let first be max((len + relativeStart),0); else let first be min(relativeStart, len).
     if (start < 0) {
         first = std::max((len + start), 0);

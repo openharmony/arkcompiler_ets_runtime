@@ -69,7 +69,7 @@ JSTaggedValue BuiltinsDataView::DataViewConstructor(EcmaRuntimeCallInfo *argv)
     if (offset > bufByteLen) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "offset > bufferByteLength", JSTaggedValue::Exception());
     }
-    uint32_t viewByteLen;
+    uint32_t viewByteLen = 0;
     JSHandle<JSTaggedValue> byteLenHandle = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     // 11. If byteLength is undefined, then Let viewByteLength be bufferByteLength – offset.
     if (byteLenHandle->IsUndefined()) {

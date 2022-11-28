@@ -129,7 +129,7 @@ private:
 
     size_t available_ = 0;
     size_t wasted_ = 0;
-    uint64_t noneEmptySetBitMap_;
+    uint64_t noneEmptySetBitMap_ = 0;
     Span<FreeObjectSet *> sets_ {};
     Span<FreeObjectSet *> lastSets_ {};
 };

@@ -197,7 +197,7 @@ bool RegExpParser::ParseUnicodeEscape(uint32_t *value)
         uint8_t *start = pc_ - 1;  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         if (*pc_ == 'u') {
             Advance(UNICODE_HEX_ADVANCE);
-            uint32_t trail;
+            uint32_t trail = 0;
             if (ParseHexEscape(UNICODE_HEX_VALUE, &trail) && U16_IS_TRAIL(trail)) {
                 *value = U16_GET_SUPPLEMENTARY((*value), (trail));  // NOLINTNEXTLINE(hicpp-signed-bitwise)
                 return true;
@@ -780,7 +780,7 @@ void RegExpParser::ParseQuantifier(size_t atomBcStart, int captureStart, int cap
 bool RegExpParser::ParseGroupSpecifier(const uint8_t **pp, CString &name)
 {
     const uint8_t *p = *pp;
-    uint32_t c;
+    uint32_t c = 0;
     char buffer[CACHE_SIZE] = {0};
     char *q = buffer;
     while (true) {

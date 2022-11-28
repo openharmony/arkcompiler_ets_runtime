@@ -683,7 +683,7 @@ int32_t NumberHelper::DoubleInRangeInt32(double d)
 JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal)
 {
     auto strObj = static_cast<EcmaString *>(strVal->GetTaggedObject());
-    size_t strLen = EcmaStringAccessor(strObj).GetLength();
+    uint32_t strLen = EcmaStringAccessor(strObj).GetLength();
     if (strLen == 0) {
         return BigInt::Int32ToBigInt(thread, 0).GetTaggedValue();
     }

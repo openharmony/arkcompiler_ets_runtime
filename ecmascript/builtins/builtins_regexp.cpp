@@ -582,7 +582,7 @@ JSTaggedValue BuiltinsRegExp::RegExpReplaceFast(JSThread *thread, JSHandle<JSTag
     auto bytecodeBuffer = reinterpret_cast<uint8_t *>(dynBuf);
     uint32_t flags = *reinterpret_cast<uint32_t *>(bytecodeBuffer + RegExpParser::FLAGS_OFFSET);
     JSHandle<JSTaggedValue> lastIndexHandle(thread->GlobalConstants()->GetHandledLastIndexString());
-    uint32_t lastIndex;
+    uint32_t lastIndex = 0;
     JSHandle<JSRegExp> regexpHandle(regexp);
     bool useCache = false;
     if ((flags & (RegExpParser::FLAG_STICKY | RegExpParser::FLAG_GLOBAL)) == 0) {
@@ -1795,6 +1795,8 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread, const JS
         }
         entry = entry2;
     }
+    ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
+        static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(UINT32_MAX));
     uint32_t index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     JSTaggedValue result;
     switch (type) {
@@ -1839,6 +1841,8 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
     uint32_t hash = patternValue.GetKeyHashCode() + static_cast<uint32_t>(flagsValue.GetInt()) +
                     inputValue.GetKeyHashCode();
     uint32_t entry = hash & static_cast<uint32_t>(cache->GetCacheLength() - 1);
+    ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
+        static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(UINT32_MAX));
     uint32_t index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     if (cache->Get(index) == JSTaggedValue::Undefined()) {
         cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
@@ -1848,6 +1852,8 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
         cache->UpdateResultArray(thread, entry, resultArray.GetTaggedValue(), type);
     } else {
         uint32_t entry2 = (entry + 1) & static_cast<uint32_t>(cache->GetCacheLength() - 1);
+        ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
+            static_cast<size_t>(entry2) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(UINT32_MAX));
         uint32_t index2 = CACHE_TABLE_HEADER_SIZE + entry2 * ENTRY_SIZE;
         JSHandle<JSTaggedValue> extendHandle(thread, extend);
         if (cache->GetCacheLength() < DEFAULT_CACHE_NUMBER) {
@@ -1889,6 +1895,8 @@ void RegExpExecResultCache::GrowRegexpCache(JSThread *thread, JSHandle<RegExpExe
 void RegExpExecResultCache::SetEntry(JSThread *thread, int entry, JSTaggedValue &pattern, JSTaggedValue &flags,
                                      JSTaggedValue &input, JSTaggedValue &lastIndexValue, JSTaggedValue &extendValue)
 {
+    ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
+            static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
     int index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     Set(thread, index + PATTERN_INDEX, pattern);
     Set(thread, index + FLAG_INDEX, flags);
@@ -1899,6 +1907,8 @@ void RegExpExecResultCache::SetEntry(JSThread *thread, int entry, JSTaggedValue 
 
 void RegExpExecResultCache::UpdateResultArray(JSThread *thread, int entry, JSTaggedValue resultArray, CacheType type)
 {
+    ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
+            static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
     int index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     switch (type) {
         break;
@@ -1922,6 +1932,8 @@ void RegExpExecResultCache::UpdateResultArray(JSThread *thread, int entry, JSTag
 
 void RegExpExecResultCache::ClearEntry(JSThread *thread, int entry)
 {
+    ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
+            static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
     int index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     JSTaggedValue undefined = JSTaggedValue::Undefined();
     for (int i = 0; i < ENTRY_SIZE; i++) {
@@ -1932,6 +1944,8 @@ void RegExpExecResultCache::ClearEntry(JSThread *thread, int entry)
 bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedValue &flags, JSTaggedValue &input,
                                   JSTaggedValue &extend)
 {
+    ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
+            static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(INT_MAX));
     int index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     JSTaggedValue keyPattern = Get(index + PATTERN_INDEX);
     JSTaggedValue keyFlags = Get(index + FLAG_INDEX);

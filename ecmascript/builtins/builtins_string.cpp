@@ -246,7 +246,7 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
         EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
     int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisFlat).GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
-    int32_t pos;
+    int32_t pos = 0;
     if (posTag->IsInt()) {
         pos = posTag->GetInt();
     } else if (posTag->IsUndefined()) {
@@ -277,7 +277,7 @@ JSTaggedValue BuiltinsString::CharCodeAt(EcmaRuntimeCallInfo *argv)
         EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
     int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisFlat).GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
-    int32_t pos;
+    int32_t pos = 0;
     if (posTag->IsInt()) {
         pos = posTag->GetInt();
     } else if (posTag->IsUndefined()) {
@@ -386,7 +386,7 @@ JSTaggedValue BuiltinsString::EndsWith(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
     uint32_t searchLen = EcmaStringAccessor(searchHandle).GetLength();
-    uint32_t pos;
+    uint32_t pos = 0;
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 1);
     if (posTag->IsUndefined()) {
         pos = thisLen;
@@ -748,7 +748,7 @@ JSTaggedValue BuiltinsString::Repeat(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
     JSHandle<JSTaggedValue> countTag = BuiltinsString::GetCallArg(argv, 0);
-    int32_t count;
+    int32_t count = 0;
     if (countTag->IsInt()) {
         count = countTag->GetInt();
     } else {
@@ -1273,7 +1273,7 @@ JSTaggedValue BuiltinsString::Slice(EcmaRuntimeCallInfo *argv)
     JSTaggedNumber startVal = JSTaggedValue::ToInteger(thread, startTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t start = ConvertDoubleToInt(startVal.GetNumber());
-    int32_t end;
+    int32_t end = 0;
     JSHandle<JSTaggedValue> endTag = BuiltinsString::GetCallArg(argv, 1);
     if (endTag->IsUndefined()) {
         end = thisLen;
@@ -1282,8 +1282,8 @@ JSTaggedValue BuiltinsString::Slice(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         end = ConvertDoubleToInt(endVal.GetNumber());
     }
-    int32_t from;
-    int32_t to;
+    int32_t from = 0;
+    int32_t to = 0;
     if (start < 0) {
         from = std::max(start + thisLen, 0);
     } else {
@@ -1338,7 +1338,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> resultArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
     uint32_t arrayLength = 0;
     // If limit is undefined, let lim = 2^53–1; else let lim = ToLength(limit).
-    uint32_t lim;
+    uint32_t lim = 0;
     if (limitTag->IsUndefined()) {
         lim = UINT32_MAX - 1;
     } else {
@@ -1426,7 +1426,7 @@ JSTaggedValue BuiltinsString::StartsWith(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t thisLen = EcmaStringAccessor(thisHandle).GetLength();
     uint32_t searchLen = EcmaStringAccessor(searchHandle).GetLength();
-    int32_t pos;
+    int32_t pos = 0;
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 1);
     if (posTag->IsUndefined()) {
         pos = 0;
@@ -1464,7 +1464,7 @@ JSTaggedValue BuiltinsString::Substring(EcmaRuntimeCallInfo *argv)
     JSTaggedNumber startVal = JSTaggedValue::ToInteger(thread, startTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int32_t start = ConvertDoubleToInt(startVal.GetNumber());
-    int32_t end;
+    int32_t end = 0;
     JSHandle<JSTaggedValue> endTag = BuiltinsString::GetCallArg(argv, 1);
     if (endTag->IsUndefined()) {
         end = thisLen;
@@ -1744,7 +1744,7 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
     int32_t start = numStart.ToInt32();
     JSHandle<JSTaggedValue> lengthTag = GetCallArg(argv, 1);
     // 6. If length is undefined, let end be +; otherwise let end be ToInteger(length).
-    int32_t end;
+    int32_t end = 0;
     if (lengthTag->IsUndefined()) {
         end = INT_MAX;
     } else {

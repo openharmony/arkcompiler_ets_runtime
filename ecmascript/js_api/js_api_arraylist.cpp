@@ -231,7 +231,7 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    int32_t toIndex;
+    int32_t toIndex = 0;
     if (endIndex >= length) {
         toIndex = length;
     } else {

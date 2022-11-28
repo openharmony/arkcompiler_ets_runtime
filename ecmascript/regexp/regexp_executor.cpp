@@ -360,7 +360,10 @@ RegExpState *RegExpExecutor::PopRegExpState(bool copyCaptrue)
 void RegExpExecutor::ReAllocStack(uint32_t stackLen)
 {
     if (stackLen > stateStackSize_) {
+        ASSERT((static_cast<size_t>(stateStackSize_) * 2) <= static_cast<size_t>(UINT32_MAX)); // 2: double the size
         uint32_t newStackSize = std::max(stateStackSize_ * 2, MIN_STACK_SIZE);  // 2: double the size
+        ASSERT((static_cast<size_t>(newStackSize) * static_cast<size_t>(stateSize_)) <=
+            static_cast<size_t>(UINT32_MAX));
         uint32_t stackByteSize = newStackSize * stateSize_;
         auto newStack = chunk_->NewArray<uint8_t>(stackByteSize);
         if (memset_s(newStack, stackByteSize, 0, stackByteSize) != EOK) {

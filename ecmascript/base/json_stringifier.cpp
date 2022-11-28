@@ -152,7 +152,7 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
     // If isArray is true, then
     if (isArray) {
-        uint32_t len;
+        uint32_t len = 0;
         if (replacer->IsJSArray()) {
             // FastPath
             JSHandle<JSArray> arr(replacer);
@@ -273,7 +273,7 @@ bool JsonStringifier::CalculateStringGap(const JSHandle<EcmaString> &primString)
     CString gapString = ConvertToString(*primString, StringConvertedUsage::LOGICOPERATION);
     uint32_t gapLen = gapString.length();
     if (gapLen > 0) {
-        int gapLength = std::min(gapLen, static_cast<uint32_t>(GAP_MAX_LEN));
+        uint32_t gapLength = std::min(gapLen, static_cast<uint32_t>(GAP_MAX_LEN));
         CString str = gapString.substr(0, gapLength);
         gap_ += str;
         gap_.append("\0");

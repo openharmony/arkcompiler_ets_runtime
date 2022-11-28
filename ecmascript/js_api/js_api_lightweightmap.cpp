@@ -118,7 +118,7 @@ JSTaggedValue JSAPILightWeightMap::HasAll(JSThread *thread, const JSHandle<JSAPI
     JSHandle<TaggedArray> newValueArray = GetArrayByKind(thread, newLightWeightMap, AccossorsKind::VALUE);
     JSTaggedValue dealKey = JSTaggedValue::Undefined();
     int32_t index = -1;
-    int32_t hash;
+    int32_t hash = 0;
 
     for (int32_t num = 0; num < length; num++) {
         dealKey = newKeyArray->Get(num);

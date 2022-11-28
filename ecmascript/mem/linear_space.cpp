@@ -98,7 +98,7 @@ void LinearSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
     auto current = GetCurrentRegion();
     EnumerateRegions([&](Region *region) {
         auto curPtr = region->GetBegin();
-        uintptr_t endPtr;
+        uintptr_t endPtr = 0;
         if (region == current) {
             auto top = allocator_.GetTop();
             endPtr = curPtr + region->GetAllocatedBytes(top);
