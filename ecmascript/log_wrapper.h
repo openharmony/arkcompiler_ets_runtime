@@ -26,6 +26,7 @@
 #define LOG_INTERPRETER(level) ARK_LOG(level, Component::INTERPRETER)
 #define LOG_COMPILER(level) ARK_LOG(level, Component::COMPILER)
 #define LOG_DEBUGGER(level) ARK_LOG(level, Component::DEBUGGER)
+#define LOG_BUILTINS(level) ARK_LOG(level, Component::BUILTINS)
 #define LOG_ECMA_IF(cond, level) (cond) && ARK_LOG(level, Component::ALL)
 
 #endif  // ECMASCRIPT_LOG_WRAPPER_H

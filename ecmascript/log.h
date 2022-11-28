@@ -42,6 +42,7 @@ enum Component {
     COMPILER = 1ULL << 2ULL,
     DEBUGGER = 1ULL << 3ULL,
     ECMASCRIPT = 1ULL << 4ULL,
+    BUILTINS = 1ULL << 5ULL,
     NO_TAG = 0xFFFFFFFFULL >> 1ULL,
     ALL = 0xFFFFFFFFULL,
 };
@@ -91,6 +92,8 @@ public:
                 return "[debugger] ";
             case Component::COMPILER:
                 return "[compiler] ";
+            case Component::BUILTINS:
+                return "[builtins] ";
             case Component::ALL:
                 return "[default] ";
             default:
@@ -175,15 +178,12 @@ public:
     }
     ~StdLog()
     {
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
-        std::cerr << stream_.str().c_str() << std::endl;
-#else
         if constexpr (level == FATAL || level == ERROR) {
             std::cerr << stream_.str().c_str() << std::endl;
         } else {
             std::cout << stream_.str().c_str() << std::endl;
         }
-#endif
+
         if constexpr (level == FATAL) {
             std::abort();
         }
