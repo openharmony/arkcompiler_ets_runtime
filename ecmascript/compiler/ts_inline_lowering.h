@@ -29,7 +29,7 @@ class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_BYTECODE_COUNT = 10;
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
-    TSInlineLowering(Circuit *circuit, CompilationInfo *info, bool enableLog, const std::string& name)
+    TSInlineLowering(Circuit *circuit, PassInfo *info, bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, info->GetCompilerConfig()),
           tsManager_(info->GetTSManager()), info_(info), enableLog_(enableLog), methodName_(name) {}
 
@@ -62,7 +62,8 @@ private:
     void ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     GateRef MergeAllReturn(const std::vector<GateRef> &returnVector,
-        GateRef &state, GateRef &depend);
+        GateRef &state, GateRef &depend, size_t numOfIns);
+    bool CheckParameter(GateRef gate, bool isCallThis, MethodLiteral* method);
 
     void LowerToInlineCall(GateRef gate, const std::vector<GateRef> &args);
 
@@ -70,7 +71,7 @@ private:
     GateAccessor acc_;
     CircuitBuilder builder_;
     TSManager *tsManager_ {nullptr};
-    CompilationInfo *info_ {nullptr};
+    PassInfo *info_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
     size_t inlinedCall_ { 0 };

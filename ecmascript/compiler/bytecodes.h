@@ -35,10 +35,11 @@ class Bytecodes;
 class BytecodeInfo;
 class BytecodeIterator;
 enum BytecodeFlags : uint32_t {
-    ACC_READ = 1 << 0, // 1: flag bit
-    ACC_WRITE = 1 << 1, // 1: flag 1
+    READ_ACC = 1 << 0, // 1: flag bit
+    WRITE_ACC = 1 << 1, // 1: flag 1
     SUPPORT_DEOPT = 1 << 2, // 2: flag 2
     GENERAL_BC = 1 << 3,
+    READ_THIS_OBJECT = 1 << 4,
 };
 
 enum BytecodeKind : uint32_t {
@@ -57,7 +58,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 4;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 5;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
@@ -67,12 +68,17 @@ public:
 
     bool HasAccIn() const
     {
-        return HasFlag(BytecodeFlags::ACC_READ);
+        return HasFlag(BytecodeFlags::READ_ACC);
+    }
+
+    bool HasThisIn() const
+    {
+        return HasFlag(BytecodeFlags::READ_THIS_OBJECT);
     }
 
     bool HasAccOut() const
     {
-        return HasFlag(BytecodeFlags::ACC_WRITE);
+        return HasFlag(BytecodeFlags::WRITE_ACC);
     }
 
     bool IsMov() const
@@ -418,6 +424,11 @@ public:
         return metaData_.HasAccIn();
     }
 
+    bool ThisObjectIn() const
+    {
+        return metaData_.HasThisIn();
+    }
+
     size_t GetSize() const
     {
         return metaData_.GetSize();
@@ -481,7 +492,7 @@ public:
 
     size_t ComputeValueInputCount() const
     {
-        return (AccIn() ? 1 : 0) + inputs.size();
+        return (AccIn() ? 1 : 0) + (ThisObjectIn() ? 1 : 0) + inputs.size();
     }
 
     size_t ComputeOutCount() const
