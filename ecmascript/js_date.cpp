@@ -537,13 +537,13 @@ JSTaggedValue JSDate::Now()
 // 20.4.4.2 static
 JSTaggedValue JSDate::UTC(EcmaRuntimeCallInfo *argv)
 {
-    double year;
-    double month = 0;
-    double date = 1;
-    double hours = 0;
-    double minutes = 0;
-    double seconds = 0;
-    double ms = 0;
+    double year = 0.0;
+    double month = 0.0;
+    double date = 1.0;
+    double hours = 0.0;
+    double minutes = 0.0;
+    double seconds = 0.0;
+    double ms = 0.0;
     JSThread *thread = argv->GetThread();
     JSHandle<JSTaggedValue> yearArg = base::BuiltinsBase::GetCallArg(argv, 0);
     JSTaggedNumber yearValue = JSTaggedValue::ToNumber(thread, yearArg);
@@ -643,7 +643,7 @@ JSTaggedValue JSDate::GetTime() const
 // static
 CString JSDate::StrToTargetLength(const CString &str, int length)
 {
-    int len;
+    int len = 0;
     if (str[0] == NEG) {
         len = static_cast<int>(str.length() - 1);
     } else {

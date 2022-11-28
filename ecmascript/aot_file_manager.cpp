@@ -105,14 +105,14 @@ void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
 
 void ModuleSectionDes::LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset)
 {
-    uint32_t size;
+    uint32_t size = 0;
     file.read(reinterpret_cast<char *>(&size), sizeof(size));
     file.read(reinterpret_cast<char *>(secBegin), size);
     SetArkStackMapSize(size);
     SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secBegin));
     curUnitOffset += size;
-    uint32_t index;
-    uint32_t cnt;
+    uint32_t index = 0;
+    uint32_t cnt = 0;
     file.read(reinterpret_cast<char *>(&index), sizeof(index));
     file.read(reinterpret_cast<char *>(&cnt), sizeof(cnt));
     SetStartIndex(index);

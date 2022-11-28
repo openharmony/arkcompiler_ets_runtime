@@ -18,19 +18,18 @@
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 
 namespace panda::ecmascript {
+void ByteArray::Set(uint32_t idx, DataViewType type, JSTaggedType val, uint32_t offset)
+{
+    void *pointer = GetData();
+    auto *block = reinterpret_cast<uint8_t *>(pointer) + offset;
+    builtins::BuiltinsArrayBuffer::SetValueInBuffer(idx * GetSize(), block, type,
+                                                    JSTaggedValue(val).GetNumber(), true);
+}
 
-    void ByteArray::Set(uint32_t idx, DataViewType type, JSTaggedType val, uint32_t offset)
-    {
-        void *pointer = GetData();
-        auto *block = reinterpret_cast<uint8_t *>(pointer) + offset;
-        builtins::BuiltinsArrayBuffer::SetValueInBuffer(idx * GetSize(), block, type,
-                                                        JSTaggedValue(val).GetNumber(), true);
-    }
-
-    JSTaggedValue ByteArray::Get(JSThread *thread, uint32_t idx, DataViewType type, uint32_t offset)
-    {
-        void *pointer = GetData();
-        auto *block = reinterpret_cast<uint8_t *>(pointer) + offset;
-        return builtins::BuiltinsArrayBuffer::GetValueFromBuffer(thread, idx * GetSize(), block, type, true);
-    }
+JSTaggedValue ByteArray::Get(JSThread *thread, uint32_t idx, DataViewType type, uint32_t offset)
+{
+    void *pointer = GetData();
+    auto *block = reinterpret_cast<uint8_t *>(pointer) + offset;
+    return builtins::BuiltinsArrayBuffer::GetValueFromBuffer(thread, idx * GetSize(), block, type, true);
+}
 }  // namespace panda::ecmascript

@@ -49,7 +49,7 @@ JSHandle<JSPrimitiveRef> JSPrimitiveRef::StringCreate(JSThread *thread, const JS
 bool JSPrimitiveRef::StringGetIndexProperty(const JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                             PropertyDescriptor *desc)
 {
-    uint16_t tmpChar;
+    uint16_t tmpChar = 0;
     {
         JSHandle<EcmaString> strHandle = JSHandle<EcmaString>(thread,
             EcmaString::Cast(JSPrimitiveRef::Cast(*obj)->GetValue()));

@@ -43,8 +43,7 @@ static ARK_INLINE void WriteBarrier(void *obj, size_t offset, JSTaggedType value
 // CODECHECK-NOLINTNEXTLINE(C_RULE_ID_COMMENT_LOCATION)
 // default value for need_write_barrier is true
 template<bool need_write_barrier>
-inline void Barriers::SetObject([[maybe_unused]] const JSThread *thread, void *obj, size_t offset,
-                                   JSTaggedType value)
+inline void Barriers::SetObject([[maybe_unused]] const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
     // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
