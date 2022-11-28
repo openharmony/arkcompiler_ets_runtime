@@ -707,6 +707,9 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(ArkTools::ObjectDump),
     reinterpret_cast<uintptr_t>(ArkTools::CompareHClass),
     reinterpret_cast<uintptr_t>(ArkTools::DumpHClass),
+    reinterpret_cast<uintptr_t>(ArkTools::IsTSHClass),
+    reinterpret_cast<uintptr_t>(ArkTools::GetHClass),
+    reinterpret_cast<uintptr_t>(ArkTools::ForceFullGC),
 
     // non ECMA standard jsapi containers.
     reinterpret_cast<uintptr_t>(ContainersPrivate::Load),

@@ -86,18 +86,16 @@ enum class ClassPropertyType : uint8_t { NON_STATIC = 0, STATIC };
 class ClassHelper {
 public:
     static JSHandle<JSFunction> DefineClassFromExtractor(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
-                                                         const JSHandle<JSTaggedValue> &constpool,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,
                                                               JSHandle<TaggedArray> &properties, ClassPropertyType type,
-                                                              const JSHandle<ConstantPool> &constantpool,
                                                               const JSHandle<JSTaggedValue> &lexenv);
 
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
-                                         JSHandle<TaggedArray> &elements, const JSHandle<ConstantPool> &constantpool);
+                                         JSHandle<TaggedArray> &elements);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H

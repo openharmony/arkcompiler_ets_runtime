@@ -188,6 +188,14 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(_thread)    \
+    do {                                                  \
+        if (UNLIKELY((_thread)->HasPendingException())) { \
+            INTERPRETER_GOTO_EXCEPTION_HANDLER();         \
+        }                                                 \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define NOTIFY_DEBUGGER_EVENT()          \
     do {                                 \
         SAVE_ACC();                      \
@@ -1238,9 +1246,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
                 const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
-            if (UNLIKELY(thread->HasPendingException())) {
-                INTERPRETER_GOTO_EXCEPTION_HANDLER();
-            }
+            HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             LOG_INST() << "Exit: Runtime Call.";
             SET_ACC(retValue);
             INTERPRETER_HANDLE_RETURN();
@@ -1309,7 +1315,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CallSpread(thread, func, obj, array);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
+        HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SET_ACC(res);
 
         DISPATCH(APPLY_IMM8_V8_V8);
@@ -1326,7 +1332,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::CallSpread(thread, func, obj, array);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
+        HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SET_ACC(res);
 
         DISPATCH(DEPRECATED_CALLSPREAD_PREF_V8_V8_V8);
@@ -3001,10 +3007,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
                     const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
-
-                if (UNLIKELY(thread->HasPendingException())) {
-                    INTERPRETER_GOTO_EXCEPTION_HANDLER();
-                }
+                HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime SuperCall ";
                 SET_ACC(retValue);
                 DISPATCH(SUPERCALLTHISRANGE_IMM8_IMM8_V8);
@@ -3141,10 +3144,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
                     const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
-
-                if (UNLIKELY(thread->HasPendingException())) {
-                    INTERPRETER_GOTO_EXCEPTION_HANDLER();
-                }
+                HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime SuperCall ";
                 SET_ACC(retValue);
                 DISPATCH(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8);
@@ -3281,10 +3281,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
                     const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
-
-                if (UNLIKELY(thread->HasPendingException())) {
-                    INTERPRETER_GOTO_EXCEPTION_HANDLER();
-                }
+                HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime SuperCall ";
                 SET_ACC(retValue);
                 DISPATCH(SUPERCALLARROWRANGE_IMM8_IMM8_V8);
@@ -3421,10 +3418,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
                     const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
-
-                if (UNLIKELY(thread->HasPendingException())) {
-                    INTERPRETER_GOTO_EXCEPTION_HANDLER();
-                }
+                HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime SuperCall ";
                 SET_ACC(retValue);
                 DISPATCH(WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8);
@@ -3773,9 +3767,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
                     const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
-                if (UNLIKELY(thread->HasPendingException())) {
-                    INTERPRETER_GOTO_EXCEPTION_HANDLER();
-                }
+                HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime New.";
                 SET_ACC(retValue);
                 DISPATCH(NEWOBJRANGE_IMM8_IMM8_V8);
@@ -3861,7 +3853,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, ctor, firstArgIdx, length);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
+        HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SET_ACC(res);
         DISPATCH(NEWOBJRANGE_IMM8_IMM8_V8);
     }
@@ -3915,9 +3907,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
                     const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
-                if (UNLIKELY(thread->HasPendingException())) {
-                    INTERPRETER_GOTO_EXCEPTION_HANDLER();
-                }
+                HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime New.";
                 SET_ACC(retValue);
                 DISPATCH(NEWOBJRANGE_IMM16_IMM8_V8);
@@ -4001,7 +3991,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, ctor, firstArgIdx, length);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
+        HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SET_ACC(res);
         DISPATCH(NEWOBJRANGE_IMM16_IMM8_V8);
     }
@@ -4055,9 +4045,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
                     const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
-                if (UNLIKELY(thread->HasPendingException())) {
-                    INTERPRETER_GOTO_EXCEPTION_HANDLER();
-                }
+                HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime New.";
                 SET_ACC(retValue);
                 DISPATCH(WIDE_NEWOBJRANGE_PREF_IMM16_V8);
@@ -4141,7 +4129,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::NewObjRange(thread, ctor, ctor, firstArgIdx, length);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
+        HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SET_ACC(res);
         DISPATCH(WIDE_NEWOBJRANGE_PREF_IMM16_V8);
     }
@@ -4230,7 +4218,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         // slow path
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
+        HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SET_ACC(res);
         DISPATCH(GETITERATOR_IMM8);
     }
@@ -4240,7 +4228,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         // slow path
         SAVE_PC();
         JSTaggedValue res = SlowRuntimeStub::GetIterator(thread, obj);
-        INTERPRETER_RETURN_IF_ABRUPT(res);
+        HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SET_ACC(res);
         DISPATCH(GETITERATOR_IMM16);
     }
@@ -4301,7 +4289,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL).GetTaggedObject());
 
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, state->env);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(CREATEOBJECTWITHBUFFER_IMM8_ID16);
@@ -4314,7 +4303,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSObject *result = JSObject::Cast(GET_LITERA_FROM_CACHE(imm, ConstPoolType::OBJECT_LITERAL).GetTaggedObject());
 
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::CreateObjectWithBuffer(thread, factory, result);
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue res = SlowRuntimeStub::CreateObjectHavingMethod(thread, factory, result, state->env);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(CREATEOBJECTWITHBUFFER_IMM16_ID16);
@@ -5202,7 +5192,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue res = SlowRuntimeStub::LdSuperByValue(thread, receiver, propKey, thisFunc);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
-        DISPATCH(LDSUPERBYVALUE_IMM8_V8);
+        DISPATCH(LDSUPERBYVALUE_IMM16_V8);
     }
     HANDLE_OPCODE(DEPRECATED_LDSUPERBYVALUE_PREF_V8_V8) {
         uint32_t v0 = READ_INST_8_1();
