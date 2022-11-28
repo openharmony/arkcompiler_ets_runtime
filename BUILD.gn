@@ -384,8 +384,6 @@ config("asm_interp_enable_config") {
 }
 
 ecma_source = [
-  "ecmascript/ark_stackmap_builder.cpp",
-  "ecmascript/ark_stackmap_parser.cpp",
   "ecmascript/base/array_helper.cpp",
   "ecmascript/base/atomic_helper.cpp",
   "ecmascript/base/builtins_base.cpp",
@@ -467,7 +465,6 @@ ecma_source = [
   "ecmascript/frames.cpp",
   "ecmascript/free_object.cpp",
   "ecmascript/aot_file_manager.cpp",
-  "ecmascript/llvm_stackmap_parser.cpp",
   "ecmascript/generator_helper.cpp",
   "ecmascript/async_generator_helper.cpp",
   "ecmascript/global_env.cpp",
@@ -592,6 +589,9 @@ ecma_source = [
   "ecmascript/napi/jsnapi.cpp",
   "ecmascript/object_factory.cpp",
   "ecmascript/object_operator.cpp",
+  "ecmascript/stackmap/ark_stackmap_builder.cpp",
+  "ecmascript/stackmap/ark_stackmap_parser.cpp",
+  "ecmascript/stackmap/llvm_stackmap_parser.cpp",
   "ecmascript/taskpool/taskpool.cpp",
   "ecmascript/taskpool/runner.cpp",
   "ecmascript/taskpool/task_queue.cpp",

@@ -20,6 +20,7 @@
 #include <climits>
 #include <fstream>
 
+#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 #include "ecmascript/frames.h"
@@ -512,6 +513,32 @@ bool CpuProfiler::CheckFrameType(JSThread *thread, JSTaggedType *sp)
         return false;
     }
     return true;
+}
+
+bool CpuProfiler::InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entryDuration, uint64_t headerSize,
+                                 uint64_t tailSize) const
+{
+    uintptr_t entryEnd = entryBegin + entryDuration;
+    if (pc >= entryBegin && pc <= (entryBegin + headerSize)) {
+        return true;
+    }
+    if (pc <= entryEnd && pc >= (entryEnd - tailSize)) {
+        return true;
+    }
+    return false;
+}
+
+bool CpuProfiler::IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const
+{
+    uint64_t headerSize = 0;
+    uint64_t tailSize = 0;
+    uint64_t entryDuration = 0;
+    Assembler::GetFrameCompletionPos(headerSize, tailSize, entryDuration);
+    uintptr_t entryBegin = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
+    bool inAsmInterpreterEntry = InHeaderOrTail(pc, entryBegin, entryDuration, headerSize, tailSize);
+    entryBegin = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_GeneratorReEnterAsmInterp);
+    bool inGeneratorReEnterAsmInterp = InHeaderOrTail(pc, entryBegin, entryDuration, headerSize, tailSize);
+    return (inAsmInterpreterEntry || inGeneratorReEnterAsmInterp);
 }
 
 bool CpuProfiler::IsAddrAtStub(void *context)

@@ -22,8 +22,8 @@
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/mem/mark_word.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 
 namespace panda::ecmascript {
@@ -50,6 +50,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     if (jsThread->IsAsmInterpreter()) {
         jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
+        jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
     }
     return jsThread;
 }
@@ -452,5 +453,12 @@ size_t JSThread::GetAsmStackLimit()
 #else
     return 0;
 #endif
+}
+
+bool JSThread::IsLegalAsmSp(uintptr_t sp) const
+{
+    uint64_t bottom = GetStackLimit() - EcmaParamConfiguration::GetDefaultReservedStackSize();
+    uint64_t top = GetStackStart();
+    return (sp <= top || sp >= bottom);
 }
 }  // namespace panda::ecmascript

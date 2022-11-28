@@ -42,9 +42,15 @@ void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
     __ BindAssemblerStub(RTSTUB_ID(AsmInterpreterEntry));
     Label target;
     // push asm interpreter entry frame
+    size_t begin = __ GetCurrentPosition();
     PushAsmInterpEntryFrame(assembler);
     __ Callq(&target);
     PopAsmInterpEntryFrame(assembler);
+    size_t end = __ GetCurrentPosition();
+    if ((end - begin) != FrameCompletionPos::X64EntryFrameDuration) {
+        LOG_COMPILER(FATAL) << (end - begin) << " != " << FrameCompletionPos::X64EntryFrameDuration
+                            << "This frame has been modified, and the offset EntryFrameDuration should be updated too.";
+    }
     __ Ret();
 
     __ Bind(&target);
@@ -59,9 +65,15 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterp(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(GeneratorReEnterAsmInterp));
     Label target;
+    size_t begin = __ GetCurrentPosition();
     PushAsmInterpEntryFrame(assembler);
     __ Callq(&target);
     PopAsmInterpEntryFrame(assembler);
+    size_t end = __ GetCurrentPosition();
+    if ((end - begin) != FrameCompletionPos::X64EntryFrameDuration) {
+        LOG_COMPILER(FATAL) << (end - begin) << " != " << FrameCompletionPos::X64EntryFrameDuration
+                            << "This frame has been modified, and the offset EntryFrameDuration should be updated too.";
+    }
     __ Ret();
 
     __ Bind(&target);
@@ -212,6 +224,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
 
 void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
 {
+    size_t begin = __ GetCurrentPosition();
     if (!assembler->FromInterpreterHandler()) {
         __ PushCppCalleeSaveRegisters();
     }
@@ -224,6 +237,13 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
     __ Pushq(static_cast<int64_t>(FrameType::ASM_INTERPRETER_ENTRY_FRAME));
     __ Pushq(fpRegister);
     __ Pushq(0);    // pc
+    if (!assembler->FromInterpreterHandler()) {
+        size_t end = __ GetCurrentPosition();
+        if ((end - begin) != FrameCompletionPos::X64CppToAsmInterp) {
+            LOG_COMPILER(FATAL) << (end - begin) << " != " << FrameCompletionPos::X64CppToAsmInterp
+                                << "This frame has been modified, and the offset CppToAsmInterp should be updated too.";
+        }
+    }
     __ Leaq(Operand(rsp, 3 * FRAME_SLOT_SIZE), rbp);  // 24: skip frame type, prevSp and pc
 }
 
@@ -237,8 +257,14 @@ void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)
     __ PopAlignBytes();
     __ Popq(rdi);
     __ Movq(fpRegister, Operand(rdi, JSThread::GlueData::GetLeaveFrameOffset(false)));
+    size_t begin = __ GetCurrentPosition();
     if (!assembler->FromInterpreterHandler()) {
         __ PopCppCalleeSaveRegisters();
+        size_t end = __ GetCurrentPosition();
+        if ((end - begin) != FrameCompletionPos::X64AsmInterpToCpp) {
+            LOG_COMPILER(FATAL) << (end - begin) << " != " << FrameCompletionPos::X64AsmInterpToCpp
+                                << "This frame has been modified, and the offset AsmInterpToCp should be updated too.";
+        }
     }
 }
 

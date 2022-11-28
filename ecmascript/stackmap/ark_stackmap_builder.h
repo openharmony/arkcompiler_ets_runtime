@@ -22,8 +22,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ecmascript/ark_stackmap.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/stackmap/ark_stackmap.h"
 
 namespace panda::ecmascript {
     class BinaryBufferParser;

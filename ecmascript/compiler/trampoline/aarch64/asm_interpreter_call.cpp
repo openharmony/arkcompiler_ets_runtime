@@ -44,9 +44,15 @@ void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(AsmInterpreterEntry));
     Label target;
+    size_t begin = __ GetCurrentPosition();
     PushAsmInterpEntryFrame(assembler);
     __ Bl(&target);
     PopAsmInterpEntryFrame(assembler);
+    size_t end = __ GetCurrentPosition();
+    if ((end - begin) != FrameCompletionPos::ARM64EntryFrameDuration) {
+        LOG_COMPILER(FATAL) << (end - begin) << " != " << FrameCompletionPos::ARM64EntryFrameDuration
+                            << "This frame has been modified, and the offset EntryFrameDuration should be updated too.";
+    }
     __ Ret();
 
     __ Bind(&target);
@@ -611,6 +617,7 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
     } else {
+        ASSERT(type == FrameType::BUILTIN_FRAME_WITH_ARGV);
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
@@ -881,9 +888,15 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterp(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(GeneratorReEnterAsmInterp));
     Label target;
+    size_t begin = __ GetCurrentPosition();
     PushAsmInterpEntryFrame(assembler);
     __ Bl(&target);
     PopAsmInterpEntryFrame(assembler);
+    size_t end = __ GetCurrentPosition();
+    if ((end - begin) != FrameCompletionPos::ARM64EntryFrameDuration) {
+        LOG_COMPILER(FATAL) << (end - begin) << " != " << FrameCompletionPos::ARM64EntryFrameDuration
+                            << "This frame has been modified, and the offset EntryFrameDuration should be updated too.";
+    }
     __ Ret();
     __ Bind(&target);
     {
@@ -1106,6 +1119,7 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
     Register fp(X29);
     Register sp(SP);
 
+    size_t begin = __ GetCurrentPosition();
     if (!assembler->FromInterpreterHandler()) {
         __ CalleeSave();
     }
@@ -1124,6 +1138,13 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
     __ Stp(prevFrameRegister, frameTypeRegister, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // 2 : pc & glue
     __ Stp(glue, Register(Zero), MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // pc
+    if (!assembler->FromInterpreterHandler()) {
+        size_t end = __ GetCurrentPosition();
+        if ((end - begin) != FrameCompletionPos::ARM64CppToAsmInterp) {
+            LOG_COMPILER(FATAL) << (end - begin) << " != " << FrameCompletionPos::ARM64CppToAsmInterp
+                                << "This frame has been modified, and the offset CppToAsmInterp should be updated too.";
+        }
+    }
     __ Add(fp, sp, Immediate(4 * FRAME_SLOT_SIZE));  // 32: skip frame type, prevSp, pc and glue
 }
 
@@ -1139,11 +1160,16 @@ void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)
     __ Ldp(glue, Register(Zero), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
     // 2: skip frame type & prev
     __ Ldp(prevFrameRegister, Register(Zero), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
-
-    __ RestoreFpAndLr();
     __ Str(prevFrameRegister, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
+    size_t begin = __ GetCurrentPosition();
+    __ RestoreFpAndLr();
     if (!assembler->FromInterpreterHandler()) {
         __ CalleeRestore();
+        size_t end = __ GetCurrentPosition();
+        if ((end - begin) != FrameCompletionPos::ARM64AsmInterpToCpp) {
+            LOG_COMPILER(FATAL) << (end - begin) << " != " << FrameCompletionPos::ARM64AsmInterpToCpp
+                                << "This frame has been modified, and the offset AsmInterpToCpp should be updated too.";
+        }
     }
 }
 

@@ -17,8 +17,8 @@
 #define ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
 
 #include "ecmascript/stubs/runtime_stubs.h"
+
 #include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_dictionary-inl.h"
@@ -36,6 +36,7 @@
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
