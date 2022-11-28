@@ -28,6 +28,7 @@ public:
     static constexpr int TRIPLE_SLOT_SIZE = 24;
     static constexpr int QUADRUPLE_SLOT_SIZE = 32;
     static constexpr int QUINTUPLE_SLOT_SIZE = 40;
+    static constexpr int SEXTUPLE_SLOT_SIZE = 48;
     static void CopyArgumentWithArgV(ExtendedAssembler *assembler, Register argc, Register argV);
     static void PushAsmInterpBridgeFrame(ExtendedAssembler *assembler);
     static void PopAsmInterpBridgeFrame(ExtendedAssembler *assembler);

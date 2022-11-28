@@ -53,13 +53,21 @@ public:
         ASM_INTERPRETER_BC_STUB_LIST(DEF_MESSAGE_ID, DEF_MESSAGE_ID, DEF_MESSAGE_ID)
         ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_MESSAGE_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_MESSAGE_ID)
-        ASM_INTERPRETER_BUILTINS_STUB_LIST(DEF_MESSAGE_ID)
+        BUILTINS_STUB_LIST(DEF_MESSAGE_ID)
+        RUNTIME_ASM_STUB_LIST(DEF_MESSAGE_ID)
         DEBUG_CHECK_MESSAGE_STRING_LIST(DEF_MESSAGE_ID)
 #undef DEF_MESSAGE_ID
         MAX_MESSAGE_COUNT,
         ASM_INTERPRETER_START = Message_INT32_VALUE + 1,
+        BUILTINS_STUB_START = Message_CharCodeAt,
+        BUILTINS_STUB_LAST = Message_BooleanConstructor,
     };
     static const std::string& GetMessageString(int id);
+
+    static bool IsBuiltinsStubMessageString(int id)
+    {
+        return (id >= BUILTINS_STUB_START) && (id <= BUILTINS_STUB_LAST);
+    }
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

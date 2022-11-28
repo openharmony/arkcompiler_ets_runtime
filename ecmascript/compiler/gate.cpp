@@ -147,6 +147,7 @@ const Properties& OpCode::GetProperties() const
         case BYTECODE_CALL:
         case DEBUGGER_BYTECODE_CALL:
         case BUILTINS_CALL:
+        case BUILTINS_CALL_WITH_ARGV:
         case CALL:
         case RUNTIME_CALL_WITH_ARGV: {
             static const Properties ps { FLEX, NO_STATE, ONE_DEPEND, MANY_VALUE(ANYVALUE, ANYVALUE), NO_ROOT };
@@ -401,6 +402,7 @@ std::string OpCode::Str() const
         {BYTECODE_CALL, "BYTECODE_CALL"},
         {DEBUGGER_BYTECODE_CALL, "DEBUGGER_BYTECODE_CALL"},
         {BUILTINS_CALL, "BUILTINS_CALL"},
+        {BUILTINS_CALL_WITH_ARGV, "BUILTINS_CALL_WITH_ARGV"},
         {ALLOCA, "ALLOCA"},
         {ARG, "ARG"},
         {MUTABLE_DATA, "MUTABLE_DATA"},

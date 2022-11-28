@@ -332,6 +332,10 @@ uintptr_t FrameIterator::GetPrevFrame() const
 bool FrameIterator::IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     ASSERT(arkStackMapParser_ != nullptr);
+    if (!stackMapAddr_) {  // enter by assembler, no stack map
+        return true;
+    }
+
     return arkStackMapParser_->IteratorStackMap(visitor, derivedVisitor, optimizedReturnAddr_,
         reinterpret_cast<uintptr_t>(current_), optimizedCallSiteSp_, stackMapAddr_);
 }

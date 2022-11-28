@@ -340,8 +340,19 @@ GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::v
 
 GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
-    const CallSignature *cs = BuiltinsStubCSigns::BuiltinsHandler();
+    const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
     ASSERT(cs->IsBuiltinsStub());
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
+    return result;
+}
+
+GateRef CircuitBuilder::CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args)
+{
+    const CallSignature *cs = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
+    ASSERT(cs->IsBuiltinsWithArgvStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result = Call(cs, glue, target, depend, args);
@@ -431,6 +442,8 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
         op = OpCode(OpCode::BYTECODE_CALL);
     } else if (cs->IsBuiltinsStub()) {
         op = OpCode(OpCode::BUILTINS_CALL);
+    } else if (cs->IsBuiltinsWithArgvStub()) {
+        op = OpCode(OpCode::BUILTINS_CALL_WITH_ARGV);
     } else if (cs->IsRuntimeNGCStub()) {
         op = OpCode(OpCode::NOGC_RUNTIME_CALL);
     } else {

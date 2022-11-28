@@ -27,6 +27,9 @@ public:
     static constexpr int FRAME_SLOT_SIZE = 8;
     static constexpr int DOUBLE_SLOT_SIZE = 16;
     static constexpr int TRIPLE_SLOT_SIZE = 24;
+    static constexpr int QUADRUPLE_SLOT_SIZE = 32;
+    static constexpr int QUINTUPLE_SLOT_SIZE = 40;
+    static constexpr int DECUPLE_SLOT_SIZE = 80;
     static constexpr int FRAME_SLOT_SIZE_LOG2 = 3;
     enum BuiltinsLeaveFrameArgId : unsigned {CODE_ADDRESS = 0, ENV, ARGC, ARGV};
     static inline int64_t GetStackArgOffSetToFp(unsigned argId)
@@ -113,6 +116,8 @@ private:
     static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
     static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
+    static void PushOptimizedFrame(ExtendedAssembler *assembler);
+    static void PopOptimizedFrame(ExtendedAssembler *assembler);
     static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc, bool isNew = false);
     static void ConstructorJSCallInternal(ExtendedAssembler *assembler, Register jsfunc);
 };

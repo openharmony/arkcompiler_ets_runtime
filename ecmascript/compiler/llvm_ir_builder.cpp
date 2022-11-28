@@ -145,6 +145,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::DEBUGGER_BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::BUILTINS_CALL, &LLVMIRBuilder::HandleCall},
+        {OpCode::BUILTINS_CALL_WITH_ARGV, &LLVMIRBuilder::HandleCall},
         {OpCode::ALLOCA, &LLVMIRBuilder::HandleAlloca},
         {OpCode::ARG, &LLVMIRBuilder::HandleParameter},
         {OpCode::CONSTANT, &LLVMIRBuilder::HandleConstant},
@@ -461,7 +462,8 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
     std::vector<GateRef> ins;
     acc_.GetIns(gate, ins);
     OpCode callOp = acc_.GetOpCode(gate);
-    if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL || callOp == OpCode::BUILTINS_CALL) {
+    if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL ||
+        callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV) {
         VisitCall(gate, ins, callOp);
     } else {
         UNREACHABLE();
@@ -716,11 +718,16 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         kind = GetCallExceptionKind(index, op);
     } else {
+        ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = gate2LValue_[inList[targetIndex]];
         rtoffset = GetBuiltinsStubOffset(glue);
         rtbaseoffset = LLVMBuildAdd(
             builder_, glue, LLVMBuildAdd(builder_, rtoffset, opcodeOffset, ""), "");
-        calleeDescriptor = BuiltinsStubCSigns::BuiltinsHandler();
+        if (op == OpCode::BUILTINS_CALL) {
+            calleeDescriptor = BuiltinsStubCSigns::BuiltinsCSign();
+        } else {
+            calleeDescriptor = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
+        }
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
     }
 
