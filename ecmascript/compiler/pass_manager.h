@@ -27,9 +27,9 @@ class LexEnvManager;
 class CompilationConfig;
 class BytecodeInfoCollector;
 
-class CompilationInfo {
+class PassInfo {
 public:
-    explicit CompilationInfo(TSManager *tsManager, Bytecodes *bytecodes, LexEnvManager *lexEnvManager,
+    explicit PassInfo(TSManager *tsManager, Bytecodes *bytecodes, LexEnvManager *lexEnvManager,
                              CompilationConfig *cmpCfg, CompilerLog *log, const JSPandaFile *jsPandaFile,
                              BytecodeInfoCollector* bcInfoCollector, LLVMModule *aotModule)
         : tsManager_(tsManager), bytecodes_(bytecodes), lexEnvManager_(lexEnvManager), cmpCfg_(cmpCfg),

@@ -49,7 +49,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
     // ts type system
     TSManager *tsManager = vm_->GetTSManager();
-    CompilationInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_,
+    PassInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_,
         jsPandaFile, &bcInfoCollector, aotModule);
 
     bytecodeInfo.EnumerateBCInfo(jsPandaFile, [this, &fileName, &enableMethodLog, &info]

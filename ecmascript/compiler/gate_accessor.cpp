@@ -535,7 +535,7 @@ GateRef GateAccessor::GetGlueFromArgList() const
     return circuit_->GetGateRef(curOut->GetGateConst());
 }
 
-void GateAccessor::GetArgsOutVector(std::vector<GateRef>& outs) const
+void GateAccessor::GetArgsOuts(std::vector<GateRef>& outs) const
 {
     auto argRoot = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
     auto firstOut = circuit_->InnerMethodArgFirstOut();
@@ -554,7 +554,7 @@ void GateAccessor::GetArgsOutVector(std::vector<GateRef>& outs) const
     }
 }
 
-void GateAccessor::GetReturnOutVector(std::vector<GateRef>& outs) const
+void GateAccessor::GetReturnOuts(std::vector<GateRef>& outs) const
 {
     auto returnRoot = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
     auto firstOut = circuit_->InnerMethodReturnFirstOut();

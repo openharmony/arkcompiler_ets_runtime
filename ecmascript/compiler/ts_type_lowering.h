@@ -25,7 +25,7 @@
 namespace panda::ecmascript::kungfu {
 class TSTypeLowering {
 public:
-    TSTypeLowering(Circuit *circuit, CompilationInfo *info,
+    TSTypeLowering(Circuit *circuit, PassInfo *info,
                    bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, info->GetCompilerConfig()),
           dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
@@ -77,8 +77,8 @@ private:
     void LowerConditionJump(GateRef gate);
     void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
-    void LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool isThis = false);
-    void LowerTypedStObjByName(GateRef gate, GateRef thisObj, bool isThis = false);
+    void LowerTypedLdObjByName(GateRef gate);
+    void LowerTypedStObjByName(GateRef gate, bool isThis);
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
@@ -87,6 +87,7 @@ private:
 
     GateRef GetSuperConstructor(GateRef ctor);
     void LowerCallThis1Imm8V8V8(GateRef gate);
+    bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
 
     // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
