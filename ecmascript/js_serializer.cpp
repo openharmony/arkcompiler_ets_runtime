@@ -367,12 +367,12 @@ bool JSSerializer::WriteConstantPool(const JSHandle<JSTaggedValue> &value)
     }
 
     const JSPandaFile *jsPandaFile = constPool->GetJSPandaFile();
-    if (!WriteRawData(&jsPandaFile, sizeof(jsPandaFile))) {
+    if (!WriteRawData(&jsPandaFile, sizeof(uintptr_t))) {
         bufferSize_ = oldSize;
         return false;
     }
     const panda_file::File::IndexHeader *indexHeader = constPool->GetIndexHeader();
-    if (!WriteRawData(&indexHeader, sizeof(indexHeader))) {
+    if (!WriteRawData(&indexHeader, sizeof(uintptr_t))) {
         bufferSize_ = oldSize;
         return false;
     }
