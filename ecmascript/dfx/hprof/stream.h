@@ -23,9 +23,9 @@ public:
         : index_(index), count_(count), size_(size) {}
     ~HeapStat() = default;
 
-    int32_t index_;
-    int32_t count_;
-    int32_t size_;
+    int32_t index_ {0};
+    int32_t count_ {0};
+    int32_t size_ {0};
 };
 
 class Stream {

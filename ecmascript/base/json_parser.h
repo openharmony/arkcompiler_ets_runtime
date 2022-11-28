@@ -78,6 +78,7 @@ public:
         ASSERT(str != nullptr);
         isAsciiString_ = true;
         uint32_t len = EcmaStringAccessor(str).GetLength();
+        ASSERT(len != UINT32_MAX);
         CVector<T> buf(len + 1); // 1 means add '\0' in the end of buf
         EcmaStringAccessor(str).WriteToFlatUtf8(buf.data(), len + 1);
         Text begin = buf.data();
@@ -255,6 +256,7 @@ private:
                 current_++;
             }
         }
+        ASSERT(res.length() <= static_cast<size_t>(UINT32_MAX));
         return factory_->NewFromUtf8Literal(reinterpret_cast<const uint8_t *>(res.c_str()), res.length())
             .GetTaggedValue();
     }
@@ -274,11 +276,13 @@ private:
                 if (isAscii) {
                     CString value(current_, end_);
                     current_ = end_;
+                    ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
                     return factory_->NewFromUtf8LiteralCompress(
                         reinterpret_cast<const uint8_t *>(value.c_str()), value.length()).GetTaggedValue();
                 }
                 std::u16string value(current_, end_);
                 current_ = end_;
+                ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
                 return factory_->NewFromUtf16LiteralNotCompress(
                     reinterpret_cast<const uint16_t *>(value.c_str()), value.length()).GetTaggedValue();
             }
@@ -293,10 +297,12 @@ private:
             if (LIKELY(isFastString)) {
                 if (isAscii) {
                     CString value(current_, end_);
+                    ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
                     return factory_->NewFromUtf8LiteralCompress(
                         reinterpret_cast<const uint8_t *>(value.c_str()), value.length()).GetTaggedValue();
                 }
                 std::u16string value(current_, end_);
+                ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
                 return factory_->NewFromUtf16LiteralNotCompress(
                     reinterpret_cast<const uint16_t *>(value.c_str()), value.length()).GetTaggedValue();
             }
@@ -448,6 +454,7 @@ private:
 
     JSTaggedValue ParseLiteral(CString str, Tokens literalToken)
     {
+        ASSERT((str.size() - 1) <= static_cast<size_t>(UINT32_MAX));
         uint32_t strLen = str.size() - 1;
         uint32_t remainingLength = range_ - current_;
         if (UNLIKELY(remainingLength < strLen)) {

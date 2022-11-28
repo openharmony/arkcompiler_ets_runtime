@@ -553,7 +553,7 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
 bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
 {
     auto &byteCodeInfo = GetByteCodeInfo(gate);
-    uint16_t stringId;
+    uint16_t stringId = 0;
     GateType inValueType;
     if (hasIC) {
         // 2: number of value inputs

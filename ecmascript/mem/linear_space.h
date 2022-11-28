@@ -48,7 +48,7 @@ protected:
     size_t overShootSize_ {0};
     size_t allocateAfterLastGC_ {0};
     size_t survivalObjectSize_ {0};
-    uintptr_t waterLine_;
+    uintptr_t waterLine_ {0};
 };
 
 class SemiSpace : public LinearSpace {

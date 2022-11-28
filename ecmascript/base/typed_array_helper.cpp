@@ -312,7 +312,7 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     //   a. If bufferByteLength modulo elementSize ≠ 0, throw a RangeError exception.
     //   b. Let newByteLength be bufferByteLength - offset.
     //   c. If newByteLength < 0, throw a RangeError exception.
-    int32_t newByteLength;
+    int32_t newByteLength = 0;
     if (length->IsUndefined()) {
         if (bufferByteLength % elementSize != 0) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The bufferByteLength cannot be an integral multiple of elementSize.",
@@ -326,6 +326,8 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
         // 12. Else,
         //   a. Let newByteLength be newLength × elementSize.
         //   b. If offset + newByteLength > bufferByteLength, throw a RangeError exception.
+        ASSERT((static_cast<size_t>(newLength) * static_cast<size_t>(elementSize)) <=
+            static_cast<size_t>(INT32_MAX));
         newByteLength = newLength * static_cast<int32_t>(elementSize);
         if (offset + static_cast<uint32_t>(newByteLength) > bufferByteLength) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is out of range.", JSTaggedValue::Exception());
