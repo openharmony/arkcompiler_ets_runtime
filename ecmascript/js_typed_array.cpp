@@ -705,7 +705,7 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
     }
 
     ByteArray *byteArray = ByteArray::Cast(arrBuf.GetTaggedObject());
-    int32_t length = byteArray->GetLength() * byteArray->GetSize();
+    int32_t length = static_cast<int32_t>(byteArray->GetLength() * byteArray->GetSize());
     JSHandle<JSArrayBuffer> arrayBuffer = thread->GetEcmaVM()->GetFactory()->NewJSArrayBuffer(length);
 
     if (length > 0) {

@@ -134,7 +134,7 @@ public:
         TRIPLE_ARM32,
     };
 
-    CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false)
+    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false)
         : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler)
     {
     }

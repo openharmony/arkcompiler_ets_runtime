@@ -58,7 +58,7 @@ std::tuple<JSHandle<TSTypeTable>, uint32_t> TSManager::GenerateTSTypeTable(const
 
         // Initialize a empty TSTypeTable with length of (numTypes + RESERVE_TABLE_LENGTH)
         table = factory_->NewTSTypeTable(numTypes);
-        moduleId = GetNextModuleId();
+        moduleId = static_cast<uint32_t>(GetNextModuleId());
         table->SetNumberOfTypes(thread_, TSTypeTable::DEFAULT_NUM_TYPES);
         AddTypeTable(JSHandle<JSTaggedValue>(table), amiPath);
     }
