@@ -22,6 +22,7 @@
 
 namespace panda::ecmascript::kungfu {
 using ControlFlowGraph = std::vector<std::vector<GateRef>>;
+
 class CodeGeneratorImpl {
 public:
     CodeGeneratorImpl() = default;

@@ -383,26 +383,24 @@ bool Verifier::RunPrologGatesCheck(const Circuit *circuit, const std::vector<Gat
     return true;
 }
 
-bool Verifier::RunSchedulingBoundsCheck(const Circuit *circuit, const std::vector<GateRef> &schedulableGatesList,
-    const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-    const std::function<bool(size_t, size_t)> &isAncestor,
-    const std::function<size_t(size_t, size_t)> &lowestCommonAncestor)
+bool Verifier::RunSchedulingBoundsCheck(const Circuit *circuit,
+                                        const std::vector<GateRef> &schedulableGatesList,
+                                        const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                        const std::function<bool(size_t, size_t)> &isAncestor,
+                                        const std::function<size_t(size_t, size_t)> &lowestCommonAncestor)
 {
     // check existence of scheduling upper bound
     std::unordered_map<GateRef, size_t> upperBound;
     {
-        auto result =
-            Scheduler::CalculateSchedulingUpperBound(circuit, bbGatesAddrToIdx, isAncestor, schedulableGatesList);
-        if (!result.has_value()) {
+        if (!Scheduler::CalculateSchedulingUpperBound(circuit, bbGatesAddrToIdx, isAncestor,
+                                                      schedulableGatesList, upperBound)) {
             return false;
         }
-        upperBound = result.value();
     }
     // check existence of scheduling lower bound
     std::unordered_map<GateRef, size_t> lowerBound;
     {
-        auto result = Scheduler::CalculateSchedulingLowerBound(circuit, bbGatesAddrToIdx, lowestCommonAncestor);
-        lowerBound = result.value();
+        Scheduler::CalculateSchedulingLowerBound(circuit, bbGatesAddrToIdx, lowestCommonAncestor, lowerBound);
     }
     // check consistency of lower bound and upper bound
     {

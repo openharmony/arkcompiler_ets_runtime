@@ -118,7 +118,8 @@ HWTEST_F_L0(StubTest, FastAddTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -159,7 +160,8 @@ HWTEST_F_L0(StubTest, FastSubTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -196,7 +198,8 @@ HWTEST_F_L0(StubTest, FastMulTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -252,7 +255,8 @@ HWTEST_F_L0(StubTest, FastDivTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -301,7 +305,8 @@ HWTEST_F_L0(StubTest, FastModTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -369,7 +374,8 @@ HWTEST_F_L0(StubTest, TryLoadICByName)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, findFunction, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -390,7 +396,8 @@ HWTEST_F_L0(StubTest, TryLoadICByValue)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, findFunction, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -411,7 +418,8 @@ HWTEST_F_L0(StubTest, TryStoreICByName)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, findFunction, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -432,7 +440,8 @@ HWTEST_F_L0(StubTest, TryStoreICByValue)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, findFunction, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -899,7 +908,8 @@ HWTEST_F_L0(StubTest, GetPropertyByIndexStub)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -935,7 +945,8 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -973,7 +984,8 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
     netOfGates.PrintAllGates();
     bool result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -1011,7 +1023,8 @@ HWTEST_F_L0(StubTest, SetPropertyByNameStub)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -1048,8 +1061,9 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates2.PrintAllGates();
-    auto cfg2 = Scheduler::Run(&netOfGates2);
-    LLVMIRBuilder llvmBuilder2(&cfg2, &netOfGates2, &stubModule, getPropertyByIndexfunction,
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates2, cfg);
+    LLVMIRBuilder llvmBuilder2(&cfg, &netOfGates2, &stubModule, getPropertyByIndexfunction,
         stubModule.GetCompilationConfig(),  CallSignature::CallConv::CCallConv);
     llvmBuilder2.Build();
 
@@ -1063,7 +1077,8 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     stub1.GenerateCircuit(stubModule.GetCompilationConfig());
     bool result = Verifier::Run(&netOfGates1);
     ASSERT_TRUE(result);
-    auto cfg1 = Scheduler::Run(&netOfGates1);
+    Scheduler::ControlFlowGraph cfg1;
+    Scheduler::Run(&netOfGates1, cfg1);
     LLVMIRBuilder llvmBuilder1(&cfg1, &netOfGates1, &stubModule, getPropertyByNamefunction,
         stubModule.GetCompilationConfig(), CallSignature::CallConv::CCallConv);
     llvmBuilder1.Build();
@@ -1079,10 +1094,11 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     netOfGates.PrintAllGates();
     result = Verifier::Run(&netOfGates);
     ASSERT_TRUE(result);
-    auto cfg = Scheduler::Run(&netOfGates);
-    PrintCircuitByBasicBlock(cfg, netOfGates);
+    Scheduler::ControlFlowGraph cfg2;
+    Scheduler::Run(&netOfGates, cfg2);
+    PrintCircuitByBasicBlock(cfg2, netOfGates);
 
-    LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
+    LLVMIRBuilder llvmBuilder(&cfg2, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
     llvmBuilder.Build();
     LLVMAssembler assembler(module);
@@ -1151,7 +1167,8 @@ HWTEST_F_L0(StubTest, FastTypeOfTest)
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
     ASSERT_TRUE(verRes);
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -1239,7 +1256,8 @@ HWTEST_F_L0(StubTest, FastEqualTest)
     stub.SetStubBuilder(&optimizer);
     stub.GenerateCircuit(stubModule.GetCompilationConfig());
     netOfGates.PrintAllGates();
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
@@ -1472,7 +1490,8 @@ HWTEST_F_L0(StubTest, RelocateTest)
     netOfGates.PrintAllGates();
     bool verRes = Verifier::Run(&netOfGates);
     ASSERT_TRUE(verRes);
-    auto cfg = Scheduler::Run(&netOfGates);
+    Scheduler::ControlFlowGraph cfg;
+    Scheduler::Run(&netOfGates, cfg);
     PrintCircuitByBasicBlock(cfg, netOfGates);
     LLVMIRBuilder llvmBuilder(&cfg, &netOfGates, &stubModule, function, stubModule.GetCompilationConfig(),
         CallSignature::CallConv::CCallConv);
