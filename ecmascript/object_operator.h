@@ -165,6 +165,11 @@ public:
         return GetAttr().IsInlinedProps();
     }
 
+    inline void SetIsInlinedProps(bool flag)
+    {
+        attributes_.SetIsInlinedProps(flag);
+    }
+
     inline JSTaggedValue GetValue() const
     {
         if (value_.IsEmpty()) {
