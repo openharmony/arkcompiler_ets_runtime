@@ -144,8 +144,6 @@ public:
     using CallSignature = kungfu::CallSignature;
     AOTFileInfo() = default;
     virtual ~AOTFileInfo() = default;
-    static bool VerifyFilePath([[maybe_unused]] const std::string &filePath,
-                               [[maybe_unused]] bool toGenerate = false);
 
     struct FuncEntryDes {
         uint64_t codeAddr_;
@@ -316,7 +314,7 @@ public:
 private:
     AnFileDataManager() = default;
     std::shared_ptr<const AnFileData> UnsafeFind(const CString &filename) const;
-    bool UnsafeLoadData(const CString &filename);
+    bool UnsafeLoadData(const CString &filename, std::string &realPath);
 
     os::memory::RecursiveMutex lock_;
     std::unordered_map<const CString, std::shared_ptr<AnFileData>, CStringHash> loadedData_;
@@ -482,7 +480,6 @@ public:
     void LoadSnapshotFile([[maybe_unused]]const std::string& filename);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
-    static bool GetAbsolutePath(const std::string &relativePath, std::string &absPath);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void AddSnapshotConstantPool(JSTaggedValue snapshotConstantPool);

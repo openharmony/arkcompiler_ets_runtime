@@ -19,11 +19,8 @@
 #include <regex>
 #include <sys/time.h>
 
-#ifdef PANDA_TARGET_WINDOWS
-#include <timezoneapi.h>
-#endif
-
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/platform/time.h"
 
 namespace panda::ecmascript {
 using NumberHelper = base::NumberHelper;
@@ -43,7 +40,7 @@ void DateUtils::TransferTimeToDate(int64_t timeMs, std::array<int64_t, DATE_LENG
     (*date)[MIN] = (*date)[HOUR] % SEC_PER_MINUTE;                           // min
     (*date)[HOUR] = ((*date)[HOUR] - (*date)[MIN]) / SEC_PER_MINUTE;         // hour
     (*date)[WEEKDAY] = Mod(((*date)[DAYS] + LEAP_NUMBER[0]), DAY_PER_WEEK);  // weekday
-    GetYearFromDays(date);                       
+    GetYearFromDays(date);
 }
 // static
 bool DateUtils::IsLeap(int64_t year)
@@ -606,32 +603,6 @@ JSTaggedValue JSDate::UTC(EcmaRuntimeCallInfo *argv)
     double day = MakeDay(year, month, date);
     double time = MakeTime(hours, minutes, seconds, ms);
     return JSTaggedValue(TimeClip(MakeDate(day, time)));
-}
-
-int64_t JSDate::GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLocal)
-{
-    // Preserve the old behavior for non-ICU implementation by ignoring both timeMs and is_utc.
-    if (!isLocal) {
-        return 0;
-    }
-#ifndef PANDA_TARGET_WINDOWS
-    timeMs /= JSDate::THOUSAND;
-    time_t tv = std::time(reinterpret_cast<time_t *>(&timeMs));
-    struct tm tm {
-    };
-    // localtime_r is only suitable for linux.
-    struct tm *t = localtime_r(&tv, &tm);
-    // tm_gmtoff includes any daylight savings offset.
-    if (t == nullptr) {
-        return 0;
-    }
-    return t->tm_gmtoff / SEC_PER_MINUTE;
-#else
-    TIME_ZONE_INFORMATION tmp;
-    GetTimeZoneInformation(&tmp);
-    int64_t res = -tmp.Bias;
-    return res;
-#endif
 }
 
 // 20.4.4.10

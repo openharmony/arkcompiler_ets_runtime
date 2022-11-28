@@ -37,10 +37,6 @@ void SparseSpace::Initialize()
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE,
                                                                  heap_->GetJSThread());
     region->InitializeFreeObjectSets();
-    if (spaceType_ == MemSpaceType::MACHINE_CODE_SPACE) {
-        int res = region->SetCodeExecutableAndReadable();
-        LOG_ECMA_MEM(DEBUG) << "MachineCodeSpace::Expand() SetCodeExecutableAndReadable" << res;
-    }
     AddRegion(region);
 
     allocator_->Initialize(region);
@@ -89,10 +85,6 @@ bool SparseSpace::Expand()
     }
 
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, heap_->GetJSThread());
-    if (spaceType_ == MemSpaceType::MACHINE_CODE_SPACE) {
-        int res = region->SetCodeExecutableAndReadable();
-        LOG_ECMA_MEM(DEBUG) << "MachineCodeSpace::Expand() SetCodeExecutableAndReadable" << res;
-    }
     region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);

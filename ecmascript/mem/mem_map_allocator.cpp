@@ -14,79 +14,34 @@
  */
 
 #include "ecmascript/mem/mem_map_allocator.h"
-
-#if defined(PANDA_TARGET_WINDOWS)
-#include <io.h>
-#include <sysinfoapi.h>
-#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
-#include "sys/sysctl.h"
-#else
-#include "sys/sysinfo.h"
-#endif
-#ifdef PANDA_TARGET_WINDOWS
-static constexpr int INSUFFICIENT_CONTINUOUS_MEM = 1455;
-void *mmap(size_t size, int fd, off_t offset)
-{
-    HANDLE handle = ((fd == -1) ? INVALID_HANDLE_VALUE : reinterpret_cast<HANDLE>(_get_osfhandle(fd)));
-    HANDLE extra = CreateFileMapping(handle, nullptr, PAGE_READWRITE,
-                                     (DWORD) ((uint64_t) size >> 32),
-                                     (DWORD) (size & 0xffffffff),
-                                     nullptr);
-    if (extra == nullptr) {
-        int errCode = GetLastError();
-        LOG_NO_TAG(ERROR) << "CreateFileMapping fail, the error code is: " << errCode;
-        if (errCode == INSUFFICIENT_CONTINUOUS_MEM) {
-            LOG_NO_TAG(ERROR) << "[ArkRuntime Log]Failed to request a continuous segment of " << size << " memory."
-                            << "Please clean up other heavy processes or restart the computer.";
-        }
-        return nullptr;
-    }
-
-    void *data = MapViewOfFile(extra, FILE_MAP_WRITE | FILE_MAP_READ,
-                               (DWORD) ((uint64_t) offset >> 32),
-                               (DWORD) (offset & 0xffffffff),
-                               size);
-    if (data == nullptr) {
-        int errCode = GetLastError();
-        LOG_ECMA(ERROR) << "MapViewOfFile fail, the error code is: " << errCode;
-        return nullptr;
-    }
-    CloseHandle(extra);
-    return data;
-}
-#endif
+#include "ecmascript/platform/map.h"
+#include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
-MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool isRegular, [[maybe_unused]] int prot)
-{
-    MemMap pool = Allocate(size, alignment, isRegular);
-#ifndef PANDA_TARGET_WINDOWS
-    mprotect(pool.GetMem(), pool.GetSize(), prot);
-#endif
-    return pool;
-}
-
-MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool isRegular)
+MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, int prot)
 {
     if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
         LOG_GC(ERROR) << "memory map overflow";
         return MemMap();
     }
+
     MemMap mem;
-    if (isRegular) {
+    if (regular) {
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
             memMapTotalSize_ += size;
+            PageProtect(mem.GetMem(), mem.GetSize(), prot);
             PageTag(mem.GetMem(), size);
             return mem;
         }
-        mem = PageMap(REGULAR_REGION_MMAP_SIZE, alignment);
+        mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
         memMapPool_.InsertMemMap(mem);
         mem = memMapPool_.SplitMemFromCache(mem);
     } else {
         mem = memMapFreeList_.GetMemFromList(size);
     }
     if (mem.GetMem() != nullptr) {
+        PageProtect(mem.GetMem(), mem.GetSize(), prot);
         PageTag(mem.GetMem(), mem.GetSize());
         memMapTotalSize_ += mem.GetSize();
     }
@@ -96,6 +51,8 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool isRegular)
 void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 {
     memMapTotalSize_ -= size;
+    PageTag(mem, size, true);
+    PageProtect(mem, size, PAGE_PROT_NONE);
     PageRelease(mem, size);
     if (isRegular) {
         memMapPool_.AddMemToCache(mem, size);
@@ -104,52 +61,10 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
     }
 }
 
-MemMap MemMapAllocator::PageMap(size_t size, size_t alignment)
-{
-    size_t allocSize = size + alignment;
-#ifdef PANDA_TARGET_UNIX
-    void *result = mmap(0, allocSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-#else
-    size = std::min<size_t>(size, MEDIUM_POOL_SIZE * 2); // 2 : twice the size of the medium pool
-    allocSize = size + alignment;
-    void *result = mmap(allocSize, -1, 0);
-#endif
-    LOG_ECMA_IF(result == nullptr, FATAL) << "mmap fail";
-    auto alignResult = AlignUp(reinterpret_cast<uintptr_t>(result), alignment);
-#ifdef PANDA_TARGET_UNIX
-    size_t leftSize = alignResult - reinterpret_cast<uintptr_t>(result);
-    size_t rightSize = alignment - leftSize;
-    void *alignEndResult = reinterpret_cast<void *>(alignResult + size);
-    munmap(result, leftSize);
-    munmap(alignEndResult, rightSize);
-#endif
-    return MemMap(reinterpret_cast<void *>(alignResult), size);
-}
-
 void MemMapAllocator::AdapterSuitablePoolCapacity()
 {
-#ifdef PANDA_TARGET_WINDOWS
-    MEMORYSTATUSEX status;
-    status.dwLength = sizeof(MEMORYSTATUSEX);
-    GlobalMemoryStatusEx(&status);
-    DWORDLONG physSize = status.ullTotalPhys;
-#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
-    static constexpr int MIB_LENGTH = 2;
-    int mib[2];
-    mib[0] = CTL_HW;
-    mib[1] = HW_MEMSIZE;
-    int64_t size = 0;
-    size_t bufferLength = sizeof(size);
-    if (sysctl(mib, MIB_LENGTH, &size, &bufferLength, NULL, 0) != 0) {
-        LOG_GC(FATAL) << "sysctl error";
-    }
-    size_t physSize = static_cast<size_t>(size);
-#else
-    auto pages = sysconf(_SC_PHYS_PAGES);
-    auto pageSize = sysconf(_SC_PAGE_SIZE);
-    size_t physSize = pages * pageSize;
-#endif
-    capacity_ = std::max<size_t>(physSize / PHY_SIZE_MULTIPLE, MIN_MEM_POOL_CAPACITY);
+    size_t physicalSize = PhysicalSize();
+    capacity_ = std::max<size_t>(physicalSize / PHY_SIZE_MULTIPLE, MIN_MEM_POOL_CAPACITY);
     if (capacity_ > LARGE_POOL_SIZE) {
         capacity_ = std::max<size_t>(capacity_, STANDARD_POOL_SIZE);
     } else if (capacity_ >= MEDIUM_POOL_SIZE) {

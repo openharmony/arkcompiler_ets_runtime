@@ -17,11 +17,11 @@
 
 #include <string>
 
-#include "ecmascript/base/file_path_helper.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
 
@@ -144,8 +144,7 @@ void PGOProfilerManager::Merge(PGOProfiler *profiler)
 void PGOProfilerManager::SaveProfiler(SaveTask *task)
 {
     std::string realOutPath;
-    if (!base::FilePathHelper::RealPath(outDir_, realOutPath, false)) {
-        LOG_ECMA(ERROR) << "The file path(" << outDir_ << ") real path failure!";
+    if (!RealPath(outDir_, realOutPath, false)) {
         outDir_ = "";
         isEnable_ = false;
         return;

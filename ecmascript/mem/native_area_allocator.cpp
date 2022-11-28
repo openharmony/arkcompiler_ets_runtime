@@ -15,12 +15,7 @@
 
 #include "ecmascript/mem/native_area_allocator.h"
 
-#if !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
-#include <malloc.h>
-#else
-#include <malloc/malloc.h>
-#endif
-
+#include "ecmascript/platform/os.h"
 #include "libpandabase/os/mem.h"
 
 namespace panda::ecmascript {
@@ -121,13 +116,7 @@ void NativeAreaAllocator::FreeBuffer(void *mem)
     if (mem == nullptr) {
         return;
     }
-#if defined(PANDA_TARGET_WINDOWS)
-    DecreaseNativeMemoryUsage(_msize(mem));
-#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
-    DecreaseNativeMemoryUsage(malloc_size(mem));
-#else
-    DecreaseNativeMemoryUsage(malloc_usable_size(mem));
-#endif
+    DecreaseNativeMemoryUsage(MallocUsableSize(mem));
 
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     if (memset_s(mem, size, INVALID_VALUE, size) != EOK) {

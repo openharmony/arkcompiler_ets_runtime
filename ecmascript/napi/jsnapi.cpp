@@ -71,6 +71,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/regexp/regexp_parser.h"
 
@@ -682,7 +683,7 @@ void JSNApi::InitializeIcuData(const JSRuntimeOptions &options)
 #endif
     } else {
         std::string absPath;
-        if (ecmascript::AOTFileManager::GetAbsolutePath(icuPath, absPath)) {
+        if (ecmascript::RealPath(icuPath, absPath)) {
             u_setDataDirectory(absPath.c_str());
         }
     }

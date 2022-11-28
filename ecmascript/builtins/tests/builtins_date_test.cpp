@@ -20,6 +20,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/platform/time.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -824,7 +825,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToString)
 {
     int localMin = 0;
     CString localTime;
-    localMin = JSDate::GetLocalOffsetFromOS(localMin, true);
+    localMin = GetLocalOffsetFromOS(localMin, true);
 
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -863,7 +864,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToString)
 
     SetAll1(thread, js_date1);
     localTime = "";
-    localMin = JSDate::GetLocalOffsetFromOS(localMin, true);
+    localMin = GetLocalOffsetFromOS(localMin, true);
     if (static_cast<int64_t>(JSDate::Cast(js_date1.GetTaggedValue().GetTaggedObject())->GetTimeValue().GetDouble()) <
             CHINA_BEFORE_1900_MS &&
         localMin == CHINA_AFTER_1901_MIN) {
@@ -893,7 +894,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToString)
 
     SetAll2(thread, js_date2);
     localTime = "";
-    localMin = JSDate::GetLocalOffsetFromOS(localMin, true);
+    localMin = GetLocalOffsetFromOS(localMin, true);
     if (static_cast<int64_t>(JSDate::Cast(jsDate.GetTaggedValue().GetTaggedObject())->GetTimeValue().GetDouble()) <
             CHINA_BEFORE_1900_MS &&
         localMin == CHINA_AFTER_1901_MIN) {
@@ -920,7 +921,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToTimeString)
 {
     int localMin = 0;
     CString localTime;
-    localMin = JSDate::GetLocalOffsetFromOS(localMin, true);
+    localMin = GetLocalOffsetFromOS(localMin, true);
 
     JSHandle<JSDate> jsDate = JSDateCreateTest(thread);
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -958,7 +959,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToTimeString)
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     SetAll1(thread, js_date1);
     localTime = "";
-    localMin = JSDate::GetLocalOffsetFromOS(localMin, true);
+    localMin = GetLocalOffsetFromOS(localMin, true);
     if (static_cast<int64_t>(JSDate::Cast(js_date1.GetTaggedValue().GetTaggedObject())->GetTimeValue().GetDouble()) <
             CHINA_BEFORE_1900_MS &&
         localMin == CHINA_AFTER_1901_MIN) {
@@ -986,7 +987,7 @@ HWTEST_F_L0(BuiltinsDateTest, ToTimeString)
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
     SetAll2(thread, js_date2);
     localTime = "";
-    localMin = JSDate::GetLocalOffsetFromOS(localMin, true);
+    localMin = GetLocalOffsetFromOS(localMin, true);
     if (static_cast<int64_t>(JSDate::Cast(jsDate.GetTaggedValue().GetTaggedObject())->GetTimeValue().GetDouble()) <
             CHINA_BEFORE_1900_MS &&
         localMin == CHINA_AFTER_1901_MIN) {
