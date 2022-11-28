@@ -556,7 +556,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetTypeLiteral(JSThread *thread, con
                     break;
                 }
                 default: {
-                    LOG_ECMA(FATAL) << "type literal should not exist LiteralTag: " << static_cast<uint8_t>(tag);
+                    LOG_FULL(FATAL) << "type literal should not exist LiteralTag: " << static_cast<uint8_t>(tag);
                     break;
                 }
             }
