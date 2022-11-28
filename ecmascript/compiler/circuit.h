@@ -67,8 +67,8 @@ public:
     {
         return isArch64_;
     }
-    void PushFrameState();
-    void PopFrameState();
+    void PushFunctionCompilationDataList();
+    void PopFunctionCompilationDataList();
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB

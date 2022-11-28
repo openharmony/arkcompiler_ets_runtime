@@ -101,7 +101,6 @@ void TSTypeLowering::Lower(GateRef gate)
     GateRef glue = acc_.GetGlueFromArgList();
 
     auto argAcc = ArgumentAccessor(circuit_);
-    GateRef thisObj = argAcc.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
     GateRef newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
 
@@ -191,19 +190,17 @@ void TSTypeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-            LowerTypedLdObjByName(gate, thisObj);
-            break;
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-            LowerTypedLdObjByName(gate, thisObj, true);
+            LowerTypedLdObjByName(gate);
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-            LowerTypedStObjByName(gate, thisObj);
+            LowerTypedStObjByName(gate, false);
             break;
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-            LowerTypedStObjByName(gate, thisObj, true);
+            LowerTypedStObjByName(gate, true);
             break;
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
         case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
@@ -745,7 +742,7 @@ void TSTypeLowering::LowerTypedNot(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool isThis)
+void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
@@ -753,16 +750,9 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool i
     JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
     auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
 
-    GateRef receiver = Circuit::NullGate();
-    if (isThis) {
-        // 2: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 2);
-        receiver = thisObj;
-    } else {
-        // 3: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 3);
-        receiver = acc_.GetValueIn(gate, 2);
-    }
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
     GateType receiverType = acc_.GetGateType(receiver);
     int hclassIndex = tsManager_->GetHClassIndex(receiverType);
     if (hclassIndex == -1) { // slowpath
@@ -795,7 +785,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate, GateRef thisObj, bool i
     DeleteGates(gate, removedGate);
 }
 
-void TSTypeLowering::LowerTypedStObjByName(GateRef gate, GateRef thisObj, bool isThis)
+void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
@@ -806,15 +796,15 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, GateRef thisObj, bool i
     GateRef receiver = Circuit::NullGate();
     GateRef value = Circuit::NullGate();
     if (isThis) {
-        // 3: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 3);
-        receiver = thisObj;
-        value = acc_.GetValueIn(gate, 2);
+        // 4: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 4);
+        receiver = acc_.GetValueIn(gate, 3); // 3: this object
+        value = acc_.GetValueIn(gate, 2); // 2: acc
     } else {
         // 4: number of value inputs
         ASSERT(acc_.GetNumValueIn(gate) == 4);
-        receiver = acc_.GetValueIn(gate, 2);
-        value = acc_.GetValueIn(gate, 3);
+        receiver = acc_.GetValueIn(gate, 2); // 2: receiver
+        value = acc_.GetValueIn(gate, 3); // 3: acc
     }
     GateType receiverType = acc_.GetGateType(receiver);
     int hclassIndex = tsManager_->GetHClassIndex(receiverType);

@@ -401,6 +401,11 @@ public:
         return infoData_[index];
     }
 
+    bool HasTryCatch() const
+    {
+        return hasTryCatch_;
+    }
+
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
@@ -466,6 +471,7 @@ private:
     Bytecodes *bytecodes_;
     RegionsInfo regionsInfo_{};
     std::vector<BytecodeInfo> infoData_ {};
+    bool hasTryCatch_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

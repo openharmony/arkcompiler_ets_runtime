@@ -23,10 +23,10 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     uint32_t flags = 0;
     BytecodeKind kind = BytecodeKind::GENERAL;
     if (inst.HasFlag(BytecodeInstruction::Flags::ACC_READ)) {
-        flags |= BytecodeFlags::ACC_READ;
+        flags |= BytecodeFlags::READ_ACC;
     }
     if (inst.HasFlag(BytecodeInstruction::Flags::ACC_WRITE)) {
-        flags |= BytecodeFlags::ACC_WRITE;
+        flags |= BytecodeFlags::WRITE_ACC;
     }
 
     switch (inst.GetOpcode()) {
@@ -50,6 +50,18 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDA_STR_ID16:
             kind = BytecodeKind::SET_CONSTANT;
             break;
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
+        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
+        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
+            flags |= BytecodeFlags::READ_THIS_OBJECT;
+            break;
+        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+            flags |= BytecodeFlags::READ_THIS_OBJECT;
+            [[fallthrough]];
         case EcmaOpcode::ADD2_IMM8_V8:
         case EcmaOpcode::SUB2_IMM8_V8:
         case EcmaOpcode::MUL2_IMM8_V8:
@@ -76,12 +88,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::XOR2_IMM8_V8:
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
         case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
         case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
@@ -97,12 +105,14 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             flags |= BytecodeFlags::SUPPORT_DEOPT;
             break;
         case EcmaOpcode::RETURNUNDEFINED:
-            flags |= BytecodeFlags::ACC_READ;
+            flags |= BytecodeFlags::READ_ACC;
             [[fallthrough]];
         case EcmaOpcode::RETURN:
             kind = BytecodeKind::RETURN_BC;
             break;
         case EcmaOpcode::SUSPENDGENERATOR_V8:
+            flags |= BytecodeFlags::READ_THIS_OBJECT;
+            [[fallthrough]];
         case EcmaOpcode::RESUMEGENERATOR:
             kind = BytecodeKind::GENERATOR;
             break;
