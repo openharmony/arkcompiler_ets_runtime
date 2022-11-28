@@ -73,6 +73,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
             }
             return JSTaggedValue::Undefined();
         }
+        moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
         SourceTextModule::Evaluate(thread, moduleRecord, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
     }
@@ -141,6 +142,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
         vm->HandleUncaughtException(exception.GetTaggedObject());
         return JSTaggedValue::Undefined();
     }
+    moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, moduleRecord, buffer, size);
     return JSTaggedValue::Undefined();
 }
