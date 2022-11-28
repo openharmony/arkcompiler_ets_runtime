@@ -80,6 +80,10 @@ public:
 
     // JSThread
     static Local<JSValueRef> GetAndClearException(const EcmaVM *ecmaVm);
+    static JSTaggedValue GetCurrentModule(const EcmaVM *vm);
+    static int32_t GetModuleVariableIndex(const EcmaVM *vm, const std::string &name);
+    static Local<JSValueRef> GetModuleValue(const EcmaVM *vm, const std::string &name);
+    static bool SetModuleValue(const EcmaVM *vm, const std::string &name, Local<JSValueRef> value);
     static void GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleObj, JSThread *thread);
     static void SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception);
     static void ClearException(const EcmaVM *ecmaVm);
