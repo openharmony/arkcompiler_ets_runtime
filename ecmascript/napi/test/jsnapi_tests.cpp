@@ -16,6 +16,7 @@
 #include <cstddef>
 
 #include "ecmascript/builtins/builtins_function.h"
+#include "ecmascript/builtins/builtins.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_bigint.h"
@@ -26,6 +27,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/js_generator_object.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -1137,5 +1139,192 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_CreateBigWords_GetWordsArray_GetWordsArraySiz
     EXPECT_EQ(resultWords[1], words[1]);
     EXPECT_EQ(resultWords[2], words[2]);
     delete[] resultWords;
+}
+
+HWTEST_F_L0(JSNApiTests, DateRef_New_ToString_GetTime)
+{
+    double time = 1.1;
+    Local<DateRef> data = DateRef::New(vm_, time);
+    EXPECT_TRUE(data->IsDate());
+
+    Local<StringRef> tostring = data->ToString(vm_);
+    Local<JSValueRef> toValue(tostring);
+    EXPECT_TRUE(tostring->IsString());
+    double dou = data->GetTime();
+    EXPECT_EQ(dou, 1.1);
+}
+
+HWTEST_F_L0(JSNApiTests, PromiseRef_Finally)
+{
+    LocalScope scope(vm_);
+    Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm_);
+
+    Local<PromiseRef> promise = capability->GetPromise(vm_);
+    Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
+    Local<PromiseRef> catchPromise = promise->Finally(vm_, reject);
+    ASSERT_TRUE(promise->IsPromise());
+    ASSERT_TRUE(catchPromise->IsPromise());
+    Local<PromiseRef> catchPromise1 = promise->Then(vm_, reject, reject);
+    ASSERT_TRUE(catchPromise1->IsPromise());
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    ASSERT_TRUE(!callback.IsEmpty());
+    Local<PromiseRef> catchPromise2 = promise->Then(vm_, callback);
+    ASSERT_TRUE(catchPromise2->IsPromise());
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValue)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    ASSERT_TRUE(!callback.IsEmpty());
+    std::vector<Local<JSValueRef>> arguments;
+    arguments.emplace_back(JSValueRef::Undefined(vm_));
+    Local<JSValueRef> result =
+        callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    ASSERT_TRUE(result->IsArray(vm_));
+    Local<ArrayRef> array(result);
+    ASSERT_EQ(static_cast<uint64_t>(array->Length(vm_)), arguments.size());
+    void* res = nullptr;
+    res = JSNApi::SerializeValue(vm_, result, result);
+    EXPECT_TRUE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_SetHostPromiseRejectionTracker)
+{
+    void *data = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    JSNApi::SetHostPromiseRejectionTracker(vm_, data, data);
+    PromiseRejectCallback res = vm_->GetPromiseRejectCallback();
+    ASSERT_EQ(res, reinterpret_cast<ecmascript::PromiseRejectCallback>(data));
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_SetHostResolvePathTracker)
+{
+    std::string dirPath;
+    std::string requestPath;
+    using CallbackType = std::function<std::string(std::string, std::string)>;
+    CallbackType callback = [dirPath, requestPath](std::string dp, std::string rp) -> std::string {
+        dp = dirPath;
+        rp = requestPath;
+        return dp + rp;
+    };
+    JSNApi::SetHostResolvePathTracker(vm_, callback);
+    ResolvePathCallback res = nullptr;
+    res = vm_->GetResolvePathCallback();
+    EXPECT_TRUE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_SetNativePtrGetter_SetHostEnqueueJob)
+{
+    void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    JSNApi::SetNativePtrGetter(vm_, cb);
+    NativePtrGetter res = vm_->GetNativePtrGetter();
+    ASSERT_EQ(res, reinterpret_cast<ecmascript::NativePtrGetter>(cb));
+}
+
+HWTEST_F_L0(JSNApiTests, NumberRef_New)
+{
+    uint32_t input = 32;
+    int64_t input1 = 1;
+    Local<NumberRef> res = NumberRef::New(vm_, input);
+    Local<NumberRef> res1 = NumberRef::New(vm_, input1);
+    ASSERT_TRUE(res->IsNumber());
+    ASSERT_TRUE(res1->IsNumber());
+}
+
+HWTEST_F_L0(JSNApiTests, ObjectRef_Set)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    void *data1 = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    void *data2 = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    bool res = object->Set(vm_, data1, data2);
+    ASSERT_TRUE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnEnumerablePropertyNames)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<ArrayRef> res = object->GetOwnEnumerablePropertyNames(vm_);
+    ASSERT_TRUE(res->IsArray(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFieldCount)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    int32_t input = 34;
+    object->SetNativePointerFieldCount(input);
+    int32_t res = object->GetNativePointerFieldCount();
+    ASSERT_EQ(res, input);
+}
+
+HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
+{
+    LocalScope scope(vm_);
+    Deleter deleter = nullptr;
+    void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    bool callNative = true;
+    size_t nativeBindingsize = 15;
+    Local<FunctionRef> res = FunctionRef::NewClassFunction(vm_, FunctionCallback,
+                                                           deleter, cb, callNative, nativeBindingsize);
+    ASSERT_TRUE(res->IsFunction());
+    Local<JSValueRef> res1 = res->GetFunctionPrototype(vm_);
+    ASSERT_TRUE(!res1->IsArray(vm_));
+    Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "1");
+    res->SetName(vm_, origin);
+    Local<StringRef> s = res->GetName(vm_);
+    std::string str = s->ToString();
+    ASSERT_EQ("1", str);
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_SetAssetPath_GetAssetPath)
+{
+    LocalScope scope(vm_);
+    std::string str = "11";
+    JSNApi::SetAssetPath(vm_, str);
+    std::string res = JSNApi::GetAssetPath(vm_);
+    ASSERT_EQ(str, res);
+    void *data = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    JSNApi::SetLoop(vm_, data);
+    void* res1 = vm_->GetLoop();
+    ASSERT_EQ(res1, data);
+}
+
+HWTEST_F_L0(JSNApiTests, JSValueRef_ToNativePointer)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-123.3");
+    Local<JSValueRef> toValue(toString);
+    ASSERT_EQ(toString->ToNumber(vm_)->Value(), -123.3); // -123 : test case of input
+    ASSERT_EQ(toString->ToBoolean(vm_)->Value(), true);
+    ASSERT_EQ(toValue->ToString(vm_)->ToString(), "-123.3");
+    ASSERT_TRUE(toValue->ToObject(vm_)->IsObject());
+    Local<NativePointerRef> res = toValue->ToNativePointer(vm_);
+    ASSERT_TRUE(res->IsString());
+}
+
+HWTEST_F_L0(JSNApiTests, GeneratorObjectRef_IsGenerator)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    auto env = vm_->GetGlobalEnv();
+
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
+
+    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
+    generatorContext->SetMethod(thread_, generatorFunc.GetTaggedValue());
+
+    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
+    genObjHandleVal->SetGeneratorContext(thread_,  generatorContextVal.GetTaggedValue());
+
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+    Local<JSValueRef> res = genObjectRef->GetGeneratorFunction(vm_);
+    ASSERT_TRUE(res->IsGeneratorFunction());
 }
 }  // namespace panda::test
