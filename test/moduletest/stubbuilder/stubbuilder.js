@@ -168,7 +168,7 @@
 
 /*
 *    FastStrictEqual(); ChangeInt32ToFloat64(); DoubleIsNAN(); BoolOr(); DoubleEqual(); BothAreString(); IsUtf16String();
-*    ZExtInt1ToInt32(); GetLengthFromString(); GetHashcodeFromString(); UpdateLeaveFrameAndCallNGCRuntime(); TaggedIsBigInt();
+*    ZExtInt1ToInt32(); GetLengthFromString(); GetHashcodeFromString(); CallNGCRuntime(); TaggedIsBigInt();
 *    BothAreString();
 */
                       /**************HandleStrictnoteqImm8V8****************/

@@ -205,21 +205,6 @@ inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index, const std::i
     return result;
 }
 
-inline GateRef StubBuilder::UpdateLeaveFrameAndCallNGCRuntime(GateRef glue, int index,
-    const std::initializer_list<GateRef>& args)
-{
-    if (env_->IsAsmInterp()) {
-        // CpuProfiler will get the latest leaveFrame_ in thread to up frames.
-        // So it's necessary to update leaveFrame_ if the program enters the c++ environment.
-        // We use the latest asm interpreter frame to update it when CallNGCRuntime.
-        GateRef sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));
-        GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(env_->Is32Bit()));
-        Store(VariableType::NATIVE_POINTER(), glue, glue, spOffset, sp);
-    }
-    GateRef result = CallNGCRuntime(glue, index, args);
-    return result;
-}
-
 inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
     SavePcIfNeeded(glue);
@@ -229,12 +214,12 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
 
 inline void StubBuilder::DebugPrint(GateRef glue, std::initializer_list<GateRef> args)
 {
-    UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(DebugPrint), args);
+    CallNGCRuntime(glue, RTSTUB_ID(DebugPrint), args);
 }
 
 inline void StubBuilder::FatalPrint(GateRef glue, std::initializer_list<GateRef> args)
 {
-    UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(FatalPrint), args);
+    CallNGCRuntime(glue, RTSTUB_ID(FatalPrint), args);
 }
 
 void StubBuilder::SavePcIfNeeded(GateRef glue)

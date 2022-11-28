@@ -16,10 +16,10 @@
 #include <cstdint>
 #include <unistd.h>
 
+#include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/binary_section.h"
-#include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/gate_accessor.h"
@@ -32,8 +32,8 @@
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/tests/test_helper.h"
 

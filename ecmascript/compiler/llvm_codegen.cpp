@@ -19,10 +19,6 @@
 #include <iomanip>
 #include <vector>
 
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/object_factory.h"
-
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
@@ -33,8 +29,6 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "llvm-c/Analysis.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/Disassembler.h"
@@ -64,6 +58,11 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Transforms/Scalar.h"
+
+#include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic pop

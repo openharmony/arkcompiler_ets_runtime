@@ -72,15 +72,15 @@ void CommonCall::PushLeaveFrame(ExtendedAssembler *assembler, Register glue)
     Register frameType = __ TempRegister2();
     Register currentSp(X6);
     Register sp(SP);
-    Register prevfp(X29);
 
     // construct leave frame
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME)));
-    __ SaveFpAndLr();
+    __ PushFpAndLr();
     // 2 : 2 means pairs
     __ Stp(Register(X19), frameType, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
     // save to thread currentLeaveFrame_;
-    __ Str(prevfp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
+    __ Str(Register(FP), MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 }
 
 
