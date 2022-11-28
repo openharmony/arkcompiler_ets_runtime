@@ -205,7 +205,7 @@ public:
             return INVALID_UNICODE_FROM_UTF8;
         }
         /* check that we have enough characters */
-        if (l > (maxLen - 1)) {
+        if ((l + 1) > maxLen) {
             return INVALID_UNICODE_FROM_UTF8;
         }
         return FromUtf8(c, l, p, pp);

@@ -318,7 +318,7 @@ void ParallelEvacuator::UpdateNewRegionReference(Region *region)
 {
     Region *current = heap_->GetNewSpace()->GetCurrentRegion();
     auto curPtr = region->GetBegin();
-    uintptr_t endPtr;
+    uintptr_t endPtr = 0;
     if (region == current) {
         auto top = heap_->GetNewSpace()->GetTop();
         endPtr = curPtr + region->GetAllocatedBytes(top);

@@ -1070,10 +1070,14 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
                                          JSTaggedValue::Exception());
         }
         // 21. Let targetByteIndex be targetOffset × targetElementSize + targetByteOffset.
+        ASSERT((static_cast<uint64_t>(targetOffset) * static_cast<uint64_t>(targetElementSize) +
+            static_cast<uint64_t>(targetByteOffset)) <= static_cast<uint64_t>(UINT32_MAX));
         uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
         // 22. Let k be 0.
         // 23. Let limit be targetByteIndex + targetElementSize × srcLength.
         uint32_t k = 0;
+        ASSERT((static_cast<uint64_t>(targetElementSize) * srcLen +
+            static_cast<uint64_t>(targetByteIndex)) <= static_cast<uint64_t>(UINT32_MAX));
         uint32_t limit = targetByteIndex + targetElementSize * srcLen;
         // 24. Repeat, while targetByteIndex < limit
         //   a. Let Pk be ToString(k).
@@ -1154,7 +1158,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     //   c. ReturnIfAbrupt(srcBuffer).
     //   d. Let srcByteIndex be 0.
     // 25. Else, let srcByteIndex be srcByteOffset.
-    uint32_t srcByteIndex;
+    uint32_t srcByteIndex = 0;
     if (JSTaggedValue::SameValue(srcBufferHandle.GetTaggedValue(), targetBuffer.GetTaggedValue())) {
         srcBuffer =
             BuiltinsArrayBuffer::CloneArrayBuffer(thread, targetBuffer, srcByteOffset, env->GetArrayBufferFunction());
@@ -1165,8 +1169,12 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         srcByteIndex = srcByteOffset;
     }
     // 26. Let targetByteIndex be targetOffset × targetElementSize + targetByteOffset.
+    ASSERT((static_cast<uint64_t>(targetOffset) * static_cast<uint64_t>(targetElementSize) +
+            static_cast<uint64_t>(targetByteOffset)) <= static_cast<uint64_t>(UINT32_MAX));
     uint32_t targetByteIndex = targetOffset * targetElementSize + targetByteOffset;
     // 27. Let limit be targetByteIndex + targetElementSize × srcLength.
+    ASSERT((static_cast<uint64_t>(targetElementSize) * static_cast<uint64_t>(srcLength) +
+            static_cast<uint64_t>(targetByteIndex)) <= static_cast<uint64_t>(UINT32_MAX));
     uint32_t limit = targetByteIndex + targetElementSize * srcLength;
     uint32_t count = (limit - targetByteIndex) > 0 ? (limit - targetByteIndex) : 0;
     // 28. If SameValue(srcType, targetType) is false, then
@@ -1474,6 +1482,8 @@ JSTaggedValue BuiltinsTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     DataViewType elementType = JSTypedArray::GetTypeFromName(thread, constructorName);
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(elementType);
     uint32_t srcByteOffset = thisObj->GetByteOffset();
+    ASSERT((static_cast<uint64_t>(srcByteOffset) + static_cast<uint64_t>(beginIndex) *
+            static_cast<uint64_t>(elementSize)) <= static_cast<uint64_t>(UINT32_MAX));
     uint32_t beginByteOffset = srcByteOffset + beginIndex * elementSize;
     JSTaggedValue buffer = JSTypedArray::GetOffHeapBuffer(thread, thisObj);
     // 21. Let argumentsList be «buffer, beginByteOffset, newLength».

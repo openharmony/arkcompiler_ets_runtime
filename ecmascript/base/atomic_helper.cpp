@@ -86,6 +86,8 @@ uint32_t AtomicHelper::ValidateAtomicAccess(JSThread *thread, const JSHandle<JST
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(elementType);
     uint32_t offset = srcObj->GetByteOffset();
     // 9. Return (accessIndex × elementSize) + offset.
+    ASSERT((static_cast<size_t>(index) * static_cast<size_t>(elementSize) +
+        static_cast<size_t>(offset)) <= static_cast<size_t>(UINT32_MAX));
     uint32_t allOffset = static_cast<uint32_t>(index) * elementSize + offset;
     return allOffset;
 }

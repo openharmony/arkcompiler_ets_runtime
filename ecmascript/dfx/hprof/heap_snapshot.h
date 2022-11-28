@@ -320,12 +320,12 @@ public:
     }
 
 private:
-    TraceTree* tree_;
-    uint32_t nodeIndex_;
-    uint32_t totalSize_;
-    uint32_t totalCount_;
-    uint32_t id_;
-    std::vector<TraceNode*> children_;
+    TraceTree* tree_ {nullptr};
+    uint32_t nodeIndex_ {0};
+    uint32_t totalSize_ {0};
+    uint32_t totalCount_ {0};
+    uint32_t id_ {0};
+    std::vector<TraceNode*> children_ {};
 };
 
 class TraceTree {
@@ -347,7 +347,7 @@ public:
     }
 
 private:
-    uint32_t nextNodeId_;
+    uint32_t nextNodeId_ {0};
     TraceNode root_;
 };
 

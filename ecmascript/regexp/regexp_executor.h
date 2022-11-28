@@ -93,7 +93,7 @@ public:
 
     inline bool HandleOpChar(const DynChunk &byteCode, uint8_t opCode)
     {
-        uint32_t expectedChar;
+        uint32_t expectedChar = 0;
         if (opCode == RegExpOpCode::OP_CHAR32) {
             expectedChar = byteCode.GetU32(GetCurrentPC() + 1);
         } else {
@@ -455,7 +455,7 @@ public:
 
     uint32_t GetChar(const uint8_t **pp, const uint8_t *end) const
     {
-        uint32_t c;
+        uint32_t c = 0;
         const uint8_t *cptr = *pp;
         if (!isWideChar_) {
             c = *cptr;
@@ -480,7 +480,7 @@ public:
 
     uint32_t PeekChar(const uint8_t *p, const uint8_t *end) const
     {
-        uint32_t c;
+        uint32_t c = 0;
         const uint8_t *cptr = p;
         if (!isWideChar_) {
             c = *cptr;
@@ -521,7 +521,7 @@ public:
 
     uint32_t PeekPrevChar(const uint8_t *p, const uint8_t *start) const
     {
-        uint32_t c;
+        uint32_t c = 0;
         const uint8_t *cptr = p;
         if (!isWideChar_) {
             c = *(cptr - 1);  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -543,7 +543,7 @@ public:
 
     uint32_t GetPrevChar(const uint8_t **pp, const uint8_t *start) const
     {
-        uint32_t c;
+        uint32_t c = 0;
         const uint8_t *cptr = *pp;
         if (!isWideChar_) {
             c = *(cptr - 1);  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)

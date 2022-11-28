@@ -41,6 +41,7 @@ public:
 
     void Write(const CString &str)
     {
+        ASSERT(str.size() <= static_cast<size_t>(INT_MAX));
         auto len = static_cast<int>(str.size());
         const char *cur = str.c_str();
         const char *end = cur + len;
@@ -82,7 +83,7 @@ private:
     Stream *stream_ {nullptr};
     int chunkSize_ {0};
     CVector<char> chunk_;
-    int current_;
+    int current_ {0};
 };
 
 class HeapSnapshotJSONSerializer {

@@ -95,14 +95,13 @@ void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType)
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TSObjLayoutInfo> newLayout = factory->CreateTSObjLayoutInfo(numTypes);
 
-    uint32_t index;
-    for (index = 0; index < numExtendTypes; index++) {
+    for (uint32_t index = 0; index < numExtendTypes; index++) {
         JSTaggedValue key = extendLayout->GetKey(index);
         JSTaggedValue type = extendLayout->GetTypeId(index);
         newLayout->SetKeyAndType(thread_, index, key, type);
     }
 
-    for (index = 0; index < numSelfTypes; index++) {
+    for (uint32_t index = 0; index < numSelfTypes; index++) {
         JSTaggedValue key = layout->GetKey(index);
         if (IsDuplicatedKey(extendLayout, key)) {
             continue;

@@ -284,8 +284,8 @@ public:
     {
         INTERPRETER_TRACE(thread, ShlWithTSType);
         BinaryType shlType = static_cast<BinaryType>(argType.GetInt());
-        int32_t opNumber0;
-        int32_t opNumber1;
+        int32_t opNumber0 = 0;
+        int32_t opNumber1 = 0;
         GetBitOPDate(thread, left, right, opNumber0, opNumber1, shlType);
         uint32_t shift =
                 static_cast<uint32_t>(opNumber1) & 0x1f;  // NOLINT(hicpp-signed-bitwise, readability-magic-numbers)
@@ -300,8 +300,8 @@ public:
     {
         INTERPRETER_TRACE(thread, ShrWithTSType);
         BinaryType shrType = static_cast<BinaryType>(argType.GetInt());
-        int32_t opNumber0;
-        int32_t opNumber1;
+        int32_t opNumber0 = 0;
+        int32_t opNumber1 = 0;
         GetBitOPDate(thread, left, right, opNumber0, opNumber1, shrType);
         uint32_t shift =
                 static_cast<uint32_t>(opNumber1) & 0x1f;     // NOLINT(hicpp-signed-bitwise, readability-magic-numbers)
@@ -314,8 +314,8 @@ public:
     {
         INTERPRETER_TRACE(thread, AshrWithTSType);
         BinaryType ashrType = static_cast<BinaryType>(argType.GetInt());
-        int32_t opNumber0;
-        int32_t opNumber1;
+        int32_t opNumber0 = 0;
+        int32_t opNumber1 = 0;
         GetBitOPDate(thread, left, right, opNumber0, opNumber1, ashrType);
         uint32_t shift =
                 static_cast<uint32_t>(opNumber1) & 0x1f;  // NOLINT(hicpp-signed-bitwise, readability-magic-numbers)
@@ -330,8 +330,8 @@ public:
     {
         INTERPRETER_TRACE(thread, AndWithTSType);
         BinaryType andType = static_cast<BinaryType>(argType.GetInt());
-        int32_t opNumber0;
-        int32_t opNumber1;
+        int32_t opNumber0 = 0;
+        int32_t opNumber1 = 0;
         GetBitOPDate(thread, left, right, opNumber0, opNumber1, andType);
         // NOLINT(hicpp-signed-bitwise)
         auto ret = static_cast<uint32_t>(opNumber0) & static_cast<uint32_t>(opNumber1);
@@ -343,8 +343,8 @@ public:
     {
         INTERPRETER_TRACE(thread, OrWithTSType);
         BinaryType orType = static_cast<BinaryType>(argType.GetInt());
-        int32_t opNumber0;
-        int32_t opNumber1;
+        int32_t opNumber0 = 0;
+        int32_t opNumber1 = 0;
         GetBitOPDate(thread, left, right, opNumber0, opNumber1, orType);
         // NOLINT(hicpp-signed-bitwise)
         auto ret = static_cast<uint32_t>(opNumber0) | static_cast<uint32_t>(opNumber1);
@@ -356,8 +356,8 @@ public:
     {
         INTERPRETER_TRACE(thread, XorWithTSType);
         BinaryType xorType = static_cast<BinaryType>(argType.GetInt());
-        int32_t opNumber0;
-        int32_t opNumber1;
+        int32_t opNumber0 = 0;
+        int32_t opNumber1 = 0;
         GetBitOPDate(thread, left, right, opNumber0, opNumber1, xorType);
         // NOLINT(hicpp-signed-bitwise)
         auto ret = static_cast<uint32_t>(opNumber0) ^ static_cast<uint32_t>(opNumber1);

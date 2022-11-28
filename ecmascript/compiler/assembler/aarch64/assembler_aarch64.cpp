@@ -45,7 +45,8 @@ LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
     } while (size > 2);
 
     // Second, determine the rotation to make the element be: 0^m 1^n.
-    unsigned int cto, i;
+    unsigned int cto = 0;
+    unsigned int i = 0;
     uint64_t mask = ((uint64_t)-1LL) >> (RegXSize - size);
     imm &= mask;
 
@@ -87,7 +88,7 @@ LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
 
 void AssemblerAarch64::Ldp(const Register &rt, const Register &rt2, const MemoryOperand &operand)
 {
-    uint32_t op;
+    uint32_t op = 0;
     if (operand.IsImmediateOffset()) {
         switch (operand.GetAddrMode()) {
             case OFFSET:
@@ -119,7 +120,7 @@ void AssemblerAarch64::Ldp(const Register &rt, const Register &rt2, const Memory
 
 void AssemblerAarch64::Stp(const Register &rt, const Register &rt2, const MemoryOperand &operand)
 {
-    uint32_t op;
+    uint32_t op = 0;
     if (operand.IsImmediateOffset()) {
         switch (operand.GetAddrMode()) {
             case OFFSET:
@@ -151,7 +152,7 @@ void AssemblerAarch64::Stp(const Register &rt, const Register &rt2, const Memory
 
 void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, const MemoryOperand &operand)
 {
-    uint32_t op;
+    uint32_t op = 0;
     if (operand.IsImmediateOffset()) {
         switch (operand.GetAddrMode()) {
             case OFFSET:
@@ -194,7 +195,7 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
 
 void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, const MemoryOperand &operand)
 {
-    uint32_t op;
+    uint32_t op = 0;
     if (operand.IsImmediateOffset()) {
         switch (operand.GetAddrMode()) {
             case OFFSET:
@@ -306,7 +307,7 @@ void AssemblerAarch64::Ldrb(const Register &rt, const MemoryOperand &operand)
 
 void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
 {
-    uint32_t op;
+    uint32_t op = 0;
     bool regX = !rt.IsW();
     bool isSigned = true;
     uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
