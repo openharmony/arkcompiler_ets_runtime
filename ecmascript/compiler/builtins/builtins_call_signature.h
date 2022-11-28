@@ -21,10 +21,16 @@
 
 namespace panda::ecmascript::kungfu {
 
-#define PADDING_STUB_LIST(V)                       \
+#define PADDING_BUILTINS_STUB_LIST(V)               \
     V(NONE)
 
-#define ASM_INTERPRETER_BUILTINS_STUB_LIST(V)       \
+// BUILTINS_STUB_LIST is shared both ASM Interpreter and AOT.
+// AOT_BUILTINS_STUB_LIST is used in AOT only.
+#define BUILTINS_STUB_LIST(V)                       \
+    BUILTINS_METHOD_STUB_LIST(V)                    \
+    BUILTINS_CONSTRUCTOR_STUB_LIST(V)
+
+#define BUILTINS_METHOD_STUB_LIST(V)                \
     V(CharCodeAt)                                   \
     V(IndexOf)                                      \
     V(Substring)                                    \
@@ -44,6 +50,9 @@ namespace panda::ecmascript::kungfu {
     V(ArrayListForEach)                             \
     V(ArrayListReplaceAllElements)                  \
 
+#define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
+    V(BooleanConstructor)                           \
+
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(SQRT)                                         \
     V(COS)                                          \
@@ -57,13 +66,14 @@ class BuiltinsStubCSigns {
 public:
     enum ID {
 #define DEF_STUB_ID(name) name,
-        PADDING_STUB_LIST(DEF_STUB_ID)
-        ASM_INTERPRETER_BUILTINS_STUB_LIST(DEF_STUB_ID)
+        PADDING_BUILTINS_STUB_LIST(DEF_STUB_ID)
+        BUILTINS_STUB_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
         NUM_OF_BUILTINS_STUBS,
 #define DEF_STUB_ID(name) name,
         AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
+        BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
     };
 
     static void Initialize();
@@ -76,9 +86,14 @@ public:
         return &callSigns_[index];
     }
 
-    static const CallSignature* BuiltinsHandler()
+    static const CallSignature* BuiltinsCSign()
     {
         return &builtinsCSign_;
+    }
+
+    static const CallSignature* BuiltinsWithArgvCSign()
+    {
+        return &builtinsWithArgvCSign_;
     }
 
     static bool IsFastBuiltin(ID builtinId)
@@ -88,15 +103,17 @@ public:
 private:
     static CallSignature callSigns_[NUM_OF_BUILTINS_STUBS];
     static CallSignature builtinsCSign_;
+    static CallSignature builtinsWithArgvCSign_;
 };
 
 enum class BuiltinsArgs : size_t {
     GLUE = 0,
     NATIVECODE,
     FUNC,
+    NEWTARGET,
     THISVALUE,
     NUMARGS,
-    ARG0,
+    ARG0_OR_ARGV,
     ARG1,
     ARG2,
     NUM_OF_INPUTS,

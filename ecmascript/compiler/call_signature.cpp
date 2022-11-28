@@ -554,23 +554,44 @@ DEF_CALL_SIGNATURE(GetTaggedArrayPtrTest)
 
 DEF_CALL_SIGNATURE(Builtins)
 {
-    // 8 : 8 input parameters
-    CallSignature builtins("Builtins", 0, 8,
+    // 9 : 9 input parameters
+    CallSignature builtins("Builtins", 0, 9,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = builtins;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
-        VariableType::NATIVE_POINTER(),
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
+    std::array<VariableType, 9> params = { // 9 : 9 input parameters
+        VariableType::NATIVE_POINTER(),    // glue
+        VariableType::NATIVE_POINTER(),    // native code
+        VariableType::JS_ANY(),            // func
+        VariableType::JS_ANY(),            // new target
+        VariableType::JS_ANY(),            // this
+        VariableType::NATIVE_POINTER(),    // argc
+        VariableType::JS_ANY(),            // arg0
+        VariableType::JS_ANY(),            // arg1
+        VariableType::JS_ANY(),            // arg2
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::BUILTINS_STUB);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(BuiltinsWithArgv)
+{
+    // 7 : 7 input parameters
+    CallSignature builtinsWtihArgv("Builtins", 0, 7,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = builtinsWtihArgv;
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
+        VariableType::NATIVE_POINTER(),    // glue
+        VariableType::NATIVE_POINTER(),    // nativeCode
+        VariableType::JS_ANY(),            // func
+        VariableType::JS_ANY(),            // new target
+        VariableType::JS_ANY(),            // this
+        VariableType::NATIVE_POINTER(),    // argc
+        VariableType::NATIVE_POINTER(),    // argv
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::BUILTINS_WITH_ARGV_STUB);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 

@@ -946,7 +946,7 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate, GateRef glue)
 {
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
-    if (!tsManager_->IsUserDefinedClassTypeKind(ctorType)) {
+    if (!tsManager_->IsClassTypeKind(ctorType)) {
         acc_.DeleteGuardAndFrameState(gate);
         return;
     }

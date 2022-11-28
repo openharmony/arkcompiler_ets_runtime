@@ -519,6 +519,8 @@ public:
                                        GateRef jsType);
     GateRef TryStringOrSymbolToElementIndex(GateRef glue, GateRef string);
     inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::initializer_list<GateRef>& args);
+    inline GateRef DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId,
+                                            const std::initializer_list<GateRef>& args);
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);

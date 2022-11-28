@@ -642,17 +642,25 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
         } else if (des.IsBCStub()) {
             thread->SetBCStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-            auto start = MessageString::ASM_INTERPRETER_START;
+            auto start = GET_MESSAGE_STRING_ID(HandleLdundefined);
             std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start);
-            LOG_ECMA(DEBUG) << "bytecode-" << des.indexInKindOrMethodId_ << " :" << format
+            LOG_ECMA(DEBUG) << "bytecode index: " << des.indexInKindOrMethodId_ << " :" << format
                 << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         } else if (des.IsBuiltinsStub()) {
             thread->SetBuiltinStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
+#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
+            int start = GET_MESSAGE_STRING_ID(CharCodeAt);
+            std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start - 1);  // -1: NONE
+            LOG_ECMA(DEBUG) << "builtins index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
+                << " addr: 0x" << std::hex << des.codeAddr_;
+#endif
         } else {
             thread->RegisterRTInterface(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-                LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKindOrMethodId_
+                int start = GET_MESSAGE_STRING_ID(CallRuntime);
+                std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start);
+                LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
                     << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         }

@@ -70,12 +70,12 @@ def judge_output(args):
                 + "]\n>>>>> But got: [" + returncode + "]")
             raise RuntimeError("Run [" + cmd + "] failed!")
     elif args.expect_sub_output:
-        err_str = err.decode('UTF-8')  # log system use std::cerr
-        if err_str.find(args.expect_sub_output) == -1:
+        out_str = out.decode('UTF-8')
+        if out_str.find(args.expect_sub_output) == -1:
             out_str = out.decode('UTF-8')
             print(out_str)
             print(">>>>> Expect contain: [" + args.expect_sub_output \
-                + "]\n>>>>> But got: [" + err_str + "]")
+                + "]\n>>>>> But got: [" + out_str + "]")
             raise RuntimeError("Run [" + cmd + "] failed!")
     elif args.expect_file:
         with open(args.expect_file, mode='r') as file:

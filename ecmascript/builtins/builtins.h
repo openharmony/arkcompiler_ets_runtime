@@ -49,7 +49,8 @@ private:
     EcmaVM *vm_{nullptr};
 
     JSHandle<JSFunction> NewBuiltinConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
-                                               EcmaEntrypoint ctorFunc, const char *name, int length) const;
+                                               EcmaEntrypoint ctorFunc, const char *name, int length,
+                                               uint8_t builtinId = INVALID_BUILTINS_ID) const;
 
     JSHandle<JSFunction> NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,

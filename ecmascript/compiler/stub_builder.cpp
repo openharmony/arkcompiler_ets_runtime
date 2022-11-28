@@ -4463,10 +4463,15 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { glue, nativeCode, func, thisValue, data[0], data[1] });
                 break;
             case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
-            case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+            case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV: {
+                Label notFastBuiltins(env);
+                CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                    method, &notFastBuiltins, &exit, &result, args, mode);
+                Bind(&notFastBuiltins);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
                     { glue, nativeCode, func, data[2], data[0], data[1] });
                 break;
+            }
             case JSCallMode::CALL_GETTER:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, data[0] });
@@ -4696,18 +4701,24 @@ void StubBuilder::CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, G
         GateRef ret;
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue, numArgs });
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue, numArgs });
                 break;
             case JSCallMode::CALL_THIS_ARG1:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue, numArgs, data[0] });
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(),
+                                                          thisValue, numArgs, data[0] });
                 break;
             case JSCallMode::CALL_THIS_ARG2:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue,
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue,
                                                           numArgs, data[0], data[1] });
                 break;
             case JSCallMode::CALL_THIS_ARG3:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue,
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue,
                                                           numArgs, data[0], data[1], data[2] });
+                break;
+            case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                ret = DispatchBuiltinsWithArgv(glue, builtinId, { glue, nativeCode, func, func, thisValue,
+                                                                  numArgs, data[1] });
                 break;
             default:
                 UNREACHABLE();

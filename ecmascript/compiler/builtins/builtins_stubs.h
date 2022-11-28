@@ -66,7 +66,7 @@ public:
 
     inline GateRef GetCallArg0()
     {
-        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0));
+        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
     }
 
     inline GateRef GetCallArg1()
@@ -79,7 +79,15 @@ public:
         return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
     }
 
-    GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue, GateRef numArgs, GateRef func);
+    inline GateRef GetCallArgv()
+    {
+        return PtrArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
+    }
+
+    GateRef GetCallArgWithArgv(GateRef numArgs, GateRef index);
+
+    GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue, GateRef numArgs, GateRef func,
+                         GateRef newTarget);
 };
 
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \
@@ -93,10 +101,10 @@ public:
         void GenerateCircuit() override;                                                            \
                                                                                                     \
     private:                                                                                        \
-        void GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, \
-                                 GateRef numArgs);                                                  \
+        void GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func, GateRef newTarget, \
+                                 GateRef thisValue, GateRef numArgs);                               \
     };
-    ASM_INTERPRETER_BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS)
+    BUILTINS_STUB_LIST(DECLARE_BUILTINS_STUB_CLASS)
 #undef DECLARE_BUILTINS_STUB_CLASS
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_STUB_H

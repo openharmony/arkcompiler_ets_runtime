@@ -177,6 +177,7 @@ public:
         BYTECODE_CALL,
         DEBUGGER_BYTECODE_CALL,
         BUILTINS_CALL,
+        BUILTINS_CALL_WITH_ARGV,
         ALLOCA,
         ARG,
         MUTABLE_DATA,

@@ -22,8 +22,10 @@
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
+#include "ecmascript/js_primitive_ref.h"
 
 namespace panda::ecmascript::kungfu {
 #if ECMASCRIPT_ENABLE_BUILTIN_LOG
@@ -33,13 +35,14 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef glue = PtrArgument(static_cast<size_t>(BuiltinsArgs::GLUE));                            \
     GateRef nativeCode = PtrArgument(static_cast<size_t>(BuiltinsArgs::NATIVECODE));                \
     GateRef func = TaggedArgument(static_cast<size_t>(BuiltinsArgs::FUNC));                         \
+    GateRef newTarget = TaggedArgument(static_cast<size_t>(BuiltinsArgs::NEWTARGET));               \
     GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
     GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
     DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(name)) });                                       \
-    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs);                                \
+    GenerateCircuitImpl(glue, nativeCode, func, newTarget, thisValue, numArgs);                     \
 }                                                                                                   \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
-                                            GateRef thisValue, GateRef numArgs)
+                                            GateRef newTarget, GateRef thisValue, GateRef numArgs)
 #else
 #define DECLARE_BUILTINS(name)                                                                      \
 void name##StubBuilder::GenerateCircuit()                                                           \
@@ -47,16 +50,38 @@ void name##StubBuilder::GenerateCircuit()                                       
     GateRef glue = PtrArgument(static_cast<size_t>(BuiltinsArgs::GLUE));                            \
     GateRef nativeCode = PtrArgument(static_cast<size_t>(BuiltinsArgs::NATIVECODE));                \
     GateRef func = TaggedArgument(static_cast<size_t>(BuiltinsArgs::FUNC));                         \
+    GateRef newTarget = TaggedArgument(static_cast<size_t>(BuiltinsArgs::NEWTARGET));               \
     GateRef thisValue = TaggedArgument(static_cast<size_t>(BuiltinsArgs::THISVALUE));               \
     GateRef numArgs = PtrArgument(static_cast<size_t>(BuiltinsArgs::NUMARGS));                      \
-    GenerateCircuitImpl(glue, nativeCode, func, thisValue, numArgs);                                \
+    GenerateCircuitImpl(glue, nativeCode, func, newTarget, thisValue, numArgs);                     \
 }                                                                                                   \
 void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, GateRef func,         \
-                                            GateRef thisValue, GateRef numArgs)
+                                            GateRef newTarget, GateRef thisValue, GateRef numArgs)
 #endif
 
+GateRef BuiltinsStubBuilder::GetCallArgWithArgv(GateRef numArgs, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(arg, VariableType::JS_ANY(), Undefined());
+    Label validIndex(env);
+    Label exit(env);
+    Branch(IntPtrGreaterThan(numArgs, index), &validIndex, &exit);
+    Bind(&validIndex);
+    {
+        GateRef argv = GetCallArgv();
+        arg = Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(sizeof(JSTaggedType))));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    GateRef ret = *arg;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue,
-    GateRef numArgs, GateRef func)
+    GateRef numArgs, GateRef func, GateRef newTarget)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -69,7 +94,6 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
     Label callThis2(env);
     Label callThis3(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef newTarget = Undefined();
     GateRef runtimeCallInfoArgs = PtrAdd(numArgs, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
     Branch(Int64Equal(numArgs, IntPtr(0)), &callThis0, &notcallThis0);
     Bind(&callThis0);
@@ -110,7 +134,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
             }
         }
     }
-    
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -177,7 +201,7 @@ DECLARE_BUILTINS(CharCodeAt)
     }
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -276,7 +300,7 @@ DECLARE_BUILTINS(IndexOf)
     }
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -441,7 +465,7 @@ DECLARE_BUILTINS(Substring)
 
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -515,7 +539,7 @@ DECLARE_BUILTINS(CharAt)
     }
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -535,7 +559,7 @@ DECLARE_BUILTINS(VectorForEach)
         &slowPath, ContainersType::VECTOR_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -555,7 +579,7 @@ DECLARE_BUILTINS(VectorReplaceAllElements)
         &slowPath, ContainersType::VECTOR_REPLACEALLELEMENTS);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -575,7 +599,7 @@ DECLARE_BUILTINS(StackForEach)
         &slowPath, ContainersType::STACK_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -595,7 +619,7 @@ DECLARE_BUILTINS(PlainArrayForEach)
         &slowPath, ContainersType::PLAINARRAY_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -615,7 +639,7 @@ DECLARE_BUILTINS(QueueForEach)
         &slowPath, ContainersType::QUEUE_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -635,7 +659,7 @@ DECLARE_BUILTINS(DequeForEach)
         &slowPath, ContainersType::DEQUE_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -655,7 +679,7 @@ DECLARE_BUILTINS(LightWeightMapForEach)
         &slowPath, ContainersType::LIGHTWEIGHTMAP_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -675,7 +699,7 @@ DECLARE_BUILTINS(LightWeightSetForEach)
         &slowPath, ContainersType::LIGHTWEIGHTSET_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -695,7 +719,7 @@ DECLARE_BUILTINS(HashMapForEach)
         &slowPath, ContainersType::HASHMAP_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -715,7 +739,7 @@ DECLARE_BUILTINS(HashSetForEach)
         &slowPath, ContainersType::HASHSET_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -735,7 +759,7 @@ DECLARE_BUILTINS(LinkedListForEach)
         &slowPath, ContainersType::LINKEDLIST_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -755,7 +779,7 @@ DECLARE_BUILTINS(ListForEach)
         &slowPath, ContainersType::LIST_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -775,7 +799,7 @@ DECLARE_BUILTINS(ArrayListForEach)
         &slowPath, ContainersType::ARRAYLIST_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
     Bind(&exit);
@@ -795,7 +819,49 @@ DECLARE_BUILTINS(ArrayListReplaceAllElements)
         &slowPath, ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func);
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(BooleanConstructor)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+
+    Label newTargetIsJSFunction(env);
+    Label slowPath(env);
+    Label exit(env);
+
+    Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    Bind(&newTargetIsJSFunction);
+    {
+        Label intialHClassIsHClass(env);
+        GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
+                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath);
+        Bind(&intialHClassIsHClass);
+        {
+            NewObjectStubBuilder newBuilder(this);
+            newBuilder.SetParameters(glue, 0);
+            Label afterNew(env);
+            newBuilder.NewJSObject(&res, &afterNew, intialHClass);
+            Bind(&afterNew);
+            {
+                GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
+                GateRef value = GetCallArgWithArgv(numArgs, IntPtr(0));
+                Store(VariableType::INT64(), glue, *res, valueOffset, FastToBoolean(value));
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&slowPath);
+    {
+        GateRef argv = GetCallArgv();
+        res = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
+                             { glue, nativeCode, func, thisValue, numArgs, argv });
         Jump(&exit);
     }
     Bind(&exit);

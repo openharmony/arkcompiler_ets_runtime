@@ -175,7 +175,8 @@ public:
 
         bool IsBuiltinsStub() const
         {
-            return (kind_ == CallSignature::TargetKind::BUILTINS_STUB);
+            return (kind_ == CallSignature::TargetKind::BUILTINS_STUB ||
+                    kind_ == CallSignature::TargetKind::BUILTINS_WITH_ARGV_STUB);
         }
 
         bool IsCommonStub() const

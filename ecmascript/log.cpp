@@ -74,6 +74,10 @@ void Log::SetLogComponentFromString(const std::vector<std::string>& components)
             components_ |= Component::COMPILER;
             continue;
         }
+        if (component == "builtins") {
+            components_ |= Component::BUILTINS;
+            continue;
+        }
     }
 }
 

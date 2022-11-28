@@ -528,4 +528,10 @@
 #define STACK_ASSERT_SCOPE(thread) static_cast<void>(0)
 #endif
 
+#if !defined(NDEBUG)
+#define BUILTINS_ENTRY_DEBUG_LOG() LOG_BUILTINS(DEBUG) << "Builtins C++ " << __func__
+#else
+#define BUILTINS_ENTRY_DEBUG_LOG() static_cast<void>(0)
+#endif
+
 #endif  // ECMASCRIPT_ECMA_MACROS_H

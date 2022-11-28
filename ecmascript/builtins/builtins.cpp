@@ -912,8 +912,8 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
         factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, booleanFuncPrototypeValue);
 
     // new Boolean Function()
-    JSHandle<JSFunction> booleanFunction(
-        NewBuiltinConstructor(env, booleanFuncPrototype, Boolean::BooleanConstructor, "Boolean", FunctionLength::ONE));
+    JSHandle<JSFunction> booleanFunction = NewBuiltinConstructor(env, booleanFuncPrototype, Boolean::BooleanConstructor,
+        "Boolean", FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(BooleanConstructor)));
     booleanFunction->SetFunctionPrototype(thread_, booleanFuncInstanceHClass.GetTaggedValue());
 
     // Boolean.prototype method
@@ -2651,10 +2651,10 @@ void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle
 
 JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &env,
                                                      const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
-                                                     const char *name, int length) const
+                                                     const char *name, int length, uint8_t builtinId) const
 {
     JSHandle<JSFunction> ctor =
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
+        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
     InitializeCtor(env, prototype, ctor, name, length);
     return ctor;
 }

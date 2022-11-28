@@ -2018,6 +2018,13 @@ inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
     return env_->GetBuilder()->CallBuiltin(glue, target, args);
 }
 
+inline GateRef StubBuilder::DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId,
+                                                     const std::initializer_list<GateRef>& args)
+{
+    GateRef target = PtrMul(ZExtInt32ToPtr(builtinsId), IntPtrSize());
+    return env_->GetBuilder()->CallBuiltinWithArgv(glue, target, args);
+}
+
 inline GateRef StubBuilder::GetBuiltinId(GateRef method)
 {
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);

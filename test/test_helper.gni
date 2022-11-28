@@ -431,6 +431,26 @@ template("host_aot_test_action") {
 
   _script_args_ = rebase_path(_test_abc_path_)
 
+  _builtins_dts_path_ =
+      "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts"
+  _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
+
+  ts2abc_gen_abc("gen_builtins_d_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+
+    # extra_dependencies = _deps_
+    src_js = rebase_path(_builtins_dts_path_)
+    dst_file = rebase_path(_builtins_d_abc_path_)
+    extra_args = [
+      "--merge-abc",
+      "--q",
+      "--b",
+    ]
+
+    in_puts = [ _builtins_dts_path_ ]
+    out_puts = [ _builtins_d_abc_path_ ]
+  }
+
   action("${_target_name_}AotCompileAction") {
     testonly = true
 
@@ -451,6 +471,13 @@ template("host_aot_test_action") {
     if (defined(invoker.is_disable_type_lowering) &&
         invoker.is_disable_type_lowering) {
       _aot_compile_options_ += " --enable-type-lowering=false"
+    }
+
+    if (defined(invoker.is_enable_builtins_dts) &&
+        invoker.is_enable_builtins_dts) {
+      deps += [ ":gen_builtins_d_abc" ]
+      _aot_compile_options_ +=
+          " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
     }
 
     args = [
@@ -499,6 +526,10 @@ template("host_aot_test_action") {
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
       _aot_run_options_ += " --enable-force-gc=false"
+    }
+
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
     }
 
     args = [
@@ -698,7 +729,7 @@ template("host_quickfix_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    quickfix_options = " --merge-abc true --log-level info "
+    quickfix_options = " --merge-abc true "
 
     args = [
       "--script-file",

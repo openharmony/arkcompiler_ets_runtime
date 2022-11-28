@@ -351,7 +351,11 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_list args;
     va_start(args, fmtMessageId);
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
-    LOG_ECMA(DEBUG) << result;
+    if (MessageString::IsBuiltinsStubMessageString(fmtMessageId)) {
+        LOG_BUILTINS(DEBUG) << result;
+    } else {
+        LOG_ECMA(DEBUG) << result;
+    }
     va_end(args);
 }
 
