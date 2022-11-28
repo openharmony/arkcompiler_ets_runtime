@@ -367,10 +367,12 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
     if (src->IsString()) {
         JSHandle<EcmaString> srcString = JSTaggedValue::ToString(thread, src);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<EcmaString> srcFlat = JSHandle<EcmaString>(thread,
+            EcmaStringAccessor::Flatten(thread->GetEcmaVM(), srcString));
         uint32_t dstLen = static_cast<uint32_t>(index.GetInt());
-        uint32_t strLen = EcmaStringAccessor(srcString).GetLength();
+        uint32_t strLen = EcmaStringAccessor(srcFlat).GetLength();
         for (uint32_t i = 0; i < strLen; i++) {
-            uint16_t res = EcmaStringAccessor(srcString).Get<false>(i);
+            uint16_t res = EcmaStringAccessor(srcFlat).Get<false>(i);
             JSHandle<JSTaggedValue> strValue(factory->NewFromUtf16Literal(&res, 1));
             JSTaggedValue::SetProperty(thread, dst, dstLen + i, strValue, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1345,10 +1347,8 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
                                            const JSHandle<JSTaggedValue> &right)
 {
     if (left->IsString() && right->IsString()) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<EcmaString> newString =
-            factory->ConcatFromString(JSHandle<EcmaString>(left), JSHandle<EcmaString>(right));
-        return newString.GetTaggedValue();
+        return JSTaggedValue(EcmaStringAccessor::Concat(
+            thread->GetEcmaVM(), JSHandle<EcmaString>(left), JSHandle<EcmaString>(right)));
     }
     JSHandle<JSTaggedValue> primitiveA0(thread, JSTaggedValue::ToPrimitive(thread, left));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1360,9 +1360,7 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<EcmaString> stringA1 = JSTaggedValue::ToString(thread, primitiveA1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<EcmaString> newString = factory->ConcatFromString(stringA0, stringA1);
-        return newString.GetTaggedValue();
+        return JSTaggedValue(EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1));
     }
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, primitiveA0);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

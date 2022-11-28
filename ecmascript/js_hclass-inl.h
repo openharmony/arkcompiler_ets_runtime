@@ -162,7 +162,7 @@ inline bool JSHClass::HasReferenceField()
 {
     auto type = GetObjectType();
     switch (type) {
-        case JSType::STRING:
+        case JSType::LINE_STRING:
         case JSType::JS_NATIVE_POINTER:
             return false;
         default:
@@ -189,7 +189,8 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
                                           ByteArray::Cast(header)->GetLength());
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
-        case JSType::STRING:
+        case JSType::LINE_STRING:
+        case JSType::TREE_STRING:
             size = EcmaStringAccessor(reinterpret_cast<EcmaString *>(header)).ObjectSize();
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;

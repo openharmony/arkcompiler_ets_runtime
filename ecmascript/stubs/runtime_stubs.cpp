@@ -22,7 +22,7 @@
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
@@ -1836,11 +1836,12 @@ DEF_RUNTIME_STUBS(BigIntEqual)
 DEF_RUNTIME_STUBS(StringEqual)
 {
     RUNTIME_STUBS_HEADER(StringEqual);
-    JSTaggedValue left = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue right = GetArg(argv, argc, 1);  // 1: means the first parameter
-    auto leftStr = EcmaString::Cast(left.GetTaggedObject());
-    auto rightStr = EcmaString::Cast(right.GetTaggedObject());
-    if (EcmaStringAccessor::StringsAreEqualSameUtfEncoding(leftStr, rightStr)) {
+    JSHandle<EcmaString> left = GetHArg<EcmaString>(argv, argc, 0);
+    JSHandle<EcmaString> right = GetHArg<EcmaString>(argv, argc, 1);
+    EcmaVM *vm = thread->GetEcmaVM();
+    left = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, left));
+    right = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, right));
+    if (EcmaStringAccessor::StringsAreEqualSameUtfEncoding(*left, *right)) {
         return JSTaggedValue::VALUE_TRUE;
     }
     return JSTaggedValue::VALUE_FALSE;
@@ -1897,6 +1898,13 @@ DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
         }
     }
     return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(SlowFlattenString)
+{
+    RUNTIME_STUBS_HEADER(SlowFlattenString);
+    JSHandle<TreeEcmaString> str = GetHArg<TreeEcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
 }
 
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)

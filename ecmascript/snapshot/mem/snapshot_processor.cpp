@@ -1228,7 +1228,6 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         } else {
             liveObjectSize = fileRegion->AliveObject();
             size_t freeObjSize = region->end_ - region->packedData_.begin_ - liveObjectSize;
-            ASSERT(freeObjSize >= 0);
             // if region remain 8 bytes which is added to wasted,
             // we should subtract it when calculate region index
             if (freeObjSize < Constants::FREE_OBJECT_MIN_SIZE) {
@@ -1316,9 +1315,10 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     auto oldSpace = const_cast<Heap *>(vm_->GetHeap())->GetOldSpace();
     auto hugeSpace = const_cast<Heap *>(vm_->GetHeap())->GetHugeObjectSpace();
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    auto stringClass = globalConst->GetStringClass();
+    auto stringClass = globalConst->GetLineStringClass();
     while (stringBegin < stringEnd) {
         EcmaString *str = reinterpret_cast<EcmaString *>(stringBegin);
+        str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(stringClass.GetTaggedObject()));
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         auto strFromTable = stringTable->GetString(str);
@@ -1340,7 +1340,6 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 UNREACHABLE();
             }
             str = reinterpret_cast<EcmaString *>(newObj);
-            str->SetClass(reinterpret_cast<JSHClass *>(stringClass.GetTaggedObject()));
             EcmaStringAccessor(str).ClearInternString();
             stringTable->GetOrInternString(str);
             stringVector_.emplace_back(newObj);
@@ -1496,7 +1495,8 @@ void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, Met
             TaggedObject *objectHeader = reinterpret_cast<TaggedObject *>(begin);
             DeserializeClassWord(objectHeader);
             DeserializeField(objectHeader);
-            if (builtinsDeserialize_ && JSType(objType) == JSType::STRING) {
+            if (builtinsDeserialize_ &&
+                (JSType(objType) >= JSType::STRING_FIRST && JSType(objType) <= JSType::STRING_LAST)) {
                 auto str = reinterpret_cast<EcmaString *>(begin);
                 EcmaStringAccessor(str).ClearInternString();
                 stringTable->InsertStringIfNotExist(str);
@@ -1724,9 +1724,13 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
 {
     if (!builtinsSerialize_) {
         // String duplicate
-        if (objectHeader->GetClass()->GetObjectType() == JSType::STRING) {
+        if (objectHeader->GetClass()->IsString()) {
             ASSERT(stringVector_.size() < Constants::MAX_OBJECT_INDEX);
             EncodeBit encodeBit(stringVector_.size());
+            if (EcmaStringAccessor(objectHeader).IsTreeString()) {
+                data->emplace(ToUintPtr(objectHeader), std::make_pair(0U, encodeBit));
+                objectHeader = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(objectHeader));
+            }
             stringVector_.emplace_back(ToUintPtr(objectHeader));
             data->emplace(ToUintPtr(objectHeader), std::make_pair(0U, encodeBit));
             return encodeBit;
@@ -1741,6 +1745,12 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
                 data->emplace(ToUintPtr(objectHeader), std::make_pair(0U, encodeBit));
                 return encodeBit;
             }
+        }
+    }
+    auto oldObjHeader = objectHeader;
+    if (objectHeader->GetClass()->IsString()) {
+        if (EcmaStringAccessor(objectHeader).IsTreeString()) {
+            objectHeader = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(objectHeader));
         }
     }
     queue->emplace(objectHeader);
@@ -1780,6 +1790,11 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
     size_t objOffset = newObj - ToUintPtr(currentRegion);
     EncodeBit encodeBit(static_cast<uint64_t>(regionIndex));
     encodeBit.SetObjectOffsetInRegion(objOffset);
+    if (oldObjHeader->GetClass()->IsString()) {
+        if (EcmaStringAccessor(oldObjHeader).IsTreeString()) {
+            data->emplace(ToUintPtr(oldObjHeader), std::make_pair(0U, encodeBit));
+        }
+    }
     data->emplace(ToUintPtr(objectHeader), std::make_pair(newObj, encodeBit));
     return encodeBit;
 }

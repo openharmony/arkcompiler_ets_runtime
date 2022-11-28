@@ -114,7 +114,17 @@ if (globalThis["ArkPrivate"] != undefined) {
             print("Queue forEach throw error fail");
         }
     }
-
+    let test1 = new Queue();
+    for (let k = 0; k < 10; k++) {
+        test1.add(k);
+    }
+    var keyName = "";
+    for (const key in test1) {
+        keyName += key;
+    }
+    if (keyName != "0123456789") {
+        print("Queue for in fail")
+    }
     map.forEach(elements);
     if (!flag) {
         print("Test Queue success!!!");

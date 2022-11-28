@@ -324,7 +324,7 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
-        Return(LoadElement(receiver, key));
+        Return(LoadElement(glue, receiver, key));
         Bind(&hclassNotEqualFirstValue);
         {
             Branch(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);

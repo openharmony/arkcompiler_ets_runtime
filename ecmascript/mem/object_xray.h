@@ -322,7 +322,10 @@ public:
                     JSHClass::Cast(object)->VisitRangeSlot(visitor);
                 }
                 break;
-            case JSType::STRING:
+            case JSType::LINE_STRING:
+                break;
+            case JSType::TREE_STRING:
+                TreeEcmaString::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::JS_NATIVE_POINTER:
                 if (visitType == VisitType::SNAPSHOT_VISIT) {

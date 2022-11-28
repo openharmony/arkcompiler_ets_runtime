@@ -840,7 +840,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ToLocaleString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(result.IsString());
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultValue, reinterpret_cast<EcmaString *>(result.GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultValue, JSHandle<EcmaString>(thread, result)), 0);
 }
 
 // obj.toString()
@@ -859,7 +859,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ToString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(result.IsString());
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultValue, reinterpret_cast<EcmaString *>(result.GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultValue, JSHandle<EcmaString>(thread, result)), 0);
 
     // array
     JSHandle<JSArray> arr = thread->GetEcmaVM()->GetFactory()->NewJSArray();
@@ -874,7 +874,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ToString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(resultArr.IsString());
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultArrValue, reinterpret_cast<EcmaString *>(resultArr.GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultArrValue, JSHandle<EcmaString>(thread, resultArr)), 0);
 
     // string
     JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("hello");
@@ -889,7 +889,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ToString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(resultStr.IsString());
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultStrValue, reinterpret_cast<EcmaString *>(resultStr.GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultStrValue, JSHandle<EcmaString>(thread, resultStr)), 0);
 
     // function
     JSHandle<JSFunction> func = thread->GetEcmaVM()->GetFactory()->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv());
@@ -904,8 +904,8 @@ HWTEST_F_L0(BuiltinsObjectTest, ToString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(resultFunc.IsString());
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *resultFuncValue, reinterpret_cast<EcmaString *>(resultFunc.GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        resultFuncValue, JSHandle<EcmaString>(thread, resultFunc)), 0);
 
     // error
     auto ecmaVM = thread->GetEcmaVM();
@@ -923,7 +923,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ToString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(resultError.IsString());
-    ASSERT_EQ(EcmaStringAccessor::Compare(*errorValue, reinterpret_cast<EcmaString *>(resultError.GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, errorValue, JSHandle<EcmaString>(thread, resultError)), 0);
 
     // boolean
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue::False());
@@ -940,8 +940,8 @@ HWTEST_F_L0(BuiltinsObjectTest, ToString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(resultBool.IsString());
-    ASSERT_EQ(EcmaStringAccessor::Compare(
-        *resultBoolValue, reinterpret_cast<EcmaString *>(resultBool.GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        resultBoolValue, JSHandle<EcmaString>(thread, resultBool)), 0);
 
     // number
     JSHandle<EcmaString> resultNumValue =
@@ -955,7 +955,7 @@ HWTEST_F_L0(BuiltinsObjectTest, ToString)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(resultNum.IsString());
-    ASSERT_EQ(EcmaStringAccessor::Compare(*resultNumValue, reinterpret_cast<EcmaString *>(resultNum.GetRawData())), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultNumValue, JSHandle<EcmaString>(thread, resultNum)), 0);
 }
 
 // object.valueOf()

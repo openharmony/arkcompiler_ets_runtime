@@ -296,7 +296,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc
             return 0;
         }
         default: {
-            LOG_ECMA(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "frame type error!";
         }
     }
 }
@@ -323,7 +323,7 @@ uintptr_t FrameIterator::GetPrevFrame() const
             break;
         }
         default: {
-            LOG_ECMA(FATAL) << "frame type error!";
+            LOG_FULL(FATAL) << "frame type error!";
         }
     }
     return end;
@@ -386,8 +386,10 @@ ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
     const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     OptimizedJSFunctionFrame *frame = OptimizedJSFunctionFrame::GetFrameFromSp(it.GetSp());
-    uintptr_t *envPtr = reinterpret_cast<uintptr_t *>(frame);
-    uintptr_t envslot = ToUintPtr(envPtr);
+    uintptr_t *jsFuncPtr = reinterpret_cast<uintptr_t *>(frame);
+    uintptr_t jsFuncSlot = ToUintPtr(jsFuncPtr);
+    uintptr_t envslot = jsFuncSlot + sizeof(uintptr_t);
+    visitor(Root::ROOT_FRAME, ObjectSlot(jsFuncSlot));
     visitor(Root::ROOT_FRAME, ObjectSlot(envslot));
 
     uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);
@@ -603,78 +605,79 @@ bool ReadUintptrFromAddr(int pid, uintptr_t addr, uintptr_t &value)
 
 bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typeOffset, uintptr_t &prevOffset)
 {
-    switch (frameType) {
-        case (uintptr_t)(FrameType::OPTIMIZED_FRAME):
+    FrameType type = static_cast<FrameType>(frameType);
+    switch (type) {
+        case FrameType::OPTIMIZED_FRAME:
             typeOffset = OptimizedFrame::GetTypeOffset();
             prevOffset = OptimizedFrame::GetPrevOffset();
             break;
-        case (uintptr_t)(FrameType::OPTIMIZED_ENTRY_FRAME):
-            typeOffset = MEMBER_OFFSET(OptimizedEntryFrame, type);
-            prevOffset = MEMBER_OFFSET(OptimizedEntryFrame, preLeaveFrameFp);
+        case FrameType::OPTIMIZED_ENTRY_FRAME:
+            typeOffset = OptimizedEntryFrame::GetTypeOffset();
+            prevOffset = OptimizedEntryFrame::GetLeaveFrameFpOffset();
             break;
-        case (uintptr_t)(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME):
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
             typeOffset = OptimizedJSFunctionUnfoldArgVFrame::GetTypeOffset();
             prevOffset = OptimizedJSFunctionUnfoldArgVFrame::GetPrevOffset();
             break;
-        case (uintptr_t)(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME):
-        case (uintptr_t)(FrameType::OPTIMIZED_JS_FUNCTION_FRAME):
+        case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
             typeOffset = OptimizedJSFunctionFrame::GetTypeOffset();
             prevOffset = OptimizedJSFunctionFrame::GetPrevOffset();
             break;
-        case (uintptr_t)(FrameType::LEAVE_FRAME):
+        case FrameType::LEAVE_FRAME:
             typeOffset = MEMBER_OFFSET(OptimizedLeaveFrame, type);
             prevOffset = MEMBER_OFFSET(OptimizedLeaveFrame, callsiteFp);
             break;
-        case (uintptr_t)(FrameType::LEAVE_FRAME_WITH_ARGV):
+        case FrameType::LEAVE_FRAME_WITH_ARGV:
             typeOffset = MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, type);
             prevOffset = MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, callsiteFp);
             break;
-        case (uintptr_t)(FrameType::BUILTIN_CALL_LEAVE_FRAME):
+        case FrameType::BUILTIN_CALL_LEAVE_FRAME:
             typeOffset = OptimizedBuiltinLeaveFrame::GetTypeOffset();
             prevOffset = OptimizedBuiltinLeaveFrame::GetPrevOffset();
             break;
-        case (uintptr_t)(FrameType::INTERPRETER_FRAME):
-        case (uintptr_t)(FrameType::INTERPRETER_FAST_NEW_FRAME):
+        case FrameType::INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_FAST_NEW_FRAME:
             typeOffset = MEMBER_OFFSET(InterpretedFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, type);
             prevOffset = MEMBER_OFFSET(InterpretedFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, prev);
             break;
-        case (uintptr_t)(FrameType::INTERPRETER_BUILTIN_FRAME):
+        case FrameType::INTERPRETER_BUILTIN_FRAME:
             typeOffset = MEMBER_OFFSET(InterpretedBuiltinFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, type);
             prevOffset = MEMBER_OFFSET(InterpretedBuiltinFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, prev);
             break;
-        case (uintptr_t)(FrameType::INTERPRETER_CONSTRUCTOR_FRAME):
-        case (uintptr_t)(FrameType::ASM_INTERPRETER_FRAME):
+        case FrameType::INTERPRETER_CONSTRUCTOR_FRAME:
+        case FrameType::ASM_INTERPRETER_FRAME:
             typeOffset = MEMBER_OFFSET(AsmInterpretedFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, type);
             prevOffset = MEMBER_OFFSET(AsmInterpretedFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, prev);
             break;
-        case (uintptr_t)(FrameType::BUILTIN_FRAME):
-        case (uintptr_t)(FrameType::BUILTIN_ENTRY_FRAME):
+        case FrameType::BUILTIN_FRAME:
+        case FrameType::BUILTIN_ENTRY_FRAME:
             typeOffset = MEMBER_OFFSET(BuiltinFrame, type);
             prevOffset = MEMBER_OFFSET(BuiltinFrame, prevFp);
             break;
-        case (uintptr_t)(FrameType::BUILTIN_FRAME_WITH_ARGV):
+        case FrameType::BUILTIN_FRAME_WITH_ARGV:
             typeOffset = MEMBER_OFFSET(BuiltinWithArgvFrame, type);
             prevOffset = MEMBER_OFFSET(BuiltinWithArgvFrame, prevFp);
             break;
-        case (uintptr_t)(FrameType::INTERPRETER_ENTRY_FRAME):
+        case FrameType::INTERPRETER_ENTRY_FRAME:
             typeOffset = MEMBER_OFFSET(InterpretedEntryFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, type);
             prevOffset = MEMBER_OFFSET(InterpretedEntryFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, prev);
             break;
-        case (uintptr_t)(FrameType::ASM_INTERPRETER_ENTRY_FRAME):
+        case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
             typeOffset = MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, type);
             prevOffset = MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, prev);
             break;
-        case (uintptr_t)(FrameType::ASM_INTERPRETER_BRIDGE_FRAME):
+        case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
             typeOffset = MEMBER_OFFSET(AsmInterpretedBridgeFrame, entry) +
                          MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
                          MEMBER_OFFSET(InterpretedFrameBase, type);

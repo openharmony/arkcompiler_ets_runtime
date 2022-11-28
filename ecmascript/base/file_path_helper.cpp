@@ -27,7 +27,6 @@ namespace panda::ecmascript::base {
 
 bool FilePathHelper::RealPath(const std::string &path, std::string &realPath, [[maybe_unused]] bool readOnly)
 {
-    realPath = "";
     if (path.empty() || path.size() > PATH_MAX) {
         LOG_ECMA(WARN) << "File path is illeage";
         return false;

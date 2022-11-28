@@ -87,7 +87,7 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
     JSTaggedValue resInICPath3 = ICBinaryOP::AddWithTSType(thread,  Str1.GetTaggedValue(), Str2.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::STRING)));
     ASSERT_TRUE(resInICPath3.IsString());
-    EXPECT_EQ(EcmaStringAccessor::Compare(*slowHandle3, reinterpret_cast<EcmaString *>(resInICPath3.GetRawData())), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVm, slowHandle3, JSHandle<EcmaString>(thread, resInICPath3)), 0);
 
     JSTaggedValue resInSlowPath4 = SlowRuntimeStub::Add2(thread, JSTaggedValue::Undefined(),
                                                             arg2.GetTaggedValue());
@@ -104,7 +104,7 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
                                                            Str1.GetTaggedValue(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::STRING_GEN)));
     ASSERT_TRUE(resInICPath5.IsString());
-    EXPECT_EQ(EcmaStringAccessor::Compare(*slowHandle5, reinterpret_cast<EcmaString *>(resInICPath5.GetRawData())), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVm, slowHandle5, JSHandle<EcmaString>(thread, resInICPath5)), 0);
 
     JSTaggedValue resInSlowPath6 = SlowRuntimeStub::Add2(thread, Str1.GetTaggedValue(),
                                                             JSTaggedValue::Null());
@@ -112,7 +112,7 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
     JSTaggedValue resInICPath6 = ICBinaryOP::AddWithTSType(thread,  Str1.GetTaggedValue(), JSTaggedValue::Null(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::STRING_GEN)));
     ASSERT_TRUE(resInICPath6.IsString());
-    EXPECT_EQ(EcmaStringAccessor::Compare(*slowHandle6, reinterpret_cast<EcmaString *>(resInICPath6.GetRawData())), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVm, slowHandle6, JSHandle<EcmaString>(thread, resInICPath6)), 0);
 
     JSTaggedValue resInSlowPath7 = SlowRuntimeStub::Add2(thread, arg1.GetTaggedValue(),
                                                             JSTaggedValue::True());
@@ -127,7 +127,7 @@ HWTEST_F_L0(ICBinaryOPTest, AddWithTSType)
     JSTaggedValue resInICPath8 = ICBinaryOP::AddWithTSType(thread,  arg4.GetTaggedValue(), JSTaggedValue::Null(),
                                                            JSTaggedValue(static_cast<int>(BinaryType::GENERIC)));
     ASSERT_TRUE(resInICPath8.IsString());
-    EXPECT_EQ(EcmaStringAccessor::Compare(*slowHandle8, reinterpret_cast<EcmaString *>(resInICPath8.GetRawData())), 0);
+    EXPECT_EQ(EcmaStringAccessor::Compare(ecmaVm, slowHandle8, JSHandle<EcmaString>(thread, resInICPath8)), 0);
 };
 
 HWTEST_F_L0(ICBinaryOPTest, SubWithTSType)

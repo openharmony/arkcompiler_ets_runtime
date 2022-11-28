@@ -18,8 +18,16 @@ host_moduletest_action("Cjs") {
   is_commonjs = true
 }
 
+host_moduletest_action("someArgsCjs") {
+  deps = []
+  is_commonjs = true
+}
+
 host_moduletest_action("moduleUseCjs") {
   extra_modules = [ "Cjs" ]
-  deps = [ ":gen_Cjs_abc" ]
+  deps = [
+    ":gen_Cjs_abc",
+    ":gen_someArgsCjs_abc",
+  ]
   is_module = true
 }

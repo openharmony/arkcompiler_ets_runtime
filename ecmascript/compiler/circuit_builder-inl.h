@@ -593,9 +593,17 @@ GateRef CircuitBuilder::IsJSObject(GateRef obj)
     return LogicAnd(TaggedIsHeapObject(obj), ret);
 }
 
+GateRef CircuitBuilder::TaggedObjectIsString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return BoolAnd(
+        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::STRING_LAST))),
+        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::STRING_FIRST))));
+}
+
 GateRef CircuitBuilder::TaggedObjectBothAreString(GateRef x, GateRef y)
 {
-    return BoolAnd(IsJsType(x, JSType::STRING), IsJsType(y, JSType::STRING));
+    return BoolAnd(TaggedObjectIsString(x), TaggedObjectIsString(y));
 }
 
 GateRef CircuitBuilder::IsCallableFromBitField(GateRef bitfield)

@@ -145,7 +145,7 @@ void ICStubBuilder::LoadICByValue(Variable* result, Label* tryFastPath, Label *s
     ValuedICAccessor(&cachedHandler, &loadWithHandler, &loadElement);
     Bind(&loadElement);
     {
-        GateRef ret = LoadElement(receiver_, propKey_);
+        GateRef ret = LoadElement(glue_, receiver_, propKey_);
         result->WriteVariable(ret);
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }

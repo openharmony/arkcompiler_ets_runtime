@@ -19,7 +19,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
@@ -530,7 +530,9 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       lexEnv             |               v
+//               |       lexEnv             |               |
+//               |--------------------------|               |
+//               |       call-target        |               v
 //               +--------------------------+ ---------------
 void OptimizedCall::JSCallNew(ExtendedAssembler *assembler)
 {

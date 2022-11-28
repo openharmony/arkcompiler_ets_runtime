@@ -215,7 +215,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_001)
     std::string test = "Hello world";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Utf8Length(), 12);          // 12 : length of testString("Hello World")
+    EXPECT_EQ(testString->Utf8Length(vm_), 12);          // 12 : length of testString("Hello World")
     char buffer[12];                                      // 12 : length of testString
     EXPECT_EQ(testString->WriteUtf8(buffer, 12), 12); // 12 : length of testString("Hello World")
     std::string res(buffer);
@@ -228,7 +228,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_002)
     std::string test = "年";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Utf8Length(), 4);          // 4 : length of testString("年")
+    EXPECT_EQ(testString->Utf8Length(vm_), 4);          // 4 : length of testString("年")
     char buffer[4];                                      // 4 : length of testString
     EXPECT_EQ(testString->WriteUtf8(buffer, 4), 4); // 4 : length of testString("年")
     std::string res(buffer);
@@ -244,7 +244,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
 
     // isWriteBuffer == false, \u0000 ==> C080
     Local<StringRef> testString1 = StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
-    EXPECT_EQ(testString1->Utf8Length(), 5);
+    EXPECT_EQ(testString1->Utf8Length(vm_), 5);
     char buffer1[4];
     testString1->WriteUtf8(buffer1, 4, false);
     EXPECT_EQ(buffer1[0], 'a');
@@ -254,7 +254,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
 
     // isWriteBuffer == true, \u0000 ==> 0x00U
     Local<StringRef> testString2 = StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
-    EXPECT_EQ(testString2->Utf8Length(), 5);
+    EXPECT_EQ(testString2->Utf8Length(vm_), 5);
     char buffer2[4];
     testString2->WriteUtf8(buffer2, 4, true);
     EXPECT_EQ(buffer2[0], 'a');

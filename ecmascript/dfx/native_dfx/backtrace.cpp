@@ -56,13 +56,9 @@ void PrintBacktrace(uintptr_t value)
     std::ostringstream stack;
     for (int i = 1; i < level; i++) {
         const char *file = "";
-        const char *symbol = "";
         uintptr_t offset = 0;
         Dl_info info;
         if (dladdr(buffer[i], &info)) {
-            if (info.dli_sname) {
-                symbol = info.dli_sname;
-            }
             if (info.dli_fname) {
                 file = info.dli_fname;
             }

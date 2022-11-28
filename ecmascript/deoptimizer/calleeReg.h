@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_CALLEE_REG_H
-#define ECMASCRIPT_COMPILER_CALLEE_REG_H
+#ifndef ECMASCRIPT_DEOPTIMIZER_CALLEE_REG_H
+#define ECMASCRIPT_DEOPTIMIZER_CALLEE_REG_H
+
 #include <map>
 #include "ecmascript/common.h"
 #include "ecmascript/llvm_stackmap_type.h"
@@ -67,4 +68,4 @@ private:
     std::map<DwarfReg, int> reg2Location_;
 };
 } // namespace panda::ecmascript
-#endif  // ECMASCRIPT_COMPILER_CALLEE_REG_H
+#endif  // ECMASCRIPT_DEOPTIMIZER_CALLEE_REG_H

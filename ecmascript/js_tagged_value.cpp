@@ -155,8 +155,9 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
 
     if (x->IsString()) {
         if (y->IsString()) {
-            return EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(x->GetTaggedObject()),
-                                                       static_cast<EcmaString *>(y->GetTaggedObject()));
+            return EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(),
+                                                       JSHandle<EcmaString>(x),
+                                                       JSHandle<EcmaString>(y));
         }
         if (y->IsNumber()) {
             JSTaggedNumber xNumber = ToNumber(thread, x);
@@ -274,9 +275,9 @@ ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTagge
     JSHandle<JSTaggedValue> primY(thread, ToPrimitive(thread, y));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
     if (primX->IsString() && primY->IsString()) {
-        auto xString = static_cast<EcmaString *>(primX->GetTaggedObject());
-        auto yString = static_cast<EcmaString *>(primY->GetTaggedObject());
-        int result = EcmaStringAccessor::Compare(xString, yString);
+        auto xHandle = JSHandle<EcmaString>(primX);
+        auto yHandle = JSHandle<EcmaString>(primY);
+        int result = EcmaStringAccessor::Compare(thread->GetEcmaVM(), xHandle, yHandle);
         if (result < 0) {
             return ComparisonResult::LESS;
         }
@@ -455,7 +456,7 @@ JSTaggedValue JSTaggedValue::CanonicalNumericIndexString(JSThread *thread, const
 
     if (tagged->IsString()) {
         JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("-0");
-        if (EcmaStringAccessor::StringsAreEqual(static_cast<EcmaString *>(tagged->GetTaggedObject()), *str)) {
+        if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), JSHandle<EcmaString>(tagged), str)) {
             return JSTaggedValue(-0.0);
         }
         JSHandle<JSTaggedValue> tmp(thread, ToNumber(thread, tagged));
@@ -845,6 +846,21 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnPropertyKeys(JSThread *thread, const 
     return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>(obj));
 }
 
+JSHandle<TaggedArray> JSTaggedValue::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
+{
+    ASSERT(!obj->IsJSProxy());
+    if (obj->IsTypedArray()) {
+        return JSTypedArray::OwnEnumPropertyKeys(thread, obj);
+    }
+    if (obj->IsSpecialContainer()) {
+        return GetOwnContainerEnumPropertyKeys(thread, obj);
+    }
+    if (obj->IsModuleNamespace()) {
+        return ModuleNamespace::OwnEnumPropertyKeys(thread, obj);
+    }
+    return JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>(obj));
+}
+
 // 7.3.10 HasProperty (O, P)
 bool JSTaggedValue::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                 const JSHandle<JSTaggedValue> &key)
@@ -1039,6 +1055,43 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerPropertyKeys(JSThread *threa
         }
         case JSType::JS_API_VECTOR: {
             return JSAPIVector::OwnKeys(thread, JSHandle<JSAPIVector>::Cast(obj));
+        }
+        default: {
+            UNREACHABLE();
+        }
+    }
+    return thread->GetEcmaVM()->GetFactory()->EmptyArray();
+}
+
+JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerEnumPropertyKeys(JSThread *thread,
+    const JSHandle<JSTaggedValue> &obj)
+{
+    auto *hclass = obj->GetTaggedObject()->GetClass();
+    JSType jsType = hclass->GetObjectType();
+    switch (jsType) {
+        case JSType::JS_API_QUEUE: {
+            return JSAPIQueue::OwnEnumKeys(thread, JSHandle<JSAPIQueue>::Cast(obj));
+        }
+        case JSType::JS_API_DEQUE: {
+            return JSAPIDeque::OwnEnumKeys(thread, JSHandle<JSAPIDeque>::Cast(obj));
+        }
+        case JSType::JS_API_LIST: {
+            return JSAPIList::OwnKeys(thread, JSHandle<JSAPIList>::Cast(obj));
+        }
+        case JSType::JS_API_LINKED_LIST: {
+            return JSAPILinkedList::OwnKeys(thread, JSHandle<JSAPILinkedList>::Cast(obj));
+        }
+        case JSType::JS_API_VECTOR:
+        case JSType::JS_API_STACK:
+        case JSType::JS_API_ARRAY_LIST:
+        case JSType::JS_API_PLAIN_ARRAY:
+        case JSType::JS_API_HASH_MAP:
+        case JSType::JS_API_HASH_SET:
+        case JSType::JS_API_LIGHT_WEIGHT_MAP:
+        case JSType::JS_API_LIGHT_WEIGHT_SET:
+        case JSType::JS_API_TREE_MAP:
+        case JSType::JS_API_TREE_SET: {
+            return JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>(obj));
         }
         default: {
             UNREACHABLE();

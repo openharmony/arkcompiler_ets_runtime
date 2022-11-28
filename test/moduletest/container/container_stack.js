@@ -113,6 +113,17 @@ if (globalThis["ArkPrivate"] != undefined) {
             print("Stack forEach throw error fail");
         }
     }
+    let test1 = new Stack();
+    for (let k = 0; k < 10; k++) {
+        test1.push(k);
+    }
+    var keyName = "";
+    for (const key in test1) {
+        keyName += key;
+    }
+    if (keyName != "0123456789") {
+        print("Stack for in fail")
+    }
     if (!flag) {
         print("Test Stack success!!!");
     } else {

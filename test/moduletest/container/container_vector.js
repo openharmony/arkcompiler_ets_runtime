@@ -294,6 +294,17 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.forEach(elements);
+    let test1 = new FastVector();
+    for (let k = 0; k < 10; k++) {
+        test1.add(k);
+    }
+    var keyName = "";
+    for (const key in test1) {
+        keyName += key;
+    }
+    if (keyName != "0123456789") {
+        print("Vector for in fail")
+    }
     if (!flag) {
         print("Test Vector success!!!");
     } else {

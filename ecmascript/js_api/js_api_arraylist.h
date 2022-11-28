@@ -69,6 +69,7 @@ public:
 
     bool Has(const JSTaggedValue value) const;
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPIArrayList> &obj);
+    static JSHandle<TaggedArray> OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIArrayList> &obj);
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
                                const JSHandle<JSTaggedValue> &key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,

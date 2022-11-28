@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/calleeReg.h"
+#include "ecmascript/deoptimizer/calleeReg.h"
 #include "libpandabase/macros.h"
 #include <iostream>
 
@@ -58,6 +58,7 @@ int CalleeReg::FindCallRegOrder(const DwarfRegType reg) const
     if (it != reg2Location_.end()) {
         return it->second;
     } else {
+        LOG_FULL(FATAL) << "reg:" << std::dec << reg;
         UNREACHABLE();
     }
 }

@@ -1081,7 +1081,7 @@ GateRef StubBuilder::IsDigit(GateRef ch)
         Int32GreaterThanOrEqual(ch, Int32('0')));
 }
 
-GateRef StubBuilder::StringToElementIndex(GateRef string)
+GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1096,25 +1096,15 @@ GateRef StubBuilder::StringToElementIndex(GateRef string)
     Branch(Int32GreaterThan(len, Int32(MAX_ELEMENT_INDEX_LEN)), &exit, &inRange);
     Bind(&inRange);
     {
-        GateRef dataUtf16 = PtrAdd(string, IntPtr(EcmaString::DATA_OFFSET));
-        DEFVARIABLE(c, VariableType::INT32(), Int32(0));
-        Label isUtf16(env);
         Label isUtf8(env);
-        Label getChar1(env);
         GateRef isUtf16String = IsUtf16String(string);
-        Branch(isUtf16String, &isUtf16, &isUtf8);
-        Bind(&isUtf16);
-        {
-            c = ZExtInt16ToInt32(Load(VariableType::INT16(), dataUtf16));
-            Jump(&getChar1);
-        }
+        Branch(isUtf16String, &exit, &isUtf8);
         Bind(&isUtf8);
         {
-            c = ZExtInt8ToInt32(Load(VariableType::INT8(), dataUtf16));
-            Jump(&getChar1);
-        }
-        Bind(&getChar1);
-        {
+            GateRef strFlat = FlattenString(glue, string);
+            GateRef dataUtf8 = PtrAdd(strFlat, IntPtr(LineEcmaString::DATA_OFFSET));
+            DEFVARIABLE(c, VariableType::INT32(), Int32(0));
+            c = ZExtInt8ToInt32(Load(VariableType::INT8(), dataUtf8));
             Label isDigitZero(env);
             Label notDigitZero(env);
             Branch(Int32Equal(*c, Int32('0')), &isDigitZero, &notDigitZero);
@@ -1141,38 +1131,19 @@ GateRef StubBuilder::StringToElementIndex(GateRef string)
                 Branch(Int32UnsignedLessThan(*i, len), &loopHead, &afterLoop);
                 LoopBegin(&loopHead);
                 {
-                    Label isUtf16A(env);
-                    Label notUtf16(env);
-                    Label getChar2(env);
-                    Branch(isUtf16String, &isUtf16A, &notUtf16);
-                    Bind(&isUtf16A);
+                    c = ZExtInt8ToInt32(Load(VariableType::INT8(), dataUtf8, ZExtInt32ToPtr(*i)));
+                    Label isDigit2(env);
+                    Label notDigit2(env);
+                    Branch(IsDigit(*c), &isDigit2, &notDigit2);
+                    Bind(&isDigit2);
                     {
-                        // 2 : 2 means utf16 char width is two bytes
-                        auto charOffset = PtrMul(ZExtInt32ToPtr(*i),  IntPtr(2));
-                        c = ZExtInt16ToInt32(Load(VariableType::INT16(), dataUtf16, charOffset));
-                        Jump(&getChar2);
+                        // 10 means the base of digit is 10.
+                        n = Int32Add(Int32Mul(*n, Int32(10)), Int32Sub(*c, Int32('0')));
+                        i = Int32Add(*i, Int32(1));
+                        Branch(Int32UnsignedLessThan(*i, len), &loopEnd, &afterLoop);
                     }
-                    Bind(&notUtf16);
-                    {
-                        c = ZExtInt8ToInt32(Load(VariableType::INT8(), dataUtf16, ZExtInt32ToPtr(*i)));
-                        Jump(&getChar2);
-                    }
-                    Bind(&getChar2);
-                    {
-                        Label isDigit2(env);
-                        Label notDigit2(env);
-                        Branch(IsDigit(*c), &isDigit2, &notDigit2);
-                        Bind(&isDigit2);
-                        {
-                            // 10 means the base of digit is 10.
-                            n = Int32Add(Int32Mul(*n, Int32(10)),
-                                         Int32Sub(*c, Int32('0')));
-                            i = Int32Add(*i, Int32(1));
-                            Branch(Int32UnsignedLessThan(*i, len), &loopEnd, &afterLoop);
-                        }
-                        Bind(&notDigit2);
-                        Jump(&exit);
-                    }
+                    Bind(&notDigit2);
+                    Jump(&exit);
                 }
                 Bind(&loopEnd);
                 LoopEnd(&loopHead);
@@ -1196,7 +1167,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef string)
     return ret;
 }
 
-GateRef StubBuilder::TryToElementsIndex(GateRef key)
+GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1219,7 +1190,7 @@ GateRef StubBuilder::TryToElementsIndex(GateRef key)
         Branch(TaggedIsString(key), &isString, &notString);
         Bind(&isString);
         {
-            resultKey = StringToElementIndex(key);
+            resultKey = StringToElementIndex(glue, key);
             Jump(&exit);
         }
         Bind(&notString);
@@ -1437,7 +1408,7 @@ GateRef StubBuilder::LoadICWithHandler(GateRef glue, GateRef receiver, GateRef a
     return ret;
 }
 
-GateRef StubBuilder::LoadElement(GateRef receiver, GateRef key)
+GateRef StubBuilder::LoadElement(GateRef glue, GateRef receiver, GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1448,7 +1419,7 @@ GateRef StubBuilder::LoadElement(GateRef receiver, GateRef key)
     Label lengthLessIndex(env);
     Label lengthNotLessIndex(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    GateRef index = TryToElementsIndex(key);
+    GateRef index = TryToElementsIndex(glue, key);
     Branch(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
     Bind(&indexLessZero);
     {
@@ -1495,7 +1466,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
     Label loopEnd(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(varHandler, VariableType::JS_ANY(), handler);
-    GateRef index = TryToElementsIndex(key);
+    GateRef index = TryToElementsIndex(glue, key);
     Branch(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
     Bind(&indexLessZero);
     {
@@ -2030,7 +2001,7 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     }
     Bind(&isNumberOrStringSymbol);
     {
-        GateRef index = TryToElementsIndex(*key);
+        GateRef index = TryToElementsIndex(glue, *key);
         Label validIndex(env);
         Label notValidIndex(env);
         Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
@@ -2736,7 +2707,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     }
     Bind(&isNumberOrStringSymbol);
     {
-        GateRef index = TryToElementsIndex(*varKey);
+        GateRef index = TryToElementsIndex(glue, *varKey);
         Label validIndex(env);
         Label notValidIndex(env);
         Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
@@ -3473,12 +3444,22 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
         &exit);
 
     Bind(&hashcodeCompare);
-    Branch(Int32Equal(GetHashcodeFromString(glue, left), GetHashcodeFromString(glue, right)), &contentsCompare,
-        &exit);
+    Label leftNotNeg(env);
+    GateRef leftHash = TryGetHashcodeFromString(left);
+    GateRef rightHash = TryGetHashcodeFromString(right);
+    Branch(Int64Equal(leftHash, Int64(-1)), &contentsCompare, &leftNotNeg);
+    Bind(&leftNotNeg);
+    {
+        Label rightNotNeg(env);
+        Branch(Int64Equal(rightHash, Int64(-1)), &contentsCompare, &rightNotNeg);
+        Bind(&rightNotNeg);
+        Branch(Int64Equal(leftHash, rightHash), &contentsCompare, &exit);
+    }
 
     Bind(&contentsCompare);
     {
-        result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(StringsAreEquals), { left, right });
+        GateRef stringEqual = CallRuntime(glue, RTSTUB_ID(StringEqual), { left, right });
+        result = Equal(stringEqual, TaggedTrue());
         Jump(&exit);
     }
 
@@ -4737,7 +4718,7 @@ void StubBuilder::CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, G
     Bind(notFastBuiltins);
 }
 
-GateRef StubBuilder::TryStringOrSymbelToElementIndex(GateRef key)
+GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4760,8 +4741,8 @@ GateRef StubBuilder::TryStringOrSymbelToElementIndex(GateRef key)
         Label isUtf8(env);
         Branch(IsUtf16String(key), &exit, &isUtf8);
         Bind(&isUtf8);
-
-        GateRef data = PtrAdd(key, IntPtr(EcmaString::DATA_OFFSET));
+        GateRef keyFlat = FlattenString(glue, key);
+        GateRef data = PtrAdd(keyFlat, IntPtr(LineEcmaString::DATA_OFFSET));
         DEFVARIABLE(c, VariableType::INT32(), Int32(0));
         c = ZExtInt8ToInt32(Load(VariableType::INT8(), data));
         Label isDigitZero(env);
@@ -4871,7 +4852,7 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
     }
     Bind(&notNegativeZero);
     {
-        GateRef index = TryStringOrSymbelToElementIndex(key);
+        GateRef index = TryStringOrSymbolToElementIndex(glue, key);
         Label validIndex(env);
         Label notValidIndex(env);
         Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
@@ -4932,7 +4913,7 @@ GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
     }
     Bind(&notNegativeZero);
     {
-        GateRef index = TryStringOrSymbelToElementIndex(key);
+        GateRef index = TryStringOrSymbolToElementIndex(glue, key);
         Label validIndex(env);
         Label notValidIndex(env);
         Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
@@ -5005,5 +4986,41 @@ void StubBuilder::PGOProfiler(GateRef glue, GateRef func)
         Bind(&exit);
         env->SubCfgExit();
     }
+}
+
+GateRef StubBuilder::FlattenString(GateRef glue, GateRef str)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label notLineString(env);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), str);
+    Branch(IsLineString(str), &exit, &notLineString);
+    Bind(&notLineString);
+    {
+        Label isTreeString(env);
+        Branch(IsTreeString(str), &isTreeString, &exit);
+        Bind(&isTreeString);
+        {
+            Label isFlat(env);
+            Label notFlat(env);
+            Branch(TreeStringIsFlat(str), &isFlat, &notFlat);
+            Bind(&isFlat);
+            {
+                result = GetFirstFromTreeString(str);
+                Jump(&exit);
+            }
+            Bind(&notFlat);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(SlowFlattenString), { str });
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 }  // namespace panda::ecmascript::kungfu

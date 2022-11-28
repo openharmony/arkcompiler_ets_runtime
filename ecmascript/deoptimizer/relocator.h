@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_RELCATOR_H
-#define ECMASCRIPT_RELCATOR_H
+#ifndef ECMASCRIPT_DEOPTIMIZER_RELCATOR_H
+#define ECMASCRIPT_DEOPTIMIZER_RELCATOR_H
 
 #include "ecmascript/common.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -80,5 +80,5 @@ private:
 };
 }  // panda::ecmascript
 #endif
-#endif  // ECMASCRIPT_RELCATOR_H
+#endif  // ECMASCRIPT_DEOPTIMIZER_RELCATOR_H
 

@@ -142,7 +142,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ConstantPool";
         case JSType::COW_TAGGED_ARRAY:
             return "COWArray";
-        case JSType::STRING:
+        case JSType::LINE_STRING:
+        case JSType::TREE_STRING:
             return "BaseString";
         case JSType::JS_NATIVE_POINTER:
             return "NativePointer";
@@ -575,7 +576,8 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), os);
             break;
-        case JSType::STRING:
+        case JSType::LINE_STRING:
+        case JSType::TREE_STRING:
             DumpStringClass(EcmaString::Cast(obj), os);
             os << "\n";
             break;
@@ -1032,7 +1034,7 @@ void JSTaggedValue::DumpHeapObjectType(std::ostream &os) const
     }
 
     JSType type = obj->GetClass()->GetObjectType();
-    if (type == JSType::STRING) {
+    if (type >= JSType::STRING_FIRST && type <= JSType::STRING_LAST) {
         CString string = ConvertToString(EcmaString::Cast(obj));
         os << std::left << std::setw(DUMP_TYPE_OFFSET) << "[" + string + "]";
     } else if (type == JSType::METHOD) {
@@ -1681,8 +1683,8 @@ void JSForInIterator::Dump(std::ostream &os) const
     os << "\n";
     os << " - WasVisited : " << GetWasVisited();
     os << "\n";
-    os << " - VisitedKeys : ";
-    GetVisitedKeys().DumpTaggedValue(os);
+    os << " - VisitedObjs : ";
+    GetVisitedObjs().DumpTaggedValue(os);
     os << "\n";
     os << " - RemainingKeys : ";
     GetRemainingKeys().DumpTaggedValue(os);
@@ -3459,7 +3461,8 @@ static void DumpObject(TaggedObject *obj,
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
             return;
-        case JSType::STRING:
+        case JSType::LINE_STRING:
+        case JSType::TREE_STRING:
             DumpStringClass(EcmaString::Cast(obj), vec);
             return;
         case JSType::JS_NATIVE_POINTER:
@@ -4165,7 +4168,7 @@ void JSForInIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 {
     vec.push_back(std::make_pair(CString("Object"), GetObject()));
     vec.push_back(std::make_pair(CString("WasVisited"), JSTaggedValue(GetWasVisited())));
-    vec.push_back(std::make_pair(CString("VisitedKeys"), GetVisitedKeys()));
+    vec.push_back(std::make_pair(CString("VisitedObjs"), GetVisitedObjs()));
     vec.push_back(std::make_pair(CString("RemainingKeys"), GetRemainingKeys()));
     JSObject::DumpForSnapshot(vec);
 }

@@ -377,6 +377,30 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(const JSThread *thread, const JSH
     return keyArray;
 }
 
+void JSObject::GetAllEnumKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+                              const JSHandle<TaggedArray> &keyArray)
+{
+    TaggedArray *array = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    uint32_t keys = 0;
+    if (!array->IsDictionaryMode()) {
+        JSHClass *jsHclass = obj->GetJSHClass();
+        int end = static_cast<int>(jsHclass->NumberOfProps());
+        if (end > 0) {
+            LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
+                ->GetAllEnumKeys(thread, end, offset, *keyArray, &keys, obj);
+        }
+        return;
+    }
+    if (obj->IsJSGlobalObject()) {
+        GlobalDictionary *dict = GlobalDictionary::Cast(obj->GetProperties().GetTaggedObject());
+        dict->GetEnumAllKeys(thread, offset, *keyArray, &keys);
+        return;
+    }
+
+    NameDictionary *dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
+    dict->GetAllEnumKeys(thread, offset, *keyArray, &keys);
+}
+
 void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                  const JSHandle<TaggedArray> &keyArray)
 {
@@ -455,6 +479,33 @@ JSHandle<TaggedArray> JSObject::GetEnumElementKeys(JSThread *thread, const JSHan
         NumberDictionary::GetAllEnumKeys(thread, JSHandle<NumberDictionary>(arr), elementIndex, elementArray, keys);
     }
     return elementArray;
+}
+
+void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+                                  const JSHandle<TaggedArray> &keyArray)
+{
+    uint32_t elementIndex = 0;
+    if (obj->IsJSPrimitiveRef() && JSPrimitiveRef::Cast(*obj)->IsString()) {
+        elementIndex = JSPrimitiveRef::Cast(*obj)->GetStringLength() + static_cast<uint32_t>(offset);
+        for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
+            auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+            keyArray->Set(thread, i, key);
+        }
+    }
+
+    JSHandle<TaggedArray> elements(thread, obj->GetElements());
+    if (!elements->IsDictionaryMode()) {
+        uint32_t elementsLen = elements->GetLength();
+        for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
+            if (!elements->Get(i).IsHole()) {
+                auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+                keyArray->Set(thread, j++, key);
+            }
+        }
+    } else {
+        uint32_t keys = 0;
+        NumberDictionary::GetAllEnumKeys(thread, JSHandle<NumberDictionary>(elements), elementIndex, keyArray, &keys);
+    }
 }
 
 uint32_t JSObject::GetNumberOfKeys()
@@ -805,6 +856,7 @@ bool JSObject::DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, c
     // 6. Return false.
     if (op.IsConfigurable()) {
         op.DeletePropertyInHolder();
+        obj->GetClass()->SetHasDeleteProperty(true);
         return true;
     }
     return false;
@@ -1120,6 +1172,21 @@ JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHan
         GetAllElementKeys(thread, obj, 0, keyArray);
     }
     GetAllKeys(thread, obj, static_cast<int32_t>(numOfElements), keyArray);
+    return keyArray;
+}
+
+JSHandle<TaggedArray> JSObject::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)
+{
+    [[maybe_unused]] uint32_t elementIndex = 0;
+    uint32_t numOfElements = obj->GetNumberOfElements();
+    uint32_t keyLen = numOfElements + obj->GetNumberOfKeys();
+
+    JSHandle<TaggedArray> keyArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(keyLen);
+
+    if (numOfElements > 0) {
+        GetEnumElementKeys(thread, obj, 0, keyArray);
+    }
+    GetAllEnumKeys(thread, obj, static_cast<int32_t>(numOfElements), keyArray);
     return keyArray;
 }
 

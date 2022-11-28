@@ -137,6 +137,7 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     SetObjectType(type);
     SetExtensible(true);
     SetIsPrototype(false);
+    SetHasDeleteProperty(false);
     SetElementRepresentation(Representation::NONE);
     SetTransitions(thread, JSTaggedValue::Undefined());
     SetProtoChangeMarker(thread, JSTaggedValue::Null());

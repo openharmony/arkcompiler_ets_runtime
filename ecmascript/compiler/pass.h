@@ -33,6 +33,7 @@
 
 namespace panda::ecmascript::kungfu {
 class CompilationInfo;
+
 class PassData {
 public:
     explicit PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, CompilationInfo *info, CompilerLog *log,
@@ -46,14 +47,15 @@ public:
     }
 
     virtual ~PassData() = default;
-    const ControlFlowGraph &GetScheduleResult() const
+
+    const ControlFlowGraph &GetConstScheduleResult() const
     {
         return cfg_;
     }
 
-    void SetScheduleResult(const ControlFlowGraph &result)
+    ControlFlowGraph &GetCfg()
     {
-        cfg_ = result;
+        return cfg_;
     }
 
     virtual Circuit* GetCircuit() const
@@ -254,7 +256,7 @@ public:
     {
         TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        data->SetScheduleResult(Scheduler::Run(data->GetCircuit(), data->GetMethodName(), enableLog));
+        Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
         return true;
     }
 };
@@ -273,7 +275,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(llvmImpl_, data->GetMethodName());
-        codegen.Run(data->GetCircuit(), data->GetScheduleResult(), module->GetCompilationConfig(),
+        codegen.Run(data->GetCircuit(), data->GetConstScheduleResult(), module->GetCompilationConfig(),
                     data->GetMethodLiteral(), data->GetJSPandaFile());
         return true;
     }

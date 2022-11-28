@@ -134,8 +134,8 @@ public:
         TRIPLE_ARM32,
     };
 
-    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isEnableBcTrace = false)
-        : triple_(GetTripleFromString(triple)), isEnableBcTrace_(isEnableBcTrace), enablePGOProfiler_(enablePGOProfiler)
+    CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false)
+        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler)
     {
     }
     ~CompilationConfig() = default;
@@ -165,9 +165,9 @@ public:
         return triple_;
     }
 
-    bool IsEnableByteCodeTrace() const
+    bool IsTraceBC() const
     {
-        return isEnableBcTrace_;
+        return isTraceBc_;
     }
 
     bool IsEnablePGOProfiler() const
@@ -192,7 +192,7 @@ private:
         UNREACHABLE();
     }
     Triple triple_;
-    bool isEnableBcTrace_;
+    bool isTraceBc_;
     bool enablePGOProfiler_;
 };
 
@@ -434,6 +434,7 @@ public:
     inline GateRef IsExtensible(GateRef object);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef IsJSObject(GateRef obj);
+    inline GateRef TaggedObjectIsString(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef IsCallable(GateRef obj);
     inline GateRef IsCallableFromBitField(GateRef bitfield);
@@ -448,6 +449,7 @@ public:
     GateRef FunctionIsResolved(GateRef function);
     GateRef GetLengthFromString(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value);
+    GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsUtf16String(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);

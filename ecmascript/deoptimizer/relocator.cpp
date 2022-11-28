@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/relocator.h"
+#include "ecmascript/deoptimizer/relocator.h"
 #include <climits>
 #include <iomanip>
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64_constants.h"

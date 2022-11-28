@@ -108,7 +108,6 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     }
     return OperationResult(thread, result, PropertyMetaData(true));
 }
-
 JSHandle<TaggedArray> ModuleNamespace::OwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     ASSERT(obj->IsModuleNamespace());
@@ -122,6 +121,25 @@ JSHandle<TaggedArray> ModuleNamespace::OwnPropertyKeys(JSThread *thread, const J
 
     // 2. Let symbolKeys be ! OrdinaryOwnPropertyKeys(O).
     JSHandle<TaggedArray> symbolKeys = JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>(obj));
+    // 3. Append all the entries of symbolKeys to the end of exports.
+    JSHandle<TaggedArray> result = TaggedArray::Append(thread, exportsArray, symbolKeys);
+    // 4. Return exports.
+    return result;
+}
+
+JSHandle<TaggedArray> ModuleNamespace::OwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
+{
+    ASSERT(obj->IsModuleNamespace());
+    // 1. Let exports be a copy of O.[[Exports]].
+    JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
+    JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
+    JSHandle<TaggedArray> exportsArray = JSArray::ToTaggedArray(thread, exports);
+    if (!moduleNamespace->ValidateKeysAvailable(thread, exportsArray)) {
+        return exportsArray;
+    }
+
+    // 2. Let symbolKeys be ! OrdinaryOwnPropertyKeys(O).
+    JSHandle<TaggedArray> symbolKeys = JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>(obj));
     // 3. Append all the entries of symbolKeys to the end of exports.
     JSHandle<TaggedArray> result = TaggedArray::Append(thread, exportsArray, symbolKeys);
     // 4. Return exports.

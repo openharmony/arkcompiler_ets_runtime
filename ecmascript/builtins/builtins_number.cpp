@@ -159,7 +159,7 @@ JSTaggedValue BuiltinsNumber::ParseFloat(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
     // 2. ReturnIfAbrupt(inputString).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] CVector<uint8_t> buf;
+    CVector<uint8_t> buf;
     Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
     // 4. If neither trimmedString nor any prefix of trimmedString satisfies the syntax of a StrDecimalLiteral
     // (see 7.1.3.1), return NaN.
@@ -190,7 +190,7 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
     // 1. Let inputString be ToString(string).
     JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] CVector<uint8_t> buf;
+    CVector<uint8_t> buf;
     Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
 
     JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix);

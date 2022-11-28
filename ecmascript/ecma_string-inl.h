@@ -27,32 +27,8 @@ namespace panda::ecmascript {
 /* static */
 inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
 {
-    auto string = vm->GetFactory()->AllocNonMovableStringObject(EcmaString::SIZE);
+    auto string = vm->GetFactory()->AllocNonMovableLineStringObject(EcmaString::SIZE);
     string->SetLength(0, true);
-    string->SetRawHashcode(0);
-    return string;
-}
-
-/* static */
-inline EcmaString *EcmaString::AllocStringObjectWithSpaceType(const EcmaVM *vm, size_t length, bool compressed,
-                                                              MemSpaceType type)
-{
-    size_t size = compressed ? ComputeSizeUtf8(length) : ComputeSizeUtf16(length);
-    EcmaString *string = nullptr;
-    switch (type) {
-        case MemSpaceType::SEMI_SPACE:
-            string = vm->GetFactory()->AllocStringObject(size);
-            break;
-        case MemSpaceType::OLD_SPACE:
-            string = vm->GetFactory()->AllocOldSpaceStringObject(size);
-            break;
-        case MemSpaceType::NON_MOVABLE:
-            string = vm->GetFactory()->AllocNonMovableStringObject(size);
-            break;
-        default:
-            UNREACHABLE();
-    }
-    string->SetLength(length, compressed);
     string->SetRawHashcode(0);
     return string;
 }
@@ -66,7 +42,7 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
     }
     EcmaString *string = nullptr;
     if (canBeCompress) {
-        string = AllocStringObjectWithSpaceType(vm, utf8Len, true, type);
+        string = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
         ASSERT(string != nullptr);
 
         if (memcpy_s(string->GetDataUtf8Writable(), utf8Len, utf8Data, utf8Len) != EOK) {
@@ -75,7 +51,7 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
         }
     } else {
         auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
-        string = AllocStringObjectWithSpaceType(vm, utf16Len, false, type);
+        string = CreateLineStringWithSpaceType(vm, utf16Len, false, type);
         ASSERT(string != nullptr);
 
         [[maybe_unused]] auto len =
@@ -93,11 +69,11 @@ inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t 
     if (utf16Len == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
-    auto string = AllocStringObjectWithSpaceType(vm, utf16Len, canBeCompress, type);
+    auto string = CreateLineStringWithSpaceType(vm, utf16Len, canBeCompress, type);
     ASSERT(string != nullptr);
 
     if (canBeCompress) {
-        CopyUtf16AsUtf8(utf16Data, string->GetDataUtf8Writable(), utf16Len);
+        CopyChars(string->GetDataUtf8Writable(), utf16Data, utf16Len);
     } else {
         uint32_t len = utf16Len * (sizeof(uint16_t) / sizeof(uint8_t));
         if (memcpy_s(string->GetDataUtf16Writable(), len, utf16Data, len) != EOK) {
@@ -110,8 +86,244 @@ inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t 
     return string;
 }
 
+/* static */
+inline EcmaString *EcmaString::CreateLineString(const EcmaVM *vm, size_t length, bool compressed)
+{
+    size_t size = compressed ? LineEcmaString::ComputeSizeUtf8(length) : LineEcmaString::ComputeSizeUtf16(length);
+    auto string = vm->GetFactory()->AllocLineStringObject(size);
+    string->SetLength(length, compressed);
+    string->SetRawHashcode(0);
+    return string;
+}
+
+/* static */
+inline EcmaString *EcmaString::CreateLineStringNoGC(const EcmaVM *vm, size_t length, bool compressed)
+{
+    size_t size = compressed ? LineEcmaString::ComputeSizeUtf8(length) : LineEcmaString::ComputeSizeUtf16(length);
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    auto object = reinterpret_cast<TaggedObject *>(vm->GetHeap()->GetOldSpace()->Allocate(size));
+    object->SetClass(JSHClass::Cast(vm->GetJSThread()->GlobalConstants()->GetLineStringClass().GetTaggedObject()));
+    auto string = EcmaString::Cast(object);
+    string->SetLength(length, compressed);
+    string->SetRawHashcode(0);
+    return string;
+}
+
+/* static */
+inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, size_t length, bool compressed,
+                                                             MemSpaceType type)
+{
+    size_t size = compressed ? LineEcmaString::ComputeSizeUtf8(length) : LineEcmaString::ComputeSizeUtf16(length);
+    EcmaString *string = nullptr;
+    switch (type) {
+        case MemSpaceType::SEMI_SPACE:
+            string = vm->GetFactory()->AllocLineStringObject(size);
+            break;
+        case MemSpaceType::OLD_SPACE:
+            string = vm->GetFactory()->AllocOldSpaceLineStringObject(size);
+            break;
+        case MemSpaceType::NON_MOVABLE:
+            string = vm->GetFactory()->AllocNonMovableLineStringObject(size);
+            break;
+        default:
+            UNREACHABLE();
+    }
+    string->SetLength(length, compressed);
+    string->SetRawHashcode(0);
+    return string;
+}
+
+inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
+    const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed)
+{
+    auto thread = vm->GetJSThread();
+    auto string = TreeEcmaString::Cast(vm->GetFactory()->AllocTreeStringObject());
+    string->SetLength(length, compressed);
+    string->SetRawHashcode(0);
+    string->SetFirst(thread, left.GetTaggedValue());
+    string->SetSecond(thread, right.GetTaggedValue());
+    return string;
+}
+
+/* static */
+EcmaString *EcmaString::FastSubUtf8String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
+                                          uint32_t length)
+{
+    ASSERT(src->IsLineString());
+    auto string = CreateLineString(vm, length, true);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    Span<uint8_t> dst(string->GetDataUtf8Writable(), length);
+    Span<const uint8_t> source(src->GetDataUtf8() + start, length);
+    EcmaString::MemCopyChars(dst, length, source, length);
+
+    ASSERT_PRINT(CanBeCompressed(string), "canBeCompresse does not match the real value!");
+    return string;
+}
+
+/* static */
+EcmaString *EcmaString::FastSubUtf16String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
+                                           uint32_t length)
+{
+    ASSERT(src->IsLineString());
+    bool canBeCompressed = CanBeCompressed(src->GetDataUtf16() + start, length);
+    auto string = CreateLineString(vm, length, canBeCompressed);
+    if (canBeCompressed) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        CopyChars(string->GetDataUtf8Writable(), src->GetDataUtf16() + start, length);
+    } else {
+        uint32_t len = length * (sizeof(uint16_t) / sizeof(uint8_t));
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        Span<uint16_t> dst(string->GetDataUtf16Writable(), length);
+        Span<const uint16_t> source(src->GetDataUtf16() + start, length);
+        EcmaString::MemCopyChars(dst, len, source, len);
+    }
+    ASSERT_PRINT(canBeCompressed == CanBeCompressed(string), "canBeCompresse does not match the real value!");
+    return string;
+}
+
+inline uint16_t *EcmaString::GetData() const
+{
+    ASSERT_PRINT(IsLineString(), "EcmaString: Read data from not LineString");
+    return LineEcmaString::Cast(this)->GetData();
+}
+
+inline const uint8_t *EcmaString::GetDataUtf8() const
+{
+    ASSERT_PRINT(IsUtf8(), "EcmaString: Read data as utf8 for utf16 string");
+    return reinterpret_cast<uint8_t *>(GetData());
+}
+
+inline const uint16_t *EcmaString::GetDataUtf16() const
+{
+    LOG_ECMA_IF(!IsUtf16(), FATAL) << "EcmaString: Read data as utf16 for utf8 string";
+    return GetData();
+}
+
+inline uint8_t *EcmaString::GetDataUtf8Writable()
+{
+    ASSERT_PRINT(IsUtf8(), "EcmaString: Read data as utf8 for utf16 string");
+    return reinterpret_cast<uint8_t *>(GetData());
+}
+
+inline uint16_t *EcmaString::GetDataUtf16Writable()
+{
+    LOG_ECMA_IF(!IsUtf16(), FATAL) << "EcmaString: Read data as utf16 for utf8 string";
+    return GetData();
+}
+
+inline size_t EcmaString::GetUtf8Length(bool modify) const
+{
+    ASSERT(IsLineString());
+    if (!IsUtf16()) {
+        return GetLength() + 1;  // add place for zero in the end
+    }
+    return base::utf_helper::Utf16ToUtf8Size(GetData(), GetLength(), modify);
+}
+
 template<bool verify>
 inline uint16_t EcmaString::At(int32_t index) const
+{
+    int32_t length = static_cast<int32_t>(GetLength());
+    if (verify) {
+        if ((index < 0) || (index >= length)) {
+            return 0;
+        }
+    }
+    if (IsLineString()) {
+        return LineEcmaString::Cast(this)->Get<verify>(index);
+    } else {
+        return TreeEcmaString::Cast(this)->Get<verify>(index);
+    }
+}
+
+inline void EcmaString::WriteData(uint32_t index, uint16_t src)
+{
+    ASSERT(index < GetLength());
+    ASSERT(IsLineString());
+    LineEcmaString::Cast(this)->Set(index, src);
+}
+
+inline bool EcmaString::IsFlat() const
+{
+    if (!JSTaggedValue(this).IsTreeString()) {
+        return true;
+    }
+    return TreeEcmaString::Cast(this)->IsFlat();
+}
+
+template <typename Char>
+void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t length = src->GetLength();
+    if (length == 0) {
+        return;
+    }
+    while (true) {
+        ASSERT(length <= maxLength && length > 0);
+        ASSERT(length <= src->GetLength());
+        switch (src->GetStringType()) {
+            case JSType::LINE_STRING: {
+                if (src->IsUtf8()) {
+                    CopyChars(buf, src->GetDataUtf8(), length);
+                } else {
+                    CopyChars(buf, src->GetDataUtf16(), length);
+                }
+                return;
+            }
+            case JSType::TREE_STRING: {
+                TreeEcmaString *treeSrc = TreeEcmaString::Cast(src);
+                EcmaString *first = EcmaString::Cast(treeSrc->GetFirst());
+                EcmaString *second = EcmaString::Cast(treeSrc->GetSecond());
+                uint32_t firstLength = first->GetLength();
+                uint32_t secondLength = second->GetLength();
+                if (secondLength >= firstLength) {
+                    // second string is longer. So recurse over first.
+                    WriteToFlat(first, buf, maxLength);
+                    if (first == second) {
+                        CopyChars(buf + firstLength, buf, firstLength);
+                        return;
+                    }
+                    buf += firstLength;
+                    maxLength -= firstLength;
+                    src = second;
+                    length -= firstLength;
+                } else {
+                    // first string is longer.  So recurse over second.
+                    if (secondLength > 0) {
+                        if (secondLength == 1) {
+                            buf[firstLength] = static_cast<Char>(second->At<false>(0));
+                        } else if (second->IsLineString() && second->IsUtf8()) {
+                            CopyChars(buf + firstLength, second->GetDataUtf8(), secondLength);
+                        } else {
+                            WriteToFlat(second, buf + firstLength, maxLength - firstLength);
+                        }
+                    }
+                    maxLength = firstLength;
+                    src = first;
+                    length -= secondLength;
+                }
+                continue;
+            }
+            default:
+                UNREACHABLE();
+        }
+    }
+}
+
+/* static */
+template<typename DstType, typename SrcType>
+void EcmaString::CopyChars(DstType *dst, SrcType *src, uint32_t count)
+{
+    Span<SrcType> srcSp(src, count);
+    Span<DstType> dstSp(dst, count);
+    for (uint32_t i = 0; i < count; i++) {
+        dstSp[i] = srcSp[i];
+    }
+}
+
+template<bool verify>
+uint16_t LineEcmaString::Get(int32_t index) const
 {
     int32_t length = static_cast<int32_t>(GetLength());
     if (verify) {
@@ -127,54 +339,56 @@ inline uint16_t EcmaString::At(int32_t index) const
     return sp[index];
 }
 
-/* static */
-inline EcmaString *EcmaString::AllocStringObject(const EcmaVM *vm, size_t length, bool compressed)
+template<bool verify>
+uint16_t TreeEcmaString::Get(int32_t index) const
 {
-    size_t size = compressed ? ComputeSizeUtf8(length) : ComputeSizeUtf16(length);
-    auto string = reinterpret_cast<EcmaString *>(vm->GetFactory()->AllocStringObject(size));
-    string->SetLength(length, compressed);
-    string->SetRawHashcode(0);
-    return string;
+    int32_t length = static_cast<int32_t>(GetLength());
+    if (verify) {
+        if ((index < 0) || (index >= length)) {
+            return 0;
+        }
+    }
+
+    if (IsFlat()) {
+        EcmaString *first = EcmaString::Cast(GetFirst());
+        return first->At<verify>(index);
+    }
+    EcmaString *string = const_cast<TreeEcmaString *>(this);
+    while (true) {
+        if (string->IsTreeString()) {
+            EcmaString *first = EcmaString::Cast(TreeEcmaString::Cast(string)->GetFirst());
+            if (static_cast<int32_t>(first->GetLength()) > index) {
+                string = first;
+            } else {
+                index -= static_cast<int32_t>(first->GetLength());
+                string = EcmaString::Cast(TreeEcmaString::Cast(string)->GetSecond());
+            }
+        } else {
+            return string->At<verify>(index);
+        }
+    }
+    UNREACHABLE();
 }
 
-/* static */
-EcmaString *EcmaString::FastSubUtf8String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
-                                          uint32_t length)
+inline const uint8_t *EcmaStringAccessor::GetDataUtf8()
 {
-    if (length == 0) {
-        return *vm->GetFactory()->GetEmptyString();
-    }
-    auto string = AllocStringObject(vm, length, true);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    Span<uint8_t> dst(string->GetDataUtf8Writable(), length);
-    Span<const uint8_t> source(src->GetDataUtf8() + start, length);
-    EcmaString::StringCopy(dst, length, source, length);
-
-    ASSERT_PRINT(CanBeCompressed(string), "canBeCompresse does not match the real value!");
-    return string;
+    return string_->GetDataUtf8();
 }
 
-/* static */
-EcmaString *EcmaString::FastSubUtf16String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
-                                           uint32_t length)
+inline const uint16_t *EcmaStringAccessor::GetDataUtf16()
 {
-    if (length == 0) {
-        return *vm->GetFactory()->GetEmptyString();
-    }
-    bool canBeCompressed = CanBeCompressed(src->GetDataUtf16() + start, length);
-    auto string = AllocStringObject(vm, length, canBeCompressed);
-    if (canBeCompressed) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        CopyUtf16AsUtf8(src->GetDataUtf16() + start, string->GetDataUtf8Writable(), length);
-    } else {
-        uint32_t len = length * (sizeof(uint16_t) / sizeof(uint8_t));
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        Span<uint16_t> dst(string->GetDataUtf16Writable(), length);
-        Span<const uint16_t> source(src->GetDataUtf16() + start, length);
-        EcmaString::StringCopy(dst, len, source, len);
-    }
-    ASSERT_PRINT(canBeCompressed == CanBeCompressed(string), "canBeCompresse does not match the real value!");
-    return string;
+    return string_->GetDataUtf16();
+}
+
+inline size_t EcmaStringAccessor::GetUtf8Length() const
+{
+    return string_->GetUtf8Length();
+}
+
+inline void EcmaStringAccessor::ReadData(EcmaString * dst, EcmaString *src,
+    uint32_t start, uint32_t destSize, uint32_t length)
+{
+    dst->WriteData(src, start, destSize, length);
 }
 }  // namespace panda::ecmascript
 #endif

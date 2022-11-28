@@ -425,7 +425,7 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, 
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(arrayType);
     // 6. Let byteLength be elementSize × length.
     uint32_t arrayLength = static_cast<uint32_t>(length);
-    uint64_t byteLength = elementSize * arrayLength;
+    uint64_t byteLength = static_cast<uint64_t>(elementSize) * length;
     // 7. Let data be ? AllocateArrayBuffer(%ArrayBuffer%, byteLength).
     JSTaggedValue data;
     if (byteLength > JSTypedArray::MAX_ONHEAP_LENGTH) {

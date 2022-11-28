@@ -39,7 +39,7 @@ public:
     void NewJSObject(Variable *result, Label *exit, GateRef hclass);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
-    void AllocStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
+    void AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
     void HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType);
     void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
                            bool isEmptyArray);

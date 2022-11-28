@@ -20,4 +20,10 @@
  * @tc.require: issueI5NO8G
  */
 import cjs from "./Cjs"
-print(JSON.stringify(cjs))
+import * as ns from "./someArgsCjs"
+import {json, fun} from "./someArgsCjs"
+
+print(JSON.stringify(cjs));
+print(JSON.stringify(json));
+fun();
+print(ns.tag);

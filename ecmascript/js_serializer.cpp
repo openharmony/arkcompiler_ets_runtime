@@ -300,7 +300,8 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
         case JSType::JS_ARRAY_BUFFER:
         case JSType::JS_SHARED_ARRAY_BUFFER:
             return WriteJSArrayBuffer(value);
-        case JSType::STRING:
+        case JSType::LINE_STRING:
+        case JSType::TREE_STRING:
             return WriteEcmaString(value);
         case JSType::JS_OBJECT:
             return WritePlainObject(value);
@@ -504,7 +505,8 @@ bool JSSerializer::WriteJSArray(const JSHandle<JSTaggedValue> &value)
 
 bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<EcmaString> string = JSHandle<EcmaString>::Cast(value);
+    JSHandle<EcmaString> strHandle = JSHandle<EcmaString>::Cast(value);
+    auto string = JSHandle<EcmaString>(thread_, EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));
     size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::ECMASTRING)) {
         return false;

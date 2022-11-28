@@ -22,7 +22,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"
@@ -314,7 +314,7 @@ BasicBlockImpl *LLVMIRBuilder::EnsureBBImpl(BasicBlock *bb) const
     return bb->GetImpl<BasicBlockImpl>();
 }
 
-void LLVMIRBuilder::GenPrologue([[maybe_unused]] LLVMModuleRef &module, LLVMBuilderRef &builder)
+void LLVMIRBuilder::GenPrologue()
 {
     if (compCfg_->Is32Bit()) {
         return;
@@ -325,25 +325,41 @@ void LLVMIRBuilder::GenPrologue([[maybe_unused]] LLVMModuleRef &module, LLVMBuil
     }
     LLVMAddTargetDependentFunctionAttr(function_, "frame-pointer", "all");
 
-    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
-
-    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder, llvmFpAddr, slotType_, "cast_int_t");
-    LLVMValueRef frameTypeSlotAddr = LLVMBuildSub(builder, frameAddr, LLVMConstInt(slotType_, slotSize_, false), "");
-    LLVMValueRef addr = LLVMBuildIntToPtr(builder, frameTypeSlotAddr, LLVMPointerType(slotType_, 0), "frameType.Addr");
-
-    int reservedSlotsSize = slotSize_ * static_cast<int>(ReservedSlots::OPTIMIZED_RESERVED_SLOT);
-    if (frameType == panda::ecmascript::FrameType::OPTIMIZED_FRAME) {
+    int reservedSlotsSize = 0;
+    if (frameType == FrameType::OPTIMIZED_FRAME) {
+        reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
-    } else if (frameType == panda::ecmascript::FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-        reservedSlotsSize = slotSize_ * static_cast<int>(ReservedSlots::OPTIMIZED_JS_FUNCTION_RESERVED_SLOT);
+        SaveFrameTypeOnFrame(frameType);
+    } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+        reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
+        auto ArgList = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+        auto uses = acc_.Uses(ArgList);
+        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+            int argth = static_cast<int>(acc_.GetBitField(*useIt));
+            LLVMValueRef value = LLVMGetParam(function_, argth);
+            if (argth == static_cast<int>(CommonArgIdx::LEXENV)) {
+                SaveLexicalEnvOnOptJSFuncFrame(value);
+            } else if (argth == static_cast<int>(CommonArgIdx::FUNC)) {
+                SaveJSFuncOnOptJSFuncFrame(value);
+                SaveFrameTypeOnFrame(frameType);
+            }
+        }
     } else {
         LOG_COMPILER(FATAL) << "frameType interpret type error !";
         ASSERT_PRINT(static_cast<uintptr_t>(frameType), "is not support !");
     }
+}
 
+void LLVMIRBuilder::SaveFrameTypeOnFrame(FrameType frameType)
+{
+    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
+
+    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
+    LLVMValueRef frameTypeSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_, slotSize_, false), "");
+    LLVMValueRef addr = LLVMBuildIntToPtr(builder_, frameTypeSlotAddr, LLVMPointerType(slotType_, 0), "frameType.Addr");
     LLVMValueRef llvmFrameType = LLVMConstInt(slotType_, static_cast<uintptr_t>(frameType), 0);
     LLVMBuildStore(builder_, llvmFrameType, addr);
 }
@@ -917,7 +933,7 @@ void LLVMIRBuilder::LinkToLLVMCfg(int bbId, const OperandsVector &predecessors)
         LLVMMoveBasicBlockBefore(preLBB, lBB);
     }
     if (isPrologue(bbId)) {
-        GenPrologue(module_, builder_);
+        GenPrologue();
     }
 }
 
@@ -1049,26 +1065,34 @@ void LLVMIRBuilder::VisitParameter(GateRef gate)
     gate2LValue_[gate] = value;
     // NOTE: caller put args, otherwise crash
     ASSERT(value != nullptr);
-
-    // add env slot for optimized jsfunction frame
-    auto frameType = circuit_->GetFrameType();
-    if (frameType == panda::ecmascript::FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-        if (argth == static_cast<int>(CommonArgIdx::LEXENV)) {
-            SaveLexicalEnvOnFrame(value);
-        }
-    }
 }
 
-void LLVMIRBuilder::SaveLexicalEnvOnFrame(LLVMValueRef value)
+void LLVMIRBuilder::SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value)
 {
+    ASSERT(circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
     LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
+    size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedEnvOffset(slotSize_);
     LLVMValueRef frameEnvSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
-        static_cast<int>(ReservedSlots::OPTIMIZED_JS_FUNCTION_RESERVED_SLOT) * slotSize_, false), "");
+        reservedOffset, false), "");
     LLVMValueRef envAddr = LLVMBuildIntToPtr(builder_, frameEnvSlotAddr,
         LLVMPointerType(slotType_, 0), "env.Addr");
     LLVMValueRef envValue = LLVMBuildPtrToInt(builder_, value, slotType_, "cast_to_i64");
     LLVMBuildStore(builder_, envValue, envAddr);
+}
+
+void LLVMIRBuilder::SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value)
+{
+    ASSERT(circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
+    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
+    size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    LLVMValueRef frameJSFuncSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
+        reservedOffset, false), "");
+    LLVMValueRef jsFuncAddr = LLVMBuildIntToPtr(builder_, frameJSFuncSlotAddr,
+        LLVMPointerType(slotType_, 0), "jsfunc.Addr");
+    LLVMValueRef jsFuncValue = LLVMBuildPtrToInt(builder_, value, slotType_, "cast_to_i64");
+    LLVMBuildStore(builder_, jsFuncValue, jsFuncAddr);
 }
 
 void LLVMIRBuilder::HandleBranch(GateRef gate)
@@ -1369,8 +1393,9 @@ void LLVMIRBuilder::VisitGetEnv(GateRef gate)
     returnType = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
     LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
+    size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedEnvOffset(slotSize_);
     LLVMValueRef frameEnvSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
-        static_cast<int>(ReservedSlots::OPTIMIZED_JS_FUNCTION_RESERVED_SLOT) * slotSize_, false), "");
+        reservedOffset, false), "");
     LLVMValueRef envAddr = LLVMBuildIntToPtr(builder_, frameEnvSlotAddr, LLVMPointerType(slotType_, 0), "env.Addr");
     envAddr = LLVMBuildPointerCast(builder_, envAddr,
         LLVMPointerType(returnType, LLVMGetPointerAddressSpace(LLVMTypeOf(envAddr))), "");

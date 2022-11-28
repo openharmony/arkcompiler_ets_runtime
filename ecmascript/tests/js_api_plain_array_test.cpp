@@ -308,9 +308,8 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_ToString)
     JSHandle<JSAPIPlainArray> array(thread, CreatePlainArray());
     JSTaggedValue result1 = JSAPIPlainArray::ToString(thread, array);
     JSHandle<EcmaString> resultHandle1(thread, result1);
-    [[maybe_unused]] auto *res1 = EcmaString::Cast(resultHandle1.GetTaggedValue().GetTaggedObject());
     JSHandle<EcmaString> det = thread->GetEcmaVM()->GetFactory()->NewFromASCII("");
-    ASSERT_EQ(EcmaStringAccessor::Compare(res1, *det), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle1, det), 0);
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         uint32_t ikey = i;
         std::string ivalue = std::to_string(i);
@@ -321,9 +320,8 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_ToString)
     JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("0:0,1:1,2:2");
     JSTaggedValue result = JSAPIPlainArray::ToString(thread, array);
     JSHandle<EcmaString> resultHandle(thread, result);
-    [[maybe_unused]] auto *res = EcmaString::Cast(resultHandle.GetTaggedValue().GetTaggedObject());
 
-    ASSERT_EQ(EcmaStringAccessor::Compare(res, *str), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, str), 0);
 }
 
 /**

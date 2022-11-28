@@ -180,7 +180,8 @@ class ProtoChangeDetails;
         JS_PROXY, /* ECMA_OBJECT_LAST ////////////////////////////////////////////////////////////////////////////// */\
                                                                                                                        \
         HCLASS,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        STRING,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        LINE_STRING,   /* //////////////////////////////////////////////////////////////////////////////////-PADDING */\
+        TREE_STRING,  /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         BIGINT,       /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TAGGED_ARRAY, /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         BYTE_ARRAY,   /* //////////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -265,8 +266,10 @@ class ProtoChangeDetails;
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE /* ///////////////////////////////////////////////////////-PADDING */
-
+        TS_TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE, /* ///////////////////////////////////////////////////////-PADDING */\
+                                                                                                                       \
+        STRING_FIRST = LINE_STRING, /* /////////////////////////////////////////////////////////////////////-PADDING */\
+        STRING_LAST = TREE_STRING  /* /////////////////////////////////////////////////////////////////////-PADDING */
 
 enum class JSType : uint8_t {
     JSTYPE_DECL,
@@ -303,6 +306,7 @@ public:
     using InlinedPropsStartBits = NumberOfPropsBits::NextField<uint32_t,
             OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED>; // 15
     using ObjectSizeInWordsBits = InlinedPropsStartBits::NextField<uint32_t, OFFSET_MAX_OBJECT_SIZE_IN_WORDS>; // 30
+    using HasDeletePropertyBit = ObjectSizeInWordsBits::NextFlag;
 
     static JSHClass *Cast(const TaggedObject *object);
 
@@ -446,7 +450,18 @@ public:
 
     inline bool IsString() const
     {
-        return GetObjectType() == JSType::STRING;
+        JSType jsType = GetObjectType();
+        return (JSType::STRING_FIRST <= jsType && jsType <= JSType::STRING_LAST);
+    }
+
+    inline bool IsLineString() const
+    {
+        return GetObjectType() == JSType::LINE_STRING;
+    }
+
+    inline bool IsTreeString() const
+    {
+        return GetObjectType() == JSType::TREE_STRING;
     }
 
     inline bool IsBigInt() const
@@ -462,7 +477,7 @@ public:
     inline bool IsStringOrSymbol() const
     {
         JSType jsType = GetObjectType();
-        return (jsType == JSType::STRING) || (jsType == JSType::SYMBOL);
+        return (JSType::STRING_FIRST <= jsType && jsType <= JSType::STRING_LAST) || (jsType == JSType::SYMBOL);
     }
 
     inline bool IsTaggedArray() const
@@ -1486,6 +1501,16 @@ public:
         }
     }
 
+    inline void SetHasDeleteProperty(bool flag) const
+    {
+        HasDeletePropertyBit::Set<uint32_t>(flag, GetBitField1Addr());
+    }
+
+    inline bool HasDeleteProperty() const
+    {
+        uint32_t bits = GetBitField1();
+        return HasDeletePropertyBit::Decode(bits);
+    }
     static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);
     ACCESSORS(Layout, LAYOUT_OFFSET, TRANSTIONS_OFFSET);
@@ -1528,6 +1553,11 @@ private:
     uint32_t *GetBitFieldAddr() const
     {
         return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD_OFFSET);
+    }
+
+    uint32_t *GetBitField1Addr() const
+    {
+        return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD1_OFFSET);
     }
     friend class RuntimeStubs;
 };

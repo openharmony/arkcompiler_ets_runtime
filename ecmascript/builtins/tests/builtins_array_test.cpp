@@ -1426,9 +1426,8 @@ HWTEST_F_L0(BuiltinsArrayTest, Join)
     JSTaggedValue result = Array::Join(ecmaRuntimeCallInfo1);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    [[maybe_unused]] auto *res = EcmaString::Cast(resultHandle.GetTaggedValue().GetTaggedObject());
 
-    ASSERT_EQ(EcmaStringAccessor::Compare(res, *str), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, str), 0);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, ToString)
@@ -1458,9 +1457,8 @@ HWTEST_F_L0(BuiltinsArrayTest, ToString)
     JSTaggedValue result = Array::ToString(ecmaRuntimeCallInfo1);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
-    [[maybe_unused]] auto *res = EcmaString::Cast(resultHandle.GetTaggedValue().GetTaggedObject());
 
-    ASSERT_EQ(EcmaStringAccessor::Compare(res, *str), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, str), 0);
 }
 
 HWTEST_F_L0(BuiltinsArrayTest, Includes)

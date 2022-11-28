@@ -128,15 +128,12 @@ bool JSAPIStack::Has(JSTaggedValue value) const
 
 JSHandle<TaggedArray> JSAPIStack::OwnKeys(JSThread *thread, const JSHandle<JSAPIStack> &obj)
 {
-    uint32_t top = static_cast<uint32_t>(obj->GetTop());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> keys = factory->NewTaggedArray(top + 1);
+    return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>::Cast(obj));
+}
 
-    for (uint32_t i = 0; i < top + 1; i++) {
-        keys->Set(thread, i, JSTaggedValue(i));
-    }
-
-    return keys;
+JSHandle<TaggedArray> JSAPIStack::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIStack> &obj)
+{
+    return JSObject::GetOwnEnumPropertyKeys(thread, JSHandle<JSObject>::Cast(obj));
 }
 
 bool JSAPIStack::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj,

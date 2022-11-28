@@ -130,10 +130,9 @@ JSHandle<TaggedArray> TaggedList<Derived>::OwnKeys(JSThread *thread, const JSHan
     JSHandle<TaggedArray> keys = factory->NewTaggedArray(length);
 
     for (uint32_t i = 0; i < length; i++) {
-        JSTaggedValue elementData = JSTaggedValue(i);
-        keys->Set(thread, i, elementData);
+        auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+        keys->Set(thread, i, key);
     }
-
     return keys;
 }
 
@@ -192,7 +191,7 @@ int TaggedList<Derived>::FindDataIndexByNodeIndex(int index) const
 }
 
 template<typename Derived>
-void TaggedList<Derived>::MapNodeIndexToDataIndex(int* nodeIndexMapToDataIndex, int length)
+void TaggedList<Derived>::MapNodeIndexToDataIndex(std::vector<int> &nodeIndexMapToDataIndex, int length)
 {
     int i = 0;
     int nextIndex = ELEMENTS_START_INDEX;
@@ -404,13 +403,13 @@ JSTaggedValue TaggedSingleList::ReplaceAllElements(JSThread *thread, const JSHan
 JSTaggedValue TaggedSingleList::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &callbackFn,
                                      const JSHandle<TaggedSingleList> &taggedList)
 {
-    int length = taggedList->NumberOfNodes();
+    const int length = taggedList->NumberOfNodes();
     ASSERT(length > 0);
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
     // create index map
-    int* nodeIndexMapToDataIndex = new int[length];
+    std::vector<int> nodeIndexMapToDataIndex(length, 0);
     taggedList->MapNodeIndexToDataIndex(nodeIndexMapToDataIndex, length);
     
     int beginIndex = 0;
@@ -442,7 +441,6 @@ JSTaggedValue TaggedSingleList::Sort(JSThread *thread, const JSHandle<JSTaggedVa
         }
     }
     
-    delete[] nodeIndexMapToDataIndex;
     return JSTaggedValue::Undefined();
 }
 
@@ -603,7 +601,6 @@ std::pair<int, JSTaggedValue> TaggedDoubleList::GetByDataIndex(const int dataInd
 
 int TaggedDoubleList::GetPrevNode(const int index)
 {
-    int prevDataIndex = 0;
     int len = NumberOfNodes();
     // When index < (len / 2), search doubleList from the beginning
     if ((len / 2) > index) {
@@ -612,7 +609,7 @@ int TaggedDoubleList::GetPrevNode(const int index)
         int leftNodeLen = len - 1 - index;
         // When insert at last
         if (leftNodeLen == -1) {
-            return prevDataIndex = GetElement(TAIL_TABLE_INDEX).GetInt();
+            return GetElement(TAIL_TABLE_INDEX).GetInt();
         }
         // when index >= (len / 2), search doubleList from the end
         return FindPrevNodeByIndexAtLast(leftNodeLen);

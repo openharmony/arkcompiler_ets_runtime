@@ -120,6 +120,9 @@ public:
     static void SetIcuSimpleDateFormat(JSThread *thread, JSHandle<JSDateTimeFormat> obj,
         const icu::SimpleDateFormat &icuSimpleDateTimeFormat, const DeleteEntryPoint &callback);
     static void FreeSimpleDateFormat(void *pointer, void *data);
+    static icu::SimpleDateFormat *GetCachedIcuSimpleDateFormat(JSThread *thread,
+                                                               const JSHandle<JSTaggedValue> &locales,
+                                                               IcuFormatterType type);
 
     // 13.1.1 InitializeDateTimeFormat (dateTimeFormat, locales, options)
     static JSHandle<JSDateTimeFormat> InitializeDateTimeFormat(JSThread *thread,
@@ -133,6 +136,8 @@ public:
 
     // 13.1.7 FormatDateTime(dateTimeFormat, x)
     static JSHandle<EcmaString> FormatDateTime(JSThread *thread, const JSHandle<JSDateTimeFormat> &dateTimeFormat,
+                                               double x);
+    static JSHandle<EcmaString> FormatDateTime(JSThread *thread, const icu::SimpleDateFormat *simpleDateFormat,
                                                double x);
 
     // 13.1.8 FormatDateTimeToParts (dateTimeFormat, x)
