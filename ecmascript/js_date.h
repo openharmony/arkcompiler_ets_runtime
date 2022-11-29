@@ -57,7 +57,7 @@ static constexpr int DAYS_MAR_TO_DEC = 306;
 static constexpr int DAYS_JAN_AND_FEB = 59;
 static constexpr int MONTH_COEFFICIENT = 2;
 static constexpr std::array<int, 2> COEFFICIENT_TO_CIVIL = {5, 153};
-static constexpr std::array<int, 3> MONTH_TRANSFORM = {2, 10, -10};
+static constexpr std::array<int, 3> MONTH_TRANSFORM = {3, 10, -9};
 static constexpr int DAYS_FEBRUARY = 28;
 
 class DateUtils {

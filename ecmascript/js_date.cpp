@@ -107,6 +107,7 @@ void DateUtils::GetYearFromDays(std::array<int64_t, DATE_LENGTH> *date)
     int64_t month = mp + (mp < MONTH_TRANSFORM[1] ?
                 MONTH_TRANSFORM[0] : MONTH_TRANSFORM[2]);                         // transform month to civil system
     int64_t year = y + (month <= MONTH_COEFFICIENT);
+    month -= 1;
     realDay = doy - (COEFFICIENT_TO_CIVIL[1] * mp + 2) / COEFFICIENT_TO_CIVIL[0] + 1;   // shift from 03-01 to 01-01
     (*date)[YEAR] = year;
     (*date)[MONTH] = month;
