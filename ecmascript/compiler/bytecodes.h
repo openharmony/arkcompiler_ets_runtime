@@ -292,7 +292,7 @@ public:
 
     ImmValueType ToJSTaggedValueDouble() const
     {
-        return JSTaggedValue(bit_cast<double>(value_)).GetRawData();
+        return JSTaggedValue(base::bit_cast<double>(value_)).GetRawData();
     }
 
     ImmValueType GetValue() const

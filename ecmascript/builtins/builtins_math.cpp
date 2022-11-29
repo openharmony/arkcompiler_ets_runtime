@@ -474,7 +474,7 @@ JSTaggedValue BuiltinsMath::Log2(EcmaRuntimeCallInfo *argv)
 
 inline bool IsNegZero(double value)
 {
-    return (value == 0.0 && (bit_cast<uint64_t>(value) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK);
+    return (value == 0.0 && (base::bit_cast<uint64_t>(value) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK);
 }
 
 // 20.2.2.24

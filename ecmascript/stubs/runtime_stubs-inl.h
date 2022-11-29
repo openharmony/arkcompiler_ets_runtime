@@ -89,7 +89,8 @@ JSTaggedValue RuntimeStubs::RuntimeExp(JSThread *thread, JSTaggedValue base, JST
     if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
-    if (((doubleBase == 0) && ((bit_cast<uint64_t>(doubleBase)) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK) &&
+    if (((doubleBase == 0) &&
+        ((base::bit_cast<uint64_t>(doubleBase)) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK) &&
         std::isfinite(doubleExponent) && base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent &&
         base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF == (doubleExponent / 2)) {  // 2: half
         if (doubleExponent > 0) {
@@ -1498,8 +1499,8 @@ JSTaggedValue RuntimeStubs::RuntimeDiv2(JSThread *thread, const JSHandle<JSTagge
         if (dLeft == 0 || std::isnan(dLeft)) {
             return JSTaggedValue(base::NAN_VALUE);
         }
-        bool positive = (((bit_cast<uint64_t>(dRight)) & base::DOUBLE_SIGN_MASK) ==
-                         ((bit_cast<uint64_t>(dLeft)) & base::DOUBLE_SIGN_MASK));
+        bool positive = (((base::bit_cast<uint64_t>(dRight)) & base::DOUBLE_SIGN_MASK) ==
+                         ((base::bit_cast<uint64_t>(dLeft)) & base::DOUBLE_SIGN_MASK));
         return JSTaggedValue(positive ? base::POSITIVE_INFINITY : -base::POSITIVE_INFINITY);
     }
     return JSTaggedValue(dLeft / dRight);

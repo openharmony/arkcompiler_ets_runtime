@@ -1011,7 +1011,7 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
             UNREACHABLE();
         }
     } else if (machineType == MachineType::F64) {
-        auto doubleValue = bit_cast<double>(value.to_ullong()); // actual double value
+        auto doubleValue = base::bit_cast<double>(value.to_ullong()); // actual double value
         llvmValue = LLVMConstReal(LLVMDoubleType(), doubleValue);
     } else if (machineType == MachineType::I8) {
         llvmValue = LLVMConstInt(LLVMInt8Type(), value.to_ulong(), 0);
