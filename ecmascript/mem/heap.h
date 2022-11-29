@@ -441,6 +441,16 @@ public:
         return activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
     }
 
+    size_t GetGlobalNativeSize() const
+    {
+        return GetNativeBindingSize() + nativeAreaAllocator_->GetNativeMemoryUsage();
+    }
+
+    bool GlobalNativeSizeLargerThanLimit() const
+    {
+        return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
+    }
+
     size_t GetNonNewSpaceNativeBindingSize() const
     {
         return nonNewSpaceNativeBindingSize_;

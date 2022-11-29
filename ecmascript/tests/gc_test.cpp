@@ -250,6 +250,78 @@ HWTEST_F_L0(GCTest, NonNewSpaceNativeBindingCheckGCTest)
     EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
 }
 
+HWTEST_F_L0(GCTest, NativeGCTestConcurrentMarkDisabled)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    // Disable concurrent mark.
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    size_t oldNativeSize = heap->GetNativeBindingSize();
+    size_t newNativeSize = heap->GetNativeBindingSize();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+
+        auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+        [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(newData,
+            NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
+        newNativeSize = heap->GetNativeBindingSize();
+        EXPECT_EQ(newNativeSize - oldNativeSize, 1UL * 1024 * 1024);
+
+        auto newData1 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+        [[maybe_unused]] JSHandle<JSNativePointer> obj2 = factory->NewJSNativePointer(newData1,
+            NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
+
+        EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
+        EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
+        for (int i = 0; i < 20; i++) {
+            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+            [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(newData2,
+                NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
+        }
+        // Young GC should be trigger here, so the size should be reduced.
+        EXPECT_TRUE(newNativeSize - oldNativeSize < 22 * 1024 *1024);
+    }
+    const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->CollectGarbage(TriggerGCType::OLD_GC);
+    newNativeSize = heap->GetNativeBindingSize();
+    EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
+}
+
+HWTEST_F_L0(GCTest, NonNewSpaceNativeGCTestConcurrentMarkDisabled)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    // Disable concurrent mark.
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    size_t oldNativeSize = heap->GetNonNewSpaceNativeBindingSize();
+    size_t newNativeSize = heap->GetNonNewSpaceNativeBindingSize();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+        [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(newData,
+            NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024);
+        newNativeSize = heap->GetNonNewSpaceNativeBindingSize();
+        EXPECT_EQ(newNativeSize - oldNativeSize, 1UL * 1024 * 1024);
+
+        auto newData1 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
+        [[maybe_unused]] JSHandle<JSNativePointer> obj2 = factory->NewJSNativePointer(newData1,
+            NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
+
+        EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
+        EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
+        for (int i = 0; i < 300; i++) {
+            auto newData2 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1024);
+            // malloc size is smaller to avoid test fail in the small devices.
+            [[maybe_unused]] JSHandle<JSNativePointer> obj3 = factory->NewJSNativePointer(newData2,
+                NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1 * 1024 * 1024);
+        }
+        // Old GC should be trigger here, so the size should be reduced.
+        EXPECT_TRUE(newNativeSize - oldNativeSize < 256 * 1024 *1024);
+    }
+    const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->CollectGarbage(TriggerGCType::OLD_GC);
+    newNativeSize = heap->GetNonNewSpaceNativeBindingSize();
+    EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
+}
+
 HWTEST_F_L0(GCTest, ArkToolsForceFullGC)
 {
     const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->CollectGarbage(TriggerGCType::FULL_GC);

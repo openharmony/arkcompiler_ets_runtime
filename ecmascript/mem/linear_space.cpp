@@ -18,13 +18,15 @@
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/allocator-inl.h"
+#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {
 LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
     : Space(heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       heap_(heap),
-      waterLine_(0)
+      waterLine_(0),
+      newSpaceNativeLimit_(initialCapacity)
 {
 }
 
@@ -32,6 +34,10 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 {
     auto object = allocator_.Allocate(size);
     if (object != 0) {
+        return object;
+    }
+    if (!isPromoted && heap_->GetConcurrentMarker()->IsConfigDisabled() && NativeBindingSizeLargerThanLimit()) {
+        // Native binding size is larger than limit. Trigger gc.
         return object;
     }
     if (Expand(isPromoted)) {
@@ -129,7 +135,7 @@ void LinearSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
 
 SemiSpace::SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : LinearSpace(heap, MemSpaceType::SEMI_SPACE, initialCapacity, maximumCapacity),
-      minimumCapacity_(initialCapacity), newSpaceNativeLimit_(initialCapacity) {}
+      minimumCapacity_(initialCapacity) {}
 
 void SemiSpace::Initialize()
 {

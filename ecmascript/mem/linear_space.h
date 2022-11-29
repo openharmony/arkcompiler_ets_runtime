@@ -41,6 +41,23 @@ public:
     {
         return allocator_.GetEndAddress();
     }
+    void ResetNativeBindingSize()
+    {
+        newSpaceNativeBindingSize_ = 0;
+    }
+    void IncreaseNativeBindingSize(size_t size)
+    {
+        newSpaceNativeBindingSize_ += size;
+    }
+    size_t GetNativeBindingSize()
+    {
+        return newSpaceNativeBindingSize_;
+    }
+
+    bool NativeBindingSizeLargerThanLimit()
+    {
+        return newSpaceNativeBindingSize_ > newSpaceNativeLimit_;
+    }
 protected:
     Heap *heap_ {nullptr};
 
@@ -49,6 +66,8 @@ protected:
     size_t allocateAfterLastGC_ {0};
     size_t survivalObjectSize_ {0};
     uintptr_t waterLine_ {0};
+    size_t newSpaceNativeLimit_;
+    size_t newSpaceNativeBindingSize_ {0};
 };
 
 class SemiSpace : public LinearSpace {
@@ -82,29 +101,10 @@ public:
 
     bool SwapRegion(Region *region, SemiSpace *fromSpace);
 
-    void ResetNativeBindingSize()
-    {
-        newSpaceNativeBindingSize_ = 0;
-    }
-    void IncreaseNativeBindingSize(size_t size)
-    {
-        newSpaceNativeBindingSize_ += size;
-    }
-    size_t GetNativeBindingSize()
-    {
-        return newSpaceNativeBindingSize_;
-    }
-
-    bool NativeBindingSizeLargerThanLimit()
-    {
-        return newSpaceNativeBindingSize_ > newSpaceNativeLimit_;
-    }
 private:
     static constexpr int GROWING_FACTOR = 2;
     os::memory::Mutex lock_;
     size_t minimumCapacity_;
-    size_t newSpaceNativeLimit_;
-    size_t newSpaceNativeBindingSize_ {0};
 };
 
 class SnapshotSpace : public LinearSpace {
