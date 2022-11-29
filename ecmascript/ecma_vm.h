@@ -424,7 +424,7 @@ public:
         if (thread != nullptr && hostVm != nullptr) {
             auto tid = thread->GetThreadId();
             if (tid != 0) {
-                WorkerList_.emplace(tid, workerVm);
+                workerList_.emplace(tid, workerVm);
             }
         }
     }
@@ -432,9 +432,9 @@ public:
     EcmaVM *GetWorkerVm(uint32_t tid) const
     {
         EcmaVM *workerVm = nullptr;
-        if (!WorkerList_.empty()) {
-            auto iter = WorkerList_.find(tid);
-            if (iter != WorkerList_.end()) {
+        if (!workerList_.empty()) {
+            auto iter = workerList_.find(tid);
+            if (iter != workerList_.end()) {
                 workerVm = iter->second;
             }
         }
@@ -450,9 +450,9 @@ public:
             if (tid == 0) {
                 return false;
             }
-            auto iter = WorkerList_.find(tid);
-            if (iter != WorkerList_.end()) {
-                WorkerList_.erase(iter);
+            auto iter = workerList_.find(tid);
+            if (iter != workerList_.end()) {
+                workerList_.erase(iter);
                 return true;
             }
             return false;
@@ -679,7 +679,7 @@ private:
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
-    CMap<uint32_t, EcmaVM *> WorkerList_ {};
+    CMap<uint32_t, EcmaVM *> workerList_ {};
     os::memory::Mutex mutex_;
     void *loop_ {nullptr};
 };

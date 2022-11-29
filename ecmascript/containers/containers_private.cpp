@@ -677,7 +677,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
     
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersPlainArray::GetSize, "length",
                                                         FuncLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey =  globalConst->GetHandledLengthString();
+    JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
     SetGetter(thread, plainArrayFuncPrototype, lengthKey, lengthGetter);
     
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();

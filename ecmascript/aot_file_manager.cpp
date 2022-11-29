@@ -718,7 +718,7 @@ JSTaggedValue AOTFileManager::GetAbsolutePath(JSThread *thread, JSTaggedValue re
 
 bool AOTFileManager::GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr)
 {
-    std::string relativePath = CstringConvertToStdString(relativePathCstr);
+    std::string relativePath = ConvertToStdString(relativePathCstr);
     std::string absPath = "";
     if (RealPath(relativePath, absPath)) {
         absPathCstr = ConvertToString(absPath);

@@ -100,7 +100,7 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
         jsPandaFile, baseFilename, moduleRecordName, moduleRequestName, npmKeyStr);
     JSHandle<SourceTextModule> newModule = moduleManager->HostResolveImportedModuleWithMerge(baseFilename, entryPoint);
     if (npm) {
-        JSHandle<EcmaString> newNpmkey =  thread->GetEcmaVM()->GetFactory()->NewFromUtf8(npmKeyStr.c_str());
+        JSHandle<EcmaString> newNpmkey = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(npmKeyStr.c_str());
         newModule->SetNpmKey(thread, newNpmkey);
     } else {
         newModule->SetNpmKey(thread, module->GetNpmKey());

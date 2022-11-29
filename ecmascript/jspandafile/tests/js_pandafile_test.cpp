@@ -256,8 +256,8 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
 
     const File::Header *header = file->GetHeader();
     Span fileData(file->GetBase(), header->file_size);
-    Span class_idx_data = fileData.SubSpan(header->class_idx_off, header->num_classes * sizeof(uint32_t));
-    auto classesData = Span(reinterpret_cast<const uint32_t *>(class_idx_data.data()), header->num_classes);
+    Span classIdxData = fileData.SubSpan(header->class_idx_off, header->num_classes * sizeof(uint32_t));
+    auto classesData = Span(reinterpret_cast<const uint32_t *>(classIdxData.data()), header->num_classes);
 
     Span<const uint32_t> classes = pf->GetClasses();
     EXPECT_EQ(classes.Data(), classesData.Data());

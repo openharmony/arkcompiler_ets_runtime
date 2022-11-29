@@ -298,7 +298,7 @@ bool TypeInfer::InferPhiGate(GateRef gate)
     CVector<GlobalTSTypeRef> typeList;
     std::set<GlobalTSTypeRef> numberTypeSet;
     auto ins = gateAccessor_.ConstIns(gate);
-    for (auto it =  ins.begin(); it != ins.end(); it++) {
+    for (auto it = ins.begin(); it != ins.end(); it++) {
         // assuming that VALUE_SELECTOR is NO_DEPEND and NO_ROOT
         if (gateAccessor_.GetOpCode(*it) == OpCode::MERGE) {
             continue;
@@ -1030,7 +1030,7 @@ void TypeInfer::TypeCheck(GateRef gate) const
     uint16_t funcNameStrId = ConstDataId(gateAccessor_.GetBitField(funcName)).GetId();
     ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), funcNameStrId);
     auto funcNameString = constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));
-    if (funcNameString ==  "AssertType") {
+    if (funcNameString == "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gate, 1);
         uint16_t strId = ConstDataId(gateAccessor_.GetBitField(expectedGate)).GetId();
         ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), strId);
@@ -1108,7 +1108,7 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
     // handle phi gate: print gate id and input gates id list.
         log += "phi gate, ins: ";
         auto ins = gateAccessor_.ConstIns(gate);
-        for (auto it =  ins.begin(); it != ins.end(); it++) {
+        for (auto it = ins.begin(); it != ins.end(); it++) {
             log += std::to_string(gateAccessor_.GetId(*it)) + " ";
         }
     }

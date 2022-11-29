@@ -273,9 +273,9 @@ ComparisonResult CompareOp::Compare(JSThread *thread, JSTaggedValue left,
             JSHandle<EcmaString> yHandle(thread, right);
             int result = EcmaStringAccessor::Compare(thread->GetEcmaVM(), xHandle, yHandle);
             if (result < 0) {
-                ret =  ComparisonResult::LESS;
+                ret = ComparisonResult::LESS;
             } else if (result == 0) {
-                ret =  ComparisonResult::EQUAL;
+                ret = ComparisonResult::EQUAL;
             } else {
                 ret = ComparisonResult::GREAT;
             }

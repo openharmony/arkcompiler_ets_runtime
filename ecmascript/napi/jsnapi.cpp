@@ -2078,15 +2078,14 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
 }
 
 // -------------------------------------  JSExecutionScope ------------------------------
-JSExecutionScope::JSExecutionScope(const EcmaVM *vm)
+JSExecutionScope::JSExecutionScope([[maybe_unused]] const EcmaVM *vm)
 {
-    (void)vm;
 }
 
 JSExecutionScope::~JSExecutionScope()
 {
-    last_current_thread_ = nullptr;
-    is_revert_ = false;
+    lastCurrentThread_ = nullptr;
+    isRevert_ = false;
 }
 
 // ----------------------------------- JSValueRef --------------------------------------
@@ -2546,21 +2545,21 @@ bool JSValueRef::IsAsyncGeneratorObject()
 bool JSValueRef::IsAsyncFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    bool rst  = obj->IsJSAsyncFunction();
+    bool rst = obj->IsJSAsyncFunction();
     return rst;
 }
 
 bool JSValueRef::IsArgumentsObject()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    bool rst  = obj->IsArguments();
+    bool rst = obj->IsArguments();
     return rst;
 }
 
 bool JSValueRef::IsGeneratorFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    bool rst  = obj->IsGeneratorFunction();
+    bool rst = obj->IsGeneratorFunction();
     return rst;
 }
 

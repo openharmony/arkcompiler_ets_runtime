@@ -503,7 +503,7 @@ JSHandle<EcmaString> JSLocale::ToLanguageTag(JSThread *thread, const icu::Locale
     if (findBeginning == std::string::npos) {
         return factory->NewFromStdString(result);
     }
-    size_t specialBeginning  = findBeginning + INTL_INDEX_THREE;
+    size_t specialBeginning = findBeginning + INTL_INDEX_THREE;
     size_t specialCount = 0;
     while ((specialBeginning < result.size()) && (result[specialBeginning] != '-')) {
         specialCount++;
@@ -873,7 +873,7 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
             }
         }
         result.extensions.emplace(key, value);
-        supportedExtension +=  supportedExtensionAddition;
+        supportedExtension += supportedExtensionAddition;
     }
     size_t found = foundLocale.find("-u-");
     if (found != std::string::npos) {

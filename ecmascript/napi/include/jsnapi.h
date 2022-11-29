@@ -372,8 +372,8 @@ public:
     ECMA_DISALLOW_MOVE(JSExecutionScope);
 
 private:
-    void *last_current_thread_ = nullptr;
-    bool is_revert_ = false;
+    void *lastCurrentThread_ = nullptr;
+    bool isRevert_ = false;
 };
 
 class PUBLIC_API JSValueRef {

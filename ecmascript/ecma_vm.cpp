@@ -357,7 +357,7 @@ EcmaVM::~EcmaVM()
 
     if (aotFileManager_ != nullptr) {
         delete aotFileManager_;
-        aotFileManager_  = nullptr;
+        aotFileManager_ = nullptr;
     }
 
     if (thread_ != nullptr) {
@@ -767,7 +767,7 @@ void EcmaVM::ClearBufferData()
 
     cachedConstpools_.clear();
     internalNativeMethods_.clear();
-    WorkerList_.clear();
+    workerList_.clear();
 }
 
 bool EcmaVM::ExecutePromisePendingJob()

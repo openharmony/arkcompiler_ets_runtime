@@ -449,7 +449,7 @@ HWTEST_F_L0(JSLocaleTest, ApplyOptionsToTag)
 
     JSHandle<JSTaggedValue> languageKey = thread->GlobalConstants()->GetHandledLanguageString();
     JSHandle<JSTaggedValue> regionKey = thread->GlobalConstants()->GetHandledRegionString();
-    JSHandle<JSTaggedValue> scriptKey =  thread->GlobalConstants()->GetHandledScriptString();
+    JSHandle<JSTaggedValue> scriptKey = thread->GlobalConstants()->GetHandledScriptString();
     JSHandle<JSTaggedValue> languageValue(factory->NewFromASCII("en"));
     JSHandle<JSTaggedValue> regionValue(factory->NewFromASCII("US"));
     JSHandle<JSTaggedValue> scriptValue(factory->NewFromASCII("Latn"));

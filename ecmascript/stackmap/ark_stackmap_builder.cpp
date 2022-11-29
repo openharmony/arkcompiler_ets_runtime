@@ -340,7 +340,7 @@ void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(std::vector<Pc2CallSiteInfo> 
     }
     result.secHead.callsiteNum = callsiteNum;
     result.secHead.callsitStart = sizeof(StackMapSecHead);
-    result.secHead.callsitEnd =  result.secHead.callsitStart + (result.secHead.callsiteNum - 1) * sizeof(CallsiteHead);
+    result.secHead.callsitEnd = result.secHead.callsitStart + (result.secHead.callsiteNum - 1) * sizeof(CallsiteHead);
     result.secHead.totalSize = totalSize;
 }
 } // namespace panda::ecmascript::kungfu

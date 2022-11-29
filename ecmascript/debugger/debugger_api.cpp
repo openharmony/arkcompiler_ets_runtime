@@ -318,7 +318,7 @@ void DebuggerApi::GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleO
         return;
     }
 
-    JSTaggedValue dictionary =  SourceTextModule::Cast(currentModule.GetTaggedObject())->GetNameDictionary();
+    JSTaggedValue dictionary = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetNameDictionary();
     if (dictionary.IsUndefined()) {
         return;
     }

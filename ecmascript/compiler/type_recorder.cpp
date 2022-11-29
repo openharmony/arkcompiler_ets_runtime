@@ -65,7 +65,7 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
             GlobalTSTypeRef funcGT = GlobalTSTypeRef::Default();
             for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // + 2 means bcOffset and typeId
                 int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
-                uint32_t typeId =  static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
+                uint32_t typeId = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
                 GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
 
                 // The type of a function is recorded as (-1, funcTypeId). If the function is a member of a class,

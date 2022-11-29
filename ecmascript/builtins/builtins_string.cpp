@@ -964,7 +964,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
     // 7. Let searchLength be the length of searchString.
     // 8. Let advanceBy be max(1, searchLength).
     int32_t searchLength = static_cast<int32_t>(EcmaStringAccessor(searchString).GetLength());
-    int32_t advanceBy =  std::max(1, searchLength);
+    int32_t advanceBy = std::max(1, searchLength);
     // 9. Let matchPositions be a new empty List.
     std::u16string stringBuilder;
     std::u16string stringPrefixString;

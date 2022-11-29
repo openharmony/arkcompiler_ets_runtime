@@ -120,7 +120,7 @@ CString ConvertToString(JSTaggedValue key)
     return ConvertToString(EcmaString::ConstCast(desc.GetTaggedObject()));
 }
 
-std::string CstringConvertToStdString(const CString &str)
+std::string ConvertToStdString(const CString &str)
 {
     std::string res;
     res.reserve(str.size());

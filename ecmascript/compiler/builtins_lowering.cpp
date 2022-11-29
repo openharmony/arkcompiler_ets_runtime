@@ -213,7 +213,7 @@ GateRef BuiltinLowering::TypedSqrt(GateRef gate)
                 // If value is NaN, the result is NaN
                 builder_.Bind(&naN);
                 {
-                    result =  builder_.DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
+                    result = builder_.DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
                     builder_.Jump(&exit);
                 }
             }

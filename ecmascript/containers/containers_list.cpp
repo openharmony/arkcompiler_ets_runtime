@@ -162,7 +162,7 @@ JSTaggedValue ContainersList::Has(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSAPIList> jSAPIList = JSHandle<JSAPIList>::Cast(self);
-    JSHandle<JSTaggedValue> element= GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
     return GetTaggedBoolean(jSAPIList->Has(element.GetTaggedValue()));
 }
 
@@ -541,7 +541,7 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
-    JSHandle<JSTaggedValue> fromIndex= GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> fromIndex = GetCallArg(argv, 0);
 
     if (!fromIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, fromIndex.GetTaggedValue());

@@ -70,8 +70,8 @@ HWTEST_F_L0(BuiltinsLocaleTest, LocaleConstructor)
 
     JSHandle<JSTaggedValue> languageKey = thread->GlobalConstants()->GetHandledLanguageString();
     JSHandle<JSTaggedValue> regionKey = thread->GlobalConstants()->GetHandledRegionString();
-    JSHandle<JSTaggedValue> numericKey =  thread->GlobalConstants()->GetHandledNumericString();
-    JSHandle<JSTaggedValue> scriptKey =  thread->GlobalConstants()->GetHandledScriptString();
+    JSHandle<JSTaggedValue> numericKey = thread->GlobalConstants()->GetHandledNumericString();
+    JSHandle<JSTaggedValue> scriptKey = thread->GlobalConstants()->GetHandledScriptString();
     JSHandle<JSTaggedValue> languageValue(factory->NewFromASCII("cn"));
     JSHandle<JSTaggedValue> regionValue(factory->NewFromASCII("CN"));
     JSHandle<JSTaggedValue> scriptValue(factory->NewFromASCII("Chin"));
@@ -106,7 +106,7 @@ static JSTaggedValue JSLocaleCreateWithOptionTest(JSThread *thread)
 
     JSHandle<JSTaggedValue> languageKey = thread->GlobalConstants()->GetHandledLanguageString();
     JSHandle<JSTaggedValue> regionKey = thread->GlobalConstants()->GetHandledRegionString();
-    JSHandle<JSTaggedValue> scriptKey =  thread->GlobalConstants()->GetHandledScriptString();
+    JSHandle<JSTaggedValue> scriptKey = thread->GlobalConstants()->GetHandledScriptString();
     JSHandle<JSTaggedValue> languageValue(factory->NewFromASCII("en"));
     JSHandle<JSTaggedValue> regionValue(factory->NewFromASCII("US"));
     JSHandle<JSTaggedValue> scriptValue(factory->NewFromASCII("Latn"));

@@ -146,8 +146,8 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
         LOG_FULL(FATAL) << "open file failed";
         UNREACHABLE();
     }
-    int32_t file_size = lseek(fd, 0, SEEK_END);
-    if (file_size == -1) {
+    int32_t fileSize = lseek(fd, 0, SEEK_END);
+    if (fileSize == -1) {
         LOG_FULL(FATAL) << "lseek failed";
         UNREACHABLE();
     }
@@ -156,7 +156,7 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
     }
-    auto readFile = ToUintPtr(mmap(nullptr, file_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
+    auto readFile = ToUintPtr(mmap(nullptr, fileSize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
     auto hdr = *ToNativePtr<const Header>(readFile);
     uintptr_t oldSpaceBegin = readFile + sizeof(Header);
     processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
@@ -168,10 +168,10 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
 
     munmap(ToNativePtr<void>(readFile), hdr.pandaFileBegin);
     const JSPandaFile *jsPandaFile = nullptr;
-    if (static_cast<uint32_t>(file_size) > hdr.pandaFileBegin) {
-        uintptr_t panda_file_mem = readFile + hdr.pandaFileBegin;
-        auto pf = panda_file::File::OpenFromMemory(os::mem::ConstBytePtr(ToNativePtr<std::byte>(panda_file_mem),
-            static_cast<uint32_t>(file_size) - hdr.pandaFileBegin, os::mem::MmapDeleter));
+    if (static_cast<uint32_t>(fileSize) > hdr.pandaFileBegin) {
+        uintptr_t pandaFileMem = readFile + hdr.pandaFileBegin;
+        auto pf = panda_file::File::OpenFromMemory(os::mem::ConstBytePtr(ToNativePtr<std::byte>(pandaFileMem),
+            static_cast<uint32_t>(fileSize) - hdr.pandaFileBegin, os::mem::MmapDeleter));
         jsPandaFile = JSPandaFileManager::GetInstance()->NewJSPandaFile(pf.release(), "");
     }
     close(fd);

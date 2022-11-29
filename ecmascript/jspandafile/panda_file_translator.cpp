@@ -192,7 +192,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
                 JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
             }
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), obj.GetTaggedValue());
-        } else if (value.GetConstpoolType() == ConstPoolType::ARRAY_LITERAL) {
+        } else if (type == ConstPoolType::ARRAY_LITERAL) {
             size_t index = static_cast<size_t>(it.first);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
                 thread, jsPandaFile, index, constpool);
@@ -201,7 +201,7 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length)));
             arr->SetElements(thread, literal);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), arr.GetTaggedValue());
-        } else if (value.GetConstpoolType() == ConstPoolType::CLASS_LITERAL) {
+        } else if (type == ConstPoolType::CLASS_LITERAL) {
             size_t index = static_cast<size_t>(it.first);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreTypeForClass(
                 thread, jsPandaFile, index, constpool);

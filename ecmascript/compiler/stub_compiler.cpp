@@ -82,7 +82,7 @@ public:
 
     bool Run(StubPassData *data, size_t index)
     {
-        bool enableLog =  data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         auto stubModule = data->GetStubModule();
         CreateCodeGen(stubModule, enableLog);
         CodeGenerator codegen(llvmImpl_, "stubs");
