@@ -40,6 +40,21 @@ enum Distance {
     Far
 };
 
+// When run from cpp to assembly code, there are some insts before the assembly frame is ready.
+// When return from assembly code to cpp, there are some insts after the assembly frame is broken.
+// And here are the numbers of insts. Only AsmInterpreterEntryFrame is dealt here, and there is no need
+// for OptimizedEntryFrame because insts for OptimizedEntryFrame are negligible.
+enum FrameCompletionPos : uint64_t {
+    // X64
+    X64CppToAsmInterp = 28,
+    X64AsmInterpToCpp = 9,
+    X64EntryFrameDuration = 70,
+    // ARM64
+    ARM64CppToAsmInterp = 56,
+    ARM64AsmInterpToCpp = 40,
+    ARM64EntryFrameDuration = 116,
+};
+
 class Label {
 public:
     bool IsBound() const
@@ -183,6 +198,24 @@ public:
     {
         // 8: range8
         return InRangeN(x, 8);
+    }
+
+    static void GetFrameCompletionPos(uint64_t &headerSize, uint64_t &tailSize, uint64_t &entryDuration)
+    {
+#if defined(PANDA_TARGET_AMD64)
+        headerSize = FrameCompletionPos::X64CppToAsmInterp;
+        tailSize = FrameCompletionPos::X64AsmInterpToCpp;
+        entryDuration = FrameCompletionPos::X64EntryFrameDuration;
+#elif defined(PANDA_TARGET_ARM64)
+        headerSize = FrameCompletionPos::ARM64CppToAsmInterp;
+        tailSize = FrameCompletionPos::ARM64AsmInterpToCpp;
+        entryDuration = FrameCompletionPos::ARM64EntryFrameDuration;
+#else
+        headerSize = 0;
+        tailSize = 0;
+        entryDuration = 0;
+        LOG_ECMA(FATAL) << "Assembler does not currently support other platforms, please run on x64 and arm64";
+#endif
     }
 private:
     DynChunk buffer_;

@@ -12,11 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/ark_stackmap_parser.h"
-#include "ecmascript/ark_stackmap_builder.h"
+#include "ecmascript/stackmap/ark_stackmap_parser.h"
+
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/stackmap/ark_stackmap_builder.h"
 
 namespace panda::ecmascript::kungfu {
 // implement simple binary-search is improve performance. if use std api, it'll trigger copy CallsiteHead.

@@ -16,11 +16,11 @@
 #ifndef ECMASCRIPT_FRAMES_H
 #define ECMASCRIPT_FRAMES_H
 
-#include "ecmascript/ark_stackmap.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/aligned_struct.h"
-#include "ecmascript/llvm_stackmap_type.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/stackmap/ark_stackmap.h"
+#include "ecmascript/stackmap/llvm_stackmap_type.h"
 
 namespace panda::ecmascript {
 class JSThread;
@@ -131,7 +131,7 @@ enum class FrameType: uintptr_t {
     OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME,
 
     FRAME_TYPE_FIRST = OPTIMIZED_FRAME,
-    FRAME_TYPE_LAST = OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME,
+    FRAME_TYPE_LAST = OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME,
     INTERPRETER_FIRST = INTERPRETER_FRAME,
     INTERPRETER_LAST = INTERPRETER_FAST_NEW_FRAME,
     BUILTIN_FIRST = BUILTIN_FRAME,
@@ -403,6 +403,7 @@ public:
     {
         return returnAddr;
     }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor) const;
     void CollectBCOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const;
@@ -411,33 +412,45 @@ public:
     {
         return env;
     }
+
     inline void SetEnv(JSTaggedValue lexEnv)
     {
         env = lexEnv;
     }
+
+    inline JSTaggedValue GetFunction() const
+    {
+        return jsFunc;
+    }
+
     static uintptr_t ComputeArgsConfigFrameSp(JSTaggedType *fp)
     {
         const size_t offset = 2;  // 2: skip prevFp and return address.
         return reinterpret_cast<uintptr_t>(fp) + offset * sizeof(uintptr_t);
     }
+
     static size_t GetTypeOffset()
     {
         return MEMBER_OFFSET(OptimizedJSFunctionFrame, type);
     }
+
     static size_t GetPrevOffset()
     {
         return MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp);
     }
+
     static size_t ComputeReservedEnvOffset(size_t slotSize)
     {
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::EnvIndex);
         return slotSize * slotOffset;
     }
+
     static size_t ComputeReservedJSFuncOffset(size_t slotSize)
     {
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::JSFuncIndex);
         return slotSize * slotOffset;
     }
+
     friend class FrameIterator;
     void GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const;
     void GetFuncCalleeRegAndOffset(

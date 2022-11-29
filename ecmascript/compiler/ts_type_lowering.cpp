@@ -15,7 +15,7 @@
 
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
-#include "ecmascript/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript::kungfu {

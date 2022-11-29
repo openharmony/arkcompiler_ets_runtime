@@ -526,6 +526,8 @@ public:
         return reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
     }
 
+    bool IsLegalAsmSp(uintptr_t sp) const;
+
     bool IsPrintBCOffset() const
     {
         return enablePrintBCOffset_;
@@ -546,6 +548,16 @@ public:
     bool GetCheckAndCallEnterState() const
     {
         return finalizationCheckState_;
+    }
+
+    uint64_t GetStackStart() const
+    {
+        return glueData_.stackStart_;
+    }
+
+    uint64_t GetStackLimit() const
+    {
+        return glueData_.stackLimit_;
     }
 
     GlobalEnv *GetGlueGlobalEnv()
@@ -575,6 +587,7 @@ public:
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
+                                                 base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  GlobalEnvConstants> {
         enum class Index : size_t {
@@ -592,6 +605,7 @@ public:
             BCDebuggerStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
+            StackStartIndex,
             StackLimitIndex,
             GlueGlobalEnvIndex,
             GlobalConstIndex,
@@ -703,6 +717,7 @@ public:
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
         alignas(EAS) volatile uint64_t threadStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
+        alignas(EAS) uint64_t stackStart_ {0};
         alignas(EAS) uint64_t stackLimit_ {0};
         alignas(EAS) GlobalEnv *glueGlobalEnv_;
         alignas(EAS) GlobalEnvConstants globalConst_;

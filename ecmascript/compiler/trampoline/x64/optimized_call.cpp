@@ -65,9 +65,10 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Pushq(glueReg); // caller save
     // construct the frame
     __ Pushq(rbp);
-    __ Movq(rsp, rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_ENTRY_FRAME));
     __ Pushq(prevFpReg);
+    // 2: skip prevFp and frameType
+    __ Leaq(Operand(rsp, 2 * FRAME_SLOT_SIZE), rbp);
     __ Movq(flag, r12);
     __ Movq(argv, rbx);
     __ Movq(Operand(rbx, 0), rdx);
@@ -138,9 +139,10 @@ void OptimizedCall::OptimizedCallOptimized(ExtendedAssembler *assembler)
     Label lCopyLoop1;
     Label lPopFrame1;
     __ Pushq(rbp);
-    __ Movq(rsp, rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME));
     __ Pushq(envReg);
+    // 2: skip envReg and frameType
+    __ Leaq(Operand(rsp, 2 * FRAME_SLOT_SIZE), rbp);
     // callee save
     __ Pushq(r14);
     __ Pushq(rbx);
@@ -329,8 +331,8 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     __ Bind(&lNonCallable);
     {
         __ Pushq(rbp);
-        __ Movq(rsp, rbp); // set frame pointer
         __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)); // set frame type
+        __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
         __ Movq(MessageString::Message_NonCallable, rax);
         __ Movabs(JSTaggedValue::TAG_INT, r10);
         __ Orq(r10, rax);
@@ -408,8 +410,8 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     __ Bind(&lJSBoundFunction);
     {
         __ Pushq(rbp);
-        __ Movq(rsp, rbp);
         __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME));
+        __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
         __ Pushq(r10); // callee save
         __ Movq(rsp, rdx);
         __ Addq(QUINTUPLE_SLOT_SIZE, rdx); // sp + 40 argv
@@ -615,8 +617,8 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         __ Bind(&lCallConstructor);
         {
             __ Pushq(rbp);
-            __ Movq(rsp, rbp); // set frame pointer
             __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)); // set frame type
+            __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
             __ Pushq(0); // PushAlign
             __ Pushq(0); // argc
             __ Pushq(RTSTUB_ID(ThrowCallConstructorException)); // runtime id
@@ -883,8 +885,8 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg
 void OptimizedCall::ThrowNonCallableInternal(ExtendedAssembler *assembler, Register glueReg)
 {
     __ Pushq(rbp);
-    __ Movq(rsp, rbp); // set frame pointer
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)); // set frame type
+    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
     __ Movq(MessageString::Message_NonCallable, rax);
     __ Movabs(JSTaggedValue::TAG_INT, r10);
     __ Orq(r10, rax);
@@ -937,8 +939,8 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     Label lCopyBoundArgumentLoop;
     Label lPopFrame2;
     __ Pushq(rbp);
-    __ Movq(rsp, rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME));
+    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
     __ Pushq(r10); // callee save
     __ Movq(rsp, rdx);
     __ Addq(QUINTUPLE_SLOT_SIZE, rdx); // sp + 40 argv
@@ -1133,9 +1135,9 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
 
     // construct leave frame
     __ Pushq(rbp);
-    __ Movq(rsp, rbp); // set frame pointer
-    __ Movq(rbp, Operand(glueReg, JSThread::GlueData::GetLeaveFrameOffset(false))); // save to thread->leaveFrame_
+    __ Movq(rsp, Operand(glueReg, JSThread::GlueData::GetLeaveFrameOffset(false))); // save to thread->leaveFrame_
     __ Pushq(static_cast<int32_t>(FrameType::LEAVE_FRAME_WITH_ARGV));
+    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
 
     __ Movq(Operand(glueReg, runtimeIdReg, Scale::Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r9);
     __ Movq(argcReg, rsi); // argc
@@ -1210,9 +1212,10 @@ void OptimizedCall::PushJSFunctionEntryFrame(ExtendedAssembler *assembler, Regis
 
     // construct optimized entry frame
     __ Pushq(rbp);
-    __ Movq(rsp, rbp);
     __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_ENTRY_FRAME));
     __ Pushq(prevFp);
+    // 2: skip prevFp and frameType
+    __ Leaq(Operand(rsp, 2 * FRAME_SLOT_SIZE), rbp);
 }
 
 void OptimizedCall::PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue)
@@ -1251,10 +1254,11 @@ void OptimizedCall::PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Regist
 void OptimizedCall::PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp)
 {
     __ Pushq(rbp);
-    __ Movq(rsp, rbp);
     // construct frame
     __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME));
     __ Pushq(callSiteSp);
+    // 2: skip callSiteSp and frameType
+    __ Leaq(Operand(rsp, 2 * FRAME_SLOT_SIZE), rbp);
 }
 
 void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
@@ -1449,8 +1453,8 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
 
     Register glueReg = rdi;
     __ Pushq(rbp);
-    __ Movq(rsp, rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_FRAME));
+    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
     __ Push(glueReg);
     __ PushCppCalleeSaveRegisters();
 

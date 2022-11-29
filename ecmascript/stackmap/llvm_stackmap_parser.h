@@ -22,11 +22,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ecmascript/ark_stackmap.h"
 #include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/llvm_stackmap_type.h"
+#include "ecmascript/stackmap/ark_stackmap.h"
+#include "ecmascript/stackmap/llvm_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
 class LLVMStackMapParser {

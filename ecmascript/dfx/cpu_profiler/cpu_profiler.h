@@ -54,6 +54,9 @@ public:
     bool ParseMethodInfo(void *methodIdentifier, FrameHandler &frameHandler,
                          const JSPandaFile *jsPandaFile, bool isCallNapi);
     void GetNativeStack(FrameHandler &frameHandler, char *functionName, size_t size);
+    bool InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entryDuration, uint64_t headerSize,
+                        uint64_t tailSize) const;
+    bool IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const;
     void GetFrameStack(FrameHandler &frameHandler);
     void IsNeedAndGetStack(JSThread *thread);
     void GetStackBeforeCallNapi(JSThread *thread);
