@@ -59,6 +59,33 @@ public:
     JSThread *thread {nullptr};
 };
 
+static JSTaggedValue JSDisplayNamesCreateWithOptionTest(JSThread *thread, JSHandle<JSTaggedValue> &locale,
+                                                        JSHandle<JSTaggedValue> &typeValue)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> newTarget(env->GetDisplayNamesFunction());
+    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+
+    JSHandle<JSTaggedValue> typeKey = thread->GlobalConstants()->GetHandledTypeString();
+    JSObject::SetProperty(thread, optionsObj, typeKey, typeValue);
+
+    JSHandle<JSTaggedValue> localesString = locale;
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
+    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsDisplayNames::DisplayNamesConstructor(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_TRUE(result.IsJSDisplayNames());
+    return result;
+}
+
 // new DisplayNames(locales, options)
 HWTEST_F_L0(BuiltinsDisplayNamesTest, DisplayNamesConstructor)
 {
@@ -91,33 +118,6 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, DisplayNamesConstructor)
     JSTaggedValue result = BuiltinsDisplayNames::DisplayNamesConstructor(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(result.IsJSDisplayNames());
-}
-
-static JSTaggedValue JSDisplayNamesCreateWithOptionTest(JSThread *thread, JSHandle<JSTaggedValue> &locale,
-                                                        JSHandle<JSTaggedValue> &typeValue)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> newTarget(env->GetDisplayNamesFunction());
-    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-
-    JSHandle<JSTaggedValue> typeKey = thread->GlobalConstants()->GetHandledTypeString();
-    JSObject::SetProperty(thread, optionsObj, typeKey, typeValue);
-
-    JSHandle<JSTaggedValue> localesString = locale;
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
-    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result = BuiltinsDisplayNames::DisplayNamesConstructor(ecmaRuntimeCallInfo);
-    TestHelper::TearDownFrame(thread, prev);
-
-    EXPECT_TRUE(result.IsJSDisplayNames());
-    return result;
 }
 
 // Of(fr, type(language))
@@ -190,6 +190,23 @@ HWTEST_F_L0(BuiltinsDisplayNamesTest, Of_003)
     EXPECT_TRUE(result.IsString());
     JSHandle<EcmaString> handleEcmaStr(thread, result);
     EXPECT_STREQ("Euro", EcmaStringAccessor(handleEcmaStr).ToCString().c_str());
+}
+
+// Of(Code Cover)
+HWTEST_F_L0(BuiltinsDisplayNamesTest, Of_004)
+{
+    // IsNotJSDisplayNames
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue::Undefined());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsDisplayNames::Of(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    thread->ClearException();
 }
 
 // SupportedLocalesOf("best fit")
