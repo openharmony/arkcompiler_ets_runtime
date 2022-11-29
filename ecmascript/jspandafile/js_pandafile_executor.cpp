@@ -34,7 +34,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 #if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
         entry = entryPoint.data();
 #else
-        entry = JSPandaFile::ParseOhmUrl(filename);
+        if (excuteFromJob) {
+            entry = entryPoint.data();
+        } else {
+            entry = JSPandaFile::ParseOhmUrl(filename);
+        }
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
         name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)

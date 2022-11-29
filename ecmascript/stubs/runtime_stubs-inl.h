@@ -1250,18 +1250,17 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     // get current filename
     Method *method = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetCallTarget();
     const JSPandaFile* jsPandaFile = method->GetJSPandaFile();
-    std::string filename = jsPandaFile->GetPandaFile()->GetFilename();
+    CString filename = jsPandaFile->GetJSPandaFileDesc();
 
     // parse dirPath from filename
     JSHandle<EcmaString> dirPath;
     JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
     if (jsPandaFile->IsBundlePack()) {
-        CString fullName = CString(filename);
-        int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
+        int foundPos = static_cast<int>(filename.find_last_of("/\\"));
         if (foundPos == -1) {
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Hole());
         }
-        CString dirPathStr = fullName.substr(0, foundPos + 1);
+        CString dirPathStr = filename.substr(0, foundPos + 1);
         dirPath = factory->NewFromUtf8(dirPathStr);
     } else {
         JSHandle<JSTaggedValue> module(thread, JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetModule());
