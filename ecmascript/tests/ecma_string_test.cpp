@@ -1708,4 +1708,102 @@ HWTEST_F_L0(EcmaStringTest, EqualToSplicedString)
         EXPECT_TRUE(!result);
     }
 }
+
+/*
+ * @tc.name: ConvertUtf8ToLowerOrUpper
+ * @tc.desc: Check whether the EcmaString created through calling ConvertUtf8ToLowerOrUpper is within expectations.
+ * is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(EcmaStringTest, ConvertUtf8ToLowerOrUpper)
+{
+    ObjectFactory* factory = ecmaVMPtr->GetFactory();
+    JSHandle<EcmaString> lowerStr = factory->NewFromASCII("aaabbbcccddd");
+    JSHandle<EcmaString> upperStr = factory->NewFromASCII("AAABBBCCCDDD");
+    JSHandle<EcmaString> testStr1 = factory->NewFromASCII("aaaBBBcccDDD");
+    JSHandle<EcmaString> testStr2 = factory->NewFromASCII("AAAbbbcccDDD");
+    {
+        auto testStrFlat = JSHandle<EcmaString>(ecmaVMPtr->GetJSThread(), Flatten(ecmaVMPtr, testStr1));
+        JSHandle<EcmaString> testEcmaString(thread, ConvertUtf8ToLowerOrUpper(ecmaVMPtr, testStrFlat, true));
+        EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), testEcmaString.GetTaggedValue()));
+        EXPECT_EQ(lowerStr->GetLength(), testEcmaString->GetLength());
+        EXPECT_TRUE(testEcmaString->IsUtf8());
+        EXPECT_FALSE(testEcmaString->IsUtf16());
+    }
+
+    {
+        auto testStrFlat = JSHandle<EcmaString>(ecmaVMPtr->GetJSThread(), Flatten(ecmaVMPtr, testStr1));
+        JSHandle<EcmaString> testEcmaString(thread, ConvertUtf8ToLowerOrUpper(ecmaVMPtr, testStrFlat, false));
+        EXPECT_TRUE(JSTaggedValue::SameValue(upperStr.GetTaggedValue(), testEcmaString.GetTaggedValue()));
+        EXPECT_EQ(upperStr->GetLength(), testEcmaString->GetLength());
+        EXPECT_TRUE(testEcmaString->IsUtf8());
+        EXPECT_FALSE(testEcmaString->IsUtf16());
+    }
+
+    {
+        auto testStrFlat = JSHandle<EcmaString>(ecmaVMPtr->GetJSThread(), Flatten(ecmaVMPtr, testStr2));
+        JSHandle<EcmaString> testEcmaString(thread, ConvertUtf8ToLowerOrUpper(ecmaVMPtr, testStrFlat, true));
+        EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), testEcmaString.GetTaggedValue()));
+        EXPECT_EQ(lowerStr->GetLength(), testEcmaString->GetLength());
+        EXPECT_TRUE(testEcmaString->IsUtf8());
+        EXPECT_FALSE(testEcmaString->IsUtf16());
+    }
+
+    {
+        auto testStrFlat = JSHandle<EcmaString>(ecmaVMPtr->GetJSThread(), Flatten(ecmaVMPtr, testStr2));
+        JSHandle<EcmaString> testEcmaString(thread, ConvertUtf8ToLowerOrUpper(ecmaVMPtr, testStrFlat, false));
+        EXPECT_TRUE(JSTaggedValue::SameValue(upperStr.GetTaggedValue(), testEcmaString.GetTaggedValue()));
+        EXPECT_EQ(upperStr->GetLength(), testEcmaString->GetLength());
+        EXPECT_TRUE(testEcmaString->IsUtf8());
+        EXPECT_FALSE(testEcmaString->IsUtf16());
+    }
+}
+
+/*
+ * @tc.name: TryToLower
+ * @tc.desc: Check whether the EcmaString created through calling TryToLower function is within expectations.
+ * is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:upperStr
+ */
+HWTEST_F_L0(EcmaStringTest, TryToLower)
+{
+    ObjectFactory* factory = ecmaVMPtr->GetFactory();
+    JSHandle<EcmaString> lowerStr = factory->NewFromASCII("aaabbbcccddd");
+    JSHandle<EcmaString> upperStr = factory->NewFromASCII("AAABBBCCCDDD");
+    JSHandle<EcmaString> testStr1 = factory->NewFromASCII("aaaBBBcccDDD");
+    JSHandle<EcmaString> testStr2 = factory->NewFromASCII("AAAbbbcccDDD");
+    {
+        JSHandle<EcmaString> lowerEcmaString(thread, TryToLower(ecmaVMPtr, lowerStr));
+        EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));
+        EXPECT_EQ(lowerStr->GetLength(), lowerEcmaString->GetLength());
+        EXPECT_TRUE(lowerEcmaString->IsUtf8());
+        EXPECT_FALSE(lowerEcmaString->IsUtf16());
+    }
+
+    {
+        JSHandle<EcmaString> lowerEcmaString(thread, TryToLower(ecmaVMPtr, upperStr));
+        EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));
+        EXPECT_EQ(lowerStr->GetLength(), lowerEcmaString->GetLength());
+        EXPECT_TRUE(lowerEcmaString->IsUtf8());
+        EXPECT_FALSE(lowerEcmaString->IsUtf16());
+    }
+
+    {
+        JSHandle<EcmaString> testEcmaString(thread, TryToLower(ecmaVMPtr, testStr1));
+        EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), testEcmaString.GetTaggedValue()));
+        EXPECT_EQ(lowerStr->GetLength(), testEcmaString->GetLength());
+        EXPECT_TRUE(testEcmaString->IsUtf8());
+        EXPECT_FALSE(testEcmaString->IsUtf16());
+    }
+
+    {
+        JSHandle<EcmaString> testEcmaString(thread, TryToLower(ecmaVMPtr, testStr2));
+        EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), testEcmaString.GetTaggedValue()));
+        EXPECT_EQ(lowerStr->GetLength(), testEcmaString->GetLength());
+        EXPECT_TRUE(testEcmaString->IsUtf8());
+        EXPECT_FALSE(testEcmaString->IsUtf16());
+    }
+}
 }  // namespace panda::test

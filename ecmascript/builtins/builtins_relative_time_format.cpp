@@ -66,7 +66,8 @@ JSTaggedValue BuiltinsRelativeTimeFormat::SupportedLocalesOf(EcmaRuntimeCallInfo
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let availableLocales be %RelativeTimeFormat%.[[AvailableLocales]].
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+    std::vector<std::string> availableStringLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+    JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
 
     // 2. Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);

@@ -669,7 +669,8 @@ HWTEST_F_L0(JSDateTimeFormatTest, GainAvailableLocales)
 
     const char *key = "calendar";
     const char *path = nullptr;
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = JSLocale::GetAvailableLocales(thread, key, path);
+    JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     env->SetDateTimeFormatLocales(thread, availableLocales);
     JSHandle<TaggedArray> gainLocales1 = JSDateTimeFormat::GainAvailableLocales(thread);
     EXPECT_EQ(JSHandle<JSTaggedValue>::Cast(gainLocales1).GetTaggedValue().GetRawData(),

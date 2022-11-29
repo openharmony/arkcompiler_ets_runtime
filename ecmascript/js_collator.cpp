@@ -40,7 +40,8 @@ JSHandle<TaggedArray> JSCollator::GetAvailableLocales(JSThread *thread)
 {
     const char *key = nullptr;
     const char *path = JSCollator::uIcuDataColl.c_str();
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = JSLocale::GetAvailableLocales(thread, key, path);
+    JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     return availableLocales;
 }
 

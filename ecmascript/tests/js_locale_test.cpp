@@ -816,31 +816,31 @@ HWTEST_F_L0(JSLocaleTest, BestAvailableLocale)
 {
     const char *path = JSCollator::uIcuDataColl.c_str();
     // available locales in uIcuDataColl
-    JSHandle<TaggedArray> icuDataAvailableLocales = JSLocale::GetAvailableLocales(thread, nullptr, path);
+    std::vector<std::string> icuDataAvailableLocales = JSLocale::GetAvailableLocales(thread, nullptr, path);
     // available locales(calendar)
-    JSHandle<TaggedArray> calendarAvailableLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+    std::vector<std::string> calendarAvailableLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
     // available locales(NumberElements)
-    JSHandle<TaggedArray> numberAvailableLocales = JSLocale::GetAvailableLocales(thread, "NumberElements", nullptr);
+    std::vector<std::string> numberAvailableLocales = JSLocale::GetAvailableLocales(thread, "NumberElements", nullptr);
     // "ar-001" is found
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, icuDataAvailableLocales, "ar-001").c_str(), "ar-001");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, calendarAvailableLocales, "ar-001").c_str(), "ar-001");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, numberAvailableLocales, "ar-001").c_str(), "ar-001");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(icuDataAvailableLocales, "ar-001").c_str(), "ar-001");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(calendarAvailableLocales, "ar-001").c_str(), "ar-001");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(numberAvailableLocales, "ar-001").c_str(), "ar-001");
     // "agq-CM" is not found in uIcuDataColl
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, icuDataAvailableLocales, "agq-CM").c_str(), "");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, calendarAvailableLocales, "agq-CM").c_str(), "agq-CM");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, numberAvailableLocales, "agq-CM").c_str(), "agq-CM");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(icuDataAvailableLocales, "agq-CM").c_str(), "");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(calendarAvailableLocales, "agq-CM").c_str(), "agq-CM");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(numberAvailableLocales, "agq-CM").c_str(), "agq-CM");
     // language(und)-region(CN)
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, icuDataAvailableLocales, "und-CN").c_str(), "");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, calendarAvailableLocales, "und-CN").c_str(), "");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, numberAvailableLocales, "und-CN").c_str(), "");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(icuDataAvailableLocales, "und-CN").c_str(), "");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(calendarAvailableLocales, "und-CN").c_str(), "");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(numberAvailableLocales, "und-CN").c_str(), "");
     // language(en)-region(001)
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, icuDataAvailableLocales, "en-001").c_str(), "en-001");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, calendarAvailableLocales, "en-001").c_str(), "en-001");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, numberAvailableLocales, "en-001").c_str(), "en-001");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(icuDataAvailableLocales, "en-001").c_str(), "en-001");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(calendarAvailableLocales, "en-001").c_str(), "en-001");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(numberAvailableLocales, "en-001").c_str(), "en-001");
     // language(en)-script(Hans)-region(US)
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, icuDataAvailableLocales, "en-Hans-US").c_str(), "en");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, calendarAvailableLocales, "en-Hans-US").c_str(), "en");
-    EXPECT_STREQ(JSLocale::BestAvailableLocale(thread, numberAvailableLocales, "en-Hans-US").c_str(), "en");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(icuDataAvailableLocales, "en-Hans-US").c_str(), "en");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(calendarAvailableLocales, "en-Hans-US").c_str(), "en");
+    EXPECT_STREQ(JSLocale::BestAvailableLocale(numberAvailableLocales, "en-Hans-US").c_str(), "en");
 }
 
 /**
@@ -862,7 +862,8 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_001)
                                                     LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
     EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
     // availableLocales and requestLocales is not empty
-    availableLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+    std::vector<std::string> availableStringLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+    availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     requestedLocales = factory->NewTaggedArray(1);
     // test locale1
     requestedLocales->Set(thread, 0, testLocale1);
@@ -901,7 +902,8 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_002)
                                                     LocaleMatcherOption::BEST_FIT, relevantExtensionKeys);
     EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
     // availableLocales and requestLocales is not empty
-    availableLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+    std::vector<std::string> availableStringLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+    availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     requestedLocales = factory->NewTaggedArray(1);
     // test locale1
     requestedLocales->Set(thread, 0, testLocale1);
