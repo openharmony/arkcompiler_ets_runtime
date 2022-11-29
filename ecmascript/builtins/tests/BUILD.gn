@@ -79,6 +79,7 @@ host_unittest_action("BuiltinsNaturalTest") {
     "builtins_errors_test.cpp",
     "builtins_finalization_registry_test.cpp",
     "builtins_function_test.cpp",
+    "builtins_global_test.cpp",
     "builtins_iterator_test.cpp",
     "builtins_json_test.cpp",
     "builtins_map_test.cpp",
