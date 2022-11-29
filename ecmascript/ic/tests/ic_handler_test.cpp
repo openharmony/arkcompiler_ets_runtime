@@ -231,7 +231,7 @@ HWTEST_F_L0(ICHandlerTest, LoadPrototype)
     EXPECT_TRUE(HandlerBase::IsNonExist(handlerValue1->GetInt()));
     // test op is Found and hclass has Prototype
     JSHandle<JSTaggedValue> handlerValue2 = PrototypeHandler::LoadPrototype(thread, handleOp2, obj2Class);
-    JSHandle<PrototypeHandler> handler2 =  JSHandle<PrototypeHandler>::Cast(handlerValue2);
+    JSHandle<PrototypeHandler> handler2 = JSHandle<PrototypeHandler>::Cast(handlerValue2);
     JSHandle<JSTaggedValue> handlerInfo2(thread, handler2->GetHandlerInfo());
     EXPECT_EQ(HandlerBase::GetOffset(handlerInfo2->GetInt()), 2);
     JSHandle<JSTaggedValue> resultMarker(thread, handler2->GetProtoCell());
@@ -265,7 +265,7 @@ HWTEST_F_L0(ICHandlerTest, StorePrototype)
     handleOp.SetIndex(2);
     // test hclass has Prototype
     JSHandle<JSTaggedValue> handlerValue = PrototypeHandler::StorePrototype(thread, handleOp, objClass);
-    JSHandle<PrototypeHandler> handler =  JSHandle<PrototypeHandler>::Cast(handlerValue);
+    JSHandle<PrototypeHandler> handler = JSHandle<PrototypeHandler>::Cast(handlerValue);
     JSHandle<JSTaggedValue> handlerInfo(thread, handler->GetHandlerInfo());
     EXPECT_EQ(HandlerBase::GetOffset(handlerInfo->GetInt()), 2);
     JSHandle<JSTaggedValue> resultMarker(thread, handler->GetProtoCell());

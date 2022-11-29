@@ -776,7 +776,7 @@ void SlowPathLowering::LowerAdd2(GateRef gate, GateRef glue)
     const int id = RTSTUB_ID(Add2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    auto args =  {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)};
+    auto args = {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)};
     GateRef newGate = LowerCallRuntime(glue, id, args);
     ReplaceHirToCall(gate, newGate);
 }
@@ -1181,7 +1181,7 @@ void SlowPathLowering::LowerThrowUndefinedIfHole(GateRef gate, GateRef glue)
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef hole = acc_.GetValueIn(gate, 0);
-    GateRef obj =  acc_.GetValueIn(gate, 1);
+    GateRef obj = acc_.GetValueIn(gate, 1);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
     Label isHole(&builder_);

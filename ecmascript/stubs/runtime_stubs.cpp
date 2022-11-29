@@ -858,7 +858,7 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
-    JSHandle<JSTaggedValue> module =  GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
     return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
                                         static_cast<uint16_t>(methodId.GetInt()),
                                         static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
@@ -1927,7 +1927,7 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
                                            JSTaggedType key, int32_t num)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    auto cls  = reinterpret_cast<JSHClass *>(hclass);
+    auto cls = reinterpret_cast<JSHClass *>(hclass);
     JSTaggedValue propKey = JSTaggedValue(key);
     auto layoutInfo = LayoutInfo::Cast(cls->GetLayout().GetTaggedObject());
     PropertiesCache *cache = thread->GetPropertiesCache();

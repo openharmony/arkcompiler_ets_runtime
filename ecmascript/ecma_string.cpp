@@ -705,7 +705,7 @@ bool EcmaString::ToTypedArrayIndex(uint32_t *index)
     CVector<uint8_t> buf;
     const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
     uint32_t c = data[0];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    uint64_t n  = 0;
+    uint64_t n = 0;
     if (c == '0') {
         *index = 0;
         return len == 1;

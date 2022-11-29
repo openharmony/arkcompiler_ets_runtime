@@ -108,7 +108,7 @@ void LLVMStackMapParser::CalcCallSite()
     };
     for (size_t i = 0; i < llvmStackMap_.StkSizeRecords.size(); i++) {
         // relative offset
-        uintptr_t address =  llvmStackMap_.StkSizeRecords[i].functionAddress;
+        uintptr_t address = llvmStackMap_.StkSizeRecords[i].functionAddress;
         uint64_t recordCount = llvmStackMap_.StkSizeRecords[i].recordCount;
         fun2RecordNum_.emplace_back(std::make_pair(address, recordCount));
         for (uint64_t k = 0; k < recordCount; k++) {

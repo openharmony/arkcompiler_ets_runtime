@@ -2545,21 +2545,21 @@ bool JSValueRef::IsAsyncGeneratorObject()
 bool JSValueRef::IsAsyncFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    bool rst  = obj->IsJSAsyncFunction();
+    bool rst = obj->IsJSAsyncFunction();
     return rst;
 }
 
 bool JSValueRef::IsArgumentsObject()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    bool rst  = obj->IsArguments();
+    bool rst = obj->IsArguments();
     return rst;
 }
 
 bool JSValueRef::IsGeneratorFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    bool rst  = obj->IsGeneratorFunction();
+    bool rst = obj->IsGeneratorFunction();
     return rst;
 }
 

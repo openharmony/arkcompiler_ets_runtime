@@ -2993,7 +2993,7 @@ GateRef StubBuilder::InstanceOf(GateRef glue, GateRef object, GateRef target)
         Bind(&instOfNotUndefined);
         {
             GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, JSCallMode::CALL_SETTER, { target, object });
-            result =  FastToBoolean(retValue);
+            result = FastToBoolean(retValue);
             Jump(&exit);
         }
         Bind(&instOfIsUndefined);

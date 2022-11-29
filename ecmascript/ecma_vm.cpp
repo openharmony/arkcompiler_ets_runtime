@@ -357,7 +357,7 @@ EcmaVM::~EcmaVM()
 
     if (aotFileManager_ != nullptr) {
         delete aotFileManager_;
-        aotFileManager_  = nullptr;
+        aotFileManager_ = nullptr;
     }
 
     if (thread_ != nullptr) {

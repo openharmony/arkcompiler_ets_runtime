@@ -515,7 +515,7 @@ public:
         size_t specialEnd = static_cast<size_t>(ConstantIndex::NULL_INDEX);
         size_t undefinedBegin = GetJSAPIContainersBegin();
         size_t undefinedEnd = GetJSAPIContainersEnd();
-        return (index >= specialBegin  && index <= specialEnd) || (index >= undefinedBegin  && index <= undefinedEnd);
+        return (index >= specialBegin && index <= specialEnd) || (index >= undefinedBegin && index <= undefinedEnd);
     }
 
     static constexpr size_t SizeArch32 =

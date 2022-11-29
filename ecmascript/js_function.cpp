@@ -699,7 +699,7 @@ JSTaggedValue JSFunction::GetRecordName() const
 {
     JSTaggedValue module = GetModule();
     if (module.IsSourceTextModule()) {
-        JSTaggedValue recordName =  SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
+        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
         if (!recordName.IsString()) {
             LOG_INTERPRETER(DEBUG) << "module record name is undefined";
             return JSTaggedValue::Hole();

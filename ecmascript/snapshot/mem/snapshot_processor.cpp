@@ -1671,7 +1671,7 @@ uintptr_t SnapshotProcessor::TaggedObjectEncodeBitToAddr(EncodeBit taggedBit)
         LOG_FULL(FATAL) << "Snapshot deserialize can not find region by index";
     }
     Region *region = regionIndexMap_.find(regionIndex)->second;
-    size_t objectOffset  = taggedBit.GetObjectOffsetInRegion();
+    size_t objectOffset = taggedBit.GetObjectOffsetInRegion();
     return ToUintPtr(region) + objectOffset;
 }
 

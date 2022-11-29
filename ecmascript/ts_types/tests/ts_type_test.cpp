@@ -353,7 +353,7 @@ HWTEST_F_L0(TSTypeTest, InterfaceType)
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSInterfaceType());
     JSHandle<TSInterfaceType> interfaceType = JSHandle<TSInterfaceType>(type);
-    JSHandle<TSObjectType> fields =  JSHandle<TSObjectType>(thread, interfaceType->GetFields());
+    JSHandle<TSObjectType> fields = JSHandle<TSObjectType>(thread, interfaceType->GetFields());
     TSObjLayoutInfo *fieldsTypeInfo = TSObjLayoutInfo::Cast(fields->GetObjLayoutInfo().GetTaggedObject());
 
     ASSERT_EQ(fieldsTypeInfo->GetPropertiesCapacity(), propsNum);
@@ -397,7 +397,7 @@ HWTEST_F_L0(TSTypeTest, ClassType)
     JSHandle<JSTaggedValue> type = typeParser.ParseType(literal);
     ASSERT_TRUE(type->IsTSClassType());
     JSHandle<TSClassType> classType = JSHandle<TSClassType>(type);
-    JSHandle<TSObjectType> fields =  JSHandle<TSObjectType>(thread, classType->GetInstanceType());
+    JSHandle<TSObjectType> fields = JSHandle<TSObjectType>(thread, classType->GetInstanceType());
     TSObjLayoutInfo *fieldsTypeInfo = TSObjLayoutInfo::Cast(fields->GetObjLayoutInfo().GetTaggedObject());
 
     ASSERT_EQ(fieldsTypeInfo->GetPropertiesCapacity(), propsNum);
