@@ -36,6 +36,13 @@ public:
     static JSTaggedValue GetHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    static JSTaggedValue StartCpuProFiler(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StopCpuProFiler(EcmaRuntimeCallInfo *info);
+
+    static bool CreateFile(std::string &fileName);
+#endif
 };
 }  // namespace panda::ecmascript::builtins
 
