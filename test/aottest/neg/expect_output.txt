@@ -15,3 +15,4 @@
 -6.7
 NaN
 NaN
+-Infinity

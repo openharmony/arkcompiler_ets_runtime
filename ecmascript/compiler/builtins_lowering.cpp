@@ -19,9 +19,9 @@ namespace panda::ecmascript::kungfu {
 void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto bitfield = acc_.GetBitField(gate);
-    auto idGate = acc_.GetValueIn(gate, bitfield - 1);
-    auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetBitField(idGate));
+    auto valuesIn = acc_.GetNumValueIn(gate);
+    auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
+    auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
         case BUILTINS_STUB_ID(SQRT):
             LowerTypedSqrt(gate);
@@ -230,11 +230,11 @@ GateRef BuiltinLowering::TypedSqrt(GateRef gate)
     return ret;
 }
 
-//  Int abs : The internal representation of an integer is inverse code, 
+//  Int abs : The internal representation of an integer is inverse code,
 //  The absolute value of a negative number can be found by inverting it by adding one.
 
-//  Float abs : A floating-point number is composed of mantissa and exponent. 
-//  The length of mantissa will affect the precision of the number, and its sign will determine the sign of the number. 
+//  Float abs : A floating-point number is composed of mantissa and exponent.
+//  The length of mantissa will affect the precision of the number, and its sign will determine the sign of the number.
 //  The absolute value of a floating-point number can be found by setting mantissa sign bit to 0.
 GateRef BuiltinLowering::TypedAbs(GateRef gate)
 {
@@ -245,7 +245,7 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
     Label exit(&builder_);
     GateRef a0 = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
- 
+
     Label isInt(&builder_);
     Label notInt(&builder_);
     builder_.Branch(builder_.TaggedIsInt(a0), &isInt, &notInt);

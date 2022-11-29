@@ -238,8 +238,8 @@ void TSTypeLowering::DeleteGates(GateRef hir, std::vector<GateRef> &unusedGate)
                 // handle exception merge has only one input, using state entry and depend entry to replace merge and
                 // dependselector.
                 if (acc_.GetNumIns(*useIt) == 1) {
-                    GateRef stateEntry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-                    GateRef dependEntry = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+                    GateRef stateEntry = circuit_->GetRoot(OpCode::STATE_ENTRY);
+                    GateRef dependEntry = circuit_->GetRoot(OpCode::DEPEND_ENTRY);
                     auto mergeUses = acc_.Uses(*useIt);
                     for (auto mergeUseIt = mergeUses.begin(); mergeUseIt != uses.end(); ++mergeUseIt) {
                         if (acc_.GetOpCode(*mergeUseIt) == OpCode::DEPEND_SELECTOR) {

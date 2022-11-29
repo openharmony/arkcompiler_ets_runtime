@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/compiler/type_lowering.h"
+#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {
@@ -42,10 +43,11 @@ using ecmascript::kungfu::CompilationConfig;
 HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    auto entry = circuit.GetRoot(OpCode::STATE_ENTRY);
+    auto depend = circuit.GetRoot(OpCode::DEPEND_ENTRY);
     auto arg0 = builder.Arguments(0);
     auto check = builder.TypeCheck(GateType::NumberType(), arg0);
     builder.Return(entry, depend, check);
@@ -59,10 +61,11 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
 HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    auto entry = circuit.GetRoot(OpCode::STATE_ENTRY);
+    auto depend = circuit.GetRoot(OpCode::DEPEND_ENTRY);
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
     auto nadd = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
@@ -79,10 +82,11 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
 HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    auto entry = circuit.GetRoot(OpCode::STATE_ENTRY);
+    auto depend = circuit.GetRoot(OpCode::DEPEND_ENTRY);
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
     auto nless = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
@@ -99,10 +103,11 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
 HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    auto entry = circuit.GetRoot(OpCode::STATE_ENTRY);
+    auto depend = circuit.GetRoot(OpCode::DEPEND_ENTRY);
     auto arg0 = builder.Arguments(0);
     auto convert = builder.TypeConvert(MachineType::I64, GateType::NJSValue(), GateType::NumberType(),
                                        {entry, depend, arg0});
@@ -117,7 +122,8 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
 HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
     Environment env(2, &builder);
     builder.SetEnvironment(&env);
@@ -149,7 +155,8 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
 HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
     Environment env(0, &builder);
     builder.SetEnvironment(&env);

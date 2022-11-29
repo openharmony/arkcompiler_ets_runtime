@@ -32,7 +32,7 @@
 
 namespace panda::ecmascript {
 template<typename T>
-class ChunkVector : public std::vector<T, ChunkAllocator<T>> {
+class PUBLIC_API ChunkVector : public std::vector<T, ChunkAllocator<T>> {
 public:
     explicit ChunkVector(Chunk *chunk) : std::vector<T, ChunkAllocator<T>>(ChunkAllocator<T>(chunk)) {}
 
@@ -48,7 +48,7 @@ public:
 };
 
 template<typename K, typename V, typename Compare = std::less<K>>
-class ChunkMap : public std::map<K, V, Compare, ChunkAllocator<std::pair<const K, V>>> {
+class PUBLIC_API ChunkMap : public std::map<K, V, Compare, ChunkAllocator<std::pair<const K, V>>> {
 public:
     // Constructs an empty map.
     explicit ChunkMap(Chunk *chunk)
@@ -62,7 +62,7 @@ public:
 };
 
 template<typename K, typename V, typename Hash = std::hash<K>, typename KeyEqual = std::equal_to<K>>
-class ChunkUnorderedMap : public std::unordered_map<K, V, Hash, KeyEqual, ChunkAllocator<std::pair<const K, V>>> {
+class PUBLIC_API ChunkUnorderedMap : public std::unordered_map<K, V, Hash, KeyEqual, ChunkAllocator<std::pair<const K, V>>> {
 public:
     // NOLINTNEXTLINE(readability-magic-numbers)
     explicit ChunkUnorderedMap(Chunk *chunk, size_t bucket_count = 100)
@@ -76,7 +76,7 @@ public:
 };
 
 template<typename K, typename V, typename Compare = std::less<K>>
-class ChunkMultimap : public std::multimap<K, V, Compare, ChunkAllocator<std::pair<const K, V>>> {
+class PUBLIC_API ChunkMultimap : public std::multimap<K, V, Compare, ChunkAllocator<std::pair<const K, V>>> {
 public:
     // Constructs an empty multimap.
     explicit ChunkMultimap(Chunk *chunk)

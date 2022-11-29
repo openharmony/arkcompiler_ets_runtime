@@ -142,11 +142,11 @@ void SlowPathLowering::ReplaceHirToJSCall(GateRef hirGate, GateRef callGate, Gat
     auto uses = acc_.Uses(hirGate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
-            acc_.SetOpCode(*it, OpCode::IF_FALSE);
+            acc_.SetMetaData(*it, circuit_->IfFalse());
             it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
-                acc_.SetOpCode(*it, OpCode::IF_TRUE);
+                acc_.SetMetaData(*it, circuit_->IfTrue());
                 it = acc_.ReplaceIn(it, ifBranch);
             } else {
                 it = acc_.ReplaceIn(it, callGate);
@@ -192,11 +192,11 @@ void SlowPathLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool 
     auto uses = acc_.Uses(hirGate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
-            acc_.SetOpCode(*it, OpCode::IF_FALSE);
+            acc_.SetMetaData(*it, circuit_->IfFalse());
             it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
-                acc_.SetOpCode(*it, OpCode::IF_TRUE);
+                acc_.SetMetaData(*it, circuit_->IfTrue());
                 it = acc_.ReplaceIn(it, ifBranch);
             } else {
                 it = acc_.ReplaceIn(it, callGate);
@@ -224,11 +224,11 @@ void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate)
     auto uses = acc_.Uses(hirGate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
-            acc_.SetOpCode(*it, OpCode::IF_FALSE);
+            acc_.SetMetaData(*it, circuit_->IfFalse());
             it = acc_.ReplaceIn(it, ifBranch);
         } else {
             if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
-                acc_.SetOpCode(*it, OpCode::IF_TRUE);
+                acc_.SetMetaData(*it, circuit_->IfTrue());
                 it = acc_.ReplaceIn(it, ifBranch);
             } else {
                 it = acc_.ReplaceIn(it, callGate);
@@ -1117,7 +1117,7 @@ void SlowPathLowering::LowerThrow(GateRef gate, GateRef glue)
     GateRef exception = acc_.GetValueIn(gate, 0);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue, exceptionOffset);
-    GateRef setException = circuit_->NewGate(OpCode(OpCode::STORE), 0,
+    GateRef setException = circuit_->NewGate(circuit_->Store(), MachineType::NOVALUE,
         {dependEntry_, exception, val}, VariableType::INT64().GetGateType());
     ReplaceHirToThrowCall(gate, setException);
 }
@@ -1229,11 +1229,11 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     GateRef depend = acc_.GetDep(hirGate);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue, exceptionOffset);
-    GateRef loadException = circuit_->NewGate(OpCode(OpCode::LOAD), VariableType::JS_ANY().GetMachineType(),
-        0, { depend, val }, VariableType::JS_ANY().GetGateType());
+    GateRef loadException = circuit_->NewGate(circuit_->Load(), VariableType::JS_ANY().GetMachineType(),
+        { depend, val }, VariableType::JS_ANY().GetGateType());
     acc_.SetDep(loadException, depend);
     GateRef holeCst = builder_.HoleConstant();
-    GateRef clearException = circuit_->NewGate(OpCode(OpCode::STORE), 0,
+    GateRef clearException = circuit_->NewGate(circuit_->Store(), MachineType::NOVALUE,
         { loadException, holeCst, val }, VariableType::INT64().GetGateType());
     auto uses = acc_.Uses(hirGate);
     for (auto it = uses.begin(); it != uses.end();) {
@@ -1259,8 +1259,8 @@ void SlowPathLowering::LowerLdGlobal(GateRef gate, GateRef glue)
     DebugPrintBC(gate, glue);
     GateRef offset = builder_.Int64(JSThread::GlueData::GetGlobalObjOffset(false));
     GateRef val = builder_.Int64Add(glue, offset);
-    GateRef newGate = circuit_->NewGate(OpCode(OpCode::LOAD), VariableType::JS_ANY().GetMachineType(),
-        0, { dependEntry_, val }, VariableType::JS_ANY().GetGateType());
+    GateRef newGate = circuit_->NewGate(circuit_->Load(), VariableType::JS_ANY().GetMachineType(),
+        { dependEntry_, val }, VariableType::JS_ANY().GetGateType());
     ReplaceHirToCall(gate, newGate);
 }
 
@@ -2071,7 +2071,7 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
     GateRef notZero = builder_.IfFalse(ifBranch);
     trueState.emplace_back(isEqualJump ? isZero : notZero);
     intFalseState.emplace_back(isEqualJump ? notZero : isZero);
-    auto mergeIntState = builder_.Merge(intFalseState.data(), intFalseState.size());
+    auto mergeIntState = builder_.Merge(intFalseState);
 
     // (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)
     std::vector<GateRef> doubleFalseState;
@@ -2085,16 +2085,16 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
     GateRef notDoubleZero = builder_.IfFalse(ifBranch);
     trueState.emplace_back(isEqualJump ? isDoubleZero : notDoubleZero);
     doubleFalseState.emplace_back(isEqualJump ? notDoubleZero : isDoubleZero);
-    auto mergeFalseState = builder_.Merge(doubleFalseState.data(), doubleFalseState.size());
+    auto mergeFalseState = builder_.Merge(doubleFalseState);
 
-    GateRef mergeTrueState = builder_.Merge(trueState.data(), trueState.size());
+    GateRef mergeTrueState = builder_.Merge(trueState);
     auto uses = acc_.Uses(gate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_TRUE) {
-            acc_.SetOpCode(*it, OpCode::ORDINARY_BLOCK);
+            acc_.SetMetaData(*it, circuit_->OrdinaryBlock());
             it = acc_.ReplaceIn(it, mergeTrueState);
         } else if (acc_.GetOpCode(*it) == OpCode::IF_FALSE) {
-            acc_.SetOpCode(*it, OpCode::ORDINARY_BLOCK);
+            acc_.SetMetaData(*it, circuit_->OrdinaryBlock());
             it = acc_.ReplaceIn(it, mergeFalseState);
         } else if (((acc_.GetOpCode(*it) == OpCode::DEPEND_SELECTOR) ||
                     (acc_.GetOpCode(*it) == OpCode::DEPEND_RELAY)) &&

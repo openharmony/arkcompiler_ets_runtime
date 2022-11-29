@@ -49,4 +49,9 @@ var y7 = -1;
 var r7 = x7 >>> y7;
 print(r7);
 
+var x8 = 4294967295.1;
+var y8 = 0;
+var r8 = x8 >>> y8;
+print(r8);
+
 // not supported type: string, bigint

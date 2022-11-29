@@ -907,7 +907,8 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
         auto depend = env_->GetCurrentLabel()->GetDepend();
         GateRef ptr = PtrAdd(base, offset);
         GateRef result = env_->GetCircuit()->NewGate(
-            OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
+            env_->GetCircuit()->Store(), MachineType::NOVALUE,
+            { depend, value, ptr }, type.GetGateType());
         env_->GetCurrentLabel()->SetDepend(result);
         if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
             auto env = GetEnvironment();
@@ -3941,7 +3942,7 @@ GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
     return ret;
 }
 
-template<OpCode::Op Op>
+template<OpCode Op>
 GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right)
 {
     auto intOperation = [=](Environment *env, GateRef left, GateRef right) {

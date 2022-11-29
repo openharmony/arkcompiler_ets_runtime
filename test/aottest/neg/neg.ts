@@ -25,3 +25,7 @@ print(-c)
 
 var d:string = "abc";
 print(-d);
+
+var e:number = 0;
+var f:number = 1;
+print(f / -e);

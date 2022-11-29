@@ -96,6 +96,19 @@ private:
     EcmaList<Area> areaList_ {};
     NativeAreaAllocator *allocator_ {nullptr};
 };
+
+class PUBLIC_API ChunkObject {
+public:
+    void *operator new(size_t size, Chunk* chunk)
+    {
+        return chunk->Allocate(size);
+    }
+
+    void operator delete([[maybe_unused]] void* ptr)
+    {
+        UNREACHABLE();
+    }
+};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_CHUNK_H

@@ -279,7 +279,7 @@ public:
         return { circuit_, gate };
     }
 
-    ConstUseWrapper ConstUses(GateRef gate)
+    ConstUseWrapper ConstUses(GateRef gate) const
     {
         return { circuit_, gate };
     }
@@ -303,11 +303,10 @@ public:
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
     bool IsGCRelated(GateRef gate) const;
-    void SetOpCode(GateRef gate, OpCode::Op opcode);
     BitField GetBitField(GateRef gate) const;
+    uint64_t GetConstantValue(GateRef gate) const;
     uint32_t GetBytecodeIndex(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
-    void SetBitField(GateRef gate, BitField bitField);
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;
     GateId GetId(GateRef gate) const;
@@ -371,6 +370,9 @@ public:
     GateRef GetGlueFromArgList() const;
     void GetArgsOuts(std::vector<GateRef>& outs) const;
     void GetReturnOuts(std::vector<GateRef>& outs) const;
+    GateRef GetRoot(OpCode opcode) const;
+    const GateMetaData *GetMetaData(GateRef gate) const;
+    void SetMetaData(GateRef gate, const GateMetaData* meta);
 
 private:
     ConstUseIterator ConstUseBegin(GateRef gate) const

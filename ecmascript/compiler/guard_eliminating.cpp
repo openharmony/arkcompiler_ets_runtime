@@ -46,7 +46,7 @@ void GuardEliminating::ProcessTwoConditions(GateRef gate, std::set<GateRef> &con
     if (conditionSet.count(left) > 0 && conditionSet.count(right) > 0) {
         if (IsLogEnabled()) {
             LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
-                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+                               << acc_.GetOpCode(gate) << " " << acc_.GetId(gate);
         }
         acc_.DeleteGuardAndFrameState(gate);
     } else if (conditionSet.count(left) > 0) {
@@ -69,7 +69,7 @@ void GuardEliminating::ProcessOneCondition(GateRef gate, std::set<GateRef> &cond
     if (conditionSet.count(condition) > 0) {
         if (IsLogEnabled()) {
             LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
-                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+                               << acc_.GetOpCode(gate) << " " << acc_.GetId(gate);
         }
         acc_.DeleteGuardAndFrameState(gate);
     } else {
@@ -112,7 +112,7 @@ void GuardEliminating::RemoveOneTrusted(GateRef gate)
     if (condition == builder_.Boolean(true)) {
         if (IsLogEnabled()) {
             LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
-                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+                               << acc_.GetOpCode(gate) << " " << acc_.GetId(gate);
         }
         acc_.DeleteGuardAndFrameState(gate);
     }
@@ -128,7 +128,7 @@ void GuardEliminating::RemoveTwoTrusted(GateRef gate)
     if (left == builder_.Boolean(true) && right == builder_.Boolean(true)) {
         if (IsLogEnabled()) {
             LOG_COMPILER(INFO) << "[guard-eliminating] delete guard " << acc_.GetId(guard) << " for "
-                               << acc_.GetOpCode(gate).Str() << " " << acc_.GetId(gate);
+                               << acc_.GetOpCode(gate) << " " << acc_.GetId(gate);
         }
         acc_.DeleteGuardAndFrameState(gate);
     } else if (left == builder_.Boolean(true)) {
@@ -210,7 +210,7 @@ void GuardEliminating::Run()
         size_t idx;
     };
     std::stack<DFSState> dfsStack;
-    auto startGate = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
+    auto startGate = circuit_->GetRoot(OpCode::STATE_ENTRY);
     DFSState startState = { bbGatesAddrToIdx[startGate], 0 };
     dfsStack.push(startState);
     while (!dfsStack.empty()) {
