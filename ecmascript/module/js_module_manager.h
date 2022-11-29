@@ -100,7 +100,7 @@ private:
     bool isExecuteBuffer_ = false;
 
     friend class EcmaVM;
-    friend class QuickFixLoader;
+    friend class PatchLoader;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_JS_MODULE_MANAGER_H

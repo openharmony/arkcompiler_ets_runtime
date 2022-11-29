@@ -18,9 +18,9 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/quick_fix_manager.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 
 using namespace panda::ecmascript;
 using namespace panda::panda_file;

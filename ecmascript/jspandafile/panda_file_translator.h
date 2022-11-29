@@ -53,7 +53,7 @@ private:
     static void ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
                                              JSHandle<ConstantPool> constpool);
     static JSHandle<ConstantPool> AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
-    friend class QuickFixLoader;
+    friend class PatchLoader;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_PANDA_FILE_TRANSLATOR_H

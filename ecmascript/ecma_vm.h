@@ -400,6 +400,8 @@ public:
     void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+    // For new version instruction.
+    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
 

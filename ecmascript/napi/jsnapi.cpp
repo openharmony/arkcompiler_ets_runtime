@@ -39,7 +39,6 @@
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/quick_fix_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
@@ -71,6 +70,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/regexp/regexp_parser.h"
@@ -2588,7 +2588,7 @@ EcmaVM *JsiRuntimeCallInfo::GetVM() const
     return thread_->GetEcmaVM();
 }
 
-// ---------------------------------------Hot Patch----------------------------------------------------
+// ---------------------------------------HotPatch--HotReload-------------------------------------------
 bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
 {
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
