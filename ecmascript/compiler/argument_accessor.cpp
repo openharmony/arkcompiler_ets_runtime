@@ -18,12 +18,12 @@
 namespace panda::ecmascript::kungfu {
 void ArgumentAccessor::NewCommonArg(const CommonArgIdx argIndex, MachineType machineType, GateType gateType)
 {
-    circuit_->NewGate(OpCode(OpCode::ARG), machineType, static_cast<size_t>(argIndex), { argRoot_ }, gateType);
+    circuit_->NewArg(machineType, static_cast<size_t>(argIndex), gateType, argRoot_);
 }
 
 void ArgumentAccessor::NewArg(const size_t argIndex)
 {
-    circuit_->NewGate(OpCode(OpCode::ARG), MachineType::I64, argIndex, { argRoot_ }, GateType::TaggedValue());
+    circuit_->NewArg(MachineType::I64, argIndex, GateType::TaggedValue(), argRoot_);
 }
 
 // method must be set

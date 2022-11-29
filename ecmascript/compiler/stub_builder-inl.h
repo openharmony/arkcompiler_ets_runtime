@@ -489,7 +489,7 @@ inline GateRef StubBuilder::IntPtrLSR(GateRef x, GateRef y)
     return env_->GetBuilder()->IntPtrLSR(x, y);
 }
 
-template<OpCode::Op Op, MachineType Type>
+template<OpCode Op, MachineType Type>
 inline GateRef StubBuilder::BinaryOp(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->BinaryOp<Op, Type>(x, y);

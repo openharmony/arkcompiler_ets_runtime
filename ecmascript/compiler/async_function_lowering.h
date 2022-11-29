@@ -27,8 +27,8 @@ public:
     AsyncFunctionLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
                           bool enableLog, const std::string& name)
         : bcBuilder_(bcBuilder), circuit_(circuit), builder_(circuit, cmpCfg), enableLog_(enableLog),
-          stateEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY))),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
+          stateEntry_(circuit->GetRoot(OpCode::STATE_ENTRY)),
+          dependEntry_(circuit->GetRoot(OpCode::DEPEND_ENTRY)),
           accessor_(circuit), argAccessor_(circuit), methodName_(name)
     {
     }

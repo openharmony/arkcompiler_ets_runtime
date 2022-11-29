@@ -424,7 +424,7 @@ private:
     void NewMerge(GateRef &state, GateRef &depend, size_t numOfIns);
     void NewLoopBegin(BytecodeRegion &bb);
     void BuildBlockCircuitHead();
-    std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, BitField bitfield);
+    std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, const GateMetaData *meta);
     void SetBlockPred(BytecodeRegion &bbNext, const GateRef &state, const GateRef &depend, bool isLoopBack);
     GateRef NewConst(const BytecodeInfo &info);
     void NewJSGate(BytecodeRegion &bb, GateRef &state, GateRef &depend);

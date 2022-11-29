@@ -66,7 +66,7 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo
                                             pcOffset,
                                             GateType::NJSValue());
     inList[numVregs_] = pcGate;
-    return circuit_->NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
+    return circuit_->NewGate(circuit_->FrameState(frameStateInputs), inList);
 }
 
 void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo)
@@ -77,8 +77,8 @@ void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, FrameStateInfo 
     auto trueGate = circuit_->GetConstantGate(MachineType::I1,
                                               1, // 1: true
                                               GateType::NJSValue());
-    GateRef guard = circuit_->NewGate(
-        OpCode(OpCode::GUARD), 3, {depend, trueGate, frameState, glue}, GateType::Empty());
+    GateRef guard = circuit_->NewGate(circuit_->Guard(),
+        {depend, trueGate, frameState, glue});
     gateAcc_.ReplaceDependIn(gate, guard);
     if (builder_->IsLogEnabled()) {
         gateAcc_.ShortPrint(frameState);

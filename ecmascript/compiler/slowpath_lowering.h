@@ -116,7 +116,7 @@ public:
         : tsManager_(tsManager), methodLiteral_(methodLiteral),
           circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
+          dependEntry_(circuit->GetRoot(OpCode::DEPEND_ENTRY)),
           enableLog_(enableLog), methodName_(name)
     {
         traceBc_ = cmpCfg->IsTraceBC();

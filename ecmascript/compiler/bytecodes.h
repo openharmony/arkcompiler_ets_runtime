@@ -339,7 +339,7 @@ public:
     {
     }
 
-    explicit ConstDataId(panda::ecmascript::kungfu::BitField bitfield)
+    explicit ConstDataId(uint64_t bitfield)
     {
         type_ = ConstDataIDType(bitfield >> TYPE_SHIFT);
         id_ = bitfield & ((1 << TYPE_SHIFT) - 1);
@@ -392,7 +392,7 @@ public:
         return type_ == ConstDataIDType::ArrayLiteralIDType;
     }
 
-    BitField CaculateBitField() const
+    uint64_t CaculateBitField() const
     {
         return (static_cast<uint8_t>(type_) << TYPE_SHIFT) | id_;
     }

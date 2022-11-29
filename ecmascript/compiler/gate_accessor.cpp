@@ -73,18 +73,25 @@ BitField GateAccessor::GetBitField(GateRef gate) const
     return gatePtr->GetBitField();
 }
 
+uint64_t GateAccessor::GetConstantValue(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONSTANT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetOneValueMetaData()->GetValue();
+}
+
 uint32_t GateAccessor::GetBytecodeIndex(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JS_BYTECODE);
-    BitField bitField = GetBitField(gate);
-    return GateBitFieldAccessor::GetBytecodeIndex(bitField);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetJSBytecodeMetaData()->GetBytecodeIndex();
 }
 
 EcmaOpcode GateAccessor::GetByteCodeOpcode(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JS_BYTECODE);
-    BitField bitField = GetBitField(gate);
-    return GateBitFieldAccessor::GetByteCodeOpcode(bitField);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
 }
 
 void GateAccessor::Print(GateRef gate) const
@@ -103,18 +110,6 @@ GateId GateAccessor::GetId(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetId();
-}
-
-void GateAccessor::SetOpCode(GateRef gate, OpCode::Op opcode)
-{
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    gatePtr->SetOpCode(OpCode(opcode));
-}
-
-void GateAccessor::SetBitField(GateRef gate, BitField bitField)
-{
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    gatePtr->SetBitField(bitField);
 }
 
 size_t GateAccessor::GetInValueStarts(GateRef gate) const
@@ -190,13 +185,13 @@ void GateAccessor::GetOutStates(GateRef gate, std::vector<GateRef>& outStates) c
     if (!curGate->IsFirstOutNull()) {
         const Out *curOut = curGate->GetFirstOutConst();
         GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
-        if (circuit_->GetOpCode(ref).IsState()) {
+        if (GetMetaData(ref)->IsState()) {
             outStates.push_back(ref);
         }
         while (!curOut->IsNextOutNull()) {
             curOut = curOut->GetNextOutConst();
             ref = circuit_->GetGateRef(curOut->GetGateConst());
-            if (circuit_->GetOpCode(ref).IsState()) {
+            if (GetMetaData(ref)->IsState()) {
                 outStates.push_back(ref);
             }
         }
@@ -235,32 +230,32 @@ bool GateAccessor::IsLoopBack(GateRef gate) const
 
 bool GateAccessor::IsState(GateRef gate) const
 {
-    return GetOpCode(gate).IsState();
+    return GetMetaData(gate)->IsState();
 }
 
 bool GateAccessor::IsConstant(GateRef gate) const
 {
-    return GetOpCode(gate).IsConstant();
+    return GetMetaData(gate)->IsConstant();
 }
 
 bool GateAccessor::IsConstantValue(GateRef gate, uint64_t value) const
 {
     auto isConstant = IsConstant(gate);
     if (isConstant) {
-        BitField bitField = GetBitField(gate);
-        return GateBitFieldAccessor::GetConstantValue(bitField) == value;
+        uint64_t bitField = GetConstantValue(gate);
+        return bitField == value;
     }
     return false;
 }
 
 bool GateAccessor::IsTypedOperator(GateRef gate) const
 {
-    return GetOpCode(gate).IsTypedOperator();
+    return GetMetaData(gate)->IsTypedOperator();
 }
 
 bool GateAccessor::IsSchedulable(GateRef gate) const
 {
-    return GetOpCode(gate).IsSchedulable();
+    return GetMetaData(gate)->IsSchedulable();
 }
 
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
@@ -277,7 +272,7 @@ size_t GateAccessor::GetImmediateId(GateRef gate) const
     ASSERT(gatePtr->GetGateType() == GateType::NJSValue());
     ASSERT(gatePtr->GetOpCode() == OpCode::CONSTANT);
     ASSERT(gatePtr->GetMachineType() == MachineType::I64);
-    size_t imm = gatePtr->GetBitField();
+    size_t imm = gatePtr->GetOneValueMetaData()->GetValue();
     return imm;
 }
 
@@ -507,6 +502,22 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
     DeleteGate(gate);
 }
 
+GateRef GateAccessor::GetRoot(OpCode opcode) const
+{
+    GateRef root = circuit_->GetRoot();
+    if (opcode == OpCode::CIRCUIT_ROOT) {
+        return root;
+    }
+
+    auto uses = ConstUses(root);
+    for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+        if (GetOpCode(*useIt) == opcode) {
+            return *useIt;
+        }
+    }
+    return Circuit::NullGate();
+}
+
 GateType GateAccessor::GetLeftType(GateRef gate) const
 {
     auto operandTypes = GetBitField(gate);
@@ -523,7 +534,7 @@ GateType GateAccessor::GetRightType(GateRef gate) const
 
 GateRef GateAccessor::GetGlueFromArgList() const
 {
-    auto argRoot = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+    auto argRoot = GetRoot(OpCode::ARG_LIST);
     ASSERT(static_cast<size_t>(CommonArgIdx::GLUE) == 0);
     const Gate *curGate = circuit_->LoadGatePtrConst(argRoot);
 
@@ -537,7 +548,7 @@ GateRef GateAccessor::GetGlueFromArgList() const
 
 void GateAccessor::GetArgsOuts(std::vector<GateRef>& outs) const
 {
-    auto argRoot = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+    auto argRoot = GetRoot(OpCode::ARG_LIST);
     auto firstOut = circuit_->InnerMethodArgFirstOut();
     if (firstOut != nullptr) {
         const Gate *curGate = circuit_->LoadGatePtrConst(argRoot);
@@ -556,7 +567,7 @@ void GateAccessor::GetArgsOuts(std::vector<GateRef>& outs) const
 
 void GateAccessor::GetReturnOuts(std::vector<GateRef>& outs) const
 {
-    auto returnRoot = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
+    auto returnRoot = GetRoot(OpCode::RETURN_LIST);
     auto firstOut = circuit_->InnerMethodReturnFirstOut();
     if (firstOut != nullptr) {
         const Gate *curGate = circuit_->LoadGatePtrConst(returnRoot);
@@ -571,5 +582,15 @@ void GateAccessor::GetReturnOuts(std::vector<GateRef>& outs) const
     } else {
         GetOuts(returnRoot, outs);
     }
+}
+
+const GateMetaData *GateAccessor::GetMetaData(GateRef gate) const
+{
+    return circuit_->LoadGatePtrConst(gate)->GetMetaData();
+}
+
+void GateAccessor::SetMetaData(GateRef gate, const GateMetaData* meta)
+{
+    return circuit_->LoadGatePtr(gate)->SetMetaData(meta);
 }
 }  // namespace panda::ecmascript::kungfu

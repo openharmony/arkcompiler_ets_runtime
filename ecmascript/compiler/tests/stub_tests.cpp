@@ -28,10 +28,11 @@
 #include "ecmascript/compiler/stub.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -76,7 +77,7 @@ public:
         if (thread->GetEcmaVM()->GetJSOptions().WasSetCompilerLogOption()) {
             GateAccessor acc(const_cast<Circuit*>(&netOfGates));
             for (size_t bbIdx = 0; bbIdx < cfg.size(); bbIdx++) {
-                LOG_COMPILER(INFO) << (acc.GetOpCode(cfg[bbIdx].front()).IsCFGMerge() ? "MERGE_" : "BB_")
+                LOG_COMPILER(INFO) << (acc.GetMetaData(cfg[bbIdx].front())->IsCFGMerge() ? "MERGE_" : "BB_")
                                    << bbIdx << ":";
                 for (size_t instIdx = cfg[bbIdx].size(); instIdx > 0; instIdx--) {
                     acc.Print(cfg[bbIdx][instIdx - 1]);
@@ -110,7 +111,8 @@ HWTEST_F_L0(StubTest, FastAddTest)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Add);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     AddCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -152,7 +154,8 @@ HWTEST_F_L0(StubTest, FastSubTest)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Sub);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     SubCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -190,7 +193,8 @@ HWTEST_F_L0(StubTest, FastMulTest)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Mul);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     MulCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -247,7 +251,8 @@ HWTEST_F_L0(StubTest, FastDivTest)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Div);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     DivCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -297,7 +302,8 @@ HWTEST_F_L0(StubTest, FastModTest)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Mod);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     ModCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -366,7 +372,8 @@ HWTEST_F_L0(StubTest, TryLoadICByName)
 {
     auto module = stubModule.GetModule();
     auto findFunction = stubModule.GetFunction(CommonStubCSigns::TryLoadICByName);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     TryLoadICByNameCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -388,7 +395,8 @@ HWTEST_F_L0(StubTest, TryLoadICByValue)
 {
     auto module = stubModule.GetModule();
     auto findFunction = stubModule.GetFunction(CommonStubCSigns::TryLoadICByValue);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     TryLoadICByValueCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -410,7 +418,8 @@ HWTEST_F_L0(StubTest, TryStoreICByName)
 {
     auto module = stubModule.GetModule();
     auto findFunction = stubModule.GetFunction(CommonStubCSigns::TryStoreICByName);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     TryStoreICByNameCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -432,7 +441,8 @@ HWTEST_F_L0(StubTest, TryStoreICByValue)
 {
     auto module = stubModule.GetModule();
     auto findFunction = stubModule.GetFunction(CommonStubCSigns::TryStoreICByValue);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     TryStoreICByValueCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -900,7 +910,8 @@ HWTEST_F_L0(StubTest, GetPropertyByIndexStub)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::GetPropertyByIndex);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     GetPropertyByIndexCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -935,7 +946,8 @@ HWTEST_F_L0(StubTest, SetPropertyByIndexStub)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::SetPropertyByIndex);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     SetPropertyByIndexCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -974,7 +986,8 @@ HWTEST_F_L0(StubTest, GetPropertyByNameStub)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::DeprecatedGetPropertyByName);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     DeprecatedGetPropertyByNameCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -1015,7 +1028,8 @@ HWTEST_F_L0(StubTest, SetPropertyByNameStub)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::DeprecatedSetPropertyByName);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     DeprecatedSetPropertyByNameCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -1053,7 +1067,8 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
 {
     auto module = stubModule.GetModule();
     LLVMValueRef getPropertyByIndexfunction = stubModule.GetFunction(CommonStubCSigns::GetPropertyByIndex);
-    Circuit netOfGates2;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates2(&allocator);
     CallSignature callSignature;
     GetPropertyByIndexCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates2);
@@ -1068,7 +1083,7 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     llvmBuilder2.Build();
 
     LLVMValueRef getPropertyByNamefunction = stubModule.GetFunction(CommonStubCSigns::DeprecatedGetPropertyByName);
-    Circuit netOfGates1;
+    Circuit netOfGates1(&allocator);
     CallSignature callSignature1;
     DeprecatedGetPropertyByNameCallSignature::Initialize(&callSignature1);
     Stub stub1(&callSignature1, &netOfGates1);
@@ -1084,7 +1099,7 @@ HWTEST_F_L0(StubTest, GetPropertyByValueStub)
     llvmBuilder1.Build();
 
     LLVMValueRef function = stubModule.GetFunction(CommonStubCSigns::DeprecatedGetPropertyByValue);
-    Circuit netOfGates;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature2;
     DeprecatedGetPropertyByValueCallSignature::Initialize(&callSignature2);
     Stub stub2(&callSignature2, &netOfGates);
@@ -1157,7 +1172,8 @@ HWTEST_F_L0(StubTest, FastTypeOfTest)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::TypeOf);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     TypeOfCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -1248,7 +1264,8 @@ HWTEST_F_L0(StubTest, FastEqualTest)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::Equal);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     EqualCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);
@@ -1480,7 +1497,8 @@ HWTEST_F_L0(StubTest, RelocateTest)
 {
     auto module = stubModule.GetModule();
     auto function = stubModule.GetFunction(CommonStubCSigns::TestAbsoluteAddressRelocation);
-    Circuit netOfGates;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit netOfGates(&allocator);
     CallSignature callSignature;
     TestAbsoluteAddressRelocationCallSignature::Initialize(&callSignature);
     Stub stub(&callSignature, &netOfGates);

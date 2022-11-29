@@ -724,7 +724,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
     if (ShouldInferWithLdObjByValue(objType)) {
         auto valueGate = gateAccessor_.GetValueIn(gate, 2);  // 2: value input slot
         if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
-            auto value = gateAccessor_.GetBitField(valueGate);
+            auto value = gateAccessor_.GetConstantValue(valueGate);
             auto type = GetPropType(objType, value);
             return UpdateType(gate, type);
         }
@@ -777,7 +777,7 @@ bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
         return GetSuperProp(gate, index);
     }
     if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
-        auto index = gateAccessor_.GetBitField(valueGate);
+        auto index = gateAccessor_.GetConstantValue(valueGate);
 
         return GetSuperProp(gate, index, false);
     }
@@ -842,16 +842,16 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
 
 bool TypeInfer::InferLdLexVarDyn(GateRef gate)
 {
-    auto level = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
-    auto slot = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
+    auto level = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
+    auto slot = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
     auto type = lexEnvManager_->GetLexEnvElementType(methodId_, level, slot);
     return UpdateType(gate, type);
 }
 
 bool TypeInfer::InferStLexVarDyn(GateRef gate)
 {
-    auto level = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
-    auto slot = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1));
+    auto level = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
+    auto slot = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
     auto type = lexEnvManager_->GetLexEnvElementType(methodId_, level, slot);
     if (type.IsAnyType()) {
         auto valueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));
@@ -865,7 +865,7 @@ bool TypeInfer::InferStLexVarDyn(GateRef gate)
 
 bool TypeInfer::InferStModuleVar(GateRef gate)
 {
-    auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    auto index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
     auto defineGate = gateAccessor_.GetValueIn(gate, 1);
     auto defineType = gateAccessor_.GetGateType(defineGate);
@@ -878,7 +878,7 @@ bool TypeInfer::InferStModuleVar(GateRef gate)
 
 bool TypeInfer::InferLdLocalModuleVar(GateRef gate)
 {
-    auto index = gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0));
+    auto index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
     if (!tsManager_->HasExportGT(jsPandaFile, recordName_, index)) {
         return UpdateType(gate, GateType::AnyType());
@@ -1084,7 +1084,7 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
     std::string log(logPreFix);
     log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
     OpCode op = gateAccessor_.GetOpCode(gate);
-    log += "op: " + op.Str() + ", ";
+    log += "op: " + GateMetaData::Str(op) + ", ";
     if (op == OpCode::ARG) {
         log += "arg gate, ";
     } else if (op != OpCode::VALUE_SELECTOR) {

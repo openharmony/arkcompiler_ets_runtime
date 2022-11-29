@@ -186,8 +186,8 @@ void LLVMIRBuilder::InitializeHandlers()
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
-        OpCode::FRAMESTATE_ENTRY, OpCode::RETURN_LIST, OpCode::THROW_LIST,
-        OpCode::CONSTANT_LIST, OpCode::ARG_LIST, OpCode::THROW,
+        OpCode::RETURN_LIST,
+        OpCode::ARG_LIST, OpCode::THROW,
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY, OpCode::DEPEND_AND,
         OpCode::FRAME_STATE, OpCode::GUARD
     };
@@ -217,7 +217,7 @@ void LLVMIRBuilder::Build()
         auto ins = acc_.Ins(bb[0]);
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef r = *i;
-            if (!acc_.GetOpCode(r).IsState()) {
+            if (!acc_.GetMetaData(r)->IsState()) {
                 continue;
             }
             predecessors.insert(instID2bbID_[acc_.GetId(r)]);
@@ -336,7 +336,7 @@ void LLVMIRBuilder::GenPrologue()
         reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
-        auto ArgList = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+        auto ArgList = circuit_->GetRoot(OpCode::ARG_LIST);
         auto uses = acc_.Uses(ArgList);
         for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
             int argth = static_cast<int>(acc_.GetBitField(*useIt));
@@ -531,7 +531,7 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
 
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
-    const int index = static_cast<int>(acc_.GetBitField(inList[static_cast<int>(CallInputs::TARGET)]));
+    const int index = static_cast<int>(acc_.GetConstantValue(inList[static_cast<int>(CallInputs::TARGET)]));
     params.push_back(LLVMConstInt(LLVMInt64Type(), index, 0)); // target
     params.push_back(LLVMConstInt(LLVMInt64Type(),
         inList.size() - static_cast<size_t>(CallInputs::FIRST_PARAMETER), 0)); // argc
@@ -572,7 +572,7 @@ void LLVMIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<Gat
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
 
-    BitField index = acc_.GetBitField(inList[static_cast<size_t>(CallInputs::TARGET)]);
+    uint64_t index = acc_.GetConstantValue(inList[static_cast<size_t>(CallInputs::TARGET)]);
     auto targetId = LLVMConstInt(LLVMInt64Type(), index, 0);
     params.push_back(targetId); // target
     for (size_t paraIdx = static_cast<size_t>(CallInputs::FIRST_PARAMETER); paraIdx < inList.size(); ++paraIdx) {
@@ -716,7 +716,6 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
 {
     size_t targetIndex = static_cast<size_t>(CallInputs::TARGET);
     static_assert(static_cast<size_t>(CallInputs::FIRST_PARAMETER) == 3);
-    const size_t index = acc_.GetBitField(inList[targetIndex]);
     const CallSignature *calleeDescriptor = nullptr;
     LLVMValueRef glue = GetGlue(inList);
     LLVMValueRef rtoffset;
@@ -724,12 +723,14 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef callee;
     CallExceptionKind kind = CallExceptionKind::NO_BC_OFFSET;
     if (op == OpCode::CALL) {
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = CommonStubCSigns::Get(index);
         rtoffset = GetCoStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
         UpdateLeaveFrame(glue);
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
         rtoffset = GetRTStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
@@ -1002,7 +1003,7 @@ void LLVMIRBuilder::VisitGoto(int block, int bbOut)
 
 void LLVMIRBuilder::HandleConstant(GateRef gate)
 {
-    std::bitset<64> value = acc_.GetBitField(gate); // 64: bit width
+    std::bitset<64> value = acc_.GetConstantValue(gate); // 64: bit width
     VisitConstant(gate, value);
 }
 
@@ -1949,7 +1950,7 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     LLVMValueRef callee = GetExperimentalDeopt(module_);
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 
-    const size_t numValueIn = acc_.GetBitField(frameState);
+    const size_t numValueIn = acc_.GetNumValueIn(frameState);
     const size_t accIndex = numValueIn - 2; // 2: acc valueIn index
     const size_t pcIndex = numValueIn - 1;
     GateRef acc = acc_.GetValueIn(frameState, accIndex);

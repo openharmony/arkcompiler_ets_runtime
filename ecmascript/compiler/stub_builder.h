@@ -455,7 +455,7 @@ public:
     GateRef GetBoxFromGlobalDictionary(GateRef object, GateRef entry);
     GateRef GetValueFromGlobalDictionary(GateRef object, GateRef entry);
     GateRef GetPropertiesFromJSObject(GateRef object);
-    template<OpCode::Op Op, MachineType Type>
+    template<OpCode Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key);
 
@@ -527,7 +527,7 @@ public:
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef FastAddSubAndMul(GateRef left, GateRef right);
     GateRef FastBinaryOp(GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp);

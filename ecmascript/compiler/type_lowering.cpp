@@ -42,7 +42,7 @@ void TypeLowering::RunTypeLowering()
 void TypeLowering::LowerType(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
-    auto op = OpCode::Op(acc_.GetOpCode(gate));
+    auto op = OpCode(acc_.GetOpCode(gate));
     switch (op) {
         case OpCode::TYPE_CHECK:
             LowerTypeCheck(gate);
@@ -1108,10 +1108,25 @@ void TypeLowering::LowerNumberNeg(GateRef gate)
     GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     if (valueType.IsIntType()) {
+        Label valueIsZero(&builder_);
+        Label valueNotZero(&builder_);
+        Label exit(&builder_);
+
         // value is int
         GateRef intVal = builder_.GetInt64OfTInt(value);
-        GateRef res = BinaryOp<OpCode::SUB, MachineType::I64>(builder_.Int64(0), intVal);
-        result = builder_.ToTaggedIntPtr(res);
+        builder_.Branch(builder_.Int64Equal(intVal, builder_.Int64(0)), &valueIsZero, &valueNotZero);
+        builder_.Bind(&valueIsZero);
+        {
+            result = DoubleToTaggedDoublePtr(builder_.Double(-0.0));
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&valueNotZero);
+        {
+            GateRef res = BinaryOp<OpCode::SUB, MachineType::I64>(builder_.Int64(0), intVal);
+            result = builder_.ToTaggedIntPtr(res);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&exit);
     } else if (valueType.IsDoubleType()) {
         // value is double
         GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
@@ -1211,7 +1226,7 @@ void TypeLowering::LowerNumberNot(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-template<OpCode::Op Op>
+template<OpCode Op>
 GateRef TypeLowering::CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
@@ -1332,8 +1347,9 @@ GateRef TypeLowering::CalculateNumbers(GateRef left, GateRef right, GateType lef
     return ret;
 }
 
-template<OpCode::Op Op>
-GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right, GateType leftType, GateType rightType)
+template<OpCode Op>
+GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right,
+                                  GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -1350,6 +1366,8 @@ GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right, GateType leftType
     Label rightIsDouble(&builder_);
     Label leftIsInt(&builder_);
     Label leftIsDouble(&builder_);
+    Label overflow(&builder_);
+    Label notOverflow(&builder_);
 
     auto LowerIntOpInt = [&]() -> void {
         intLeft = builder_.GetInt32OfTInt(left);
@@ -1419,22 +1437,36 @@ GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right, GateType leftType
         switch (Op) {
             case OpCode::LSL: {
                 res = builder_.Int32LSL(*intLeft, shift);
+                result = IntToTaggedIntPtr(res);
+                builder_.Jump(&exit);
                 break;
             }
             case OpCode::LSR: {
                 res = builder_.Int32LSR(*intLeft, shift);
+                auto condition = builder_.Int32UnsignedGreaterThan(res, builder_.Int32(INT32_MAX));
+                builder_.Branch(condition, &overflow, &notOverflow);
+                builder_.Bind(&overflow);
+                {
+                    result = builder_.DoubleToTaggedDoublePtr(builder_.ChangeUInt32ToFloat64(res));
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&notOverflow);
+                {
+                    result = IntToTaggedIntPtr(res);
+                    builder_.Jump(&exit);
+                }
                 break;
             }
             case OpCode::ASR: {
                 res = builder_.Int32ASR(*intLeft, shift);
+                result = IntToTaggedIntPtr(res);
+                builder_.Jump(&exit);
                 break;
             }
             default:
                 UNREACHABLE();
                 break;
         }
-        result = IntToTaggedIntPtr(res);
-        builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
     auto ret = *result;
@@ -1442,7 +1474,7 @@ GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right, GateType leftType
     return ret;
 }
 
-template<OpCode::Op Op>
+template<OpCode Op>
 GateRef TypeLowering::LogicalNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
@@ -1551,7 +1583,7 @@ GateRef TypeLowering::LogicalNumbers(GateRef left, GateRef right, GateType leftT
     return ret;
 }
 
-template<OpCode::Op Op>
+template<OpCode Op>
 GateRef TypeLowering::FastAddOrSubOrMul(GateRef left, GateRef right)
 {
     auto env = builder_.GetCurrentEnvironment();
@@ -1979,10 +2011,10 @@ GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
     return ret;
 }
 
-template<OpCode::Op Op, MachineType Type>
+template<OpCode Op, MachineType Type>
 GateRef TypeLowering::BinaryOp(GateRef x, GateRef y)
 {
-    return builder_.BinaryArithmetic(OpCode(Op), Type, x, y);
+    return builder_.BinaryOp<Op, Type>(x, y);
 }
 
 GateRef TypeLowering::DoubleToTaggedDoublePtr(GateRef gate)
@@ -2002,12 +2034,12 @@ GateRef TypeLowering::TruncDoubleToInt(GateRef gate)
 
 GateRef TypeLowering::Int32Mod(GateRef left, GateRef right)
 {
-    return BinaryOp<OpCode::SMOD, MachineType::I32>(left, right);
+    return builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right);
 }
 
 GateRef TypeLowering::DoubleMod(GateRef left, GateRef right)
 {
-    return BinaryOp<OpCode::FMOD, MachineType::F64>(left, right);
+    return builder_.BinaryArithmetic(circuit_->Fmod(), MachineType::F64, left, right);
 }
 
 GateRef TypeLowering::IntToTaggedIntPtr(GateRef x)
@@ -2287,7 +2319,8 @@ GateRef TypeLowering::FastDiv(GateRef left, GateRef right)
         }
         builder_.Bind(&rightNotZero);
         {
-            result = DoubleToTaggedDoublePtr(BinaryOp<OpCode::FDIV, MachineType::F64>(*doubleLeft, *doubleRight));
+            result = DoubleToTaggedDoublePtr(
+                builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, *doubleLeft, *doubleRight));
             builder_.Jump(&exit);
         }
     }
@@ -2457,7 +2490,8 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
     return ret;
 }
 
-GateRef TypeLowering::DivNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
+GateRef TypeLowering::DivNumbers(GateRef left, GateRef right,
+                                 GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -2580,7 +2614,8 @@ GateRef TypeLowering::DivNumbers(GateRef left, GateRef right, GateType leftType,
         }
         builder_.Bind(&rightNotZero);
         {
-            result = DoubleToTaggedDoublePtr(BinaryOp<OpCode::FDIV, MachineType::F64>(*doubleLeft, *doubleRight));
+            result = DoubleToTaggedDoublePtr(
+                builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, *doubleLeft, *doubleRight));
             builder_.Jump(&exit);
         }
     }
