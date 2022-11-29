@@ -835,7 +835,8 @@ void EcmaVM::SetupRegExpResultCache()
 
 void EcmaVM::LoadStubFile()
 {
-    aotFileManager_->LoadStubFile();
+    std::string stubFile = options_.GetStubFile();
+    aotFileManager_->LoadStubFile(stubFile);
 }
 
 void EcmaVM::LoadAOTFiles()

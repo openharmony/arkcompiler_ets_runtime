@@ -162,37 +162,26 @@ void StubFileInfo::Save(const std::string &filename)
     file.close();
 }
 
-bool StubFileInfo::Load(EcmaVM *vm)
+bool StubFileInfo::Load(const std::string &filename)
 {
     //  now MachineCode is non movable, code and stackmap sperately is saved to MachineCode
     // by calling NewMachineCodeObject.
     //  then MachineCode will support movable, code is saved to MachineCode and stackmap is saved
     // to different heap which will be freed when stackmap is parsed by EcmaVM is started.
-    if (_binary_stub_an_length <= 1) {
-        LOG_FULL(FATAL) << "stub.an length <= 1, is default and invalid.";
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    if (!anFileDataManager->SafeLoad(filename, true)) {
         return false;
     }
-    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_an_start, _binary_stub_an_length);
-    binBufparser.ParseBuffer(&entryNum_, sizeof(entryNum_));
-    entries_.resize(entryNum_);
-    binBufparser.ParseBuffer(entries_.data(), sizeof(FuncEntryDes) * entryNum_);
-    binBufparser.ParseBuffer(&moduleNum_, sizeof(moduleNum_));
-    des_.resize(moduleNum_);
-    uint32_t totalCodeSize = 0;
-    binBufparser.ParseBuffer(&totalCodeSize, sizeof(totalCodeSize_));
-    auto pool = PageMap(AlignUp(totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
-    vm->GetAOTFileManager()->SetStubmmap(pool.GetMem(), pool.GetSize());
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
-    uint32_t curUnitOffset = 0;
-    uint32_t asmStubSize = 0;
-    binBufparser.ParseBuffer(&asmStubSize, sizeof(asmStubSize));
-    SetAsmStubSize(asmStubSize);
-    binBufparser.ParseBuffer(reinterpret_cast<void *>(codeAddress), asmStubSize);
-    SetAsmStubAddr(codeAddress);
-    curUnitOffset += asmStubSize;
-    for (size_t i = 0; i < moduleNum_; i++) {
-        des_[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeAddress);
-    }
+
+    data_ = anFileDataManager->SafeGetAnFileData(ConvertToString(filename));
+    entryNum_ = data_->entryNum;
+    entries_ = data_->entries;
+    moduleNum_ = data_->moduleNum;
+    totalCodeSize_ = data_->totalCodeSize;
+    des_ = data_->des;
+    asmStubSize_ = data_->asmStubSize;
+    asmStubAddr_ = data_->poolAddr;
+
     for (auto &entry : entries_) {
         if (entry.IsGeneralRTStub()) {
             uint64_t begin = GetAsmStubAddr();
@@ -214,7 +203,15 @@ AnFileDataManager *AnFileDataManager::GetInstance()
 
 AnFileDataManager::~AnFileDataManager()
 {
+    SafeDestoryAllData();
+}
+
+void AnFileDataManager::SafeDestoryAllData()
+{
     os::memory::LockHolder lock(lock_);
+    if (loadedData_.size() == 0) {
+        return;
+    }
     auto iter = loadedData_.begin();
     while (iter != loadedData_.end()) {
         void *poolAddr = iter->second->poolAddr;
@@ -224,14 +221,21 @@ AnFileDataManager::~AnFileDataManager()
     }
 }
 
-bool AnFileDataManager::SafeLoad(const std::string &filename)
+bool AnFileDataManager::SafeLoad(const std::string &filename, bool isStub)
 {
     std::string realPath;
-    if (!RealPath(filename, realPath, false)) {
-        LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
-                            << "please execute ark_aot_compiler with options --aot-file.";
-        UNREACHABLE();
-        return false;
+    if (isStub) {
+        if (_binary_stub_an_length <= 1) {
+            LOG_FULL(FATAL) << "stub.an length <= 1, is default and invalid.";
+            return false;
+        }
+    } else {
+        if (!RealPath(filename, realPath, false)) {
+            LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
+                                << "please execute ark_aot_compiler with options --aot-file.";
+            UNREACHABLE();
+            return false;
+        }
     }
 
     os::memory::LockHolder lock(lock_);
@@ -240,10 +244,11 @@ bool AnFileDataManager::SafeLoad(const std::string &filename)
     if (anFileData != nullptr) {
         return true;
     }
-    if (!UnsafeLoadData(cstrFileName, realPath)) {
-        return false;
+    if (isStub) {
+        return UnsafeLoadDataFromBinaryBuffer(cstrFileName);
+    } else {
+        return UnsafeLoadDataFromFile(cstrFileName, realPath);
     }
-    return true;
 }
 
 std::shared_ptr<const AnFileDataManager::AnFileData> AnFileDataManager::UnsafeFind(const CString &filename) const
@@ -263,8 +268,10 @@ std::shared_ptr<const AnFileDataManager::AnFileData> AnFileDataManager::SafeGetA
     return UnsafeFind(filename);
 }
 
-bool AnFileDataManager::UnsafeLoadData(const CString &filename, std::string &realPath)
+bool AnFileDataManager::UnsafeLoadDataFromFile(const CString &filename, std::string &realPath)
 {
+    // note: This method is not thread-safe
+    // need to ensure that the instance of AnFileDataManager has been locked before use
     std::ifstream file(realPath.c_str(), std::ofstream::binary);
     if (!file.good()) {
         LOG_COMPILER(ERROR) << "Fail to load an file: " << realPath.c_str();
@@ -309,6 +316,35 @@ bool AnFileDataManager::UnsafeLoadData(const CString &filename, std::string &rea
     uint32_t curUnitOffset = 0;
     for (size_t i = 0; i < data->moduleNum; i++) {
         data->des[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
+    }
+    return true;
+}
+
+bool AnFileDataManager::UnsafeLoadDataFromBinaryBuffer(const CString &filename)
+{
+    // note: This method is not thread-safe
+    // need to ensure that the instance of AnFileDataManager has been locked before use
+    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_an_start, _binary_stub_an_length);
+    std::shared_ptr<AnFileData> data = std::make_shared<AnFileData>(AnFileData());
+    loadedData_[filename] = data;
+    binBufparser.ParseBuffer(&data->entryNum, sizeof(data->entryNum));
+    data->entries.resize(data->entryNum);
+    binBufparser.ParseBuffer(data->entries.data(), sizeof(AOTFileInfo::FuncEntryDes) * data->entryNum);
+    binBufparser.ParseBuffer(&data->moduleNum, sizeof(data->moduleNum));
+    data->des.resize(data->moduleNum);
+    binBufparser.ParseBuffer(&data->totalCodeSize, sizeof(data->totalCodeSize));
+
+    auto pool = PageMap(AlignUp(data->totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
+    data->poolAddr = pool.GetMem();
+    data->poolSize = pool.GetSize();
+
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
+    uint32_t curUnitOffset = 0;
+    binBufparser.ParseBuffer(&data->asmStubSize, sizeof(data->asmStubSize));
+    binBufparser.ParseBuffer(reinterpret_cast<void *>(codeAddress), data->asmStubSize);
+    curUnitOffset += data->asmStubSize;
+    for (size_t i = 0; i < data->moduleNum; i++) {
+        data->des[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeAddress);
     }
     return true;
 }
@@ -416,9 +452,9 @@ void AOTFileInfo::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&machineCodeObj_)));
 }
 
-void AOTFileManager::LoadStubFile()
+void AOTFileManager::LoadStubFile(const std::string &fileName)
 {
-    if (!stubFileInfo_.Load(vm_)) {
+    if (!stubFileInfo_.Load(fileName)) {
         return;
     }
     auto stubs = stubFileInfo_.GetStubs();
@@ -691,9 +727,6 @@ AOTFileManager::~AOTFileManager()
     if (arkStackMapParser_ != nullptr) {
         delete arkStackMapParser_;
         arkStackMapParser_ = nullptr;
-    }
-    for (size_t i = 0; i < stubAddrs_.size(); i++) {
-        PageUnmap(MemMap(stubAddrs_[i].first, stubAddrs_[i].second));
     }
 }
 

@@ -1255,6 +1255,7 @@ public:
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();
     static void InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options);
+    static void DestoryAnDataManager();
     static void DestroyMemMapAllocator();
     static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);

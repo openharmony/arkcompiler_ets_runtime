@@ -313,15 +313,20 @@ public:
         std::vector<ModuleSectionDes> des {};
         void *poolAddr {nullptr};
         size_t poolSize {0};
+
+        // for stub
+        uint32_t asmStubSize {0};
     };
 
-    bool SafeLoad(const std::string &filename);
+    bool SafeLoad(const std::string &filename, bool isStub = false);
     std::shared_ptr<const AnFileData> SafeGetAnFileData(const CString &filename);
+    void SafeDestoryAllData();
 
 private:
     AnFileDataManager() = default;
     std::shared_ptr<const AnFileData> UnsafeFind(const CString &filename) const;
-    bool UnsafeLoadData(const CString &filename, std::string &realPath);
+    bool UnsafeLoadDataFromFile(const CString &filename, std::string &realPath);
+    bool UnsafeLoadDataFromBinaryBuffer(const CString &filename);
 
     os::memory::RecursiveMutex lock_;
     std::unordered_map<const CString, std::shared_ptr<AnFileData>, CStringHash> loadedData_;
@@ -378,7 +383,7 @@ private:
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
     JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
-    std::shared_ptr<const AnFileDataManager::AnFileData> data_;
+    std::shared_ptr<const AnFileDataManager::AnFileData> data_ {nullptr};
     bool isLoad_ {false};
 };
 
@@ -387,7 +392,7 @@ public:
     StubFileInfo() = default;
     ~StubFileInfo() override = default;
     void Save(const std::string &filename);
-    bool Load(EcmaVM *vm);
+    bool Load(const std::string &filename);
 
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
@@ -441,6 +446,7 @@ private:
     void *asmStubAddr_ {nullptr};
     size_t asmStubSize_ {0};
     std::vector<int> asmStubTempHolder_ {};
+    std::shared_ptr<const AnFileDataManager::AnFileData> data_ {nullptr};
 };
 
 class AOTLiteralInfo : public TaggedArray {
@@ -460,7 +466,7 @@ public:
     static constexpr size_t AOT_VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, AOT_VERSION_SIZE> AOT_VERSION {0, 0, 0, 1};
 
-    void LoadStubFile();
+    void LoadStubFile(const std::string &fileName);
     void LoadAnFile(const std::string &fileName);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool InsideStub(uintptr_t pc) const;
@@ -494,11 +500,6 @@ public:
     JSHandle<JSTaggedValue> GetSnapshotConstantPool(const JSPandaFile *jsPandaFile);
 
 private:
-    void SetStubmmap(void *addr, size_t totalCodeSize)
-    {
-        stubAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
-    }
-
     const StubFileInfo& GetStubFileInfo() const
     {
         return stubFileInfo_;
@@ -519,7 +520,6 @@ private:
     void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
                                             const AsmInterParsedOption &asmInterOpt);
 
-    std::vector<std::pair<void *, size_t>> stubAddrs_;
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     StubFileInfo stubFileInfo_ {};
