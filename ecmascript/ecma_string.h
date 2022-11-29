@@ -422,6 +422,11 @@ private:
     static EcmaString *ToLocaleLower(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
 
     static EcmaString *ToLocaleUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
+
+    static EcmaString *TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src);
+
+    static EcmaString *ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src,
+                                                 bool toLower, uint32_t startIndex = 0);
 };
 
 // The LineEcmaString abstract class captures sequential string values, only LineEcmaString can store chars data
@@ -799,6 +804,11 @@ public:
     static EcmaString *ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src)
     {
         return EcmaString::ToLower(vm, src);
+    }
+
+    static EcmaString *TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src)
+    {
+        return EcmaString::TryToLower(vm, src);
     }
 
     static EcmaString *ToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src)

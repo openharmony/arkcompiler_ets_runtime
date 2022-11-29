@@ -76,7 +76,8 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     if (requestedLocales->GetLength() == 0) {
         availableLocales = factory->EmptyArray();
     } else {
-        availableLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+        std::vector<std::string> availableStringLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+        availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     }
     std::set<std::string> relevantExtensionKeys{"nu"};
     ResolvedLocale r =

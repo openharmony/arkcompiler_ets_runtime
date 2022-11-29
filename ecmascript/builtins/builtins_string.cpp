@@ -1499,6 +1499,11 @@ JSTaggedValue BuiltinsString::ToLocaleLowerCase(EcmaRuntimeCallInfo *argv)
 
     // Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
+    // Fast path
+    if (locales->IsUndefined() && EcmaStringAccessor(string).IsUtf8()) {
+        EcmaString *result = EcmaStringAccessor::TryToLower(ecmaVm, string);
+        return JSTaggedValue(result);
+    }
     JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -1517,11 +1522,11 @@ JSTaggedValue BuiltinsString::ToLocaleLowerCase(EcmaRuntimeCallInfo *argv)
     // Let availableLocales be a List with language tags that includes the languages for which the Unicode Character
     // Database contains language sensitive case mappings. Implementations may add additional language tags
     // if they support case mapping for additional locales.
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, nullptr, nullptr);
+    std::vector<std::string> availableLocales = JSLocale::GetAvailableLocales(thread, nullptr, nullptr);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let locale be BestAvailableLocale(availableLocales, noExtensionsLocale).
-    std::string locale = JSLocale::BestAvailableLocale(thread, availableLocales, noExtensionsLocale.base);
+    std::string locale = JSLocale::BestAvailableLocale(availableLocales, noExtensionsLocale.base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If locale is undefined, let locale be "und".
@@ -1573,11 +1578,11 @@ JSTaggedValue BuiltinsString::ToLocaleUpperCase(EcmaRuntimeCallInfo *argv)
     // Let availableLocales be a List with language tags that includes the languages for which the Unicode Character
     // Database contains language sensitive case mappings. Implementations may add additional language tags
     // if they support case mapping for additional locales.
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, nullptr, nullptr);
+    std::vector<std::string> availableLocales = JSLocale::GetAvailableLocales(thread, nullptr, nullptr);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let locale be BestAvailableLocale(availableLocales, noExtensionsLocale).
-    std::string locale = JSLocale::BestAvailableLocale(thread, availableLocales, noExtensionsLocale.base);
+    std::string locale = JSLocale::BestAvailableLocale(availableLocales, noExtensionsLocale.base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If locale is undefined, let locale be "und".

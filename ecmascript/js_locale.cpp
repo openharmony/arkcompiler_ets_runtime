@@ -299,20 +299,18 @@ JSHandle<TaggedArray> JSLocale::CanonicalizeHelper(JSThread *thread, JSHandle<T>
 }
 
 // 9.2.2 BestAvailableLocale ( availableLocales, locale )
-std::string JSLocale::BestAvailableLocale(JSThread *thread, const JSHandle<TaggedArray> &availableLocales,
+std::string JSLocale::BestAvailableLocale(const std::vector<std::string> &availableLocales,
                                           const std::string &locale)
 {
     // 1. Let candidate be locale.
     std::string localeCandidate = locale;
     std::string undefined = std::string();
     // 2. Repeat,
-    uint32_t length = availableLocales->GetLength();
-    JSMutableHandle<EcmaString> item(thread, JSTaggedValue::Undefined());
+    uint32_t length = availableLocales.size();
     while (true) {
         // a. If availableLocales contains an element equal to candidate, return candidate.
         for (uint32_t i = 0; i < length; ++i) {
-            item.Update(availableLocales->Get(thread, i));
-            std::string itemStr = ConvertToStdString(item);
+            std::string itemStr = availableLocales[i];
             if (itemStr == localeCandidate) {
                 return localeCandidate;
             }
@@ -340,6 +338,7 @@ JSHandle<EcmaString> JSLocale::LookupMatcher(JSThread *thread, const JSHandle<Ta
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let result be a new Record.
     // 2. For each element locale of requestedLocales in List order, do
+    std::vector<std::string> availableStringLocales = GetAvailableStringLocales(thread, availableLocales);
     uint32_t length = requestedLocales->GetLength();
     JSMutableHandle<EcmaString> locale(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < length; ++i) {
@@ -348,7 +347,7 @@ JSHandle<EcmaString> JSLocale::LookupMatcher(JSThread *thread, const JSHandle<Ta
         //       with all Unicode locale extension sequences removed.
         ParsedLocale parsedResult = HandleLocale(locale);
         // 2. b. Let availableLocale be BestAvailableLocale(availableLocales, noExtensionsLocale).
-        std::string availableLocale = BestAvailableLocale(thread, availableLocales, parsedResult.base);
+        std::string availableLocale = BestAvailableLocale(availableStringLocales, parsedResult.base);
         // 2. c. If availableLocale is not undefined, append locale to the end of subset.
         if (!availableLocale.empty()) {
             result = {std::string(), std::string()};
@@ -436,6 +435,7 @@ JSHandle<TaggedArray> JSLocale::LookupSupportedLocales(JSThread *thread, const J
     // 1. Let subset be a new empty List.
     JSHandle<TaggedArray> subset = factory->NewTaggedArray(length);
     JSMutableHandle<EcmaString> item(thread, JSTaggedValue::Undefined());
+    std::vector<std::string> availableStringLocales = GetAvailableStringLocales(thread, availableLocales);
     // 2. For each element locale of requestedLocales in List order, do
     //    a. Let noExtensionsLocale be the String value that is locale with all Unicode locale extension sequences
     //       removed.
@@ -444,7 +444,7 @@ JSHandle<TaggedArray> JSLocale::LookupSupportedLocales(JSThread *thread, const J
     for (uint32_t i = 0; i < length; ++i) {
         item.Update(requestedLocales->Get(thread, i));
         ParsedLocale foundationResult = HandleLocale(item);
-        std::string availableLocale = BestAvailableLocale(thread, availableLocales, foundationResult.base);
+        std::string availableLocale = BestAvailableLocale(availableStringLocales, foundationResult.base);
         if (!availableLocale.empty()) {
             subset->Set(thread, index++, item.GetTaggedValue());
         }
@@ -1348,7 +1348,7 @@ JSHandle<EcmaString> JSLocale::ToString(JSThread *thread, const JSHandle<JSLocal
     return result;
 }
 
-JSHandle<TaggedArray> JSLocale::GetAvailableLocales(JSThread *thread, const char *localeKey, const char *localePath)
+std::vector<std::string> JSLocale::GetAvailableLocales(JSThread *thread, const char *localeKey, const char *localePath)
 {
     UErrorCode status = U_ZERO_ERROR;
     auto globalConst = thread->GlobalConstants();
@@ -1386,6 +1386,20 @@ JSHandle<TaggedArray> JSLocale::GetAvailableLocales(JSThread *thread, const char
         }
     }
     uenum_close(uenum);
-    return ConstructLocaleList(thread, allLocales);
+    return allLocales;
 }
+
+std::vector<std::string> JSLocale::GetAvailableStringLocales(JSThread *thread,
+                                                             const JSHandle<TaggedArray> &availableLocales)
+{
+    std::vector<std::string> availableStringLocales;
+    JSMutableHandle<EcmaString> availableItem(thread, JSTaggedValue::Undefined());
+    uint32_t availablecalesLength = availableLocales->GetLength();
+    for (uint32_t i = 0; i < availablecalesLength; i++) {
+        availableItem.Update(availableLocales->Get(thread, i));
+        availableStringLocales.emplace_back(ConvertToStdString(availableItem));
+    }
+    return availableStringLocales;
+}
+
 }  // namespace panda::ecmascript

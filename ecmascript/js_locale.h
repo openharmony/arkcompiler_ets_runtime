@@ -207,7 +207,7 @@ public:
     static JSHandle<TaggedArray> CanonicalizeHelper(JSThread *thread, JSHandle<T> &obj, JSHandle<TaggedArray> &seen);
 
     // 9.2.2 BestAvailableLocale ( availableLocales, locale )
-    static std::string BestAvailableLocale(JSThread *thread, const JSHandle<TaggedArray> &availableLocales,
+    static std::string BestAvailableLocale(const std::vector<std::string> &availableLocales,
                                            const std::string &locale);
 
     // 9.2.3 LookupMatcher ( availableLocales, requestedLocales )
@@ -502,7 +502,10 @@ public:
     static JSHandle<EcmaString> IcuToString(JSThread *thread, const icu::UnicodeString &string, int32_t begin,
                                             int32_t end);
 
-    static JSHandle<TaggedArray> GetAvailableLocales(JSThread *thread, const char *key, const char *path);
+    static std::vector<std::string> GetAvailableLocales(JSThread *thread, const char *key, const char *path);
+
+    static std::vector<std::string> GetAvailableStringLocales(JSThread *thread,
+                                                              const JSHandle<TaggedArray> &availableLocales);
 
     static JSHandle<JSObject> PutElement(JSThread *thread, int index, const JSHandle<JSArray> &array,
                                          const JSHandle<JSTaggedValue> &fieldTypeString,
