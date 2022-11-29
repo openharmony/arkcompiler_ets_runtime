@@ -663,6 +663,10 @@ template("host_quickfix_test_action") {
     _script_args_ = invoker.entry_point + " "
   }
 
+  if (defined(invoker.is_hotpatch) && invoker.is_hotpatch) {
+    _test_map_path_ = "$target_out_dir/${_target_name_}/base.map"
+  }
+
   foreach(filename, _test_file_name_) {
     merge_file_raw = "//arkcompiler/ets_runtime/test/quickfix/"
     if (filename == "test" || filename == "retest") {
@@ -703,10 +707,23 @@ template("host_quickfix_test_action") {
         "--merge-abc",
       ]
 
+      if (defined(invoker.is_hotpatch) && filename == "patch") {
+        extra_args += [ "--generate-patch" ]
+      }
+
+      if (defined(invoker.is_hotpatch) && filename == "base") {
+        dump_symbol_table = rebase_path(_test_map_path_)
+      }
+
+      if (defined(invoker.is_hotpatch) && filename == "patch") {
+        input_symbol_table = rebase_path(_test_map_path_)
+      }
+
       in_puts = [
         _test_expect_path_,
         merge_file,
       ]
+
       out_puts = [ abc_path ]
     }
 

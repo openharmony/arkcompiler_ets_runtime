@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-test_list = [
+hot_reload_test_list = [
   "check_import",
   "class_inheritance",
   "class_mem_func",
@@ -28,7 +28,7 @@ test_list = [
 ]
 
 if (!is_debug) {
-  test_list += [
+  hot_reload_test_list += [
     "multi_classconstpool",
     "multi_closureconstpool",
     "multi_constructorconstpool",
@@ -36,6 +36,8 @@ if (!is_debug) {
     "multi_funcconstpool",
   ]
 }
+
+hot_patch_test_list = [ "add_callfunction" ]
 
 host_quickfix_test_action("multi_patch") {
   extra_patches = [
@@ -45,9 +47,16 @@ host_quickfix_test_action("multi_patch") {
   entry_point = "--entry-point=base"
 }
 
-foreach(testcase, test_list) {
+foreach(testcase, hot_reload_test_list) {
   host_quickfix_test_action("${testcase}") {
     entry_point = "--entry-point=base"
+  }
+}
+
+foreach(testcase, hot_patch_test_list) {
+  host_quickfix_test_action("${testcase}") {
+    entry_point = "--entry-point=base"
+    is_hotpatch = true
   }
 }
 
@@ -55,7 +64,11 @@ group("ark_quickfix_test") {
   testonly = true
 
   deps = []
-  foreach(testcase, test_list) {
+  foreach(testcase, hot_reload_test_list) {
+    deps += [ ":${testcase}QuickfixAction" ]
+  }
+
+  foreach(testcase, hot_patch_test_list) {
     deps += [ ":${testcase}QuickfixAction" ]
   }
 

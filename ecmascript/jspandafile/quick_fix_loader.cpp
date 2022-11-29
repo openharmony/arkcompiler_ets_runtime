@@ -101,7 +101,12 @@ bool QuickFixLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *base
     }
 
     if (!ReplaceMethod(thread, baseFile, patchFile, baseConstpoolValues.value())) {
-        LOG_ECMA(ERROR) << "replace method failed";
+        LOG_ECMA(ERROR) << "Replace method failed";
+        return false;
+    }
+
+    if (isHotPatch_ && !ExecutePatchMain(thread, patchPrograms, patchFile)) {
+        LOG_ECMA(ERROR) << "Execute patch main failed";
         return false;
     }
 
@@ -138,6 +143,13 @@ CVector<JSHandle<Program>> QuickFixLoader::ParseAllConstpoolWithMerge(JSThread *
 
         uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(recordName);
         ASSERT(mainMethodIndex != 0);
+
+        const char *mainMethodName =
+            MethodLiteral::GetMethodName(jsPandaFile, panda_file::File::EntityId(mainMethodIndex));
+        if (!isHotPatch_ && std::strcmp(mainMethodName, JSPandaFile::PATCH_FUNCTION_NAME_0) == 0) {
+            isHotPatch_ = true;
+        }
+
         if (!isNewVersion) {
             PandaFileTranslator::ParseFuncAndLiteralConstPool(vm, jsPandaFile, recordName, constpool);
         } else {
@@ -404,49 +416,48 @@ bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
         return false;
     }
 
-    for (const auto &iter : baseConstpoolValues.value().get()) {
-        uint32_t index = iter.first;
-        ConstantPool *baseConstpool = ConstantPool::Cast((iter.second).GetTaggedObject());
-        for (const auto &item : reservedBaseNormalMethodInfo_) {
-            NormalMethodIndex normalMethodIndex = item.first;
-            if (index == normalMethodIndex.constpoolNum) {
-                uint32_t constpoolIndex = normalMethodIndex.constpoolIndex;
-                MethodLiteral *base = item.second;
-
-                JSTaggedValue value = baseConstpool->GetObjectFromCache(constpoolIndex);
-                ASSERT(value.IsMethod());
-                Method *method = Method::Cast(value.GetTaggedObject());
-
-                JSTaggedValue baseConstpoolValue = FindConstpoolVal(thread, baseFile, base->GetMethodId());
-                ReplaceMethodInner(thread, method, base, baseConstpoolValue);
-                LOG_ECMA(INFO) << "Replace normal method: " << method->GetMethodName();
-            }
-        }
-
-        for (auto &item : reservedBaseClassMethodInfo_) {
-            ClassMethodIndex classMethodIndex = item.first;
-            if (index == classMethodIndex.constpoolNum) {
-                uint32_t constpoolIndex = classMethodIndex.constpoolIndex;
-                MethodLiteral *base = item.second;
-
-                TaggedArray *classLiteral = TaggedArray::Cast(baseConstpool->GetObjectFromCache(constpoolIndex));
-                JSTaggedValue value = classLiteral->Get(thread, classMethodIndex.literalIndex);
-                ASSERT(value.IsJSFunctionBase());
-                JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
-                Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
+    for (const auto &item : reservedBaseNormalMethodInfo_) {
+        NormalMethodIndex normalMethodIndex = item.first;
+        ConstantPool *baseConstpool = ConstantPool::Cast(
+            (baseConstpoolValues.value().get()[normalMethodIndex.constpoolNum]).GetTaggedObject());
         
-                JSTaggedValue baseConstpoolValue = FindConstpoolVal(thread, baseFile, base->GetMethodId());
-                ReplaceMethodInner(thread, method, base, baseConstpoolValue);
-                LOG_ECMA(INFO) << "Replace class method: " << method->GetMethodName();
-            }
-        }
+        uint32_t constpoolIndex = normalMethodIndex.constpoolIndex;
+        MethodLiteral *base = item.second;
+
+        JSTaggedValue value = baseConstpool->GetObjectFromCache(constpoolIndex);
+        ASSERT(value.IsMethod());
+        Method *method = Method::Cast(value.GetTaggedObject());
+
+        JSTaggedValue baseConstpoolValue = FindConstpoolVal(thread, baseFile, base->GetMethodId());
+        ReplaceMethodInner(thread, method, base, baseConstpoolValue);
+        LOG_ECMA(INFO) << "Replace normal method: " << method->GetMethodName();
+    }
+
+    for (auto &item : reservedBaseClassMethodInfo_) {
+        ClassMethodIndex classMethodIndex = item.first;
+        ConstantPool *baseConstpool = ConstantPool::Cast(
+            (baseConstpoolValues.value().get()[classMethodIndex.constpoolNum]).GetTaggedObject());
+        
+        uint32_t constpoolIndex = classMethodIndex.constpoolIndex;
+        MethodLiteral *base = item.second;
+
+        TaggedArray *classLiteral = TaggedArray::Cast(baseConstpool->GetObjectFromCache(constpoolIndex));
+        JSTaggedValue value = classLiteral->Get(thread, classMethodIndex.literalIndex);
+        ASSERT(value.IsJSFunctionBase());
+        JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
+        Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
+
+        JSTaggedValue baseConstpoolValue = FindConstpoolVal(thread, baseFile, base->GetMethodId());
+        ReplaceMethodInner(thread, method, base, baseConstpoolValue);
+        LOG_ECMA(INFO) << "Replace class method: " << method->GetMethodName();
     }
 
     vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchUnloaded(patchFile);
 
     ClearReservedInfo();
     ClearPatchInfo(thread, patchFileName);
-
+    isHotPatch_ = false;
+    
     LOG_ECMA(INFO) << "UnloadPatch success!";
     return true;
 }

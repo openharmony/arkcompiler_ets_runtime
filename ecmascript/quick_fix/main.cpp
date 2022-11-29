@@ -105,7 +105,7 @@ int Main(const int argc, const char **argv)
 #endif
         uint32_t len = fileNames.size();
         if (len < 4) {  // 4: four abc file
-            std::cout << "Must include base.abc, patch.abc, test1.abc, test2.abc absolute path" << std::endl;
+            std::cout << "Must include base.abc, patch.abc, test.abc, retest.abc absolute path" << std::endl;
             return -1;
         }
         std::string baseFileName = fileNames[0];
