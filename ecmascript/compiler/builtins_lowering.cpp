@@ -230,11 +230,11 @@ GateRef BuiltinLowering::TypedSqrt(GateRef gate)
     return ret;
 }
 
-//  Int abs : The internal representation of an integer is inverse code, 
+//  Int abs : The internal representation of an integer is inverse code,
 //  The absolute value of a negative number can be found by inverting it by adding one.
 
-//  Float abs : A floating-point number is composed of mantissa and exponent. 
-//  The length of mantissa will affect the precision of the number, and its sign will determine the sign of the number. 
+//  Float abs : A floating-point number is composed of mantissa and exponent.
+//  The length of mantissa will affect the precision of the number, and its sign will determine the sign of the number.
 //  The absolute value of a floating-point number can be found by setting mantissa sign bit to 0.
 GateRef BuiltinLowering::TypedAbs(GateRef gate)
 {
