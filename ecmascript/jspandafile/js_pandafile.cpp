@@ -109,11 +109,11 @@ void JSPandaFile::InitializeUnMergedPF()
         numMethods_ += cda.GetMethodsNumber();
         const char *desc = utf::Mutf8AsCString(cda.GetDescriptor());
         if (info.moduleRecordIdx == -1 && std::strcmp(MODULE_CLASS, desc) == 0) {
-            cda.EnumerateFields([&](panda_file::FieldDataAccessor &field_accessor) -> void {
-                panda_file::File::EntityId field_name_id = field_accessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(field_name_id);
+            cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
+                panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
+                panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
                 if (std::strcmp(reinterpret_cast<const char *>(sd.data), desc_.c_str())) {
-                    info.moduleRecordIdx = field_accessor.GetValue<int32_t>().value();
+                    info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
                     return;
                 }
             });

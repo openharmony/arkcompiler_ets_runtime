@@ -2078,15 +2078,14 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
 }
 
 // -------------------------------------  JSExecutionScope ------------------------------
-JSExecutionScope::JSExecutionScope(const EcmaVM *vm)
+JSExecutionScope::JSExecutionScope([[maybe_unused]] const EcmaVM *vm)
 {
-    (void)vm;
 }
 
 JSExecutionScope::~JSExecutionScope()
 {
-    last_current_thread_ = nullptr;
-    is_revert_ = false;
+    lastCurrentThread_ = nullptr;
+    isRevert_ = false;
 }
 
 // ----------------------------------- JSValueRef --------------------------------------

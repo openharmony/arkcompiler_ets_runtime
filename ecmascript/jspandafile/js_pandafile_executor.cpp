@@ -155,7 +155,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     Expected<JSTaggedValue, bool> result = vm->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
     if (result) {
         QuickFixManager *quickFixManager = vm->GetQuickFixManager();
-        quickFixManager->LoadPatchIfNeeded(thread, CstringConvertToStdString(jsPandaFile->GetJSPandaFileDesc()));
+        quickFixManager->LoadPatchIfNeeded(thread, ConvertToStdString(jsPandaFile->GetJSPandaFileDesc()));
     }
     return result;
 }
