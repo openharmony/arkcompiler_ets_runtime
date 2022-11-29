@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
-#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"

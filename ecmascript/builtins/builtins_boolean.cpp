@@ -24,6 +24,7 @@ namespace panda::ecmascript::builtins {
 // ecma 19.3.1.1 Boolean(value)
 JSTaggedValue BuiltinsBoolean::BooleanConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_ENTRY_DEBUG_LOG();
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Boolean, Constructor);
     JSThread *thread = argv->GetThread();

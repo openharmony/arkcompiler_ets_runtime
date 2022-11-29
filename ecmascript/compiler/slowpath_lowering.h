@@ -259,14 +259,14 @@ private:
     void LowerStOwnByNameWithNameSet(GateRef gate, GateRef glue);
     void LowerLdGlobalVar(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerLdObjByName(GateRef gate, GateRef glue, GateRef jsFunc);
-    void LowerStObjByName(GateRef gate, GateRef glue, GateRef jsFunc, GateRef thisObj, bool isThis = false);
+    void LowerStObjByName(GateRef gate, GateRef glue, GateRef jsFunc, bool isThis);
     void LowerLdSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerStSuperByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerDefineGetterSetterByValue(GateRef gate, GateRef glue);
     void LowerLdObjByIndex(GateRef gate, GateRef glue);
     void LowerStObjByIndex(GateRef gate, GateRef glue);
-    void LowerLdObjByValue(GateRef gate, GateRef glue, GateRef jsFunc, GateRef thisObj, bool useThis);
-    void LowerStObjByValue(GateRef gate, GateRef glue, GateRef jsFunc, GateRef thisObj, bool useThis);
+    void LowerLdObjByValue(GateRef gate, GateRef glue, GateRef jsFunc, bool isThis);
+    void LowerStObjByValue(GateRef gate, GateRef glue, GateRef jsFunc, bool isThis);
     void LowerCreateGeneratorObj(GateRef gate, GateRef glue);
     void LowerStArraySpread(GateRef gate, GateRef glue);
     void LowerLdLexVar(GateRef gate, GateRef glue);
@@ -289,7 +289,7 @@ private:
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
     void LowerWideLdPatchVar(GateRef gate, GateRef glue);
     void LowerWideStPatchVar(GateRef gate, GateRef glue);
-    void LowerLdThisByName(GateRef gate, GateRef glue, GateRef jsFunc, GateRef thisObj);
+    void LowerLdThisByName(GateRef gate, GateRef glue, GateRef jsFunc);
     void LowerConstPoolData(GateRef gate);
 
     TSManager *tsManager_ {nullptr};

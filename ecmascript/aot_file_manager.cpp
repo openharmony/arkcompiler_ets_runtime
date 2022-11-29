@@ -18,13 +18,11 @@
 #include "shlwapi.h"
 #endif
 
-#include "ecmascript/ark_stackmap_parser.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/deoptimizer/relocator.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/jspandafile/constpool_value.h"
@@ -33,6 +31,8 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+#include "ecmascript/stackmap/ark_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/base/mem_mmap.h"
 
@@ -450,12 +450,12 @@ void AOTFileManager::LoadStubFile()
 
 void AOTFileManager::LoadAnFile(const std::string &fileName)
 {
-    AnFileInfo anFileInfo_;
-    if (!anFileInfo_.Load(fileName)) {
+    AnFileInfo anFileInfo;
+    if (!anFileInfo.Load(fileName)) {
         return;
     }
-    AddAnFileInfo(anFileInfo_);
-    anFileInfo_.RewriteRelcateDeoptHandler(vm_);
+    AddAnFileInfo(anFileInfo);
+    anFileInfo.RewriteRelcateDeoptHandler(vm_);
 }
 
 void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filename)
@@ -516,7 +516,7 @@ void AOTFileManager::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPand
 #endif
 }
 
-bool AOTFileManager::InsideStub(uint64_t pc) const
+bool AOTFileManager::InsideStub(uintptr_t pc) const
 {
     uint64_t stubStartAddr = stubFileInfo_.GetAsmStubAddr();
     uint64_t stubEndAddr = stubStartAddr + stubFileInfo_.GetAsmStubSize();
@@ -525,16 +525,24 @@ bool AOTFileManager::InsideStub(uint64_t pc) const
     }
 
     const std::vector<ModuleSectionDes> &des = stubFileInfo_.GetCodeUnits();
-    stubStartAddr = des[0].GetSecAddr(ElfSecName::TEXT);
-    stubEndAddr = stubStartAddr + des[0].GetSecSize(ElfSecName::TEXT);
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
+    for (auto &curDes : des) {
+        if (curDes.ContainCode(pc)) {
+            return true;
+        }
     }
 
-    stubStartAddr = des[1].GetSecAddr(ElfSecName::TEXT);
-    stubEndAddr = stubStartAddr + des[1].GetSecSize(ElfSecName::TEXT);
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
+    return false;
+}
+
+bool AOTFileManager::InsideAOT(uintptr_t pc) const
+{
+    for (auto &info : anFileInfos_) {
+        const std::vector<ModuleSectionDes> &des = info.GetCodeUnits();
+        for (auto &curDes : des) {
+            if (curDes.ContainCode(pc)) {
+                return true;
+            }
+        }
     }
     return false;
 }
@@ -642,17 +650,25 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
         } else if (des.IsBCStub()) {
             thread->SetBCStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-            auto start = MessageString::ASM_INTERPRETER_START;
+            auto start = GET_MESSAGE_STRING_ID(HandleLdundefined);
             std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start);
-            LOG_ECMA(DEBUG) << "bytecode-" << des.indexInKindOrMethodId_ << " :" << format
+            LOG_ECMA(DEBUG) << "bytecode index: " << des.indexInKindOrMethodId_ << " :" << format
                 << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         } else if (des.IsBuiltinsStub()) {
             thread->SetBuiltinStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
+#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
+            int start = GET_MESSAGE_STRING_ID(CharCodeAt);
+            std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start - 1);  // -1: NONE
+            LOG_ECMA(DEBUG) << "builtins index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
+                << " addr: 0x" << std::hex << des.codeAddr_;
+#endif
         } else {
             thread->RegisterRTInterface(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-                LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKindOrMethodId_
+                int start = GET_MESSAGE_STRING_ID(CallRuntime);
+                std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start);
+                LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
                     << " addr: 0x" << std::hex << des.codeAddr_;
 #endif
         }

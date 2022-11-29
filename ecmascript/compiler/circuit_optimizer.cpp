@@ -489,6 +489,7 @@ bool LatticeUpdateRuleSCCP::Run(GateRef gate)
         {OpCode::NOGC_RUNTIME_CALL, [&]() -> bool { return RunNoGCRuntimeCall(gate); }},
         {OpCode::BYTECODE_CALL, [&]() -> bool { return RunBytecodeCall(gate); }},
         {OpCode::BUILTINS_CALL, [&]() -> bool { return RunBuiltinsCall(gate); }},
+        {OpCode::BUILTINS_CALL_WITH_ARGV, [&]() -> bool { return RunBuiltinsCallWithArgv(gate); }},
         {OpCode::DEBUGGER_BYTECODE_CALL, [&]() -> bool { return RunDebuggerBytecodeCall(gate); }},
         {OpCode::CALL, [&]() -> bool { return RunCall(gate); }},
         {OpCode::RUNTIME_CALL_WITH_ARGV, [&]() -> bool { return RunRuntimeCallWithArgv(gate); }},
@@ -773,6 +774,11 @@ bool LatticeUpdateRuleSCCP::RunDebuggerBytecodeCall(GateRef gate)
 }
 
 bool LatticeUpdateRuleSCCP::RunBuiltinsCall(GateRef gate)
+{
+    return LatticeUpdateRuleSCCP::RunDependAnd(gate);
+}
+
+bool LatticeUpdateRuleSCCP::RunBuiltinsCallWithArgv(GateRef gate)
 {
     return LatticeUpdateRuleSCCP::RunDependAnd(gate);
 }

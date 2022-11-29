@@ -32,11 +32,11 @@
 #include "ecmascript/compiler/compiler_log.h"
 
 namespace panda::ecmascript::kungfu {
-class CompilationInfo;
+class PassInfo;
 
 class PassData {
 public:
-    explicit PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, CompilationInfo *info, CompilerLog *log,
+    explicit PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassInfo *info, CompilerLog *log,
                       std::string methodName, size_t methodInfoIndex = 0,
                       bool hasTypes = false, const CString &recordName = "",
                       MethodLiteral *methodLiteral = nullptr, uint32_t methodOffset = 0)
@@ -68,7 +68,7 @@ public:
         return builder_;
     }
 
-    CompilationInfo* GetInfo() const
+    PassInfo* GetInfo() const
     {
         return info_;
     }
@@ -132,7 +132,7 @@ private:
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
     ControlFlowGraph cfg_;
-    CompilationInfo *info_ {nullptr};
+    PassInfo *info_ {nullptr};
     CompilerLog *log_ {nullptr};
     std::string methodName_;
     size_t methodInfoIndex_;
@@ -201,7 +201,7 @@ public:
 
 class TSInlineLoweringPass {
 public:
-    bool Run(PassData *data, CompilationInfo *info)
+    bool Run(PassData *data, PassInfo *info)
     {
         TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();

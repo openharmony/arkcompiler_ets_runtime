@@ -26,7 +26,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"
-#include "ecmascript/llvm_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -145,6 +145,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::DEBUGGER_BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::BUILTINS_CALL, &LLVMIRBuilder::HandleCall},
+        {OpCode::BUILTINS_CALL_WITH_ARGV, &LLVMIRBuilder::HandleCall},
         {OpCode::ALLOCA, &LLVMIRBuilder::HandleAlloca},
         {OpCode::ARG, &LLVMIRBuilder::HandleParameter},
         {OpCode::CONSTANT, &LLVMIRBuilder::HandleConstant},
@@ -366,7 +367,6 @@ void LLVMIRBuilder::SaveFrameTypeOnFrame(FrameType frameType)
 
 LLVMValueRef LLVMIRBuilder::CallingFp(LLVMModuleRef &module, LLVMBuilderRef &builder, bool isCaller)
 {
-
     if (IsInterpreted()) {
         return LLVMGetParam(function_, static_cast<unsigned>(InterpreterHandlerInputs::SP));
     }
@@ -461,7 +461,8 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
     std::vector<GateRef> ins;
     acc_.GetIns(gate, ins);
     OpCode callOp = acc_.GetOpCode(gate);
-    if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL || callOp == OpCode::BUILTINS_CALL) {
+    if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL ||
+        callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV) {
         VisitCall(gate, ins, callOp);
     } else {
         UNREACHABLE();
@@ -643,6 +644,13 @@ LLVMValueRef LLVMIRBuilder::GetGlue(const std::vector<GateRef> &inList)
     return gate2LValue_[inList[static_cast<size_t>(CallInputs::GLUE)]];
 }
 
+LLVMValueRef LLVMIRBuilder::GetLeaveFrameOffset(LLVMValueRef glue)
+{
+    LLVMTypeRef glueType = LLVMTypeOf(glue);
+    return LLVMConstInt(glueType,
+        static_cast<int>(JSThread::GlueData::GetLeaveFrameOffset(compCfg_->Is32Bit())), 0);
+}
+
 LLVMValueRef LLVMIRBuilder::GetRTStubOffset(LLVMValueRef glue, int index)
 {
     LLVMTypeRef glueType = LLVMTypeOf(glue);
@@ -693,6 +701,17 @@ LLVMIRBuilder::CallExceptionKind LLVMIRBuilder::GetCallExceptionKind(size_t inde
     return hasBcOffset ? CallExceptionKind::HAS_BC_OFFSET : CallExceptionKind::NO_BC_OFFSET;
 }
 
+void LLVMIRBuilder::UpdateLeaveFrame(LLVMValueRef glue)
+{
+    LLVMValueRef leaveFrameOffset = GetLeaveFrameOffset(glue);
+    LLVMValueRef leaveFrameValue = LLVMBuildAdd(builder_, glue, leaveFrameOffset, "");
+    LLVMTypeRef glueType = LLVMTypeOf(glue);
+    LLVMValueRef leaveFrameAddr = LLVMBuildIntToPtr(builder_, leaveFrameValue, LLVMPointerType(glueType, 0), "");
+    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, true);
+    LLVMValueRef fp = LLVMBuildPtrToInt(builder_, llvmFpAddr, LLVMInt64Type(), "cast_int64_t");
+    LLVMBuildStore(builder_, fp, leaveFrameAddr);
+}
+
 void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, OpCode op)
 {
     size_t targetIndex = static_cast<size_t>(CallInputs::TARGET);
@@ -710,17 +729,23 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
+        UpdateLeaveFrame(glue);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
         rtoffset = GetRTStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         kind = GetCallExceptionKind(index, op);
     } else {
+        ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = gate2LValue_[inList[targetIndex]];
         rtoffset = GetBuiltinsStubOffset(glue);
         rtbaseoffset = LLVMBuildAdd(
             builder_, glue, LLVMBuildAdd(builder_, rtoffset, opcodeOffset, ""), "");
-        calleeDescriptor = BuiltinsStubCSigns::BuiltinsHandler();
+        if (op == OpCode::BUILTINS_CALL) {
+            calleeDescriptor = BuiltinsStubCSigns::BuiltinsCSign();
+        } else {
+            calleeDescriptor = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
+        }
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
     }
 

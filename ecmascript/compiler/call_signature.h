@@ -47,6 +47,7 @@ public:
         BYTECODE_HELPER_HANDLER,
         JSFUNCTION,
         BUILTINS_STUB,
+        BUILTINS_WITH_ARGV_STUB,
 
         STUB_BEGIN = COMMON_STUB,
         STUB_END = BYTECODE_HANDLER,
@@ -156,6 +157,11 @@ public:
     bool IsBuiltinsStub() const
     {
         return (GetTargetKind() == TargetKind::BUILTINS_STUB);
+    }
+
+    bool IsBuiltinsWithArgvStub() const
+    {
+        return (GetTargetKind() == TargetKind::BUILTINS_WITH_ARGV_STUB);
     }
 
     bool IsBCHandlerStub() const
@@ -332,6 +338,7 @@ private:
     V(GetTaggedArrayPtrTest)                \
     V(BytecodeHandler)                      \
     V(Builtins)                             \
+    V(BuiltinsWithArgv)                     \
     V(BytecodeDebuggerHandler)              \
     V(CallRuntime)                          \
     V(AsmInterpreterEntry)                  \

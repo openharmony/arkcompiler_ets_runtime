@@ -156,7 +156,7 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
         Jump(&afterExceedCon);
     }
     Bind(&afterExceedCon);
-    result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(FindElementWithCache), { glue, hclass, key, propsNum });
+    result = CallNGCRuntime(glue, RTSTUB_ID(FindElementWithCache), { glue, hclass, key, propsNum });
     Jump(&exit);
     Bind(&exit);
     auto ret = *result;
@@ -919,8 +919,7 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
             Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
             Bind(&isHeapObject);
             {
-                UpdateLeaveFrameAndCallNGCRuntime(
-                    glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
+                CallNGCRuntime(glue, RTSTUB_ID(StoreBarrier), { glue, base, offset, value });
                 Jump(&exit);
             }
             Bind(&exit);
@@ -976,8 +975,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             }
             Bind(&isNullPtr);
             {
-                UpdateLeaveFrameAndCallNGCRuntime(glue,
-                    RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
+                CallNGCRuntime(glue, RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
                 Jump(&notValidIndex);
             }
         }
@@ -995,7 +993,7 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             Branch(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
 
             Bind(&marking);
-            UpdateLeaveFrameAndCallNGCRuntime(
+            CallNGCRuntime(
                 glue,
                 RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
             Jump(&exit);
@@ -3085,6 +3083,7 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key)
     {
         Label valueIsCallable(env);
         Label valueNotCallable(env);
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), glue, TaggedIsHeapObject(value), assertLabel);
         Branch(IsCallable(value), &valueIsCallable, &valueNotCallable);
         Bind(&valueNotCallable);
         {
@@ -3146,6 +3145,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
     // 1. If IsCallable(C) is false, return false.
     Label targetIsCallable2(env);
     Label targetNotCallable2(env);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), glue, TaggedIsHeapObject(target), assertLabel);
     Branch(IsCallable(target), &targetIsCallable2, &targetNotCallable2);
     Bind(&targetNotCallable2);
     {
@@ -3159,6 +3159,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
         //    b. Return InstanceofOperator(O,BC)  (see 12.9.4).
         Label targetIsBoundFunction(env);
         Label targetNotBoundFunction(env);
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(IsBoundFunction), glue, TaggedIsHeapObject(target), assertLabel1);
         Branch(IsBoundFunction(target), &targetIsBoundFunction, &targetNotBoundFunction);
         Bind(&targetIsBoundFunction);
         {
@@ -3440,7 +3441,7 @@ GateRef StubBuilder::SameValue(GateRef glue, GateRef left, GateRef right)
                 Label rightIsBigInt(env);
                 Branch(TaggedIsBigInt(right), &rightIsBigInt, &exit);
                 Bind(&rightIsBigInt);
-                result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(BigIntEquals), { left, right });
+                result = CallNGCRuntime(glue, RTSTUB_ID(BigIntEquals), { left, right });
                 Jump(&exit);
             }
         }
@@ -3475,7 +3476,7 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
 
     Bind(&contentsCompare);
     {
-        result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(StringsAreEquals), { left, right });
+        result = CallNGCRuntime(glue, RTSTUB_ID(StringsAreEquals), { left, right });
         Jump(&exit);
     }
 
@@ -3572,7 +3573,7 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right)
             Label rightIsBigInt(env);
             Branch(TaggedIsBigInt(right), &rightIsBigInt, &exit);
             Bind(&rightIsBigInt);
-            result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(BigIntEquals), { left, right });
+            result = CallNGCRuntime(glue, RTSTUB_ID(BigIntEquals), { left, right });
             Jump(&exit);
         }
     }
@@ -4134,8 +4135,7 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right)
                     Branch(DoubleIsINF(*doubleRight), &leftIsZeroOrRightIsInf, &rightNotInf);
                     Bind(&rightNotInf);
                     {
-                        result = UpdateLeaveFrameAndCallNGCRuntime(
-                            glue, RTSTUB_ID(FloatMod), { *doubleLeft, *doubleRight });
+                        result = CallNGCRuntime(glue, RTSTUB_ID(FloatMod), { *doubleLeft, *doubleRight });
                         Jump(&exit);
                     }
                 }
@@ -4263,7 +4263,7 @@ GateRef StubBuilder::DoubleToInt(GateRef glue, GateRef x)
     }
     Bind(&overflow);
     {
-        result = UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(DoubleToInt), { x });
+        result = CallNGCRuntime(glue, RTSTUB_ID(DoubleToInt), { x });
         Jump(&exit);
     }
     Bind(&exit);
@@ -4479,10 +4479,15 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { glue, nativeCode, func, thisValue, data[0], data[1] });
                 break;
             case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
-            case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+            case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV: {
+                Label notFastBuiltins(env);
+                CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
+                    method, &notFastBuiltins, &exit, &result, args, mode);
+                Bind(&notFastBuiltins);
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
                     { glue, nativeCode, func, data[2], data[0], data[1] });
                 break;
+            }
             case JSCallMode::CALL_GETTER:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
                     { nativeCode, glue, numArgs, func, newTarget, data[0] });
@@ -4712,18 +4717,24 @@ void StubBuilder::CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, G
         GateRef ret;
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue, numArgs });
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue, numArgs });
                 break;
             case JSCallMode::CALL_THIS_ARG1:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue, numArgs, data[0] });
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(),
+                                                          thisValue, numArgs, data[0] });
                 break;
             case JSCallMode::CALL_THIS_ARG2:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue,
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue,
                                                           numArgs, data[0], data[1] });
                 break;
             case JSCallMode::CALL_THIS_ARG3:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, thisValue,
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue,
                                                           numArgs, data[0], data[1], data[2] });
+                break;
+            case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+                ret = DispatchBuiltinsWithArgv(glue, builtinId, { glue, nativeCode, func, func, thisValue,
+                                                                  numArgs, data[1] });
                 break;
             default:
                 UNREACHABLE();
@@ -4979,11 +4990,28 @@ void StubBuilder::PGOProfiler(GateRef glue, GateRef func)
             &pgoProfiler, &exit);
         Bind(&pgoProfiler);
         {
-            UpdateLeaveFrameAndCallNGCRuntime(glue, RTSTUB_ID(PGOProfiler), { glue, func });
+            CallNGCRuntime(glue, RTSTUB_ID(PGOProfiler), { glue, func });
             Jump(&exit);
         }
         Bind(&exit);
         env->SubCfgExit();
+    }
+}
+
+void StubBuilder::Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel)
+{
+    auto env = GetEnvironment();
+    Label ok(env);
+    Label notOk(env);
+    Branch(condition, &ok, &notOk);
+    Bind(&ok);
+    {
+        Jump(nextLabel);
+    }
+    Bind(&notOk);
+    {
+        FatalPrint(glue, { Int32(messageId), Int32(line) });
+        Jump(nextLabel);
     }
 }
 }  // namespace panda::ecmascript::kungfu

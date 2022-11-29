@@ -34,7 +34,7 @@ enum InferState : uint8_t {
 class TypeInfer {
 public:
     TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
-              CompilationInfo *info, size_t methodId, bool enableLog,
+              PassInfo *info, size_t methodId, bool enableLog,
               const std::string& name, const CString &recordName)
         : builder_(builder), circuit_(circuit),
           gateAccessor_(circuit),

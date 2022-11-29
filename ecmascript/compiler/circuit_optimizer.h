@@ -145,6 +145,7 @@ public:
     bool RunBytecodeCall(GateRef gate);
     bool RunDebuggerBytecodeCall(GateRef gate);
     bool RunBuiltinsCall(GateRef gate);
+    bool RunBuiltinsCallWithArgv(GateRef gate);
     bool RunCall(GateRef gate);
     bool RunRuntimeCallWithArgv(GateRef gate);
     bool RunAlloca(GateRef gate);

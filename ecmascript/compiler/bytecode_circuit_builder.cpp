@@ -27,6 +27,7 @@ void BytecodeCircuitBuilder::BytecodeToCircuit()
 
     // collect try catch block info
     CollectTryCatchBlockInfo(exceptionInfo);
+    hasTryCatch_ = exceptionInfo.size() != 0;
     BuildRegionInfo();
     // Building the basic block diagram of bytecode
     BuildRegions(exceptionInfo);
@@ -653,7 +654,8 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
     auto numValues = opcode.GetOpCodeNumIns(bitfield);
     const size_t length = opcode.GetInValueStarts(bitfield);
     std::vector<GateRef> inList(numValues, Circuit::NullGate());
-    for (size_t i = 0; i < info.inputs.size(); i++) {
+    auto inputSize = info.inputs.size();
+    for (size_t i = 0; i < inputSize; i++) {
         auto &input = info.inputs[i];
         if (std::holds_alternative<ConstDataId>(input)) {
             if (std::get<ConstDataId>(input).IsStringId()) {
@@ -676,6 +678,12 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(const BytecodeInfo
             ASSERT(std::holds_alternative<VirtualRegister>(input));
             continue;
         }
+    }
+    if (info.AccIn()) {
+        inputSize++;
+    }
+    if (info.ThisObjectIn()) {
+        inList[inputSize + length] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     }
     return inList;
 }

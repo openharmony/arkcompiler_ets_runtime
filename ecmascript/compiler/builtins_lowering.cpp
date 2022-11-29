@@ -86,8 +86,7 @@ GateRef BuiltinLowering::TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID 
             builder_.Branch(condition, &IsNan, &NotNan);
             builder_.Bind(&NotNan);
             {
-                ArgumentAccessor argAcc_(circuit_);
-                auto glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+                GateRef glue = acc_.GetGlueFromArgList();
                 int index = RTSTUB_ID(FloatCos);
                 switch (id) {
                     case BUILTINS_STUB_ID(FLOOR):
@@ -206,8 +205,7 @@ GateRef BuiltinLowering::TypedSqrt(GateRef gate)
                 builder_.Branch(condition, &naN, &notNan);
                 builder_.Bind(&notNan);
                 {
-                    ArgumentAccessor argAcc_(circuit_);
-                    auto glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
+                    GateRef glue = acc_.GetGlueFromArgList();
                     result = builder_.CallNGCRuntime(
                         glue, RTSTUB_ID(FloatSqrt), Gate::InvalidGateRef, {*value});
                     builder_.Jump(&exit);

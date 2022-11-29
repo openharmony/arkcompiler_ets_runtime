@@ -15,11 +15,11 @@
 
 #include "ecmascript/compiler/file_generators.h"
 
-#include "ecmascript/ark_stackmap_builder.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/llvm_stackmap_parser.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+#include "ecmascript/stackmap/ark_stackmap_builder.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
 void Module::CollectStackMapDes(ModuleSectionDes& des) const

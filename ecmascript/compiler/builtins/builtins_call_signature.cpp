@@ -20,11 +20,11 @@
 namespace panda::ecmascript::kungfu {
 CallSignature BuiltinsStubCSigns::callSigns_[BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS];
 CallSignature BuiltinsStubCSigns::builtinsCSign_;
+CallSignature BuiltinsStubCSigns::builtinsWithArgvCSign_;
 
 void BuiltinsStubCSigns::Initialize()
 {
-#define INIT_SIGNATURES(name)                                        \
-    BuiltinsCallSignature::Initialize(&callSigns_[name]);            \
+#define COMMON_INIT(name)                                            \
     callSigns_[name].SetID(name);                                    \
     callSigns_[name].SetName(std::string("BuiltinStub_") + #name);   \
     callSigns_[name].SetConstructor(                                 \
@@ -34,9 +34,22 @@ void BuiltinsStubCSigns::Initialize()
                 static_cast<Environment*>(env)));                    \
     });
 
-    ASM_INTERPRETER_BUILTINS_STUB_LIST(INIT_SIGNATURES)
-#undef INIT_SIGNATURES
+#define INIT_BUILTINS_METHOD(name)                                   \
+    BuiltinsCallSignature::Initialize(&callSigns_[name]);            \
+    COMMON_INIT(name)
+
+    BUILTINS_METHOD_STUB_LIST(INIT_BUILTINS_METHOD)
+#undef INIT_BUILTINS_METHOD
+
+#define INIT_BUILTINS_CONSTRUCTOR(name)                              \
+    BuiltinsWithArgvCallSignature::Initialize(&callSigns_[name]);    \
+    COMMON_INIT(name)
+
+    BUILTINS_CONSTRUCTOR_STUB_LIST(INIT_BUILTINS_CONSTRUCTOR)
+#undef INIT_BUILTINS_CONSTRUCTOR
+#undef COMMON_INIT
     BuiltinsCallSignature::Initialize(&builtinsCSign_);
+    BuiltinsWithArgvCallSignature::Initialize(&builtinsWithArgvCSign_);
 }
 
 void BuiltinsStubCSigns::GetCSigns(std::vector<const CallSignature*>& outCSigns)

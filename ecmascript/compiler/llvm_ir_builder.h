@@ -321,6 +321,7 @@ private:
     LLVMRealPredicate ConvertLLVMPredicateFromFCMP(FCmpCondition cond);
     LLVMIntPredicate ConvertLLVMPredicateFromICMP(ICmpCondition cond);
     LLVMValueRef GetGlue(const std::vector<GateRef> &inList);
+    LLVMValueRef GetLeaveFrameOffset(LLVMValueRef glue);
     LLVMValueRef GetRTStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetCoStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetBCStubOffset(LLVMValueRef glue);
@@ -333,6 +334,7 @@ private:
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
     void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
     void SaveFrameTypeOnFrame(FrameType frameType);
+    void UpdateLeaveFrame(LLVMValueRef glue);
     LLVMTypeRef GetExperimentalDeoptTy();
     LLVMValueRef GetExperimentalDeopt(LLVMModuleRef &module);
     const CompilationConfig *compCfg_ {nullptr};

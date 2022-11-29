@@ -386,6 +386,9 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     Label callNativeMethod;
     Label callOptimizedMethod;
     Label lCallConstructor;
+    Label lCallBuiltinStub;
+    Label lCallNativeCpp;
+
     __ Ldr(Register(X5), MemoryOperand(jsfunc, JSFunction::LEXICAL_ENV_OFFSET));
     __ Str(Register(X5), MemoryOperand(sp, 0));
     __ Ldr(Register(X5), MemoryOperand(jsfunc, 0));
@@ -411,8 +414,64 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Bind(&callNativeMethod);
     {
         Register nativeFuncAddr(X4);
+        if (!isNew) {
+            __ Tbz(callField, MethodLiteral::IsFastBuiltinBit::START_BIT, &lCallNativeCpp);
+            // 3 : 3 means call0 call1 call2 call3
+            __ Cmp(actualArgC, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum() + 3));
+            __ B(Condition::LE, &lCallBuiltinStub);
+        } else {
+            __ Tbnz(callField, MethodLiteral::IsFastBuiltinBit::START_BIT, &lCallBuiltinStub);
+        }
+        __ Bind(&lCallNativeCpp);
         __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         CallBuiltinTrampoline(assembler);
+    }
+
+    __ Bind(&lCallBuiltinStub);
+    {
+        TempRegister1Scope scope1(assembler);
+        Register builtinStub = __ TempRegister1();
+        __ Ldr(Register(X5), MemoryOperand(method, Method::EXTRA_LITERAL_INFO_OFFSET));  // get extra literal
+        __ And(Register(X5).W(), Register(X5).W(), LogicalImmediate::Create(0xff, RegWSize));
+        if (!isNew) {
+            __ Cmp(Register(X5).W(), Immediate(kungfu::BuiltinsStubCSigns::BUILTINS_CONSTRUCTOR_STUB_FIRST));
+            __ B(Condition::GE, &lCallNativeCpp);
+        }
+        __ Add(builtinStub, glue, Operand(Register(X5).W(), UXTW, FRAME_SLOT_SIZE_LOG2));
+        __ Ldr(builtinStub, MemoryOperand(builtinStub, JSThread::GlueData::GetBuiltinsStubEntriesOffset(false)));
+
+        __ Ldr(Register(X1), MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        __ Ldr(Register(X2), MemoryOperand(sp, DOUBLE_SLOT_SIZE));  // get jsfunc
+        __ Ldr(Register(X3), MemoryOperand(sp, TRIPLE_SLOT_SIZE));  // get newtarget
+        __ Ldr(Register(X4), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));  // get this
+        __ Ldr(Register(X5), MemoryOperand(sp, FRAME_SLOT_SIZE));  // get number args
+        __ Sub(Register(X5), Register(X5), Immediate(NUM_MANDATORY_JSFUNC_ARGS));
+        if (!isNew) {
+            Label lTailCall;
+            Register fp(X29);
+            __ Ldp(Register(X6), Register(X7), MemoryOperand(sp, QUINTUPLE_SLOT_SIZE));  // get arg0 arg1
+            __ Cmp(Register(X5), Immediate(3));  // 3: callarg3
+            __ B(Condition::NE, &lTailCall);
+            PushOptimizedFrame(assembler);
+            {
+                // push arg3 and call
+                TempRegister2Scope scope2(assembler);
+                Register arg3 = __ TempRegister2();
+                __ Ldr(arg3, MemoryOperand(fp, DECUPLE_SLOT_SIZE)); // get arg2
+                __ Stp(arg3, Register(X8), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+                __ Blr(builtinStub);
+                __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE));
+            }
+            PopOptimizedFrame(assembler);
+            __ Ret();
+            __ Bind(&lTailCall);
+            {
+                __ Br(builtinStub);
+            }
+        } else {
+            __ Add(Register(X6), sp, Immediate(QUINTUPLE_SLOT_SIZE));  // get argV
+            __ Br(builtinStub);
+        }
     }
 
     __ Bind(&callOptimizedMethod);
@@ -448,10 +507,11 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Bind(&lCallConstructor);
     {
         Register frameType(X6);
-        __ SaveFpAndLr();
+        __ PushFpAndLr();
         __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)));
         // 2 : 2 means pair
         __ Stp(Register(Zero), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
         Register argC(X5);
         Register runtimeId(X6);
         __ Mov(argC, Immediate(0));
@@ -577,12 +637,13 @@ void OptimizedCall::ThrowNonCallableInternal(ExtendedAssembler *assembler, Regis
 {
     Register frameType(X6);
     Register taggedMessageId(X5);
-    __ SaveFpAndLr();
+    __ PushFpAndLr();
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)));
     __ Mov(taggedMessageId,
         Immediate(JSTaggedValue(GET_MESSAGE_STRING_ID(NonCallable)).GetRawData()));
     // 2 : 2 means pair
     __ Stp(taggedMessageId, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
     Register argC(X5);
     Register runtimeId(X6);
     __ Mov(argC, Immediate(1));
@@ -765,13 +826,14 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
     // 2 : 2 means pair
     __ Stp(argc, argv, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
     __ Str(runtimeId, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ SaveFpAndLr();
+    __ PushFpAndLr();
     Register fp(X29);
     __ Str(fp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
     // construct leave frame
     Register frameType(X9);
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME_WITH_ARGV)));
     __ Str(frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Add(Register(FP), sp, Immediate(FRAME_SLOT_SIZE));
 
      // load runtime trampoline address
     Register tmp(X9);
@@ -824,12 +886,13 @@ void OptimizedCall::PushJSFunctionEntryFrame (ExtendedAssembler *assembler, Regi
     Register fp(X29);
     Register sp(SP);
     TempRegister2Scope temp2Scope(assembler);
-    __ SaveFpAndLr();
+    __ PushFpAndLr();
     Register frameType = __ TempRegister2();
     // construct frame
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_ENTRY_FRAME)));
     // 2 : 2 means pairs
     __ Stp(prevFp, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
     __ CalleeSave();
 }
 
@@ -840,14 +903,11 @@ void OptimizedCall::PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Regist
     Register prevFp(X1);
     __ CalleeRestore();
 
-    // pop prevLeaveFrameFp to restore thread->currentFrame_
-    __ Ldr(prevFp, MemoryOperand(sp, FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
-    __ Str(prevFp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
-
-    // pop entry frame type
-    __ Add(sp, sp, Immediate(FRAME_SLOT_SIZE));
+    // 2: prevFp and frameType
+    __ Ldp(prevFp, Register(Zero), MemoryOperand(sp, FRAME_SLOT_SIZE * 2, AddrMode::POSTINDEX));
     // restore return address
     __ RestoreFpAndLr();
+    __ Str(prevFp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 }
 
 void OptimizedCall::PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler)
@@ -855,14 +915,38 @@ void OptimizedCall::PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler)
     Register sp(SP);
     TempRegister2Scope temp2Scope(assembler);
     Register frameType = __ TempRegister2();
-    __ SaveFpAndLr();
+    __ PushFpAndLr();
     // construct frame
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)));
     // 2 : 2 means pairs. X19 means calleesave and 16bytes align
     __ Stp(Register(X19), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
 }
 
 void OptimizedCall::PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler)
+{
+    TempRegister2Scope temp2Scope(assembler);
+    Register sp(SP);
+    Register frameType = __ TempRegister2();
+    // 2 : 2 means pop call site sp and type
+    __ Ldp(Register(X19), frameType, MemoryOperand(sp, FRAME_SLOT_SIZE * 2, AddrMode::POSTINDEX));
+    __ RestoreFpAndLr();
+}
+
+void OptimizedCall::PushOptimizedFrame(ExtendedAssembler *assembler)
+{
+    Register sp(SP);
+    TempRegister2Scope temp2Scope(assembler);
+    Register frameType = __ TempRegister2();
+    __ PushFpAndLr();
+    // construct frame
+    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME)));
+    // 2 : 2 means pairs. X19 means calleesave and 16bytes align
+    __ Stp(Register(X19), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Add(Register(FP), sp, Immediate(FRAME_SLOT_SIZE));
+}
+
+void OptimizedCall::PopOptimizedFrame(ExtendedAssembler *assembler)
 {
     TempRegister2Scope temp2Scope(assembler);
     Register sp(SP);
@@ -899,11 +983,12 @@ void OptimizedCall::PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, R
     Register sp(SP);
     TempRegister2Scope temp2Scope(assembler);
     Register frameType = __ TempRegister2();
-    __ SaveFpAndLr();
+    __ PushFpAndLr();
     // construct frame
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME)));
     // 2 : 2 means pairs
     __ Stp(callSiteSp, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
 }
 
 void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)

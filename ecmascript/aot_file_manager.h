@@ -15,11 +15,11 @@
 #ifndef ECMASCRIPT_AOT_FILE_MANAGER_H
 #define ECMASCRIPT_AOT_FILE_MANAGER_H
 
-#include "ecmascript/ark_stackmap.h"
+#include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/compiler/binary_section.h"
+#include "ecmascript/stackmap/ark_stackmap.h"
 
 namespace panda::ecmascript {
 class JSpandafile;
@@ -130,6 +130,13 @@ struct ModuleSectionDes {
         return sectionsInfo_.size();
     }
 
+    bool ContainCode(uintptr_t pc) const
+    {
+        uint64_t stubStartAddr = GetSecAddr(ElfSecName::TEXT);
+        uint64_t stubEndAddr = stubStartAddr + GetSecSize(ElfSecName::TEXT);
+        return (pc >= stubStartAddr && pc <= stubEndAddr);
+    }
+
     void SaveSectionsInfo(std::ofstream &file);
     void LoadSectionsInfo(BinaryBufferParser &parser, uint32_t &curUnitOffset,
         uint64_t codeAddress);
@@ -175,7 +182,8 @@ public:
 
         bool IsBuiltinsStub() const
         {
-            return (kind_ == CallSignature::TargetKind::BUILTINS_STUB);
+            return (kind_ == CallSignature::TargetKind::BUILTINS_STUB ||
+                    kind_ == CallSignature::TargetKind::BUILTINS_WITH_ARGV_STUB);
         }
 
         bool IsCommonStub() const
@@ -457,7 +465,8 @@ public:
     void LoadStubFile();
     void LoadAnFile(const std::string &fileName);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
-    bool InsideStub(uint64_t pc) const;
+    bool InsideStub(uintptr_t pc) const;
+    bool InsideAOT(uintptr_t pc) const;
 
     void Iterate(const RootVisitor &v)
     {

@@ -468,7 +468,7 @@ size_t Circuit::GetGateCount() const
     return gateCount_;
 }
 
-void Circuit::PushFrameState()
+void Circuit::PushFunctionCompilationDataList()
 {
     auto returnList = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
     auto argList = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
@@ -480,7 +480,7 @@ void Circuit::PushFrameState()
     innerMethodArgFirstOut_ = argListGate->GetFirstOutConst();
 }
 
-void Circuit::PopFrameState()
+void Circuit::PopFunctionCompilationDataList()
 {
     innerMethodReturnFirstOut_ = nullptr;
     innerMethodArgFirstOut_ = nullptr;

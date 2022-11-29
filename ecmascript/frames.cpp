@@ -15,12 +15,12 @@
 
 #include "ecmascript/frames.h"
 
-#include "ecmascript/ark_stackmap_parser.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/aot_file_manager.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/llvm_stackmap_parser.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/js_thread.h"
+#include "ecmascript/stackmap/ark_stackmap_parser.h"
+#include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 #if defined(PANDA_TARGET_UNIX) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/ptrace.h>
@@ -332,6 +332,10 @@ uintptr_t FrameIterator::GetPrevFrame() const
 bool FrameIterator::IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     ASSERT(arkStackMapParser_ != nullptr);
+    if (!stackMapAddr_) {  // enter by assembler, no stack map
+        return true;
+    }
+
     return arkStackMapParser_->IteratorStackMap(visitor, derivedVisitor, optimizedReturnAddr_,
         reinterpret_cast<uintptr_t>(current_), optimizedCallSiteSp_, stackMapAddr_);
 }
