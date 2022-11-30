@@ -11,10 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
--5
--6.7
-NaN
-NaN
--Infinity
 -2147483648
 2147483648

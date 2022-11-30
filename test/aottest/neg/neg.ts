@@ -29,3 +29,10 @@ print(-d);
 var e:number = 0;
 var f:number = 1;
 print(f / -e);
+
+let intmax = 2147483647;
+let negone = -1;
+let intmin = negone - intmax;
+let negintmin = -intmin;
+print(intmin);
+print(negintmin);

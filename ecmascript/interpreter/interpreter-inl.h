@@ -4419,6 +4419,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         if (value.IsInt()) {
             if (value.GetInt() == 0) {
                 SET_ACC(JSTaggedValue(-0.0));
+            } else if (value.GetInt() == INT32_MIN) {
+                SET_ACC(JSTaggedValue(-static_cast<double>(INT32_MIN)));
             } else {
                 SET_ACC(JSTaggedValue(-value.GetInt()));
             }
