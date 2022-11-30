@@ -38,6 +38,7 @@ public:
 
     static JSTaggedValue ExecutePendingJob(const JSHandle<PendingJob> &pendingJob, JSThread *thread)
     {
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         EXECUTE_JOB_HITRACE(pendingJob);
         tooling::JsDebuggerManager *jsDebuggerManager = thread->GetEcmaVM()->GetJsDebuggerManager();
         jsDebuggerManager->GetNotificationManager()->PendingJobEntryEvent();
