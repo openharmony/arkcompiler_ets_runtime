@@ -226,7 +226,7 @@ bool LatticeUpdateRule::UpdateReachabilityLattice(GateRef gate, const Reachabili
     return false;
 }
 
-uint64_t LatticeUpdateRuleSCCP::RunBoolArithmetic(bool valueA, bool valueB, OpCode::Op op)
+uint64_t LatticeUpdateRuleSCCP::RunBoolArithmetic(bool valueA, bool valueB, OpCode op)
 {
     switch (op) {
         case OpCode::ADD:
@@ -249,7 +249,7 @@ uint64_t LatticeUpdateRuleSCCP::RunBoolArithmetic(bool valueA, bool valueB, OpCo
 }
 
 template<class T>
-uint64_t LatticeUpdateRuleSCCP::RunFixedPointArithmetic(T valueA, T valueB, OpCode::Op op)
+uint64_t LatticeUpdateRuleSCCP::RunFixedPointArithmetic(T valueA, T valueB, OpCode op)
 {
     static_assert(std::is_unsigned<T>::value, "T should be an unsigned type");
     using make_signed_t = typename std::make_signed<T>::type;
@@ -288,7 +288,7 @@ uint64_t LatticeUpdateRuleSCCP::RunFixedPointArithmetic(T valueA, T valueB, OpCo
 }
 
 template<class T>
-double LatticeUpdateRuleSCCP::RunFloatingPointArithmetic(T valueA, T valueB, OpCode::Op op)
+double LatticeUpdateRuleSCCP::RunFloatingPointArithmetic(T valueA, T valueB, OpCode op)
 {
     switch (op) {
         case OpCode::ADD:
@@ -309,7 +309,7 @@ double LatticeUpdateRuleSCCP::RunFloatingPointArithmetic(T valueA, T valueB, OpC
 }
 
 uint64_t LatticeUpdateRuleSCCP::RunBasicArithmetic(ValueLattice operandA, ValueLattice operandB,
-                                                   OpCode::Op op, MachineType machineType)
+                                                   OpCode op, MachineType machineType)
 {
     auto valueA = operandA.GetValue().value();
     auto valueB = operandB.GetValue().value();
@@ -454,15 +454,11 @@ uint64_t LatticeUpdateRuleSCCP::RunFloatingPointCompare(T valueA, T valueB, FCmp
 
 bool LatticeUpdateRuleSCCP::Run(GateRef gate)
 {
-    const std::map<OpCode::Op, std::function<bool(void)>> functionTable = {
+    const std::map<OpCode, std::function<bool(void)>> functionTable = {
         {OpCode::CIRCUIT_ROOT, [&]() -> bool { return RunCircuitRoot(gate); }},
         {OpCode::STATE_ENTRY, [&]() -> bool { return RunStateEntry(gate); }},
         {OpCode::DEPEND_ENTRY, [&]() -> bool { return RunDependEntry(gate); }},
-        {OpCode::FRAMESTATE_ENTRY, [&]() -> bool { return RunFrameStateEntry(gate); }},
         {OpCode::RETURN_LIST, [&]() -> bool { return RunReturnList(gate); }},
-        {OpCode::THROW_LIST, [&]() -> bool { return RunThrowList(gate); }},
-        {OpCode::CONSTANT_LIST, [&]() -> bool { return RunConstantList(gate); }},
-        {OpCode::ALLOCA_LIST, [&]() -> bool { return RunAllocaList(gate); }},
         {OpCode::ARG_LIST, [&]() -> bool { return RunArgList(gate); }},
         {OpCode::RETURN, [&]() -> bool { return RunReturn(gate); }},
         {OpCode::RETURN_VOID, [&]() -> bool { return RunReturnVoid(gate); }},
@@ -495,7 +491,6 @@ bool LatticeUpdateRuleSCCP::Run(GateRef gate)
         {OpCode::RUNTIME_CALL_WITH_ARGV, [&]() -> bool { return RunRuntimeCallWithArgv(gate); }},
         {OpCode::ALLOCA, [&]() -> bool { return RunAlloca(gate); }},
         {OpCode::ARG, [&]() -> bool { return RunArg(gate); }},
-        {OpCode::MUTABLE_DATA, [&]() -> bool { return RunMutableData(gate); }},
         {OpCode::CONST_DATA, [&]() -> bool { return RunConstData(gate); }},
         {OpCode::RELOCATABLE_DATA, [&]() -> bool { return RunRelocatableData(gate); }},
         {OpCode::CONSTANT, [&]() -> bool { return RunConstant(gate); }},
@@ -820,7 +815,7 @@ bool LatticeUpdateRuleSCCP::RunRelocatableData(GateRef gate)
 
 bool LatticeUpdateRuleSCCP::RunConstant(GateRef gate)
 {
-    const auto constantValue = ValueLattice(acc_.GetBitField(gate));
+    const auto constantValue = ValueLattice(acc_.GetConstantValue(gate));
     return UpdateValueLattice(gate, constantValue);
 }
 
@@ -1197,7 +1192,7 @@ void SubgraphRewriteRule::Initialize(Circuit *circuit)
 
 bool SubgraphRewriteRuleCP::Run(GateRef gate)
 {
-    const std::map<OpCode::Op, std::function<bool(void)>> functionTable = {
+    const std::map<OpCode, std::function<bool(void)>> functionTable = {
         {OpCode::ADD, [&]() -> bool { return RunAdd(gate); }},
         {OpCode::SUB, [&]() -> bool { return RunSub(gate); }},
     };
@@ -1212,15 +1207,13 @@ bool SubgraphRewriteRuleCP::RunAdd(GateRef gate)
     GateAccessor acc(circuit_);
     const auto &operandA = acc_.GetIn(gate, 0);
     const auto &operandB = acc_.GetIn(gate, 1);
-    if (acc_.GetOpCode(operandA) == OpCode(OpCode::CONSTANT) &&
-        acc_.GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
+    if (acc_.GetOpCode(operandA) == OpCode::CONSTANT &&
+        acc_.GetOpCode(operandB) == OpCode::CONSTANT) {
         acc_.DeleteIn(gate, 0);
         acc_.DeleteIn(gate, 1);
-        acc_.SetOpCode(gate, OpCode(OpCode::CONSTANT));
-        acc_.NewIn(gate, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
-        const auto valueA = acc_.GetBitField(operandA);
-        const auto valueB = acc_.GetBitField(operandB);
-        acc_.SetBitField(gate, valueA + valueB);
+        const auto valueA = acc_.GetConstantValue(operandA);
+        const auto valueB = acc_.GetConstantValue(operandB);
+        acc_.SetMetaData(gate, circuit_->Constant(valueA + valueB));
         return true;
     }
     return false;
@@ -1231,15 +1224,13 @@ bool SubgraphRewriteRuleCP::RunSub(GateRef gate)
     GateAccessor acc(circuit_);
     const auto &operandA = acc_.GetIn(gate, 0);
     const auto &operandB = acc_.GetIn(gate, 1);
-    if (acc_.GetOpCode(operandA) == OpCode(OpCode::CONSTANT) &&
-        acc_.GetOpCode(operandB) == OpCode(OpCode::CONSTANT)) {
+    if (acc_.GetOpCode(operandA) == OpCode::CONSTANT &&
+        acc_.GetOpCode(operandB) == OpCode::CONSTANT) {
         acc_.DeleteIn(gate, 0);
         acc_.DeleteIn(gate, 1);
-        acc_.SetOpCode(gate, OpCode(OpCode::CONSTANT));
-        acc_.NewIn(gate, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
-        const auto valueA = acc_.GetBitField(operandA);
-        const auto valueB = acc_.GetBitField(operandB);
-        acc_.SetBitField(gate, valueA - valueB);
+        const auto valueA = acc_.GetConstantValue(operandA);
+        const auto valueB = acc_.GetConstantValue(operandB);
+        acc_.SetMetaData(gate, circuit_->Constant(valueA - valueB));
         return true;
     }
     return false;
@@ -1273,7 +1264,7 @@ bool LatticeEquationsSystemSolverFramework::Run(Circuit *circuit, bool enableLog
         const auto gate = workList.front();
         workList.pop_front();
         workSet.erase(gate);
-        if (latticeUpdateRule_->Run(gate) || acc_.GetOpCode(gate).IsCFGMerge()) {
+        if (latticeUpdateRule_->Run(gate) || acc_.GetMetaData(gate)->IsCFGMerge()) {
             for (const auto &output : acc_.ConstUses(gate)) {
                 if (!workSet.count(output)) {
                     workList.push_back(output);  // work queue
@@ -1583,9 +1574,9 @@ void GlobalValueNumbering::GetPartitionNodes(std::vector<std::shared_ptr<Partiti
 void GlobalValueNumbering::SplitByOpCode(const std::vector<std::shared_ptr<PartitionNode>> &nodes,
                                          std::vector<std::shared_ptr<Partition>> &partitions)
 {
-    std::map<std::tuple<OpCode::Op, BitField, MachineType, uint32_t>, std::shared_ptr<Partition>> opToPartition;
+    std::map<std::tuple<OpCode, BitField, MachineType, uint32_t>, std::shared_ptr<Partition>> opToPartition;
     for (auto node : nodes) {
-        auto op = OpCode::Op(acc_.GetOpCode(node->GetGate()));
+        auto op = OpCode(acc_.GetOpCode(node->GetGate()));
         auto bit = acc_.GetBitField(node->GetGate());
         auto mt = acc_.GetMachineType(node->GetGate());
         auto gt = acc_.GetGateType(node->GetGate()).Value();
@@ -1699,7 +1690,7 @@ void GlobalValueNumbering::Print(const std::vector<std::shared_ptr<Partition>> &
         if (noGateReplaced) {
             continue;
         }
-        log += "] with " + acc_.GetOpCode(kingNode->GetGate()).Str() + " " +
+        log += "] with " + GateMetaData::Str(acc_.GetOpCode(kingNode->GetGate())) + " " +
                 std::to_string(acc_.GetId(kingNode->GetGate()));
         LOG_COMPILER(INFO) << log;
     }

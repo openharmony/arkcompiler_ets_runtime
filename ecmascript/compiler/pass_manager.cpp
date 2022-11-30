@@ -70,7 +70,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
 
         bool hasTypes = jsPandaFile->HasTSTypes(recordName);
-        Circuit circuit(cmpCfg->Is64Bit());
+        Circuit circuit(vm_->GetNativeAreaAllocator(), cmpCfg->Is64Bit());
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
                                        info.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
                                        EnableTypeLowering(), fullName, recordName);

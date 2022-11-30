@@ -62,6 +62,7 @@ source_set("libark_jsoptimizer_set") {
     "frame_states.cpp",
     "gate.cpp",
     "gate_accessor.cpp",
+    "gate_meta_data.cpp",
     "guard_eliminating.cpp",
     "guard_lowering.cpp",
     "ic_stub_builder.cpp",

@@ -19,9 +19,9 @@ namespace panda::ecmascript::kungfu {
 void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto bitfield = acc_.GetBitField(gate);
-    auto idGate = acc_.GetValueIn(gate, bitfield - 1);
-    auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetBitField(idGate));
+    auto valuesIn = acc_.GetNumValueIn(gate);
+    auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
+    auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
         case BUILTINS_STUB_ID(SQRT):
             LowerTypedSqrt(gate);
@@ -245,7 +245,7 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
     Label exit(&builder_);
     GateRef a0 = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
- 
+
     Label isInt(&builder_);
     Label notInt(&builder_);
     builder_.Branch(builder_.TaggedIsInt(a0), &isInt, &notInt);

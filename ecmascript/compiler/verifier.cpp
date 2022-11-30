@@ -28,10 +28,10 @@ bool Verifier::RunDataIntegrityCheck(const Circuit *circuit)
 {
     std::unordered_set<GateRef> gatesSet;
     std::vector<GateRef> gatesList;
-    gatesList.push_back(0);
-    gatesSet.insert(0);
-    size_t out = sizeof(Gate);
-    GateRef prevGate = 0;
+    GateRef prevGate = sizeof(Out);
+    gatesList.push_back(prevGate);
+    gatesSet.insert(prevGate);
+    size_t out = Gate::GetGateSize(0);
     while (true) {
         GateRef gate = circuit->GetGateRef(
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -121,7 +121,8 @@ bool Verifier::RunCFGSoundnessCheck(const Circuit *circuit, const std::vector<Ga
     for (const auto &bbGate : bbGatesList) {
         GateAccessor gateAcc(const_cast<Circuit *>(circuit));
         for (const auto &predGate : gateAcc.ConstIns(bbGate)) {
-            if (circuit->GetOpCode(predGate).IsState() || circuit->GetOpCode(predGate) == OpCode::STATE_ENTRY) {
+            if (circuit->GetMetaData(predGate)->IsState() ||
+                circuit->GetOpCode(predGate) == OpCode::STATE_ENTRY) {
                 if (bbGatesAddrToIdx.count(predGate) == 0) {
                     LOG_COMPILER(ERROR) << "[Verifier][Error] CFG is not sound";
                     LOG_COMPILER(ERROR) << "Proof:";
@@ -146,8 +147,8 @@ bool Verifier::RunCFGIsDAGCheck(const Circuit *circuit)
         GateAccessor::ConstUseIterator use;
     };
     std::stack<DFSState> dfsStack;
-    auto root = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
     GateAccessor gateAcc(const_cast<Circuit *>(circuit));
+    auto root = gateAcc.GetRoot(OpCode::STATE_ENTRY);
     gateAcc.SetVisited(root);
     auto rootUses = gateAcc.ConstUses(root);
     dfsStack.push({root, rootUses, rootUses.begin()});
@@ -197,7 +198,7 @@ bool Verifier::RunCFGReducibilityCheck(const Circuit *circuit, const std::vector
                 if (use.GetIndex() >= circuit->LoadGatePtrConst(*use)->GetStateCount()) {
                     continue;
                 }
-                ASSERT(circuit->LoadGatePtrConst(*use)->GetOpCode().IsState());
+                ASSERT(circuit->LoadGatePtrConst(*use)->GetMetaData()->IsState());
                 bool isDom = isAncestor(bbGatesAddrToIdx.at(*use), bbGatesAddrToIdx.at(curGate));
                 if (!isDom) {
                     LOG_COMPILER(ERROR) << "[Verifier][Error] CFG is not reducible";
@@ -234,7 +235,7 @@ bool Verifier::RunFixedGatesRelationsCheck(const Circuit *circuit, const std::ve
         auto ins = ac.Ins(fixedGate);
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef predGate = *i;
-            if (circuit->GetOpCode(predGate).IsFixed() &&
+            if (circuit->GetMetaData(predGate)->IsFixed() &&
                 (circuit->GetOpCode(circuit->GetIn(fixedGate, 0)) == OpCode::LOOP_BEGIN && cnt == 2)) {
                 ASSERT(cnt > 0);
                 auto a = bbGatesAddrToIdx.at(circuit->GetIn(predGate, 0));
@@ -270,7 +271,7 @@ bool Verifier::RunFlowCyclesFind(const Circuit *circuit, std::vector<GateRef> *s
         auto ins = ac.Ins(gate);
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef predGate = *i;
-            if (circuit->GetOpCode(predGate).IsSchedulable()) {
+            if (circuit->GetMetaData(predGate)->IsSchedulable()) {
                 if (circuit->GetMark(predGate) == MarkCode::NO_MARK) {
                     startGateList.push_back(predGate);
                     circuit->SetMark(predGate, MarkCode::VISITED);
@@ -282,7 +283,7 @@ bool Verifier::RunFlowCyclesFind(const Circuit *circuit, std::vector<GateRef> *s
         auto ins = ac.Ins(gate);
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef predGate = *i;
-            if (circuit->GetOpCode(predGate).IsSchedulable()) {
+            if (circuit->GetMetaData(predGate)->IsSchedulable()) {
                 if (circuit->GetMark(predGate) == MarkCode::NO_MARK) {
                     startGateList.push_back(predGate);
                     circuit->SetMark(predGate, MarkCode::VISITED);
@@ -373,7 +374,7 @@ bool Verifier::RunPrologGatesCheck(const Circuit *circuit, const std::vector<Gat
         auto ins = ac.Ins(schedulableGate);
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef r = *i;
-            if (circuit->GetOpCode(r).IsProlog()) {
+            if (circuit->GetMetaData(r)->IsProlog()) {
                 if (!circuit->Verify(r)) {
                     return false;
                 }
@@ -423,7 +424,7 @@ void Verifier::FindFixedGates(const Circuit *circuit, const std::vector<GateRef>
 {
     for (const auto &bbGate : bbGatesList) {
         for (const auto &succGate : circuit->GetOutVector(bbGate)) {
-            if (circuit->GetOpCode(succGate).IsFixed()) {
+            if (circuit->GetMetaData(succGate)->IsFixed()) {
                 fixedGatesList.push_back(succGate);
             }
         }

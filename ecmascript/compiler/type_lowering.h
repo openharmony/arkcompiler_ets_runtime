@@ -100,7 +100,7 @@ public:
     TypeLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
                  bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
+          dependEntry_(circuit->GetRoot(OpCode::DEPEND_ENTRY)), tsManager_(tsManager),
           enableLog_(enableLog), methodName_(name) {}
 
     ~TypeLowering() = default;
@@ -194,13 +194,13 @@ private:
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef ShiftNumber(GateRef left, GateRef right, GateType leftType, GateType rightType);
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef LogicalNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
     GateRef CompareNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
@@ -210,7 +210,7 @@ private:
     GateRef CompareDouble(GateRef left, GateRef right);
     template<TypedUnOp Op>
     GateRef MonocularNumber(GateRef value, GateType valueType);
-    template<OpCode::Op Op, MachineType Type>
+    template<OpCode Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);

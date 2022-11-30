@@ -354,8 +354,8 @@ private:
     std::vector<BasicBlock *> phiRebuildWorklist_;
     LLVMModule *llvmModule_ {nullptr};
     std::unordered_map<GateRef, LLVMValueRef> gate2LValue_;
-    std::unordered_map<OpCode::Op, HandleType> opHandlers_;
-    std::set<OpCode::Op> illegalOpHandlers_;
+    std::unordered_map<OpCode, HandleType> opHandlers_;
+    std::set<OpCode> illegalOpHandlers_;
     int slotSize_;
     LLVMTypeRef slotType_;
     CallSignature::CallConv callConv_ = CallSignature::CallConv::CCallConv;
