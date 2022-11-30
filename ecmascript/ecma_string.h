@@ -364,7 +364,14 @@ private:
 
     // single char copy for loop
     template<typename DstType, typename SrcType>
-    static void CopyChars(DstType *dst, SrcType *src, uint32_t count);
+    static void CopyChars(DstType *dst, SrcType *src, uint32_t count)
+    {
+        Span<SrcType> srcSp(src, count);
+        Span<DstType> dstSp(dst, count);
+        for (uint32_t i = 0; i < count; i++) {
+            dstSp[i] = srcSp[i];
+        }
+    }
 
     // memory block copy
     template<typename T>
@@ -425,7 +432,7 @@ private:
 
     static EcmaString *TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src);
 
-    static EcmaString *ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src,
+    static EcmaString *ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHandle<EcmaString> &srcFlat,
                                                  bool toLower, uint32_t startIndex = 0);
 };
 
@@ -470,7 +477,21 @@ public:
     }
 
     template<bool verify = true>
-    uint16_t Get(int32_t index) const;
+    uint16_t Get(int32_t index) const
+    {
+        int32_t length = static_cast<int32_t>(GetLength());
+        if (verify) {
+            if ((index < 0) || (index >= length)) {
+                return 0;
+            }
+        }
+        if (!IsUtf16()) {
+            Span<const uint8_t> sp(GetDataUtf8(), length);
+            return sp[index];
+        }
+        Span<const uint16_t> sp(GetDataUtf16(), length);
+        return sp[index];
+    }
 
     void Set(uint32_t index, uint16_t src)
     {
@@ -516,7 +537,35 @@ public:
     }
 
     template<bool verify = true>
-    uint16_t Get(int32_t index) const;
+    uint16_t Get(int32_t index) const
+    {
+        int32_t length = static_cast<int32_t>(GetLength());
+        if (verify) {
+            if ((index < 0) || (index >= length)) {
+                return 0;
+            }
+        }
+
+        if (IsFlat()) {
+            EcmaString *first = EcmaString::Cast(GetFirst());
+            return first->At<verify>(index);
+        }
+        EcmaString *string = const_cast<TreeEcmaString *>(this);
+        while (true) {
+            if (string->IsTreeString()) {
+                EcmaString *first = EcmaString::Cast(TreeEcmaString::Cast(string)->GetFirst());
+                if (static_cast<int32_t>(first->GetLength()) > index) {
+                    string = first;
+                } else {
+                    index -= static_cast<int32_t>(first->GetLength());
+                    string = EcmaString::Cast(TreeEcmaString::Cast(string)->GetSecond());
+                }
+            } else {
+                return string->At<verify>(index);
+            }
+        }
+        UNREACHABLE();
+        }
 };
 
 // if you want to use functions of EcmaString, please not use directly,

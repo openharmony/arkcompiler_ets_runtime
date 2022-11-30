@@ -47,7 +47,7 @@ size_t PhysicalSize()
     return pages * pageSize;
 }
 
-int PrctlSetVMA(void *p, size_t size, const char *tag)
+int PrctlSetVMA(const void *p, const size_t size, const char *tag)
 {
     return prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, p, size, tag);
 }

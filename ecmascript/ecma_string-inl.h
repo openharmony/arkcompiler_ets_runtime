@@ -311,65 +311,6 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
     }
 }
 
-/* static */
-template<typename DstType, typename SrcType>
-void EcmaString::CopyChars(DstType *dst, SrcType *src, uint32_t count)
-{
-    Span<SrcType> srcSp(src, count);
-    Span<DstType> dstSp(dst, count);
-    for (uint32_t i = 0; i < count; i++) {
-        dstSp[i] = srcSp[i];
-    }
-}
-
-template<bool verify>
-uint16_t LineEcmaString::Get(int32_t index) const
-{
-    int32_t length = static_cast<int32_t>(GetLength());
-    if (verify) {
-        if ((index < 0) || (index >= length)) {
-            return 0;
-        }
-    }
-    if (!IsUtf16()) {
-        Span<const uint8_t> sp(GetDataUtf8(), length);
-        return sp[index];
-    }
-    Span<const uint16_t> sp(GetDataUtf16(), length);
-    return sp[index];
-}
-
-template<bool verify>
-uint16_t TreeEcmaString::Get(int32_t index) const
-{
-    int32_t length = static_cast<int32_t>(GetLength());
-    if (verify) {
-        if ((index < 0) || (index >= length)) {
-            return 0;
-        }
-    }
-
-    if (IsFlat()) {
-        EcmaString *first = EcmaString::Cast(GetFirst());
-        return first->At<verify>(index);
-    }
-    EcmaString *string = const_cast<TreeEcmaString *>(this);
-    while (true) {
-        if (string->IsTreeString()) {
-            EcmaString *first = EcmaString::Cast(TreeEcmaString::Cast(string)->GetFirst());
-            if (static_cast<int32_t>(first->GetLength()) > index) {
-                string = first;
-            } else {
-                index -= static_cast<int32_t>(first->GetLength());
-                string = EcmaString::Cast(TreeEcmaString::Cast(string)->GetSecond());
-            }
-        } else {
-            return string->At<verify>(index);
-        }
-    }
-    UNREACHABLE();
-}
-
 inline const uint8_t *EcmaStringAccessor::GetDataUtf8()
 {
     return string_->GetDataUtf8();
