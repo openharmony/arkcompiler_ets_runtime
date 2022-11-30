@@ -2217,8 +2217,19 @@ DECLARE_ASM_HANDLER(HandleNegImm8)
         }
         Bind(&valueNotZero);
         {
-            varAcc = IntToTaggedPtr(Int32Sub(Int32(0), valueInt));
-            Jump(&accDispatch);
+            Label valueIsInt32Min(env);
+            Label valueNotInt32Min(env);
+            Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueIsInt32Min, &valueNotInt32Min);
+            Bind(&valueIsInt32Min);
+            {
+                varAcc = DoubleToTaggedDoublePtr(Double(-static_cast<double>(INT32_MIN)));
+                Jump(&accDispatch);
+            }
+            Bind(&valueNotInt32Min);
+            {
+                varAcc = IntToTaggedPtr(Int32Sub(Int32(0), valueInt));
+                Jump(&accDispatch);
+            }
         }
     }
     Bind(&valueNotInt);
