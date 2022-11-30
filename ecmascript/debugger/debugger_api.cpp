@@ -311,6 +311,131 @@ bool DebuggerApi::SetGlobalValue(const EcmaVM *vm, Local<StringRef> name, Local<
     return false;
 }
 
+JSTaggedValue DebuggerApi::GetCurrentModule(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        // Skip builtins method
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        JSTaggedValue func = frameHandler.GetFunction();
+        JSTaggedValue module = JSFunction::Cast(func.GetTaggedObject())->GetModule();
+        if (module.IsUndefined()) {
+            continue;
+        }
+        return module;
+    }
+    UNREACHABLE();
+}
+
+int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *vm, const std::string &name)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSTaggedValue currentModule = GetCurrentModule(vm);
+
+    JSTaggedValue dictionary = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetNameDictionary();
+    if (dictionary.IsUndefined()) {
+        return -1;
+    }
+    if (dictionary.IsTaggedArray()) {
+        JSTaggedValue localExportEntries = SourceTextModule::Cast(
+            currentModule.GetTaggedObject())->GetLocalExportEntries();
+        ASSERT(localExportEntries.IsTaggedArray());
+        JSHandle<TaggedArray> localExportArray = JSHandle<TaggedArray>(
+            thread, TaggedArray::Cast(localExportEntries.GetTaggedObject()));
+        uint32_t exportEntriesLen = localExportArray->GetLength();
+        JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
+        for (uint32_t idx = 0; idx < exportEntriesLen; idx++) {
+            ee.Update(localExportArray->Get(idx));
+            JSTaggedValue key = ee->GetExportName();
+            std::string varName = EcmaStringAccessor(key).ToStdString();
+            if (varName == name) {
+                return idx;
+            }
+        }
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<TaggedArray> moduleArray = factory->NewTaggedArray(dict->GetLength());
+        TaggedArray *keyArray = TaggedArray::Cast(moduleArray.GetTaggedValue().GetTaggedObject());
+        dict->GetAllKeys(thread, 0, keyArray);
+        uint32_t length = keyArray->GetLength();
+        for (uint32_t idx = 0; idx < length; idx++) {
+            std::string varName = EcmaStringAccessor(keyArray->Get(idx)).ToStdString();
+            if (varName == name) {
+                return idx;
+            }
+        }
+    }
+    return -1;
+}
+
+Local<JSValueRef> DebuggerApi::GetModuleValue(const EcmaVM *vm, const std::string &name)
+{
+    Local<JSValueRef> result;
+    int32_t index = GetModuleVariableIndex(vm, name);
+    if (index == -1) {
+        return result;
+    }
+
+    JSThread *thread = vm->GetJSThread();
+    JSTaggedValue currentModule = GetCurrentModule(vm);
+
+    JSTaggedValue dictionary = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetNameDictionary();
+    if (dictionary.IsUndefined()) {
+        return result;
+    }
+
+    if (dictionary.IsTaggedArray()) {
+        TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
+        JSTaggedValue moduleValue = array->Get(index);
+        result = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
+        return result;
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<TaggedArray> moduleArray = factory->NewTaggedArray(dict->GetLength());
+        TaggedArray *keyArray = TaggedArray::Cast(moduleArray.GetTaggedValue().GetTaggedObject());
+        dict->GetAllKeys(thread, 0, keyArray);
+        JSTaggedValue key = keyArray->Get(index);
+        JSTaggedValue moduleValue = vm->GetModuleManager()->GetModuleValueInner(key);
+        result = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
+        return result;
+    }
+}
+
+bool DebuggerApi::SetModuleValue(const EcmaVM *vm, const std::string &name, Local<JSValueRef> value)
+{
+    int32_t index = DebuggerApi::GetModuleVariableIndex(vm, name);
+    if (index == -1) {
+        return false;
+    }
+
+    JSThread *thread = vm->GetJSThread();
+    JSTaggedValue currentModule = GetCurrentModule(vm);
+
+    JSTaggedValue dictionary = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetNameDictionary();
+    if (dictionary.IsUndefined()) {
+        return false;
+    }
+
+    JSTaggedValue curValue = JSNApiHelper::ToJSTaggedValue(*value);
+    if (dictionary.IsTaggedArray()) {
+        TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
+        array->Set(thread, index, curValue);
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
+        dict->UpdateValue(thread, index, curValue);
+    }
+    return true;
+}
+
 void DebuggerApi::GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleObj, JSThread *thread)
 {
     JSTaggedValue currentModule = vm->GetModuleManager()->GetCurrentModule();
