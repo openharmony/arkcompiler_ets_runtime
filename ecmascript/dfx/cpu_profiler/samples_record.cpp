@@ -29,10 +29,12 @@ namespace panda::ecmascript {
 SamplesRecord::SamplesRecord()
 {
     stackTopLines_.push_back(0);
-    struct MethodKey methodkey;
+    struct NodeKey nodeKey;
     struct CpuProfileNode methodNode;
-    methodkey.methodIdentifier = reinterpret_cast<void *>(INT_MAX - 1);
-    methodMap_.emplace(methodkey, methodMap_.size() + 1);
+    struct MethodKey methodKey;
+    methodKey.methodIdentifier = reinterpret_cast<void *>(INT_MAX - 1);
+    nodeKey.methodKey = methodKey;
+    nodeMap_.emplace(nodeKey, nodeMap_.size() + 1);
     methodNode.parentId = 0;
     methodNode.codeEntry.codeType = "JS";
     methodNode.codeEntry.functionName = "(root)";
@@ -60,43 +62,21 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
         return;
     }
     FrameInfoTempToMap();
-    struct MethodKey methodkey;
+    struct NodeKey nodeKey;
     struct CpuProfileNode methodNode;
-    if (gcState_.load()) {
-        methodkey.methodIdentifier = reinterpret_cast<void *>(INT_MAX);
-        methodNode.parentId = methodkey.parentId = previousId_;
-        auto result = methodMap_.find(methodkey);
-        if (result == methodMap_.end()) {
-            methodNode.id = static_cast<int>(methodMap_.size() + 1);
-            methodMap_.emplace(methodkey, methodNode.id);
-            methodNode.codeEntry = GetGcInfo();
-            stackTopLines_.push_back(0);
-            profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
-            if (!outToFile_) {
-                if (UNLIKELY(methodNode.parentId) == 0) {
-                    profileInfo_->nodes[0].children.push_back(methodNode.id);
-                } else {
-                    profileInfo_->nodes[methodNode.parentId - 1].children.push_back(methodNode.id);
-                }
-            }
-        } else {
-            methodNode.id = result->second;
-        }
-        gcState_.store(false);
-    } else {
         if (frameStackLength_ != 0) {
             frameStackLength_--;
         }
         methodNode.id = 1;
         for (; frameStackLength_ >= 1; frameStackLength_--) {
-            methodkey.methodIdentifier = frameStack_[frameStackLength_ - 1];
-            methodNode.parentId = methodkey.parentId = methodNode.id;
-            auto result = methodMap_.find(methodkey);
-            if (result == methodMap_.end()) {
-                int id = static_cast<int>(methodMap_.size() + 1);
-                methodMap_.emplace(methodkey, id);
+            nodeKey.methodKey = frameStack_[frameStackLength_ - 1];
+            methodNode.parentId = nodeKey.parentId = methodNode.id;
+            auto result = nodeMap_.find(nodeKey);
+            if (result == nodeMap_.end()) {
+                int id = static_cast<int>(nodeMap_.size() + 1);
+                nodeMap_.emplace(nodeKey, id);
                 previousId_ = methodNode.id = id;
-                methodNode.codeEntry = GetMethodInfo(methodkey.methodIdentifier);
+                methodNode.codeEntry = GetMethodInfo(nodeKey.methodKey);
                 stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
                 profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
                 if (!outToFile_) {
@@ -106,11 +86,12 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
                 previousId_ = methodNode.id = result->second;
             }
         }
-    }
+
     struct SampleInfo sampleInfo;
     int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
     int timeDelta = static_cast<int>(sampleTimeStamp -
         (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
+    StatisticStateTime(timeDelta, nodeKey.methodKey.state);
     if (outToFile_) {
         sampleInfo.id = sampleNodeId;
         sampleInfo.line = stackTopLines_[methodNode.id - 1];
@@ -127,7 +108,7 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
 void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
 {
     NapiFrameInfoTempToMap();
-    struct MethodKey methodkey;
+    struct NodeKey nodeKey;
     struct CpuProfileNode methodNode;
     int napiFrameStackLength = static_cast<int>(napiFrameStack_.size());
     if (napiFrameStackLength == 0) {
@@ -136,14 +117,14 @@ void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
     methodNode.id = 1;
     napiFrameStackLength--;
     for (; napiFrameStackLength >= 1; napiFrameStackLength--) {
-        methodkey.methodIdentifier = napiFrameStack_[napiFrameStackLength - 1];
-        methodNode.parentId = methodkey.parentId = methodNode.id;
-        auto result = methodMap_.find(methodkey);
-        if (result == methodMap_.end()) {
-            int id = static_cast<int>(methodMap_.size() + 1);
-            methodMap_.emplace(methodkey, id);
+        nodeKey.methodKey = napiFrameStack_[napiFrameStackLength - 1];
+        methodNode.parentId = nodeKey.parentId = methodNode.id;
+        auto result = nodeMap_.find(nodeKey);
+        if (result == nodeMap_.end()) {
+            int id = static_cast<int>(nodeMap_.size() + 1);
+            nodeMap_.emplace(nodeKey, id);
             previousId_ = methodNode.id = id;
-            methodNode.codeEntry = GetMethodInfo(methodkey.methodIdentifier);
+            methodNode.codeEntry = GetMethodInfo(nodeKey.methodKey);
             stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
             profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
             if (!outToFile_) {
@@ -158,6 +139,7 @@ void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
     *sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
     int timeDelta = static_cast<int>(*sampleTimeStamp -
         (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
+    StatisticStateTime(timeDelta, nodeKey.methodKey.state);
     if (outToFile_) {
         sampleInfo.id = sampleNodeId;
         sampleInfo.line = stackTopLines_[methodNode.id - 1];
@@ -249,6 +231,29 @@ void SamplesRecord::WriteMethodsAndSampleInfo(bool timeEnd)
                    std::to_string(tts) + "},\n";
 }
 
+void SamplesRecord::WriteStateTimeStatistic()
+{
+    pid_t pid = getpid();
+    int64_t tid = syscall(SYS_gettid);
+    uint64_t tts = SamplingProcessor::GetMicrosecondsTimeStamp();
+    sampleData_ += "{\"args\":{\"data\":{\"stopTime\":" + std::to_string(threadStartTime_) + "}},"
+        + "\"cat\":\"disabled-by-default-ark.cpu_profiler\",\"id\":\"0x2\","
+        + "\"name\":\"Profile\",\"ph\":\"P\",\"pid\":"
+        + std::to_string(pid) + ",\"tid\":"
+        + std::to_string(tid) + ",\"ts\":"
+        + std::to_string(threadStartTime_) + ",\"tts\":"
+        + std::to_string(tts) + ",\"gcTime\":"
+        + std::to_string(profileInfo_->gcTime) + ",\"cInterpreterTime\":"
+        + std::to_string(profileInfo_->cInterpreterTime) + ",\"asmInterpreterTime\":"
+        + std::to_string(profileInfo_->asmInterpreterTime) + ",\"aotTime\":"
+        + std::to_string(profileInfo_->aotTime) + ",\"builtinTime\":"
+        + std::to_string(profileInfo_->builtinTime) + ",\"napiTime\":"
+        + std::to_string(profileInfo_->napiTime) + ",\"arkuiEngineTime\":"
+        + std::to_string(profileInfo_->arkuiEngineTime) + ",\"runtimeTime\":"
+        + std::to_string(profileInfo_->runtimeTime) + ",\"otherTime\":"
+        + std::to_string(profileInfo_->otherTime) + "}]\n";
+}
+
 int SamplesRecord::GetMethodNodeCount() const
 {
     return profileInfo_->nodeCount;
@@ -264,14 +269,81 @@ std::string SamplesRecord::GetSampleData() const
     return sampleData_;
 }
 
-struct FrameInfo SamplesRecord::GetMethodInfo(void *methodIdentifier)
+struct FrameInfo SamplesRecord::GetMethodInfo(struct MethodKey &methodKey)
 {
     struct FrameInfo entry;
-    auto iter = stackInfoMap_.find(methodIdentifier);
+    auto iter = stackInfoMap_.find(methodKey);
     if (iter != stackInfoMap_.end()) {
         entry = iter->second;
     }
     return entry;
+}
+
+std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningState state)
+{
+    std::string temp = functionName;
+    switch(state) {
+        case RunningState::GC:
+            return temp.append("(GC)");
+        case RunningState::CINT:
+            return temp.append("(CINT)");
+        case RunningState::AINT:
+            return temp.append("(AINT)");
+        case RunningState::AOT:
+            return temp.append("(AOT)");
+        case RunningState::BUILTIN:
+            return temp.append("(BUILTIN)");
+        case RunningState::NAPI:
+            return temp.append("");
+        case RunningState::ARKUI_ENGINE:
+            return temp.append("(ARKUI_ENGINE)");
+        case RunningState::RUNTIME:
+            return temp.append("(RUNTIME)");
+        default:
+            return temp.append("(OTHER)");
+    }
+}
+
+void SamplesRecord::StatisticStateTime(int timeDelta, RunningState state)
+{
+    switch(state) {
+        case RunningState::GC: {
+            profileInfo_->gcTime += timeDelta;
+            return;
+        }
+        case RunningState::CINT: {
+            profileInfo_->cInterpreterTime += timeDelta;
+            return;
+        }
+        case RunningState::AINT: {
+            profileInfo_->asmInterpreterTime += timeDelta;
+            return;
+        }
+        case RunningState::AOT: {
+            profileInfo_->aotTime += timeDelta;
+            return;
+        }
+        case RunningState::BUILTIN: {
+            profileInfo_->builtinTime += timeDelta;
+            return;
+        }
+        case RunningState::NAPI: {
+            profileInfo_->napiTime += timeDelta;
+            return;
+        }
+        case RunningState::ARKUI_ENGINE: {
+            profileInfo_->arkuiEngineTime += timeDelta;
+            return;
+        }
+        case RunningState::RUNTIME: {
+            profileInfo_->runtimeTime += timeDelta;
+            return;
+        }
+        default: {
+            profileInfo_->otherTime += timeDelta;
+            return;
+        }
+    }
 }
 
 struct FrameInfo SamplesRecord::GetGcInfo()
@@ -372,31 +444,31 @@ int SamplesRecord::SemDestroy(int index)
     return sem_destroy(&sem_[index]);
 }
 
-const CMap<void *, struct FrameInfo> &SamplesRecord::GetStackInfo() const
+const CMap<struct MethodKey, struct FrameInfo> &SamplesRecord::GetStackInfo() const
 {
     return stackInfoMap_;
 }
 
-void SamplesRecord::InsertStackInfo(void *methodIdentifier, struct FrameInfo &codeEntry)
+void SamplesRecord::InsertStackInfo(struct MethodKey &methodKey, struct FrameInfo &codeEntry)
 {
-    stackInfoMap_.emplace(methodIdentifier, codeEntry);
+    stackInfoMap_.emplace(methodKey, codeEntry);
 }
 
-bool SamplesRecord::PushFrameStack(void *methodIdentifier)
+bool SamplesRecord::PushFrameStack(struct MethodKey &methodKey)
 {
     if (UNLIKELY(frameStackLength_ >= MAX_ARRAY_COUNT)) {
         return false;
     }
-    frameStack_[frameStackLength_++] = methodIdentifier;
+    frameStack_[frameStackLength_++] = methodKey;
     return true;
 }
 
-bool SamplesRecord::PushNapiFrameStack(void *methodIdentifier)
+bool SamplesRecord::PushNapiFrameStack(struct MethodKey &methodKey)
 {
     if (UNLIKELY(napiFrameStack_.size() >= MAX_ARRAY_COUNT)) {
         return false;
     }
-    napiFrameStack_.push_back(methodIdentifier);
+    napiFrameStack_.push_back(methodKey);
     return true;
 }
 
@@ -419,6 +491,16 @@ bool SamplesRecord::GetGcState() const
 void SamplesRecord::SetGcState(bool gcState)
 {
     gcState_.store(gcState);
+}
+
+bool SamplesRecord::GetRuntimeState() const
+{
+    return runtimeState_.load();
+}
+
+void SamplesRecord::SetRuntimeState(bool runtimeState)
+{
+    runtimeState_.store(runtimeState);
 }
 
 bool SamplesRecord::GetIsStart() const
@@ -474,11 +556,16 @@ void SamplesRecord::FrameInfoTempToMap()
         } else {
             frameInfo.scriptId = iter->second;
         }
+        if (i == 0 && frameInfoTemps_[0].methodKey.state != RunningState::OTHER) {
+            frameInfo.functionName = AddRunningStateToName(frameInfoTemps_[0].functionName,
+                                                           frameInfoTemps_[0].methodKey.state);
+        } else {
+            frameInfo.functionName = frameInfoTemps_[i].functionName;
+        }
         frameInfo.codeType = frameInfoTemps_[i].codeType;
-        frameInfo.functionName = frameInfoTemps_[i].functionName;
         frameInfo.columnNumber = frameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = frameInfoTemps_[i].lineNumber;
-        stackInfoMap_.emplace(frameInfoTemps_[i].methodIdentifier, frameInfo);
+        stackInfoMap_.emplace(frameInfoTemps_[i].methodKey, frameInfo);
     }
     frameInfoTempLength_ = 0;
 }
@@ -499,11 +586,16 @@ void SamplesRecord::NapiFrameInfoTempToMap()
         } else {
             frameInfo.scriptId = iter->second;
         }
+        if (i == 0 && napiFrameInfoTemps_[0].methodKey.state == RunningState::NAPI) {
+            frameInfo.functionName = AddRunningStateToName(napiFrameInfoTemps_[0].functionName,
+                                                           napiFrameInfoTemps_[0].methodKey.state);
+        } else {
+            frameInfo.functionName = napiFrameInfoTemps_[i].functionName;
+        }
         frameInfo.codeType = napiFrameInfoTemps_[i].codeType;
-        frameInfo.functionName = napiFrameInfoTemps_[i].functionName;
         frameInfo.columnNumber = napiFrameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = napiFrameInfoTemps_[i].lineNumber;
-        stackInfoMap_.emplace(napiFrameInfoTemps_[i].methodIdentifier, frameInfo);
+        stackInfoMap_.emplace(napiFrameInfoTemps_[i].methodKey, frameInfo);
     }
 }
 

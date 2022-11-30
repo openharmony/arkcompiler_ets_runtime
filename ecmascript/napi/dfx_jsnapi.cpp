@@ -185,14 +185,14 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
 }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-void DFXJSNApi::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName)
+void DFXJSNApi::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName, const int interval)
 {
     if (vm == nullptr) {
         return;
     }
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
-        profiler = new CpuProfiler(vm);
+        profiler = new CpuProfiler(vm, interval);
         const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
     }
     profiler->StartCpuProfilerForFile(fileName);
@@ -213,14 +213,14 @@ void DFXJSNApi::StopCpuProfilerForFile(const EcmaVM *vm)
     const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
 }
 
-void DFXJSNApi::StartCpuProfilerForInfo(const EcmaVM *vm)
+void DFXJSNApi::StartCpuProfilerForInfo(const EcmaVM *vm, const int interval)
 {
     if (vm == nullptr) {
         return;
     }
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
-        profiler = new CpuProfiler(vm);
+        profiler = new CpuProfiler(vm, interval);
         const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
     }
     profiler->StartCpuProfilerForInfo();
@@ -247,16 +247,19 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo(const EcmaVM *vm)
 
 void DFXJSNApi::SetCpuSamplingInterval(const EcmaVM *vm, int interval)
 {
+    LOG_ECMA(INFO) << "SetCpuProfilerSamplingInterval, Sampling interval is: " << interval;
     if (vm == nullptr) {
         return;
     }
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
+        profiler = new CpuProfiler(vm, interval);
+        profiler->SetCallNapiGetStack(false);
+        const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
         return;
     }
-    profiler = new CpuProfiler(vm);
-    const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
     profiler->SetCpuSamplingInterval(interval);
+    profiler->SetCallNapiGetStack(false);
 }
 #endif
 

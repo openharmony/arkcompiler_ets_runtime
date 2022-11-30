@@ -211,6 +211,7 @@ public:
         void *data, size_t nativeBindingsize = 0);
 
     JSTaggedValue GetFunctionExtraInfo() const;
+    JSTaggedValue GetNativeFunctionExtraInfo() const;
     JSTaggedValue GetRecordName() const;
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,

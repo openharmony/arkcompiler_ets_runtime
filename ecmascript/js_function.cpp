@@ -695,6 +695,16 @@ JSTaggedValue JSFunction::GetFunctionExtraInfo() const
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
+{
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedValue value(hashField);
+    if (value.CheckIsJSNativePointer()) {
+        return value;
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue JSFunction::GetRecordName() const
 {
     JSTaggedValue module = GetModule();

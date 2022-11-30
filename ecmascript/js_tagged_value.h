@@ -507,6 +507,7 @@ public:
     bool IsRBTreeNode() const;
     bool IsNativePointer() const;
     bool IsJSNativePointer() const;
+    bool CheckIsJSNativePointer() const;
     bool IsBoolean() const;
     bool IsSymbol() const;
     bool IsJSObject() const;

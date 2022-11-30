@@ -43,6 +43,52 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
     return delta;
 }
 
+Method *FrameIterator::CheckAndGetMethod() const
+{
+    auto function = GetFunction();
+    if (function.IsJSFunctionBase() || function.IsJSProxy()) {
+        return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+    }
+    return nullptr;
+}
+
+JSTaggedValue FrameIterator::GetFunction() const
+{
+    FrameType type = GetFrameType();
+    switch (type) {
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+            auto frame = GetFrame<OptimizedJSFunctionFrame>();
+            return frame->GetFunction();
+        }
+        case FrameType::ASM_INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
+            auto frame = GetFrame<AsmInterpretedFrame>();
+            return frame->function;
+        }
+        case FrameType::INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_FAST_NEW_FRAME: {
+            auto frame = GetFrame<InterpretedFrame>();
+            return frame->function;
+        }
+        case FrameType::INTERPRETER_BUILTIN_FRAME: {
+            auto frame = GetFrame<InterpretedBuiltinFrame>();
+            return frame->function;
+        }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV: {
+            auto *frame = BuiltinWithArgvFrame::GetFrameFromSp(GetSp());
+            return frame->GetFunction();
+        }
+        case FrameType::BUILTIN_ENTRY_FRAME:
+        case FrameType::BUILTIN_FRAME: {
+            auto *frame = BuiltinFrame::GetFrameFromSp(GetSp());
+            return frame->GetFunction();
+        }
+        default: {
+            return JSTaggedValue::Undefined();
+        }
+    }
+}
+
 AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
     auto loader = thread_->GetEcmaVM()->GetAOTFileManager();
