@@ -19,6 +19,7 @@
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/method.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/stackmap/llvm_stackmap_type.h"
 
@@ -1399,6 +1400,9 @@ public:
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;
+
+    Method *CheckAndGetMethod() const;
+    JSTaggedValue GetFunction() const;
 
 private:
     JSTaggedType *current_ {nullptr};

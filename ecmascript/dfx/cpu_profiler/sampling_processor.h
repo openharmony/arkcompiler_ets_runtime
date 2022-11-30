@@ -41,7 +41,7 @@ public:
     NO_MOVE_SEMANTIC(SamplingProcessor);
 private:
     SamplesRecord *generator_ = nullptr;
-    int interval_ = 0;
+    uint32_t interval_ = 0;
     int collectCount_ = 1;
     pthread_t pid_ = 0;
     bool firstWrite_ = true;
