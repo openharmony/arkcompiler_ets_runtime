@@ -700,6 +700,11 @@ template("host_quickfix_test_action") {
       extra_visibility =
           [ ":*" ]  # Only targets in this file can depend on this.
       extra_dependencies = [ ":gen_${_target_name_}_${filename}_merge_file" ]
+
+      if (defined(invoker.is_hotpatch) && filename == "patch") {
+        extra_dependencies += [ ":gen_${_target_name_}_base_abc" ]
+      }
+
       src_js = "@" + rebase_path(merge_file)
       dst_file = rebase_path(abc_path)
       extra_args = [
@@ -724,7 +729,15 @@ template("host_quickfix_test_action") {
         merge_file,
       ]
 
+      if (defined(invoker.is_hotpatch) && filename == "patch") {
+        in_puts += [ _test_map_path_ ]
+      }
+
       out_puts = [ abc_path ]
+
+      if (defined(invoker.is_hotpatch) && filename == "base") {
+        out_puts += [ _test_map_path_ ]
+      }
     }
 
     if (filename != _test_file_name_[0]) {
