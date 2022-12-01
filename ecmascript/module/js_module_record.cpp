@@ -23,6 +23,7 @@ int32_t ModuleRecord::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
         JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
         return SourceTextModule::Instantiate(thread, moduleRecord);
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -32,6 +33,7 @@ int32_t ModuleRecord::Evaluate(JSThread *thread, const JSHandle<JSTaggedValue> &
         JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
         return SourceTextModule::Evaluate(thread, moduleRecord);
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -40,6 +42,7 @@ JSTaggedValue ModuleRecord::GetNamespace(JSTaggedValue module)
     if (module.IsSourceTextModule()) {
         return SourceTextModule::Cast(module.GetTaggedObject())->GetNamespace();
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -48,6 +51,7 @@ void ModuleRecord::SetNamespace(JSThread *thread, JSTaggedValue module, JSTagged
     if (module.IsSourceTextModule()) {
         SourceTextModule::Cast(module.GetTaggedObject())->SetNamespace(thread, value);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }

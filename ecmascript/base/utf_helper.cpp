@@ -15,6 +15,8 @@
 
 #include "ecmascript/base/utf_helper.h"
 
+#include "ecmascript/log_wrapper.h"
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 static constexpr int32_t U16_SURROGATE_OFFSET = (0xd800 << 10UL) + 0xdc00 - 0x10000;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -110,6 +112,7 @@ bool IsValidUTF8(const std::vector<uint8_t> &data)
             }
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -160,6 +163,7 @@ Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify, bool isWriteB
     }
     if (d1 < utf::LO_SURROGATE_MIN || d1 > utf::LO_SURROGATE_MAX) {
         // Bad sequence
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 

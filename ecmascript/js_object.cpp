@@ -1931,6 +1931,7 @@ void JSObject::DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject
         AddElementInternal(thread, obj, index, value, attr);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -2037,6 +2038,7 @@ void ECMAObject::SetHash(int32_t hash)
             newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
             Barriers::SetObject<true>(thread, this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {
@@ -2152,6 +2154,7 @@ void ECMAObject::SetNativePointerFieldCount(int32_t count)
             newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, value);
             Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {

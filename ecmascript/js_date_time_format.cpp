@@ -182,6 +182,7 @@ JSHandle<EcmaString> JSDateTimeFormat::ToValueString(JSThread *thread, const Val
             result.Update(globalConst->GetHandledEndRangeString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -756,6 +757,7 @@ JSHandle<JSTaggedValue> ToHourCycleEcmaString(JSThread *thread, HourCycleOption 
             result.Update(globalConst->GetHandledH24String().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -779,6 +781,7 @@ JSHandle<JSTaggedValue> ToDateTimeStyleEcmaString(JSThread *thread, DateTimeStyl
             result.Update(globalConst->GetHandledShortString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -1154,6 +1157,7 @@ std::vector<IcuPatternDesc> JSDateTimeFormat::GetIcuPatternDesc(const HourCycleO
         Pattern pattern("jj", "j");
         return pattern.Get();
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -1412,6 +1416,7 @@ HourCycleOption JSDateTimeFormat::OptionToHourCycle(UDateFormatHourCycle hc)
             hcOption = HourCycleOption::H24;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return hcOption;
@@ -1456,6 +1461,7 @@ JSHandle<JSTaggedValue> JSDateTimeFormat::ConvertFieldIdToDateType(JSThread *thr
     } else if (fieldId == UDAT_RELATED_YEAR_FIELD) {
         result.Update(globalConst->GetHandledRelatedYearString().GetTaggedValue());
     } else if (fieldId == UDAT_QUARTER_FIELD || fieldId == UDAT_STANDALONE_QUARTER_FIELD) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return result;

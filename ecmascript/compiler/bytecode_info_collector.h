@@ -212,6 +212,7 @@ public:
                 return methodIndex_;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }
@@ -229,6 +230,7 @@ public:
                 return arrayLiteralIndex_;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }

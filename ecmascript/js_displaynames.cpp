@@ -218,6 +218,7 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
             uStyle = UDISPCTX_LENGTH_SHORT;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     UDisplayContext display_context[] = {uStyle};
@@ -310,6 +311,7 @@ JSHandle<JSTaggedValue> StyOptionToEcmaString(JSThread *thread, StyOption style)
             result.Update(globalConst->GetHandledNarrowString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -339,6 +341,7 @@ JSHandle<JSTaggedValue> TypeOptionToEcmaString(JSThread *thread, TypednsOption t
             result.Update(globalConst->GetHandledScriptString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -356,6 +359,7 @@ JSHandle<JSTaggedValue> FallbackOptionToEcmaString(JSThread *thread, FallbackOpt
             result.Update(globalConst->GetHandledNoneString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;

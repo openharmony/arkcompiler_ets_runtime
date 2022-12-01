@@ -30,6 +30,7 @@ JSHandle<ChangeListener> ChangeListener::Add(const JSThread *thread, const JSHan
             }
             return array;
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     // if exist hole, use it.

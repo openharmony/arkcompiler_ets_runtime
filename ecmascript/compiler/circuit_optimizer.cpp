@@ -425,6 +425,7 @@ uint64_t LatticeUpdateRuleSCCP::RunFixedPointCompare(T valueA, T valueB, ICmpCon
         case ICmpCondition::EQ:
             return (valueA != valueB ? 1 : 0);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }

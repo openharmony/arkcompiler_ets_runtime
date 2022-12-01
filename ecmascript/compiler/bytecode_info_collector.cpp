@@ -446,6 +446,7 @@ void ConstantPoolIndexInfo::AddConstantPoolIndex(ConstantPoolIndexType type, uin
             break;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }

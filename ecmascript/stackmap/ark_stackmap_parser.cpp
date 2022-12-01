@@ -99,6 +99,7 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(const DwarfRegAndOffsetType inf
     } else if (info.first == GCStackMapRegisters::FP) {
         address = callsiteFp + info.second;
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return address;

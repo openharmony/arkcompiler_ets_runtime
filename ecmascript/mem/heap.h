@@ -127,6 +127,7 @@ public:
             case MemSpaceType::MACHINE_CODE_SPACE:
                 return machineCodeSpace_;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
         }

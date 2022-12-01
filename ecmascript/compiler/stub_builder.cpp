@@ -4483,6 +4483,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { nativeCode, glue, numArgs, func, newTarget, data[0], data[1], data[2], data[3] });
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         Jump(&exit);
@@ -4587,6 +4588,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     Jump(&exit);
                     break;
                 default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
             }
         }
@@ -4673,6 +4675,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 Jump(&exit);
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }
@@ -4719,6 +4722,7 @@ void StubBuilder::CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, G
                                                                   numArgs, data[1] });
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         result->WriteVariable(ret);

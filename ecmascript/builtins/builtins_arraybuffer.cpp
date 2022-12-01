@@ -350,7 +350,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBuffer(JSThread *thread, uint32_t
         default:
             break;
     }
-
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -371,6 +371,7 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(JSThread *thread, JSTaggedVa
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return JSTaggedValue::Undefined();
@@ -433,6 +434,7 @@ T BuiltinsArrayBuffer::LittleEndianToBigEndian(T liValue)
                       | ((liValue & 0xFF000000) >> BITS_TWENTY_FOUR);  // NOLINT
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -664,6 +666,7 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(uint32_t byteIndex, uint8_t 
             SetValueInBufferForFloat<double>(val, block, byteIndex, littleEndian);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return JSTaggedValue::Undefined();

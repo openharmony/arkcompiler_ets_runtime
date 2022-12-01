@@ -45,7 +45,7 @@ public:
     Register TempRegister()
     {
         if (tempInUse_) {
-            LOG_COMPILER(ERROR) << "temp register inuse.";
+            LOG_COMPILER(FATAL) << "temp register inuse.";
             UNREACHABLE();
         }
         tempInUse_ = true;

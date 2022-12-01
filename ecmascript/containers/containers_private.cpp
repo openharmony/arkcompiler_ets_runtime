@@ -144,6 +144,7 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
         case ContainerTag::END:
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 

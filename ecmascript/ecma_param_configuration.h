@@ -18,6 +18,8 @@
 
 #include "ecmascript/mem/mem_common.h"
 
+#include "ecmascript/log_wrapper.h"
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
@@ -43,6 +45,7 @@ public:
     void Initialize()
     {
         if (maxHeapSize_ < LOW_MEMORY) {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
         if (maxHeapSize_ < MEDIUM_MEMORY) { // 64_MB ~ 128_MB

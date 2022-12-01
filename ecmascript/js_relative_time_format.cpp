@@ -140,6 +140,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
             uStyle = UDAT_STYLE_NARROW;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     icu::RelativeDateTimeFormatter rtfFormatter(icuLocale, icuNumberFormat, uStyle, UDISPCTX_CAPITALIZATION_NONE,
@@ -279,6 +280,7 @@ icu::FormattedRelativeDateTime GetIcuFormatted(JSThread *thread,
             ASSERT_PRINT(U_SUCCESS(status), "icu format to value error");
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return formatted;

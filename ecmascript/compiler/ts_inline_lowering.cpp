@@ -308,6 +308,7 @@ void TSInlineLowering::ReplaceHirAndDeleteState(GateRef gate, GateRef state, Gat
         } else if (acc_.IsValueIn(useIt)) {
             useIt = acc_.ReplaceIn(useIt, value);
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

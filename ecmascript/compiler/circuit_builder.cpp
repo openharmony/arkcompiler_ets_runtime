@@ -414,6 +414,7 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     } else if (cs->IsRuntimeNGCStub()) {
         meta = circuit_->NoGcRuntimeCall(numValuesIn);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     MachineType machineType = cs->GetReturnType().GetMachineType();

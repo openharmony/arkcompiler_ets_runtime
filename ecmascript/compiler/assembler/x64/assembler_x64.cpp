@@ -194,6 +194,7 @@ void AssemblerX64::Cmpb(Immediate src, Register dst)
         EmitU8(0x3C);
         EmitI8(src.Value());
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }

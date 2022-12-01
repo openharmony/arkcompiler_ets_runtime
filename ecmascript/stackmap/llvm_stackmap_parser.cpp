@@ -102,6 +102,7 @@ void LLVMStackMapParser::CalcCallSite()
                     deoptbundles[callsite].push_back(v);
                 }
             } else {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }

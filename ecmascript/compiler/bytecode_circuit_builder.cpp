@@ -76,6 +76,7 @@ void BytecodeCircuitBuilder::CollectRegionInfo(uint32_t bcIndex)
                 offset = static_cast<int32_t>(READ_INST_32_0());
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
         }
@@ -772,6 +773,7 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
             break;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return gate;
@@ -942,6 +944,7 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, GateRef &state, Gat
     } else if (bytecodeInfo.IsDiscarded()) {
         return;
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }

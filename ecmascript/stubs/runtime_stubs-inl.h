@@ -647,6 +647,7 @@ JSTaggedValue RuntimeStubs::RuntimeNeg(JSThread *thread, const JSHandle<JSTagged
     if (number.IsDouble()) {
         return JSTaggedValue(-number.GetDouble());
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -1270,7 +1271,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
         } else if (module->IsString()) {
             recordName.Update(module);
         } else {
-            LOG_INTERPRETER(ERROR) << "module is undefined";
+            LOG_INTERPRETER(FATAL) << "module is undefined";
             UNREACHABLE();
         }
     }
@@ -1786,6 +1787,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
             break;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     ASSERT_NO_ABRUPT_COMPLETION(thread);

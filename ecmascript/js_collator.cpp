@@ -265,6 +265,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread, const JSHa
         case SensitivityOption::UNDEFINED:
             break;
         case SensitivityOption::EXCEPTION:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 
@@ -292,6 +293,7 @@ UColAttributeValue JSCollator::OptionToUColAttribute(CaseFirstOption caseFirstOp
     if (iter != uColAttributeValueMap.end()) {
         return iter->second;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -307,6 +309,7 @@ JSHandle<JSTaggedValue> OptionsToEcmaString(JSThread *thread, UsageOption usage)
             result.Update(globalConst->GetSearchString());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -332,6 +335,7 @@ JSHandle<JSTaggedValue> OptionsToEcmaString(JSThread *thread, SensitivityOption 
         case SensitivityOption::UNDEFINED:
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -355,6 +359,7 @@ JSHandle<JSTaggedValue> OptionsToEcmaString(JSThread *thread, CaseFirstOption ca
             result.Update(globalConst->GetUpperString());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;

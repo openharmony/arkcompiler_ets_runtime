@@ -37,6 +37,7 @@ JSHClass *TSObjectType::GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectTyp
             break;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 

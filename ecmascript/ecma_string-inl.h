@@ -126,6 +126,7 @@ inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, s
             string = vm->GetFactory()->AllocNonMovableLineStringObject(size);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     string->SetLength(length, compressed);
@@ -306,6 +307,7 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
                 continue;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }

@@ -232,7 +232,7 @@ void LLVMIRBuilder::Build()
                 continue;
             }
             if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
-                LOG_COMPILER(ERROR) << "The gate below need to be translated ";
+                LOG_COMPILER(FATAL) << "The gate below need to be translated ";
                 acc_.Print(gate);
                 UNREACHABLE();
             }
@@ -450,6 +450,7 @@ LLVMTypeRef LLVMIRBuilder::GetMachineRepType(MachineRep rep) const
             dstType = LLVMMetadataTypeInContext(context_);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -465,6 +466,7 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
         callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV) {
         VisitCall(gate, ins, callOp);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -841,6 +843,7 @@ LLVMValueRef LLVMIRBuilder::GetBaseOffset(GateRef gate, LLVMValueRef glue)
         case OpCode::DEBUGGER_BYTECODE_CALL:
             return GetBCDebugStubOffset(glue);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -1034,6 +1037,7 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
         } else if (LLVMGetTypeKind(type) == LLVMIntegerTypeKind) {
             // do nothing
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else if (machineType == MachineType::F64) {
@@ -1046,6 +1050,7 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
     } else if (machineType == MachineType::I1) {
         llvmValue = LLVMConstInt(LLVMInt1Type(), value.to_ulong(), 0);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = llvmValue;
@@ -1154,6 +1159,7 @@ void LLVMIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFRem(builder_, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1255,7 +1261,7 @@ LLVMValueRef LLVMIRBuilder::CanonicalizeToInt(LLVMValueRef value)
     } else if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMIntegerTypeKind) {
         return value;
     } else {
-        LOG_COMPILER(ERROR) << "can't Canonicalize to Int64: ";
+        LOG_COMPILER(FATAL) << "can't Canonicalize to Int64: ";
         UNREACHABLE();
     }
 }
@@ -1272,7 +1278,7 @@ LLVMValueRef LLVMIRBuilder::CanonicalizeToPtr(LLVMValueRef value)
         LLVMValueRef tmp = LLVMBuildIntToPtr(builder_, value, LLVMPointerType(LLVMInt64Type(), 0), "");
         return LLVMBuildPointerCast(builder_, tmp, LLVMPointerType(LLVMInt8Type(), 0), "");
     } else {
-        LOG_COMPILER(ERROR) << "can't Canonicalize to Ptr: ";
+        LOG_COMPILER(FATAL) << "can't Canonicalize to Ptr: ";
         UNREACHABLE();
     }
 }
@@ -1293,6 +1299,7 @@ void LLVMIRBuilder::VisitIntRev(GateRef gate, GateRef e1)
     if (machineType <= MachineType::I64 && machineType >= MachineType::I1) {
         result = LLVMBuildNot(builder_, e1Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1349,6 +1356,7 @@ LLVMTypeRef LLVMIRBuilder::ConvertLLVMTypeFromGate(GateRef gate) const
             }
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -1376,8 +1384,10 @@ int64_t LLVMIRBuilder::GetBitWidthFromMachineType(MachineType machineType) const
             return 64; // 64: bit width
         case FLEX:
         case ANYVALUE:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -1403,6 +1413,7 @@ void LLVMIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
     if (machineType <= MachineType::F64 && machineType >= MachineType::F32) {
         result = LLVMBuildFPToSI(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1473,6 +1484,7 @@ void LLVMIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFAdd(builder_, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1497,6 +1509,7 @@ void LLVMIRBuilder::VisitSub(GateRef gate, GateRef e1, GateRef e2)
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFSub(builder_, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1532,6 +1545,7 @@ void LLVMIRBuilder::VisitMul(GateRef gate, GateRef e1, GateRef e2)
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFMul(builder_, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1617,7 +1631,7 @@ LLVMIntPredicate LLVMIRBuilder::ConvertLLVMPredicateFromICMP(ICmpCondition cond)
         case ICmpCondition::EQ:
             return LLVMIntEQ;
         default:
-            LOG_COMPILER(ERROR) << "unexpected cond!";
+            LOG_COMPILER(FATAL) << "unexpected cond!";
             UNREACHABLE();
     }
     return LLVMIntEQ;
@@ -1639,7 +1653,7 @@ LLVMRealPredicate LLVMIRBuilder::ConvertLLVMPredicateFromFCMP(FCmpCondition cond
         case FCmpCondition::OEQ:
             return LLVMRealOEQ;
         default:
-            LOG_COMPILER(ERROR) << "unexpected cond!";
+            LOG_COMPILER(FATAL) << "unexpected cond!";
             UNREACHABLE();
     }
     return LLVMRealOEQ;
@@ -1669,6 +1683,7 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
         realOpcode = ConvertLLVMPredicateFromFCMP(cond);
         result = LLVMBuildFCmp(builder_, realOpcode, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 

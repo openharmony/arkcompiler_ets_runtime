@@ -99,7 +99,7 @@ public:
         if (format == Format::V8_ID32) {
             return static_cast<uint32_t>(Read<16, 32>());
         }
-
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 
@@ -246,6 +246,7 @@ public:
             constexpr std::array<uint8_t, 1> WIDTHS{8};
             return Read<OFFSETS[idx], WIDTHS[idx], true>();
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 
@@ -441,6 +442,7 @@ public:
                 return SIZE;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }
@@ -1223,7 +1225,7 @@ public:
             default:
                 break;
         }
-
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 
@@ -2050,6 +2052,7 @@ public:
             default:
                 return false;
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 };

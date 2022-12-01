@@ -66,6 +66,7 @@ public:
             }
             return JSSymbol::ComputeHash();
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 

@@ -32,6 +32,7 @@ int NameDictionary::Hash(const JSTaggedValue &key)
         }
     }
     // key must be object
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -134,6 +135,7 @@ int NumberDictionary::Hash(const JSTaggedValue &key)
         return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
     }
     // key must be object
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -150,6 +152,7 @@ bool NumberDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &ot
         return false;
     }
     // key must be integer
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 

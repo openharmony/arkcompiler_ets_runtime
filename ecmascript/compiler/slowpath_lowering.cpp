@@ -120,6 +120,7 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
                 useIt = acc_.ReplaceIn(useIt, successControl[1]);
             }
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
@@ -2101,6 +2102,7 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
                     (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*it, 0), it.GetIndex() - 1)) != OpCode::IF_EXCEPTION)) {
             it = acc_.ReplaceIn(it, acc_.GetDep(gate));
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

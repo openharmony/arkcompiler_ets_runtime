@@ -156,6 +156,7 @@ public:
             case Representation::OBJECT:
                 return Representation::MIXED;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }

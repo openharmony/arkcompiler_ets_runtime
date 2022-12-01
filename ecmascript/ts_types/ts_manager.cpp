@@ -225,6 +225,7 @@ GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, JSHandle<EcmaStr
         JSHandle<TSClassType> classType(type);
         return TSClassType::GetSuperPropTypeGT(thread, classType, propertyName, propType);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -304,6 +305,7 @@ TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
                 case JSType::TS_ITERATOR_INSTANCE_TYPE:
                     return TSTypeKind::ITERATOR_INSTANCE;
                 default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
             }
         } else {
@@ -692,6 +694,7 @@ std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
         case TSTypeKind::UNKNOWN:
             return "unknown";
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -723,6 +726,7 @@ std::string TSManager::GetPrimitiveStr(const GlobalTSTypeRef &gt) const
         case TSPrimitiveType::BIG_INT:
             return "bigint";
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }

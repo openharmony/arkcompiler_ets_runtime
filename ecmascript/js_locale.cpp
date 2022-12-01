@@ -1045,6 +1045,7 @@ JSHandle<JSTaggedValue> JSLocale::GetNumberFieldType(JSThread *thread, JSTaggedV
     } else if (static_cast<UNumberFormatFields>(fieldId) == UNUM_MEASURE_UNIT_FIELD) {
         return globalConst->GetHandledUnitString();
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }

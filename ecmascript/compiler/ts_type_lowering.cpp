@@ -864,6 +864,7 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     std::vector<GateRef> removedGate;
@@ -901,6 +902,7 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 

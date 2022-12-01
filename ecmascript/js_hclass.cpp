@@ -378,6 +378,7 @@ JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread
     JSTaggedValue proto = jshclass->GetPrototype();
     if (!proto.IsECMAObject()) {
         // Return JSTaggedValue directly. No proto check is needed.
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     JSHandle<JSObject> protoHandle(thread, proto);

@@ -126,6 +126,7 @@ public:
             OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 

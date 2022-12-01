@@ -33,6 +33,7 @@ void AssemblerModule::Run(const CompilationConfig *cfg, Chunk* chunk)
     } else if (cfg->IsAArch64()) {
         GenerateStubsAarch64(chunk);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -113,6 +114,7 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
         case JSCallMode::CALL_SETTER:
             return 1;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -146,6 +148,7 @@ bool AssemblerModule::IsCallNew(JSCallMode mode)
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             return true;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return false;
@@ -180,6 +183,7 @@ bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
             return true;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -213,6 +217,7 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
         case JSCallMode::CALL_FROM_AOT:
             return true;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -246,6 +251,7 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
         case JSCallMode::CALL_FROM_AOT:
             return false;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return false;

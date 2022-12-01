@@ -479,6 +479,7 @@ static void DumpPropertyKey(JSTaggedValue key, std::ostream &os)
         JSSymbol *sym = JSSymbol::Cast(key.GetTaggedObject());
         DumpStringClass(EcmaString::Cast(sym->GetDescription().GetTaggedObject()), os);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -987,6 +988,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             Method::Cast(obj)->Dump(os);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -1018,6 +1020,7 @@ void JSTaggedValue::DumpSpecialValue(std::ostream &os) const
             os << "Exception";
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -3865,6 +3868,7 @@ static void DumpObject(TaggedObject *obj,
                 Method::Cast(obj)->DumpForSnapshot(vec);
                 return;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
         }
@@ -3911,7 +3915,7 @@ void JSTaggedValue::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
     if (IsHeapObject()) {
         return DumpObject(GetTaggedObject(), vec, isVmMode);
     }
-
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 

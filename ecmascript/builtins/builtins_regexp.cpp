@@ -1813,6 +1813,7 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread, const JS
             result = Get(index + RESULT_EXEC_INDEX);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -1925,6 +1926,7 @@ void RegExpExecResultCache::UpdateResultArray(JSThread *thread, int entry, JSTag
             Set(thread, index + RESULT_EXEC_INDEX, resultArray);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
