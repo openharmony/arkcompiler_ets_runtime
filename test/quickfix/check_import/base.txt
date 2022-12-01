@@ -1,2 +1,2 @@
-base.js;base;module;base.js
-module.js;module;module;module.js
+base.js;base;esm;base.js;entry
+module.js;module;esm;module.js;entry

@@ -154,6 +154,9 @@ void JSPandaFile::InitializeMergedPF()
                 info.hasTSTypes = fieldAccessor.GetValue<uint8_t>().value() != 0;
             } else if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
                 info.typeSummaryOffset = fieldAccessor.GetValue<uint32_t>().value();
+            } else if (std::strlen(fieldName) > PACKAGE_NAME_LEN &&
+                       std::strncmp(fieldName, PACKAGE_NAME, PACKAGE_NAME_LEN) == 0) {
+                info.npmPackageName = fieldName + PACKAGE_NAME_LEN;
             }
         });
         if (hasCjsFiled) {
@@ -201,6 +204,9 @@ bool JSPandaFile::IsCjs(const CString &recordName) const
 
 CString JSPandaFile::FindEntryPoint(const CString &recordName) const
 {
+    if (HasRecord(recordName)) {
+        return recordName;
+    }
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     CString entryPoint;
     for (const uint32_t index : classIndexes) {

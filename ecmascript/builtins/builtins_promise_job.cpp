@@ -153,14 +153,12 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
                                                           specifierString.GetTaggedValue());
         fileNameStr = ConvertToString(moduleName.GetTaggedValue());
     } else {
-        bool npm;
-        CString npmKey = "";
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifierString.GetTaggedValue());
         const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename,
                                                                                             recordNameStr.c_str());
-        std::tie(entryPoint, npm) = ModuleManager::ConcatFileNameWithMerge(
-            jsPandaFile, baseFilename, recordNameStr, requestModule, npmKey);
+        entryPoint =
+            ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
         fileNameStr = baseFilename;
         moduleName = factory->NewFromUtf8(entryPoint);
     }
