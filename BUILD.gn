@@ -811,7 +811,7 @@ source_set("libark_jsruntime_static") {
   deps = [
     ":libark_js_intl_set",
     ":libark_jsruntime_set",
-    "$ark_root/libpandafile:libarkfile_static",
+    "$ark_root/libpandafile:arkfile_header_deps",
   ]
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
@@ -824,7 +824,10 @@ source_set("libark_jsruntime_static") {
 }
 
 ohos_shared_library("libark_jsruntime") {
-  deps = [ ":libark_jsruntime_static" ]
+  deps = [
+    ":libark_jsruntime_static",
+    "$ark_root/libpandafile:libarkfile_static",
+  ]
 
   if (is_ohos && is_standard_system) {
     if (enable_dump_in_faultlog || enable_bytrace || enable_hitrace ||
@@ -879,8 +882,10 @@ ohos_shared_library("libark_jsruntime") {
 }
 
 ohos_shared_library("libark_jsruntime_test") {
-  deps = [ ":libark_jsruntime_test_set" ]
-  public_deps = [ "$ark_root/libpandafile:libarkfile_static" ]
+  deps = [
+    ":libark_jsruntime_test_set",
+    "$ark_root/libpandafile:libarkfile_static",
+  ]
 
   ldflags = []
   if (enable_coverage) {

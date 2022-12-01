@@ -21,14 +21,15 @@ source_set("quick_fix_set") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = [
-    "$ark_root/libpandabase:libarkbase_static",
-    "$js_root:libark_jsruntime",
-  ]
+  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
 }
 
 ohos_executable("quick_fix") {
-  deps = [ ":quick_fix_set" ]
+  deps = [
+    ":quick_fix_set",
+    "$ark_root/libpandabase:libarkbase_static",
+    "$js_root:libark_jsruntime",
+  ]
 
   install_enable = false
 
