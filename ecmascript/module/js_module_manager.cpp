@@ -93,16 +93,23 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
     if (module->GetTypes() == ModuleTypes::CJSMODULE) {
         JSHandle<JSTaggedValue> cjsModuleName(thread, module->GetEcmaModuleFilename());
-        JSTaggedValue cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+        JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
         // if cjsModule is not CjsExports, means cjs uses default exports.
-        if (!cjsExports.IsCjsExports()) {
-            if (cjsExports.IsHole()) {
-            LOG_FULL(FATAL) << "CAN NOT SEARCH FROM CJSMODULECACHE";
+        if (!cjsExports->IsCjsExports()) {
+            if (cjsExports->IsHole()) {
+                ObjectFactory *factory = vm_->GetFactory();
+                JSHandle<JSTaggedValue> currentModuleName(thread, SourceTextModule::Cast(
+                    currentModule.GetTaggedObject())->GetEcmaModuleFilename());
+                CString errorMsg = "currentModule" + ConvertToString(currentModuleName.GetTaggedValue()) +
+                                   "find requireModule" + ConvertToString(cjsModuleName.GetTaggedValue()) + "failed";
+                JSHandle<JSObject> syntaxError =
+                    factory->GetJSError(base::ErrorType::SYNTAX_ERROR, errorMsg.c_str());
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
             }
-            return cjsExports;
+            return cjsExports.GetTaggedValue();
         }
         int32_t idx = binding->GetIndex();
-        JSObject *cjsObject = JSObject::Cast(cjsExports);
+        JSObject *cjsObject = JSObject::Cast(cjsExports.GetTaggedValue());
         JSHClass *jsHclass = cjsObject->GetJSHClass();
         LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
         PropertyAttributes attr = layoutInfo->GetAttr(idx);
