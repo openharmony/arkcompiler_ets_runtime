@@ -250,17 +250,17 @@ public:
     size_t PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPreview, size_t highlightIdx,
                        std::string &log, bool isEnd = false) const;
     void PrintByteCode(std::string bytecode) const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckNullInput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckStateInput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckValueInput(bool isArch64) const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckDependInput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckStateOutput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckBranchOutput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckNOP() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckSelector() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckRelay() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> SpecialCheck() const;
-    [[nodiscard]] bool Verify(bool isArch64) const;
+    void CheckNullInput() const;
+    void CheckStateInput() const;
+    void CheckValueInput(bool isArch64) const;
+    void CheckDependInput() const;
+    void CheckRootInput() const;
+    void CheckStateOutput() const;
+    void CheckBranchOutput() const;
+    void CheckNOP() const;
+    void CheckSelector() const;
+    void CheckRelay() const;
+    void Verify(bool isArch64) const;
     [[nodiscard]] MarkCode GetMark(TimeStamp stamp) const;
     void SetMark(MarkCode mark, TimeStamp stamp);
     MachineType GetMachineType() const
@@ -310,6 +310,10 @@ public:
 private:
     friend class Circuit;
     friend class GateAccessor;
+    void CheckInputOpcode(size_t i, OpCode expected) const;
+    void CheckInputMachineType(size_t i, MachineType expected, bool isArch64) const;
+    void CheckGeneralState(size_t idx) const;
+    void CheckFailed(std::string errorString, size_t highlightIdx) const;
     void SetMetaData(const GateMetaData* meta)
     {
         meta_ = meta;

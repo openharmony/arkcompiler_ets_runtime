@@ -28,7 +28,7 @@ public:
     TSTypeLowering(Circuit *circuit, PassInfo *info,
                    bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, info->GetCompilerConfig()),
-          dependEntry_(circuit->GetRoot(OpCode::DEPEND_ENTRY)),
+          dependEntry_(circuit->GetDependRoot()),
           tsManager_(info->GetTSManager()),
           enableLog_(enableLog),
           methodName_(name) {}

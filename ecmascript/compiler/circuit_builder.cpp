@@ -76,13 +76,13 @@ GateRef CircuitBuilder::SwitchBranch(GateRef state, GateRef index, int caseCount
 
 GateRef CircuitBuilder::Return(GateRef state, GateRef depend, GateRef value)
 {
-    auto returnList = circuit_->GetRoot(OpCode::RETURN_LIST);
+    auto returnList = circuit_->GetReturnRoot();
     return circuit_->NewGate(circuit_->Return(), { state, depend, value, returnList });
 }
 
 GateRef CircuitBuilder::ReturnVoid(GateRef state, GateRef depend)
 {
-    auto returnList = circuit_->GetRoot(OpCode::RETURN_LIST);
+    auto returnList = circuit_->GetReturnRoot();
     return circuit_->NewGate(circuit_->ReturnVoid(), { state, depend, returnList });
 }
 
@@ -134,7 +134,7 @@ GateRef CircuitBuilder::DependAnd(std::initializer_list<GateRef> args)
 
 GateRef CircuitBuilder::Arguments(size_t index)
 {
-    auto argListOfCircuit = circuit_->GetRoot(OpCode::ARG_LIST);
+    auto argListOfCircuit = circuit_->GetArgRoot();
     return GetCircuit()->NewArg(MachineType::I64, index, GateType::NJSValue(), argListOfCircuit);
 }
 
@@ -802,10 +802,10 @@ Environment::Environment(size_t arguments, CircuitBuilder *builder)
     for (size_t i = 0; i < arguments; i++) {
         arguments_[i] = circuitBuilder_->Arguments(i);
     }
-    entry_ = Label(NewLabel(this, circuit_->GetRoot(OpCode::STATE_ENTRY)));
+    entry_ = Label(NewLabel(this, circuit_->GetStateRoot()));
     currentLabel_ = &entry_;
     currentLabel_->Seal();
-    auto depend_entry = circuit_->GetRoot(OpCode::DEPEND_ENTRY);
+    auto depend_entry = circuit_->GetDependRoot();
     currentLabel_->SetDepend(depend_entry);
 }
 
@@ -1038,7 +1038,7 @@ void Label::LabelImpl::MergeAllDepend()
 {
     if (IsControlCase()) {
         // Add depend_relay to current label
-        auto denpendEntry = env_->GetBuilder()->GetCircuit()->GetRoot(OpCode::DEPEND_ENTRY);
+        auto denpendEntry = env_->GetBuilder()->GetCircuit()->GetDependRoot();
         dependRelay_ = env_->GetBuilder()->DependRelay(predeControl_, denpendEntry);
     }
 

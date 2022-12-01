@@ -32,7 +32,7 @@ void Scheduler::CalculateDominatorTree(const Circuit *circuit,
     {
         size_t timestamp = 0;
         std::deque<GateRef> pendingList;
-        auto startGate = acc.GetRoot(OpCode::STATE_ENTRY);
+        auto startGate = acc.GetStateRoot();
         acc.SetMark(startGate, MarkCode::VISITED);
         pendingList.push_back(startGate);
         while (!pendingList.empty()) {
@@ -206,7 +206,7 @@ void Scheduler::Run(const Circuit *circuit, ControlFlowGraph &result,
             result[lowerBound.at(schedulableGate)].push_back(schedulableGate);
         }
         std::vector<GateRef> argList;
-        acc.GetOuts(acc.GetRoot(OpCode::ARG_LIST), argList);
+        acc.GetOuts(acc.GetArgRoot(), argList);
         std::sort(argList.begin(), argList.end(), [&](const GateRef &lhs, const GateRef &rhs) -> bool {
             return acc.GetBitField(lhs) > acc.GetBitField(rhs);
         });

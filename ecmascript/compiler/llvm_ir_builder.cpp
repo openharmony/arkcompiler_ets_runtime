@@ -336,7 +336,7 @@ void LLVMIRBuilder::GenPrologue()
         reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
-        auto ArgList = circuit_->GetRoot(OpCode::ARG_LIST);
+        auto ArgList = circuit_->GetArgRoot();
         auto uses = acc_.Uses(ArgList);
         for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
             int argth = static_cast<int>(acc_.GetBitField(*useIt));

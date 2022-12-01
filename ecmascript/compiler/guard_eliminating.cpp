@@ -210,7 +210,7 @@ void GuardEliminating::Run()
         size_t idx;
     };
     std::stack<DFSState> dfsStack;
-    auto startGate = circuit_->GetRoot(OpCode::STATE_ENTRY);
+    auto startGate = acc_.GetStateRoot();
     DFSState startState = { bbGatesAddrToIdx[startGate], 0 };
     dfsStack.push(startState);
     while (!dfsStack.empty()) {
