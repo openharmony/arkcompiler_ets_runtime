@@ -46,7 +46,7 @@ public:
         return objCallInfo;
     }
 
-    static void ContainersPrivateCommonFuzzTest(const uint8_t* data, size_t size, uint8_t tag)
+    static void ContainersPrivateCommonFuzzTest([[maybe_unused]] const uint8_t* data, size_t size, uint8_t tag)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
