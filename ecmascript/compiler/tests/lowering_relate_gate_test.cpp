@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/compiler/type_lowering.h"
@@ -26,6 +26,7 @@ using ecmascript::GlobalEnvConstants;
 using ecmascript::ConstantIndex;
 using ecmascript::RegionSpaceFlag;
 using ecmascript::kungfu::Circuit;
+using ecmascript::kungfu::GateAccessor;
 using ecmascript::kungfu::OpCode;
 using ecmascript::kungfu::GateType;
 using ecmascript::kungfu::MachineType;
@@ -46,8 +47,9 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     ecmascript::NativeAreaAllocator allocator;
     Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = circuit.GetRoot(OpCode::STATE_ENTRY);
-    auto depend = circuit.GetRoot(OpCode::DEPEND_ENTRY);
+    GateAccessor acc(&circuit);
+    auto entry = acc.GetStateRoot();
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto check = builder.TypeCheck(GateType::NumberType(), arg0);
     builder.Return(entry, depend, check);
@@ -64,8 +66,9 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
     ecmascript::NativeAreaAllocator allocator;
     Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = circuit.GetRoot(OpCode::STATE_ENTRY);
-    auto depend = circuit.GetRoot(OpCode::DEPEND_ENTRY);
+    GateAccessor acc(&circuit);
+    auto entry = acc.GetStateRoot();
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
     auto nadd = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
@@ -85,8 +88,9 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
     ecmascript::NativeAreaAllocator allocator;
     Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = circuit.GetRoot(OpCode::STATE_ENTRY);
-    auto depend = circuit.GetRoot(OpCode::DEPEND_ENTRY);
+    GateAccessor acc(&circuit);
+    auto entry = acc.GetStateRoot();
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
     auto nless = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
@@ -106,8 +110,9 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
     ecmascript::NativeAreaAllocator allocator;
     Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = circuit.GetRoot(OpCode::STATE_ENTRY);
-    auto depend = circuit.GetRoot(OpCode::DEPEND_ENTRY);
+    GateAccessor acc(&circuit);
+    auto entry = acc.GetStateRoot();
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto convert = builder.TypeConvert(MachineType::I64, GateType::NJSValue(), GateType::NumberType(),
                                        {entry, depend, arg0});

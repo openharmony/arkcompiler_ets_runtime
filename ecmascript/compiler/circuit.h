@@ -47,7 +47,7 @@ public:
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
     static GateRef NullGate();
-    bool Verify(GateRef gate) const;
+    void Verify(GateRef gate) const;
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType machineType, uint64_t value, GateType type);
@@ -82,7 +82,10 @@ public:
         return &metaBuilder_;
     }
 
-    GateRef GetRoot(OpCode opcode) const;
+    GateRef GetStateRoot() const;
+    GateRef GetDependRoot() const;
+    GateRef GetArgRoot() const;
+    GateRef GetReturnRoot() const;
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
     const GateMetaData* NAME()                  \

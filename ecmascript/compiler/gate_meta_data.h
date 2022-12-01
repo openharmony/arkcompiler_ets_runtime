@@ -258,11 +258,6 @@ public:
     {
         return Str(opcode_);
     }
-    const Properties& GetProperties() const;
-
-    MachineType GetInMachineType(size_t idx) const;
-    OpCode GetInStateCode(size_t idx) const;
-
 protected:
     void SetType(Type type)
     {

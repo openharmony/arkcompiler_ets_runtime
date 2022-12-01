@@ -247,8 +247,8 @@ GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVecto
 
 void TSInlineLowering::ReplaceEntryGate(GateRef callGate)
 {
-    auto stateEntry = circuit_->GetRoot(OpCode::STATE_ENTRY);
-    auto dependEntry = circuit_->GetRoot(OpCode::DEPEND_ENTRY);
+    auto stateEntry = acc_.GetStateRoot();
+    auto dependEntry = acc_.GetDependRoot();
 
     GateRef callState = acc_.GetState(callGate);
     GateRef callDepend = acc_.GetDep(callGate);

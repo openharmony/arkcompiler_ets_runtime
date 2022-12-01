@@ -609,11 +609,11 @@ void BytecodeCircuitBuilder::NewLoopBegin(BytecodeRegion &bb)
     if (bb.id == 0 && bb.numOfStatePreds == 1) {
         bb.mergeForwardEdges = circuit_->NewGate(circuit_->Merge(bb.numOfStatePreds),
             std::vector<GateRef>(bb.numOfStatePreds,
-                                 circuit_->GetRoot(OpCode::STATE_ENTRY)));
+                                 circuit_->GetStateRoot()));
         bb.depForward = circuit_->NewGate(circuit_->DependSelector(bb.numOfStatePreds),
             std::vector<GateRef>(bb.numOfStatePreds + 1, Circuit::NullGate()));
         gateAcc_.NewIn(bb.depForward, 0, bb.mergeForwardEdges);
-        gateAcc_.NewIn(bb.depForward, 1, circuit_->GetRoot(OpCode::DEPEND_ENTRY));
+        gateAcc_.NewIn(bb.depForward, 1, circuit_->GetDependRoot());
     } else {
         NewMerge(bb.mergeForwardEdges, bb.depForward, bb.numOfStatePreds - bb.numOfLoopBacks);
     }
@@ -634,8 +634,8 @@ void BytecodeCircuitBuilder::BuildBlockCircuitHead()
             continue;
         }
         if (bb.numOfStatePreds == 0) {
-            bb.stateStart = circuit_->GetRoot(OpCode::STATE_ENTRY);
-            bb.dependStart = circuit_->GetRoot(OpCode::DEPEND_ENTRY);
+            bb.stateStart = circuit_->GetStateRoot();
+            bb.dependStart = circuit_->GetDependRoot();
         } else if (bb.numOfLoopBacks > 0) {
             NewLoopBegin(bb);
         } else {
@@ -811,7 +811,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
                                                   JSTaggedValue::VALUE_EXCEPTION,
                                                   GateType::TaggedValue());
         circuit_->NewGate(circuit_->Return(),
-            { ifException, gate, constant, circuit_->GetRoot(OpCode::RETURN_LIST) });
+            { ifException, gate, constant, circuit_->GetReturnRoot() });
     }
     byteCodeToJSGate_[iterator.Index()] = gate;
     if (bytecodeInfo.IsGeneratorRelative()) {
@@ -822,7 +822,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
                                                   JSTaggedValue::VALUE_EXCEPTION,
                                                   GateType::TaggedValue());
         circuit_->NewGate(circuit_->Return(),
-            { ifSuccess, gate, constant, circuit_->GetRoot(OpCode::RETURN_LIST) });
+            { ifSuccess, gate, constant, circuit_->GetReturnRoot() });
         return;
     }
     state = ifSuccess;
@@ -895,7 +895,7 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, GateRef &state, GateR
     if (bytecodeInfo.GetOpcode() == EcmaOpcode::RETURN) {
         // handle return.dyn bytecode
         auto gate = circuit_->NewGate(circuit_->Return(),
-            { state, depend, Circuit::NullGate(), circuit_->GetRoot(OpCode::RETURN_LIST) });
+            { state, depend, Circuit::NullGate(), circuit_->GetReturnRoot() });
         byteCodeToJSGate_[iterator.Index()] = gate;
     } else if (bytecodeInfo.GetOpcode() == EcmaOpcode::RETURNUNDEFINED) {
         // handle returnundefined bytecode
@@ -903,7 +903,7 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, GateRef &state, GateR
                                                   JSTaggedValue::VALUE_UNDEFINED,
                                                   GateType::TaggedValue());
         auto gate = circuit_->NewGate(circuit_->Return(),
-            { state, depend, constant, circuit_->GetRoot(OpCode::RETURN_LIST) });
+            { state, depend, constant, circuit_->GetReturnRoot() });
         byteCodeToJSGate_[iterator.Index()] = gate;
     }
 }

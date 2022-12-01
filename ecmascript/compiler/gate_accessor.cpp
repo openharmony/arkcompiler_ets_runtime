@@ -534,7 +534,7 @@ GateType GateAccessor::GetRightType(GateRef gate) const
 
 GateRef GateAccessor::GetGlueFromArgList() const
 {
-    auto argRoot = GetRoot(OpCode::ARG_LIST);
+    auto argRoot = GetArgRoot();
     ASSERT(static_cast<size_t>(CommonArgIdx::GLUE) == 0);
     const Gate *curGate = circuit_->LoadGatePtrConst(argRoot);
 
@@ -548,7 +548,7 @@ GateRef GateAccessor::GetGlueFromArgList() const
 
 void GateAccessor::GetArgsOuts(std::vector<GateRef>& outs) const
 {
-    auto argRoot = GetRoot(OpCode::ARG_LIST);
+    auto argRoot = GetArgRoot();
     auto firstOut = circuit_->InnerMethodArgFirstOut();
     if (firstOut != nullptr) {
         const Gate *curGate = circuit_->LoadGatePtrConst(argRoot);
@@ -567,7 +567,7 @@ void GateAccessor::GetArgsOuts(std::vector<GateRef>& outs) const
 
 void GateAccessor::GetReturnOuts(std::vector<GateRef>& outs) const
 {
-    auto returnRoot = GetRoot(OpCode::RETURN_LIST);
+    auto returnRoot = GetReturnRoot();
     auto firstOut = circuit_->InnerMethodReturnFirstOut();
     if (firstOut != nullptr) {
         const Gate *curGate = circuit_->LoadGatePtrConst(returnRoot);

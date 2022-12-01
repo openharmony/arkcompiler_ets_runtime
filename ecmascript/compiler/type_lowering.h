@@ -100,7 +100,7 @@ public:
     TypeLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
                  bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(circuit->GetRoot(OpCode::DEPEND_ENTRY)), tsManager_(tsManager),
+          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager),
           enableLog_(enableLog), methodName_(name) {}
 
     ~TypeLowering() = default;
