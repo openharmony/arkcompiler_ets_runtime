@@ -3826,7 +3826,6 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetNamespace(thread_, undefinedValue);
     obj->SetEcmaModuleFilename(thread_, undefinedValue);
     obj->SetEcmaModuleRecordName(thread_, undefinedValue);
-    obj->SetNpmKey(thread_, undefinedValue);
     obj->SetRequestedModules(thread_, undefinedValue);
     obj->SetImportEntries(thread_, undefinedValue);
     obj->SetLocalExportEntries(thread_, undefinedValue);

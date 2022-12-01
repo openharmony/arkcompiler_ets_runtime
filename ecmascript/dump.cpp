@@ -3210,9 +3210,6 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << " - EcmaModuleRecordName: ";
     GetEcmaModuleRecordName().Dump(os);
     os << "\n";
-    os << " - NpmKey: ";
-    GetNpmKey().Dump(os);
-    os << "\n";
     os << " - RequestedModules: ";
     GetRequestedModules().Dump(os);
     os << "\n";
@@ -4994,7 +4991,6 @@ void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
     vec.push_back(std::make_pair(CString("Namespace"), GetNamespace()));
     vec.push_back(std::make_pair(CString("EcmaModuleFilename"), GetEcmaModuleFilename()));
     vec.push_back(std::make_pair(CString("EcmaModuleRecordName"), GetEcmaModuleRecordName()));
-    vec.push_back(std::make_pair(CString("NpmKey"), GetNpmKey()));
     vec.push_back(std::make_pair(CString("RequestedModules"), GetRequestedModules()));
     vec.push_back(std::make_pair(CString("ImportEntries"), GetImportEntries()));
     vec.push_back(std::make_pair(CString("LocalExportEntries"), GetLocalExportEntries()));

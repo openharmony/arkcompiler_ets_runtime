@@ -36,7 +36,7 @@ public:
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
         bool hasTSTypes {false};
         uint32_t typeSummaryOffset {0};
-
+        CString npmPackageName;
         bool HasTSTypes() const
         {
             return hasTSTypes;
@@ -80,6 +80,10 @@ public:
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
     static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
+    static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
+    static constexpr char PACKAGE_NAME[] = "pkgName@";
+    static constexpr int PACKAGE_NAME_LEN = 8;
+    static constexpr int MODULE_PREFIX_LENGTH = 8;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();

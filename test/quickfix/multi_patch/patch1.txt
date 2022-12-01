@@ -1,2 +1,2 @@
-base_modify1.js;base;module;base.js
-module_modify1.js;module;module;module.js
+base_modify1.js;base;esm;base.js;entry
+module_modify1.js;module;esm;module.js;entry
