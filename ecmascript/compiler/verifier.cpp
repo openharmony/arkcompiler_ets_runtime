@@ -108,9 +108,7 @@ bool Verifier::RunDataIntegrityCheck(const Circuit *circuit)
 bool Verifier::RunStateGatesCheck(const Circuit *circuit, const std::vector<GateRef> &bbGatesList)
 {
     for (const auto &bbGate : bbGatesList) {
-        if (!circuit->Verify(bbGate)) {
-            return false;
-        }
+        circuit->Verify(bbGate);
     }
     return true;
 }
@@ -148,7 +146,7 @@ bool Verifier::RunCFGIsDAGCheck(const Circuit *circuit)
     };
     std::stack<DFSState> dfsStack;
     GateAccessor gateAcc(const_cast<Circuit *>(circuit));
-    auto root = gateAcc.GetRoot(OpCode::STATE_ENTRY);
+    auto root = gateAcc.GetStateRoot();
     gateAcc.SetVisited(root);
     auto rootUses = gateAcc.ConstUses(root);
     dfsStack.push({root, rootUses, rootUses.begin()});
@@ -218,9 +216,7 @@ bool Verifier::RunCFGReducibilityCheck(const Circuit *circuit, const std::vector
 bool Verifier::RunFixedGatesCheck(const Circuit *circuit, const std::vector<GateRef> &fixedGatesList)
 {
     for (const auto &fixedGate : fixedGatesList) {
-        if (!circuit->Verify(fixedGate)) {
-            return false;
-        }
+        circuit->Verify(fixedGate);
     }
     return true;
 }
@@ -360,9 +356,7 @@ bool Verifier::RunFlowCyclesFind(const Circuit *circuit, std::vector<GateRef> *s
 bool Verifier::RunSchedulableGatesCheck(const Circuit *circuit, const std::vector<GateRef> &schedulableGatesList)
 {
     for (const auto &schedulableGate : schedulableGatesList) {
-        if (!circuit->Verify(schedulableGate)) {
-            return false;
-        }
+        circuit->Verify(schedulableGate);
     }
     return true;
 }
@@ -375,9 +369,7 @@ bool Verifier::RunPrologGatesCheck(const Circuit *circuit, const std::vector<Gat
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef r = *i;
             if (circuit->GetMetaData(r)->IsProlog()) {
-                if (!circuit->Verify(r)) {
-                    return false;
-                }
+                circuit->Verify(r);
             }
         }
     }

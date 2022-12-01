@@ -32,7 +32,7 @@ There are several nodes named **root nodes** in Circuit IR. They are not called 
 
 * `CONSTANT_LIST` `ARG_LIST`: Registering all value origins such as constants and arguments. (they are special computation gates that do not depend on other values)
 
-The offsets of root nodes are fixed, so they can be accessed instantly via `GateRef Circuit::GetRoot(OpCode opcode)`.
+The offsets of root nodes are fixed, so they can be accessed instantly via `GateRef Circuit::GetRoot()`.
 
 ## Type system
 

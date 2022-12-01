@@ -38,29 +38,23 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
     Circuit circuit(&allocator);
     GateAccessor acc(&circuit);
     auto n = circuit.NewArg(MachineType::I64, 0, GateType::NJSValue(),
-                            circuit.GetRoot(OpCode::ARG_LIST));
-    auto constantA = circuit.GetConstantGate(MachineType::I64, 1,
-                                     GateType::NJSValue());
+                            acc.GetArgRoot());
+    auto constantA = circuit.GetConstantGate(MachineType::I64, 1, GateType::NJSValue());
     auto constantB = circuit.GetConstantGate(MachineType::I64,
-                                     2,
-                                     GateType::NJSValue());
-    auto constantC = circuit.GetConstantGate(MachineType::I64,
-                                     1,
-                                     GateType::NJSValue());
-    auto constantD = circuit.GetConstantGate(MachineType::I64,
-                                     0,
-                                     GateType::NJSValue());
+        2, GateType::NJSValue()); // 2: idx 2
+    auto constantC = circuit.GetConstantGate(MachineType::I64, 1, GateType::NJSValue());
+    auto constantD = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
     auto loopBegin = circuit.NewGate(circuit.LoopBegin(),
                                      MachineType::NOVALUE,
-                                     {circuit.GetRoot(OpCode::STATE_ENTRY), Circuit::NullGate()},
+                                     { acc.GetStateRoot(), Circuit::NullGate() },
                                      GateType::Empty());
     auto selectorA = circuit.NewGate(circuit.ValueSelector(2), // 2: valuesIn
                                      MachineType::I64,
-                                     {loopBegin, constantA, Circuit::NullGate()},
+                                     { loopBegin, constantA, Circuit::NullGate() },
                                      GateType::NJSValue());
     auto selectorB = circuit.NewGate(circuit.ValueSelector(2), // 2: valuesIn
                                      MachineType::I64,
-                                     {loopBegin, n, Circuit::NullGate()},
+                                     { loopBegin, n, Circuit::NullGate() },
                                      GateType::NJSValue());
     auto newX = circuit.NewGate(circuit.Sub(),
                                 MachineType::I64,
@@ -88,10 +82,10 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
                                     {ifTrue});
     acc.NewIn(loopBegin, 1, loopBack);
     auto ret = circuit.NewGate(circuit.Return(),
-                               {ifFalse,
-                                circuit.GetRoot(OpCode::DEPEND_ENTRY),
+                               { ifFalse,
+                                acc.GetDependRoot(),
                                 newX,
-                                circuit.GetRoot(OpCode::RETURN_LIST)});
+                                acc.GetReturnRoot() });
     // verify the circuit
     {
         auto verifyResult = ecmascript::kungfu::Verifier::Run(&circuit);
@@ -172,10 +166,10 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSubgraphRewriteFramework)
                                            GateType::NJSValue())));
     }
     auto ret = circuit.NewGate(circuit.Return(),
-                               {circuit.GetRoot(OpCode::STATE_ENTRY),
-                                circuit.GetRoot(OpCode::DEPEND_ENTRY),
+                               { acc.GetStateRoot(),
+                                acc.GetDependRoot(),
                                 constantsSet.begin()->second,
-                                circuit.GetRoot(OpCode::RETURN_LIST)});
+                                acc.GetReturnRoot() });
     ecmascript::kungfu::SubgraphRewriteRuleCP rule;
     ecmascript::kungfu::SubGraphRewriteFramework rewriter(&rule);
     rewriter.Run(&circuit);
@@ -200,10 +194,10 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeUpdateRuleSCCP)
                                 {constantA, constantB},
                                 GateType::NJSValue());
     auto ret = circuit.NewGate(circuit.Return(),
-                               {circuit.GetRoot(OpCode::STATE_ENTRY),
-                                circuit.GetRoot(OpCode::DEPEND_ENTRY),
+                               { acc.GetStateRoot(),
+                                circuit.GetDependRoot(),
                                 newX,
-                                circuit.GetRoot(OpCode::RETURN_LIST)});
+                                acc.GetReturnRoot()});
     {
         int32_t x = -8848;
         int32_t y = 4;
@@ -285,11 +279,11 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSmallSizeGlobalValueNumbering) {
     auto constantB = circuit.NewGate(circuit.Constant(1),
         MachineType::I64, GateType::NJSValue());
     auto argA = circuit.NewArg(MachineType::I64, 1,
-                              GateType::NJSValue(),
-                              circuit.GetRoot(OpCode::ARG_LIST));
+                               GateType::NJSValue(),
+                               acc.GetArgRoot());
     auto argB = circuit.NewArg(MachineType::I64, 2,
-                              GateType::NJSValue(),
-                              circuit.GetRoot(OpCode::ARG_LIST));
+                               GateType::NJSValue(),
+                               acc.GetArgRoot());
 
     auto add1 = circuit.NewGate(circuit.Add(),
                                MachineType::I64,
@@ -297,14 +291,14 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSmallSizeGlobalValueNumbering) {
                                GateType::NJSValue());
 
     auto add2 = circuit.NewGate(circuit.Add(),
-                               MachineType::I64,
-                               {constantB, argA},
-                               GateType::NJSValue());
+                                MachineType::I64,
+                                { constantB, argA },
+                                GateType::NJSValue());
 
     auto add3 = circuit.NewGate(circuit.Add(),
-                               MachineType::I64,
-                               {constantA, argB},
-                               GateType::NJSValue());
+                                MachineType::I64,
+                                { constantA, argB },
+                                GateType::NJSValue());
     ecmascript::kungfu::GlobalValueNumbering(&circuit, false).Run();
     EXPECT_FALSE(acc.GetMetaData(add3)->IsNop());
     EXPECT_FALSE(acc.GetMetaData(argA)->IsNop());
@@ -324,7 +318,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestMultiLevelGlobalValueNumbering) {
     std::vector<GateRef> args;
     for (uint32_t i = 0; i < 5; ++i) {
         args.push_back(circuit.NewArg(MachineType::I64, i, GateType::NJSValue(),
-            circuit.GetRoot(OpCode::ARG_LIST)));
+            acc.GetArgRoot()));
     }
     std::map<GateRef, std::vector<GateRef>> addToAdds;
     std::map<GateRef, GateRef> addToAdd;
@@ -416,7 +410,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSmallWorldGlobalValueNumbering) {
     std::vector<GateRef> args;
     for (uint32_t i = 0; i < 3; ++i) {
         args.push_back(circuit.NewArg(MachineType::I64, i,
-            GateType::NJSValue(), circuit.GetRoot(OpCode::ARG_LIST)));
+            GateType::NJSValue(), acc.GetArgRoot()));
     }
     std::map<GateRef, std::vector<GateRef>> addToAdds;
     std::map<GateRef, GateRef> addToAdd;

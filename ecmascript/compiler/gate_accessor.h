@@ -370,11 +370,32 @@ public:
     GateRef GetGlueFromArgList() const;
     void GetArgsOuts(std::vector<GateRef>& outs) const;
     void GetReturnOuts(std::vector<GateRef>& outs) const;
-    GateRef GetRoot(OpCode opcode) const;
+
+    GateRef GetStateRoot() const
+    {
+        return GetRoot(OpCode::STATE_ENTRY);
+    }
+
+    GateRef GetDependRoot() const
+    {
+        return GetRoot(OpCode::DEPEND_ENTRY);
+    }
+
+    GateRef GetArgRoot() const
+    {
+        return GetRoot(OpCode::ARG_LIST);
+    }
+
+    GateRef GetReturnRoot() const
+    {
+        return GetRoot(OpCode::RETURN_LIST);
+    }
+
     const GateMetaData *GetMetaData(GateRef gate) const;
     void SetMetaData(GateRef gate, const GateMetaData* meta);
 
 private:
+    GateRef GetRoot(OpCode opcode) const;
     ConstUseIterator ConstUseBegin(GateRef gate) const
     {
         if (circuit_->LoadGatePtrConst(gate)->IsFirstOutNull()) {
@@ -436,6 +457,7 @@ private:
 
     Circuit *circuit_;
 
+    friend class Circuit;
     friend class LLVMIRBuilder;
     friend class Scheduler;
     friend class GuardLowering;

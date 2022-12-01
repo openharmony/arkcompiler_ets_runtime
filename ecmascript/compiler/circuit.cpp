@@ -192,9 +192,9 @@ void Circuit::SetMark(GateRef gate, MarkCode mark) const
     const_cast<Gate *>(LoadGatePtrConst(gate))->SetMark(mark, GetTime());
 }
 
-bool Circuit::Verify(GateRef gate) const
+void Circuit::Verify(GateRef gate) const
 {
-    return LoadGatePtrConst(gate)->Verify(IsArch64());
+    LoadGatePtrConst(gate)->Verify(IsArch64());
 }
 
 GateRef Circuit::NullGate()
@@ -426,8 +426,8 @@ size_t Circuit::GetGateCount() const
 void Circuit::PushFunctionCompilationDataList()
 {
     GateAccessor acc(this);
-    auto returnList = acc.GetRoot(OpCode::RETURN_LIST);
-    auto argList = acc.GetRoot(OpCode::ARG_LIST);
+    auto returnList = acc.GetReturnRoot();
+    auto argList = acc.GetArgRoot();
 
     const Gate *returnListGate = LoadGatePtrConst(returnList);
     const Gate *argListGate = LoadGatePtrConst(argList);
@@ -442,9 +442,27 @@ void Circuit::PopFunctionCompilationDataList()
     innerMethodArgFirstOut_ = nullptr;
 }
 
-GateRef Circuit::GetRoot(OpCode opcode) const
+GateRef Circuit::GetStateRoot() const
 {
     const GateAccessor acc(const_cast<Circuit*>(this));
-    return acc.GetRoot(opcode);
+    return acc.GetStateRoot();
+}
+
+GateRef Circuit::GetDependRoot() const
+{
+    const GateAccessor acc(const_cast<Circuit*>(this));
+    return acc.GetDependRoot();
+}
+
+GateRef Circuit::GetArgRoot() const
+{
+    const GateAccessor acc(const_cast<Circuit*>(this));
+    return acc.GetArgRoot();
+}
+
+GateRef Circuit::GetReturnRoot() const
+{
+    const GateAccessor acc(const_cast<Circuit*>(this));
+    return acc.GetReturnRoot();
 }
 }  // namespace panda::ecmascript::kungfu

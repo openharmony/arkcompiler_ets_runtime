@@ -16,82 +16,197 @@
 #include "ecmascript/compiler/gate.h"
 
 namespace panda::ecmascript::kungfu {
-std::optional<std::pair<std::string, size_t>> Gate::CheckNullInput() const
+void Gate::CheckNullInput() const
 {
     const auto numIns = GetNumIns();
     for (size_t idx = 0; idx < numIns; idx++) {
         if (IsInGateNull(idx)) {
-            return std::make_pair("In list contains null", idx);
+            CheckFailed("In list contains null", idx);
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckStateInput() const
+void Gate::CheckFailed(std::string errorString, size_t highlightIdx) const
+{
+    LOG_COMPILER(ERROR) << "[Verifier][Error] Gate level input list schema verify failed";
+    Print("", true, highlightIdx);
+    LOG_COMPILER(FATAL) << "Note: " << errorString;
+}
+
+void Gate::CheckInputOpcode(size_t idx, OpCode expected) const
+{
+    OpCode actual = GetInGateConst(idx)->GetOpCode();
+    if (actual != expected) {
+        CheckFailed("State input does not match (expected:" + GateMetaData::Str(expected)
+            + " actual:" + GateMetaData::Str(actual) + ")", idx);
+    }
+}
+
+void Gate::CheckInputMachineType(size_t idx, MachineType expected, bool isArch64) const
+{
+    MachineType actual = GetInGateConst(idx)->GetMachineType();
+    if (expected == MachineType::FLEX) {
+        expected = GetMachineType();
+    }
+    if (expected == MachineType::ARCH) {
+        expected = isArch64 ? MachineType::I64 : MachineType::I32;
+    }
+    if (actual == MachineType::ARCH) {
+        actual = isArch64 ? MachineType::I64 : MachineType::I32;
+    }
+    if (actual != expected) {
+        CheckFailed("Value input does not match (expected:"
+            + MachineTypeToStr(expected) + " actual:" + MachineTypeToStr(actual) + ")", idx);
+    }
+}
+
+void Gate::CheckGeneralState(size_t idx) const
+{
+    auto gatePtr = GetInGateConst(idx);
+    OpCode actual = gatePtr->GetOpCode();
+    if (!gatePtr->meta_->IsGeneralState()) {
+        CheckFailed("State input does not match (expected:<General State> actual:"
+            + GateMetaData::Str(actual) + ")", idx);
+    }
+}
+
+void Gate::CheckStateInput() const
 {
     size_t stateStart = 0;
     size_t stateEnd = GetStateCount();
     for (size_t idx = stateStart; idx < stateEnd; idx++) {
-        auto stateProp = meta_->GetProperties().statesIn;
-        ASSERT(stateProp.has_value());
-        auto expectedIn = meta_->GetInStateCode(idx);
-        auto actualIn = GetInGateConst(idx)->meta_;
-        if (expectedIn == OpCode::NOP) {  // general
-            if (!actualIn->IsGeneralState()) {
-                return std::make_pair(
-                    "State input does not match (expected:<General State> actual:" + actualIn->Str() + ")", idx);
-            }
-        } else {
-            if (expectedIn != actualIn->GetOpCode()) {
-                return std::make_pair(
-                    "State input does not match (expected:" +
-                        GateMetaData::Str(expectedIn) + " actual:" + actualIn->Str() + ")", idx);
-            }
+        bool needCheck = true;
+        switch (GetOpCode()) {
+            case OpCode::IF_TRUE:
+            case OpCode::IF_FALSE:
+                ASSERT(idx == stateStart);
+                CheckInputOpcode(idx, OpCode::IF_BRANCH);
+                needCheck = false;
+                break;
+            case OpCode::SWITCH_CASE:
+            case OpCode::DEFAULT_CASE:
+                ASSERT(idx == stateStart);
+                CheckInputOpcode(idx, OpCode::SWITCH_BRANCH);
+                needCheck = false;
+                break;
+            case OpCode::LOOP_BEGIN:
+                if (idx == stateStart + 1) { // 1: idx 1
+                    CheckInputOpcode(idx, OpCode::LOOP_BACK);
+                    needCheck = false;
+                }
+                break;
+            default:
+                break;
+        }
+        if (needCheck) {
+            CheckGeneralState(idx);
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckValueInput(bool isArch64) const
+void Gate::CheckValueInput(bool isArch64) const
 {
     size_t valueStart = GetInValueStarts();
     size_t valueEnd = valueStart + GetInValueCount();
     for (size_t idx = valueStart; idx < valueEnd; idx++) {
-        auto expectedIn = meta_->GetInMachineType(idx);
-        auto actualIn = GetInGateConst(idx)->meta_->GetProperties().returnValue;
-        if (expectedIn == MachineType::FLEX) {
-            expectedIn = GetMachineType();
-        }
-        if (actualIn == MachineType::FLEX) {
-            actualIn = GetInGateConst(idx)->GetMachineType();
-        }
-        if (actualIn == MachineType::ARCH) {
-            actualIn = isArch64 ? MachineType::I64 : MachineType::I32;
-        }
-
-        if ((expectedIn != actualIn) && (expectedIn != ANYVALUE)) {
-            return std::make_pair("Value input does not match (expected: " + MachineTypeToStr(expectedIn) +
-                    " actual: " + MachineTypeToStr(actualIn) + ")",
-                idx);
+        switch (GetOpCode()) {
+            case OpCode::IF_BRANCH:
+                ASSERT(idx == valueStart);
+                CheckInputMachineType(idx, MachineType::I1, isArch64);
+                break;
+            case OpCode::VALUE_SELECTOR:
+            case OpCode::ADD:
+            case OpCode::SUB:
+            case OpCode::MUL:
+            case OpCode::EXP:
+            case OpCode::SDIV:
+            case OpCode::SMOD:
+            case OpCode::UDIV:
+            case OpCode::UMOD:
+            case OpCode::FDIV:
+            case OpCode::FMOD:
+            case OpCode::AND:
+            case OpCode::XOR:
+            case OpCode::OR:
+            case OpCode::LSL:
+            case OpCode::LSR:
+            case OpCode::ASR:
+                CheckInputMachineType(idx, MachineType::FLEX, isArch64);
+                break;
+            case OpCode::REV:
+                ASSERT(idx == valueStart);
+                CheckInputMachineType(idx, MachineType::I1, isArch64);
+                break;
+            case OpCode::LOAD:
+                ASSERT(idx == valueStart);
+                CheckInputMachineType(idx, MachineType::ARCH, isArch64);
+                break;
+            case OpCode::STORE:
+                if (idx == valueStart + 1) { // 1: idx 1
+                    CheckInputMachineType(idx, MachineType::ARCH, isArch64);
+                }
+                break;
+            case OpCode::HEAP_ALLOC:
+            case OpCode::TAGGED_TO_INT64:
+            case OpCode::INT64_TO_TAGGED:
+                ASSERT(idx == valueStart);
+                CheckInputMachineType(valueStart, MachineType::I64, isArch64);
+                break;
+            case OpCode::TYPED_BINARY_OP:
+                if (idx == valueStart + 2) { // 2: idx 2
+                    CheckInputMachineType(idx, MachineType::I8, isArch64);
+                }
+                break;
+            case OpCode::OBJECT_TYPE_CHECK:
+            case OpCode::LOAD_ELEMENT:
+            case OpCode::STORE_ELEMENT:
+                if (idx == valueStart + 1) { // 1: idx 1
+                    CheckInputMachineType(idx, MachineType::I64, isArch64);
+                }
+                break;
+            default:
+                break;
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckDependInput() const
+void Gate::CheckDependInput() const
 {
     size_t dependStart = GetStateCount();
     size_t dependEnd = dependStart + GetDependCount();
     for (size_t idx = dependStart; idx < dependEnd; idx++) {
         if (GetInGateConst(idx)->GetDependCount() == 0 &&
             GetInGateConst(idx)->GetOpCode() != OpCode::DEPEND_ENTRY) {
-            return std::make_pair("Depend input is side-effect free", idx);
+            CheckFailed("Depend input is side-effect free", idx);
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckStateOutput() const
+void Gate::CheckRootInput() const
+{
+    size_t rootStart = GetInValueStarts() + GetInValueCount();
+    if (meta_->HasRoot()) {
+        switch (GetOpCode()) {
+            case OpCode::STATE_ENTRY:
+            case OpCode::DEPEND_ENTRY:
+            case OpCode::RETURN_LIST:
+            case OpCode::ARG_LIST:
+                CheckInputOpcode(rootStart, OpCode::CIRCUIT_ROOT);
+                break;
+            case OpCode::ARG:
+                CheckInputOpcode(rootStart, OpCode::ARG_LIST);
+                break;
+            case OpCode::RETURN:
+            case OpCode::RETURN_VOID:
+                CheckInputOpcode(rootStart, OpCode::RETURN_LIST);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+void Gate::CheckStateOutput() const
 {
     if (GetMetaData()->IsState()) {
         size_t cnt = 0;
@@ -121,15 +236,13 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckStateOutput() const
         }
         if (needCheck && cnt != expected) {
             curGate->Print();
-            return std::make_pair("Number of state out branches is not valid (expected:" + std::to_string(expected) +
-                    " actual:" + std::to_string(cnt) + ")",
-                -1);
+            CheckFailed("Number of state out branches is not valid (expected:" + std::to_string(expected) +
+                " actual:" + std::to_string(cnt) + ")", -1);
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckBranchOutput() const
+void Gate::CheckBranchOutput() const
 {
     std::map<std::pair<OpCode, BitField>, size_t> setOfOps;
     if (GetOpCode() == OpCode::IF_BRANCH || GetOpCode() == OpCode::SWITCH_BRANCH) {
@@ -152,147 +265,72 @@ std::optional<std::pair<std::string, size_t>> Gate::CheckBranchOutput() const
             }
         }
         if (setOfOps.size() != cnt) {
-            return std::make_pair("Duplicate state out branches", -1);
+            CheckFailed("Duplicate state out branches", -1);
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckNOP() const
+void Gate::CheckNOP() const
 {
     if (GetOpCode() == OpCode::NOP) {
         if (!IsFirstOutNull()) {
-            return std::make_pair("NOP gate used by other gates", -1);
+            CheckFailed("NOP gate used by other gates", -1);
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckSelector() const
+void Gate::CheckSelector() const
 {
     if (GetOpCode() == OpCode::VALUE_SELECTOR || GetOpCode() == OpCode::DEPEND_SELECTOR) {
         auto stateOp = GetInGateConst(0)->GetOpCode();
         if (stateOp == OpCode::MERGE || stateOp == OpCode::LOOP_BEGIN) {
             if (GetInGateConst(0)->GetNumIns() != GetNumIns() - 1) {
                 if (GetOpCode() == OpCode::DEPEND_SELECTOR) {
-                    return std::make_pair("Number of depend flows does not match control flows (expected:" +
+                    CheckFailed("Number of depend flows does not match control flows (expected:" +
                             std::to_string(GetInGateConst(0)->GetNumIns()) +
                             " actual:" + std::to_string(GetNumIns() - 1) + ")",
                         -1);
                 } else {
-                    return std::make_pair("Number of data flows does not match control flows (expected:" +
+                    CheckFailed("Number of data flows does not match control flows (expected:" +
                             std::to_string(GetInGateConst(0)->GetNumIns()) +
                             " actual:" + std::to_string(GetNumIns() - 1) + ")",
                         -1);
                 }
             }
         } else {
-            return std::make_pair(
+            CheckFailed(
                 "State input does not match (expected:[MERGE|LOOP_BEGIN] actual:" +
                 GateMetaData::Str(stateOp) + ")", 0);
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::CheckRelay() const
+void Gate::CheckRelay() const
 {
     if (GetOpCode() == OpCode::DEPEND_RELAY) {
         auto stateOp = GetInGateConst(0)->GetOpCode();
         if (!(stateOp == OpCode::IF_TRUE || stateOp == OpCode::IF_FALSE || stateOp == OpCode::SWITCH_CASE ||
             stateOp == OpCode::DEFAULT_CASE || stateOp == OpCode::IF_SUCCESS || stateOp == OpCode::IF_EXCEPTION ||
             stateOp == OpCode::ORDINARY_BLOCK)) {
-            return std::make_pair("State input does not match ("
+            CheckFailed("State input does not match ("
                 "expected:[IF_TRUE|IF_FALSE|SWITCH_CASE|DEFAULT_CASE|IF_SUCCESS|IF_EXCEPTION|ORDINARY_BLOCK] actual:" +
                  GateMetaData::Str(stateOp) + ")", 0);
         }
     }
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, size_t>> Gate::SpecialCheck() const
+void Gate::Verify(bool isArch64) const
 {
-    {
-        auto ret = CheckNOP();
-        if (ret.has_value()) {
-            return ret;
-        }
-    }
-    {
-        auto ret = CheckSelector();
-        if (ret.has_value()) {
-            return ret;
-        }
-    }
-    {
-        auto ret = CheckRelay();
-        if (ret.has_value()) {
-            return ret;
-        }
-    }
-    return std::nullopt;
-}
-
-bool Gate::Verify(bool isArch64) const
-{
-    std::string errorString;
-    size_t highlightIdx = -1;
-    bool failed = false;
-    {
-        auto ret = CheckNullInput();
-        if (ret.has_value()) {
-            failed = true;
-            std::tie(errorString, highlightIdx) = ret.value();
-        }
-    }
-    if (!failed) {
-        auto ret = CheckStateInput();
-        if (ret.has_value()) {
-            failed = true;
-            std::tie(errorString, highlightIdx) = ret.value();
-        }
-    }
-    if (!failed) {
-        auto ret = CheckValueInput(isArch64);
-        if (ret.has_value()) {
-            failed = true;
-            std::tie(errorString, highlightIdx) = ret.value();
-        }
-    }
-    if (!failed) {
-        auto ret = CheckDependInput();
-        if (ret.has_value()) {
-            failed = true;
-            std::tie(errorString, highlightIdx) = ret.value();
-        }
-    }
-    if (!failed) {
-        auto ret = CheckStateOutput();
-        if (ret.has_value()) {
-            failed = true;
-            std::tie(errorString, highlightIdx) = ret.value();
-        }
-    }
-    if (!failed) {
-        auto ret = CheckBranchOutput();
-        if (ret.has_value()) {
-            failed = true;
-            std::tie(errorString, highlightIdx) = ret.value();
-        }
-    }
-    if (!failed) {
-        auto ret = SpecialCheck();
-        if (ret.has_value()) {
-            failed = true;
-            std::tie(errorString, highlightIdx) = ret.value();
-        }
-    }
-    if (failed) {
-        LOG_COMPILER(ERROR) << "[Verifier][Error] Gate level input list schema verify failed";
-        Print("", true, highlightIdx);
-        LOG_COMPILER(ERROR) << "Note: " << errorString;
-    }
-    return !failed;
+    CheckNullInput();
+    CheckStateInput();
+    CheckValueInput(isArch64);
+    CheckDependInput();
+    CheckRootInput();
+    CheckStateOutput();
+    CheckBranchOutput();
+    CheckNOP();
+    CheckSelector();
+    CheckRelay();
 }
 
 void Out::SetNextOut(const Out *ptr)

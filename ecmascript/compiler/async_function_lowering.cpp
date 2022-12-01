@@ -89,7 +89,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
                 accessor_.ReplaceValueIn(resumeGate, newTarget);
                 accessor_.ReplaceDependIn(firstRestoreRegGate, ifTrueDepend);
                 circuit_->NewGate(circuit_->Return(), MachineType::NOVALUE,
-                    { ifSuccess, suspendGate, suspendGate, circuit_->GetRoot(OpCode::RETURN_LIST) },
+                    { ifSuccess, suspendGate, suspendGate, circuit_->GetReturnRoot() },
                     GateType::AnyType());
             } else {
                 loopBeginStateIn = ifTrue;
@@ -100,7 +100,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
             } else {
                 auto constant = builder_.UndefineConstant();
                 circuit_->NewGate(circuit_->Return(), MachineType::NOVALUE,
-                    { ifFalse, ifFalseDepend, constant, circuit_->GetRoot(OpCode::RETURN_LIST) },
+                    { ifFalse, ifFalseDepend, constant, circuit_->GetReturnRoot() },
                     GateType::AnyType());
             }
             firstState = ifBranch;
@@ -127,7 +127,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
                 accessor_.ReplaceValueIn(resumeGate, newTarget);
                 accessor_.ReplaceDependIn(firstRestoreRegGate, bcOffsetPhiGate);
                 circuit_->NewGate(circuit_->Return(), MachineType::NOVALUE,
-                    { ifSuccess, suspendGate, suspendGate, circuit_->GetRoot(OpCode::RETURN_LIST) },
+                    { ifSuccess, suspendGate, suspendGate, circuit_->GetReturnRoot() },
                     GateType::AnyType());
             } else {
                 // Handling multi-layer for loops
