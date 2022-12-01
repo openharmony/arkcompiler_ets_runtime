@@ -185,7 +185,7 @@ public:
     {
         if (reserved_ + size > capacity_) {
             LOG_GC(ERROR) << "pool is empty, reserved = " << reserved_ << ", capacity_ = "
-            << capacity_ << ", size = " << size;
+                          << capacity_ << ", size = " << size;
         }
         reserved_ += size;
         LOG_GC(DEBUG) << "Ark IncreaseAndCheckReserved reserved = " << reserved_ << ", capacity_ = " << capacity_;

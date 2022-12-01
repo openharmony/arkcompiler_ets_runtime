@@ -324,7 +324,7 @@ bool AnFileDataManager::UnsafeLoadDataFromBinaryBuffer(const CString &filename)
 {
     // note: This method is not thread-safe
     // need to ensure that the instance of AnFileDataManager has been locked before use
-    BinaryBufferParser binBufparser((uint8_t *)_binary_stub_an_start, _binary_stub_an_length);
+    BinaryBufferParser binBufparser(const_cast<uint8_t *>(_binary_stub_an_start), _binary_stub_an_length);
     std::shared_ptr<AnFileData> data = std::make_shared<AnFileData>(AnFileData());
     loadedData_[filename] = data;
     binBufparser.ParseBuffer(&data->entryNum, sizeof(data->entryNum));
