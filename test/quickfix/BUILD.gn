@@ -34,6 +34,7 @@ if (!is_debug) {
     "multi_constructorconstpool",
     "multi_funccallconstpool",
     "multi_funcconstpool",
+    "multiconstpool_multifunc",
   ]
 }
 
