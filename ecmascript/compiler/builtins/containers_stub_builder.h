@@ -106,6 +106,7 @@ public:
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
                 return IsJSAPIArrayList(obj);
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return False();
@@ -125,6 +126,7 @@ public:
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
                 return true;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return false;
@@ -144,6 +146,7 @@ public:
             case ContainersType::PLAINARRAY_FOREACH:
                 return true;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return false;
@@ -163,6 +166,7 @@ public:
                 break;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }
@@ -221,6 +225,7 @@ public:
                 return arrayListBuilder.GetSize(obj);
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return False();
@@ -264,6 +269,7 @@ public:
                 return arrayListBuilder.Get(obj, index);
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return False();
@@ -281,6 +287,7 @@ public:
                 return lightWeightSetBuilder.GetKey(obj, index);
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return False();
@@ -306,6 +313,7 @@ public:
                 return listBuilder.GetNode(obj, index);
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return False();

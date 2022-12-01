@@ -48,7 +48,7 @@ public:
     Register TempRegister1()
     {
         if (temp1InUse_) {
-            LOG_COMPILER(ERROR) << "temp register1 inuse.";
+            LOG_COMPILER(FATAL) << "temp register1 inuse.";
             UNREACHABLE();
         }
         temp1InUse_ = true;
@@ -57,7 +57,7 @@ public:
     Register TempRegister2()
     {
         if (temp2InUse_) {
-            LOG_COMPILER(ERROR) << "temp register2 inuse.";
+            LOG_COMPILER(FATAL) << "temp register2 inuse.";
             UNREACHABLE();
         }
         temp2InUse_ = true;

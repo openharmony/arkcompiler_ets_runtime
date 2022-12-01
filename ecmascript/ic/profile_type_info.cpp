@@ -217,6 +217,7 @@ std::string ICKindToString(ICKind kind)
         case ICKind::GlobalStoreIC:
             return "GlobalStoreIC";
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -234,6 +235,7 @@ std::string ProfileTypeAccessor::ICStateToString(ProfileTypeAccessor::ICState st
         case ICState::MEGA:
             return "mega";
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -284,6 +286,7 @@ ProfileTypeAccessor::ICState ProfileTypeAccessor::GetICState() const
             return array->GetLength() == MONO_CASE_NUM ? ICState::MONO : ICState::POLY; // 2 : test case
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }

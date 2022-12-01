@@ -52,6 +52,7 @@ GateRef CircuitBuilder::Equal(GateRef x, GateRef y)
         case F64:
             return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::OEQ)), x, y);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -72,6 +73,7 @@ GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y)
         case F64:
             return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::ONE)), x, y);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }

@@ -337,6 +337,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
             return defaultRegister;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return INVALID_REG;
@@ -357,6 +358,7 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
             return defaultRegister;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return INVALID_REG;

@@ -50,6 +50,7 @@ public:
         if (label->IsBound()) {
             return label->GetPos();
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

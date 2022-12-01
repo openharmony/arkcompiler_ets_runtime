@@ -593,6 +593,7 @@ public:
                 Method::Cast(object)->VisitRangeSlot(visitor);
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }

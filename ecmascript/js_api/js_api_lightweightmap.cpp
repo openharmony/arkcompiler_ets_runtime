@@ -425,6 +425,7 @@ void JSAPILightWeightMap::SetArrayByKind(const JSThread *thread,
             lightWeightMap->SetValues(thread, array);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -445,6 +446,7 @@ JSHandle<TaggedArray> JSAPILightWeightMap::GetArrayByKind(const JSThread *thread
             array = JSHandle<TaggedArray>(thread, lightWeightMap->GetValues());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return array;

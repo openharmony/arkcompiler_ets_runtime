@@ -28,10 +28,12 @@ public:
     static inline bool IsMatch([[maybe_unused]] const JSTaggedValue &key,
                                [[maybe_unused]] const JSTaggedValue &otherKey)
     {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     static inline int Hash([[maybe_unused]] const JSTaggedValue &key)
     {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 

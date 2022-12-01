@@ -496,6 +496,7 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
         } else if (IsValueIn(useIt)) {
             useIt = ReplaceIn(useIt, value);
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

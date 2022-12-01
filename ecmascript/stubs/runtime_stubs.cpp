@@ -379,6 +379,7 @@ void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
     LOG_FULL(FATAL) << result;
     va_end(args);
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 

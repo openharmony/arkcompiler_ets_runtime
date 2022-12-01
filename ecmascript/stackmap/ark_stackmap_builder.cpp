@@ -43,6 +43,7 @@ std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::Run(std::uniqu
     LLVMStackMapParser parser;
     auto result = parser.CalculateStackMap(std::move(stackMapAddr), hostCodeSectionAddr);
     if (!result) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     auto pc2stackMapVec = parser.GetPc2StackMapVec();
@@ -106,6 +107,7 @@ void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, Binary
                 writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(v.first)), sizeof(v.first));
                 writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(v.second)), sizeof(v.second));
             } else {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }
@@ -176,6 +178,7 @@ void ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
                 break;
             }
             default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }
@@ -287,6 +290,7 @@ void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint3
             v.kind = LocationTy::Kind::INDIRECT;
             v.value = std::get<DwarfRegAndOffsetType>(value);
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
         sizeAndArkDeopt.second.emplace_back(v);

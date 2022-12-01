@@ -388,6 +388,7 @@ void Heap::CollectGarbage(TriggerGCType gcType)
             fullGC_->RunPhasesForAppSpawn();
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }

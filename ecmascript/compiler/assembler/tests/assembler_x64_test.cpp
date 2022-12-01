@@ -93,6 +93,7 @@ public:
             LLVMInitializeARMAsmParser();
             LLVMInitializeARMTarget();
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

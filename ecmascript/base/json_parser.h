@@ -471,6 +471,7 @@ private:
                 case Tokens::LITERAL_NULL:
                     return JSTaggedValue::Null();
                 default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
             }
         }

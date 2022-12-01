@@ -1297,7 +1297,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             default:
-                LOG_ECMA_MEM(ERROR) << "JSType " << static_cast<int>(type) << " cannot be dumped.";
+                LOG_ECMA_MEM(FATAL) << "JSType " << static_cast<int>(type) << " cannot be dumped.";
                 UNREACHABLE();
                 break;
         }

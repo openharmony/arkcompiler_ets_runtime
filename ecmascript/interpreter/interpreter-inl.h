@@ -859,6 +859,7 @@ const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
         const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
         return jsPandaFile;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 

@@ -68,7 +68,7 @@ GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
 {
 #ifndef NDEBUG
     if (numIns != meta->GetNumIns()) {
-        LOG_COMPILER(ERROR) << "Invalid input list!"
+        LOG_COMPILER(FATAL) << "Invalid input list!"
                             << " op=" << meta->GetOpCode()
                             << " expected_num_in=" << meta->GetNumIns() << " actual_num_in=" << numIns;
         UNREACHABLE();
@@ -157,8 +157,6 @@ const Gate *Circuit::LoadGatePtrConst(GateRef shift) const
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     return reinterpret_cast<const Gate *>(GetDataPtrConst(shift));
 }
-
-
 
 void Circuit::AdvanceTime() const
 {

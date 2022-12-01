@@ -101,6 +101,7 @@ void AssemblerAarch64::Ldp(const Register &rt, const Register &rt2, const Memory
                 op = LoadStorePairOpCode::LDP_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         bool sf = !rt.IsW();
@@ -115,6 +116,7 @@ void AssemblerAarch64::Ldp(const Register &rt, const Register &rt2, const Memory
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -133,6 +135,7 @@ void AssemblerAarch64::Stp(const Register &rt, const Register &rt2, const Memory
                 op = LoadStorePairOpCode::STP_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         bool sf = !rt.IsW();
@@ -147,6 +150,7 @@ void AssemblerAarch64::Stp(const Register &rt, const Register &rt2, const Memory
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -165,6 +169,7 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
                 op = LoadStorePairOpCode::LDP_V_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
@@ -182,6 +187,7 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
                 imm >>= 4;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         uint32_t opc = GetOpcFromScale(vt.GetScale(), true);
@@ -190,6 +196,7 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -208,6 +215,7 @@ void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, 
                 op = LoadStorePairOpCode::STP_V_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
@@ -225,6 +233,7 @@ void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, 
                 imm >>= 4;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         uint32_t opc = GetOpcFromScale(vt.GetScale(), true);
@@ -233,6 +242,7 @@ void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, 
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -256,6 +266,7 @@ uint32_t AssemblerAarch64::GetOpcFromScale(Scale scale, bool ispair)
             opc = ispair ? 1 : 3;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 
@@ -329,6 +340,7 @@ void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
                 op = LoadStoreOpCode::STR_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         // 30: 30bit indicate the size of LDR Reg
@@ -337,6 +349,7 @@ void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -1170,6 +1183,7 @@ uint64_t AssemblerAarch64::GetOpcodeOfLdr(const MemoryOperand &operand, Scale sc
                 } else if (scale == Scale::Q) {
                     op = LoadStoreOpCode::LDR_Offset;
                 } else {
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
                 }
                 break;
@@ -1182,6 +1196,7 @@ uint64_t AssemblerAarch64::GetOpcodeOfLdr(const MemoryOperand &operand, Scale sc
                 } else if (scale == Scale::Q) {
                     op = LoadStoreOpCode::LDR_Pre;
                 } else {
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
                 }
                 break;
@@ -1194,11 +1209,13 @@ uint64_t AssemblerAarch64::GetOpcodeOfLdr(const MemoryOperand &operand, Scale sc
                 } else if (scale == Scale::Q) {
                     op = LoadStoreOpCode::LDR_Post;
                 } else {
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
                 }
                 break;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     } else {
@@ -1209,6 +1226,7 @@ uint64_t AssemblerAarch64::GetOpcodeOfLdr(const MemoryOperand &operand, Scale sc
         } else if (scale == Scale::Q) {
             op = LoadStoreOpCode::LDR_Register;
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

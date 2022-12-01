@@ -275,6 +275,7 @@ public:
             }
         }
         if (existIdx == -1) {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
         // e.Return value.

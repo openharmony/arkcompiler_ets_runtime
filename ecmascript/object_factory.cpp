@@ -1284,6 +1284,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             CjsRequire::Cast(*obj)->SetParent(thread_, JSTaggedValue::Undefined());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -1517,6 +1518,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
             function = JSHandle<JSFunction>::Cast(NewNonMovableJSObject(clazz));
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     clazz->SetCallable(true);
@@ -2090,6 +2092,7 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
             header = heap_->AllocateNonMovableOrHugeObject(arrayClass, size);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 
@@ -2215,6 +2218,7 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, 
             header = heap_->AllocateOldOrHugeObject(arrayClass, size);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     JSHandle<TaggedArray> array(thread_, header);

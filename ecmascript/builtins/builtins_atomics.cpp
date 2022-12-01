@@ -327,6 +327,7 @@ JSTaggedValue BuiltinsAtomics::AtomicReadModifyWriteCase(JSThread *thread, JSTag
         default:
             break;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 

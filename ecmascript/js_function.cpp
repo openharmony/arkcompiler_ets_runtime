@@ -689,6 +689,7 @@ JSTaggedValue JSFunction::GetFunctionExtraInfo() const
         } else if (value.IsJSNativePointer()) {
             return value;
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

@@ -1013,6 +1013,7 @@ bool JSTaggedValue::HasContainerProperty(JSThread *thread, const JSHandle<JSTagg
             return JSHandle<JSAPIVector>::Cast(obj)->Has(key.GetTaggedValue());
         }
         default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
@@ -1057,6 +1058,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerPropertyKeys(JSThread *threa
             return JSAPIVector::OwnKeys(thread, JSHandle<JSAPIVector>::Cast(obj));
         }
         default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

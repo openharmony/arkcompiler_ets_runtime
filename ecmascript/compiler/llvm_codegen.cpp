@@ -235,6 +235,7 @@ void LLVMAssembler::Initialize(LOptions option)
         LLVMInitializeARMAsmParser();
         LLVMInitializeARMTarget();
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     llvm::linkAllBuiltinGCs();

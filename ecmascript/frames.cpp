@@ -260,6 +260,7 @@ void FrameIterator::Advance()
             break;
         }
         default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

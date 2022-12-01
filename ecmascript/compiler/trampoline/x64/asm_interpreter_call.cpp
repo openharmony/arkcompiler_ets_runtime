@@ -569,6 +569,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
             return __ CppJSCallAvailableRegister2();
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return rInvalid;
@@ -589,6 +590,7 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
             return defaultRegister;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return rInvalid;

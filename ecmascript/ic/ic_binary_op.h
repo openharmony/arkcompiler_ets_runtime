@@ -92,6 +92,7 @@ public:
                 return res;
             }
             default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }
@@ -125,6 +126,7 @@ public:
             case BinaryType::STRING:
             case BinaryType::STRING_GEN:
             default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }
@@ -158,6 +160,7 @@ public:
             case BinaryType::STRING:
             case BinaryType::STRING_GEN:
             default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }
@@ -192,6 +195,7 @@ public:
             case BinaryType::STRING:
             case BinaryType::STRING_GEN:
             default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }
@@ -238,6 +242,7 @@ public:
             case BinaryType::STRING:
             case BinaryType::STRING_GEN:
             default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }
@@ -273,6 +278,7 @@ public:
             case BinaryType::STRING:
             case BinaryType::STRING_GEN:
             default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }

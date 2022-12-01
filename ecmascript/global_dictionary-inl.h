@@ -37,6 +37,7 @@ int GlobalDictionary::Hash(const JSTaggedValue &key)
         }
     }
     // key must be object
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 

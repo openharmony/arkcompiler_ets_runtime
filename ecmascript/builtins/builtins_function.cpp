@@ -82,6 +82,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         size_t res = MakeArgListWithHole(thread, elements, length);
         return std::make_pair(elements, res);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }

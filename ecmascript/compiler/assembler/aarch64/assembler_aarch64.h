@@ -106,6 +106,7 @@ public:
         } else if (scale_ == Q) {
             return 128;
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 private:

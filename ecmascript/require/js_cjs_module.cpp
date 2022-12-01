@@ -120,7 +120,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     // Search from Module.cache after execution.
     JSHandle<JSTaggedValue> cachedExports = SearchFromModuleCache(thread, filename);
     if (cachedExports->IsHole()) {
-        LOG_ECMA(ERROR) << "CJS REQUIRE FAIL : Can not obtain module, after executing required jsPandaFile";
+        LOG_ECMA(FATAL) << "CJS REQUIRE FAIL : Can not obtain module, after executing required jsPandaFile";
         UNREACHABLE();
     }
     return cachedExports;
@@ -132,7 +132,7 @@ void CjsModule::RequireExecution(JSThread *thread, const JSHandle<EcmaString> &m
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr, JSPandaFile::ENTRY_MAIN_FUNCTION);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "open jsPandaFile " << moduleFilenameStr << " error";
+        LOG_ECMA(FATAL) << "open jsPandaFile " << moduleFilenameStr << " error";
         UNREACHABLE();
     }
     JSPandaFileExecutor::Execute(thread, jsPandaFile, JSPandaFile::ENTRY_FUNCTION_NAME);

@@ -139,6 +139,7 @@ void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType src
         result = IntToTaggedIntPtr(builder_.Int32(0));
         builder_.Jump(&exit);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     builder_.Bind(&exit);
@@ -157,6 +158,7 @@ void TypeLowering::LowerTypeCheck(GateRef gate)
     } else if (type.IsBooleanType()) {
         LowerBooleanCheck(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -184,6 +186,7 @@ void TypeLowering::LowerObjectTypeCheck(GateRef gate, GateRef glue)
     } else if (tsManager_->IsClassTypeKind(type)) {
         LowerNewObjTypeCheck(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -279,6 +282,7 @@ void TypeLowering::LowerLoadElement(GateRef gate)
             LowerFloat32ArrayLoadElement(gate);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -331,6 +335,7 @@ void TypeLowering::LowerStoreElement(GateRef gate, GateRef glue)
             LowerFloat32ArrayStoreElement(gate, glue);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -405,6 +410,7 @@ void TypeLowering::LowerHeapAllocate(GateRef gate, GateRef glue)
             LowerHeapAllocateInYoung(gate, glue);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -643,6 +649,7 @@ void TypeLowering::LowerTypedAdd(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberAdd(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -655,6 +662,7 @@ void TypeLowering::LowerTypedSub(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberSub(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -667,6 +675,7 @@ void TypeLowering::LowerTypedMul(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberMul(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -679,6 +688,7 @@ void TypeLowering::LowerTypedMod(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberMod(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -691,6 +701,7 @@ void TypeLowering::LowerTypedLess(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberLess(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -703,6 +714,7 @@ void TypeLowering::LowerTypedLessEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberLessEq(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -715,6 +727,7 @@ void TypeLowering::LowerTypedGreater(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberGreater(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -739,6 +752,7 @@ void TypeLowering::LowerTypedDiv(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberDiv(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -751,6 +765,7 @@ void TypeLowering::LowerTypedEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberEq(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -763,6 +778,7 @@ void TypeLowering::LowerTypedNotEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberNotEq(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -787,6 +803,7 @@ void TypeLowering::LowerTypedShr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberShr(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -799,6 +816,7 @@ void TypeLowering::LowerTypedAshr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberAshr(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -811,6 +829,7 @@ void TypeLowering::LowerTypedAnd(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberAnd(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -823,6 +842,7 @@ void TypeLowering::LowerTypedOr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberOr(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -835,6 +855,7 @@ void TypeLowering::LowerTypedXor(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberXor(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -846,6 +867,7 @@ void TypeLowering::LowerTypedInc(GateRef gate)
     if (value.IsNumberType()) {
         LowerNumberInc(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -857,6 +879,7 @@ void TypeLowering::LowerTypedDec(GateRef gate)
     if (value.IsNumberType()) {
         LowerNumberDec(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -868,6 +891,7 @@ void TypeLowering::LowerTypedNeg(GateRef gate)
     if (value.IsNumberType()) {
         LowerNumberNeg(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -881,6 +905,7 @@ void TypeLowering::LowerTypedToBool(GateRef gate)
     } else if (value.IsBooleanType()) {
         LowerBooleanToBool(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -892,6 +917,7 @@ void TypeLowering::LowerTypedNot(GateRef gate)
     if (value.IsNumberType()) {
         LowerNumberNot(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -1464,6 +1490,7 @@ GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right,
                 break;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
         }
@@ -1571,6 +1598,7 @@ GateRef TypeLowering::LogicalNumbers(GateRef left, GateRef right, GateType leftT
                 break;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
         }

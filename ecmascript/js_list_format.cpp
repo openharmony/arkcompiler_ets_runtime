@@ -177,6 +177,7 @@ JSHandle<JSListFormat> JSListFormat::InitializeListFormat(JSThread *thread,
             uType = ULISTFMT_TYPE_UNITS;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 
@@ -193,6 +194,7 @@ JSHandle<JSListFormat> JSListFormat::InitializeListFormat(JSThread *thread,
             uStyle = ULISTFMT_WIDTH_NARROW;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     UErrorCode status = U_ZERO_ERROR;
@@ -326,6 +328,7 @@ namespace {
                 result.Update(globalConst->GetHandledNarrowString().GetTaggedValue());
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return result;
@@ -346,6 +349,7 @@ namespace {
                 result.Update(globalConst->GetHandledUnitString().GetTaggedValue());
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return result;

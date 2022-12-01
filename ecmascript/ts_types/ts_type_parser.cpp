@@ -133,6 +133,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
             return JSHandle<JSTaggedValue>(objectType);
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }

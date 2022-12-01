@@ -105,6 +105,7 @@ GateRef BuiltinLowering::TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID 
                         index = RTSTUB_ID(FloatSin);
                         break;
                     default:
+                        LOG_ECMA(FATAL) << "this branch is unreachable";
                         UNREACHABLE();
                 }
                 result = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {*value});
@@ -339,6 +340,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, BuiltinsStubCSigns::ID id)
             break;
         }
         default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

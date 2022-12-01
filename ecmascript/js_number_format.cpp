@@ -37,6 +37,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, StyleOption style)
             result.Update(globalConst->GetHandledUnitString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -60,6 +61,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, CurrencyDisplayOpti
             result.Update(globalConst->GetHandledNameString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -77,6 +79,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, CurrencySignOption 
             result.Update(globalConst->GetHandledAccountingString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -97,6 +100,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, UnitDisplayOption u
             result.Update(globalConst->GetHandledLongString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -120,6 +124,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, NotationOption nota
             result.Update(globalConst->GetHandledCompactString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -137,6 +142,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, CompactDisplayOptio
             result.Update(globalConst->GetHandledLongString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -160,6 +166,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, SignDisplayOption s
             result.Update(globalConst->GetHandledExceptZeroString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -380,6 +387,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
                     uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_FULL_NAME;
                     break;
                 default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
             }
             *icuNumberFormatter = icuNumberFormatter->unitWidth(uNumberUnitWidth);
@@ -531,6 +539,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
             uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_FULL_NAME;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     icuNumberFormatter = icuNumberFormatter.unitWidth(uNumberUnitWidth);

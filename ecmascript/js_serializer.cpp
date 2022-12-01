@@ -455,6 +455,7 @@ bool JSSerializer::WriteJSErrorHeader(JSType type)
         case JSType::JS_OOM_ERROR:
             return WriteType(SerializationUID::OOM_ERROR);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return false;
@@ -988,6 +989,7 @@ bool JSDeserializer::ReadInt(int32_t *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1001,6 +1003,7 @@ bool JSDeserializer::ReadObjectId(uint64_t *objectId)
         return false;
     }
     if (memcpy_s(objectId, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1014,6 +1017,7 @@ bool JSDeserializer::ReadDouble(double *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1228,6 +1232,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
             errorType = base::ErrorType::OOM_ERROR;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     JSHandle<JSTaggedValue> msg = DeserializeJSTaggedValue();
@@ -1493,6 +1498,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
             break;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     JSHandle<JSTypedArray> typedArray =
@@ -1582,6 +1588,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
         JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
         void *toBuffer = np->GetExternalPointer();
         if (memcpy_s(toBuffer, arrayLength, fromBuffer, arrayLength) != EOK) {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
@@ -1600,6 +1607,7 @@ bool JSDeserializer::ReadJSTaggedValue(JSTaggedValue *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1613,6 +1621,7 @@ bool JSDeserializer::ReadNativePointer(uintptr_t *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;

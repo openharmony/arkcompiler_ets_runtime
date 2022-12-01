@@ -213,6 +213,7 @@ JSHandle<JSPluralRules> JSPluralRules::InitializePluralRules(JSThread *thread,
             icuType = UPLURAL_TYPE_CARDINAL;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     std::unique_ptr<icu::PluralRules> icuPluralRules(icu::PluralRules::forLocale(icuLocale, icuType, status));
@@ -232,6 +233,7 @@ JSHandle<JSPluralRules> JSPluralRules::InitializePluralRules(JSThread *thread,
                 icuType = UPLURAL_TYPE_CARDINAL;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         icuPluralRules.reset(icu::PluralRules::forLocale(icuLocale, icuType, status));

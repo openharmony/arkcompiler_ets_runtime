@@ -195,6 +195,7 @@ private:
         if (triple.compare("arm-unknown-linux-gnu") == 0) {
             return Triple::TRIPLE_ARM32;
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     Triple triple_;

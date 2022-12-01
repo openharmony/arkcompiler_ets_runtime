@@ -81,7 +81,7 @@ inline bool JSTaggedValue::ToBoolean() const
         }
         return true;
     }
-
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -1363,6 +1363,7 @@ inline uint32_t JSTaggedValue::GetArrayLength() const
         ASSERT(GetDouble() <= TaggedArray::MAX_ARRAY_INDEX);
         return static_cast<uint32_t>(GetDouble());
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 

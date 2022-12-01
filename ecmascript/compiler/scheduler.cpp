@@ -121,6 +121,7 @@ void Scheduler::Run(const Circuit *circuit, ControlFlowGraph &result,
 {
 #ifndef NDEBUG
     if (!Verifier::Run(circuit, methodName, enableLog)) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 #endif

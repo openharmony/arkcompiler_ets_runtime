@@ -1217,6 +1217,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
             }
         }
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
