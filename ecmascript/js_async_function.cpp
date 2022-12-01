@@ -171,12 +171,12 @@ JSHandle<JSTaggedValue> JSAsyncAwaitStatusFunction::AsyncFunctionAwaitFulfilled(
         // 4.Push asyncContext onto the execution context stack; asyncContext is now the running execution context.
         // 5.Resume the suspended evaluation of asyncContext using NormalCompletion(value) as the result of the
         //   operation that suspended it. Let result be the value returned by the resumed computation.
-        JSHandle<JSObject> result = GeneratorHelper::Next(thread, asyncCtxt, value.GetTaggedValue());
+        GeneratorHelper::Next(thread, asyncCtxt, value.GetTaggedValue());
         // 6.Assert: When we reach this step, asyncContext has already been removed from the execution context stack
         //   and prevContext is the currently running execution context.
 
         // 7.Return Completion(result).
-        return JSHandle<JSTaggedValue>::Cast(result);
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
     }
 }
 
