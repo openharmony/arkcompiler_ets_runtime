@@ -69,6 +69,7 @@ group("ark_js_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/dfx/pgo_profiler/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/ic/tests:unittest",
+      "//arkcompiler/ets_runtime/ecmascript/interpreter/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/jobs/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/module/tests:unittest",
@@ -76,6 +77,7 @@ group("ark_js_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/regexp/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/require/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:unittest",
+      "//arkcompiler/ets_runtime/ecmascript/stubs/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:unittest",
     ]
     if (is_ohos && is_standard_system) {
@@ -102,6 +104,7 @@ group("ark_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/dfx/pgo_profiler/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/ic/tests:host_unittest",
+      "//arkcompiler/ets_runtime/ecmascript/interpreter/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/jobs/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/module/tests:host_unittest",
@@ -109,6 +112,7 @@ group("ark_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/regexp/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/require/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:host_unittest",
+      "//arkcompiler/ets_runtime/ecmascript/stubs/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:host_unittest",
     ]
     if (is_standard_system && !run_with_asan) {
