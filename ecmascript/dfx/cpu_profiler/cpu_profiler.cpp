@@ -568,7 +568,7 @@ bool CpuProfiler::CheckFrameType(JSThread *thread, JSTaggedType *sp)
     if (preSp == nullptr) {
         return true;
     }
-    if (!thread->IsLegalAsmSp(reinterpret_cast<uintptr_t>(preSp))) {
+    if (!thread->IsLegalSp(reinterpret_cast<uintptr_t>(preSp))) {
         return false;
     }
     type = FrameHandler::GetFrameType(preSp);

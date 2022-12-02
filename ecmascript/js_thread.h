@@ -538,6 +538,10 @@ public:
 
     bool IsLegalAsmSp(uintptr_t sp) const;
 
+    bool IsLegalThreadSp(uintptr_t sp) const;
+
+    bool IsLegalSp(uintptr_t sp) const;
+
     bool IsPrintBCOffset() const
     {
         return enablePrintBCOffset_;
