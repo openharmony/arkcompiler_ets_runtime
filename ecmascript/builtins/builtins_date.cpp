@@ -31,6 +31,7 @@ namespace panda::ecmascript::builtins {
 // constructor
 JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_ENTRY_DEBUG_LOG();
     BUILTINS_API_TRACE(argv->GetThread(), Date, Constructor);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -92,7 +93,7 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
         JSHandle<JSDate>::Cast(factory->NewJSObjectByConstructor(constructor, newTarget));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     dateObject->SetTimeValue(thread, timeValue);
-    return JSTaggedValue(JSObject::Cast(static_cast<TaggedObject *>(*dateObject)));
+    return dateObject.GetTaggedValue();
 }
 
 // 20.4.3.1

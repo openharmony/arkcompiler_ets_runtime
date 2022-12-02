@@ -150,6 +150,7 @@ public:
     static constexpr uint16_t HUNDRED = 100;
     static constexpr uint16_t THOUSAND = 1000;
     static double SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
+    static double SetDateValues(int64_t year, int64_t month, int64_t day);
     static void GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
     static CString StrToTargetLength(const CString &str, int length);
     DECL_DUMP()

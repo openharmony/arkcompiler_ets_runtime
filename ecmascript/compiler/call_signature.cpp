@@ -1485,4 +1485,34 @@ DEF_CALL_SIGNATURE(DeoptHandlerAsm)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
     callSign->SetTargetKind(CallSignature::TargetKind::DEOPT_STUB);
 }
+
+DEF_CALL_SIGNATURE(TimeClip)
+{
+    // 1 : 1 input parameters
+    CallSignature index("TimeClip", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(SetDateValues)
+{
+    // 3 : 3 input parameters
+    CallSignature index("SetDateValues", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
+    *callSign = index;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::FLOAT64(),
+        VariableType::FLOAT64(),
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
 }  // namespace panda::ecmascript::kungfu
