@@ -1517,7 +1517,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     SetFunction(env, mathObject, "cosh", Math::Cosh, FunctionLength::ONE);
     SetFunction(env, mathObject, "exp", Math::Exp, FunctionLength::ONE);
     SetFunction(env, mathObject, "expm1", Math::Expm1, FunctionLength::ONE);
-    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE, 
+    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE,
                 static_cast<uint8_t>(BUILTINS_STUB_ID(FLOOR)));
     SetFunction(env, mathObject, "fround", Math::Fround, FunctionLength::ONE);
     SetFunction(env, mathObject, "hypot", Math::Hypot, FunctionLength::TWO);
