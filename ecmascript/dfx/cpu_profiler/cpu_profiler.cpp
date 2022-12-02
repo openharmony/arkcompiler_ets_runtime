@@ -171,7 +171,7 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
 
 void CpuProfiler::SetCpuSamplingInterval(int interval)
 {
-    interval_ = interval;
+    interval_ = static_cast<uint32_t>(interval);
 }
 
 void CpuProfiler::SetCallNapiGetStack(bool getStack)

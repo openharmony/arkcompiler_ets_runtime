@@ -308,39 +308,39 @@ void SamplesRecord::StatisticStateTime(int timeDelta, RunningState state)
 {
     switch(state) {
         case RunningState::GC: {
-            profileInfo_->gcTime += timeDelta;
+            profileInfo_->gcTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         case RunningState::CINT: {
-            profileInfo_->cInterpreterTime += timeDelta;
+            profileInfo_->cInterpreterTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         case RunningState::AINT: {
-            profileInfo_->asmInterpreterTime += timeDelta;
+            profileInfo_->asmInterpreterTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         case RunningState::AOT: {
-            profileInfo_->aotTime += timeDelta;
+            profileInfo_->aotTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         case RunningState::BUILTIN: {
-            profileInfo_->builtinTime += timeDelta;
+            profileInfo_->builtinTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         case RunningState::NAPI: {
-            profileInfo_->napiTime += timeDelta;
+            profileInfo_->napiTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         case RunningState::ARKUI_ENGINE: {
-            profileInfo_->arkuiEngineTime += timeDelta;
+            profileInfo_->arkuiEngineTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         case RunningState::RUNTIME: {
-            profileInfo_->runtimeTime += timeDelta;
+            profileInfo_->runtimeTime += static_cast<uint64_t>(timeDelta);
             return;
         }
         default: {
-            profileInfo_->otherTime += timeDelta;
+            profileInfo_->otherTime += static_cast<uint64_t>(timeDelta);
             return;
         }
     }
