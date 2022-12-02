@@ -32,7 +32,7 @@ const int NSEC_PER_USEC = 1000;
 SamplingProcessor::SamplingProcessor(int32_t id, SamplesRecord *generator, int interval) : Task(id)
 {
     generator_ = generator;
-    interval_ = interval;
+    interval_ = static_cast<uint32_t>(interval);
     pid_ = pthread_self();
 }
 SamplingProcessor::~SamplingProcessor() {}
@@ -83,7 +83,7 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
                 return false;
             }
             startTime = GetMicrosecondsTimeStamp();
-            int64_t ts = interval_ - static_cast<int64_t>(startTime - endTime);
+            int64_t ts = static_cast<int64_t>(interval_) - static_cast<int64_t>(startTime - endTime);
             endTime = startTime;
             if (ts > 0 && !generator_->GetBeforeGetCallNapiStackFlag() && !generator_->GetCallNapiFlag()) {
                 usleep(ts);
