@@ -66,7 +66,7 @@ static JSFunction *JSObjectTestCreate(JSThread *thread)
 HWTEST_F_L0(RuntimeStubsTest, GetSymbolFunction)
 {
     auto glue = thread->GetGlueAddr();
-    JSTaggedValue result = 
+    JSTaggedValue result =
         JSTaggedValue(RuntimeStubs::GetSymbolFunction(glue, 0, reinterpret_cast<uintptr_t>(nullptr)));
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> globalEnv = ecmaVm->GetGlobalEnv();
@@ -99,7 +99,7 @@ HWTEST_F_L0(RuntimeStubsTest, GetTaggedArrayPtrTest)
 {
     auto glue = thread->GetGlueAddr();
     JSTaggedType arr = JSTaggedValue::VALUE_UNDEFINED;
-    JSTaggedValue result = 
+    JSTaggedValue result =
         JSTaggedValue(RuntimeStubs::GetTaggedArrayPtrTest(glue, 1, reinterpret_cast<uintptr_t>(&arr)));
     ASSERT_TRUE(result.IsTaggedArray());
 }
@@ -115,7 +115,7 @@ HWTEST_F_L0(RuntimeStubsTest, ThrowDeleteSuperProperty)
 HWTEST_F_L0(RuntimeStubsTest, ThrowNonConstructorException)
 {
     auto glue = thread->GetGlueAddr();
-    JSTaggedValue result = 
+    JSTaggedValue result =
         JSTaggedValue(RuntimeStubs::ThrowNonConstructorException(glue, 0, reinterpret_cast<uintptr_t>(nullptr)));
     ASSERT_TRUE(result.IsException());
 }
