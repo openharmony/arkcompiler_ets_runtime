@@ -272,7 +272,7 @@ void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint3
     ARKDeopt v;
     for (size_t i = 0; i < deopt.size(); i += 2) { // 2:<id, value>
         ASSERT(std::holds_alternative<OffsetType>(deopt[i]));
-        auto &id = std::get<OffsetType>(deopt[i]);
+        const auto &id = std::get<OffsetType>(deopt[i]);
         total += sizeof(OffsetType);
         v.Id = id;
         total += sizeof(LocationTy::Kind); // derive

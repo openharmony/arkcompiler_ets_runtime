@@ -279,7 +279,7 @@ bool Scheduler::CalculateSchedulingUpperBound(const Circuit *circuit,
         while (!dfsStack.empty()) {
             auto &curState = dfsStack.top();
             auto &curGate = curState.curGate;
-            auto &predGates = curState.predGates;
+            const auto &predGates = curState.predGates;
             auto &idx = curState.idx;
             auto &curUpperBound = curState.curUpperBound;
             if (idx == predGates.size()) {
