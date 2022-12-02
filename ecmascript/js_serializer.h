@@ -168,7 +168,7 @@ public:
     {
     }
     ~JSDeserializer();
-    JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
+    JSHandle<JSTaggedValue> Deserialize();
 
 private:
     bool ReadInt(int32_t *value);
@@ -193,6 +193,7 @@ private:
     JSHandle<JSTaggedValue> ReadJSArrayBuffer();
     JSHandle<JSTaggedValue> ReadReference();
     JSHandle<JSTaggedValue> ReadNativeBindingObject();
+    JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
     bool JudgeType(SerializationUID targetUid);
     void *GetBuffer(uint32_t bufferSize);
     bool ReadJSTaggedValue(JSTaggedValue *originalFlags);
@@ -208,7 +209,7 @@ private:
     ObjectFactory *factory_ = nullptr;
     uint8_t *begin_ = nullptr;
     const uint8_t *position_ = nullptr;
-    const uint8_t * const end_ = nullptr;
+    const uint8_t *end_ = nullptr;
     uint64_t objectId_ = 0;
     std::map<uint64_t, JSHandle<JSTaggedValue>> referenceMap_;
     void *engine_ = nullptr;

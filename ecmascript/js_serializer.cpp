@@ -1031,6 +1031,18 @@ JSDeserializer::~JSDeserializer()
     begin_ = nullptr;
 }
 
+JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
+{
+    size_t maxJSSerializerSize_ = thread_->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
+    uint8_t dataSize = end_ - begin_;
+    if (dataSize > maxJSSerializerSize_) {
+        LOG_ECMA(ERROR) << "The Serialization data size exceed limit Size";
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<JSTaggedValue> res = DeserializeJSTaggedValue();
+    return res;
+}
+
 JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
 {
     SerializationUID uid = ReadType();
@@ -1820,6 +1832,6 @@ bool Serializer::FinalizeTransfer(JSThread *thread, const JSHandle<JSTaggedValue
 
 JSHandle<JSTaggedValue> Deserializer::ReadValue()
 {
-    return valueDeserializer_.DeserializeJSTaggedValue();
+    return valueDeserializer_.Deserialize();
 }
 }  // namespace panda::ecmascript

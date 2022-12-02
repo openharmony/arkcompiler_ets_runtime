@@ -61,6 +61,7 @@ public:
             minAllocLimitGrowingStep_ = 2_MB;
             minGrowingStep_ = 4_MB;
             maxStackSize_ = 128_KB;
+            maxJSSerializerSize_ = 16_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -74,6 +75,7 @@ public:
             minAllocLimitGrowingStep_ = 4_MB;
             minGrowingStep_ = 8_MB;
             maxStackSize_ = 128_KB;
+            maxJSSerializerSize_ = 32_MB;
         }  else { // 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -87,6 +89,7 @@ public:
             minAllocLimitGrowingStep_ = 8_MB;
             minGrowingStep_ = 16_MB;
             maxStackSize_ = 128_KB;
+            maxJSSerializerSize_ = 32_MB;
         }
     }
 
@@ -165,6 +168,11 @@ public:
         return DEFAULT_RESERVED_STACK_SIZE;
     }
 
+    size_t GetMaxJSSerializerSize() const
+    {
+        return maxJSSerializerSize_;
+    }
+
 private:
     static constexpr size_t LOW_MEMORY = 64_MB;
     static constexpr size_t MEDIUM_MEMORY = 128_MB;
@@ -184,6 +192,7 @@ private:
     size_t outOfMemoryOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};
     size_t minGrowingStep_ {0};
+    size_t maxJSSerializerSize_ {0};
     uint32_t maxStackSize_ {0};
 };
 } // namespace panda::ecmascript
