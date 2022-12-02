@@ -39,8 +39,16 @@ namespace panda::ecmascript {
     V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
-    V(IsBoundFunction)                                                                       \
-    V(IsCallable)
+    V(IsCallable)                                                                            \
+    V(LoadHClass)                                                                            \
+    V(IsDictionaryMode)                                                                      \
+    V(IsClassConstructor)                                                                    \
+    V(IsClassPrototype)                                                                      \
+    V(IsExtensible)                                                                          \
+    V(IsEcmaObject)                                                                          \
+    V(IsJSObject)                                                                            \
+    V(IsString)                                                                              \
+    V(IsJSHClass)
 
 class MessageString {
 public:

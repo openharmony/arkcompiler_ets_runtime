@@ -894,13 +894,19 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
 
 inline GateRef StubBuilder::IsJSHClass(GateRef obj)
 {
-    return env_->GetBuilder()->IsJSHClass(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSHClass), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->IsJSHClass(obj);
+    EXITENTRY();
+    return res;
 }
 
 // object operation
 inline GateRef StubBuilder::LoadHClass(GateRef object)
 {
-    return env_->GetBuilder()->LoadHClass(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(LoadHClass), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->LoadHClass(object);
+    EXITENTRY();
+    return res;
 }
 
 inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
@@ -915,7 +921,10 @@ inline GateRef StubBuilder::GetObjectType(GateRef hClass)
 
 inline GateRef StubBuilder::IsDictionaryMode(GateRef object)
 {
-    return env_->GetBuilder()->IsDictionaryMode(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsDictionaryMode), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->IsDictionaryMode(object);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsDictionaryModeByHClass(GateRef hClass)
@@ -939,22 +948,34 @@ inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
 
 inline GateRef StubBuilder::IsClassConstructor(GateRef object)
 {
-    return env_->GetBuilder()->IsClassConstructor(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsClassConstructor), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->IsClassConstructor(object);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsClassPrototype(GateRef object)
 {
-    return env_->GetBuilder()->IsClassPrototype(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsClassPrototype), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->IsClassPrototype(object);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsExtensible(GateRef object)
 {
-    return env_->GetBuilder()->IsExtensible(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsExtensible), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->IsExtensible(object);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
-    return env_->GetBuilder()->TaggedObjectIsEcmaObject(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsEcmaObject), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->TaggedObjectIsEcmaObject(obj);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
@@ -965,7 +986,10 @@ inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
 
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
 {
-    return env_->GetBuilder()->IsJSObject(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSObject), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->IsJSObject(obj);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsJSFunctionBase(GateRef obj)
@@ -1711,7 +1735,10 @@ inline GateRef StubBuilder::IsCallableFromBitField(GateRef bitfield)
 
 inline GateRef StubBuilder::IsCallable(GateRef obj)
 {
-    return env_->GetBuilder()->IsCallable(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->IsCallable(obj);
+    EXITENTRY();
+    return res;
 }
 
 // GetOffset func in property_attribute.h
