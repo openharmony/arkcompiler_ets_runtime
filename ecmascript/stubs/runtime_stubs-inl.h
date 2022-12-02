@@ -642,6 +642,9 @@ JSTaggedValue RuntimeStubs::RuntimeNeg(JSThread *thread, const JSHandle<JSTagged
         if (intValue == 0) {
             return JSTaggedValue(-0.0);
         }
+        if (intValue == INT32_MIN) {
+            return JSTaggedValue(-static_cast<double>(INT32_MIN));
+        }
         return JSTaggedValue(-intValue);
     }
     if (number.IsDouble()) {

@@ -616,14 +616,28 @@ GateRef TSTypeLowering::AppendOverflowCheck(GateRef typeCheck, GateRef intVal)
         case TypedUnOp::TYPED_INC: {
             auto max = builder_.Int64(INT32_MAX);
             auto rangeCheck = builder_.Int64NotEqual(intVal, max);
-            check = typeCheck != Circuit::NullGate() ? builder_.BoolAnd(typeCheck, rangeCheck) : rangeCheck;
+            check = typeCheck != Circuit::NullGate()
+                    ? builder_.BoolAnd(typeCheck, rangeCheck)
+                    : rangeCheck;
             break;
         }
-        case TypedUnOp::TYPED_NEG:
         case TypedUnOp::TYPED_DEC: {
             auto min = builder_.Int64(INT32_MIN);
             auto rangeCheck = builder_.Int64NotEqual(intVal, min);
-            check = typeCheck != Circuit::NullGate() ? builder_.BoolAnd(typeCheck, rangeCheck) : rangeCheck;
+            check = typeCheck != Circuit::NullGate()
+                    ? builder_.BoolAnd(typeCheck, rangeCheck)
+                    : rangeCheck;
+            break;
+        }
+        case TypedUnOp::TYPED_NEG: {
+            auto min = builder_.Int64(INT32_MIN);
+            auto zero = builder_.Int64(0);
+            auto notMin = builder_.Int64NotEqual(intVal, min);
+            auto notZero = builder_.Int64NotEqual(intVal, zero);
+            auto rangeCheck = builder_.BoolAnd(notMin, notZero);
+            check = typeCheck != Circuit::NullGate()
+                    ? builder_.BoolAnd(typeCheck, rangeCheck)
+                    : rangeCheck;
             break;
         }
         default:

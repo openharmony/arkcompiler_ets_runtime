@@ -1134,25 +1134,10 @@ void TypeLowering::LowerNumberNeg(GateRef gate)
     GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     if (valueType.IsIntType()) {
-        Label valueIsZero(&builder_);
-        Label valueNotZero(&builder_);
-        Label exit(&builder_);
-
         // value is int
         GateRef intVal = builder_.GetInt64OfTInt(value);
-        builder_.Branch(builder_.Int64Equal(intVal, builder_.Int64(0)), &valueIsZero, &valueNotZero);
-        builder_.Bind(&valueIsZero);
-        {
-            result = DoubleToTaggedDoublePtr(builder_.Double(-0.0));
-            builder_.Jump(&exit);
-        }
-        builder_.Bind(&valueNotZero);
-        {
-            GateRef res = BinaryOp<OpCode::SUB, MachineType::I64>(builder_.Int64(0), intVal);
-            result = builder_.ToTaggedIntPtr(res);
-            builder_.Jump(&exit);
-        }
-        builder_.Bind(&exit);
+        GateRef res = BinaryOp<OpCode::SUB, MachineType::I64>(builder_.Int64(0), intVal);
+        result = builder_.ToTaggedIntPtr(res);
     } else if (valueType.IsDoubleType()) {
         // value is double
         GateRef doubleVal = builder_.GetDoubleOfTDouble(value);
