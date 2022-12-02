@@ -593,7 +593,7 @@ bool CpuProfiler::CheckFrameType(JSThread *thread, JSTaggedType *sp)
         return true;
     }
 #if defined(PANDA_TARGET_64)
-    if (thread->IsAsmInterpreter() && !thread->IsLegalAsmSp(reinterpret_cast<uintptr_t>(preSp))) {
+    if (thread->IsAsmInterpreter() && !thread->IsLegalSp(reinterpret_cast<uintptr_t>(preSp))) {
         return false;
     }
 #endif
