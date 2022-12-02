@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/js_primitive_ref.h"
 
 namespace panda::ecmascript::kungfu {
@@ -59,7 +60,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, Ga
                                             GateRef newTarget, GateRef thisValue, GateRef numArgs)
 #endif
 
-GateRef BuiltinsStubBuilder::GetCallArgWithArgv(GateRef numArgs, GateRef index)
+GateRef BuiltinsStubBuilder::GetArg(GateRef numArgs, GateRef index)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -70,8 +71,8 @@ GateRef BuiltinsStubBuilder::GetCallArgWithArgv(GateRef numArgs, GateRef index)
     Branch(IntPtrGreaterThan(numArgs, index), &validIndex, &exit);
     Bind(&validIndex);
     {
-        GateRef argv = GetCallArgv();
-        arg = Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(sizeof(JSTaggedType))));
+        GateRef argv = GetArgv();
+        arg = Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(JSTaggedValue::TaggedTypeSize())));
         Jump(&exit);
     }
     Bind(&exit);
@@ -98,8 +99,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
     Branch(Int64Equal(numArgs, IntPtr(0)), &callThis0, &notcallThis0);
     Bind(&callThis0);
     {
-        result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
-            { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue });
+        result = CallBuiltinRuntime(glue, { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue });
         Jump(&exit);
     }
     Bind(&notcallThis0);
@@ -108,8 +108,8 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
         Bind(&callThis1);
         {
             GateRef arg0 = GetCallArg0();
-            result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
-                { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0 });
+            result =
+                CallBuiltinRuntime(glue, { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0 });
             Jump(&exit);
         }
         Bind(&notcallThis1);
@@ -119,7 +119,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
             {
                 GateRef arg0 = GetCallArg0();
                 GateRef arg1 = GetCallArg1();
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                result = CallBuiltinRuntime(glue,
                     { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1 });
                 Jump(&exit);
             }
@@ -128,7 +128,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
                 GateRef arg0 = GetCallArg0();
                 GateRef arg1 = GetCallArg1();
                 GateRef arg2 = GetCallArg2();
-                result = CallNGCRuntime(glue, RTSTUB_ID(PushCallArgsAndDispatchNative),
+                result = CallBuiltinRuntime(glue,
                     { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1, arg2 });
                 Jump(&exit);
             }
@@ -851,7 +851,7 @@ DECLARE_BUILTINS(BooleanConstructor)
             Bind(&afterNew);
             {
                 GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
-                GateRef value = GetCallArgWithArgv(numArgs, IntPtr(0));
+                GateRef value = GetArg(numArgs, IntPtr(0));
                 Store(VariableType::INT64(), glue, *res, valueOffset, FastToBoolean(value));
                 Jump(&exit);
             }
@@ -859,9 +859,89 @@ DECLARE_BUILTINS(BooleanConstructor)
     }
     Bind(&slowPath);
     {
-        GateRef argv = GetCallArgv();
-        res = CallNGCRuntime(glue, RTSTUB_ID(PushCallNewAndDispatchNative),
-                             { glue, nativeCode, func, thisValue, numArgs, argv });
+        GateRef argv = GetArgv();
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(DateConstructor)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+
+    Label newTargetIsJSFunction(env);
+    Label slowPath(env);
+    Label exit(env);
+
+    Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    Bind(&newTargetIsJSFunction);
+    {
+        Label intialHClassIsHClass(env);
+        GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
+                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath);
+        Bind(&intialHClassIsHClass);
+        {
+            Label oneArg(env);
+            Label notOneArg(env);
+            Label newJSDate(env);
+            DEFVARIABLE(timeValue, VariableType::FLOAT64(), Double(0));
+            Branch(Int64Equal(numArgs, IntPtr(1)), &oneArg, &notOneArg);
+            Bind(&oneArg);
+            {
+                Label valueIsNumber(env);
+                GateRef value = GetArgNCheck(IntPtr(0));
+                Branch(TaggedIsNumber(value), &valueIsNumber, &slowPath);
+                Bind(&valueIsNumber);
+                {
+                    timeValue = CallNGCRuntime(glue, RTSTUB_ID(TimeClip), {GetDoubleOfTNumber(value)});
+                    Jump(&newJSDate);
+                }
+            }
+            Bind(&notOneArg);
+            {
+                Label threeArgs(env);
+                Branch(Int64Equal(numArgs, IntPtr(3)), &threeArgs, &slowPath);  // 3: year month day
+                Bind(&threeArgs);
+                {
+                    Label numberYearMonthDay(env);
+                    GateRef year = GetArgNCheck(IntPtr(0));
+                    GateRef month = GetArgNCheck(IntPtr(1));
+                    GateRef day = GetArgNCheck(IntPtr(2));
+                    Branch(IsNumberYearMonthDay(year, month, day), &numberYearMonthDay, &slowPath);
+                    Bind(&numberYearMonthDay);
+                    {
+                        GateRef y = GetDoubleOfTNumber(year);
+                        GateRef m = GetDoubleOfTNumber(month);
+                        GateRef d = GetDoubleOfTNumber(day);
+                        timeValue = CallNGCRuntime(glue, RTSTUB_ID(SetDateValues), {y, m, d});
+                        Jump(&newJSDate);
+                    }
+                }
+            }
+            Bind(&newJSDate);
+            {
+                NewObjectStubBuilder newBuilder(this);
+                newBuilder.SetParameters(glue, 0);
+                Label afterNew(env);
+                newBuilder.NewJSObject(&res, &afterNew, intialHClass);
+                Bind(&afterNew);
+                {
+                    GateRef timeValueOffset = IntPtr(JSDate::TIME_VALUE_OFFSET);
+                    Store(VariableType::JS_NOT_POINTER(), glue, *res, timeValueOffset,
+                          DoubleToTaggedDoublePtr(*timeValue));
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&slowPath);
+    {
+        GateRef argv = GetArgv();
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
         Jump(&exit);
     }
     Bind(&exit);

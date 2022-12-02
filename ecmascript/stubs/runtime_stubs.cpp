@@ -34,6 +34,7 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_proxy.h"
@@ -2033,6 +2034,21 @@ bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
 {
     return BigInt::Equal(JSTaggedValue(left), JSTaggedValue(right));
+}
+
+double RuntimeStubs::TimeClip(double time)
+{
+    return JSDate::TimeClip(time);
+}
+
+double RuntimeStubs::SetDateValues(double year, double month, double day)
+{
+    if (std::isnan(year) || !std::isfinite(year) || std::isnan(month) || !std::isfinite(month) || std::isnan(day) ||
+        !std::isfinite(day)) {
+        return base::NAN_VALUE;
+    }
+
+    return JSDate::SetDateValues(static_cast<int64_t>(year), static_cast<int64_t>(month), static_cast<int64_t>(day));
 }
 
 JSTaggedValue RuntimeStubs::NewObject(EcmaRuntimeCallInfo *info)

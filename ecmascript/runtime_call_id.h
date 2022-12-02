@@ -161,6 +161,7 @@ namespace panda::ecmascript {
     V(ExecuteNative)                \
     V(Execute)                      \
     V(AsmExecute)                   \
+    V(ExecuteAot)                   \
     V(ToJSTaggedValueWithInt32)     \
     V(ToJSTaggedValueWithUint32)    \
     V(ThrowIfSuperNotCorrectCall)   \

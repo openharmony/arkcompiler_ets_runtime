@@ -105,6 +105,7 @@ public:
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
     GateRef CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
+    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
     void FatalPrint(GateRef thread, std::initializer_list<GateRef> args);
     // memory
@@ -400,6 +401,7 @@ public:
     GateRef GetInt64OfTInt(GateRef x);
     GateRef GetInt32OfTInt(GateRef x);
     GateRef GetDoubleOfTDouble(GateRef x);
+    GateRef GetDoubleOfTNumber(GateRef x);
     GateRef LoadObjectFromWeakRef(GateRef x);
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);

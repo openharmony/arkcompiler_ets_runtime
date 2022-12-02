@@ -178,14 +178,13 @@ using DeleteEntryPoint = void (*)(void *, void *);
 enum class RemoveSlots { YES, NO };
 enum class GrowMode { KEEP, GROW };
 
-constexpr uint8_t INVALID_BUILTINS_ID = 0xFF;
-
 class ObjectFactory {
 public:
     ObjectFactory(JSThread *thread, Heap *heap);
     ~ObjectFactory() = default;
     JSHandle<Method> NewMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-                                                uint8_t builtinId = INVALID_BUILTINS_ID);
+                                                kungfu::BuiltinsStubCSigns::ID builtinId =
+                                                kungfu::BuiltinsStubCSigns::INVALID);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
@@ -208,7 +207,7 @@ public:
     // use for native function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-                                       uint8_t builtinId = INVALID_BUILTINS_ID);
+                                       kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 

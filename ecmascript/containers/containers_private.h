@@ -50,9 +50,11 @@ private:
     static JSHandle<JSFunction> NewContainerConstructor(JSThread *thread, const JSHandle<JSObject> &prototype,
                                                         EcmaEntrypoint ctorFunc, const char *name, int length);
     static JSHandle<JSFunction> NewFunction(JSThread *thread, const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func,
-                                            int length, uint8_t builtinId = INVALID_BUILTINS_ID);
+                                            int length, kungfu::BuiltinsStubCSigns::ID builtinId =
+                                            kungfu::BuiltinsStubCSigns::INVALID);
     static void SetFrozenFunction(JSThread *thread, const JSHandle<JSObject> &obj, const char *key, EcmaEntrypoint func,
-                                  int length, uint8_t builtinId = INVALID_BUILTINS_ID);
+                                  int length, kungfu::BuiltinsStubCSigns::ID builtinId =
+                                  kungfu::BuiltinsStubCSigns::INVALID);
     static void SetFrozenConstructor(JSThread *thread, const JSHandle<JSObject> &obj, const char *keyChar,
                                      JSHandle<JSTaggedValue> &value);
     static JSHandle<JSTaggedValue> CreateGetter(JSThread *thread, EcmaEntrypoint func, const char *name,

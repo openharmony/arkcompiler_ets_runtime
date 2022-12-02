@@ -143,16 +143,17 @@ using ErrorHelper = base::ErrorHelper;
 ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap)
     : thread_(thread), vm_(thread->GetEcmaVM()), heap_(heap) {}
 
-JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, FunctionKind kind, uint8_t builtinId)
+JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, FunctionKind kind,
+                                                           kungfu::BuiltinsStubCSigns::ID builtinId)
 {
     uint32_t numArgs = 2;  // function object and this
     auto method = NewMethod(nullptr);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
-    if (builtinId != INVALID_BUILTINS_ID) {
-        bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(static_cast<kungfu::BuiltinsStubCSigns::ID>(builtinId));
+    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+        bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(builtinId);
         method->SetFastBuiltinBit(isFast);
-        method->SetBuiltinId(builtinId);
+        method->SetBuiltinId(static_cast<uint8_t>(builtinId));
     }
     method->SetNumArgsWithCallField(numArgs);
     method->SetFunctionKind(kind);
@@ -1367,7 +1368,7 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
-                                                  FunctionKind kind, uint8_t builtinId)
+                                                  FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId)
 {
     JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, kind, builtinId);
     return NewJSFunction(env, target);

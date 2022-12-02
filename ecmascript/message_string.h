@@ -60,7 +60,7 @@ public:
         MAX_MESSAGE_COUNT,
         ASM_INTERPRETER_START = Message_INT32_VALUE + 1,
         BUILTINS_STUB_START = Message_CharCodeAt,
-        BUILTINS_STUB_LAST = Message_BooleanConstructor,
+        BUILTINS_STUB_LAST = Message_DateConstructor,
     };
     static const std::string& GetMessageString(int id);
 
