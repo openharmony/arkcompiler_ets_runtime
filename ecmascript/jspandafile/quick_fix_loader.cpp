@@ -405,7 +405,7 @@ bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
         LOG_ECMA(INFO) << "Replace normal method: " << method->GetMethodName();
     }
 
-    for (auto &item : reservedBaseClassMethodInfo_) {
+    for (const auto &item : reservedBaseClassMethodInfo_) {
         ClassMethodIndex classMethodIndex = item.first;
         ConstantPool *baseConstpool = ConstantPool::Cast(
             (baseConstpoolValues.value().get()[classMethodIndex.constpoolNum]).GetTaggedObject());
