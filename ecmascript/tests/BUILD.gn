@@ -156,6 +156,7 @@ host_unittest_action("EcmaVm_003_Test") {
     "linked_hash_table_test.cpp",
     "linked_node_test.cpp",
     "mem_controller_test.cpp",
+    "mem_map_allocator_test.cpp",
     "native_pointer_test.cpp",
     "object_factory_test.cpp",
     "object_operator_test.cpp",
