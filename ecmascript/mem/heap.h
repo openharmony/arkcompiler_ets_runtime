@@ -401,9 +401,9 @@ public:
         return isVerifying_;
     }
 #endif
-    static bool ShouldMoveToRoSpace(JSTaggedValue value)
+    static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
     {
-        return value.IsString() && !Region::ObjectAddressToRange(value.GetTaggedObject())->InHugeObjectSpace();
+        return hclass->IsString() && !Region::ObjectAddressToRange(object)->InHugeObjectSpace();
     }
 
     bool IsFullMarkRequested() const
