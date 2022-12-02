@@ -76,6 +76,7 @@ group("ark_js_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/module/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/napi/test:unittest",
       "//arkcompiler/ets_runtime/ecmascript/regexp/tests:unittest",
+      "//arkcompiler/ets_runtime/ecmascript/require/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:unittest",
     ]
@@ -108,6 +109,7 @@ group("ark_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/module/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/napi/test:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/regexp/tests:host_unittest",
+      "//arkcompiler/ets_runtime/ecmascript/require/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:host_unittest",
     ]

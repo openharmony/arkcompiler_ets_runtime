@@ -25,8 +25,6 @@ JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsent(const JSThread *thread,
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const JSHandle<JSTaggedValue> &value)
 {
-    int hash = static_cast<int>(Hash(key.GetTaggedValue()));
-
     int entry = dictionary->FindEntry(key.GetTaggedValue());
     if (entry != -1) {
         return dictionary;
@@ -36,6 +34,7 @@ JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsent(const JSThread *thread,
     JSHandle<CjsModuleCache> newDictionary(HashTable::GrowHashTable(thread, dictionary));
 
     // Compute the key object.
+    int hash = Hash(key.GetTaggedValue());
     entry = newDictionary->FindInsertIndex(hash);
     newDictionary->SetEntry(thread, entry, key, value);
     newDictionary->IncreaseEntries(thread);
