@@ -433,7 +433,6 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
         auto accessor = AccessorData::Cast(GetValue().GetTaggedObject());
         if (accessor->HasSetter()) {
             bool res = accessor->CallInternalSet(thread_, JSHandle<JSObject>(receiver), value, mayThrow);
-            JSHandle<JSTaggedValue> receiverHanlder(receiver);
             if (receiver->GetJSHClass()->IsDictionaryMode()) {
                 SetIsInlinedProps(false);
             }

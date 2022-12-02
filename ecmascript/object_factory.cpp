@@ -1005,6 +1005,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_ARRAY: {
             JSArray::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
+            ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
             auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
             JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
             break;
