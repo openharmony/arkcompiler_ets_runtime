@@ -298,6 +298,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "NDEBUG" ]
   }
 
+  if (enable_asm_assert) {
+    defines += [ "ENABLE_ASM_ASSERT" ]
+  }
+
   if (run_with_asan) {
     defines += [ "RUN_WITH_ASAN" ]
   }

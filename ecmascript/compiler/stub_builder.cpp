@@ -3055,7 +3055,6 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key)
     {
         Label valueIsCallable(env);
         Label valueNotCallable(env);
-        ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), glue, TaggedIsHeapObject(value), assertLabel);
         Branch(IsCallable(value), &valueIsCallable, &valueNotCallable);
         Bind(&valueNotCallable);
         {
@@ -3117,7 +3116,6 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
     // 1. If IsCallable(C) is false, return false.
     Label targetIsCallable2(env);
     Label targetNotCallable2(env);
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), glue, TaggedIsHeapObject(target), assertLabel);
     Branch(IsCallable(target), &targetIsCallable2, &targetNotCallable2);
     Bind(&targetNotCallable2);
     {
@@ -3131,7 +3129,6 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
         //    b. Return InstanceofOperator(O,BC)  (see 12.9.4).
         Label targetIsBoundFunction(env);
         Label targetNotBoundFunction(env);
-        ASM_ASSERT(GET_MESSAGE_STRING_ID(IsBoundFunction), glue, TaggedIsHeapObject(target), assertLabel1);
         Branch(IsBoundFunction(target), &targetIsBoundFunction, &targetNotBoundFunction);
         Bind(&targetIsBoundFunction);
         {

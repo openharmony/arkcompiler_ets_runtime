@@ -26,18 +26,33 @@ using namespace panda::ecmascript;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
 
+#define SUBENTRY(messageId, condition)                                              \
+    GateRef glue = PtrArgument(0);                                                  \
+    auto env = GetEnvironment();                                                    \
+    Label subEntry(env);                                                            \
+    env->SubCfgEntry(&subEntry);                                                    \
+    Label nextLabel(env);                                                           \
+    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
+    Bind(&nextLabel)
+
 #ifndef NDEBUG
-#define ASM_ASSERT(messageId, glue, condition, nextLabel)                           \
-    Label nextLabel(env);                                                           \
-    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
-    Bind(&nextLabel)
-#elif ECMASCRIPT_ENABLE_ASM_ASSERT
-#define ASM_ASSERT(messageId, glue, condition, nextLabel)                           \
-    Label nextLabel(env);                                                           \
-    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
-    Bind(&nextLabel)
+#define ASM_ASSERT(messageId, condition)                                            \
+    SUBENTRY(messageId, condition)
+#elif defined(ENABLE_ASM_ASSERT)
+#define ASM_ASSERT(messageId, condition)                                            \
+    SUBENTRY(messageId, condition)
 #else
 #define ASM_ASSERT(messageId, ...) ((void)0)
+#endif
+
+#ifndef NDEBUG
+#define EXITENTRY()                                                                 \
+    env->SubCfgExit()
+#elif defined(ENABLE_ASM_ASSERT)
+#define EXITENTRY()                                                                 \
+    env->SubCfgExit()
+#else
+#define EXITENTRY() ((void)0)
 #endif
 
 class StubBuilder {
