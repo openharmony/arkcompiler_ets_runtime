@@ -424,7 +424,7 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
     std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
     args[0] = mainFunc.GetTaggedValue().GetRawData();
     args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
-    const JSTaggedType *prevFp = thread_->GetCurrentSPFrame();
+    const JSTaggedType *prevFp = thread_->GetLastLeaveFrame();
     JSTaggedValue res = ExecuteAot(actualNumArgs, args.data(), prevFp, OptimizedEntryFrame::CallType::CALL_FUNC);
     if (thread_->HasPendingException()) {
         return thread_->GetException();

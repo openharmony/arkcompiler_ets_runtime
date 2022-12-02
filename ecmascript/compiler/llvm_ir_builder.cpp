@@ -333,7 +333,7 @@ void LLVMIRBuilder::GenPrologue()
                                            std::to_string(reservedSlotsSize).c_str());
         SaveFrameTypeOnFrame(frameType);
     } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-        reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+        reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedEnvOffset(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
         auto ArgList = circuit_->GetRoot(OpCode::ARG_LIST);
