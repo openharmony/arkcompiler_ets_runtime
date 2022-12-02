@@ -48,7 +48,8 @@ namespace panda::ecmascript {
     V(IsEcmaObject)                                                                          \
     V(IsJSObject)                                                                            \
     V(IsString)                                                                              \
-    V(IsJSHClass)
+    V(IsJSHClass)                                                                            \
+    V(IsNotDictionaryMode)
 
 class MessageString {
 public:
@@ -68,7 +69,7 @@ public:
         MAX_MESSAGE_COUNT,
         ASM_INTERPRETER_START = Message_INT32_VALUE + 1,
         BUILTINS_STUB_START = Message_CharCodeAt,
-        BUILTINS_STUB_LAST = Message_DateConstructor,
+        BUILTINS_STUB_LAST = Message_ArrayConstructor,
     };
     static const std::string& GetMessageString(int id);
 

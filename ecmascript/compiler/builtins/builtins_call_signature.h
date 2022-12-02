@@ -53,6 +53,7 @@ namespace panda::ecmascript::kungfu {
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
     V(DateConstructor)                              \
+    V(ArrayConstructor)                             \
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(SQRT)                                         \

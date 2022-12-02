@@ -42,6 +42,7 @@ using TypedArrayHelper = base::TypedArrayHelper;
 // 22.1.1
 JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_ENTRY_DEBUG_LOG();
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Array, Constructor);
     JSThread *thread = argv->GetThread();

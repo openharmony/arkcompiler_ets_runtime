@@ -947,4 +947,114 @@ DECLARE_BUILTINS(DateConstructor)
     Bind(&exit);
     Return(*res);
 }
+
+DECLARE_BUILTINS(ArrayConstructor)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+
+    Label newTargetIsJSFunction(env);
+    Label slowPath(env);
+    Label exit(env);
+
+    Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    Bind(&newTargetIsJSFunction);
+    {
+        Label fastGetHclass(env);
+        Label intialHClassIsHClass(env);
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+        Branch(Equal(ChangeTaggedPointerToInt64(arrayFunc), ChangeTaggedPointerToInt64(newTarget)), &fastGetHclass,
+            &slowPath);
+        Bind(&fastGetHclass);
+        GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
+        Branch(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath);
+        Bind(&intialHClassIsHClass);
+        {
+            Label noArg(env);
+            Label hasArg(env);
+            Label arrayCreate(env);
+            Branch(Int64Equal(numArgs, IntPtr(0)), &noArg, &hasArg);
+            Bind(&noArg);
+            {
+                Jump(&arrayCreate);
+            }
+            Bind(&hasArg);
+            {
+                Label hasOneArg(env);
+                Branch(Int64Equal(numArgs, IntPtr(1)), &hasOneArg, &slowPath);
+                Bind(&hasOneArg);
+                {
+                    Label argIsNumber(env);
+                    GateRef arg0 = GetArg(numArgs, IntPtr(0));
+                    Branch(TaggedIsNumber(arg0), &argIsNumber, &slowPath);
+                    Bind(&argIsNumber);
+                    {
+                        Label argIsInt(env);
+                        Label argIsDouble(env);
+                        Branch(TaggedIsInt(arg0), &argIsInt, &argIsDouble);
+                        Bind(&argIsInt);
+                        {
+                            Label validIntLength(env);
+                            GateRef intLen = GetInt64OfTInt(arg0);
+                            GateRef isGEZero = Int64GreaterThanOrEqual(intLen, Int64(0));
+                            GateRef isLEMaxLen = Int64LessThanOrEqual(intLen, Int64(JSArray::MAX_ARRAY_INDEX));
+                            Branch(BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
+                            Bind(&validIntLength);
+                            {
+                                arrayLength = intLen;
+                                Jump(&arrayCreate);
+                            }
+                        }
+                        Bind(&argIsDouble);
+                        {
+                            Label validDoubleLength(env);
+                            GateRef doubleLength = GetDoubleOfTDouble(arg0);
+                            GateRef doubleToInt = DoubleToInt(glue, doubleLength);
+                            GateRef intToDouble = CastInt64ToFloat64(SExtInt32ToInt64(doubleToInt));
+                            GateRef doubleEqual = DoubleEqual(doubleLength, intToDouble);
+                            GateRef doubleLEMaxLen =
+                                DoubleLessThanOrEqual(doubleLength, Double(JSArray::MAX_ARRAY_INDEX));
+                            Branch(BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
+                            Bind(&validDoubleLength);
+                            {
+                                arrayLength = SExtInt32ToInt64(doubleToInt);
+                                Jump(&arrayCreate);
+                            }
+                        }
+                    }
+                }
+            }
+            Bind(&arrayCreate);
+            {
+                NewObjectStubBuilder newBuilder(this);
+                newBuilder.SetParameters(glue, 0);
+                Label afterNew(env);
+                newBuilder.NewJSObject(&res, &afterNew, intialHClass);
+                Bind(&afterNew);
+                {
+                    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+                    Store(VariableType::JS_ANY(), glue, *res, lengthOffset, Int64ToTaggedInt(*arrayLength));
+                    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                              ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+                    SetPropertyInlinedProps(glue, *res, intialHClass, accessor,
+                                            Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+                    SetExtensibleToBitfield(glue, *res, true);
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&slowPath);
+    {
+        GateRef argv = GetArgv();
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    Return(*res);
+}
 }  // namespace panda::ecmascript::kungfu
