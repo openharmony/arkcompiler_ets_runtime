@@ -63,9 +63,11 @@ void JSCollator::SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &co
     collator->SetIcuField(thread, pointer.GetTaggedValue());
 }
 
-JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread, const JSHandle<JSCollator> &collator,
+JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
+                                                    const JSHandle<JSCollator> &collator,
                                                     const JSHandle<JSTaggedValue> &locales,
-                                                    const JSHandle<JSTaggedValue> &options)
+                                                    const JSHandle<JSTaggedValue> &options,
+                                                    bool forIcuCache)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -281,10 +283,28 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread, const JSHa
         ASSERT(U_SUCCESS(status));
     }
 
-    SetIcuCollator(thread, collator, icuCollator.release(), JSCollator::FreeIcuCollator);
+    if (forIcuCache) {
+        std::string cacheEntry =
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+        ecmaVm->SetIcuFormatterToCache(IcuFormatterType::Collator, cacheEntry, icuCollator.release(),
+                                       JSCollator::FreeIcuCollator);
+    } else {
+        SetIcuCollator(thread, collator, icuCollator.release(), JSCollator::FreeIcuCollator);
+    }
     collator->SetBoundCompare(thread, JSTaggedValue::Undefined());
     // 29. Return collator.
     return collator;
+}
+
+icu::Collator *JSCollator::GetCachedIcuCollator(JSThread *thread, const JSHandle<JSTaggedValue> &locales)
+{
+    std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    void *cachedCollator = ecmaVm->GetIcuFormatterFromCache(IcuFormatterType::Collator, cacheEntry);
+    if (cachedCollator != nullptr) {
+        return reinterpret_cast<icu::Collator*>(cachedCollator);
+    }
+    return nullptr;
 }
 
 UColAttributeValue JSCollator::OptionToUColAttribute(CaseFirstOption caseFirstOption)

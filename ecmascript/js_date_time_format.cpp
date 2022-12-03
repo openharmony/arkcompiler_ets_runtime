@@ -193,7 +193,8 @@ JSHandle<EcmaString> JSDateTimeFormat::ToValueString(JSThread *thread, const Val
 JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *thread,
                                                                       const JSHandle<JSDateTimeFormat> &dateTimeFormat,
                                                                       const JSHandle<JSTaggedValue> &locales,
-                                                                      const JSHandle<JSTaggedValue> &options)
+                                                                      const JSHandle<JSTaggedValue> &options,
+                                                                      IcuCacheType type)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -449,7 +450,28 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     std::unique_ptr<icu::Calendar> calendarPtr = BuildCalendar(icuLocale, *icuTimeZone);
     ASSERT_PRINT(calendarPtr != nullptr, "invalid calendar");
     simpleDateFormatIcu->adoptCalendar(calendarPtr.release());
-    SetIcuSimpleDateFormat(thread, dateTimeFormat, *simpleDateFormatIcu, JSDateTimeFormat::FreeSimpleDateFormat);
+    if (type != IcuCacheType::NOT_CACHE) {
+        std::string cacheEntry =
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+        switch (type) {
+            case IcuCacheType::DEFAULT:
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatDefault, cacheEntry,
+                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                break;
+            case IcuCacheType::DATE:
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatDate, cacheEntry,
+                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                break;
+            case IcuCacheType::TIME:
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatTime, cacheEntry,
+                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                break;
+            default:
+                UNREACHABLE();
+        }
+    } else {
+        SetIcuSimpleDateFormat(thread, dateTimeFormat, *simpleDateFormatIcu, JSDateTimeFormat::FreeSimpleDateFormat);
+    }
 
     // Set dateTimeFormat.[[iso8601]].
     bool iso8601 = strstr(icuLocale.getName(), "calendar=iso8601") != nullptr;
@@ -479,9 +501,9 @@ icu::SimpleDateFormat *JSDateTimeFormat::GetCachedIcuSimpleDateFormat(JSThread *
 {
     std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
-    icu::UMemory *cachedSimpleDateFormat = ecmaVm->GetIcuFormatterFromCache(type, cacheEntry);
+    void *cachedSimpleDateFormat = ecmaVm->GetIcuFormatterFromCache(type, cacheEntry);
     if (cachedSimpleDateFormat != nullptr) {
-        return static_cast<icu::SimpleDateFormat*>(cachedSimpleDateFormat);
+        return reinterpret_cast<icu::SimpleDateFormat*>(cachedSimpleDateFormat);
     }
     return nullptr;
 }

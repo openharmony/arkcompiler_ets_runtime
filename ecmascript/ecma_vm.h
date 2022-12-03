@@ -111,7 +111,9 @@ enum class MethodIndex : uint8_t {
 enum class IcuFormatterType {
     SimpleDateFormatDefault,
     SimpleDateFormatDate,
-    SimpleDateFormatTime
+    SimpleDateFormatTime,
+    NumberFormatter,
+    Collator
 };
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
@@ -124,6 +126,7 @@ using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
 using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)>;
+using IcuDeleteEntry = void(*)(void *pointer, void *data);
 
 class EcmaVM {
 public:
@@ -519,20 +522,20 @@ public:
                              OptimizedEntryFrame::CallType callType);
 
     // For icu objects cache
-    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, std::shared_ptr<icu::UMemory> icuObj)
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
+                                IcuDeleteEntry deleteEntry = nullptr)
     {
-        EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj);
+        EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
         icuObjCache_.insert({type, std::move(icuFormatter)});
     }
 
-    icu::UMemory *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
+    void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
     {
         auto iter = icuObjCache_.find(type);
-        EcmaVM::IcuFormatter icuFormatter;
         if (iter != icuObjCache_.end()) {
-            icuFormatter = iter->second;
+            EcmaVM::IcuFormatter icuFormatter = iter->second;
             if (icuFormatter.locale == locale) {
-                return icuFormatter.icuObj.get();
+                return icuFormatter.icuObj;
             }
         }
         return nullptr;
@@ -540,7 +543,16 @@ public:
 
     void ClearIcuCache()
     {
-        icuObjCache_.clear();
+        auto iter = icuObjCache_.begin();
+        while (iter != icuObjCache_.end()) {
+            EcmaVM::IcuFormatter icuFormatter = iter->second;
+            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
+            if (deleteEntry != nullptr) {
+                deleteEntry(icuFormatter.icuObj, this);
+            }
+            iter->second = EcmaVM::IcuFormatter{};
+            iter++;
+        }
     }
 protected:
 
@@ -665,11 +677,12 @@ private:
     // For icu objects cache
     struct IcuFormatter {
         std::string locale;
-        std::shared_ptr<icu::UMemory> icuObj;
+        void *icuObj {nullptr};
+        IcuDeleteEntry deleteEntry {nullptr};
 
         IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, std::shared_ptr<icu::UMemory> icuObj)
-            : locale(locale), icuObj(std::move(icuObj)) {}
+        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
+            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
     std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
 

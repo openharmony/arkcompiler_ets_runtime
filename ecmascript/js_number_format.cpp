@@ -436,9 +436,11 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
 // NOLINTNEXTLINE(readability-function-size)
 void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
                                             const JSHandle<JSTaggedValue> &locales,
-                                            const JSHandle<JSTaggedValue> &options)
+                                            const JSHandle<JSTaggedValue> &options,
+                                            bool forIcuCache)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
     // 1. Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
 
@@ -662,8 +664,16 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
             break;
     }
 
-    // Set numberFormat.[[IcuNumberForma]] to handleNumberFormatter
-    factory->NewJSIntlIcuData(numberFormat, icuNumberFormatter, JSNumberFormat::FreeIcuNumberformat);
+    if (forIcuCache) {
+        std::string cacheEntry =
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+        auto formatterPointer = new icu::number::LocalizedNumberFormatter(icuNumberFormatter);
+        ecmaVm->SetIcuFormatterToCache(IcuFormatterType::NumberFormatter, cacheEntry, formatterPointer,
+                                       JSNumberFormat::FreeIcuNumberformat);
+    } else {
+        // Set numberFormat.[[IcuNumberForma]] to handleNumberFormatter
+        factory->NewJSIntlIcuData(numberFormat, icuNumberFormatter, JSNumberFormat::FreeIcuNumberformat);
+    }
     // Set numberFormat.[[BoundFormat]] to undefinedValue
     numberFormat->SetBoundFormat(thread, undefinedValue);
 }
@@ -682,13 +692,32 @@ int32_t JSNumberFormat::CurrencyDigits(const icu::UnicodeString &currency)
     return DEFAULT_FRACTION_DIGITS;
 }
 
+icu::number::LocalizedNumberFormatter *JSNumberFormat::GetCachedIcuNumberFormatter(JSThread *thread,
+    const JSHandle<JSTaggedValue> &locales)
+{
+    std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    void *cachedNumberFormatter = ecmaVm->GetIcuFormatterFromCache(IcuFormatterType::NumberFormatter, cacheEntry);
+    if (cachedNumberFormatter) {
+        return reinterpret_cast<icu::number::LocalizedNumberFormatter*>(cachedNumberFormatter);
+    }
+    return nullptr;
+}
+
 // 12.1.8 FormatNumeric( numberFormat, x )
 JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
                                                       JSTaggedValue x)
 {
     icu::number::LocalizedNumberFormatter *icuNumberFormat = numberFormat->GetIcuCallTarget();
     ASSERT(icuNumberFormat != nullptr);
+    JSHandle<JSTaggedValue> res = FormatNumeric(thread, icuNumberFormat, x);
+    return res;
+}
 
+JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread,
+                                                      const icu::number::LocalizedNumberFormatter *icuNumberFormat,
+                                                      JSTaggedValue x)
+{
     UErrorCode status = U_ZERO_ERROR;
     icu::number::FormattedNumber formattedNumber;
     if (x.IsBigInt()) {

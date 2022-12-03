@@ -525,30 +525,34 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, that_tag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t argLength = argv->GetArgsNumber();
-    uint32_t localeIndex = 1;
-    uint32_t optionsIndex = 2;
-    // referenceStr.localeCompare(compareString[, locales[, options]])
-    if (argLength > localeIndex) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSTaggedValue> ctor = env->GetCollatorFunction();
-        JSHandle<JSCollator> collator =
-            JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
-        JSHandle<JSTaggedValue> localeHandle = BuiltinsString::GetCallArg(argv, localeIndex);
-        JSMutableHandle<JSTaggedValue> optionsHandle(thread, JSTaggedValue::Undefined());
-        if (argLength > optionsIndex) {
-            optionsHandle.Update(BuiltinsString::GetCallArg(argv, optionsIndex));
+
+    JSHandle<JSTaggedValue> locales = GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: the second argument
+    bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    if (cacheable) {
+        auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
+        if (collator != nullptr) {
+            JSTaggedValue result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
+            return result;
         }
-        JSHandle<JSCollator> initCollator =
-            JSCollator::InitializeCollator(thread, collator, localeHandle, optionsHandle);
-        icu::Collator *icuCollator = initCollator->GetIcuCollator();
-        icuCollator->setStrength(icu::Collator::PRIMARY);
-        JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
-        return result;
     }
-    int32_t res = EcmaStringAccessor::Compare(thread->GetEcmaVM(), thisHandle, thatHandle);
-    return GetTaggedInt(res);
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSTaggedValue> ctor = ecmaVm->GetGlobalEnv()->GetCollatorFunction();
+    JSHandle<JSCollator> collator =
+        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
+    JSHandle<JSCollator> initCollator =
+        JSCollator::InitializeCollator(thread, collator, locales, options, cacheable);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    icu::Collator *icuCollator = nullptr;
+    if (cacheable) {
+        icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
+        ASSERT(icuCollator != nullptr);
+    } else {
+        icuCollator = initCollator->GetIcuCollator();
+    }
+    JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
+    return result;
 }
 
 // 21.1.3.11
