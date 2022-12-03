@@ -43,7 +43,6 @@ void CjsModule::InitializeModule(JSThread *thread, JSHandle<CjsModule> &module,
 
 JSHandle<JSTaggedValue> CjsModule::SearchFromModuleCache(JSThread *thread, JSHandle<JSTaggedValue> &filename)
 {
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
@@ -56,7 +55,7 @@ JSHandle<JSTaggedValue> CjsModule::SearchFromModuleCache(JSThread *thread, JSHan
     JSHandle<CjsModuleCache> moduleCache = JSHandle<CjsModuleCache>(thread, modCache);
     if (moduleCache->ContainsModule(filename.GetTaggedValue())) {
         JSHandle<CjsModule> cachedModule = JSHandle<CjsModule>(thread,
-                                                                   moduleCache->GetModule(filename.GetTaggedValue()));
+                                                               moduleCache->GetModule(filename.GetTaggedValue()));
         JSHandle<JSTaggedValue> exportsName = globalConst->GetHandledCjsExportsString();
         JSTaggedValue cachedExports = SlowRuntimeStub::LdObjByName(thread, cachedModule.GetTaggedValue(),
                                                                    exportsName.GetTaggedValue(),

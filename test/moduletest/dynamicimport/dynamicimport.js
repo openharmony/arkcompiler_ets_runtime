@@ -12,13 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+// Ordinary dynamic import test
 const objA = {
     toString() {
         return './A.js';
     }
 };
-
 const objB = {
     toString() {
         return './B.js';
@@ -26,14 +25,23 @@ const objB = {
 };
 
 import(objA).then(animalA => {
-    print('full name : ', animalA.name, ' ', animalA.cognomen);
+    print('full name : ', animalA.name);
     print(animalA.familyCrets);
 }).then().catch();
 
 async function f() {
     var animalB = await import(objB);
-    print('full name : ', animalB.name, ' ', animalB.cognomen);
+    print('full name : ', animalB.name);
     print(animalB.familyCrets);
 }
-
 f().then().catch();
+
+// Import script file test
+import("./C.js").then(m => {
+    print(JSON.stringify(m));
+}).then();
+
+// Catch error test
+import('./throwerror.js').catch(error => {
+    print(error.name);
+}).then();

@@ -13,17 +13,4 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:moduleUseCjs
- * @tc.desc:test module CJS
- * @tc.type: FUNC
- * @tc.require: issueI5NO8G
- */
-import cjs from "./Cjs"
-import * as ns from "./someArgsCjs"
-import {json, fun} from "./someArgsCjs"
-
-print(JSON.stringify(cjs));
-print(JSON.stringify(json));
-fun();
-print(ns.tag);
+var str = "====";

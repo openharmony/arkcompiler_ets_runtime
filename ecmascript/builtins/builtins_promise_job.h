@@ -24,6 +24,7 @@ public:
     static JSTaggedValue PromiseReactionJob(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue PromiseResolveThenableJob(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue DynamicImportJob(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject);
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_JS_PROMISE_JOB_H

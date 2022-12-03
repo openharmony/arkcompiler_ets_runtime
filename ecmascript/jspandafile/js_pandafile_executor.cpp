@@ -24,7 +24,7 @@
 
 namespace panda::ecmascript {
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &filename,
-                                                                   std::string_view entryPoint)
+                                                                   std::string_view entryPoint, bool excuteFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename.c_str();
 
@@ -34,7 +34,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 #if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
         entry = entryPoint.data();
 #else
-        entry = JSPandaFile::ParseOhmUrl(filename);
+        if (excuteFromJob) {
+            entry = entryPoint.data();
+        } else {
+            entry = JSPandaFile::ParseOhmUrl(filename);
+        }
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
         name = thread->GetEcmaVM()->GetAssetPath().c_str();
 #elif defined(PANDA_TARGET_WINDOWS)
@@ -67,12 +71,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         }
         SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
-            auto exception = thread->GetException();
-            vm->HandleUncaughtException(exception.GetTaggedObject());
+            if (!excuteFromJob) {
+                auto exception = thread->GetException();
+                vm->HandleUncaughtException(exception.GetTaggedObject());
+            }
             return JSTaggedValue::Undefined();
         }
         moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
-        SourceTextModule::Evaluate(thread, moduleRecord);
+        SourceTextModule::Evaluate(thread, moduleRecord, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str());
@@ -146,11 +152,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                           std::string_view entryPoint)
+                                                           std::string_view entryPoint, bool excuteFromJob)
 {
     // For Ark application startup
     EcmaVM *vm = thread->GetEcmaVM();
-    Expected<JSTaggedValue, bool> result = vm->InvokeEcmaEntrypoint(jsPandaFile, entryPoint);
+    Expected<JSTaggedValue, bool> result = vm->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
     if (result) {
         QuickFixManager *quickFixManager = vm->GetQuickFixManager();
         quickFixManager->LoadPatchIfNeeded(thread, CstringConvertToStdString(jsPandaFile->GetJSPandaFileDesc()));

@@ -11,7 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-full name :  Tyrion   Lannister
+TypeError
+{"default":{}}
+full name :  Tyrion
 Lion
-full name :  Tywin   Lannister
+full name :  Tywin
 Lion

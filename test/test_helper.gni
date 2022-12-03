@@ -216,10 +216,11 @@ template("host_moduletest_action") {
       _asm_run_options_,
       "--script-args",
       _script_args_,
+      "--timeout-limit",
+      "${_timeout_}",
       "--expect-file",
       rebase_path(_test_expect_path_),
-      "--env-path",
-      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+      "--env-path",      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
