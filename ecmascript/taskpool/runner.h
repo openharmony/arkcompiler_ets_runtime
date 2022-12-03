@@ -23,7 +23,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/taskpool/task_queue.h"
-#include "os/mutex.h"
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 static constexpr uint32_t MIN_TASKPOOL_THREAD_NUM = 3;

@@ -169,13 +169,11 @@ private:
 
 void DebugInfoExtractor::Extract()
 {
-    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
-    ASSERT(pf != nullptr);
-    const auto &pandaFile = *pf;
-    auto classes = pf->GetClasses();
+    auto &pandaFile = *jsPandaFile_->GetPandaFile();
+    auto classes = jsPandaFile_->GetClasses();
     for (size_t i = 0; i < classes.Size(); i++) {
         panda_file::File::EntityId id(classes[i]);
-        if (pandaFile.IsExternal(id)) {
+        if (jsPandaFile_->IsExternal(id)) {
             continue;
         }
 

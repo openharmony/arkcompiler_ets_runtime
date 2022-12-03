@@ -45,7 +45,7 @@ void JSPandaFile::CheckIsBundlePack()
         panda_file::ClassDataAccessor cda(*pf_, classId);
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-            panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
+            panda_file::File::StringData sd = GetStringData(fieldNameId);
             const char *fieldName = utf::Mutf8AsCString(sd.data);
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0 || std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
                 isBundlePack_ = false;
@@ -111,7 +111,7 @@ void JSPandaFile::InitializeUnMergedPF()
         if (info.moduleRecordIdx == -1 && std::strcmp(MODULE_CLASS, desc) == 0) {
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
+                panda_file::File::StringData sd = GetStringData(fieldNameId);
                 if (std::strcmp(reinterpret_cast<const char *>(sd.data), desc_.c_str())) {
                     info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
                     return;
@@ -144,7 +144,7 @@ void JSPandaFile::InitializeMergedPF()
         bool hasJsonFiled = false;
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-            panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
+            panda_file::File::StringData sd = GetStringData(fieldNameId);
             const char *fieldName = utf::Mutf8AsCString(sd.data);
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0) {
                 hasCjsFiled = true;
@@ -252,7 +252,7 @@ CString JSPandaFile::FindEntryPoint(const CString &recordName) const
         if (std::strcmp(recordName.c_str(), ParseEntryPoint(desc).c_str()) == 0) {
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
+                panda_file::File::StringData sd = GetStringData(fieldNameId);
                 CString fieldName = utf::Mutf8AsCString(sd.data);
                 if (HasRecord(fieldName)) {
                     entryPoint = fieldName;

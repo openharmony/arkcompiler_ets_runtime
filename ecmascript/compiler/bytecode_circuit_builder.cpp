@@ -100,8 +100,9 @@ void BytecodeCircuitBuilder::CollectRegionInfo(uint32_t bcIndex)
 
 void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(ExceptionInfo &byteCodeException)
 {
-    panda_file::MethodDataAccessor mda(*pf_, method_->GetMethodId());
-    panda_file::CodeDataAccessor cda(*pf_, mda.GetCodeId().value());
+    auto pf = file_->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, method_->GetMethodId());
+    panda_file::CodeDataAccessor cda(*pf, mda.GetCodeId().value());
 
     cda.EnumerateTryBlocks([this, &byteCodeException](
         panda_file::CodeDataAccessor::TryBlock &tryBlock) {

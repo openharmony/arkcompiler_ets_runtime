@@ -32,10 +32,6 @@
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/template_string.h"
 
-#include "libpandafile/code_data_accessor.h"
-#include "libpandafile/file.h"
-#include "libpandafile/method_data_accessor-inl.h"
-
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -7347,15 +7343,15 @@ void InterpreterAssembly::ExceptionHandler(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     FrameHandler frameHandler(thread);
-    uint32_t pcOffset = panda_file::INVALID_OFFSET;
+    uint32_t pcOffset = INVALID_INDEX;
     for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             thread->SetLastFp(frameHandler.GetFp());
             return;
         }
         auto method = frameHandler.GetMethod();
-        pcOffset = FindCatchBlock(method, frameHandler.GetBytecodeOffset());
-        if (pcOffset != panda_file::INVALID_OFFSET) {
+        pcOffset = method->FindCatchBlock(frameHandler.GetBytecodeOffset());
+        if (pcOffset != INVALID_INDEX) {
             thread->SetCurrentFrame(frameHandler.GetSp());
             thread->SetLastFp(frameHandler.GetFp());
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -7363,7 +7359,7 @@ void InterpreterAssembly::ExceptionHandler(
             break;
         }
     }
-    if (pcOffset == panda_file::INVALID_OFFSET) {
+    if (pcOffset == INVALID_INDEX) {
         return;
     }
 
@@ -7382,25 +7378,6 @@ void InterpreterAssembly::ExceptionHandler(
     }
 ASM_UNUSED_BC_STUB_LIST(DECLARE_UNUSED_ASM_HANDLE)
 #undef DECLARE_UNUSED_ASM_HANDLE
-
-uint32_t InterpreterAssembly::FindCatchBlock(Method *caller, uint32_t pc)
-{
-    auto *pandaFile = caller->GetPandaFile();
-    panda_file::MethodDataAccessor mda(*pandaFile, caller->GetMethodId());
-    panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());
-
-    uint32_t pcOffset = panda_file::INVALID_OFFSET;
-    cda.EnumerateTryBlocks([&pcOffset, pc](panda_file::CodeDataAccessor::TryBlock &try_block) {
-        if ((try_block.GetStartPc() <= pc) && ((try_block.GetStartPc() + try_block.GetLength()) > pc)) {
-            try_block.EnumerateCatchBlocks([&](panda_file::CodeDataAccessor::CatchBlock &catch_block) {
-                pcOffset = catch_block.GetHandlerPc();
-                return false;
-            });
-        }
-        return pcOffset == panda_file::INVALID_OFFSET;
-    });
-    return pcOffset;
-}
 
 inline void InterpreterAssembly::InterpreterFrameCopyArgs(
     JSTaggedType *newSp, uint32_t numVregs, uint32_t numActualArgs, uint32_t numDeclaredArgs, bool haveExtraArgs)

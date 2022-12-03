@@ -382,7 +382,7 @@ void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filena
 const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
 {
     uint32_t index = GetAnFileIndex(jsPandaFile);
-    if (index == JSPandaFile::INVALID_INDEX) {
+    if (index == INVALID_INDEX) {
         return nullptr;
     }
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
@@ -425,7 +425,7 @@ uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
         std::string jsPandaFileDesc = jsPandaFile->GetJSPandaFileDesc().c_str();
         std::string baseName = JSFilePath::GetFileName(jsPandaFileDesc);
         if (baseName.empty()) {
-            return JSPandaFile::INVALID_INDEX;
+            return INVALID_INDEX;
         }
         std::string anFileName = baseName + FILE_EXTENSION_AN;
         return anFileDataManager->SafeGetFileInfoIndex(anFileName);
@@ -434,7 +434,7 @@ uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
     // run from app hap
     std::string hapName = JSFilePath::GetHapName(jsPandaFile);
     if (hapName.empty()) {
-        return JSPandaFile::INVALID_INDEX;
+        return INVALID_INDEX;
     }
     std::string anFileName = hapName + FILE_EXTENSION_AN;
     return anFileDataManager->SafeGetFileInfoIndex(anFileName);
@@ -831,7 +831,7 @@ uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
     os::memory::ReadLockHolder lock(lock_);
     auto iter = anFileNameToIndexMap_.find(fileName);
     if (iter == anFileNameToIndexMap_.end()) {
-        return JSPandaFile::INVALID_INDEX;
+        return INVALID_INDEX;
     }
     return anFileNameToIndexMap_.at(fileName);
 }

@@ -146,8 +146,8 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
     if (method.IsUndefined()) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<Method> target = JSHandle<Method>(thread, method);
-    if (target->GetPandaFile() == nullptr) {
+    Method *target = Method::Cast(method.GetTaggedObject());
+    if (target->IsNativeWithCallField()) {
         return JSTaggedValue::Undefined();
     }
     std::string funcName = target->ParseFunctionName();

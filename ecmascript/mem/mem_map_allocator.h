@@ -24,6 +24,7 @@
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/log_wrapper.h"
+
 #include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {

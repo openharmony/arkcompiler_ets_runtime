@@ -416,7 +416,7 @@ JSHandle<TaggedArray> TSTypeParser::GetExportDataFromRecord(const JSPandaFile *j
     JSHandle<TaggedArray> typeOfExportedSymbols(thread_, thread_->GlobalConstants()->GetEmptyArray());
     mda.EnumerateAnnotations([&](panda_file::File::EntityId annotationId) {
         panda_file::AnnotationDataAccessor ada(pf, annotationId);
-        auto *annotationName = reinterpret_cast<const char *>(pf.GetStringData(ada.GetClassId()).data);
+        auto *annotationName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(ada.GetClassId()).data);
         ASSERT(annotationName != nullptr);
         if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {
             return;
@@ -424,7 +424,7 @@ JSHandle<TaggedArray> TSTypeParser::GetExportDataFromRecord(const JSPandaFile *j
         uint32_t length = ada.GetCount();
         for (uint32_t i = 0; i < length; i++) {
             panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-            auto *elemName = reinterpret_cast<const char *>(pf.GetStringData(adae.GetNameId()).data);
+            auto *elemName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(adae.GetNameId()).data);
             ASSERT(elemName != nullptr);
 
             if (::strcmp(symbolTypes, elemName) != 0) {

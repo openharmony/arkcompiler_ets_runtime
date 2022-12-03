@@ -21,8 +21,6 @@
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 
-#include "libpandafile/file.h"
-
 namespace panda {
 namespace ecmascript {
 class Program;

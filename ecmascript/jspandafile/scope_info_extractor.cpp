@@ -33,10 +33,7 @@ JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t s
 
     JSHandle<TaggedArray> elementsLiteral;
     if (jsPandaFile->IsNewVersion()) {
-        panda_file::File::IndexHeader *indexHeader = constpool->GetIndexHeader();
-        auto pf = jsPandaFile->GetPandaFile();
-        Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
-        panda_file::File::EntityId id = indexs[scopeId];
+        panda_file::File::EntityId id = constpool->GetEntityId(scopeId);
         elementsLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id, constpool);
     } else {
         elementsLiteral = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, scopeId, constpool);

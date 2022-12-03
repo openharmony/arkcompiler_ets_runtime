@@ -20,7 +20,7 @@
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/snapshot/mem/constants.h"
 
-#include "utils/bit_field.h"
+#include "libpandabase/utils/bit_field.h"
 
 /*
  *                        EncodeBit: use uint64_t value to encode TaggedObject when serialize

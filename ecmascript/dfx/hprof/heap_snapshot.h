@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstdint>
 #include <fstream>
+#include <sys/time.h>
 
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
@@ -30,9 +31,6 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/interpreter/frame_handler.h"
-
-#include <sys/time.h>
-#include "os/mem.h"
 
 namespace panda::ecmascript {
 // Define the Object Graphic

@@ -20,9 +20,6 @@
 
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/debugger/js_pt_location.h"
-#include "libpandafile/file.h"
-#include "libpandabase/macros.h"
-#include "libpandabase/utils/expected.h"
 
 namespace panda::ecmascript::tooling {
 struct JSPtStepRange {

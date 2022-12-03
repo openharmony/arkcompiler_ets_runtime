@@ -19,11 +19,13 @@
 #include <fstream>
 #include <sstream>
 
+#include <limits.h>
+
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/mem/c_containers.h"
 
-#include "os/mem.h"
+#include "securec.h"
 
 namespace panda::ecmascript {
 using fstream = std::fstream;

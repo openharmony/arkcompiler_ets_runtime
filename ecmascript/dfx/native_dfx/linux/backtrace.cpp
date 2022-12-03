@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 #include "ecmascript/log_wrapper.h"
-#include "mem/mem.h"
+#include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript {
 static const int MAX_STACK_SIZE = 256;

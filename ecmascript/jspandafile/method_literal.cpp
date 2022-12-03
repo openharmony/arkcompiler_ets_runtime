@@ -104,7 +104,7 @@ const char *MethodLiteral::GetMethodName(const JSPandaFile *jsPandaFile, EntityI
 
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::MethodDataAccessor mda(*pf, methodId);
-    panda_file::File::StringData sd = pf->GetStringData(mda.GetNameId());
+    auto sd = jsPandaFile->GetStringData(mda.GetNameId());
     return utf::Mutf8AsCString(sd.data);
 }
 

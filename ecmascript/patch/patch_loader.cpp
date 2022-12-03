@@ -108,8 +108,8 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
     for (const uint32_t index : classIndexes) {
-        EntityId classId(index);
-        if (pf->IsExternal(classId)) {
+        panda_file::File::EntityId classId(index);
+        if (jsPandaFile->IsExternal(classId)) {
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);

@@ -78,7 +78,7 @@
 
 #include "ohos/init_data.h"
 
-#include "os/mutex.h"
+#include "libpandabase/os/mutex.h"
 
 #if defined(PANDA_TARGET_IOS)
 namespace OHOS::ArkCompiler::Toolchain {

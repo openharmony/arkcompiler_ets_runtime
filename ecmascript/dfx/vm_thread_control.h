@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_VM_THREAD_CONTROL_H
 #define ECMASCRIPT_VM_THREAD_CONTROL_H
 
+#include "libpandabase/os/mutex.h"
 #include "libpandabase/utils/bit_field.h"
-#include "os/mutex.h"
 
 namespace panda::ecmascript {
 class VmThreadControl {
