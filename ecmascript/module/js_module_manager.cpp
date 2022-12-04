@@ -568,22 +568,17 @@ void ModuleManager::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&resolvedModules_)));
 }
 
-CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
-                                               CString moduleRecordName, CString moduleRequestName)
+std::tuple<CString, bool> ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
+                                                                 CString &moduleRecordName, CString &moduleRequestName,
+                                                                 CString &npmKey)
 {
     CString entryPoint;
     size_t pos = 0;
+    bool npm = false;
     if (moduleRequestName.find("@bundle:") != CString::npos) {
         pos = moduleRequestName.find('/');
         pos = moduleRequestName.find('/', pos + 1);
         ASSERT(pos != CString::npos);
-        entryPoint = moduleRequestName.substr(pos + 1);
-    } else if (moduleRequestName.find("@module:") != CString::npos) {
-        moduleRequestName = moduleRequestName.substr(JSPandaFile::MODULE_PREFIX_LENGTH);
-        pos = moduleRequestName.find('/');
-        ASSERT(pos != CString::npos);
-        baseFilename =
-            JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + JSPandaFile::MERGE_ABC_ETS_MODULES;
         entryPoint = moduleRequestName.substr(pos + 1);
     } else if (moduleRequestName.rfind(".js") != CString::npos || moduleRequestName.find("./") == 0 ||
                moduleRequestName.find("../") == 0) {
@@ -624,11 +619,11 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
             }
         }
     } else {
+        npm = true;
         pos = moduleRecordName.find(JSPandaFile::NODE_MODULES);
         CString key = "";
         if (pos != CString::npos) {
-            auto info = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(moduleRecordName);
-            key = info.npmPackageName + "/" + JSPandaFile::NODE_MODULES + "/" + moduleRequestName;
+            key = npmKey + "/" + JSPandaFile::NODE_MODULES + "/" + moduleRequestName;
             entryPoint = jsPandaFile->FindEntryPoint(key);
         }
 
@@ -645,10 +640,12 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         if (entryPoint.empty()) {
             LOG_ECMA(ERROR) << "find entryPoint failed\n"
                             << "moduleRequestName : " << moduleRequestName << "\n"
-                            << "moduleRecordName : " << moduleRecordName << "\n";
+                            << "moduleRecordName : " << moduleRecordName << "\n"
+                            << "npmKey : " << npmKey;
         }
+        npmKey = key;
     }
-    return entryPoint;
+    return std::make_tuple(entryPoint, npm);
 }
 
 CString ModuleManager::GetRecordName(JSTaggedValue module)
