@@ -159,6 +159,21 @@ DEF_CALL_SIGNATURE(Equal)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(NotEqual)
+{
+    // 3 input parameters, return may be true/false/hole
+    CallSignature NotEqual("NotEqual", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = NotEqual;
+    // 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // left
+        VariableType::JS_ANY(),          // right
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(SetPropertyByName)
 {
     // 6 : 6 input parameters

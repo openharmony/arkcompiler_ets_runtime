@@ -27,6 +27,7 @@ namespace panda::ecmascript::kungfu {
     V(Div)                            \
     V(Mod)                            \
     V(Equal)                          \
+    V(NotEqual)                       \
     V(TypeOf)                         \
     V(GetPropertyByName)              \
     V(DeprecatedGetPropertyByName)    \
