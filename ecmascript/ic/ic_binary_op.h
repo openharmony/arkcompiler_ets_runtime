@@ -180,9 +180,10 @@ public:
                     if (dLeft == 0.0 || std::isnan(dLeft)) {
                         return JSTaggedValue(base::NAN_VALUE);
                     }
-                    uint64_t flagBit = ((bit_cast<uint64_t>(dLeft)) ^ (bit_cast<uint64_t>(dRight))) &
+                    uint64_t flagBit = ((base::bit_cast<uint64_t>(dLeft)) ^ (base::bit_cast<uint64_t>(dRight))) &
                                         base::DOUBLE_SIGN_MASK;
-                    return JSTaggedValue(bit_cast<double>(flagBit ^ (bit_cast<uint64_t>(base::POSITIVE_INFINITY))));
+                    return JSTaggedValue(base::bit_cast<double>(
+                        flagBit ^ (base::bit_cast<uint64_t>(base::POSITIVE_INFINITY))));
                 }
                 return JSTaggedValue(dLeft / dRight);
             }

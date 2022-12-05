@@ -540,7 +540,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetTypeLiteral(JSThread *thread, con
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
                 case LiteralTag::INTEGER: {
-                    jt = JSTaggedValue(bit_cast<int32_t>(std::get<uint32_t>(value)));
+                    jt = JSTaggedValue(base::bit_cast<int32_t>(std::get<uint32_t>(value)));
                     break;
                 }
                 case LiteralTag::LITERALARRAY: {

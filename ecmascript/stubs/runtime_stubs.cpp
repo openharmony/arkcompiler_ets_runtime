@@ -430,7 +430,7 @@ DEF_RUNTIME_STUBS(Exp)
             return JSTaggedValue(base::NAN_VALUE).GetRawData();
         }
         if ((doubleBase == 0 &&
-            ((bit_cast<uint64_t>(doubleBase)) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK) &&
+            ((base::bit_cast<uint64_t>(doubleBase)) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK) &&
             std::isfinite(doubleExponent) && base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent &&
             base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF ==  // 2 : half
             (doubleExponent / 2)) {  // 2 : half

@@ -476,7 +476,7 @@ void InterpreterAssembly::HandleFldaiImm64(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    auto imm = bit_cast<double>(READ_INST_64_0());
+    auto imm = base::bit_cast<double>(READ_INST_64_0());
     LOG_INST() << "fldai " << imm;
     SET_ACC(JSTaggedValue(imm));
     DISPATCH(FLDAI_IMM64);
@@ -1475,7 +1475,7 @@ void InterpreterAssembly::HandleExpImm8V8(
             SET_ACC(JSTaggedValue(base::NAN_VALUE));
         }
         bool baseZero = doubleBase == 0 &&
-            (bit_cast<uint64_t>(doubleBase) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK;
+            (base::bit_cast<uint64_t>(doubleBase) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK;
         bool isFinite = std::isfinite(doubleExponent);
         bool truncEqual = base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent;
         bool halfTruncEqual = (base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF) ==

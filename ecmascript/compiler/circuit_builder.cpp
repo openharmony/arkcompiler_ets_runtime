@@ -255,7 +255,7 @@ GateRef CircuitBuilder::Boolean(bool val)
 
 GateRef CircuitBuilder::Double(double val)
 {
-    return GetCircuit()->GetConstantGate(MachineType::F64, bit_cast<int64_t>(val), GateType::NJSValue());
+    return GetCircuit()->GetConstantGate(MachineType::F64, base::bit_cast<int64_t>(val), GateType::NJSValue());
 }
 
 GateRef CircuitBuilder::HoleConstant()

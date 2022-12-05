@@ -106,7 +106,7 @@ bool JSTaggedValue::WithinInt32() const
     }
 
     double doubleValue = GetNumber();
-    if (bit_cast<int64_t>(doubleValue) == bit_cast<int64_t>(-0.0)) {
+    if (base::bit_cast<int64_t>(doubleValue) == base::bit_cast<int64_t>(-0.0)) {
         return false;
     }
 
