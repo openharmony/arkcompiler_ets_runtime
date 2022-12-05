@@ -103,7 +103,9 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(FindElementWithCache)                    \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
-    V(BigIntEquals)
+    V(BigIntEquals)                            \
+    V(TimeClip)                                \
+    V(SetDateValues)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -343,6 +345,8 @@ public:
                                         JSTaggedType key, int32_t num);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
+    static double TimeClip(double time);
+    static double SetDateValues(double year, double month, double day);
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
 private:

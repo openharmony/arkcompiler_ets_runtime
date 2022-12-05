@@ -825,7 +825,8 @@ void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, const JSHandle<JSH
 
     // Date = new Function()
     JSHandle<JSObject> dateFunction(
-        NewBuiltinConstructor(env, dateFuncPrototype, Date::DateConstructor, "Date", FunctionLength::ONE));
+        NewBuiltinConstructor(env, dateFuncPrototype, Date::DateConstructor, "Date", FunctionLength::ONE,
+                              BUILTINS_STUB_ID(DateConstructor)));
     JSHandle<JSFunction>(dateFunction)->SetFunctionPrototype(thread_, dateFuncInstanceHClass.GetTaggedValue());
 
     // Date.prototype method
@@ -906,7 +907,7 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
 
     // new Boolean Function()
     JSHandle<JSFunction> booleanFunction = NewBuiltinConstructor(env, booleanFuncPrototype, Boolean::BooleanConstructor,
-        "Boolean", FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(BooleanConstructor)));
+        "Boolean", FunctionLength::ONE, BUILTINS_STUB_ID(BooleanConstructor));
     booleanFunction->SetFunctionPrototype(thread_, booleanFuncInstanceHClass.GetTaggedValue());
 
     // Boolean.prototype method
@@ -1495,25 +1496,22 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathClass);
-    SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(ABS)));
-    SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE,
-                static_cast<uint8_t>(BUILTINS_STUB_ID(ACOS)));
+    SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE, BUILTINS_STUB_ID(ABS));
+    SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE, BUILTINS_STUB_ID(ACOS));
     SetFunction(env, mathObject, "acosh", Math::Acosh, FunctionLength::ONE);
     SetFunction(env, mathObject, "asin", Math::Asin, FunctionLength::ONE);
     SetFunction(env, mathObject, "asinh", Math::Asinh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "atan", Math::Atan, FunctionLength::ONE,
-                static_cast<uint8_t>(BUILTINS_STUB_ID(ATAN)));
+    SetFunction(env, mathObject, "atan", Math::Atan, FunctionLength::ONE, BUILTINS_STUB_ID(ATAN));
     SetFunction(env, mathObject, "atanh", Math::Atanh, FunctionLength::ONE);
     SetFunction(env, mathObject, "atan2", Math::Atan2, FunctionLength::TWO);
     SetFunction(env, mathObject, "cbrt", Math::Cbrt, FunctionLength::ONE);
     SetFunction(env, mathObject, "ceil", Math::Ceil, FunctionLength::ONE);
     SetFunction(env, mathObject, "clz32", Math::Clz32, FunctionLength::ONE);
-    SetFunction(env, mathObject, "cos", Math::Cos, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(COS)));
+    SetFunction(env, mathObject, "cos", Math::Cos, FunctionLength::ONE, BUILTINS_STUB_ID(COS));
     SetFunction(env, mathObject, "cosh", Math::Cosh, FunctionLength::ONE);
     SetFunction(env, mathObject, "exp", Math::Exp, FunctionLength::ONE);
     SetFunction(env, mathObject, "expm1", Math::Expm1, FunctionLength::ONE);
-    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE,
-                static_cast<uint8_t>(BUILTINS_STUB_ID(FLOOR)));
+    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE, BUILTINS_STUB_ID(FLOOR));
     SetFunction(env, mathObject, "fround", Math::Fround, FunctionLength::ONE);
     SetFunction(env, mathObject, "hypot", Math::Hypot, FunctionLength::TWO);
     SetFunction(env, mathObject, "imul", Math::Imul, FunctionLength::TWO);
@@ -1527,10 +1525,9 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     SetFunction(env, mathObject, "random", Math::Random, FunctionLength::ZERO);
     SetFunction(env, mathObject, "round", Math::Round, FunctionLength::ONE);
     SetFunction(env, mathObject, "sign", Math::Sign, FunctionLength::ONE);
-    SetFunction(env, mathObject, "sin", Math::Sin, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(SIN)));
+    SetFunction(env, mathObject, "sin", Math::Sin, FunctionLength::ONE, BUILTINS_STUB_ID(SIN));
     SetFunction(env, mathObject, "sinh", Math::Sinh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "sqrt", Math::Sqrt, FunctionLength::ONE,
-                static_cast<uint8_t>(BUILTINS_STUB_ID(SQRT)));
+    SetFunction(env, mathObject, "sqrt", Math::Sqrt, FunctionLength::ONE, BUILTINS_STUB_ID(SQRT));
     SetFunction(env, mathObject, "tan", Math::Tan, FunctionLength::ONE);
     SetFunction(env, mathObject, "tanh", Math::Tanh, FunctionLength::ONE);
     SetFunction(env, mathObject, "trunc", Math::Trunc, FunctionLength::ONE);
@@ -2644,7 +2641,8 @@ void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle
 
 JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &env,
                                                      const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
-                                                     const char *name, int length, uint8_t builtinId) const
+                                                     const char *name, int length,
+                                                     kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSFunction> ctor =
         factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
@@ -2672,7 +2670,8 @@ JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
 }
 
 JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
-                                           EcmaEntrypoint func, int length, uint8_t builtinId) const
+                                           EcmaEntrypoint func, int length,
+                                           kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
         FunctionKind::NORMAL_FUNCTION, builtinId);
@@ -2684,7 +2683,7 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
 }
 
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
-                           EcmaEntrypoint func, int length, uint8_t builtinId) const
+                           EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
     SetFunction(env, obj, keyString, func, length, builtinId);
@@ -2692,7 +2691,7 @@ void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObje
 
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                            const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
-                           uint8_t builtinId) const
+                           kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSFunction> function(NewFunction(env, key, func, length, builtinId));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(function), true, false, true);

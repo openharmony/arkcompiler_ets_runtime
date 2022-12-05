@@ -212,6 +212,12 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
     return result;
 }
 
+inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew)
+{
+    GateRef result = env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew);
+    return result;
+}
+
 inline void StubBuilder::DebugPrint(GateRef glue, std::initializer_list<GateRef> args)
 {
     CallNGCRuntime(glue, RTSTUB_ID(DebugPrint), args);
@@ -1591,6 +1597,11 @@ inline GateRef StubBuilder::TaggedCastToIntPtr(GateRef x)
 inline GateRef StubBuilder::GetDoubleOfTDouble(GateRef x)
 {
     return env_->GetBuilder()->GetDoubleOfTDouble(x);
+}
+
+inline GateRef StubBuilder::GetDoubleOfTNumber(GateRef x)
+{
+    return env_->GetBuilder()->GetDoubleOfTNumber(x);
 }
 
 inline GateRef StubBuilder::LoadObjectFromWeakRef(GateRef x)

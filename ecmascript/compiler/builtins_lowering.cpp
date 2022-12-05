@@ -63,59 +63,42 @@ GateRef BuiltinLowering::TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID 
     builder_.Branch(builder_.TaggedIsNumber(a0), &numberBranch, &notNumberBranch);
     builder_.Bind(&numberBranch);
     {
-        Label IsInt(&builder_);
-        Label NotInt(&builder_);
-        Label calc(&builder_);
-        DEFVAlUE(value, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-        builder_.Branch(builder_.TaggedIsInt(a0), &IsInt, &NotInt);
-        builder_.Bind(&IsInt);
+        GateRef value = builder_.GetDoubleOfTNumber(a0);
+        Label IsNan(&builder_);
+        Label NotNan(&builder_);
+        GateRef condition = builder_.DoubleIsNAN(value);
+        builder_.Branch(condition, &IsNan, &NotNan);
+        builder_.Bind(&NotNan);
         {
-            value = builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(a0));
-            builder_.Jump(&calc);
-        }
-        builder_.Bind(&NotInt);
-        {
-            value = builder_.GetDoubleOfTDouble(a0);
-            builder_.Jump(&calc);
-        }
-        builder_.Bind(&calc);
-        {
-            Label IsNan(&builder_);
-            Label NotNan(&builder_);
-            GateRef condition = builder_.DoubleIsNAN(*value);
-            builder_.Branch(condition, &IsNan, &NotNan);
-            builder_.Bind(&NotNan);
-            {
-                GateRef glue = acc_.GetGlueFromArgList();
-                int index = RTSTUB_ID(FloatCos);
-                switch (id) {
-                    case BUILTINS_STUB_ID(FLOOR):
-                        index = RTSTUB_ID(FloatFloor);
-                        break;
-                    case BUILTINS_STUB_ID(ACOS):
-                        index = RTSTUB_ID(FloatACos);
-                        break;
-                    case BUILTINS_STUB_ID(ATAN):
-                        index = RTSTUB_ID(FloatATan);
-                        break;
-                    case BUILTINS_STUB_ID(COS):
-                        index = RTSTUB_ID(FloatCos);
-                        break;
-                    case BUILTINS_STUB_ID(SIN):
-                        index = RTSTUB_ID(FloatSin);
-                        break;
-                    default:
-                        LOG_ECMA(FATAL) << "this branch is unreachable";
-                        UNREACHABLE();
-                }
-                result = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {*value});
-                builder_.Jump(&exit);
+            GateRef glue = acc_.GetGlueFromArgList();
+            int index = RTSTUB_ID(FloatCos);
+            switch (id) {
+                case BUILTINS_STUB_ID(FLOOR):
+                    index = RTSTUB_ID(FloatFloor);
+                    break;
+                case BUILTINS_STUB_ID(ACOS):
+                    index = RTSTUB_ID(FloatACos);
+                    break;
+                case BUILTINS_STUB_ID(ATAN):
+                    index = RTSTUB_ID(FloatATan);
+                    break;
+                case BUILTINS_STUB_ID(COS):
+                    index = RTSTUB_ID(FloatCos);
+                    break;
+                case BUILTINS_STUB_ID(SIN):
+                    index = RTSTUB_ID(FloatSin);
+                    break;
+                default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
+                    UNREACHABLE();
             }
-            builder_.Bind(&IsNan);
-            {
-                result = builder_.DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
-                builder_.Jump(&exit);
-            }
+            result = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value});
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&IsNan);
+        {
+            result = builder_.DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
+            builder_.Jump(&exit);
         }
     }
     builder_.Bind(&notNumberBranch);

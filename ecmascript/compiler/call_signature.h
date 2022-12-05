@@ -403,6 +403,8 @@ private:
     V(DeoptHandlerAsm)                      \
     V(JSCallNew)                            \
     V(JSCallNewWithArgV)                    \
+    V(TimeClip)                             \
+    V(SetDateValues)                        \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

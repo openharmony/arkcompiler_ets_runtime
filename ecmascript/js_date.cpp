@@ -924,4 +924,24 @@ double JSDate::SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool 
     }
     return TimeClip(result);
 }
+
+double JSDate::SetDateValues(int64_t year, int64_t month, int64_t day)
+{
+    if (year >= 0 && year < HUNDRED) {
+        year += NINETEEN_HUNDRED_YEAR;
+    }
+    int64_t m = DateUtils::Mod(month, MONTH_PER_YEAR);
+    int64_t y = year + (month - m) / MONTH_PER_YEAR;
+    int64_t d = DateUtils::GetDaysFromYear(y);
+    int index = DateUtils::IsLeap(y) ? 1 : 0;
+    d += DAYS_FROM_MONTH[index][m] + day - 1;
+    int64_t result = d * MS_PER_DAY;
+
+    int64_t offset = GetLocalOffsetFromOS(result, true) * SEC_PER_MINUTE * MS_PER_SECOND;
+    if (result < CHINA_1901_MS && (offset / MS_PER_MINUTE) == CHINA_AFTER_1901_MIN) {
+        offset += CHINA_BEFORE_1901_ADDMS;
+    }
+    result -= offset;
+    return TimeClip(result);
+}
 }  // namespace panda::ecmascript

@@ -116,6 +116,31 @@ GateRef CircuitBuilder::GetDoubleOfTDouble(GateRef x)
     return CastInt64ToFloat64(val);
 }
 
+GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label isInt(env_);
+    Label isDouble(env_);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::FLOAT64(), Double(0));
+    Branch(TaggedIsInt(x), &isInt, &isDouble);
+    Bind(&isInt);
+    {
+        result = ChangeInt32ToFloat64(GetInt32OfTInt(x));
+        Jump(&exit);
+    }
+    Bind(&isDouble);
+    {
+        result = GetDoubleOfTDouble(x);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    GateRef ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::Int8Equal(GateRef x, GateRef y)
 {
     return Equal(x, y);

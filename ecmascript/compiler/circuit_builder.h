@@ -280,6 +280,7 @@ public:
     GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
     GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
     GateRef CallStub(GateRef glue, int index, const std::vector<GateRef> &args);
+    GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew = false);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                  const std::vector<GateRef> &args);
 
@@ -323,6 +324,7 @@ public:
     inline GateRef GetInt32OfTInt(GateRef x);
     inline GateRef TaggedCastToIntPtr(GateRef x);
     inline GateRef GetDoubleOfTDouble(GateRef x);
+    inline GateRef GetDoubleOfTNumber(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     inline GateRef Int32ToTaggedInt(GateRef x);
