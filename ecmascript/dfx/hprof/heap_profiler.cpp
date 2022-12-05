@@ -89,6 +89,7 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
         return false;
     }
 
+    vm_->CollectGarbage(TriggerGCType::OLD_GC);
     vm_->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
     snapshot->UpdateNode();
 
