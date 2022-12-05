@@ -26,8 +26,10 @@ import argparse
 import subprocess
 import signal
 import time
+import json
 
 DEFAULT_TIMEOUT = 300
+DEFAULT_PGO_THRESHOLD = 10
 TARGET_PLATFORM = ['x64', 'arm64']
 PRODUCT_LIST = ['hispark_taurus', 'rk3568', 'baltimore']
 TARGET_PRODUCT_MAP = {'x64': 0, 'arm64': 1}
@@ -41,13 +43,18 @@ def parse_args():
     parser.add_argument('-t', '--tool', metavar='opt',
         help='run tool supported opt: aot, int(c interpreter tool), asmint(asm interpreter tool)')
     parser.add_argument('-s', '--step', metavar='opt',
-        help='run step supported opt: abc, aot, aotd, run, rund, asmint, asmintd, int, intd')
+        help='run step supported opt: abc, pack, aot, aotd, run, rund, asmint, asmintd, int, intd')
     parser.add_argument('-d', '--debug', action='store_true', help='run on debug mode')
     parser.add_argument('--arm64', action='store_true', help='run on arm64 platform')
     parser.add_argument('--aot-args', metavar='args', help='pass to aot compiler args')
     parser.add_argument('--jsvm-args', metavar='args', help='pass to jsvm args')
+    parser.add_argument('-i', '--info', action='store_true', help='add log level of info to args')
     parser.add_argument('-c', '--clean', action='store_true', help='clean output files')
     parser.add_argument('--npm', action='store_true', help='npm install')
+    parser.add_argument('--bt', dest='builtin', action='store_true', help='aot compile with lib_ark_builtins.d.ts')
+    parser.add_argument('--pgo', action='store_true', help=f'aot compile with pgo, default threshold is {DEFAULT_PGO_THRESHOLD}')
+    parser.add_argument('--pgo-th', metavar='n', default=DEFAULT_PGO_THRESHOLD, type=int,
+        help=f'pgo hotness threshold, default is {DEFAULT_PGO_THRESHOLD}')
     parser.add_argument('--timeout', metavar='n', default=DEFAULT_TIMEOUT, type=int,
         help=f'specify seconds of test timeout, default is {DEFAULT_TIMEOUT}')
     parser.add_argument('-e', '--env', action='store_true', help='print LD_LIBRARY_PATH')
@@ -88,6 +95,9 @@ class ArkTest():
 
         self.ohdir = os.path.abspath(f'{self.self_dir}/../../../..')
         self.product = PRODUCT_LIST[TARGET_PRODUCT_MAP['x64']]
+        self.builtin = ''
+        if args.builtin:
+            self.builtin = f'{self.ohdir}/arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d'
         self.arm64 = False
         if args.step == 'hap':
             self.arm64 = True
@@ -183,12 +193,23 @@ class ArkTest():
         self.compiler = f'{product_dir}/{bins_dir[0][args.debug]}/ets_runtime/ark_aot_compiler'
         self.jsvm = f'{product_dir}/{bins_dir[self.arm64][args.debug]}/ets_runtime/ark_js_vm'
         self.ts2abc = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/build/src/index.js'
+        self.builtin
         self.aot_args = ''
         self.jsvm_args = icu_arg
+        if self.builtin:
+            self.aot_args = f'{self.aot_args} --builtins-dts={self.builtin}.abc'
+        self.pgo = False
+        if args.pgo:
+            self.pgo = True
+            self.aot_args = (f'{self.aot_args} --enable-pgo-profiler=true --pgo-hotness-threshold={args.pgo_th}'
+                             f' --pgo-profiler-path=pgo_file_name.aprof')
         if args.aot_args:
             self.aot_args = f'{self.aot_args} {args.aot_args}'
         if args.jsvm_args:
             self.jsvm_args = f'{self.jsvm_args} {args.jsvm_args}'
+        if args.info:
+            self.aot_args = f'{self.aot_args} --log-level=info'
+            self.jsvm_args = f'{self.jsvm_args} --log-level=info'
         self.runner = ''
         self.runnerd = 'gdb --args'
         if self.arm64:
@@ -214,6 +235,14 @@ class ArkTest():
             print(ret[2])
         return ret
 
+    def get_module_name(self, hap_dir):
+        with open(f'{hap_dir}/module.json') as f:
+            data = json.load(f)
+        if len(data):
+            return data['module']['name']
+        else:
+            return 'entry'
+
     def run_test(self, file):
         self.test_count += 1
         basename = os.path.basename(f'{file}')
@@ -221,17 +250,25 @@ class ArkTest():
         name = os.path.splitext(basename)[0]
         dir = os.path.dirname(file)
         out_case_dir = f'{dir}'
-        hap_dir = os.path.abspath(f'{out_case_dir}/..')
-        hap_name = os.path.basename(hap_dir)
+        hap_dir = 'null'
+        hap_name = 'null'
+        module_name = 'null'
+        if self.step == 'hap' or self.step == 'pack':
+            hap_dir = os.path.abspath(f'{out_case_dir}/..')
+            hap_name = os.path.basename(hap_dir)
+            module_name = self.get_module_name(hap_dir)
         abc_file = f'{os.path.splitext(file)[0]}.abc'
+        if self.pgo:
+            pgo_file = os.path.splitext(file)[0]
+            self.aot_args = self.aot_args.replace('pgo_file_name', pgo_file)
         cmd_map = {
             'abc': f'node --expose-gc {self.ts2abc} {file} --merge-abc',
             'pack': [f'mkdir -p {out_case_dir}/../an/arm64-v8a',
-                     f'mv {out_case_dir}/{name}.an {hap_dir}/an/arm64-v8a/entry.an',
-                     f'mv {out_case_dir}/{name}.ai {hap_dir}/an/arm64-v8a/entry.ai',
-                     f'cd {out_case_dir}/.. && rm -f ../{hap_name}.hap && zip -r ../{hap_name}.hap *',
-                     f'mv {hap_dir}/an/arm64-v8a/entry.an {out_case_dir}/{name}.an',
-                     f'mv {hap_dir}/an/arm64-v8a/entry.ai {out_case_dir}/{name}.ai',
+                     f'mv {out_case_dir}/{name}.an {hap_dir}/an/arm64-v8a/{module_name}.an',
+                     f'mv {out_case_dir}/{name}.ai {hap_dir}/an/arm64-v8a/{module_name}.ai',
+                     f'cd {out_case_dir}/.. && rm -f ../{hap_name}.hap && zip -r -q ../{hap_name}.hap *',
+                     f'mv {hap_dir}/an/arm64-v8a/{module_name}.an {out_case_dir}/{name}.an',
+                     f'mv {hap_dir}/an/arm64-v8a/{module_name}.ai {out_case_dir}/{name}.ai',
                      f'rm -rf {hap_dir}/an'],
             'aot': f'{self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {abc_file}',
             'aotd': f'{self.runnerd} {self.compiler} {self.aot_args} --aot-file={out_case_dir}/{name} {abc_file}',
@@ -243,6 +280,10 @@ class ArkTest():
             'intd': f'{self.runnerd} {self.jsvm} {self.jsvm_args} --asm-interpreter=0 --entry-point={name} {abc_file}',
             'clean': f'rm -f {out_case_dir}/{name}.abc {out_case_dir}/{name}.an {out_case_dir}/{name}.ai',
             'cleanhap': f'rm -rf {hap_dir}/an {out_case_dir}/{name}.an {out_case_dir}/{name}.ai'}
+        if self.builtin:
+            cmd = f'node --expose-gc {self.ts2abc} {self.builtin}.ts -m --merge-abc -q -b'
+            print(cmd)
+            os.system(cmd)
         if self.step == 'hap':
             self.step = 'aot'
             perf_start = time.perf_counter()
@@ -345,7 +386,7 @@ class ArkTest():
             type = os.path.splitext(file)[-1]
             if type == '.hap':
                 hap_dir = f'{os.path.splitext(file)[0]}.aot'
-                os.system(f'mkdir -p {hap_dir} && unzip -o {file} -d {hap_dir}')
+                os.system(f'mkdir -p {hap_dir} && unzip -o -q {file} -d {hap_dir}')
                 file = f'{hap_dir}/{self.hap_abc}'
             self.run_test(file)
             return 0

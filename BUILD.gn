@@ -536,6 +536,7 @@ ecma_source = [
   "ecmascript/js_date.cpp",
   "ecmascript/js_for_in_iterator.cpp",
   "ecmascript/js_finalization_registry.cpp",
+  "ecmascript/js_file_path.cpp",
   "ecmascript/js_function.cpp",
   "ecmascript/js_generator_object.cpp",
   "ecmascript/js_async_generator_object.cpp",

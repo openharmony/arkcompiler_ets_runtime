@@ -846,7 +846,7 @@ private:
     int arkProperties_ = GetDefaultProperties();
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
-    std::string aotOutputFile_ {"aot_file"};
+    std::string aotOutputFile_ {""};
     std::string targetTriple_ {"x86_64-unknown-linux-gnu"};
     uint32_t asmOptLevel_ {3}; // 3: default opt level
     uint32_t relocationMode_ {2}; // 2: default relocation mode

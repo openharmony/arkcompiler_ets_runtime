@@ -419,7 +419,7 @@ bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                               const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
-    aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile, entryPoint);
+    aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
     Method *method = mainFunc->GetCallTarget();
     size_t actualNumArgs = method->GetNumArgs();
     size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
@@ -866,10 +866,10 @@ void EcmaVM::LoadStubFile()
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string anFile = options_.GetAOTOutputFile() + ".an";
+    std::string anFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AN;
     aotFileManager_->LoadAnFile(anFile);
 
-    std::string aiFile = options_.GetAOTOutputFile() + ".ai";
+    std::string aiFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AI;
     aotFileManager_->LoadSnapshotFile(aiFile);
 }
 

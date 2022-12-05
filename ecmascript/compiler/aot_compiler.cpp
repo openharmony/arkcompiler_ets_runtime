@@ -26,6 +26,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/aot_file_manager.h"
 
 namespace panda::ecmascript::kungfu {
 std::string GetHelper()
@@ -82,6 +83,9 @@ int Main(const int argc, const char **argv)
         arg_list_t pandaFileNames = base::StringHelper::SplitString(files, ":");
         std::string triple = runtimeOptions.GetTargetTriple();
         std::string outputFileName = runtimeOptions.GetAOTOutputFile();
+        if (outputFileName.empty()) {
+            outputFileName = "aot_file";
+        }
         size_t optLevel = runtimeOptions.GetOptLevel();
         size_t relocMode = runtimeOptions.GetRelocMode();
         std::string logOption = runtimeOptions.GetCompilerLogOption();
@@ -112,7 +116,7 @@ int Main(const int argc, const char **argv)
                 continue;
             }
         }
-        generator.SaveAOTFile(outputFileName + ".an");
+        generator.SaveAOTFile(outputFileName + AOTFileManager::FILE_EXTENSION_AN);
         generator.SaveSnapshotFile();
     }
 

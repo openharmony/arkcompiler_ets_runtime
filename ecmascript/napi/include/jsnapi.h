@@ -1211,6 +1211,9 @@ public:
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
 
+    // aot load
+    static void LoadAotFile(EcmaVM *vm, const std::string &hapPath);
+
     // JS code
     static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
