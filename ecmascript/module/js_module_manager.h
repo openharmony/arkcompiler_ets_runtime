@@ -40,6 +40,7 @@ public:
     JSTaggedValue GetModuleValueInner(JSTaggedValue key, JSTaggedValue jsFunc);
     JSTaggedValue GetModuleValueOutter(JSTaggedValue key);
     JSTaggedValue GetModuleValueOutter(JSTaggedValue key, JSTaggedValue jsFunc);
+    JSTaggedValue GetModuleName(JSTaggedValue currentModule);
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value);
     void StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JSTaggedValue jsFunc);
     JSTaggedValue GetModuleNamespace(JSTaggedValue localName);

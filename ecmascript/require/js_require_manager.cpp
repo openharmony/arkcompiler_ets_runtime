@@ -43,6 +43,21 @@ void RequireManager::ResolveCurrentPath(JSThread *thread,
     fileName.Update(cbFileName.GetTaggedValue());
 }
 
+void RequireManager::ResolveDirPath(JSThread *thread,
+                                    JSMutableHandle<JSTaggedValue> &dirPath,
+                                    JSHandle<JSTaggedValue> &fileName)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString fullName = ConvertToString(fileName.GetTaggedValue());
+    // find last '/'
+    int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
+    if (foundPos == -1) {
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+    }
+    CString dirPathStr = fullName.substr(0, foundPos + 1);
+    dirPath.Update((factory->NewFromUtf8(dirPathStr)).GetTaggedValue());
+}
+
 void RequireManager::InitializeCommonJS(JSThread *thread, CJSInfo cjsInfo)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

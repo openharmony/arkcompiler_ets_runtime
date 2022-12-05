@@ -48,7 +48,9 @@ JSHandle<CjsModuleCache> CjsModuleCache::ResetModule(const JSThread *thread,
 {
     int entry = dictionary->FindEntry(key.GetTaggedValue());
     ASSERT(entry != -1);
-
+    if (entry == -1) {
+        LOG_FULL(FATAL) << "CjsModuleCache::ResetModule Failed";
+    }
     dictionary->SetEntry(thread, entry, key, value);
     return dictionary;
 }
