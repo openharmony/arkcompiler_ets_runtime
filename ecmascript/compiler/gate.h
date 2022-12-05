@@ -310,8 +310,8 @@ public:
 private:
     friend class Circuit;
     friend class GateAccessor;
-    void CheckInputOpcode(size_t i, OpCode expected) const;
-    void CheckInputMachineType(size_t i, MachineType expected, bool isArch64) const;
+    void CheckInputOpcode(size_t idx, OpCode expected) const;
+    void CheckInputMachineType(size_t idx, MachineType expected, bool isArch64) const;
     void CheckGeneralState(size_t idx) const;
     void CheckFailed(std::string errorString, size_t highlightIdx) const;
     void SetMetaData(const GateMetaData* meta)

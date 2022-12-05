@@ -391,8 +391,8 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
         // source file
         DebugInfoExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
-        const std::string &sourceFile = debugExtractor->GetSourceFile(
-                                        reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId());
+        const std::string &sourceFile =
+            debugExtractor->GetSourceFile(reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId());
         if (sourceFile.empty()) {
             tempVariable = "";
         } else {

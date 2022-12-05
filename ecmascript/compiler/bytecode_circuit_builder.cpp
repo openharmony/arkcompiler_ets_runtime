@@ -786,7 +786,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     GateRef gate = 0;
     auto meta = circuit_->JSBytecode(numValueInputs,
-            bytecodeInfo.GetOpcode(), iterator.Index());
+                                     bytecodeInfo.GetOpcode(), iterator.Index());
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, meta);
     if (bytecodeInfo.IsDef()) {
         gate = circuit_->NewGate(meta, MachineType::I64, inList.size(),
@@ -989,7 +989,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
     } else {
         // 2: the number of value inputs and it is in accord with LOOP_BEGIN
         currentPhi = circuit_->NewGate(circuit_->ValueSelector(2), MachineType::I64,
-                                      {bb.stateStart, Circuit::NullGate(), Circuit::NullGate()}, GateType::AnyType());
+                                       {bb.stateStart, Circuit::NullGate(), Circuit::NullGate()}, GateType::AnyType());
         auto inList = std::vector<GateRef>(1 + bb.numOfLoopBacks, Circuit::NullGate());
         auto loopBackValue = circuit_->NewGate(circuit_->ValueSelector(bb.numOfLoopBacks),
             MachineType::I64, inList.size(), inList.data(), GateType::AnyType());

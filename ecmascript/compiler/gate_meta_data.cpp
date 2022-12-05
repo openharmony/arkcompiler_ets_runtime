@@ -76,40 +76,40 @@ bool GateMetaData::IsProlog() const
 bool GateMetaData::IsFixed() const
 {
     return (opcode_ == OpCode::VALUE_SELECTOR) || (opcode_ == OpCode::DEPEND_SELECTOR)
-        || (opcode_ == OpCode::DEPEND_RELAY);
+            || (opcode_ == OpCode::DEPEND_RELAY);
 }
 
 bool GateMetaData::IsSchedulable() const
 {
     return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot())
-        && (!IsFixed()) && (GetStateCount() == 0);
+            && (!IsFixed()) && (GetStateCount() == 0);
 }
 
 bool GateMetaData::IsState() const
 {
     return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot())
-        && (!IsFixed()) && (GetStateCount() > 0);
+            && (!IsFixed()) && (GetStateCount() > 0);
 }
 
 bool GateMetaData::IsGeneralState() const
 {
     return ((opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE)
-        || (opcode_ == OpCode::JS_BYTECODE) || (opcode_ == OpCode::IF_SUCCESS)
-        || (opcode_ == OpCode::IF_EXCEPTION) || (opcode_ == OpCode::SWITCH_CASE)
-        || (opcode_ == OpCode::DEFAULT_CASE) || (opcode_ == OpCode::MERGE)
-        || (opcode_ == OpCode::LOOP_BEGIN) || (opcode_ == OpCode::ORDINARY_BLOCK)
-        || (opcode_ == OpCode::STATE_ENTRY) || (opcode_ == OpCode::TYPED_BINARY_OP)
-        || (opcode_ == OpCode::TYPE_CONVERT) || (opcode_ == OpCode::TYPED_UNARY_OP)
-        || (opcode_ == OpCode::TO_LENGTH) || (opcode_ == OpCode::HEAP_ALLOC)
-        || (opcode_ == OpCode::LOAD_ELEMENT) || (opcode_ == OpCode::LOAD_PROPERTY)
-        || (opcode_ == OpCode::STORE_ELEMENT) || (opcode_ == OpCode::STORE_PROPERTY)
-        || (opcode_ == OpCode::TYPED_CALL));
+             || (opcode_ == OpCode::JS_BYTECODE) || (opcode_ == OpCode::IF_SUCCESS)
+             || (opcode_ == OpCode::IF_EXCEPTION) || (opcode_ == OpCode::SWITCH_CASE)
+             || (opcode_ == OpCode::DEFAULT_CASE) || (opcode_ == OpCode::MERGE)
+             || (opcode_ == OpCode::LOOP_BEGIN) || (opcode_ == OpCode::ORDINARY_BLOCK)
+             || (opcode_ == OpCode::STATE_ENTRY) || (opcode_ == OpCode::TYPED_BINARY_OP)
+             || (opcode_ == OpCode::TYPE_CONVERT) || (opcode_ == OpCode::TYPED_UNARY_OP)
+             || (opcode_ == OpCode::TO_LENGTH) || (opcode_ == OpCode::HEAP_ALLOC)
+             || (opcode_ == OpCode::LOAD_ELEMENT) || (opcode_ == OpCode::LOAD_PROPERTY)
+             || (opcode_ == OpCode::STORE_ELEMENT) || (opcode_ == OpCode::STORE_PROPERTY)
+             || (opcode_ == OpCode::TYPED_CALL));
 }
 
 bool GateMetaData::IsTerminalState() const
 {
     return ((opcode_ == OpCode::RETURN) || (opcode_ == OpCode::THROW)
-        || (opcode_ == OpCode::RETURN_VOID));
+             || (opcode_ == OpCode::RETURN_VOID));
 }
 
 bool GateMetaData::IsCFGMerge() const
@@ -120,9 +120,9 @@ bool GateMetaData::IsCFGMerge() const
 bool GateMetaData::IsControlCase() const
 {
     return (opcode_ == OpCode::IF_BRANCH) || (opcode_ == OpCode::SWITCH_BRANCH)
-        || (opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE)
-        || (opcode_ == OpCode::IF_SUCCESS) || (opcode_ == OpCode::IF_EXCEPTION) ||
-           (opcode_ == OpCode::SWITCH_CASE) || (opcode_ == OpCode::DEFAULT_CASE);
+            || (opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE)
+            || (opcode_ == OpCode::IF_SUCCESS) || (opcode_ == OpCode::IF_EXCEPTION) ||
+            (opcode_ == OpCode::SWITCH_CASE) || (opcode_ == OpCode::DEFAULT_CASE);
 }
 
 bool GateMetaData::IsLoopHead() const
@@ -143,7 +143,7 @@ bool GateMetaData::IsConstant() const
 bool GateMetaData::IsTypedOperator() const
 {
     return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT)
-        || (opcode_ == OpCode::TYPED_UNARY_OP);
+            || (opcode_ == OpCode::TYPED_UNARY_OP);
 }
 
 #define CACHED_VALUE_LIST(V) \
@@ -194,8 +194,7 @@ namespace {
 GateMetaDataChache globalGateMetaDataChache;
 }
 
-GateMetaBuilder::GateMetaBuilder(Chunk* chunk) :
-    cache_(globalGateMetaDataChache), chunk_(chunk) {}
+GateMetaBuilder::GateMetaBuilder(Chunk* chunk) : cache_(globalGateMetaDataChache), chunk_(chunk) {}
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
 const GateMetaData* GateMetaBuilder::NAME()     \

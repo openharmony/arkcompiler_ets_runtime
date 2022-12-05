@@ -62,7 +62,8 @@ public:
 };
 
 template<typename K, typename V, typename Hash = std::hash<K>, typename KeyEqual = std::equal_to<K>>
-class PUBLIC_API ChunkUnorderedMap : public std::unordered_map<K, V, Hash, KeyEqual, ChunkAllocator<std::pair<const K, V>>> {
+class PUBLIC_API ChunkUnorderedMap : public std::unordered_map<K, V, Hash, KeyEqual,
+                                                               ChunkAllocator<std::pair<const K, V>>> {
 public:
     // NOLINTNEXTLINE(readability-magic-numbers)
     explicit ChunkUnorderedMap(Chunk *chunk, size_t bucket_count = 100)

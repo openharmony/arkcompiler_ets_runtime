@@ -86,7 +86,7 @@ struct ProfileInfo {
     int nodeCount = 0;
     CVector<int> samples;
     CVector<int> timeDeltas;
-    //state time statistic
+    // state time statistic
     uint64_t gcTime = 0;
     uint64_t cInterpreterTime = 0;
     uint64_t asmInterpreterTime = 0;
@@ -141,7 +141,7 @@ public:
     bool GetGcState() const;
     void SetGcState(bool gcState);
     bool GetRuntimeState() const;
-    void SetRuntimeState(bool gcState);
+    void SetRuntimeState(bool runtimeState);
     void SetIsBreakSampleFlag(bool sampleFlag);
     int SemInit(int index, int pshared, int value);
     int SemPost(int index);

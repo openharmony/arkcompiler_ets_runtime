@@ -282,7 +282,7 @@ struct FrameInfo SamplesRecord::GetMethodInfo(struct MethodKey &methodKey)
 std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningState state)
 {
     std::string temp = functionName;
-    switch(state) {
+    switch (state) {
         case RunningState::GC:
             return temp.append("(GC)");
         case RunningState::CINT:
@@ -306,7 +306,7 @@ std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningStat
 
 void SamplesRecord::StatisticStateTime(int timeDelta, RunningState state)
 {
-    switch(state) {
+    switch (state) {
         case RunningState::GC: {
             profileInfo_->gcTime += static_cast<uint64_t>(timeDelta);
             return;
