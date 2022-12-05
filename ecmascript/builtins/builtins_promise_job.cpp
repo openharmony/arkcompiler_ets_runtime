@@ -152,7 +152,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
                                                           specifierString.GetTaggedValue());
         fileNameStr = ConvertToString(moduleName.GetTaggedValue());
     } else {
-        CString baseFilename = ConvertToString(dirPath.GetTaggedValue());
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifier.GetTaggedValue());
          const JSPandaFile *jsPandaFile =
