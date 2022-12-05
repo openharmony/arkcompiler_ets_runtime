@@ -581,13 +581,14 @@ public:
         }
         Destroy();
     }
+
     void TaggedArrayTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> res = deserializer.Deserialize();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize TaggedArray fail";
-        EXPECT_TRUE(res.GetTaggedValue().IsTaggedArray()) << "[NotJSFunction] Deserialize TaggedArray fail";
+        EXPECT_TRUE(res.GetTaggedValue().IsTaggedArray()) << "[NotTaggedArray] Deserialize TaggedArray fail";
 
         // check taggedArray
         JSHandle<TaggedArray> taggedArray = JSHandle<TaggedArray>::Cast(res);
@@ -599,33 +600,48 @@ public:
         EXPECT_TRUE(taggedArray->Get(2).IsUndefined()); // 2: the second index
         Destroy();
     }
+
     void ConstantPoolTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> res = deserializer.Deserialize();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ConstantPool fail";
-        EXPECT_TRUE(res.GetTaggedValue().IsConstantPool()) << "[NotJSFunction] Deserialize ConstantPool fail";
+        EXPECT_TRUE(res.GetTaggedValue().IsConstantPool()) << "[NotConstantPool] Deserialize ConstantPool fail";
 
         // check constantPool
-        JSHandle<ConstantPool> constpool = JSHandle<ConstantPool>::Cast(res);
-        EXPECT_TRUE(constpool->GetObjectFromCache(0).IsJSFunction());
-        EXPECT_TRUE(constpool->GetObjectFromCache(1).IsJSFunction());
-        EcmaString *str11 = reinterpret_cast<EcmaString *>(constpool->Get(2).GetTaggedObject());
-        EcmaString *str22 = reinterpret_cast<EcmaString *>(constpool->Get(3).GetTaggedObject());
-        EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString().c_str(), "str11"), 0);
-        EXPECT_EQ(std::strcmp(EcmaStringAccessor(str22).ToCString().c_str(), "str22"), 0);
+        JSHandle<ConstantPool> constPool = JSHandle<ConstantPool>::Cast(res);
+        EXPECT_EQ(constPool->GetLength(), 6U);
+        EXPECT_EQ(constPool->GetCacheLength(), 4U);
         Destroy();
     }
+
     void MethodTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> res = deserializer.Deserialize();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize Method fail";
-        EXPECT_TRUE(res.GetTaggedValue().IsMethod()) << "[NotJSFunction] Deserialize Method fail";
+        EXPECT_TRUE(res.GetTaggedValue().IsMethod()) << "[NotMethod] Deserialize Method fail";
+
+        JSHandle<Method> method = JSHandle<Method>::Cast(res);
+        EXPECT_TRUE(method->IsNativeWithCallField());
         Destroy();
     }
+
+    void MethodTest1(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.Deserialize();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize Method fail";
+        EXPECT_TRUE(res.GetTaggedValue().IsMethod()) << "[NotMethod] Deserialize Method fail";
+
+        JSHandle<Method> method = JSHandle<Method>::Cast(res);
+        EXPECT_FALSE(method->IsNativeWithCallField());
+        Destroy();
+    }
+
     void FunctionTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
@@ -635,6 +651,7 @@ public:
         EXPECT_TRUE(res->IsJSFunction()) << "[NotJSFunction] Deserialize JSFunction fail";
         Destroy();
     }
+
     void ObjectWithFunctionTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
@@ -642,7 +659,7 @@ public:
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> res = deserializer.Deserialize();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ObjectWithFunction fail";
-        EXPECT_TRUE(res->IsObject()) << "[NotJSFunction] Deserialize ObjectWithFunction fail";
+        EXPECT_TRUE(res->IsObject()) << "[NotObjectWithFunction] Deserialize ObjectWithFunction fail";
 
         JSHandle<JSTaggedValue> key1(factory->NewFromASCII("2"));
         OperationResult result1 = JSObject::GetProperty(thread, res, key1);
@@ -1400,7 +1417,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeConstantPool)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     EXPECT_TRUE(pf != nullptr);
 
-    JSHandle<ConstantPool> constPool = factory->NewConstantPool(6);
+    JSHandle<ConstantPool> constPool = factory->NewConstantPool(4);
     JSHandle<JSFunction> funcFunc(env->GetFunctionFunction());
     JSHandle<JSFunction> dateFunc(env->GetDateFunction());
     JSHandle<EcmaString> str1 = factory->NewFromASCII("str11");
@@ -1427,7 +1444,7 @@ static void TestFunc()
     return;
 }
 
-HWTEST_F_L0(JSSerializerTest, SerializeMethod)
+HWTEST_F_L0(JSSerializerTest, SerializeMethod1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<Method> method = factory->NewMethodForNativeFunction(reinterpret_cast<void*>(TestFunc));
@@ -1439,6 +1456,23 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::MethodTest, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeMethod2)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
+    JSHandle<Method> method = factory->NewMethod(methodLiteral);
+    EXPECT_TRUE(method.GetTaggedValue().IsMethod());
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(method));
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::MethodTest1, jsDeserializerTest, data);
     t1.join();
     delete serializer;
 };

@@ -95,7 +95,8 @@ enum class SerializationUID : uint8_t {
     ERROR_MESSAGE_END,
     // Function begin
     JS_FUNCTION,
-    METHOD,
+    JS_METHOD,
+    NATIVE_METHOD,
     CONSTANT_POOL,
     TAGGED_ARRAY,
     // Function end
@@ -178,7 +179,8 @@ private:
     JSHandle<JSTaggedValue> ReadJSFunctionBase();
     JSHandle<JSTaggedValue> ReadJSFunction();
     JSHandle<JSTaggedValue> ReadTaggedArray();
-    JSHandle<JSTaggedValue> ReadMethod();
+    JSHandle<JSTaggedValue> ReadJSMethod();
+    JSHandle<JSTaggedValue> ReadNativeMethod();
     JSHandle<JSTaggedValue> ReadConstantPool();
     JSHandle<JSTaggedValue> ReadJSError(SerializationUID uid);
     JSHandle<JSTaggedValue> ReadJSDate();
