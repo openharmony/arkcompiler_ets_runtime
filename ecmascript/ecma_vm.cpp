@@ -808,8 +808,8 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&frameworkProgram_)));
-    rv(Root::ROOT_VM,
-        ObjectSlot(ToUintPtr(&internalNativeMethods_.front())), ObjectSlot(ToUintPtr(&internalNativeMethods_.back())));
+    rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
+        ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
     moduleManager_->Iterate(v);
     tsManager_->Iterate(v);
     aotFileManager_->Iterate(v);
