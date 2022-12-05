@@ -547,17 +547,22 @@ JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaF
     return JSHandle<ConstantPool>(thread_, constpool);
 }
 
-void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile)
+void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                          const JSPandaFile *jsPandaFile)
 {
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-
     // create "module", "exports", "require", "filename", "dirname"
     JSHandle<CjsModule> module = factory_->NewCjsModule();
     JSHandle<JSTaggedValue> require = GetGlobalEnv()->GetCjsRequireFunction();
     JSHandle<CjsExports> exports = factory_->NewCjsExports();
     JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
-    RequireManager::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+    if (jsPandaFile->IsBundlePack()) {
+        RequireManager::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+    } else {
+        filename.Update(JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetModule());
+        ASSERT(filename->IsString());
+        RequireManager::ResolveDirPath(thread_, dirname, filename);
+    }
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
 
@@ -567,6 +572,7 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
         EcmaInterpreter::NewRuntimeCallInfo(thread_,
                                             JSHandle<JSTaggedValue>(func),
                                             thisArg, undefined, 5); // 5 : argument numbers
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     if (info == nullptr) {
         LOG_ECMA(ERROR) << "CJSExecution Stack overflow!";
         return;
@@ -579,7 +585,15 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     EcmaRuntimeStatScope runtimeStatScope(this);
     CpuProfilingScope profilingScope(this);
     EcmaInterpreter::Execute(info);
+    if (!thread_->HasPendingException()) {
+        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+    }
 
+    // print exception information
+    if (thread_->HasPendingException()) {
+        auto exception = thread_->GetException();
+        HandleUncaughtException(exception.GetTaggedObject());
+    }
     // Collecting module.exports : exports ---> module.exports --->Module._cache
     RequireManager::CollectExecutedExp(thread_, cjsInfo);
     return;

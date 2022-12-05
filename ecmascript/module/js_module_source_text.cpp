@@ -218,8 +218,18 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
 void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                       const JSHandle<SourceTextModule> &requiredModule)
 {
-    JSHandle<JSTaggedValue> cjsModuleName(thread, requiredModule->GetEcmaModuleFilename());
+    JSTaggedValue cjsFileName(requiredModule->GetEcmaModuleFilename());
+    JSTaggedValue cjsRecordName(requiredModule->GetEcmaModuleRecordName());
+    JSMutableHandle<JSTaggedValue> cjsModuleName(thread, JSTaggedValue::Undefined());
     // Get exported cjs module
+    bool isBundle;
+    if (cjsRecordName.IsUndefined()) {
+        cjsModuleName.Update(cjsFileName);
+        isBundle = true;
+    } else {
+        cjsModuleName.Update(cjsRecordName);
+        isBundle = false;
+    }
     JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
     // Get esm environment
     JSHandle<JSTaggedValue> moduleEnvironment(thread, SourceTextModule::Cast(
@@ -244,9 +254,14 @@ void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTex
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
         JSTaggedValue resolvedModule = binding->GetModule();
         JSHandle<SourceTextModule> requestedModule(thread, resolvedModule);
-        JSHandle<JSTaggedValue> moduleName(thread, requestedModule->GetEcmaModuleFilename());
+        JSMutableHandle<JSTaggedValue> requestedName(thread, JSTaggedValue::Undefined());
+        if (isBundle) {
+            requestedName.Update(requestedModule->GetEcmaModuleFilename());
+        } else {
+            requestedName.Update(requestedModule->GetEcmaModuleRecordName());
+        }
         // if not the same module, then don't have to update
-        if (!JSTaggedValue::SameValue(moduleName, cjsModuleName)) {
+        if (!JSTaggedValue::SameValue(requestedName, cjsModuleName)) {
             continue;
         }
         // rebinding here
@@ -468,7 +483,9 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
                 CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed ";
+                if (!module->GetEcmaModuleRecordName().IsUndefined()) {
                 msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+                }
                 THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
             }
             // iii. Call envRec.CreateImportBinding(
@@ -534,7 +551,9 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
             CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed ";
-            msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+            if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+            }
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
@@ -1147,8 +1166,10 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed ";
-            msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+            CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed";
+            if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+            }
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // c. Assert: resolution is a ResolvedBinding Record.
