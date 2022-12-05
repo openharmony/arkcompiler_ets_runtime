@@ -461,6 +461,8 @@ public:
 
     static constexpr size_t AOT_VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, AOT_VERSION_SIZE> AOT_VERSION {0, 0, 0, 1};
+    static constexpr char FILE_EXTENSION_AN[] = ".an";
+    static constexpr char FILE_EXTENSION_AI[] = ".ai";
 
     void LoadStubFile(const std::string &fileName);
     void LoadAnFile(const std::string &fileName);
@@ -480,10 +482,11 @@ public:
         }
     }
 
-    void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     const AnFileInfo *GetAnFileInfo(const JSPandaFile *jsPandaFile) const;
     bool IsLoad(const JSPandaFile *jsPandaFile) const;
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
+    uint32_t GetAnFileIndex(const JSPandaFile *jsPandaFile) const;
+    void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
                                    const AOTLiteralInfo *entryIndexes);
@@ -501,11 +504,6 @@ private:
         return stubFileInfo_;
     }
 
-    void AddAnFileInfo(AnFileInfo anFileInfo)
-    {
-        anFileInfos_.emplace_back(anFileInfo);
-    }
-
     void RewriteRelcateDeoptHandler(EcmaVM *vm, AnFileInfo AOTFileInfo)
     {
         AOTFileInfo.RewriteRelcateDeoptHandler(vm);
@@ -520,6 +518,7 @@ private:
     ObjectFactory *factory_ {nullptr};
     StubFileInfo stubFileInfo_ {};
     std::vector<AnFileInfo> anFileInfos_ {};
+    std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_ {};
     kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 
     friend class AnFileInfo;
