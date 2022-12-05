@@ -337,12 +337,19 @@ JSTaggedValue DebuggerApi::GetCurrentModule(const EcmaVM *vm)
 int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *vm, const std::string &name)
 {
     JSThread *thread = vm->GetJSThread();
-    JSTaggedValue currentModule = GetCurrentModule(vm);
+    FrameHandler frameHandler(thread);
+    Method *method = frameHandler.GetMethod();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    if (jsPandaFile != nullptr && jsPandaFile->IsBundlePack()) {
+        return -1;
+    }
 
+    JSTaggedValue currentModule = GetCurrentModule(vm);
     JSTaggedValue dictionary = SourceTextModule::Cast(currentModule.GetTaggedObject())->GetNameDictionary();
     if (dictionary.IsUndefined()) {
         return -1;
     }
+
     if (dictionary.IsTaggedArray()) {
         JSTaggedValue localExportEntries = SourceTextModule::Cast(
             currentModule.GetTaggedObject())->GetLocalExportEntries();
@@ -353,10 +360,12 @@ int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *vm, const std::string 
         JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
         for (uint32_t idx = 0; idx < exportEntriesLen; idx++) {
             ee.Update(localExportArray->Get(idx));
-            JSTaggedValue key = ee->GetExportName();
-            std::string varName = EcmaStringAccessor(key).ToStdString();
-            if (varName == name) {
-                return idx;
+            JSTaggedValue key = ee->GetLocalName();
+            if (key.IsString()) {
+                std::string varName = EcmaStringAccessor(key).ToStdString();
+                if (varName == name) {
+                    return idx;
+                }
             }
         }
     } else {
@@ -367,9 +376,12 @@ int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *vm, const std::string 
         dict->GetAllKeys(thread, 0, keyArray);
         uint32_t length = keyArray->GetLength();
         for (uint32_t idx = 0; idx < length; idx++) {
-            std::string varName = EcmaStringAccessor(keyArray->Get(idx)).ToStdString();
-            if (varName == name) {
-                return idx;
+            JSTaggedValue key = keyArray->Get(idx);
+            if (key.IsString()) {
+                std::string varName = EcmaStringAccessor(key).ToStdString();
+                if (varName == name) {
+                    return idx;
+                }
             }
         }
     }
@@ -462,7 +474,7 @@ void DebuggerApi::GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleO
         JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
         for (uint32_t idx = 0; idx < exportEntriesLen; idx++) {
             ee.Update(localExportArray->Get(idx));
-            JSTaggedValue key = ee->GetExportName();
+            JSTaggedValue key = ee->GetLocalName();
             if (key.IsString()) {
                 Local<JSValueRef> name = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, key));
                 JSTaggedValue moduleValue = dict->Get(idx);
