@@ -490,6 +490,16 @@ public:
         return gcState_;
     }
 
+    void SetRuntimeState(bool runtimeState)
+    {
+        runtimeState_ = runtimeState;
+    }
+
+    bool GetRuntimeState() const
+    {
+        return runtimeState_;
+    }
+
     void EnableAsmInterpreter()
     {
         isAsmInterpreter_ = true;
@@ -758,6 +768,7 @@ private:
     bool getStackSignal_ {false};
     bool callNapiGetStack_ {false};
     bool gcState_ {false};
+    bool runtimeState_ {false};
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enablePrintBCOffset_ {false};
