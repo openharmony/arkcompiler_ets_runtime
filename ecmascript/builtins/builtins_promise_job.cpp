@@ -129,7 +129,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), PromiseJob, DynamicImportJob);
     JSThread *thread = argv->GetThread();
     EcmaVM *vm = thread->GetEcmaVM();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSPromiseReactionsFunction> resolve(GetCallArg(argv, 0));
@@ -155,12 +154,13 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     } else {
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifierString.GetTaggedValue());
-        const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename,
-                                                                                            recordNameStr.c_str());
+        const JSPandaFile *jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
         entryPoint =
             ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
+
         fileNameStr = baseFilename;
-        moduleName = factory->NewFromUtf8(entryPoint);
+        moduleName = vm->GetFactory()->NewFromUtf8(entryPoint);
     }
     const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr,
                                                                                         entryPoint);
@@ -176,7 +176,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         return CatchException(thread, reject);
     }
     if (!isModule) {
-        moduleNamespace.Update(factory->NewDefaultExportOfScript());
+        moduleNamespace.Update(vm->GetGlobalEnv()->GetExportOfScript());
     } else {
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
         JSHandle<SourceTextModule> moduleRecord =

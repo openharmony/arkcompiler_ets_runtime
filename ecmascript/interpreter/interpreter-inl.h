@@ -33,6 +33,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/template_string.h"
@@ -860,6 +861,35 @@ const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
         return jsPandaFile;
     }
     LOG_ECMA(FATAL) << "this branch is unreachable";
+    UNREACHABLE();
+}
+
+JSTaggedValue EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
+{
+    FrameHandler frameHandler(thread);
+    JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
+
+    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        // Skip builtins method
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        JSTaggedValue func = frameHandler.GetFunction();
+        JSHandle<JSTaggedValue> module(thread, JSFunction::Cast(func.GetTaggedObject())->GetModule());
+
+        if (module->IsSourceTextModule()) {
+            recordName.Update(SourceTextModule::Cast(module->GetTaggedObject())->GetEcmaModuleRecordName());
+        } else if (module->IsString()) {
+            recordName.Update(module);
+        } else {
+            continue;
+        }
+        return recordName.GetTaggedValue();
+    }
     UNREACHABLE();
 }
 

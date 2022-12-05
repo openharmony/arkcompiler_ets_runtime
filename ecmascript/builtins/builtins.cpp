@@ -319,6 +319,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializeCjsModule(env);
     InitializeCjsExports(env);
     InitializeCjsRequire(env);
+    InitializeDefaultExportOfScript(env);
     JSHandle<JSHClass> generatorFuncClass =
         factory_->CreateFunctionClass(FunctionKind::GENERATOR_FUNCTION, JSFunction::SIZE, JSType::JS_GENERATOR_FUNCTION,
                                       env->GetGeneratorFunctionPrototype());
@@ -3550,5 +3551,21 @@ void Builtins::InitializeCjsRequire(const JSHandle<GlobalEnv> &env) const
     SetFunction(env, cjsRequirePrototype, "Main", BuiltinsCjsRequire::Main, FunctionLength::ONE);
 
     env->SetCjsRequireFunction(thread_, cjsRequireFunction);
+}
+
+void Builtins::InitializeDefaultExportOfScript(const JSHandle<GlobalEnv> &env) const
+{
+    JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
+    JSHandle<JSTaggedValue> emptyObj(factory_->NewJSObjectByConstructor(builtinObj));
+    JSHandle<JSTaggedValue> defaultKey(factory_->NewFromUtf8("default"));
+
+    JSHandle<TaggedArray> props(factory_->NewTaggedArray(2)); // 2 : two propertise
+    props->Set(thread_, 0, defaultKey);
+    props->Set(thread_, 1, emptyObj);
+    JSHandle<JSHClass> hclass = factory_->CreateObjectClass(props, 1);
+    JSHandle<JSObject> obj = factory_->NewJSObject(hclass);
+    obj->SetPropertyInlinedProps(thread_, 0, props->Get(1));
+    env->SetExportOfScript(thread_, obj);
+    return;
 }
 }  // namespace panda::ecmascript
