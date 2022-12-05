@@ -2681,9 +2681,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_ACC();
         SAVE_PC();
-        receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
         auto constpool = GetConstantPool(sp);
         auto propKey = GET_STR_FROM_CACHE(stringId);  // Maybe moved by GC
+        receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
         RESTORE_ACC();
         auto value = GET_ACC();                                  // Maybe moved by GC
         JSTaggedValue res = SlowRuntimeStub::StOwnByNameWithNameSet(thread, receiver, propKey, value);
@@ -2873,10 +2873,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t stringId = READ_INST_16_1();
         uint32_t v0 = READ_INST_8_3();
 
-        JSTaggedValue obj = GET_VREG_VALUE(v0);
         SAVE_ACC();
         auto constpool = GetConstantPool(sp);
         JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
         RESTORE_ACC();
         JSTaggedValue value = GET_ACC();
 
@@ -6056,11 +6056,11 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEPRECATED_LDOBJBYNAME_PREF_ID32_V8) {
         uint32_t v0 = READ_INST_8_5();
-        JSTaggedValue receiver = GET_VREG_VALUE(v0);
 
         uint16_t stringId = READ_INST_32_1();
         auto constpool = GetConstantPool(sp);
         JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
         LOG_INST() << "intrinsics::ldobjbyname "
                    << "v" << v0 << " stringId:" << stringId << ", "
                    << ConvertToString(EcmaString::Cast(propKey.GetTaggedObject())) << ", obj:" << receiver.GetRawData();
@@ -6124,9 +6124,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8) {
         uint32_t stringId = READ_INST_32_1();
         uint32_t v0 = READ_INST_8_5();
-        JSTaggedValue obj = GET_VREG_VALUE(v0);
         auto constpool = GetConstantPool(sp);
         JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
 
         LOG_INST() << "intrinsics::ldsuperbyname"
                    << "v" << v0 << " stringId:" << stringId << ", "
@@ -6314,8 +6314,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint32_t v0 = READ_INST_8_4();
         auto constpool = GetConstantPool(sp);
 
-        JSTaggedValue obj = GET_VREG_VALUE(v0);
         JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+        JSTaggedValue obj = GET_VREG_VALUE(v0);
         JSTaggedValue value = GET_ACC();
 
         LOG_INST() << "intrinsics::stsuperbyname"
@@ -6378,6 +6378,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue receiver = GET_VREG_VALUE(v0);
         if (receiver.IsJSObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
             JSTaggedValue propKey = GET_STR_FROM_CACHE(stringId);
+            receiver = GET_VREG_VALUE(v0);
             JSTaggedValue value = GET_ACC();
             // fast path
             SAVE_ACC();
@@ -6393,8 +6394,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         SAVE_ACC();
         SAVE_PC();
-        receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
         auto propKey = GET_STR_FROM_CACHE(stringId);  // Maybe moved by GC
+        receiver = GET_VREG_VALUE(v0);                           // Maybe moved by GC
         auto value = GET_ACC();                                  // Maybe moved by GC
         JSTaggedValue res = SlowRuntimeStub::StOwnByNameWithNameSet(thread, receiver, propKey, value);
         RESTORE_ACC();
