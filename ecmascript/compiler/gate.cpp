@@ -38,7 +38,7 @@ void Gate::CheckInputOpcode(size_t idx, OpCode expected) const
     OpCode actual = GetInGateConst(idx)->GetOpCode();
     if (actual != expected) {
         CheckFailed("State input does not match (expected:" + GateMetaData::Str(expected)
-            + " actual:" + GateMetaData::Str(actual) + ")", idx);
+                    + " actual:" + GateMetaData::Str(actual) + ")", idx);
     }
 }
 
@@ -56,7 +56,7 @@ void Gate::CheckInputMachineType(size_t idx, MachineType expected, bool isArch64
     }
     if (actual != expected) {
         CheckFailed("Value input does not match (expected:"
-            + MachineTypeToStr(expected) + " actual:" + MachineTypeToStr(actual) + ")", idx);
+                    + MachineTypeToStr(expected) + " actual:" + MachineTypeToStr(actual) + ")", idx);
     }
 }
 
@@ -66,7 +66,7 @@ void Gate::CheckGeneralState(size_t idx) const
     OpCode actual = gatePtr->GetOpCode();
     if (!gatePtr->meta_->IsGeneralState()) {
         CheckFailed("State input does not match (expected:<General State> actual:"
-            + GateMetaData::Str(actual) + ")", idx);
+                    + GateMetaData::Str(actual) + ")", idx);
     }
 }
 

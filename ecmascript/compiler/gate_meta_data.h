@@ -322,8 +322,8 @@ private:
 class JSBytecodeMegaData : public GateMetaData {
 public:
     explicit JSBytecodeMegaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex) :
-        GateMetaData(OpCode::JS_BYTECODE, false, 1, 1, valuesIn),
-        opcode_(opcode), bcIndex_(bcIndex)
+                                GateMetaData(OpCode::JS_BYTECODE, false, 1, 1, valuesIn),
+                                opcode_(opcode), bcIndex_(bcIndex)
     {
         SetType(GateMetaData::JSBYTECODE);
     }
@@ -360,7 +360,7 @@ public:
     GATE_META_DATA_LIST_WITH_ONE_VALUE(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
-    GateMetaBuilder(Chunk* chunk);
+    explicit GateMetaBuilder(Chunk* chunk);
     const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
     {
         return new (chunk_) JSBytecodeMegaData(valuesIn, opcode, bcIndex);

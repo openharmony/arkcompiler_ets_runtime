@@ -32,7 +32,7 @@
 namespace panda::ecmascript::kungfu {
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
-    Circuit(NativeAreaAllocator* allocator, bool isArch64 = true);
+    explicit Circuit(NativeAreaAllocator* allocator, bool isArch64 = true);
     ~Circuit();
     NO_COPY_SEMANTIC(Circuit);
     NO_MOVE_SEMANTIC(Circuit);
@@ -51,7 +51,7 @@ public:
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType machineType, uint64_t value, GateType type);
-    GateRef NewArg(MachineType machineType, size_t value, GateType type, GateRef argRoot);
+    GateRef NewArg(MachineType machineType, size_t index, GateType type, GateRef argRoot);
     GateRef GetConstantDataGate(uint64_t value, GateType type);
     size_t GetGateCount() const;
     TimeStamp GetTime() const;
