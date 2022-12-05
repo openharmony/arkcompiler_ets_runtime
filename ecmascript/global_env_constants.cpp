@@ -561,6 +561,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::TIMEOUT_INDEX, factory->NewFromASCIINonMovable("timed-out"));
     SetConstant(ConstantIndex::CJS_EXPORTS_INDEX, factory->NewFromASCIINonMovable("exports"));
     SetConstant(ConstantIndex::CJS_CACHE_INDEX, factory->NewFromASCIINonMovable("_cache"));
+    SetConstant(ConstantIndex::NAPI_WRAPPER_INDEX, factory->NewFromASCIINonMovable("_napiwrapper"));
 
     auto accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
                                                  reinterpret_cast<void *>(JSFunction::PrototypeGetter));
