@@ -18,20 +18,23 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/napi/include/jsnapi.h"
+
 #include "libpandafile/class_data_accessor.h"
 #include "libpandafile/method_data_accessor.h"
 
 namespace panda::ecmascript {
 
-bool PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile, const JSPandaFile *patchFile,
-                                    CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
+PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,
+                                              const JSPandaFile *patchFile,
+                                              CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
 {
     EcmaVM *vm = thread->GetEcmaVM();
 
     // hot reload and hot patch only support merge-abc file.
     if (baseFile->IsBundlePack() || patchFile->IsBundlePack()) {
         LOG_ECMA(ERROR) << "base or patch is not merge abc!";
-        return false;
+        return PatchErrorCode::PACKAGE_NOT_ESMODULE;
     }
 
     // Get base constpool.
@@ -39,7 +42,7 @@ bool PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFil
     auto baseConstpoolValues = vm->FindConstpools(baseFile);
     if (!baseConstpoolValues.has_value()) {
         LOG_ECMA(ERROR) << "base constpool is empty";
-        return false;
+        return PatchErrorCode::INTERNAL_ERROR;
     }
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -48,27 +51,27 @@ bool PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFil
     auto patchConstpoolValues = vm->FindConstpools(patchFile);
     if (!patchConstpoolValues.has_value()) {
         LOG_ECMA(ERROR) << "patch constpool is empty";
-        return false;
+        return PatchErrorCode::INTERNAL_ERROR;
     }
 
     // Only esmodule support check
     if (CheckIsInvalidPatch(baseFile, patchFile, vm)) {
         LOG_ECMA(ERROR) << "Invalid patch";
-        return false;
+        return PatchErrorCode::MODIFY_IMPORT_EXPORT_NOT_SUPPORT;
     }
 
     if (!ReplaceMethod(thread, baseFile, patchFile, baseConstpoolValues.value(), baseMethodInfo)) {
         LOG_ECMA(ERROR) << "Replace method failed";
-        return false;
+        return PatchErrorCode::INTERNAL_ERROR;
     }
 
     if (!ExecutePatchMain(thread, patchFile, baseFile, baseMethodInfo)) {
         LOG_ECMA(ERROR) << "Execute patch main failed";
-        return false;
+        return PatchErrorCode::INTERNAL_ERROR;
     }
 
     vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
-    return true;
+    return PatchErrorCode::SUCCESS;
 }
 
 void PatchLoader::ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile)
@@ -225,7 +228,7 @@ bool PatchLoader::ReplaceMethod(JSThread *thread,
         Method *baseMethod = nullptr;
         if (literalIndex < UINT32_MAX) {
             // For class inner function modified.
-            TaggedArray* classLiteral = TaggedArray::Cast(constpoolValue);
+            TaggedArray *classLiteral = TaggedArray::Cast(constpoolValue);
             JSTaggedValue literalItem = classLiteral->Get(thread, literalIndex);
             JSFunctionBase *func = JSFunctionBase::Cast(literalItem.GetTaggedObject());
             baseMethod = Method::Cast(func->GetMethod().GetTaggedObject());
@@ -239,7 +242,7 @@ bool PatchLoader::ReplaceMethod(JSThread *thread,
         ASSERT(base != nullptr);
         InsertMethodInfo(indexSet, base, baseMethodInfo);
 
-        JSTaggedValue patchConstpoolValue = FindConstpoolVal(thread, patchFile, methodId);
+        JSTaggedValue patchConstpoolValue = thread->GetEcmaVM()->FindConstpool(patchFile, methodId);
 
         ReplaceMethodInner(thread, baseMethod, patch, patchConstpoolValue);
         LOG_ECMA(INFO) << "Replace method: " << patchRecordName << ":" << patchMethodName;
@@ -324,31 +327,32 @@ CString PatchLoader::GetRecordName(const JSPandaFile *jsPandaFile, EntityId meth
     return jsPandaFile->ParseEntryPoint(desc);
 }
 
-bool PatchLoader::UnloadPatchInternal(JSThread *thread, const CString &patchFileName, const CString &baseFileName,
-                                      const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
+PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString &patchFileName,
+                                                const CString &baseFileName,
+                                                const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
 {
     const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName);
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
-        return false;
+        return PatchErrorCode::FILE_NOT_EXECUTED;
     }
 
     const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "find patch jsPandafile failed";
-        return false;
+        return PatchErrorCode::FILE_NOT_FOUND;
     }
 
     if (baseMethodInfo.empty()) {
         LOG_ECMA(ERROR) << "no method need to unload";
-        return false;
+        return PatchErrorCode::INTERNAL_ERROR;
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
     auto baseConstpoolValues = vm->FindConstpools(baseFile);
     if (!baseConstpoolValues.has_value()) {
         LOG_ECMA(ERROR) << "base constpool is empty";
-        return false;
+        return PatchErrorCode::INTERNAL_ERROR;
     }
 
     for (const auto &item : baseMethodInfo) {
@@ -373,7 +377,7 @@ bool PatchLoader::UnloadPatchInternal(JSThread *thread, const CString &patchFile
             method = Method::Cast(func->GetMethod().GetTaggedObject());
         }
 
-        JSTaggedValue baseConstpoolValue = FindConstpoolVal(thread, baseFile, base->GetMethodId());
+        JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile, base->GetMethodId());
         ReplaceMethodInner(thread, method, base, baseConstpoolValue);
         LOG_ECMA(INFO) << "Replace method: " << method->GetMethodName();
     }
@@ -381,7 +385,7 @@ bool PatchLoader::UnloadPatchInternal(JSThread *thread, const CString &patchFile
     vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchUnloaded(patchFile);
 
     ClearPatchInfo(thread, patchFileName);
-    return true;
+    return PatchErrorCode::SUCCESS;
 }
 
 void PatchLoader::ClearPatchInfo(JSThread *thread, const CString &patchFileName)
@@ -705,15 +709,6 @@ bool PatchLoader::CheckStarExportEntryMismatch(StarExportEntry *patch, StarExpor
     return false;
 }
 
-JSTaggedValue PatchLoader::FindConstpoolVal(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId methodId)
-{
-    EcmaVM *vm = thread->GetEcmaVM();
-    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), methodId);
-    int32_t constpoolNum = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
-    JSTaggedValue constpoolValue = vm->FindConstpool(jsPandaFile, constpoolNum);
-    return constpoolValue;
-}
-
 CUnorderedMap<CString, BaseMethodIndex> PatchLoader::GenerateCachedMethods(JSThread *thread,
     const JSPandaFile *baseFile, const JSPandaFile *patchFile, const CMap<int32_t, JSTaggedValue> &baseConstpoolValues)
 {
@@ -723,7 +718,7 @@ CUnorderedMap<CString, BaseMethodIndex> PatchLoader::GenerateCachedMethods(JSThr
 
     const CUnorderedMap<uint32_t, MethodLiteral *> &patchMethodLiterals = patchFile->GetMethodLiteralMap();
     CUnorderedMap<CString, CUnorderedSet<CString>> patchMethodNames {}; // key :recordname; value :methodname
-    for (auto &iter : patchMethodLiterals) {
+    for (const auto &iter : patchMethodLiterals) {
         MethodLiteral *patch = iter.second;
         auto patchMethodId = patch->GetMethodId();
         const char *patchMethodName = MethodLiteral::GetMethodName(patchFile, patchMethodId);
@@ -737,7 +732,7 @@ CUnorderedMap<CString, BaseMethodIndex> PatchLoader::GenerateCachedMethods(JSThr
     }
 
     JSMutableHandle<ConstantPool> baseConstpool(thread, JSTaggedValue::Hole());
-    for (auto &iter : baseConstpoolValues) {
+    for (const auto &iter : baseConstpoolValues) {
         baseConstpool.Update(iter.second);
         uint32_t constpoolNum = iter.first;
         uint32_t baseConstpoolSize = baseConstpool->GetCacheLength();
@@ -758,7 +753,7 @@ CUnorderedMap<CString, BaseMethodIndex> PatchLoader::GenerateCachedMethods(JSThr
             }
 
             if (constpoolValue.IsTaggedArray()) {
-                TaggedArray* classLiteral = TaggedArray::Cast(constpoolValue);
+                TaggedArray *classLiteral = TaggedArray::Cast(constpoolValue);
                 uint32_t literalLength = classLiteral->GetLength();
                 for (uint32_t literalIndex = 0; literalIndex < literalLength; literalIndex++) {
                     JSTaggedValue literalItem = classLiteral->Get(thread, literalIndex);

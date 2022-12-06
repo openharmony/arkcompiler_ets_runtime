@@ -27,7 +27,7 @@ class ProtocolHandler {};
 
 namespace panda::test {
 using namespace panda::ecmascript;
-
+using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 using ProtocolHandler = tooling::ProtocolHandler;
 
 class HotReloadManagerTest : public testing::Test {
@@ -76,8 +76,8 @@ HWTEST_F_L0(HotReloadManagerTest, LoadAndUnload)
     EXPECT_TRUE(baseFile != nullptr);
     EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(baseFile) == baseFile);
 
-    result = JSNApi::LoadPatch(ecmaVm, patchFileName, baseFileName);
-    EXPECT_TRUE(result);
+    auto res = JSNApi::LoadPatch(ecmaVm, patchFileName, baseFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
     auto patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName.c_str());
     EXPECT_TRUE(patchFile != nullptr);
     EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(patchFile) == baseFile);
@@ -89,8 +89,8 @@ HWTEST_F_L0(HotReloadManagerTest, LoadAndUnload)
     result = JSNApi::IsQuickFixCausedException(ecmaVm, exception, patchFileName);
     EXPECT_FALSE(result);
 
-    result = JSNApi::UnloadPatch(ecmaVm, patchFileName);
-    EXPECT_TRUE(result);
+    res = JSNApi::UnloadPatch(ecmaVm, patchFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
     EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(patchFile) != baseFile);
     EXPECT_TRUE(hotReloadManager->GetPatchExtractor(sourceFile) == nullptr);
 }

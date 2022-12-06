@@ -16,6 +16,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
 QuickFixManager::~QuickFixManager()
@@ -42,18 +43,19 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const std::string &bas
     }
 }
 
-bool QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName)
+PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName,
+                                          const std::string &baseFileName)
 {
     LOG_ECMA(INFO) << "Load patch, patch: " << patchFileName << ", base:" << baseFileName;
     if (HasLoadedPatch(patchFileName, baseFileName)) {
         LOG_ECMA(ERROR) << "Cannot repeat load patch!";
-        return false;
+        return PatchErrorCode::PATCH_HAS_LOADED;
     }
 
     const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName.c_str());
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
-        return false;
+        return PatchErrorCode::FILE_NOT_EXECUTED;
     }
 
     // The entry point is not work for merge abc.
@@ -61,74 +63,74 @@ bool QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileNa
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, patchFileName.c_str(), "");
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";
-        return false;
+        return PatchErrorCode::FILE_NOT_FOUND;
     }
 
     CMap<BaseMethodIndex, MethodLiteral *> baseMethodInfo;
-    bool ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile, baseMethodInfo);
-    if (!ret) {
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile, baseMethodInfo);
+    if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Load patch fail!";
-        return false;
+        return ret;
     }
 
     InsertBaseInfo(patchFileName, baseFileName, baseMethodInfo);
     LOG_ECMA(INFO) << "Load patch success!";
-    return true;
+    return PatchErrorCode::SUCCESS;
 }
 
-bool QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName,
-                                const void *patchBuffer, size_t patchSize, const std::string &baseFileName)
+PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName,
+                                          const void *patchBuffer, size_t patchSize, const std::string &baseFileName)
 {
     LOG_ECMA(INFO) << "Load patch, patch: " << patchFileName << ", base:" << baseFileName;
     if (HasLoadedPatch(patchFileName, baseFileName)) {
         LOG_ECMA(ERROR) << "Cannot repeat load patch!";
-        return false;
+        return PatchErrorCode::PATCH_HAS_LOADED;
     }
 
     const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName.c_str());
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
-        return false;
+        return PatchErrorCode::FILE_NOT_EXECUTED;
     }
 
     const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
         thread, patchFileName.c_str(), "", patchBuffer, patchSize);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";
-        return false;
+        return PatchErrorCode::FILE_NOT_FOUND;
     }
 
     CMap<BaseMethodIndex, MethodLiteral *> baseMethodInfo;
-    bool ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile, baseMethodInfo);
-    if (!ret) {
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile, baseMethodInfo);
+    if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Load patch fail!";
-        return false;
+        return ret;
     }
 
     InsertBaseInfo(patchFileName, baseFileName, baseMethodInfo);
     LOG_ECMA(INFO) << "Load patch success!";
-    return true;
+    return PatchErrorCode::SUCCESS;
 }
 
-bool QuickFixManager::UnloadPatch(JSThread *thread, const std::string &patchFileName)
+PatchErrorCode QuickFixManager::UnloadPatch(JSThread *thread, const std::string &patchFileName)
 {
     LOG_ECMA(INFO) << "Unload patch, patch: " << patchFileName;
     if (!HasLoadedPatch(patchFileName)) {
         LOG_ECMA(ERROR) << "patch has not been loaded!";
-        return false;
+        return PatchErrorCode::PATCH_NOT_LOADED;
     }
 
     std::string baseFileName = GetBaseFileName(patchFileName);
     const auto &baseMethodInfo = FindBaseInfo(patchFileName, baseFileName);
-    bool ret = PatchLoader::UnloadPatchInternal(thread, patchFileName.c_str(), baseFileName.c_str(), baseMethodInfo);
-    if (!ret) {
+    auto ret = PatchLoader::UnloadPatchInternal(thread, patchFileName.c_str(), baseFileName.c_str(), baseMethodInfo);
+    if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Unload patch fail!";
-        return false;
+        return ret;
     }
 
     DeleteBaseInfo(patchFileName, baseFileName);
     LOG_ECMA(INFO) << "Unload patch success!";
-    return true;
+    return PatchErrorCode::SUCCESS;
 }
 
 bool QuickFixManager::HasLoadedPatch(const std::string &patchFileName, const std::string &baseFileName) const

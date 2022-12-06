@@ -156,6 +156,7 @@ using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
 using ecmascript::RegExpParser;
 using ecmascript::DebugInfoExtractor;
+using ecmascript::PatchErrorCode;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -2595,22 +2596,22 @@ EcmaVM *JsiRuntimeCallInfo::GetVM() const
 }
 
 // ---------------------------------------HotPatch--HotReload-------------------------------------------
-bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
+PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName)
 {
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
     return quickFixManager->LoadPatch(thread, patchFileName, baseFileName);
 }
 
-bool JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                       const std::string &baseFileName)
+PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer,
+                                 size_t patchSize, const std::string &baseFileName)
 {
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
     return quickFixManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
 }
 
-bool JSNApi::UnloadPatch(EcmaVM *vm, const std::string &patchFileName)
+PatchErrorCode JSNApi::UnloadPatch(EcmaVM *vm, const std::string &patchFileName)
 {
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();

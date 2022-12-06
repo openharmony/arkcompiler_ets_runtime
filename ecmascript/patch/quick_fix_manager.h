@@ -15,9 +15,11 @@
 #ifndef ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H
 #define ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H
 
+#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
 
 namespace panda::ecmascript {
+using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 class QuickFixManager {
 public:
     using QuickFixQueryCallBack = bool (*)(std::string, std::string &, void **, size_t);
@@ -27,10 +29,11 @@ public:
 
     void RegisterQuickFixQueryFunc(const QuickFixQueryCallBack callBack);
     void LoadPatchIfNeeded(JSThread *thread, const std::string &baseFileName);
-    bool LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
-    bool LoadPatch(JSThread *thread, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                   const std::string &baseFileName);
-    bool UnloadPatch(JSThread *thread, const std::string &patchFileName);
+    PatchErrorCode LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
+    PatchErrorCode LoadPatch(JSThread *thread, const std::string &patchFileName,
+                             const void *patchBuffer, size_t patchSize,
+                             const std::string &baseFileName);
+    PatchErrorCode UnloadPatch(JSThread *thread, const std::string &patchFileName);
     bool IsQuickFixCausedException(JSThread *thread,
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
