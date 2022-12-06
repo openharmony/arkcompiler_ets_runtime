@@ -308,11 +308,15 @@ inline SlotStatus CompressGCMarker::EvacuateObject(uint32_t threadId, TaggedObje
 {
     JSHClass *klass = markWord.GetJSHClass();
     size_t size = klass->SizeFromJSHClass(object);
-    uintptr_t forwardAddress = AllocateForwardAddress(threadId, size, object);
+    uintptr_t forwardAddress = AllocateForwardAddress(threadId, size, klass, object);
     bool result = Barriers::AtomicSetPrimitive(object, 0, markWord.GetValue(),
                                                MarkWord::FromForwardingAddress(forwardAddress));
     if (result) {
         UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot);
+        if (isAppSpawn_ && klass->IsString()) {
+            // calculate and set hashcode for read-only ecmastring in advance
+            EcmaStringAccessor(reinterpret_cast<TaggedObject *>(forwardAddress)).GetHashcode();
+        }
         return SlotStatus::CLEAR_SLOT;
     }
     UpdateForwardAddressIfFailed(object, forwardAddress, size, slot);

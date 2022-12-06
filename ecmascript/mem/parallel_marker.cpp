@@ -156,17 +156,14 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
     }
 }
 
-uintptr_t CompressGCMarker::AllocateForwardAddress(uint32_t threadId, size_t size, TaggedObject *object)
+uintptr_t CompressGCMarker::AllocateForwardAddress(uint32_t threadId, size_t size, JSHClass *hclass,
+                                                   TaggedObject *object)
 {
     if (!isAppSpawn_) {
         bool isPromoted = true;
         return AllocateDstSpace(threadId, size, isPromoted);
     }
-    if (Heap::ShouldMoveToRoSpace(JSTaggedValue(object))) {
-        if (JSTaggedValue(object).IsString()) {
-            // calculate and set hashcode for read-only ecmastring in advance
-            EcmaStringAccessor(object).GetHashcode();
-        }
+    if (Heap::ShouldMoveToRoSpace(hclass, object)) {
         return AllocateReadOnlySpace(size);
     } else {
         return AllocateAppSpawnSpace(size);
