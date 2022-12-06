@@ -528,6 +528,7 @@ public:
     int32_t Length();
     int32_t Utf8Length();
     int WriteUtf8(char *buffer, int length);
+    static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
 };
 
 class PUBLIC_API SymbolRef : public PrimitiveRef {

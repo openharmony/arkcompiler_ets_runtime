@@ -927,6 +927,12 @@ int StringRef::WriteUtf8(char *buffer, int length)
         .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length);
 }
 
+Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
+{
+    JSHandle<JSTaggedValue> napiWapperString = vm->GetJSThread()->GlobalConstants()->GetHandledNapiWrapperString();
+    return JSNApiHelper::ToLocal<StringRef>(napiWapperString);
+}
+
 // ----------------------------------- SymbolRef -----------------------------------------
 Local<SymbolRef> SymbolRef::New(const EcmaVM *vm, Local<StringRef> description)
 {
