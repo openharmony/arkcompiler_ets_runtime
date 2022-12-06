@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ECMASCRIPT_JSPANDAFILE_QUICK_FIX_MANAGER_H
-#define ECMASCRIPT_JSPANDAFILE_QUICK_FIX_MANAGER_H
+#ifndef ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H
+#define ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H
 
-#include "ecmascript/jspandafile/quick_fix_loader.h"
+#include "ecmascript/patch/patch_loader.h"
 
 namespace panda::ecmascript {
 class QuickFixManager {
@@ -42,17 +42,20 @@ private:
     }
 
     // check whether the patch is loaded.
-    inline bool HasLoadedPatch(std::string &patchFileName) const
-    {
-        return quickFixLoaders_.find(patchFileName) != quickFixLoaders_.end();
-    }
+    bool HasLoadedPatch(const std::string &patchFileName, const std::string &baseFileName = "") const;
+    void InsertBaseInfo(const std::string &patchFileName, const std::string &baseFileName,
+                        const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
+    CMap<BaseMethodIndex, MethodLiteral *> &FindBaseInfo(const std::string &patchFileName,
+                                                         const std::string &baseFileName);
+    void DeleteBaseInfo(const std::string &patchFileName, const std::string &baseFileName);
+    std::string GetBaseFileName(const std::string &patchFileName) const;
 
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
 
-    // For multi patch.
-    // key: patchFileName, value: QuickFixLoader of this patch.
-    CMap<std::string, QuickFixLoader*> quickFixLoaders_;
+    // key: patchFileName:baseFileName
+    // value: base method info <BaseMethodIndex, base MethodLiteral>
+    CMap<std::string, CMap<BaseMethodIndex, MethodLiteral *>> methodInfos_ {};
     QuickFixQueryCallBack callBack_ {nullptr};
 };
 }  // namespace panda::ecmascript
-#endif // ECMASCRIPT_JSPANDAFILE_QUICK_FIX_MANAGER_H
+#endif // ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H

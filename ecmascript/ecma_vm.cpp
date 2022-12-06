@@ -51,7 +51,6 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/quick_fix_manager.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -68,6 +67,7 @@
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/runtime_call_id.h"
@@ -532,6 +532,14 @@ std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> EcmaVM::Find
         return std::nullopt;
     }
     return iter->second;
+}
+
+// For new version instruction.
+JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
+{
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+    return FindConstpool(jsPandaFile, index);
 }
 
 JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)

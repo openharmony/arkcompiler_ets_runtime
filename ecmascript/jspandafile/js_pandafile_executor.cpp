@@ -18,9 +18,9 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/jspandafile/quick_fix_manager.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 
 namespace panda::ecmascript {
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &filename,
