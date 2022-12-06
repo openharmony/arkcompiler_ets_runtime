@@ -172,7 +172,8 @@ class JSThread;
     V(JSTaggedValue, CjsModuleFunction, CJS_MODULE_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, CjsExportsFunction, CJS_EXPORTS_FUNCTION_INDEX)                                \
     V(JSTaggedValue, CjsRequireFunction, CJS_REQUIRE_FUNCTION_INDEX)                                \
-    V(JSTaggedValue, GlobalPatch, GLOBAL_PATCH)
+    V(JSTaggedValue, GlobalPatch, GLOBAL_PATCH)                                                     \
+    V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)
 
 class GlobalEnv : public TaggedObject {
 public:

@@ -215,6 +215,8 @@ private:
 
     void InitializeCjsRequire(const JSHandle<GlobalEnv> &env) const;
 
+    void InitializeDefaultExportOfScript(const JSHandle<GlobalEnv> &env) const;
+
     void SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
                      EcmaEntrypoint func, int length, uint8_t builtinId = INVALID_BUILTINS_ID) const;
 

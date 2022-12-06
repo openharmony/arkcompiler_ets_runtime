@@ -67,6 +67,17 @@ JSTaggedValue ModuleManager::GetModuleValueOutter(int32_t index)
     return GetModuleValueOutterInternal(index, currentModule);
 }
 
+JSTaggedValue ModuleManager::GetModuleName(JSTaggedValue currentModule)
+{
+    SourceTextModule *module = SourceTextModule::Cast(currentModule.GetTaggedObject());
+    JSTaggedValue recordName = module->GetEcmaModuleRecordName();
+    if (recordName.IsUndefined()) {
+        return module->GetEcmaModuleFilename();
+    } else {
+        return recordName;
+    }
+}
+
 JSTaggedValue ModuleManager::GetModuleValueOutter(int32_t index, JSTaggedValue jsFunc)
 {
     JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
@@ -92,8 +103,28 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     ASSERT(resolvedModule.IsSourceTextModule());
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
     if (module->GetTypes() == ModuleTypes::CJSMODULE) {
-        JSHandle<JSTaggedValue> cjsModuleName(thread, module->GetEcmaModuleFilename());
-        return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+        JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(JSTaggedValue(module)));
+        JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
+        // if cjsModule is not CjsExports, means cjs uses default exports.
+        if (!cjsExports->IsCjsExports()) {
+            if (cjsExports->IsHole()) {
+                ObjectFactory *factory = vm_->GetFactory();
+                JSHandle<JSTaggedValue> currentModuleName(thread, SourceTextModule::Cast(
+                    currentModule.GetTaggedObject())->GetEcmaModuleFilename());
+                CString errorMsg = "currentModule" + ConvertToString(currentModuleName.GetTaggedValue()) +
+                                   "find requireModule" + ConvertToString(cjsModuleName.GetTaggedValue()) + "failed";
+                JSHandle<JSObject> syntaxError =
+                    factory->GetJSError(base::ErrorType::SYNTAX_ERROR, errorMsg.c_str());
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
+            }
+            return cjsExports.GetTaggedValue();
+        }
+        int32_t idx = binding->GetIndex();
+        JSObject *cjsObject = JSObject::Cast(cjsExports.GetTaggedValue());
+        JSHClass *jsHclass = cjsObject->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr = layoutInfo->GetAttr(idx);
+        return cjsObject->GetProperty(jsHclass, attr);
     }
     return SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread,
                                                                                     binding->GetIndex(), false);
@@ -179,7 +210,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(JSTaggedValue key, JST
     ASSERT(resolvedModule.IsSourceTextModule());
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
     if (module->GetTypes() == ModuleTypes::CJSMODULE) {
-        JSHandle<JSTaggedValue> cjsModuleName(thread, module->GetEcmaModuleFilename());
+        JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(JSTaggedValue(module)));
         return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
     }
     return SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread,
@@ -225,7 +256,7 @@ JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(JSTaggedValue re
     NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
     int entry = dict->FindEntry(referencing);
     LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: "
-                                    << ConvertToString(EcmaString::Cast(referencing.GetTaggedObject()));
+                                    << ConvertToString(referencing);
     JSTaggedValue result = dict->GetValue(entry);
     return JSHandle<SourceTextModule>(vm_->GetJSThread(), result);
 }
@@ -501,7 +532,12 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
         requiredModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread,
             JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
     }
-
+    // if requiredModule is CommonJS
+    if (requiredModule->GetTypes() == ModuleTypes::CJSMODULE) {
+        JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(requiredModule.GetTaggedValue()));
+        return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+    }
+    // if requiredModule is ESM
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModule);
     ASSERT(moduleNamespace->IsModuleNamespace());
     return moduleNamespace.GetTaggedValue();

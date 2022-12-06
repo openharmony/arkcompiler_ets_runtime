@@ -128,28 +128,33 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), PromiseJob, DynamicImportJob);
     JSThread *thread = argv->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     EcmaVM *vm = thread->GetEcmaVM();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSPromiseReactionsFunction> resolve(GetCallArg(argv, 0));
-    JSHandle<JSPromiseReactionsFunction> reject(GetCallArg(argv, 1)); // 1 : first argument
-    JSHandle<EcmaString> dirPath(GetCallArg(argv, 2)); // 2: second argument
-    JSHandle<EcmaString> specifier(GetCallArg(argv, 3)); // 3 : third argument
-    JSHandle<JSTaggedValue> recordName(GetCallArg(argv, 4)); // 4 : fourth recordName
+    JSHandle<JSPromiseReactionsFunction> reject(GetCallArg(argv, 1));   // 1 : first argument
+    JSHandle<EcmaString> dirPath(GetCallArg(argv, 2));                  // 2 : second argument
+    JSHandle<JSTaggedValue> specifier(GetCallArg(argv, 3));             // 3 : third argument
+    JSHandle<JSTaggedValue> recordName(GetCallArg(argv, 4));  
+
+    // Let specifierString be Completion(ToString(specifier))
+    JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
+    if (thread->HasPendingException()) {
+        return CatchException(thread, reject);
+    }
 
     JSHandle<EcmaString> moduleName;
     CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
+    CString baseFilename = ConvertToString(dirPath.GetTaggedValue());
     CString fileNameStr = "";
     if (recordName->IsUndefined()) {
-        // dirPath + specifier ----> fileName
-        moduleName =
-            CjsModule::ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(), specifier.GetTaggedValue());
+        moduleName = CjsModule::ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
+                                                          specifierString.GetTaggedValue());
         fileNameStr = ConvertToString(moduleName.GetTaggedValue());
     } else {
-        CString baseFilename = ConvertToString(dirPath.GetTaggedValue());
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifier.GetTaggedValue());
-        const JSPandaFile *jsPandaFile =
+         const JSPandaFile *jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
         entryPoint =
             ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
@@ -157,20 +162,32 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         moduleName = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(entryPoint);
     }
 
-    // std::string entry = "_GLOBAL::func_main_0";
-    if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
-        if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str())) {
-            LOG_FULL(FATAL) << "Cannot execute dynamic-imported panda file : ";
-        }
+    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr,
+                                                                                        entryPoint);
+    bool isModule = jsPandaFile->IsModule(entryPoint);
+    JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
+     if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
+        if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), true)) {
+            LOG_FULL(FATAL) << "Cannot execute dynamic-imported panda file : "<< fileNameStr.c_str()
+                            << entryPoint.c_str();
+         }
     }
 
-    // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
-    JSHandle<SourceTextModule> moduleRecord =
-        vm->GetModuleManager()->HostGetImportedModule(moduleName.GetTaggedValue());
-
-    // d. Let namespace be ? GetModuleNamespace(moduleRecord).
-    JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
-
+    if (thread->HasPendingException()) {
+        return CatchException(thread, reject);
+    }
+    if (!isModule) {
+        moduleNamespace.Update(vm->GetGlobalEnv()->GetExportOfScript());
+    } else {
+        // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
+        JSHandle<SourceTextModule> moduleRecord =
+            vm->GetModuleManager()->HostGetImportedModule(moduleName.GetTaggedValue());
+        // d. Let namespace be ? GetModuleNamespace(moduleRecord).
+        moduleNamespace.Update(SourceTextModule::GetModuleNamespace(thread, moduleRecord));
+    }
+    if (thread->HasPendingException()) {
+        return CatchException(thread, reject);
+    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread,
@@ -178,18 +195,20 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
                                             undefined, undefined, 1);
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSTaggedValue result = JSFunction::Call(info);
+    return JSFunction::Call(info);
+}
 
-    if (thread->HasPendingException()) {
-        auto thenResult = JSPromise::IfThrowGetThrowValue(thread);
-        thread->ClearException();
-        JSHandle<JSTaggedValue> rejectfun(reject);
-        EcmaRuntimeCallInfo *runtimeInfo =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, rejectfun, undefined, undefined, 1);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        runtimeInfo->SetCallArg(thenResult.GetTaggedValue());
-        return JSFunction::Call(runtimeInfo);
-    }
-    return result;
+JSTaggedValue BuiltinsPromiseJob::CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject)
+{
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    ASSERT(thread->HasPendingException());
+    JSHandle<JSTaggedValue> thenResult = JSPromise::IfThrowGetThrowValue(thread);
+    thread->ClearException();
+    JSHandle<JSTaggedValue> rejectfun(reject);
+    EcmaRuntimeCallInfo *runtimeInfo =
+        EcmaInterpreter::NewRuntimeCallInfo(thread, rejectfun, undefined, undefined, 1);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    runtimeInfo->SetCallArg(thenResult.GetTaggedValue());
+    return JSFunction::Call(runtimeInfo);
 }
 }  // namespace panda::ecmascript::builtins

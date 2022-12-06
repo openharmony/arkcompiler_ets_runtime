@@ -530,12 +530,14 @@ private:
 
     void SetMicroJobQueue(job::MicroJobQueue *queue);
 
-    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                                       bool excuteFromJob = false);
 
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                           const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
-    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile);
+    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                      const JSPandaFile *jsPandaFile);
 
     void InitializeEcmaScriptRunStat();
 

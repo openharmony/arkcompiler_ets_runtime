@@ -30,8 +30,6 @@ public:
     // 9.4.6.1[[SetPrototypeOf]]
     static bool SetPrototype(const JSHandle<JSTaggedValue> &obj,
                              const JSHandle<JSTaggedValue> &proto);
-    // 9.4.6.2[[IsExtensible]]
-    static bool IsExtensible();
     // 9.4.6.3[[PreventExtensions]]
     static bool PreventExtensions();
     // 9.4.6.4[[GetOwnProperty]]

@@ -525,7 +525,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::VALUES_INDEX, factory->NewFromASCIINonMovable("values"));
     SetConstant(ConstantIndex::ADD_INDEX, factory->NewFromASCIINonMovable("add"));
     SetConstant(ConstantIndex::AMBIGUOUS_INDEX, factory->NewFromASCIINonMovable("ambiguous"));
-    SetConstant(ConstantIndex::MODULE_INDEX, factory->NewFromASCIINonMovable("module"));
+    SetConstant(ConstantIndex::MODULE_INDEX, factory->NewFromASCIINonMovable("Module"));
     SetConstant(ConstantIndex::STAR_INDEX, factory->NewFromASCIINonMovable("*"));
     SetConstant(ConstantIndex::DATETIMEFIELD_INDEX, factory->NewFromASCIINonMovable("datetimefield"));
     SetConstant(ConstantIndex::CONJUNCTION_INDEX, factory->NewFromASCIINonMovable("conjunction"));
