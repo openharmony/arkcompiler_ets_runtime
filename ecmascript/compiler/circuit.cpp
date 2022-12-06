@@ -20,12 +20,12 @@
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript::kungfu {
-Circuit::Circuit(NativeAreaAllocator* allocator, bool isArch64) :
-                 circuitSize_(0), gateCount_(0), time_(1),
-                 isArch64_(isArch64), chunk_(allocator),
-                 root_(Circuit::NullGate()), metaBuilder_(chunk())
+Circuit::Circuit(NativeAreaAllocator* allocator, bool isArch64)
+    : circuitSize_(0), gateCount_(0), time_(1),
+      isArch64_(isArch64), chunk_(allocator),
+      root_(Circuit::NullGate()), metaBuilder_(chunk())
 #ifndef NDEBUG
-    , allGates_(chunk())
+      , allGates_(chunk())
 #endif
 {
     space_ = panda::ecmascript::PageMap(CIRCUIT_SPACE, PAGE_PROT_READWRITE).GetMem();
