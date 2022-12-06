@@ -171,7 +171,7 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
 
 void CpuProfiler::SetCpuSamplingInterval(int interval)
 {
-    interval_ = interval;
+    interval_ = static_cast<uint32_t>(interval);
 }
 
 void CpuProfiler::SetCallNapiGetStack(bool getStack)
@@ -519,12 +519,6 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
 #endif
         if (reinterpret_cast<uint64_t*>(sp) > reinterpret_cast<uint64_t*>(fp)) {
             LOG_FULL(FATAL) << "sp > fp, stack frame exception";
-        }
-        if ((reinterpret_cast<uintptr_t>(fp) - reinterpret_cast<uintptr_t>(sp)) <= 16) {
-            if (profiler->generator_->SemPost(0) != 0) {
-                LOG_ECMA(ERROR) << "sem_[0] post failed";
-                return;
-            }
         }
         if (profiler->CheckFrameType(thread, reinterpret_cast<JSTaggedType *>(fp))) {
             FrameIterator it(reinterpret_cast<JSTaggedType *>(fp), thread);

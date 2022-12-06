@@ -86,7 +86,7 @@ struct ProfileInfo {
     int nodeCount = 0;
     CVector<int> samples;
     CVector<int> timeDeltas;
-    //state time statistic
+    // state time statistic
     uint64_t gcTime = 0;
     uint64_t cInterpreterTime = 0;
     uint64_t asmInterpreterTime = 0;
