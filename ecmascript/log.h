@@ -207,8 +207,13 @@ private:
 #elif defined(PANDA_TARGET_ANDROID)
 #define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level)>()
 #else
+#if defined(OHOS_UNIT_TEST)
+#define ARK_LOG(level, component) ((level >= INFO) || panda::ecmascript::Log::LogIsLoggable(level, component)) && \
+                                  panda::ecmascript::StdLog<(level), (component)>()
+#else
 #define ARK_LOG(level, component) panda::ecmascript::Log::LogIsLoggable(level, component) && \
                                   panda::ecmascript::StdLog<(level), (component)>()
+#endif
 #endif
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LOG_H
