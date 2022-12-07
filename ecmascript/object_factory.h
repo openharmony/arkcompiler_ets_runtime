@@ -302,6 +302,9 @@ public:
     {
         MemSpaceType spaceType = numberOfNodes < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
         JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(numberOfNodes, spaceType);
+        if (numberOfNodes == 0) {
+            return dstElements;
+        }
         dstElements->SetLength(numberOfNodes);
         int dataIndex = Derived::ELEMENTS_START_INDEX;
         for (uint32_t i = 0; i < numberOfNodes; i++) {
