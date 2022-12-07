@@ -22,5 +22,5 @@ declare function AssertType(value:any, type:string):void;
         }
     }
     let stu = new Student(10);
-    AssertType(stu, "class_instance");
+    AssertType(stu, "Student");
 }

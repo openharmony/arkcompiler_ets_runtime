@@ -19,5 +19,5 @@ declare function AssertType(value:any, type:string):void;
         let ans = num1 + num2;
         return ans;
     }
-    AssertType(add, "function");
+    AssertType(add, "(number, number) => Promise");
 }

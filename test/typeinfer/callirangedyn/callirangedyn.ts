@@ -33,5 +33,5 @@ declare function AssertType(value:any, type:string):void;
         return a;
     }
     let value = foo(0, "1", true, 3);
-    AssertType(value, "class_instance");
+    AssertType(value, "A");
 }
