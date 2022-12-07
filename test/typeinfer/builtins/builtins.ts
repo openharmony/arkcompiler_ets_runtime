@@ -26,11 +26,11 @@ declare function AssertType(value: any, type: string): void;
     AssertType(obj.isPrototypeOf({}), "boolean");
     AssertType(obj.propertyIsEnumerable(""), "boolean");
     AssertType(Object.getOwnPropertyDescriptor({}, "str"), "union");
-    AssertType(Object.getOwnPropertyNames({}), "array");
+    AssertType(Object.getOwnPropertyNames({}), "string[]");
     AssertType(Object.getOwnPropertySymbols({})[0], "symbol");
     AssertType(Object.getPrototypeOf({}), "union");
     AssertType(Object.is("arg1", "arg2"), "boolean");
-    AssertType(Object.entries({}), "array");
+    AssertType(Object.entries({}), "any[]");
     AssertType(Object.fromEntries(it), "any");
     // Call Object
     let obj2 = Object();
@@ -118,7 +118,7 @@ declare function AssertType(value: any, type: string): void;
     // Set
     let set = new Set();
     AssertType(set.size, "number");
-    AssertType(set.add(1), "class_instance");
+    AssertType(set.add(1), "Set");
     AssertType(set.delete(1), "boolean");
     AssertType(set.entries(), "interface");
     AssertType(set.clear(), "void");
@@ -128,59 +128,59 @@ declare function AssertType(value: any, type: string): void;
 
     // WeakSet
     let weakset = new WeakSet();
-    AssertType(weakset.add(obj), "class_instance");
+    AssertType(weakset.add(obj), "WeakSet");
     AssertType(weakset.delete(obj), "boolean");
     AssertType(weakset.has(obj), "boolean");
 
     // Array
     let arr = new Array();
     AssertType(arr.length, "number");
-    AssertType(arr.concat([1, 2, 3]), "array");
-    AssertType(arr.copyWithin(0, 1), "class_instance");
+    AssertType(arr.concat([1, 2, 3]), "any[]");
+    AssertType(arr.copyWithin(0, 1), "Array");
     AssertType(arr.entries(), "interface");
     AssertType(arr.every((v: any, i: number, arr: any[]) => { }), "boolean");
-    AssertType(arr.fill(1), "class_instance");
-    AssertType(arr.filter((v: any, i: number, arr: any[]) => { }), "array");
+    AssertType(arr.fill(1), "Array");
+    AssertType(arr.filter((v: any, i: number, arr: any[]) => { }), "any[]");
     AssertType(arr.findIndex((v: any, i: number, arr: any[]) => { }), "number");
     AssertType(arr.forEach((v: any, i: number, arr: any[]) => { }), "void");
     AssertType(arr.indexOf(1), "number");
     AssertType(arr.join(","), "string");
     AssertType(arr.keys(), "interface");
     AssertType(arr.lastIndexOf(1), "number");
-    AssertType(arr.map(((v: any, i: number, arry: any[]) => { })), "array");
+    AssertType(arr.map(((v: any, i: number, arry: any[]) => { })), "any[]");
     AssertType(arr.pop(), "union");
     AssertType(arr.push([1, 2, 3]), "number");
     AssertType(arr.reduce((p: any, cv: any, ci: any, arr: any[]) => { }), "any");
     AssertType(arr.reduceRight((p: any, cv: any, ci: any, arr: any[]) => { }), "any");
-    AssertType(arr.reverse(), "array");
+    AssertType(arr.reverse(), "any[]");
     AssertType(arr.shift(), "union");
-    AssertType(arr.slice(), "array");
+    AssertType(arr.slice(), "any[]");
     AssertType(arr.some((v: any, i: number, arr: any[]) => { }), "boolean");
-    AssertType(arr.sort(), "class_instance");
-    AssertType(arr.splice(1, 2, [1, 2]), "array");
+    AssertType(arr.sort(), "Array");
+    AssertType(arr.splice(1, 2, [1, 2]), "any[]");
     AssertType(arr.toLocaleString(), "string");
     AssertType(arr.toString(), "string");
     AssertType(arr.unshift([1, 2, 3]), "number");
     AssertType(arr.values(), "interface");
     AssertType(arr.includes(1), "boolean");
-    AssertType(arr.flatMap((x) => [x]), "array");
-    AssertType(arr.flat(), "array");
+    AssertType(arr.flatMap((x) => [x]), "any[]");
+    AssertType(arr.flat(), "any[]");
     // Call Array
     let arr2 = Array();
     AssertType(arr2.length, "number");
-    AssertType(arr2.concat([1, 2, 3]), "array");
-    AssertType(arr2.copyWithin(0, 1), "class_instance");
+    AssertType(arr2.concat([1, 2, 3]), "any[]");
+    AssertType(arr2.copyWithin(0, 1), "Array");
 
     // ArrayBuffer
     let arrBuf = new ArrayBuffer(5);
     AssertType(arrBuf.byteLength, "number");
-    AssertType(arrBuf.slice(1), "class_instance");
+    AssertType(arrBuf.slice(1), "ArrayBuffer");
     AssertType(ArrayBuffer.isView(1), "boolean");
 
     // SharedArrayBuffer
     let sharedArrBuf = new SharedArrayBuffer(5);
     AssertType(sharedArrBuf.byteLength, "number");
-    AssertType(sharedArrBuf.slice(2), "class_instance");
+    AssertType(sharedArrBuf.slice(2), "SharedArrayBuffer");
 
     // String
     let str = new String("111");
@@ -198,7 +198,7 @@ declare function AssertType(value: any, type: string): void;
     AssertType(str.replace("111", "222"), "string");
     AssertType(str.search("123"), "number");
     AssertType(str.slice(), "string");
-    AssertType(str.split("1"), "array");
+    AssertType(str.split("1"), "string[]");
     AssertType(str.startsWith("123"), "boolean");
     AssertType(str.substring(1), "string");
     AssertType(str.toLocaleLowerCase(), "string");
@@ -221,7 +221,7 @@ declare function AssertType(value: any, type: string): void;
     AssertType(Symbol.for("11"), "symbol");
     AssertType(Symbol.keyFor(Symbol.iterator), "union");
     AssertType(Symbol.iterator, "symbol");
-    AssertType(Symbol.prototype, "class_instance");
+    AssertType(Symbol.prototype, "Symbol");
 
     // WeakRef
     let werkRef = new WeakRef(str);

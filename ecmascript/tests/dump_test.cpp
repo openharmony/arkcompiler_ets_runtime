@@ -962,7 +962,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::TS_CLASS_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassType::SIZE, 5U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassType::SIZE, 6U);
                 JSHandle<TSClassType> classType = factory->NewTSClassType();
                 DUMP_FOR_HANDLE(classType)
                 break;

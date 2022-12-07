@@ -69,7 +69,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     uint32_t moduleId = 0;
     std::tie(table, moduleId) = tsManager_->GenerateTSTypeTable(jsPandaFile, recordName);
     GlobalTSTypeRef gt = GetGT(jsPandaFile, table, moduleId, typeId);
-    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind);
+    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind, typeId);
     SetTSType(table, type, gt);
 
     GenerateStaticHClass(type);
@@ -96,11 +96,11 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
 }
 
 JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                         JSHandle<TaggedArray> literal, TSTypeKind kind)
+    JSHandle<TaggedArray> literal, TSTypeKind kind, uint32_t typeId)
 {
     switch (kind) {
         case TSTypeKind::CLASS: {
-            JSHandle<TSClassType> classType = ParseClassType(jsPandaFile, recordName, literal);
+            JSHandle<TSClassType> classType = ParseClassType(jsPandaFile, recordName, literal, typeId);
             return JSHandle<JSTaggedValue>(classType);
         }
         case TSTypeKind::CLASS_INSTANCE: {
@@ -134,9 +134,14 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
 }
 
 JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                   const JSHandle<TaggedArray> &literal)
+                                                   const JSHandle<TaggedArray> &literal, uint32_t typeId)
 {
     JSHandle<TSClassType> classType = factory_->NewTSClassType();
+
+    std::string className = tsManager_->GetClassNameByOffset(jsPandaFile, typeId);
+    JSHandle<EcmaString> classEcmaString = factory_->NewFromStdString(className);
+    classType->SetName(thread_, classEcmaString.GetTaggedValue());
+
     uint32_t index = 0;
     ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::CLASS);
 

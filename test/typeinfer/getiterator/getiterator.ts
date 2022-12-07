@@ -31,6 +31,6 @@ declare function AssertType(value: any, type: string): void;
 
     let stu : Student[] = [new Student()];
     for (let tmp of stu) {
-        AssertType(tmp, "class_instance");
+        AssertType(tmp, "Student");
     }
 }

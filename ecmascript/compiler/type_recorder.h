@@ -39,8 +39,9 @@ public:
     GateType GetArgType(const uint32_t argIndex) const;
     GateType UpdateType(const int32_t offset, const GateType &type) const;
 
-private:
     static constexpr int METHOD_ANNOTATION_THIS_TYPE_OFFSET = -2;
+
+private:
     static constexpr int METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET = -1;
 
     void LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,

@@ -19,5 +19,5 @@ declare function AssertType(value:any, type:string):void;
         yield "1";
         yield "2";
     }
-    AssertType(genfunc, "function");
+    AssertType(genfunc, "() => any");
 }
