@@ -247,6 +247,9 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
         bb.vregToValSelectorGate.size() != 0;
     // merge current into pred bb
     for (auto bbPred : bb.preds) {
+        if (bbPred->isDead) {
+            continue;
+        }
         if (defPhi) {
             changed |= MergeIntoPredBB(&bb, bbPred);
         } else {
@@ -257,6 +260,9 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
         // clear GET_EXCEPTION gate if this is a catch block
         UpdateAccumulator(Circuit::NullGate());
         for (auto bbPred : bb.trys) {
+            if (bbPred->isDead) {
+                continue;
+            }
             if (defPhi) {
                 changed |= MergeIntoPredBB(&bb, bbPred);
             } else {
