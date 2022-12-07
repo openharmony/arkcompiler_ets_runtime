@@ -321,9 +321,9 @@ private:
 
 class JSBytecodeMegaData : public GateMetaData {
 public:
-    explicit JSBytecodeMegaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex) :
-                                GateMetaData(OpCode::JS_BYTECODE, false, 1, 1, valuesIn),
-                                opcode_(opcode), bcIndex_(bcIndex)
+    explicit JSBytecodeMegaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
+        : GateMetaData(OpCode::JS_BYTECODE, false, 1, 1, valuesIn),
+          opcode_(opcode), bcIndex_(bcIndex)
     {
         SetType(GateMetaData::JSBYTECODE);
     }
