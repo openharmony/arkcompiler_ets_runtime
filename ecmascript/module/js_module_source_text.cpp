@@ -793,7 +793,7 @@ void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTe
         LOG_FULL(FATAL) << "open jsPandaFile " << moduleFilenameStr << " error";
         UNREACHABLE();
     }
-   JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint, excuteFromJob);
+    JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint, excuteFromJob);
 }
 
 void SourceTextModule::AddImportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
