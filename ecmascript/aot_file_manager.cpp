@@ -217,7 +217,7 @@ void AnFileDataManager::SafeDestoryAllData()
     while (iter != loadedData_.end()) {
         void *poolAddr = iter->second->poolAddr;
         size_t poolSize = iter->second->poolSize;
-        PageUnmap(MemMap(poolAddr, poolSize));
+        MachineCodePageUnmap(MemMap(poolAddr, poolSize));
         iter = loadedData_.erase(iter);
     }
 }
@@ -309,7 +309,7 @@ bool AnFileDataManager::UnsafeLoadDataFromFile(const CString &filename, std::str
     data->des.resize(data->moduleNum);
     file.read(reinterpret_cast<char *>(&data->totalCodeSize), sizeof(data->totalCodeSize));
 
-    auto pool = PageMap(AlignUp(data->totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
+    auto pool = MachineCodePageMap(AlignUp(data->totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
     data->poolAddr = pool.GetMem();
     data->poolSize = pool.GetSize();
 
@@ -335,7 +335,7 @@ bool AnFileDataManager::UnsafeLoadDataFromBinaryBuffer(const CString &filename)
     data->des.resize(data->moduleNum);
     binBufparser.ParseBuffer(&data->totalCodeSize, sizeof(data->totalCodeSize));
 
-    auto pool = PageMap(AlignUp(data->totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
+    auto pool = MachineCodePageMap(AlignUp(data->totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
     data->poolAddr = pool.GetMem();
     data->poolSize = pool.GetSize();
 
