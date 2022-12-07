@@ -2800,7 +2800,6 @@ JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFuncti
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseExecutorFunctionClass());
     JSHandle<JSPromiseExecutorFunction> executorFunction =
         JSHandle<JSPromiseExecutorFunction>::Cast(NewJSObject(hclass));
-    executorFunction->SetCapability(thread_, JSTaggedValue::Hole());
     executorFunction->SetCapability(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(executorFunction);
     JSFunction::InitializeJSFunction(thread_, function);
