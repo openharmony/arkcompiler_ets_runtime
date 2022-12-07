@@ -50,7 +50,7 @@ public:
         //   |       frameType          |   v
         //   +--------------------------+ ---
         // 16 : 16 means arguments offset to fp
-        return 16 + argId * FRAME_SLOT_SIZE;
+        return 16 + static_cast<int64_t>(argId) * static_cast<int64_t>(FRAME_SLOT_SIZE);
     }
     static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register glue, Register argc, Register temp,
         Register fp, Label *next, Label *stackOverflow);
