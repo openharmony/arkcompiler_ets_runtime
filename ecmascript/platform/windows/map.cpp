@@ -57,6 +57,19 @@ void PageUnmap(MemMap it)
     }
 }
 
+MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
+{
+    MemMap memMap = PageMap(size, prot, alignment);
+    PageTag(memMap.GetMem(), memMap.GetSize());
+    return memMap;
+}
+
+void MachineCodePageUnmap(MemMap it)
+{
+    PageTag(it.GetMem(), it.GetSize(), true);
+    PageUnmap(it);
+}
+
 void PageRelease([[maybe_unused]] void *mem, [[maybe_unused]] size_t size)
 {
 }
