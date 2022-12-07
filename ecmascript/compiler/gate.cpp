@@ -314,7 +314,7 @@ void Gate::CheckRelay() const
             stateOp == OpCode::ORDINARY_BLOCK)) {
             CheckFailed("State input does not match ("
                 "expected:[IF_TRUE|IF_FALSE|SWITCH_CASE|DEFAULT_CASE|IF_SUCCESS|IF_EXCEPTION|ORDINARY_BLOCK] actual:" +
-                 GateMetaData::Str(stateOp) + ")", 0);
+                GateMetaData::Str(stateOp) + ")", 0);
         }
     }
 }
