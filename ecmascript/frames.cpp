@@ -83,8 +83,24 @@ JSTaggedValue FrameIterator::GetFunction() const
             auto *frame = BuiltinFrame::GetFrameFromSp(GetSp());
             return frame->GetFunction();
         }
-        default: {
+        case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
+            auto *frame = OptimizedBuiltinLeaveFrame::GetFrameFromSp(GetSp());
+            return JSTaggedValue(*(frame->GetArgv()));
+        }
+        case FrameType::OPTIMIZED_FRAME:
+        case FrameType::OPTIMIZED_ENTRY_FRAME:
+        case FrameType::LEAVE_FRAME:
+        case FrameType::LEAVE_FRAME_WITH_ARGV:
+        case FrameType::INTERPRETER_ENTRY_FRAME:
+        case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
+        case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
             return JSTaggedValue::Undefined();
+        }
+        default: {
+            LOG_FULL(FATAL) << "frame type error!";
+            UNREACHABLE();
         }
     }
 }
