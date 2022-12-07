@@ -27,22 +27,34 @@ using namespace panda::ecmascript;
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
 
 #define SUBENTRY(messageId, condition)                                              \
-    GateRef glue = PtrArgument(0);                                                  \
+    GateRef glueArg = PtrArgument(0);                                               \
     auto env = GetEnvironment();                                                    \
     Label subEntry(env);                                                            \
     env->SubCfgEntry(&subEntry);                                                    \
     Label nextLabel(env);                                                           \
-    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
+    Assert(messageId, __LINE__, glueArg, condition, &nextLabel);                    \
+    Bind(&nextLabel)
+#define SUBENTRY_WITH_GLUE(messageId, condition, glueArg)                           \
+    auto env = GetEnvironment();                                                    \
+    Label subEntry(env);                                                            \
+    env->SubCfgEntry(&subEntry);                                                    \
+    Label nextLabel(env);                                                           \
+    Assert(messageId, __LINE__, glueArg, condition, &nextLabel);                    \
     Bind(&nextLabel)
 
 #ifndef NDEBUG
 #define ASM_ASSERT(messageId, condition)                                            \
     SUBENTRY(messageId, condition)
+#define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
+    SUBENTRY_WITH_GLUE(messageId, condition, glue)
 #elif defined(ENABLE_ASM_ASSERT)
 #define ASM_ASSERT(messageId, condition)                                            \
     SUBENTRY(messageId, condition)
+#define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
+    SUBENTRY_WITH_GLUE(messageId, condition, glue)
 #else
 #define ASM_ASSERT(messageId, ...) ((void)0)
+#define ASM_ASSERT_WITH_GLUE(messageId, ...) ((void)0)
 #endif
 
 #ifndef NDEBUG
@@ -212,6 +224,7 @@ public:
     GateRef Int16ToTaggedInt(GateRef x);
     GateRef IntToTaggedPtr(GateRef x);
     GateRef IntToTaggedInt(GateRef x);
+    GateRef Int64ToTaggedInt(GateRef x);
     GateRef DoubleToTaggedDoublePtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
     GateRef TaggedTrue();
@@ -486,6 +499,7 @@ public:
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
+    void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // fast path
     GateRef FastEqual(GateRef left, GateRef right);

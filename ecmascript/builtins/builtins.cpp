@@ -1884,7 +1884,8 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     // Array = new Function()
     JSHandle<JSObject> arrayFunction(
-        NewBuiltinConstructor(env, arrFuncPrototype, BuiltinsArray::ArrayConstructor, "Array", FunctionLength::ONE));
+        NewBuiltinConstructor(env, arrFuncPrototype, BuiltinsArray::ArrayConstructor, "Array", FunctionLength::ONE,
+                              BUILTINS_STUB_ID(ArrayConstructor)));
     JSHandle<JSFunction> arrayFuncFunction(arrayFunction);
 
     // Set the [[Realm]] internal slot of F to the running execution context's Realm

@@ -156,6 +156,7 @@ group("ark_aot_test") {
   if (is_debug) {
     deps += [
       # builtins_stub test only print log in debug mode
+      "builtins_array:builtins_arrayAotAction",
       "builtins_stub:builtins_stubAotAction",
     ]
   }

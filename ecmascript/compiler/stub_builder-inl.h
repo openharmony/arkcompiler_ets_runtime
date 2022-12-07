@@ -674,6 +674,11 @@ inline GateRef StubBuilder::IntToTaggedInt(GateRef x)
     return env_->GetBuilder()->ToTaggedInt(val);
 }
 
+inline GateRef StubBuilder::Int64ToTaggedInt(GateRef x)
+{
+    return env_->GetBuilder()->ToTaggedInt(x);
+}
+
 inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
     return env_->GetBuilder()->DoubleToTaggedDoublePtr(x);
@@ -1443,6 +1448,7 @@ inline GateRef StubBuilder::IsProtoTypeHClass(GateRef hClass)
 inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
     GateRef value, GateRef attrOffset, VariableType type)
 {
+    ASM_ASSERT_WITH_GLUE(GET_MESSAGE_STRING_ID(IsNotDictionaryMode), BoolNot(IsDictionaryModeByHClass(hClass)), glue);
     GateRef bitfield = Load(VariableType::INT32(), hClass,
                             IntPtr(JSHClass::BIT_FIELD1_OFFSET));
     GateRef inlinedPropsStart = Int32And(Int32LSR(bitfield,
@@ -1453,6 +1459,7 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
 
     // NOTE: need to translate MarkingBarrier
     Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
+    EXITENTRY();
 }
 
 inline GateRef StubBuilder::GetPropertyInlinedProps(GateRef obj, GateRef hClass,
@@ -2096,6 +2103,18 @@ inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHa
 inline GateRef StubBuilder::TryGetHashcodeFromString(GateRef string)
 {
     return env_->GetBuilder()->TryGetHashcodeFromString(string);
+}
+
+inline void StubBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible)
+{
+    GateRef jsHclass = LoadHClass(obj);
+    GateRef bitfield = Load(VariableType::INT32(), jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef boolVal = Boolean(isExtensible);
+    GateRef boolToInt32 = ZExtInt1ToInt32(boolVal);
+    GateRef encodeValue = Int32LSL(boolToInt32, Int32(JSHClass::ExtensibleBit::START_BIT));
+    GateRef mask = Int32(((1LU << JSHClass::ExtensibleBit::SIZE) - 1) << JSHClass::ExtensibleBit::START_BIT);
+    bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
+    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H
