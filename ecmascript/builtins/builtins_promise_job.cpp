@@ -135,7 +135,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     JSHandle<JSPromiseReactionsFunction> reject(GetCallArg(argv, 1));   // 1 : first argument
     JSHandle<EcmaString> dirPath(GetCallArg(argv, 2));                  // 2 : second argument
     JSHandle<JSTaggedValue> specifier(GetCallArg(argv, 3));             // 3 : third argument
-    JSHandle<JSTaggedValue> recordName(GetCallArg(argv, 4));  
+    JSHandle<JSTaggedValue> recordName(GetCallArg(argv, 4));            // 4 : fourth argument
 
     // Let specifierString be Completion(ToString(specifier))
     JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
@@ -154,7 +154,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     } else {
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifier.GetTaggedValue());
-         const JSPandaFile *jsPandaFile =
+        const JSPandaFile *jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
         entryPoint =
             ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
@@ -166,11 +166,11 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
                                                                                         entryPoint);
     bool isModule = jsPandaFile->IsModule(entryPoint);
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
-     if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
+    if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), true)) {
             LOG_FULL(FATAL) << "Cannot execute dynamic-imported panda file : "<< fileNameStr.c_str()
                             << entryPoint.c_str();
-         }
+        }
     }
 
     if (thread->HasPendingException()) {
