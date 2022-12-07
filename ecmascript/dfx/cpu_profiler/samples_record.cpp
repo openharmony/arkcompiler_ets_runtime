@@ -64,44 +64,35 @@ void SamplesRecord::AddSample(uint64_t sampleTimeStamp)
     FrameInfoTempToMap();
     struct NodeKey nodeKey;
     struct CpuProfileNode methodNode;
-        if (frameStackLength_ != 0) {
-            frameStackLength_--;
+    if (frameStackLength_ != 0) {
+        frameStackLength_--;
+    }
+    methodNode.id = 1;
+    for (; frameStackLength_ >= 1; frameStackLength_--) {
+        nodeKey.methodKey = frameStack_[frameStackLength_ - 1];
+        methodNode.parentId = nodeKey.parentId = methodNode.id;
+        auto result = nodeMap_.find(nodeKey);
+        if (result == nodeMap_.end()) {
+            int id = static_cast<int>(nodeMap_.size() + 1);
+            nodeMap_.emplace(nodeKey, id);
+            previousId_ = methodNode.id = id;
+            methodNode.codeEntry = GetMethodInfo(nodeKey.methodKey);
+            stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
+            profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
+            profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
+        } else {
+            previousId_ = methodNode.id = result->second;
         }
-        methodNode.id = 1;
-        for (; frameStackLength_ >= 1; frameStackLength_--) {
-            nodeKey.methodKey = frameStack_[frameStackLength_ - 1];
-            methodNode.parentId = nodeKey.parentId = methodNode.id;
-            auto result = nodeMap_.find(nodeKey);
-            if (result == nodeMap_.end()) {
-                int id = static_cast<int>(nodeMap_.size() + 1);
-                nodeMap_.emplace(nodeKey, id);
-                previousId_ = methodNode.id = id;
-                methodNode.codeEntry = GetMethodInfo(nodeKey.methodKey);
-                stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
-                profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
-                if (!outToFile_) {
-                    profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
-                }
-            } else {
-                previousId_ = methodNode.id = result->second;
-            }
-        }
+    }
 
-    struct SampleInfo sampleInfo;
     int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
     int timeDelta = static_cast<int>(sampleTimeStamp -
         (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
-    StatisticStateTime(timeDelta, nodeKey.methodKey.state);
-    if (outToFile_) {
-        sampleInfo.id = sampleNodeId;
-        sampleInfo.line = stackTopLines_[methodNode.id - 1];
-        sampleInfo.timeStamp = timeDelta;
-        samples_.push_back(sampleInfo);
-    } else {
-        profileInfo_->nodes[sampleNodeId - 1].hitCount++;
-        profileInfo_->samples.push_back(sampleNodeId);
-        profileInfo_->timeDeltas.push_back(timeDelta);
-    }
+    StatisticStateTime(timeDelta, previousState_);
+    previousState_ = nodeKey.methodKey.state;
+    profileInfo_->nodes[sampleNodeId - 1].hitCount++;
+    profileInfo_->samples.push_back(sampleNodeId);
+    profileInfo_->timeDeltas.push_back(timeDelta);
     threadStartTime_ = sampleTimeStamp;
 }
 
@@ -127,122 +118,39 @@ void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
             methodNode.codeEntry = GetMethodInfo(nodeKey.methodKey);
             stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
             profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
-            if (!outToFile_) {
-                profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
-            }
+            profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
         } else {
             previousId_ = methodNode.id = result->second;
         }
     }
-    struct SampleInfo sampleInfo;
+
     int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
     *sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
     int timeDelta = static_cast<int>(*sampleTimeStamp -
         (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
-    StatisticStateTime(timeDelta, nodeKey.methodKey.state);
-    if (outToFile_) {
-        sampleInfo.id = sampleNodeId;
-        sampleInfo.line = stackTopLines_[methodNode.id - 1];
-        sampleInfo.timeStamp = timeDelta;
-        samples_.push_back(sampleInfo);
-    } else {
-        profileInfo_->nodes[sampleNodeId - 1].hitCount++;
-        profileInfo_->samples.push_back(sampleNodeId);
-        profileInfo_->timeDeltas.push_back(timeDelta);
-    }
+    StatisticStateTime(timeDelta, previousState_);
+    previousState_ = nodeKey.methodKey.state;
+    profileInfo_->nodes[sampleNodeId - 1].hitCount++;
+    profileInfo_->samples.push_back(sampleNodeId);
+    profileInfo_->timeDeltas.push_back(timeDelta);
     threadStartTime_ = *sampleTimeStamp;
 }
 
-void SamplesRecord::WriteAddNodes()
+void SamplesRecord::StringifySampleData()
 {
-    sampleData_ += "{\"args\":{\"data\":{\"cpuProfile\":{\"nodes\":[";
-    int count = profileInfo_->nodeCount;
-    for (int i = 0; i < count; i++) {
-        auto it = profileInfo_->nodes[i];
-        sampleData_ += "{\"callFrame\":{\"codeType\":\"" + it.codeEntry.codeType + "\",";
-        if (it.parentId == 0) {
-            sampleData_ += "\"functionName\":\"(root)\",\"scriptId\":0},\"id\":1},";
-            continue;
-        }
-        if (it.codeEntry.codeType == "other" || it.codeEntry.codeType == "jsvm") {
-            sampleData_ += "\"functionName\":\"" + it.codeEntry.functionName + "\",\"scriptId\":" +
-                           std::to_string(it.codeEntry.scriptId) + "},\"id\":" + std::to_string(it.id);
-        } else {
-            sampleData_ += "\"columnNumber\":" + std::to_string(it.codeEntry.columnNumber) +
-                           ",\"functionName\":\"" + it.codeEntry.functionName + "\",\"lineNumber\":\"" +
-                           std::to_string(it.codeEntry.lineNumber) + "\",\"scriptId\":" +
-                           std::to_string(it.codeEntry.scriptId) + ",\"url\":\"" + it.codeEntry.url +
-                           "\"},\"id\":" + std::to_string(it.id);
-        }
-        sampleData_ += ",\"parent\":" + std::to_string(it.parentId) + "},";
-    }
-    sampleData_.pop_back();
-    sampleData_ += "],\"samples\":[";
+    sampleData_ += "{\"tid\":"
+        + std::to_string(profileInfo_->tid) + ",\"startTime\":"
+        + std::to_string(profileInfo_->startTime) + ",\"endTime\":"
+        + std::to_string(profileInfo_->stopTime) + ",";
+
+    StringifyStateTimeStatistic();
+    StringifyNodes();
+    StringifySamples();
 }
 
-void SamplesRecord::WriteAddSamples()
+void SamplesRecord::StringifyStateTimeStatistic()
 {
-    if (samples_.empty()) {
-        return;
-    }
-    std::string sampleId = "";
-    std::string sampleLine = "";
-    std::string timeStamp = "";
-    for (auto it : samples_) {
-        sampleId += std::to_string(it.id) + ",";
-        sampleLine += std::to_string(it.line) + ",";
-        timeStamp += std::to_string(it.timeStamp) + ",";
-    }
-    sampleId.pop_back();
-    sampleLine.pop_back();
-    timeStamp.pop_back();
-    sampleData_ += sampleId + "]},\"lines\":[" + sampleLine + "],\"timeDeltas\":[" + timeStamp + "]}},";
-}
-
-void SamplesRecord::WriteMethodsAndSampleInfo(bool timeEnd)
-{
-    if (profileInfo_->nodeCount >= 10) { // 10:Number of nodes currently stored
-        WriteAddNodes();
-        WriteAddSamples();
-        profileInfo_->nodeCount = 0;
-        samples_.clear();
-    } else if (samples_.size() == 100 || timeEnd) { // 100:Number of samples currently stored
-        if (!(profileInfo_->nodeCount == 0)) {
-            WriteAddNodes();
-            WriteAddSamples();
-            profileInfo_->nodeCount = 0;
-            samples_.clear();
-        } else if (!samples_.empty()) {
-            sampleData_ += "{\"args\":{\"data\":{\"cpuProfile\":{\"samples\":[";
-            WriteAddSamples();
-            samples_.clear();
-        } else {
-            return;
-        }
-    }
-    sampleData_ += "\"cat\":\"disabled-by-default-ark.cpu_profiler\",\"id\":"
-                    "\"0x2\",\"name\":\"ProfileChunk\",\"ph\":\"P\",\"pid\":";
-    pid_t pid = getpid();
-    int64_t tid = syscall(SYS_gettid);
-    uint64_t tts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    sampleData_ += std::to_string(pid) + ",\"tid\":" +
-                   std::to_string(tid) + ",\"ts\":" +
-                   std::to_string(threadStartTime_) + ",\"tts\":" +
-                   std::to_string(tts) + "},\n";
-}
-
-void SamplesRecord::WriteStateTimeStatistic()
-{
-    pid_t pid = getpid();
-    int64_t tid = syscall(SYS_gettid);
-    uint64_t tts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    sampleData_ += "{\"args\":{\"data\":{\"stopTime\":" + std::to_string(threadStartTime_) + "}},"
-        + "\"cat\":\"disabled-by-default-ark.cpu_profiler\",\"id\":\"0x2\","
-        + "\"name\":\"Profile\",\"ph\":\"P\",\"pid\":"
-        + std::to_string(pid) + ",\"tid\":"
-        + std::to_string(tid) + ",\"ts\":"
-        + std::to_string(threadStartTime_) + ",\"tts\":"
-        + std::to_string(tts) + ",\"gcTime\":"
+    sampleData_ += "\"gcTime\":"
         + std::to_string(profileInfo_->gcTime) + ",\"cInterpreterTime\":"
         + std::to_string(profileInfo_->cInterpreterTime) + ",\"asmInterpreterTime\":"
         + std::to_string(profileInfo_->asmInterpreterTime) + ",\"aotTime\":"
@@ -251,17 +159,59 @@ void SamplesRecord::WriteStateTimeStatistic()
         + std::to_string(profileInfo_->napiTime) + ",\"arkuiEngineTime\":"
         + std::to_string(profileInfo_->arkuiEngineTime) + ",\"runtimeTime\":"
         + std::to_string(profileInfo_->runtimeTime) + ",\"otherTime\":"
-        + std::to_string(profileInfo_->otherTime) + "}]\n";
+        + std::to_string(profileInfo_->otherTime) + ",";
+}
+
+void SamplesRecord::StringifyNodes()
+{
+    sampleData_ += "\"nodes\":[";
+    size_t nodeCount = profileInfo_->nodeCount;
+    for (size_t i = 0; i < nodeCount; i++) {
+        struct CpuProfileNode node = profileInfo_->nodes[i];
+        struct FrameInfo codeEntry = node.codeEntry;
+        sampleData_ += "{\"id\":"
+        + std::to_string(node.id) + ",\"callFrame\":{\"functionName\":\""
+        + codeEntry.functionName + "\",\"scriptId\":\""
+        + std::to_string(codeEntry.scriptId) + "\",\"url\":\""
+        + codeEntry.url + "\",\"lineNumber\":"
+        + std::to_string(codeEntry.lineNumber) + ",\"columnNumber\":"
+        + std::to_string(codeEntry.columnNumber) + "},\"hitCount\":"
+        + std::to_string(node.hitCount) + ",\"children\":[";
+        CVector<int> children = node.children;
+        size_t childrenCount = children.size();
+        for (size_t j = 0; j < childrenCount; j++) {
+            sampleData_ += std::to_string(children[j]) + ",";
+        }
+        if (childrenCount > 0) {
+            sampleData_.pop_back();
+        }
+        sampleData_ += "]},";
+    }
+    sampleData_.pop_back();
+    sampleData_ += "],";
+}
+
+void SamplesRecord::StringifySamples()
+{
+    CVector<int> samples = profileInfo_->samples;
+    CVector<int> timeDeltas = profileInfo_->timeDeltas;
+
+    size_t samplesCount = samples.size();
+    std::string samplesIdStr = "";
+    std::string timeDeltasStr = "";
+    for (size_t i = 0; i < samplesCount; i++) {
+        samplesIdStr += std::to_string(samples[i]) + ",";
+        timeDeltasStr += std::to_string(timeDeltas[i]) + ",";
+    }
+    samplesIdStr.pop_back();
+    timeDeltasStr.pop_back();
+
+    sampleData_ += "\"samples\":[" + samplesIdStr + "],\"timeDeltas\":[" + timeDeltasStr + "]}";
 }
 
 int SamplesRecord::GetMethodNodeCount() const
 {
     return profileInfo_->nodeCount;
-}
-
-CDeque<struct SampleInfo> SamplesRecord::GetSamples() const
-{
-    return samples_;
 }
 
 std::string SamplesRecord::GetSampleData() const
@@ -344,14 +294,6 @@ void SamplesRecord::StatisticStateTime(int timeDelta, RunningState state)
             return;
         }
     }
-}
-
-struct FrameInfo SamplesRecord::GetGcInfo()
-{
-    struct FrameInfo gcEntry;
-    gcEntry.codeType = "jsvm";
-    gcEntry.functionName = "garbage collector";
-    return gcEntry;
 }
 
 void SamplesRecord::SetThreadStartTime(uint64_t threadStartTime)
@@ -511,16 +453,6 @@ bool SamplesRecord::GetIsStart() const
 void SamplesRecord::SetIsStart(bool isStart)
 {
     isStart_.store(isStart);
-}
-
-bool SamplesRecord::GetOutToFile() const
-{
-    return outToFile_;
-}
-
-void SamplesRecord::SetOutToFile(bool outToFile)
-{
-    outToFile_ = outToFile;
 }
 
 bool SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp)

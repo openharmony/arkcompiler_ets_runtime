@@ -90,7 +90,7 @@ public:
 private:
     static os::memory::Mutex synchronizationMutex_;
 
-    void GetFrameStack(FrameIterator &it);
+    void GetFrameStack(FrameIterator &it, bool isLeaveFrame);
     bool ParseMethodInfo(struct MethodKey &methodKey, const FrameIterator &it,
                          const JSPandaFile *jsPandaFile, bool isCallNapi);
     void GetNativeStack(const FrameIterator &it, char *functionName, size_t size);
@@ -103,7 +103,7 @@ private:
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
     bool GetFrameStackCallNapi(JSThread *thread);
     void *GetMethodIdentifier(Method *method, const FrameIterator &it);
-    RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile) const;
+    RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool isLeaveFrame) const;
     bool isProfiling_ = false;
     bool outToFile_ = false;
     std::string fileName_ = "";

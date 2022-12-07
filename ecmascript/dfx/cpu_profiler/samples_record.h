@@ -98,12 +98,6 @@ struct ProfileInfo {
     uint64_t otherTime = 0;
 };
 
-struct SampleInfo {
-    int id = 0;
-    int line = 0;
-    int timeStamp = 0;
-};
-
 struct FrameInfoTemp {
     char codeType[20] = {0}; // 20:the maximum size of the codeType
     char functionName[50] = {0}; // 50:the maximum size of the functionName
@@ -121,11 +115,9 @@ public:
 
     void AddSample(uint64_t sampleTimeStamp);
     void AddSampleCallNapi(uint64_t *sampleTimeStamp);
-    void WriteMethodsAndSampleInfo(bool timeEnd);
-    void WriteStateTimeStatistic();
+    void StringifySampleData();
     int GetMethodNodeCount() const;
     int GetframeStackLength() const;
-    CDeque<struct SampleInfo> GetSamples() const;
     std::string GetSampleData() const;
     void SetThreadStartTime(uint64_t threadStartTime);
     void SetThreadStopTime(uint64_t threadStopTime);
@@ -136,8 +128,6 @@ public:
     std::unique_ptr<struct ProfileInfo> GetProfileInfo();
     bool GetIsStart() const;
     void SetIsStart(bool isStart);
-    bool GetOutToFile() const;
-    void SetOutToFile(bool outToFile);
     bool GetGcState() const;
     void SetGcState(bool gcState);
     bool GetRuntimeState() const;
@@ -164,18 +154,18 @@ public:
     std::ofstream fileHandle_;
 
 private:
-    void WriteAddNodes();
-    void WriteAddSamples();
+    void StringifyStateTimeStatistic();
+    void StringifyNodes();
+    void StringifySamples();
     struct FrameInfo GetMethodInfo(struct MethodKey &methodKey);
     std::string AddRunningStateToName(char *functionName, RunningState state);
-    struct FrameInfo GetGcInfo();
     void FrameInfoTempToMap();
     void NapiFrameInfoTempToMap();
     void StatisticStateTime(int timeDelta, RunningState state);
 
     int previousId_ = 0;
+    RunningState previousState_ = RunningState::OTHER;
     uint64_t threadStartTime_ = 0;
-    bool outToFile_ = false;
     std::atomic_bool isBreakSample_ = false;
     std::atomic_bool gcState_ = false;
     std::atomic_bool runtimeState_ = false;
@@ -186,7 +176,6 @@ private:
     std::unique_ptr<struct ProfileInfo> profileInfo_;
     CVector<int> stackTopLines_;
     CMap<struct NodeKey, int> nodeMap_;
-    CDeque<struct SampleInfo> samples_;
     std::string sampleData_ = "";
     std::string fileName_ = "";
     sem_t sem_[3]; // 3 : sem_ size is three.

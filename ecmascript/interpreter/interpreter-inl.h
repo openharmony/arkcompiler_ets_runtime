@@ -593,12 +593,6 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     state->function = info->GetFunctionValue();
     state->thisObj = info->GetThisValue();
     thread->SetCurrentSPFrame(newSp);
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler *profiler = thread->GetEcmaVM()->GetProfiler();
-    if (profiler != nullptr) {
-        profiler->IsNeedAndGetStack(thread);
-    }
-#endif
     thread->CheckSafepoint();
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     Method *method = callTarget->GetCallTarget();
@@ -610,11 +604,6 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     InterpretedEntryFrame *entryState = GET_ENTRY_FRAME(sp);
     JSTaggedType *prevSp = entryState->base.prev;
     thread->SetCurrentSPFrame(prevSp);
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    if (profiler != nullptr) {
-        profiler->IsNeedAndGetStack(thread);
-    }
-#endif
     return tagged;
 }
 
@@ -716,12 +705,6 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     state->base.type = FrameType::INTERPRETER_FRAME;
     state->env = thisFunc->GetLexicalEnv();
     thread->SetCurrentSPFrame(newSp);
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler *profiler = thread->GetEcmaVM()->GetProfiler();
-    if (profiler != nullptr) {
-        profiler->IsNeedAndGetStack(thread);
-    }
-#endif
     thread->CheckSafepoint();
     LOG_INST() << "Entry: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(newSp) << " "
                             << std::hex << reinterpret_cast<uintptr_t>(pc);
@@ -734,11 +717,6 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     InterpretedEntryFrame *entryState = GET_ENTRY_FRAME(sp);
     JSTaggedType *prevSp = entryState->base.prev;
     thread->SetCurrentSPFrame(prevSp);
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    if (profiler != nullptr) {
-        profiler->IsNeedAndGetStack(thread);
-    }
-#endif
     return resAcc;
 }
 
