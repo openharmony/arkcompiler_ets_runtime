@@ -75,8 +75,8 @@ bool GateMetaData::IsProlog() const
 
 bool GateMetaData::IsFixed() const
 {
-    return (opcode_ == OpCode::VALUE_SELECTOR) || (opcode_ == OpCode::DEPEND_SELECTOR)
-            || (opcode_ == OpCode::DEPEND_RELAY);
+    return (opcode_ == OpCode::VALUE_SELECTOR) || (opcode_ == OpCode::DEPEND_SELECTOR) ||
+        (opcode_ == OpCode::DEPEND_RELAY);
 }
 
 bool GateMetaData::IsSchedulable() const
@@ -93,23 +93,23 @@ bool GateMetaData::IsState() const
 
 bool GateMetaData::IsGeneralState() const
 {
-    return ((opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE)
-             || (opcode_ == OpCode::JS_BYTECODE) || (opcode_ == OpCode::IF_SUCCESS)
-             || (opcode_ == OpCode::IF_EXCEPTION) || (opcode_ == OpCode::SWITCH_CASE)
-             || (opcode_ == OpCode::DEFAULT_CASE) || (opcode_ == OpCode::MERGE)
-             || (opcode_ == OpCode::LOOP_BEGIN) || (opcode_ == OpCode::ORDINARY_BLOCK)
-             || (opcode_ == OpCode::STATE_ENTRY) || (opcode_ == OpCode::TYPED_BINARY_OP)
-             || (opcode_ == OpCode::TYPE_CONVERT) || (opcode_ == OpCode::TYPED_UNARY_OP)
-             || (opcode_ == OpCode::TO_LENGTH) || (opcode_ == OpCode::HEAP_ALLOC)
-             || (opcode_ == OpCode::LOAD_ELEMENT) || (opcode_ == OpCode::LOAD_PROPERTY)
-             || (opcode_ == OpCode::STORE_ELEMENT) || (opcode_ == OpCode::STORE_PROPERTY)
-             || (opcode_ == OpCode::TYPED_CALL));
+    return ((opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE) ||
+        (opcode_ == OpCode::JS_BYTECODE) || (opcode_ == OpCode::IF_SUCCESS) ||
+        (opcode_ == OpCode::IF_EXCEPTION) || (opcode_ == OpCode::SWITCH_CASE) ||
+        (opcode_ == OpCode::DEFAULT_CASE) || (opcode_ == OpCode::MERGE) ||
+        (opcode_ == OpCode::LOOP_BEGIN) || (opcode_ == OpCode::ORDINARY_BLOCK) ||
+        (opcode_ == OpCode::STATE_ENTRY) || (opcode_ == OpCode::TYPED_BINARY_OP) ||
+        (opcode_ == OpCode::TYPE_CONVERT) || (opcode_ == OpCode::TYPED_UNARY_OP) ||
+        (opcode_ == OpCode::TO_LENGTH) || (opcode_ == OpCode::HEAP_ALLOC) ||
+        (opcode_ == OpCode::LOAD_ELEMENT) || (opcode_ == OpCode::LOAD_PROPERTY) ||
+        (opcode_ == OpCode::STORE_ELEMENT) || (opcode_ == OpCode::STORE_PROPERTY) ||
+        (opcode_ == OpCode::TYPED_CALL));
 }
 
 bool GateMetaData::IsTerminalState() const
 {
-    return ((opcode_ == OpCode::RETURN) || (opcode_ == OpCode::THROW)
-             || (opcode_ == OpCode::RETURN_VOID));
+    return ((opcode_ == OpCode::RETURN) || (opcode_ == OpCode::THROW) ||
+        (opcode_ == OpCode::RETURN_VOID));
 }
 
 bool GateMetaData::IsCFGMerge() const
