@@ -334,11 +334,10 @@ JSTaggedValue DebuggerApi::GetCurrentModule(const EcmaVM *ecmaVm)
     UNREACHABLE();
 }
 
-int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *ecmaVm, const std::string &name)
+int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
+                                            const std::string &name)
 {
-    JSThread *thread = ecmaVm->GetJSThread();
-    FrameHandler frameHandler(thread);
-    Method *method = frameHandler.GetMethod();
+    Method *method = GetMethod(frameHandler);
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     if (jsPandaFile != nullptr && jsPandaFile->IsBundlePack()) {
         return -1;
@@ -350,6 +349,7 @@ int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *ecmaVm, const std::str
         return -1;
     }
 
+    JSThread *thread = ecmaVm->GetJSThread();
     if (dictionary.IsTaggedArray()) {
         JSTaggedValue localExportEntries = SourceTextModule::Cast(
             currentModule.GetTaggedObject())->GetLocalExportEntries();
@@ -388,10 +388,11 @@ int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *ecmaVm, const std::str
     return -1;
 }
 
-Local<JSValueRef> DebuggerApi::GetModuleValue(const EcmaVM *ecmaVm, const std::string &name)
+Local<JSValueRef> DebuggerApi::GetModuleValue(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
+                                              const std::string &name)
 {
     Local<JSValueRef> result;
-    int32_t index = GetModuleVariableIndex(ecmaVm, name);
+    int32_t index = GetModuleVariableIndex(ecmaVm, frameHandler, name);
     if (index == -1) {
         return result;
     }
@@ -422,9 +423,10 @@ Local<JSValueRef> DebuggerApi::GetModuleValue(const EcmaVM *ecmaVm, const std::s
     }
 }
 
-bool DebuggerApi::SetModuleValue(const EcmaVM *ecmaVm, const std::string &name, Local<JSValueRef> value)
+bool DebuggerApi::SetModuleValue(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
+                                 const std::string &name, Local<JSValueRef> value)
 {
-    int32_t index = DebuggerApi::GetModuleVariableIndex(ecmaVm, name);
+    int32_t index = DebuggerApi::GetModuleVariableIndex(ecmaVm, frameHandler, name);
     if (index == -1) {
         return false;
     }
