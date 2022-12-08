@@ -261,6 +261,7 @@ public:
     uintptr_t* PUBLIC_API ExpandHandleStorage();
     void PUBLIC_API ShrinkHandleStorage(int prevIndex);
     void PUBLIC_API CheckJSTaggedType(JSTaggedType value) const;
+    bool PUBLIC_API CpuProfilerCheckJSTaggedType(JSTaggedType value) const;
 
     JSTaggedType *GetHandleScopeStorageNext() const
     {
