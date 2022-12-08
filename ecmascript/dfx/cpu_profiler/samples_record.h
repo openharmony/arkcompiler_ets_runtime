@@ -52,7 +52,7 @@ struct MethodKey {
 };
 
 struct NodeKey {
-    struct MethodKey methodKey = {0};
+    struct MethodKey methodKey = {};
     int parentId = 0;
     bool operator < (const NodeKey &nodeKey) const
     {
@@ -111,7 +111,7 @@ struct FrameInfoTemp {
     int lineNumber = 0;
     int scriptId = 0;
     char url[500] = {0}; // 500:the maximum size of the url
-    struct MethodKey methodKey = {0};
+    struct MethodKey methodKey = {};
 };
 
 class SamplesRecord {
