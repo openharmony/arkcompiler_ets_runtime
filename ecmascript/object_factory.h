@@ -314,11 +314,6 @@ public:
         return dstElements;
     }
 
-    void RemoveElementByIndex(JSHandle<TaggedArray> &srcArray, uint32_t index, uint32_t effectiveLength);
-    JSHandle<TaggedArray> InsertElementByIndex(JSHandle<TaggedArray> &srcArray, const JSHandle<JSTaggedValue> &value,
-                                               uint32_t index, uint32_t effectiveLength);
-    void CopyTaggedArrayElement(JSHandle<TaggedArray> &srcElements, JSHandle<TaggedArray> &dstElements,
-                                uint32_t effectiveLength);
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                 uint32_t oldLength);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());

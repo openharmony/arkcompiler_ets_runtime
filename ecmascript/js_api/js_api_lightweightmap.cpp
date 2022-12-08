@@ -53,8 +53,7 @@ void JSAPILightWeightMap::InsertValue(const JSThread *thread, const JSHandle<JSA
     JSHandle<TaggedArray> array = GetArrayByKind(thread, lightWeightMap, kind);
     int32_t len = lightWeightMap->GetSize();
     JSHandle<TaggedArray> newArray = GrowCapacity(thread, array, len + 1);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    newArray = factory->InsertElementByIndex(newArray, value, index, len);
+    TaggedArray::InsertElementByIndex(thread, newArray, value, index, len);
     SetArrayByKind(thread, lightWeightMap, newArray, kind);
 }
 
@@ -72,8 +71,7 @@ void JSAPILightWeightMap::RemoveValue(const JSThread *thread, const JSHandle<JSA
     JSHandle<TaggedArray> array = GetArrayByKind(thread, lightWeightMap, kind);
     uint32_t len = lightWeightMap->GetLength();
     ASSERT(index < len);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    factory->RemoveElementByIndex(array, index, len);
+    TaggedArray::RemoveElementByIndex(thread, array, index, len);
 }
 
 void JSAPILightWeightMap::Set(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,

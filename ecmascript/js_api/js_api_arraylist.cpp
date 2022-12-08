@@ -200,8 +200,7 @@ bool JSAPIArrayList::Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
     if (index >= 0) {
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
         ASSERT(!elements->IsDictionaryMode());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        factory->RemoveElementByIndex(elements, index, length);
+        TaggedArray::RemoveElementByIndex(thread, elements, index, length);
         arrayList->SetLength(thread, JSTaggedValue(length - 1));
         return true;
     }
