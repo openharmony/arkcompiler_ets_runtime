@@ -24,8 +24,9 @@ std::string ConstantPool::GetStdStringByIdx(size_t index) const
     return EcmaStringAccessor(str).ToStdString(StringConvertedUsage::LOGICOPERATION);
 }
 
-JSHandle<ConstantPool> ConstantPool::RestoreConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile)
+JSHandle<ConstantPool> ConstantPool::GetDeserializedConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+                                                                 int32_t cpID)
 {
-    return JSHandle<ConstantPool>(vm->GetAOTFileManager()->GetSnapshotConstantPool(jsPandaFile));
+    return JSHandle<ConstantPool>(vm->GetAOTFileManager()->GetDeserializedConstantPool(jsPandaFile, cpID));
 }
 }
