@@ -117,6 +117,9 @@ JSTaggedValue TaggedList<Derived>::TaggedListToArray(const JSThread *thread, con
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSArray> array = factory->NewJSArray();
     array->SetArrayLength(thread, numberOfNodes);
+    if (numberOfNodes == 0) {
+        return array.GetTaggedValue();
+    }
     JSHandle<TaggedArray> newElements = factory->ConvertListToArray(thread, list, numberOfNodes);
     array->SetElements(thread, newElements);
     return array.GetTaggedValue();
