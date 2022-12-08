@@ -126,14 +126,14 @@ bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &mod
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                                           const JSHandle<JSTaggedValue> &cjsModule,
+                                                           const JSHandle<JSTaggedValue> &cjsExports,
                                                            const JSHandle<JSTaggedValue> &exportName)
 {
-    // 1. Let module be this Source Text Module Record.
+    // Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
-    // 2. if cjsModule IsCjsExports, means the cjs module has multiple outputs
-    if (cjsModule->IsCjsExports()) {
-        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(cjsModule.GetTaggedValue())->GetJSHClass());
+    // if cjsExports Is JSObject, means the cjs module has multiple outputs
+    if (cjsExports->IsJSObject()) {
+        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(cjsExports.GetTaggedValue())->GetJSHClass());
         // Get layoutInfo and compare the input and output names of files
         JSHandle<LayoutInfo> layoutInfo(thread, jsHclass->GetLayout());
         if (layoutInfo->NumberOfElements() != 0) {
@@ -141,9 +141,10 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsExport(JSThread *thread, con
             if (!resolution->IsUndefined()) {
                 return resolution;
             }
+            // When cjsExports Is JSObject, and can not resolve local export, continue.
         }
     }
-    // 3. If cjsModule != IsCjsExports, means the cjs module use default output
+    // If cjsExports != JSObject, means the cjs module use default output
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
     if (JSTaggedValue::SameValue(exportName, defaultString)) {
         // bind with a number
@@ -232,14 +233,13 @@ void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTex
     }
     JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
     // Get esm environment
-    JSHandle<JSTaggedValue> moduleEnvironment(thread, SourceTextModule::Cast(
-        module.GetTaggedValue().GetTaggedObject())->GetEnvironment());
+    JSHandle<JSTaggedValue> moduleEnvironment(thread, module->GetEnvironment());
     auto globalConstants = thread->GlobalConstants();
     if (moduleEnvironment->IsUndefined()) {
         CString msg = "moduleEnvironment is Undefined";
         THROW_ERROR(thread, ErrorType::RANGE_ERROR, msg.c_str());
     }
-    JSHandle<TaggedArray> environment(thread, TaggedArray::Cast(moduleEnvironment->GetTaggedObject()));
+    JSHandle<TaggedArray> environment = JSHandle<TaggedArray>::Cast(moduleEnvironment);
     size_t length = environment->GetLength();
     JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries());
     JSMutableHandle<ImportEntry> host(thread, globalConstants->GetUndefined());
@@ -252,8 +252,7 @@ void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTex
             continue;
         }
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        JSTaggedValue resolvedModule = binding->GetModule();
-        JSHandle<SourceTextModule> requestedModule(thread, resolvedModule);
+        JSHandle<SourceTextModule> requestedModule(thread, binding->GetModule());
         JSMutableHandle<JSTaggedValue> requestedName(thread, JSTaggedValue::Undefined());
         if (isBundle) {
             requestedName.Update(requestedModule->GetEcmaModuleFilename());
@@ -271,7 +270,8 @@ void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTex
             SourceTextModule::ResolveCjsExport(thread, requestedModule, cjsExports, importName);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed";
+            CString msg = "CJSInstantiate find importName " + ConvertToString(importName.GetTaggedValue());
+            msg += " failed\nrequestedName" + ConvertToString(requestedName.GetTaggedValue());
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
@@ -484,7 +484,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             if (resolution->IsNull() || resolution->IsString()) {
                 CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed ";
                 if (!module->GetEcmaModuleRecordName().IsUndefined()) {
-                msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+                    msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
                 }
                 THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
             }
@@ -721,7 +721,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
                 int dfsAncIdx = std::min(module->GetDFSAncestorIndex(), requiredModule->GetDFSAncestorIndex());
                 module->SetDFSAncestorIndex(dfsAncIdx);
             }
-            // if requiredModule == CommonJS, instantiate here (after CommonJS execution).
+            // if requiredModule is CommonJS Module, instantiate here (after CommonJS execution).
             if ((requiredModule->GetTypes() == ModuleTypes::CJSMODULE)) {
                 CJSInstantiate(thread, module, requiredModule);
             }
