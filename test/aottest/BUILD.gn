@@ -161,4 +161,8 @@ group("ark_aot_test") {
       "builtins_stub:builtins_stubAotAction",
     ]
   }
+
+  if (!is_debug) {
+    deps += [ "aot_multi_constantpool_test:aot_multi_constantpool_test" ]
+  }
 }

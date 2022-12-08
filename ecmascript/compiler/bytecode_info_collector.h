@@ -192,59 +192,41 @@ private:
     LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
 };
 
-enum class ConstantPoolIndexType : uint8_t {
-    STRING,
-    METHOD,
-    CLASS_LITERAL,
-    OBJECT_LITERAL,
-    ARRAY_LITERAL,
-};
 
-class ConstantPoolIndexInfo {
+class ConstantPoolInfo {
 public:
-    const std::set<uint32_t>& GetStringOrMethodIndexSet(ConstantPoolIndexType type)
+    enum ItemType {
+        STRING = 0,
+        METHOD,
+        CLASS_LITERAL,
+        OBJECT_LITERAL,
+        ARRAY_LITERAL,
+
+        ITEM_TYPE_NUM,
+        ITEM_TYPE_FIRST = STRING,
+        ITEM_TYPE_LAST = ARRAY_LITERAL,
+    };
+
+    struct ItemData {
+        uint32_t index {0};
+        uint32_t outerMethodOffset {0};
+        CString *recordName {nullptr};
+    };
+
+    // key:constantpool index, value:ItemData
+    using Item = std::unordered_map<uint32_t, ItemData>;
+
+    ConstantPoolInfo() : items_(ItemType::ITEM_TYPE_NUM, Item{}) {}
+
+    Item& GetCPItem(ItemType type)
     {
-        switch (type) {
-            case ConstantPoolIndexType::STRING: {
-                return stringIndex_;
-            }
-            case ConstantPoolIndexType::METHOD: {
-                return methodIndex_;
-            }
-            default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
-        }
+        ASSERT(ItemType::ITEM_TYPE_FIRST <= type && type <= ItemType::ITEM_TYPE_LAST);
+        return items_[type];
     }
 
-    const std::set<std::pair<uint32_t, uint32_t>>& GetLiteralIndexSet(ConstantPoolIndexType type)
-    {
-        switch (type) {
-            case ConstantPoolIndexType::CLASS_LITERAL: {
-                return classLiteralIndex_;
-            }
-            case ConstantPoolIndexType::OBJECT_LITERAL: {
-                return objectLiteralIndex_;
-            }
-            case ConstantPoolIndexType::ARRAY_LITERAL: {
-                return arrayLiteralIndex_;
-            }
-            default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
-        }
-    }
-
-    void AddConstantPoolIndex(ConstantPoolIndexType type, uint32_t index, uint32_t methodOffset = 0);
-
+    void AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset);
 private:
-    std::set<uint32_t> stringIndex_ {};
-    std::set<uint32_t> methodIndex_ {};
-
-    // literal need to record methodOffset (constantpool index, methodOffset)
-    std::set<std::pair<uint32_t, uint32_t>> classLiteralIndex_ {};
-    std::set<std::pair<uint32_t, uint32_t>> objectLiteralIndex_ {};
-    std::set<std::pair<uint32_t, uint32_t>> arrayLiteralIndex_ {};
+    std::vector<Item> items_;
 };
 
 class BCInfo {
@@ -287,26 +269,19 @@ public:
         return skippedMethods_.size();
     }
 
-    void AddConstantPoolIndex(ConstantPoolIndexType type, uint32_t index, uint32_t methodOffset = 0)
+    void AddIndexToCPInfo(ConstantPoolInfo::ItemType type, uint32_t index, uint32_t methodOffset)
     {
-        cpIndexInfo_.AddConstantPoolIndex(type, index, methodOffset);
+        cpInfo_.AddIndexToCPItem(type, index, methodOffset);
     }
 
     template <class Callback>
-    void IterateStringOrMethodIndex(ConstantPoolIndexType type, const Callback &cb)
+    void IterateConstantPoolInfo(ConstantPoolInfo::ItemType type, const Callback &cb)
     {
-        const auto &indexSet = cpIndexInfo_.GetStringOrMethodIndexSet(type);
-        for (uint32_t index : indexSet) {
-            cb(index);
-        }
-    }
-
-    template <class Callback>
-    void IterateLiteralIndex(ConstantPoolIndexType type, const Callback &cb)
-    {
-        const auto &indexSet = cpIndexInfo_.GetLiteralIndexSet(type);
-        for (const auto &item : indexSet) {
-            cb(item.first, methodOffsetToRecordName_[item.second]);
+        auto &item = cpInfo_.GetCPItem(type);
+        for (auto &iter : item) {
+            ConstantPoolInfo::ItemData &data = iter.second;
+            data.recordName = &methodOffsetToRecordName_[data.outerMethodOffset];
+            cb(data);
         }
     }
 
@@ -355,7 +330,7 @@ private:
     std::unordered_map<uint32_t, MethodInfo> methodList_ {};
     std::unordered_map<uint32_t, CString> methodOffsetToRecordName_ {};
     std::set<uint32_t> skippedMethods_ {};
-    ConstantPoolIndexInfo cpIndexInfo_;
+    ConstantPoolInfo cpInfo_;
     PGOProfilerLoader &pfLoader_;
     size_t maxMethodSize_;
 };
@@ -393,9 +368,9 @@ private:
 
 class BytecodeInfoCollector {
 public:
-    explicit BytecodeInfoCollector(JSPandaFile *jsPandaFile, PGOProfilerLoader &profilerLoader,
+    explicit BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, PGOProfilerLoader &profilerLoader,
                                    size_t maxAotMethodSize)
-        : jsPandaFile_(jsPandaFile), bytecodeInfo_(profilerLoader, maxAotMethodSize)
+        : vm_(vm), jsPandaFile_(jsPandaFile), bytecodeInfo_(profilerLoader, maxAotMethodSize)
     {
         ProcessClasses();
     }
@@ -403,7 +378,7 @@ public:
     NO_COPY_SEMANTIC(BytecodeInfoCollector);
     NO_MOVE_SEMANTIC(BytecodeInfoCollector);
 
-    BCInfo &GetBytecodeInfo()
+    BCInfo& GetBytecodeInfo()
     {
         return bytecodeInfo_;
     }
@@ -413,16 +388,15 @@ public:
         return bytecodeInfo_.IsSkippedMethod(methodOffset);
     }
 
-    template <class Callback>
-    void IterateStringOrMethodIndex(ConstantPoolIndexType type, const Callback &cb)
+    const JSPandaFile* GetJSPandaFile()
     {
-        bytecodeInfo_.IterateStringOrMethodIndex(type, cb);
+        return jsPandaFile_;
     }
 
     template <class Callback>
-    void IterateLiteralIndex(ConstantPoolIndexType type, const Callback &cb)
+    void IterateConstantPoolInfo(ConstantPoolInfo::ItemType type, const Callback &cb)
     {
-        bytecodeInfo_.IterateLiteralIndex(type, cb);
+        bytecodeInfo_.IterateConstantPoolInfo(type, cb);
     }
 
 private:
@@ -431,9 +405,10 @@ private:
         return methodInfoIndex_++;
     }
 
-    void AddConstantPoolIndexToBCInfo(ConstantPoolIndexType type, uint32_t index, uint32_t methodOffset = 0)
+    void AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType type,
+                                      uint32_t index, uint32_t methodOffset)
     {
-        bytecodeInfo_.AddConstantPoolIndex(type, index, methodOffset);
+        bytecodeInfo_.AddIndexToCPInfo(type, index, methodOffset);
     }
 
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
@@ -448,6 +423,7 @@ private:
     void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
     void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
 
+    EcmaVM *vm_;
     JSPandaFile *jsPandaFile_ {nullptr};
     BCInfo bytecodeInfo_;
     size_t methodInfoIndex_ {0};

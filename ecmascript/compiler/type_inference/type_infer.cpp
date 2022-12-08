@@ -655,7 +655,7 @@ bool TypeInfer::InferLdStr(GateRef gate)
 bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
 {
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     JSTaggedValue name = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index);
     auto type = GetPropType(objType, name);
     if (tsManager_->IsGetterSetterFunc(type)) {
@@ -796,7 +796,7 @@ bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
         GlobalTSTypeRef type = GlobalTSTypeRef::Default();
         bool isStatic = tsManager_->IsStaticFunc(funcType.GetGTRef());
         auto propType = isStatic ? PropertyType::STATIC : PropertyType::NORMAL;
-        JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+        JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
         type = isString ? tsManager_->GetSuperPropType(classType.GetGTRef(),
             ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index), propType) :
             tsManager_->GetSuperPropType(classType.GetGTRef(), index, propType);
@@ -1026,10 +1026,10 @@ void TypeInfer::TypeCheck(GateRef gate) const
     }
     auto funcName = gateAccessor_.GetValueIn(func, 1);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     uint16_t funcNameStrId = ConstDataId(gateAccessor_.GetBitField(funcName)).GetId();
     ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), funcNameStrId);
-    auto funcNameString = constantPool->GetStdStringByIdx(gateAccessor_.GetBitField(funcName));
+    auto funcNameString = constantPool->GetStdStringByIdx(funcNameStrId);
     if (funcNameString == "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gate, 1);
         uint16_t strId = ConstDataId(gateAccessor_.GetBitField(expectedGate)).GetId();

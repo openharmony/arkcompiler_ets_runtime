@@ -35,8 +35,8 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     }
 
     profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
-    BytecodeInfoCollector bcInfoCollector(jsPandaFile, profilerLoader_, maxAotMethodSize_);
-    ResolveModuleAndConstPool(jsPandaFile, fileName);
+    BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, profilerLoader_, maxAotMethodSize_);
+    ResolveModule(jsPandaFile, fileName);
     auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
                                                 LOptions(optLevel_, true, relocMode_));
@@ -58,6 +58,8 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         auto jsPandaFile = info.GetJSPandaFile();
         auto cmpCfg = info.GetCompilerConfig();
         auto tsManager = info.GetTSManager();
+        // note: TSManager need to set current constantpool before all pass
+        tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
 
         if (log_->CertainMethod()) {
             enableMethodLog = logList_->IncludesMethod(fileName, methodName);
@@ -126,11 +128,8 @@ JSPandaFile *PassManager::CreateAndVerifyJSPandaFile(const CString &fileName)
     return jsPandaFile;
 }
 
-void PassManager::ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, const std::string &fileName)
+void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName)
 {
-    JSThread *thread = vm_->GetJSThread();
-
-    JSHandle<Program> program;
     const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
     ModuleManager *moduleManager = vm_->GetModuleManager();
     for (auto info: recordInfo) {
@@ -138,13 +137,6 @@ void PassManager::ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, cons
         if (jsPandaFile->IsModule(recordName)) {
             moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(), recordName);
         }
-        program = PandaFileTranslator::GenerateProgram(vm_, jsPandaFile, recordName);
     }
-
-    JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
-    JSHandle<Method> method(thread, mainFunc->GetMethod());
-    JSHandle<JSTaggedValue> constPool(thread, method->GetConstantPool());
-    TSManager *tsManager = vm_->GetTSManager();
-    tsManager->InitSnapshotConstantPool(constPool.GetTaggedValue());
 }
 } // namespace panda::ecmascript::kungfu

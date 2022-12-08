@@ -132,25 +132,64 @@ bool TSManager::IsDuplicatedKey(JSHandle<TSObjLayoutInfo> extendLayout, JSTagged
     return false;
 }
 
-int TSManager::GetHClassIndex(const kungfu::GateType &gateType)
+int TSManager::GetHClassIndexByInstanceGateType(const kungfu::GateType &gateType)
 {
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
     if (!IsClassInstanceTypeKind(gateType)) {
         return -1;
     }
     GlobalTSTypeRef instanceGT = gateType.GetGTRef();
     GlobalTSTypeRef classGT = GetClassType(instanceGT);
-    auto it = classTypeIhcIndexMap_.find(classGT);
-    if (it == classTypeIhcIndexMap_.end()) {
+    return GetHClassIndex(classGT);
+}
+
+int TSManager::GetHClassIndexByClassGateType(const kungfu::GateType &gateType)
+{
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    if (!IsClassTypeKind(gateType)) {
+        return -1;
+    }
+    GlobalTSTypeRef classGT = gateType.GetGTRef();
+    return GetHClassIndex(classGT);
+}
+
+int TSManager::GetHClassIndex(GlobalTSTypeRef classGT)
+{
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    auto iter = gtIhcMap_.find(classGT);
+    if (iter == gtIhcMap_.end()) {
         return -1;
     } else {
-        return it->second;
+        std::unordered_map<int32_t, uint32_t> &cpIndexMap = iter->second.GetCPIndexMap();
+        auto indexIter = cpIndexMap.find(curCPID_);
+        if (indexIter == cpIndexMap.end()) {
+            // This ihc is used in the current constantpool, but has not yet been recorded
+            return RecordIhcToVecAndIndexMap(iter->second);
+        }
+        return indexIter->second;
     }
+}
+
+uint32_t TSManager::RecordIhcToVecAndIndexMap(IHClassData &ihcData)
+{
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    JSHandle<ConstantPool> constantPool(GetConstantPool());
+    CVector<JSTaggedType> &hcVec = snapshotData_.GetSnapshotHCVector(curCPID_);
+    hcVec.emplace_back(ihcData.GetIHC());
+
+    uint32_t index = constantPool->GetCacheLength() + hcVec.size() - 1;
+    std::unordered_map<int32_t, uint32_t> &cpIndexMap = ihcData.GetCPIndexMap();
+    cpIndexMap[curCPID_] = index;
+
+    return index;
 }
 
 JSTaggedValue TSManager::GetHClassFromCache(uint32_t index)
 {
-    JSHandle<ConstantPool> constantPool(GetSnapshotConstantPool());
-    return JSTaggedValue(hclassCache_[index - constantPool->GetCacheLength()]);
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    JSHandle<ConstantPool> constantPool(GetConstantPool());
+    const CVector<JSTaggedType> &hcVec = snapshotData_.GetSnapshotHCVector(curCPID_);
+    return JSTaggedValue(hcVec[index - constantPool->GetCacheLength()]);
 }
 
 int TSManager::GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key)
@@ -428,10 +467,10 @@ GlobalTSTypeRef TSManager::GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTy
 void TSManager::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalModuleTable_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&snapshotConstantPool_)));
-    uint64_t hclassCacheSize = hclassCache_.size();
-    for (uint64_t i = 0; i < hclassCacheSize; i++) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(hclassCache_.data()[i]))));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&curCP_)));
+    snapshotData_.Iterate(v);
+    for (auto iter : gtIhcMap_) {
+        iter.second.Iterate(v);
     }
 }
 
@@ -594,9 +633,8 @@ GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
     return arrayType->GetElementGT();
 }
 
-void TSManager::GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle<TSClassType> classType)
+void TSManager::GenerateStaticHClass(JSHandle<TSClassType> classType)
 {
-    JSHandle<ConstantPool> constPool(thread_, vm_->FindConstpool(jsPandaFile, 0));
     JSHandle<TSObjectType> instanceType(thread_, classType->GetInstanceType());
     JSHClass *ihc = TSObjectType::GetOrCreateHClass(thread_, instanceType, TSObjectTypeKind::INSTANCE);
     JSHandle<TSObjectType> prototypeType(thread_, classType->GetPrototypeType());
@@ -606,7 +644,7 @@ void TSManager::GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle<TS
     ihc->SetProto(thread_, prototype);
 
     GlobalTSTypeRef gt = classType->GetGT();
-    AddHClassInCompilePhase(gt, JSTaggedValue(ihc), constPool->GetCacheLength());
+    gtIhcMap_.insert({gt, IHClassData(JSTaggedValue(ihc).GetRawData())});
 }
 
 JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
@@ -731,69 +769,170 @@ std::string TSManager::GetPrimitiveStr(const GlobalTSTypeRef &gt) const
     }
 }
 
+void TSManager::SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset)
+{
+    curCPID_ = GetOldConstantPoolIDByMethodOffset(jsPandaFile, methodOffset);
+    curCP_ = vm_->FindConstpool(jsPandaFile, curCPID_);
+}
+
+int32_t TSManager::GetOldConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset)
+{
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(),
+                                            panda_file::File::EntityId(methodOffset));
+    return static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+}
+
+JSHandle<ConstantPool> TSManager::GetSnapshotConstantPool(uint32_t cpListIndex)
+{
+    JSHandle<TaggedArray> snapshotCPList = JSHandle<TaggedArray>(thread_, snapshotData_.GetSnapshotCPList());
+    return JSHandle<ConstantPool>(thread_, snapshotCPList->Get(cpListIndex));
+}
+
 void TSManager::ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector)
 {
-    JSHandle<ConstantPool> cp(thread_, snapshotConstantPool_);
-    uint32_t constantPoolSize = cp->GetCacheLength();
-    uint32_t hclassCacheSize = hclassCache_.size();
-    auto jsPandaFile = cp->GetJSPandaFile();
-    if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
-        LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolSize: " << constantPoolSize;
-        LOG_COMPILER(INFO) << "[aot-snapshot] hclassCacheSize: " << hclassCacheSize;
-    }
-    JSHandle<ConstantPool> newConstantPool = factory_->NewConstantPool(constantPoolSize + hclassCacheSize);
+    const CMap<int32_t, JSTaggedValue> &oldCPValues = vm_->FindConstpools(
+        bcInfoCollector->GetJSPandaFile()).value();
+    std::map<int32_t, uint32_t> cpListIndexMap;
 
-    bcInfoCollector->IterateStringOrMethodIndex(kungfu::ConstantPoolIndexType::STRING, [this, newConstantPool]
-        (uint32_t index) {
-        JSTaggedValue str = ConstantPool::GetStringFromCache(thread_, snapshotConstantPool_, index);
-        newConstantPool->SetObjectToCache(thread_, index, str);
+    GenerateSnapshotConstantPoolList(cpListIndexMap, oldCPValues);
+    FillSnapshotConstantPoolList(cpListIndexMap, bcInfoCollector);
+    AddHClassToSnapshotConstantPoolList(cpListIndexMap, bcInfoCollector);
+}
+
+void TSManager::GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cpListIndexMap,
+                                                 const CMap<int32_t, JSTaggedValue> &oldCPValues)
+{
+    // 2: each item need store (constantPoolID, constantpool)
+    JSHandle<TaggedArray> snapshotCPList = factory_->NewTaggedArray(oldCPValues.size() *
+                                                                    SnapshotData::SNAPSHOT_CP_LIST_ITEM_SIZE);
+    snapshotData_.SetSnapshotCPList(snapshotCPList.GetTaggedValue());
+
+    JSMutableHandle<ConstantPool> oldCP(thread_->GlobalConstants()->GetHandledUndefined());
+    uint32_t pos = 0;
+    for (auto &iter : oldCPValues) {
+        int32_t oldCPID = iter.first;
+        oldCP.Update(iter.second);
+        uint32_t cpSize = oldCP->GetCacheLength();
+        const CVector<JSTaggedType> &hcVec = snapshotData_.GetSnapshotHCVector(oldCPID);
+        uint32_t hcVecSize = hcVec.size();
+        if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+            LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolID: " << oldCPID;
+            LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolSize: " << cpSize;
+            LOG_COMPILER(INFO) << "[aot-snapshot] hclassSize: " << hcVecSize;
+        }
+        JSHandle<ConstantPool> newCp = factory_->NewConstantPool(cpSize + hcVecSize);
+
+        snapshotCPList->Set(thread_, pos++, JSTaggedValue(oldCPID));
+        cpListIndexMap[oldCPID] = pos;
+        snapshotCPList->Set(thread_, pos++, newCp.GetTaggedValue());
+    }
+}
+
+void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
+                                             kungfu::BytecodeInfoCollector *bcInfoCollector)
+{
+    const JSPandaFile *jsPandaFile = bcInfoCollector->GetJSPandaFile();
+
+    bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::STRING,
+        [this, jsPandaFile, &cpListIndexMap] (const kungfu::ConstantPoolInfo::ItemData &data) {
+        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        JSTaggedValue oldCP = vm_->FindConstpool(jsPandaFile, oldCPID);
+
+        JSTaggedValue str = ConstantPool::GetStringFromCache(thread_, oldCP, data.index);
+
+        uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
+        JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
+        newCP->SetObjectToCache(thread_, data.index, str);
     });
 
-    bcInfoCollector->IterateStringOrMethodIndex(kungfu::ConstantPoolIndexType::METHOD,
-        [this, newConstantPool, cp, bcInfoCollector, jsPandaFile] (uint32_t index) {
-        panda_file::File::IndexHeader *indexHeader = cp->GetIndexHeader();
-        auto pf = jsPandaFile->GetPandaFile();
-        Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
-        uint32_t methodOffset = indexs[index].GetOffset();
+    bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::METHOD,
+        [this, jsPandaFile, &cpListIndexMap, bcInfoCollector] (const kungfu::ConstantPoolInfo::ItemData &data) {
+        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        JSHandle<ConstantPool> oldCP(thread_, vm_->FindConstpool(jsPandaFile, oldCPID));
+
+        panda_file::File::IndexHeader *indexHeader = oldCP->GetIndexHeader();
+        Span<const panda_file::File::EntityId> indexs = jsPandaFile->GetPandaFile()->GetMethodIndex(indexHeader);
+        uint32_t methodOffset = indexs[data.index].GetOffset();
+
+        uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
+        JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
         if (!bcInfoCollector->IsSkippedMethod(methodOffset)) {
-            recordMethodIndex_.emplace_back(index);
-            newConstantPool->SetObjectToCache(thread_, index, JSTaggedValue(methodOffset));
+            snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::METHOD,
+                                                   std::make_pair(cpListIndex, data.index));
+            newCP->SetObjectToCache(thread_, data.index, JSTaggedValue(methodOffset));
         }
     });
 
-    bcInfoCollector->IterateLiteralIndex(kungfu::ConstantPoolIndexType::CLASS_LITERAL,
-        [this, newConstantPool, cp, bcInfoCollector] (uint32_t index, const CString &recordName) {
-        auto literalObj = ConstantPool::GetClassLiteralFromCache(thread_, cp, index, recordName);
+    bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::CLASS_LITERAL,
+        [this, jsPandaFile, &cpListIndexMap, bcInfoCollector] (const kungfu::ConstantPoolInfo::ItemData &data) {
+        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        JSHandle<ConstantPool> oldCP(thread_, vm_->FindConstpool(jsPandaFile, oldCPID));
+
+        auto literalObj = ConstantPool::GetClassLiteralFromCache(thread_, oldCP, data.index, *data.recordName);
         JSHandle<TaggedArray> literalHandle(thread_, literalObj);
-        CollectLiteralInfo(literalHandle, index, newConstantPool, bcInfoCollector);
-        recordLiteralIndex_.emplace_back(index);
+
+        uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
+        JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
+        CollectLiteralInfo(literalHandle, data.index, newCP, bcInfoCollector);
+        snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
+                                               std::make_pair(cpListIndex, data.index));
     });
 
-    bcInfoCollector->IterateLiteralIndex(kungfu::ConstantPoolIndexType::OBJECT_LITERAL,
-        [this, newConstantPool, cp, bcInfoCollector, jsPandaFile] (uint32_t index, const CString &recordName) {
-        panda_file::File::EntityId id = cp->GetEntityId(index);
+    bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::OBJECT_LITERAL,
+        [this, jsPandaFile, &cpListIndexMap, bcInfoCollector] (const kungfu::ConstantPoolInfo::ItemData &data) {
+        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        JSHandle<ConstantPool> oldCP(thread_, vm_->FindConstpool(jsPandaFile, oldCPID));
+
+        panda_file::File::EntityId id = oldCP->GetEntityId(data.index);
         JSMutableHandle<TaggedArray> elements(thread_, JSTaggedValue::Undefined());
         JSMutableHandle<TaggedArray> properties(thread_, JSTaggedValue::Undefined());
-        LiteralDataExtractor::ExtractObjectDatas(thread_, jsPandaFile,
-            id, elements, properties, cp, recordName);
-        CollectLiteralInfo(properties, index, newConstantPool, bcInfoCollector);
-        recordLiteralIndex_.emplace_back(index);
+        LiteralDataExtractor::ExtractObjectDatas(thread_, jsPandaFile, id, elements,
+                                                 properties, oldCP, *data.recordName);
+
+        uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
+        JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
+        CollectLiteralInfo(properties, data.index, newCP, bcInfoCollector);
+        snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
+                                               std::make_pair(cpListIndex, data.index));
     });
 
-    bcInfoCollector->IterateLiteralIndex(kungfu::ConstantPoolIndexType::ARRAY_LITERAL,
-        [this, newConstantPool, cp, bcInfoCollector, jsPandaFile] (uint32_t index, const CString &recordName) {
-        panda_file::File::EntityId id = cp->GetEntityId(index);
+    bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::ARRAY_LITERAL,
+        [this, jsPandaFile, &cpListIndexMap, bcInfoCollector] (const kungfu::ConstantPoolInfo::ItemData &data) {
+        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        JSHandle<ConstantPool> oldCP(thread_, vm_->FindConstpool(jsPandaFile, oldCPID));
+
+        panda_file::File::EntityId id = oldCP->GetEntityId(data.index);
         JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
-            thread_, jsPandaFile, id, cp, recordName);
-        CollectLiteralInfo(literal, index, newConstantPool, bcInfoCollector);
-        recordLiteralIndex_.emplace_back(index);
+            thread_, jsPandaFile, id, oldCP, *data.recordName);
+
+        uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
+        JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
+        CollectLiteralInfo(literal, data.index, newCP, bcInfoCollector);
+        snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
+                                               std::make_pair(cpListIndex, data.index));
     });
+}
 
-    for (uint32_t i = 0; i < hclassCacheSize; ++i) {
-        newConstantPool->SetObjectToCache(thread_, constantPoolSize + i, JSTaggedValue(hclassCache_[i]));
+void TSManager::AddHClassToSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
+                                                    kungfu::BytecodeInfoCollector *bcInfoCollector)
+{
+    const JSPandaFile *jsPandaFile = bcInfoCollector->GetJSPandaFile();
+    JSMutableHandle<ConstantPool> oldCP(thread_->GlobalConstants()->GetHandledUndefined());
+    JSMutableHandle<ConstantPool> newCP(thread_->GlobalConstants()->GetHandledUndefined());
+    for (auto &iter : cpListIndexMap) {
+        int32_t oldCPID = iter.first;
+        oldCP.Update(vm_->FindConstpool(jsPandaFile, oldCPID));
+        uint32_t constantPoolSize = oldCP->GetCacheLength();
+
+        uint32_t cpListIndex = iter.second;
+        newCP.Update(GetSnapshotConstantPool(cpListIndex));
+
+        const CVector<JSTaggedType> &hcVec = snapshotData_.GetSnapshotHCVector(oldCPID);
+        uint32_t hcVecSize = hcVec.size();
+        for (uint32_t i = 0; i < hcVecSize; ++i) {
+            newCP->SetObjectToCache(thread_, constantPoolSize + i, JSTaggedValue(hcVec[i]));
+        }
     }
-
-    snapshotConstantPool_ = newConstantPool.GetTaggedValue();
 }
 
 void TSManager::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
@@ -827,20 +966,28 @@ void TSManager::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constan
 
 void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap)
 {
-    JSHandle<ConstantPool> snapshotConstantPool(GetSnapshotConstantPool());
+    auto &recordMethodInfo = snapshotData_.GetRecordInfo(SnapshotData::RecordType::METHOD);
+    for (auto &item: recordMethodInfo) {
+        uint32_t cpListIndex = item.first;
+        uint32_t methodIndex = item.second;
+        JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
 
-    for (auto item: recordMethodIndex_) {
-        JSTaggedValue val = snapshotConstantPool->GetObjectFromCache(item);
+        JSTaggedValue val = newCP->GetObjectFromCache(methodIndex);
         uint32_t methodOffset = static_cast<uint32_t>(val.GetInt());
         if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
             LOG_COMPILER(INFO) << "[aot-snapshot] store AOT entry index of method (offset: " << methodOffset << ") ";
         }
         uint32_t entryIndex = methodToEntryIndexMap.at(methodOffset);
-        snapshotConstantPool->SetObjectToCache(thread_, item, JSTaggedValue(entryIndex));
+        newCP->SetObjectToCache(thread_, methodIndex, JSTaggedValue(entryIndex));
     }
 
-    for (auto item: recordLiteralIndex_) {
-        JSTaggedValue val = snapshotConstantPool->GetObjectFromCache(item);
+    auto &recordLiteralInfo = snapshotData_.GetRecordInfo(SnapshotData::RecordType::LITERAL);
+    for (auto &item: recordLiteralInfo) {
+        uint32_t cpListIndex = item.first;
+        uint32_t literalIndex = item.second;
+        JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
+
+        JSTaggedValue val = newCP->GetObjectFromCache(literalIndex);
         AOTLiteralInfo *aotLiteralInfo = AOTLiteralInfo::Cast(val.GetTaggedObject());
         uint32_t aotLiteralInfoLen = aotLiteralInfo->GetLength();
         for (uint32_t i = 0; i < aotLiteralInfoLen; ++i) {
