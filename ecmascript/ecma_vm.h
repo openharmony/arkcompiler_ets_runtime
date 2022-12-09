@@ -201,7 +201,7 @@ public:
         return stringTable_;
     }
 
-    JSThread *GetJSThread() const
+    ARK_INLINE JSThread *GetJSThread() const
     {
         // Exclude GC thread
         if (options_.EnableThreadCheck()) {
