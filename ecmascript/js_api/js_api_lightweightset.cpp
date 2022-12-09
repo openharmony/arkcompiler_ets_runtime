@@ -366,8 +366,7 @@ void JSAPILightWeightSet::RemoveValue(const JSThread *thread, JSHandle<TaggedArr
 {
     uint32_t len = GetLength();
     ASSERT(index < len);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    factory->RemoveElementByIndex(taggedArray, index, len);
+    TaggedArray::RemoveElementByIndex(thread, taggedArray, index, len);
 }
 
 void JSAPILightWeightSet::AdjustArray(JSThread *thread, JSHandle<TaggedArray> srcArray, uint32_t fromIndex,
