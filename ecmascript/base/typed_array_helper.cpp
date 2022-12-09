@@ -32,6 +32,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/js_stable_array.h"
 
 namespace panda::ecmascript::base {
 using BuiltinsArrayBuffer = builtins::BuiltinsArrayBuffer;
@@ -78,7 +79,30 @@ JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
     if (firstArg->IsArrayBuffer() || firstArg->IsSharedArrayBuffer()) {
         return TypedArrayHelper::CreateFromArrayBuffer(argv, obj, arrayType);
     }
+    if (firstArg->IsStableJSArray(thread)) {
+        return TypedArrayHelper::FastCopyElementFromArray(argv, obj, arrayType);
+    }
     return TypedArrayHelper::CreateFromOrdinaryObject(argv, obj, arrayType);
+}
+
+JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
+                                                         const DataViewType arrayType)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> argArray = BuiltinsBase::GetCallArg(argv, 0);
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+
+    uint32_t len = JSHandle<JSArray>::Cast(argArray)->GetArrayLength();
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(argArray)->GetElements());
+    uint32_t elemLen = elements->GetLength();
+    TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, len, arrayType);
+    JSHandle<JSTypedArray> targetObj = JSHandle<JSTypedArray>::Cast(obj);
+    if (elemLen >= len) {
+        JSStableArray::FastCopyFromArrayToTypedArray(thread, targetObj, arrayType, 0, len, elements);
+    }
+    return JSHandle<JSObject>::Cast(targetObj).GetTaggedValue();
 }
 
 // es11 22.2.4.4 TypedArray ( object )
