@@ -1208,6 +1208,18 @@ public:
     // JSVM
     // fixme: Rename SEMI_GC to YOUNG_GC
     enum class PUBLIC_API TRIGGER_GC_TYPE : uint8_t { SEMI_GC, OLD_GC, FULL_GC };
+
+    enum class PatchErrorCode : uint8_t {
+        SUCCESS = 0,
+        PATCH_HAS_LOADED,
+        PATCH_NOT_LOADED,
+        FILE_NOT_EXECUTED,
+        FILE_NOT_FOUND,
+        PACKAGE_NOT_ESMODULE,
+        MODIFY_IMPORT_EXPORT_NOT_SUPPORT,
+        INTERNAL_ERROR
+    };
+
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
 
@@ -1267,10 +1279,10 @@ public:
     static void addWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
 
-    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
-    static bool LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                          const std::string &baseFileName);
-    static bool UnloadPatch(EcmaVM *vm, const std::string &patchFileName);
+    static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
+    static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer,
+                                    size_t patchSize, const std::string &baseFileName);
+    static PatchErrorCode UnloadPatch(EcmaVM *vm, const std::string &patchFileName);
     // check whether the exception is caused by quickfix methods.
     static bool IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName);
     // register quickfix query function.

@@ -20,9 +20,11 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
 using EntityId = panda_file::File::EntityId;
+using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 
 struct BaseMethodIndex {
     uint32_t constpoolNum {UINT32_MAX};
@@ -50,10 +52,11 @@ public:
     NO_COPY_SEMANTIC(PatchLoader);
     NO_MOVE_SEMANTIC(PatchLoader);
 
-    static bool LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile, const JSPandaFile *patchFile,
-                                  CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
-    static bool UnloadPatchInternal(JSThread *thread, const CString &patchFileName, const CString &baseFileName,
-                                    const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
+    static PatchErrorCode LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile, const JSPandaFile *patchFile,
+                                            CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
+    static PatchErrorCode UnloadPatchInternal(JSThread *thread, const CString &patchFileName,
+                                              const CString &baseFileName,
+                                              const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
 
 private:
     static bool ReplaceMethod(JSThread *thread,
@@ -71,7 +74,6 @@ private:
     static CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static void ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile);
     static void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile);
-    static JSTaggedValue FindConstpoolVal(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId methodId);
     static CUnorderedMap<CString, BaseMethodIndex> GenerateCachedMethods(JSThread *thread, const JSPandaFile *baseFile,
         const JSPandaFile *patchFile, const CMap<int32_t, JSTaggedValue> &baseConstpoolValues);
 
