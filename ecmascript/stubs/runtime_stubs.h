@@ -352,9 +352,12 @@ private:
     static inline JSTaggedValue RuntimeDec(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeExp(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent);
     static inline JSTaggedValue RuntimeIsIn(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
-                                               const JSHandle<JSTaggedValue> &obj);
+                                            const JSHandle<JSTaggedValue> &obj);
     static inline JSTaggedValue RuntimeInstanceof(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                                     const JSHandle<JSTaggedValue> &target);
+                                                  const JSHandle<JSTaggedValue> &target);
+    static inline JSTaggedValue RuntimeInstanceofByHandler(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                           JSHandle<JSTaggedValue> object,
+                                                           JSHandle<JSTaggedValue> instOfHandler);
     static inline JSTaggedValue RuntimeCreateGeneratorObj(JSThread *thread, const JSHandle<JSTaggedValue> &genFunc);
 
     static inline JSTaggedValue RuntimeCreateAsyncGeneratorObj(JSThread *thread,

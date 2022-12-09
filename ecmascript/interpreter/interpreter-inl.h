@@ -2037,10 +2037,45 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t v0 = READ_INST_8_1();
         LOG_INST() << "intrinsics::instanceof"
                    << " v" << v0;
-        JSTaggedValue obj = GET_VREG_VALUE(v0);
+        JSTaggedValue object = GET_VREG_VALUE(v0);
         JSTaggedValue target = GET_ACC();
+
+#if ECMASCRIPT_ENABLE_IC
+        // 1. If Type(target) is not Object, throw a TypeError exception.
+        if (target.IsECMAObject()) {
+            // 2. Let instOfHandler be GetMethod(target, @@hasInstance).
+            auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+            if (!profileTypeInfo.IsUndefined()) {
+                uint16_t slotId = READ_INST_8_0();
+                auto profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+                JSTaggedValue firstValue = profileTypeArray->Get(slotId);
+                JSTaggedValue instOfHandler = JSTaggedValue::Hole();
+                JSTaggedValue res = JSTaggedValue::Hole();
+                if (LIKELY(firstValue.IsHeapObject())) {
+                    JSTaggedValue secondValue = profileTypeArray->Get(slotId + 1);
+                    instOfHandler = ICRuntimeStub::TryLoadICByName(thread, target, firstValue, secondValue);
+                }
+                if (LIKELY(!instOfHandler.IsHole())) {
+                    res = SlowRuntimeStub::InstanceofByHandler(thread, target, object, instOfHandler);
+                } else if (!firstValue.IsHole()) {
+                    // IC Miss
+                    profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
+                    profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
+                    EcmaVM *vm = thread->GetEcmaVM();
+                    JSTaggedValue key = vm->GetGlobalEnv()->GetHasInstanceSymbol().GetTaggedValue();
+                    instOfHandler = ICRuntimeStub::LoadICByName(thread, profileTypeArray, target, key, slotId);
+                    res = SlowRuntimeStub::InstanceofByHandler(thread, target, object, instOfHandler);
+                }
+                if (LIKELY(!res.IsHole())) {
+                    INTERPRETER_RETURN_IF_ABRUPT(res);
+                    SET_ACC(res);
+                    DISPATCH(INSTANCEOF_IMM8_V8);
+                }
+            }
+        }
+#endif
         SAVE_PC();
-        JSTaggedValue res = SlowRuntimeStub::Instanceof(thread, obj, target);
+        JSTaggedValue res = SlowRuntimeStub::Instanceof(thread, object, target);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(INSTANCEOF_IMM8_V8);

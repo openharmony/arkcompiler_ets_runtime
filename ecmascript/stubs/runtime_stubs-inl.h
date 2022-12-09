@@ -124,6 +124,34 @@ JSTaggedValue RuntimeStubs::RuntimeInstanceof(JSThread *thread, const JSHandle<J
     return JSTaggedValue(ret);
 }
 
+JSTaggedValue RuntimeStubs::RuntimeInstanceofByHandler(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                       JSHandle<JSTaggedValue> object,
+                                                       JSHandle<JSTaggedValue> instOfHandler)
+{
+    // 3. ReturnIfAbrupt(instOfHandler).
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
+
+    // 4. If instOfHandler is not undefined, then
+    if (!instOfHandler->IsUndefined()) {
+        // a. Return ! ToBoolean(? Call(instOfHandler, target, «object»)).
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, instOfHandler, target, undefined, 1);
+        info->SetCallArg(object.GetTaggedValue());
+        JSTaggedValue tagged = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
+        return tagged;
+    }
+
+    // 5. If IsCallable(target) is false, throw a TypeError exception.
+    if (!target->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "InstanceOf error when target is not Callable", JSTaggedValue(false));
+    }
+
+    // 6. Return ? OrdinaryHasInstance(target, object).
+    bool res =  JSFunction::OrdinaryHasInstance(thread, target, object);
+    return JSTaggedValue(res);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeCreateGeneratorObj(JSThread *thread, const JSHandle<JSTaggedValue> &genFunc)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
