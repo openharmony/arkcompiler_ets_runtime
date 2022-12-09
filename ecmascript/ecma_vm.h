@@ -526,7 +526,7 @@ public:
                                 IcuDeleteEntry deleteEntry = nullptr)
     {
         EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
-        icuObjCache_.insert({type, std::move(icuFormatter)});
+        icuObjCache_.insert_or_assign(type, std::move(icuFormatter));
     }
 
     void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)

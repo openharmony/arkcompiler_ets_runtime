@@ -699,6 +699,39 @@ HWTEST_F_L0(BuiltinsStringTest, localecompare4)
     ASSERT_GT(result.GetRawData(), JSTaggedValue(0).GetRawData());
 }
 
+// Test localeCompare when locales changed
+HWTEST_F_L0(BuiltinsStringTest, localecompare5)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    std::string referenceStr = "ä";
+    std::string compareStr = "z";
+    JSHandle<EcmaString> thisStr = factory->NewFromStdString(referenceStr);
+    JSHandle<EcmaString> val = factory->NewFromStdString(compareStr);
+    JSHandle<EcmaString> locale = factory->NewFromASCII("de");
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, locale.GetTaggedValue());
+
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsString::LocaleCompare(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev1);
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue(-1).GetRawData());
+
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(thisStr.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, val.GetTaggedValue());
+    // change locale
+    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue::Undefined());
+    [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result1 = BuiltinsString::LocaleCompare(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev2);
+    ASSERT_EQ(result1.GetRawData(), JSTaggedValue(-1).GetRawData());
+}
+
 // "abc".normalize('NFC')
 HWTEST_F_L0(BuiltinsStringTest, normalize1)
 {
