@@ -44,6 +44,7 @@ public:
 
     static JSTaggedValue ExecutePendingJob(const JSHandle<PendingJob> &pendingJob, JSThread *thread)
     {
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         JSHandle<JSTaggedValue> job(thread, pendingJob->GetJob());
         ASSERT(job->IsCallable());
         JSHandle<JSTaggedValue> thisValue(thread, JSTaggedValue::Undefined());
