@@ -761,14 +761,14 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     DISALLOW_GARBAGE_COLLECTION;
     uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
 
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
     GateType receiverType = acc_.GetGateType(receiver);
-    int hclassIndex = tsManager_->GetHClassIndex(receiverType);
+    int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
     if (hclassIndex == -1) { // slowpath
         acc_.DeleteGuardAndFrameState(gate);
         return;
@@ -804,7 +804,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     DISALLOW_GARBAGE_COLLECTION;
     uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constantPool(tsManager_->GetSnapshotConstantPool());
+    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
 
     GateRef receiver = Circuit::NullGate();
@@ -821,7 +821,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
         value = acc_.GetValueIn(gate, 3); // 3: acc
     }
     GateType receiverType = acc_.GetGateType(receiver);
-    int hclassIndex = tsManager_->GetHClassIndex(receiverType);
+    int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
     if (hclassIndex == -1) { // slowpath
         acc_.DeleteGuardAndFrameState(gate);
         return;
@@ -967,7 +967,7 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate, GateRef glue)
         return;
     }
 
-    int hclassIndex = tsManager_->GetHClassIndexByClassGT(ctorType);
+    int hclassIndex = tsManager_->GetHClassIndexByClassGateType(ctorType);
 
     // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);

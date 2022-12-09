@@ -405,7 +405,8 @@ public:
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
 
-    JSHandle<ConstantPool> FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
+                                                            panda_file::File::EntityId id);
 
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {

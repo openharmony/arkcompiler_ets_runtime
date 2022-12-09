@@ -351,7 +351,9 @@ bool AnFileDataManager::UnsafeLoadDataFromBinaryBuffer(const CString &filename)
 
 void AnFileInfo::Iterate(const RootVisitor &v)
 {
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&snapshotConstantPool_)));
+    for (auto iter : deserializedCPs_) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&deserializedCPs_.at(iter.first))));
+    }
 }
 
 void AnFileInfo::Save(const std::string &filename)
@@ -408,6 +410,27 @@ void AnFileInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
         }
     }
 #endif
+}
+
+JSHandle<JSTaggedValue> AnFileInfo::GetDeserializedConstantPool(int32_t cpID) const
+{
+    auto iter = deserializedCPs_.find(cpID);
+    if (iter == deserializedCPs_.end()) {
+        LOG_COMPILER(ERROR) << "can not find deserialized constantpool in anFileInfo, constantPoolID is " << cpID;
+        UNREACHABLE();
+    }
+    return JSHandle<JSTaggedValue>(uintptr_t(&iter->second));
+}
+
+void PUBLIC_API AnFileInfo::SetDeserializedConstantPool(JSThread *thread, JSTaggedValue snapshotCPList)
+{
+    JSHandle<TaggedArray> cpList(thread, snapshotCPList);
+    uint32_t len = cpList->GetLength();
+    for (uint32_t pos = 0; pos < len; pos += DESERIALIZED_CP_LIST_ITEM_SIZE) {
+        int32_t constantPoolID = cpList->Get(pos).GetInt();
+        JSTaggedValue cp = cpList->Get(pos + 1);
+        deserializedCPs_.insert({constantPoolID, cp});
+    }
 }
 
 bool AnFileInfo::Load(const std::string &filename)
@@ -701,15 +724,15 @@ bool AOTFileManager::RewriteDataSection(uintptr_t dataSec, size_t size,
     return true;
 }
 
-void AOTFileManager::AddSnapshotConstantPool(JSTaggedValue snapshotConstantPool)
+void AOTFileManager::AddDeserializedConstantPool(JSTaggedValue deserializedCPList)
 {
     // There is no system library currently, so the length of anFileInfos_ should be 1
     ASSERT(anFileInfos_.size() == 1);
     AnFileInfo &anFileInfo = anFileInfos_.back();
-    anFileInfo.SetSnapshotConstantPool(snapshotConstantPool);
+    anFileInfo.SetDeserializedConstantPool(vm_->GetJSThread(), deserializedCPList);
 }
 
-JSHandle<JSTaggedValue> AOTFileManager::GetSnapshotConstantPool(const JSPandaFile *jsPandaFile)
+JSHandle<JSTaggedValue> AOTFileManager::GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID)
 {
     // In some appilication, only the main vm will load '.an' file currently
     // return the constantpool with HOLE value when other worker try to obtain the
@@ -719,7 +742,7 @@ JSHandle<JSTaggedValue> AOTFileManager::GetSnapshotConstantPool(const JSPandaFil
     }
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
     const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
-    return anFileInfo.GetSnapshotConstantPool();
+    return anFileInfo.GetDeserializedConstantPool(cpID);
 }
 
 AOTFileManager::~AOTFileManager()

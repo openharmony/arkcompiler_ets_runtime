@@ -369,20 +369,16 @@ public:
 
     void RewriteRelcateDeoptHandler(EcmaVM *vm);
 
-    JSHandle<JSTaggedValue> PUBLIC_API GetSnapshotConstantPool() const
-    {
-        return JSHandle<JSTaggedValue>(uintptr_t(&snapshotConstantPool_));
-    }
+    JSHandle<JSTaggedValue> GetDeserializedConstantPool(int32_t cpID) const;
 
-    void PUBLIC_API SetSnapshotConstantPool(JSTaggedValue snapshotConstantPool)
-    {
-        snapshotConstantPool_ = snapshotConstantPool;
-    }
+    void SetDeserializedConstantPool(JSThread *thread, JSTaggedValue snapshotCPList);
 
 private:
+    static constexpr uint8_t DESERIALIZED_CP_LIST_ITEM_SIZE = 2;
+
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
-    JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
+    CMap<int32_t, JSTaggedValue> deserializedCPs_ {};
     std::shared_ptr<const AnFileDataManager::AnFileData> data_ {nullptr};
     bool isLoad_ {false};
 };
@@ -496,8 +492,8 @@ public:
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
-    void AddSnapshotConstantPool(JSTaggedValue snapshotConstantPool);
-    JSHandle<JSTaggedValue> GetSnapshotConstantPool(const JSPandaFile *jsPandaFile);
+    void AddDeserializedConstantPool(JSTaggedValue deserializedCPList);
+    JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
 
 private:
     const StubFileInfo& GetStubFileInfo() const

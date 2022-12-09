@@ -2963,9 +2963,9 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef glue, Ga
         result = LowerCallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer), args, true);
         builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
     } else {
-        GlobalTSTypeRef gt = type.GetGTRef();
-        const std::map<GlobalTSTypeRef, uint32_t> &classTypeIhcIndexMap = tsManager_->GetClassTypeIhcIndexMap();
-        GateRef ihcIndex = builder_.Int32((classTypeIhcIndexMap.at(gt)));
+        int index = tsManager_->GetHClassIndexByClassGateType(type);
+        ASSERT(index != -1);
+        GateRef ihcIndex = builder_.Int32(index);
         GateRef ihclass = builder_.GetObjectFromConstPool(glue, jsFunc, ihcIndex, ConstPoolType::CLASS_LITERAL);
 
         auto args = { proto, lexicalEnv, constpool,

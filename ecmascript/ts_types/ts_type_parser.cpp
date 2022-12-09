@@ -72,7 +72,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind);
     SetTSType(table, type, gt);
 
-    GenerateStaticHClass(jsPandaFile, type);
+    GenerateStaticHClass(type);
     return gt;
 }
 
@@ -379,7 +379,7 @@ void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile, cons
     }
 }
 
-void TSTypeParser::GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> type)
+void TSTypeParser::GenerateStaticHClass(JSHandle<JSTaggedValue> type)
 {
     if (type->IsTSClassType()) {
         JSHandle<TSClassType> classType(type);
@@ -388,7 +388,7 @@ void TSTypeParser::GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle
         }
         auto gt = classType->GetGT();
         if (tsManager_->IsUserDefinedClassTypeKind(gt)) {
-            tsManager_->GenerateStaticHClass(jsPandaFile, classType);
+            tsManager_->GenerateStaticHClass(classType);
         }
     }
 }

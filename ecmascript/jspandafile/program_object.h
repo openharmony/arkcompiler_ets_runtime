@@ -78,7 +78,9 @@ public:
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         if (isLoadedAOT) {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-            constpool = RestoreConstantPool(vm, jsPandaFile);
+            panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+            int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+            constpool = GetDeserializedConstantPool(vm, jsPandaFile, index);
 #else
             LOG_FULL(FATAL) << "Aot don't support Windows and MacOS platform";
             UNREACHABLE();
@@ -398,7 +400,7 @@ private:
         return JSTaggedValue::TaggedTypeSize() * GetLength() + DATA_OFFSET;
     }
 
-    static JSHandle<ConstantPool> RestoreConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+    static JSHandle<ConstantPool> GetDeserializedConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, int32_t cpID);
 };
 }  // namespace ecmascript
 }  // namespace panda

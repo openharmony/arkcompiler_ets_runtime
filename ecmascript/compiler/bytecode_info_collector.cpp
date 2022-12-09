@@ -51,6 +51,9 @@ void BytecodeInfoCollector::ProcessClasses()
             auto methodId = mda.GetMethodId();
             ASSERT(codeId.has_value());
 
+            // Generate all constpool
+            vm_->FindOrCreateConstPool(jsPandaFile_, methodId);
+
             MethodLiteral *methodLiteral = methods + (methodIdx++);
             panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
@@ -339,7 +342,7 @@ void BytecodeInfoCollector::CollectConstantPoolIndexInfoFromBC(const BytecodeIns
         case BytecodeInstruction::Opcode::STGLOBALVAR_IMM16_ID16:
         case BytecodeInstruction::Opcode::LDBIGINT_ID16: {
             auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolIndexType::STRING, index);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::STRING, index, methodOffset);
             break;
         }
         case BytecodeInstruction::Opcode::DEFINEFUNC_IMM8_ID16_IMM8:
@@ -347,33 +350,33 @@ void BytecodeInfoCollector::CollectConstantPoolIndexInfoFromBC(const BytecodeIns
         case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:
         case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
             auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolIndexType::METHOD, index);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, index, methodOffset);
             break;
         }
         case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
             auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolIndexType::OBJECT_LITERAL, index, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::OBJECT_LITERAL, index, methodOffset);
             break;
         }
         case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
         case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
             auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolIndexType::ARRAY_LITERAL, index, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::ARRAY_LITERAL, index, methodOffset);
             break;
         }
         case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8: {
             auto methodIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolIndexType::METHOD, methodIndex);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, methodIndex, methodOffset);
             auto literalIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolIndexType::CLASS_LITERAL, literalIndex, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::CLASS_LITERAL, literalIndex, methodOffset);
             break;
         }
         case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
             auto methodIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolIndexType::METHOD, methodIndex);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, methodIndex, methodOffset);
             auto literalIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolIndexType::CLASS_LITERAL, literalIndex, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::CLASS_LITERAL, literalIndex, methodOffset);
             break;
         }
         default:
@@ -422,32 +425,12 @@ uint32_t LexEnvManager::GetTargetLexEnv(uint32_t methodId, uint32_t level) const
     return offset;
 }
 
-void ConstantPoolIndexInfo::AddConstantPoolIndex(ConstantPoolIndexType type, uint32_t index, uint32_t methodOffset)
+void ConstantPoolInfo::AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset)
 {
-    switch (type) {
-        case ConstantPoolIndexType::STRING: {
-            stringIndex_.insert(index);
-            break;
-        }
-        case ConstantPoolIndexType::METHOD: {
-            methodIndex_.insert(index);
-            break;
-        }
-        case ConstantPoolIndexType::CLASS_LITERAL: {
-            classLiteralIndex_.insert(std::make_pair(index, methodOffset));
-            break;
-        }
-        case ConstantPoolIndexType::OBJECT_LITERAL: {
-            objectLiteralIndex_.insert(std::make_pair(index, methodOffset));
-            break;
-        }
-        case ConstantPoolIndexType::ARRAY_LITERAL: {
-            arrayLiteralIndex_.insert(std::make_pair(index, methodOffset));
-            break;
-        }
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
+    Item &item = GetCPItem(type);
+    if (item.find(index) != item.end()) {
+        return;
     }
+    item.insert({index, ItemData {index, methodOffset, nullptr}});
 }
 }  // namespace panda::ecmascript::kungfu
