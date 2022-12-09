@@ -744,10 +744,11 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
-    JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
-    auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
+    // For class constructor.
+    auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId, entry);
+    JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
     JSHandle<TaggedArray> literalHandle(thread, literalObj);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
@@ -771,10 +772,11 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
-    JSHandle<ConstantPool> constantPool = JSHandle<ConstantPool>::Cast(constpool);
-    auto methodObj = ConstantPool::GetClassMethodFromCache(thread, constantPool, methodId);
+    // For class constructor.
+    auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constantPool, literalId, entry);
+    JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
+    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
     JSHandle<TaggedArray> literalHandle(thread, literalObj);
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 

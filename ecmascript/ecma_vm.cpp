@@ -605,7 +605,6 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     }
     // Collecting module.exports : exports ---> module.exports --->Module._cache
     RequireManager::CollectExecutedExp(thread_, cjsInfo);
-    return;
 }
 
 void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index)

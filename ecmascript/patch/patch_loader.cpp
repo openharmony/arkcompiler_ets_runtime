@@ -173,7 +173,9 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
                         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
                             uint32_t memberMethodId = bcIns.GetId(0).AsRawValue();
                             uint32_t literalId = bcIns.GetId(1).AsRawValue();
-                            ConstantPool::GetClassMethodFromCache(thread, constpool, memberMethodId);
+                            // class constructor.
+                            ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), memberMethodId);
+                            // class member function.
                             ConstantPool::GetClassLiteralFromCache(thread, constpool, literalId, entry);
                             break;
                         }
