@@ -320,7 +320,7 @@ bool CpuProfiler::ParseMethodInfo(void *methodIdentifier,
     struct FrameInfoTemp codeEntry;
     codeEntry.methodIdentifier = methodIdentifier;
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     if (extraInfoValue.IsJSNativePointer() || jsPandaFile == nullptr) {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
             return false;
@@ -376,10 +376,13 @@ void CpuProfiler::GetNativeStack(FrameHandler &frameHandler, char *functionName,
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     // napi method
-    if (function->IsCallNative()) {
+    if (function->IsCallNative() && extraInfoValue.CheckIsJSNativePointer()) {
         JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
         auto cb = vm_->GetNativePtrGetter();
         if (cb != nullptr  && extraInfo != nullptr) {
+            if (!vm_->GetJSThread()->CpuProfilerCheckJSTaggedType(extraInfoValue.GetRawData())) {
+                return;
+            }
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
             stream << addr;
             CheckAndCopy(functionName, size, "napi(");
@@ -626,7 +629,7 @@ void *CpuProfiler::GetMethodIdentifier(Method *method, FrameHandler &frameHandle
     }
 
     JSFunction* function = JSFunction::Cast(frameHandler.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     if (extraInfoValue.IsUndefined()) {
         return const_cast<void *>(method->GetNativePointer());
     }

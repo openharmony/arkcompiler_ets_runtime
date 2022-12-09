@@ -397,6 +397,15 @@ void JSThread::CheckJSTaggedType(JSTaggedType value) const
     }
 }
 
+bool JSThread::CpuProfilerCheckJSTaggedType(JSTaggedType value) const
+{
+    if (JSTaggedValue(value).IsHeapObject() &&
+        !GetEcmaVM()->GetHeap()->IsAlive(reinterpret_cast<TaggedObject *>(value))) {
+        return false;
+    }
+    return true;
+}
+
 void JSThread::CollectBCOffsetInfo()
 {
     FrameBcCollector collector(this);
