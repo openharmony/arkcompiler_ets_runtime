@@ -162,7 +162,7 @@ void GuardEliminating::TrustedTypePropagate(std::queue<GateRef>& workList, const
         auto phi = acc_.GetValueIn(check, 0);
         if ((trustedInCount.count(phi) == 0) ||
             (trustedInCount.at(phi) != acc_.GetNumValueIn(phi)) ||
-            (acc_.GetGateType(phi) != acc_.GetRightType(check))) {
+            (acc_.GetGateType(phi) != acc_.GetParamGateType(check))) {
             continue;
         }
         acc_.UpdateAllUses(check, builder_.Boolean(true));

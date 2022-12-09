@@ -209,7 +209,7 @@ void Scheduler::Run(const Circuit *circuit, ControlFlowGraph &result,
         std::vector<GateRef> argList;
         acc.GetOuts(acc.GetArgRoot(), argList);
         std::sort(argList.begin(), argList.end(), [&](const GateRef &lhs, const GateRef &rhs) -> bool {
-            return acc.GetBitField(lhs) > acc.GetBitField(rhs);
+            return acc.TryGetValue(lhs) > acc.TryGetValue(rhs);
         });
         for (const auto &arg : argList) {
             result.front().push_back(arg);

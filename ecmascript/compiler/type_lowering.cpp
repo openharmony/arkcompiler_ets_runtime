@@ -148,7 +148,7 @@ void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType src
 
 void TypeLowering::LowerTypeCheck(GateRef gate)
 {
-    auto type = GateType(static_cast<uint32_t>(acc_.GetBitField(gate)));
+    auto type = acc_.GetParamGateType(gate);
     if (type.IsIntType()) {
         LowerIntCheck(gate);
     } else if (type.IsDoubleType()) {
@@ -178,7 +178,7 @@ GateRef TypeLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
 void TypeLowering::LowerObjectTypeCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    auto type = GateType(static_cast<uint32_t>(acc_.GetBitField(gate)));
+    auto type = acc_.GetParamGateType(gate);
     if (tsManager_->IsFloat32ArrayType(type)) {
         LowerFloat32ArrayCheck(gate, glue);
     } else if (tsManager_->IsClassInstanceTypeKind(type)) {
@@ -232,11 +232,10 @@ void TypeLowering::LowerFloat32ArrayCheck(GateRef gate, GateRef glue)
                       builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     GateRef typeCheck = builder_.Equal(receiverHClass, protoOrHclass);
 
-    auto bitfield = acc_.GetBitField(acc_.GetValueIn(gate, 1));
-    GateRef index = builder_.Int32(bitfield);
+    auto hclassIndex = builder_.TruncPtrToInt32(acc_.GetValueIn(gate, 1));
     GateRef length =
             builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
-    GateRef lengthCheck = builder_.Int32UnsignedLessThan(index, length);
+    GateRef lengthCheck = builder_.Int32UnsignedLessThan(hclassIndex, length);
 
     GateRef check = builder_.BoolAnd(typeCheck, lengthCheck);
 
@@ -276,7 +275,7 @@ void TypeLowering::LowerStoreProperty(GateRef gate, GateRef glue)
 void TypeLowering::LowerLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto op = static_cast<TypedLoadOp>(acc_.GetBitField(gate));
+    auto op = acc_.GetTypedLoadOp(gate);
     switch (op) {
         case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
             LowerFloat32ArrayLoadElement(gate);
@@ -329,7 +328,7 @@ void TypeLowering::LowerFloat32ArrayLoadElement(GateRef gate)
 void TypeLowering::LowerStoreElement(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    auto op = static_cast<TypedStoreOp>(acc_.GetBitField(gate));
+    auto op = acc_.GetTypedStoreOp(gate);
     switch (op) {
         case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
             LowerFloat32ArrayStoreElement(gate, glue);
@@ -404,7 +403,7 @@ void TypeLowering::LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue)
 void TypeLowering::LowerHeapAllocate(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    auto bit = acc_.GetBitField(gate);
+    auto bit = acc_.TryGetValue(gate);
     switch (bit) {
         case RegionSpaceFlag::IN_YOUNG_SPACE:
             LowerHeapAllocateInYoung(gate, glue);
@@ -537,8 +536,7 @@ void TypeLowering::LowerBooleanCheck(GateRef gate)
 void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto opGate = acc_.GetValueIn(gate, 2);
-    auto op = static_cast<TypedBinOp>(acc_.GetBitField(opGate));
+    TypedBinOp op = acc_.GetTypedBinaryOp(gate);
     switch (op) {
         case TypedBinOp::TYPED_ADD: {
             LowerTypedAdd(gate);
@@ -609,6 +607,7 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
             break;
         }
         default:
+            LOG_COMPILER(FATAL) << "unkown TypedBinOp: " << static_cast<int>(op);
             break;
     }
 }
@@ -616,28 +615,29 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 void TypeLowering::LowerTypedUnaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto bitfield = acc_.GetBitField(gate);
-    auto temp = bitfield >>  CircuitBuilder::OPRAND_TYPE_BITS;
-    auto op = static_cast<TypedUnOp>(bitfield ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS));
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    GateType valueType = accessor.GetTypeValue();
+    auto op = accessor.GetTypedUnOp();
     switch (op) {
         case TypedUnOp::TYPED_TONUMBER:
             break;
         case TypedUnOp::TYPED_NEG:
-            LowerTypedNeg(gate);
+            LowerTypedNeg(gate, valueType);
             break;
         case TypedUnOp::TYPED_NOT:
-            LowerTypedNot(gate);
+            LowerTypedNot(gate, valueType);
             break;
         case TypedUnOp::TYPED_INC:
-            LowerTypedInc(gate);
+            LowerTypedInc(gate, valueType);
             break;
         case TypedUnOp::TYPED_DEC:
-            LowerTypedDec(gate);
+            LowerTypedDec(gate, valueType);
             break;
         case TypedUnOp::TYPED_TOBOOL:
-            LowerTypedToBool(gate);
+            LowerTypedToBool(gate, valueType);
             break;
         default:
+            LOG_COMPILER(FATAL) << "unkown TypedUnOp: " << static_cast<int>(op);
             break;
     }
 }
@@ -652,7 +652,6 @@ void TypeLowering::LowerTypedAdd(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedSub(GateRef gate)
@@ -665,7 +664,6 @@ void TypeLowering::LowerTypedSub(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedMul(GateRef gate)
@@ -678,7 +676,6 @@ void TypeLowering::LowerTypedMul(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedMod(GateRef gate)
@@ -691,7 +688,6 @@ void TypeLowering::LowerTypedMod(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedLess(GateRef gate)
@@ -704,7 +700,6 @@ void TypeLowering::LowerTypedLess(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedLessEq(GateRef gate)
@@ -717,7 +712,6 @@ void TypeLowering::LowerTypedLessEq(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedGreater(GateRef gate)
@@ -730,7 +724,6 @@ void TypeLowering::LowerTypedGreater(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedGreaterEq(GateRef gate)
@@ -742,7 +735,6 @@ void TypeLowering::LowerTypedGreaterEq(GateRef gate)
     } else {
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedDiv(GateRef gate)
@@ -755,7 +747,6 @@ void TypeLowering::LowerTypedDiv(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedEq(GateRef gate)
@@ -781,7 +772,6 @@ void TypeLowering::LowerTypedNotEq(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedShl(GateRef gate)
@@ -793,7 +783,6 @@ void TypeLowering::LowerTypedShl(GateRef gate)
     } else {
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedShr(GateRef gate)
@@ -806,7 +795,6 @@ void TypeLowering::LowerTypedShr(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedAshr(GateRef gate)
@@ -819,7 +807,6 @@ void TypeLowering::LowerTypedAshr(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedAnd(GateRef gate)
@@ -832,7 +819,6 @@ void TypeLowering::LowerTypedAnd(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedOr(GateRef gate)
@@ -858,14 +844,32 @@ void TypeLowering::LowerTypedXor(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
-void TypeLowering::LowerTypedInc(GateRef gate)
+void TypeLowering::LowerTypedInc(GateRef gate, GateType value)
 {
-    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
-        LowerNumberInc(gate);
+        LowerNumberInc(gate, value);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeLowering::LowerTypedDec(GateRef gate, GateType value)
+{
+    if (value.IsNumberType()) {
+        LowerNumberDec(gate, value);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeLowering::LowerTypedNeg(GateRef gate, GateType value)
+{
+    if (value.IsNumberType()) {
+        LowerNumberNeg(gate, value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -873,54 +877,26 @@ void TypeLowering::LowerTypedInc(GateRef gate)
     return;
 }
 
-void TypeLowering::LowerTypedDec(GateRef gate)
+void TypeLowering::LowerTypedToBool(GateRef gate, GateType value)
 {
-    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
-        LowerNumberDec(gate);
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-    return;
-}
-
-void TypeLowering::LowerTypedNeg(GateRef gate)
-{
-    auto value = acc_.GetLeftType(gate);
-    if (value.IsNumberType()) {
-        LowerNumberNeg(gate);
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-    return;
-}
-
-void TypeLowering::LowerTypedToBool(GateRef gate)
-{
-    auto value = acc_.GetLeftType(gate);
-    if (value.IsNumberType()) {
-        LowerNumberToBool(gate);
+        LowerNumberToBool(gate, value);
     } else if (value.IsBooleanType()) {
         LowerBooleanToBool(gate);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
-void TypeLowering::LowerTypedNot(GateRef gate)
+void TypeLowering::LowerTypedNot(GateRef gate, GateType value)
 {
-    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
-        LowerNumberNot(gate);
+        LowerNumberNot(gate, value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerNumberAdd(GateRef gate)
@@ -1110,28 +1086,25 @@ void TypeLowering::LowerNumberXor(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberInc(GateRef gate)
+void TypeLowering::LowerNumberInc(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_INC>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberDec(GateRef gate)
+void TypeLowering::LowerNumberDec(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_DEC>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberNeg(GateRef gate)
+void TypeLowering::LowerNumberNeg(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     if (valueType.IsIntType()) {
         // value is int
@@ -1181,10 +1154,9 @@ void TypeLowering::LowerNumberNeg(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberToBool(GateRef gate)
+void TypeLowering::LowerNumberToBool(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.HoleConstant());
     if (valueType.IsIntType()) {
         // value is int
@@ -1228,10 +1200,9 @@ void TypeLowering::LowerBooleanToBool(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TypeLowering::LowerNumberNot(GateRef gate)
+void TypeLowering::LowerNumberNot(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_NOT>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);

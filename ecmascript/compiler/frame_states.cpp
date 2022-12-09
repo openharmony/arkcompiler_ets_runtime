@@ -396,7 +396,7 @@ void FrameStateBuilder::UpdateVirtualRegistersOfSuspend(GateRef gate)
 {
     auto saveGate = gateAcc_.GetDep(gate);
     while (gateAcc_.GetOpCode(saveGate) == OpCode::SAVE_REGISTER) {
-        auto vreg = static_cast<size_t>(gateAcc_.GetBitField(saveGate));
+        auto vreg = static_cast<size_t>(gateAcc_.GetVirtualRegisterIndex(saveGate));
         auto def = gateAcc_.GetValueIn(saveGate, 0);
         UpdateVirtualRegister(vreg, def);
         saveGate = gateAcc_.GetDep(saveGate);
@@ -407,7 +407,7 @@ void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
 {
     auto restoreGate = gateAcc_.GetDep(gate);
     while (gateAcc_.GetOpCode(restoreGate) == OpCode::RESTORE_REGISTER) {
-        auto vreg = static_cast<size_t>(gateAcc_.GetBitField(restoreGate));
+        auto vreg = static_cast<size_t>(gateAcc_.GetVirtualRegisterIndex(restoreGate));
         UpdateVirtualRegister(vreg, Circuit::NullGate());
         restoreGate = gateAcc_.GetDep(restoreGate);
     }

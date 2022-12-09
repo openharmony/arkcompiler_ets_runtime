@@ -759,7 +759,7 @@ void TSTypeLowering::LowerTypedNot(GateRef gate)
 void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
+    uint16_t propIndex = acc_.GetConstDataId(acc_.GetValueIn(gate, 1)).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
@@ -802,7 +802,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
 void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint16_t propIndex = ConstDataId(acc_.GetBitField(acc_.GetValueIn(gate, 1))).GetId();
+    uint16_t propIndex = acc_.GetConstDataId(acc_.GetValueIn(gate, 1)).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);

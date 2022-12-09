@@ -306,7 +306,7 @@ void Circuit::DecreaseIn(GateRef gate, size_t idx)
     DeleteIn(gate, numIns - 1);
     GateMetaData *meta = const_cast<GateMetaData *>(
             LoadGatePtr(gate)->GetMetaData());
-    if (meta->GetType() == GateMetaData::MUTABLE_WITH_SIZE) {
+    if (meta->GetKind() == GateMetaData::MUTABLE_WITH_SIZE) {
         meta->DecreaseIn(idx);
     } else {
         meta = metaBuilder_.NewGateMetaData(meta);
@@ -421,25 +421,6 @@ GateRef Circuit::GetConstantDataGate(uint64_t value, GateType type)
 size_t Circuit::GetGateCount() const
 {
     return gateCount_;
-}
-
-void Circuit::PushFunctionCompilationDataList()
-{
-    GateAccessor acc(this);
-    auto returnList = acc.GetReturnRoot();
-    auto argList = acc.GetArgRoot();
-
-    const Gate *returnListGate = LoadGatePtrConst(returnList);
-    const Gate *argListGate = LoadGatePtrConst(argList);
-
-    innerMethodReturnFirstOut_ = returnListGate->GetFirstOutConst();
-    innerMethodArgFirstOut_ = argListGate->GetFirstOutConst();
-}
-
-void Circuit::PopFunctionCompilationDataList()
-{
-    innerMethodReturnFirstOut_ = nullptr;
-    innerMethodArgFirstOut_ = nullptr;
 }
 
 GateRef Circuit::GetStateRoot() const
