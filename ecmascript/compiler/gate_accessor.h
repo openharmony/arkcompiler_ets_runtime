@@ -303,7 +303,16 @@ public:
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
     bool IsGCRelated(GateRef gate) const;
-    BitField GetBitField(GateRef gate) const;
+    uint64_t TryGetValue(GateRef gate) const;
+    ICmpCondition GetICmpCondition(GateRef gate) const;
+    FCmpCondition GetFCmpCondition(GateRef gate) const;
+    ConstDataId GetConstDataId(GateRef gate) const;
+    size_t GetVirtualRegisterIndex(GateRef gate) const;
+    TypedLoadOp GetTypedLoadOp(GateRef gate) const;
+    TypedStoreOp GetTypedStoreOp(GateRef gate) const;
+    TypedBinOp GetTypedBinaryOp(GateRef gate) const;
+    GateType GetParamGateType(GateRef gate) const;
+    TypedUnaryAccessor GetTypedUnOp(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     uint32_t GetBytecodeIndex(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;

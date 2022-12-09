@@ -84,10 +84,9 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
             inlinedCall_ <= MAX_INLINE_CALL_ALLOWED) {
             auto success = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
             if (success) {
-                circuit_->PushFunctionCompilationDataList();
+                CircuitRootScope scope(circuit_);
                 InlineCall(methodInfo, methodPcInfo, inlinedMethod);
                 ReplaceCallInput(gate, isCallThis);
-                circuit_->PopFunctionCompilationDataList();
                 inlinedCall_++;
             }
         }
@@ -162,6 +161,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     std::string fileName = jsPandaFile->GetFileName();
     std::string fullName = methodName + "@" + fileName;
 
+    circuit_->InitRoot();
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
                                    info_->GetByteCodes(), true, IsLogEnabled(),

@@ -182,13 +182,8 @@ GateRef CircuitBuilder::GetLexicalEnv(GateRef depend)
 GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                             std::vector<GateRef> inList, GateType gateType)
 {
-    // get BinaryOpCode from a constant gate
-    auto bin = Int8(static_cast<int8_t>(binOp));
-    inList.emplace_back(bin);
-    // merge two expected types of valueIns
-    uint64_t operandTypes = (static_cast<uint64_t>(typeLeft.Value()) << OPRAND_TYPE_BITS) |
-                          static_cast<uint64_t>(typeRight.Value());
-    return GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes),
+    uint64_t operandTypes = GatePairTypeAccessor::ToValue(typeLeft, typeRight);
+    return GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, binOp),
         type, inList.size(), inList.data(), gateType);
 }
 
@@ -202,8 +197,7 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
                                     const std::vector<GateRef>& inList)
 {
     // merge types of valueIns before and after convertion
-    uint64_t operandTypes = (static_cast<uint64_t>(typeFrom.Value()) << OPRAND_TYPE_BITS) |
-                          static_cast<uint64_t>(typeTo.Value());
+    uint64_t operandTypes = GatePairTypeAccessor::ToValue(typeFrom, typeTo);
     return GetCircuit()->NewGate(circuit_->TypedConvert(operandTypes),
         type, inList.size(), inList.data(), GateType::AnyType());
 }
@@ -211,9 +205,8 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
 GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                            const std::vector<GateRef>& inList, GateType gateType)
 {
-    auto unaryOpIdx = static_cast<uint64_t>(unaryOp);
-    uint64_t bitfield = (static_cast<uint64_t>(typeVal.Value()) << OPRAND_TYPE_BITS) | unaryOpIdx;
-    return GetCircuit()->NewGate(circuit_->TypedUnaryOp(bitfield),
+    uint64_t value = TypedUnaryAccessor::ToValue(typeVal, unaryOp);
+    return GetCircuit()->NewGate(circuit_->TypedUnaryOp(value),
         type, inList.size(), inList.data(), gateType);
 }
 

@@ -543,7 +543,7 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
     }
 
     if (ShouldInferWithLdObjByValue(inValueType)) {
-        auto key = gateAccessor_.GetBitField((gateAccessor_.GetValueIn(gate, 0)));
+        auto key = gateAccessor_.GetConstantValue((gateAccessor_.GetValueIn(gate, 0)));
         auto type = GetPropType(inValueType, key);
         return UpdateType(gate, type);
     }
@@ -626,7 +626,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     }
     // If this object has no gt type, we cannot get its internal property type
     if (ShouldInferWithLdObjByName(objType)) {
-        uint16_t index = ConstDataId(gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 1))).GetId();
+        uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 1)).GetId();
         return GetObjPropWithName(gate, objType, index);
     }
     return false;
@@ -729,7 +729,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
             return UpdateType(gate, type);
         }
         if (IsByteCodeGate(valueGate) && GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
-            ConstDataId dataId(gateAccessor_.GetBitField(valueGate));
+            ConstDataId dataId = gateAccessor_.GetConstDataId(valueGate);
             auto index = dataId.GetId();
             return GetObjPropWithName(gate, objType, index);
         }
@@ -764,7 +764,7 @@ bool TypeInfer::InferSuperCall(GateRef gate)
 
 bool TypeInfer::InferSuperPropertyByName(GateRef gate)
 {
-    uint16_t index = ConstDataId(gateAccessor_.GetBitField(gateAccessor_.GetValueIn(gate, 0))).GetId();
+    uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 0)).GetId();
     return GetSuperProp(gate, index);
 }
 
@@ -772,7 +772,7 @@ bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
 {
     auto valueGate = gateAccessor_.GetValueIn(gate, 1);
     if (IsByteCodeGate(valueGate) && GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
-        ConstDataId dataId(gateAccessor_.GetBitField(valueGate));
+        ConstDataId dataId = gateAccessor_.GetConstDataId(valueGate);
         auto index = dataId.GetId();
         return GetSuperProp(gate, index);
     }
@@ -1018,7 +1018,7 @@ void TypeInfer::TypeCheck(GateRef gate) const
     if (!info.IsBc(EcmaOpcode::CALLARGS2_IMM8_V8_V8)) {
         return;
     }
-    auto func = gateAccessor_.GetValueIn(gate, 2);
+    auto func = gateAccessor_.GetValueIn(gate, 2); // 2: acc
     auto &funcInfo = GetByteCodeInfo(func);
     if (!funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16) &&
         !funcInfo.IsBc(EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16)) {
@@ -1027,12 +1027,12 @@ void TypeInfer::TypeCheck(GateRef gate) const
     auto funcName = gateAccessor_.GetValueIn(func, 1);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
-    uint16_t funcNameStrId = ConstDataId(gateAccessor_.GetBitField(funcName)).GetId();
+    uint16_t funcNameStrId = gateAccessor_.GetConstDataId(funcName).GetId();
     ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), funcNameStrId);
     auto funcNameString = constantPool->GetStdStringByIdx(funcNameStrId);
     if (funcNameString == "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gate, 1);
-        uint16_t strId = ConstDataId(gateAccessor_.GetBitField(expectedGate)).GetId();
+        uint16_t strId = gateAccessor_.GetConstDataId(expectedGate).GetId();
         ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), strId);
         auto expectedTypeStr = constantPool->GetStdStringByIdx(strId);
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
