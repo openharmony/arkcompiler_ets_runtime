@@ -152,11 +152,6 @@ void Gate::CheckValueInput(bool isArch64) const
                 ASSERT(idx == valueStart);
                 CheckInputMachineType(valueStart, MachineType::I64, isArch64);
                 break;
-            case OpCode::TYPED_BINARY_OP:
-                if (idx == valueStart + 2) { // 2: idx 2
-                    CheckInputMachineType(idx, MachineType::I8, isArch64);
-                }
-                break;
             case OpCode::OBJECT_TYPE_CHECK:
             case OpCode::LOAD_ELEMENT:
             case OpCode::STORE_ELEMENT:
@@ -687,7 +682,7 @@ void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) 
         log += ((bytecode.compare("") == 0) ? "" : "\"bytecode\":\"") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : "\", ");
         log += "\"MType\":\"" + MachineTypeStr(GetMachineType()) + ", ";
-        log += "bitfield=" + std::to_string(GetBitField()) + ", ";
+        log += "bitfield=" + std::to_string(TryGetValue()) + ", ";
         log += "type=" + GateTypeStr(type_) + ", ";
         log += "stamp=" + std::to_string(static_cast<uint32_t>(stamp_)) + ", ";
         log += "mark=" + std::to_string(static_cast<uint32_t>(mark_)) + ", ";
@@ -733,7 +728,7 @@ void Gate::ShortPrint(std::string bytecode, bool inListPreview, size_t highlight
         log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : ", ");
         log += "\"MType\"=\"" + MachineTypeStr(GetMachineType()) + ", ";
-        log += "bitfield=" + std::to_string(GetBitField()) + ", ";
+        log += "bitfield=" + std::to_string(TryGetValue()) + ", ";
         log += "type=" + GateTypeStr(type_) + ", ";
         log += "\", in=[";
 

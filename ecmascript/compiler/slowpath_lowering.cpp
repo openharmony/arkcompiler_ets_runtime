@@ -817,7 +817,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef glue, GateRef js
     GateRef taggedArray = LowerCallRuntime(glue, arrayId, {taggedLength});
     // setRegsArrays
     for (auto item : saveRegisterGates) {
-        auto index = acc_.GetBitField(item);
+        auto index = acc_.GetVirtualRegisterIndex(item);
         auto valueGate = acc_.GetValueIn(item);
         builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, taggedArray, builder_.Int32(index), valueGate);
         acc_.DeleteGate(item);
@@ -3229,7 +3229,7 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
     GateRef arrayGate = builder_.Load(VariableType::JS_POINTER(), contextGate, arrayOffset);
 
     for (auto item : registerGates) {
-        auto index = acc_.GetBitField(item);
+        auto index = acc_.GetVirtualRegisterIndex(item);
         auto indexOffset = builder_.Int32(index);
         GateRef value = GetValueFromTaggedArray(arrayGate, indexOffset);
         auto uses = acc_.Uses(item);
@@ -3598,7 +3598,7 @@ void SlowPathLowering::LowerConstPoolData(GateRef gate)
 {
     Environment env(0, &builder_);
     GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
-    ConstDataId dataId(acc_.GetBitField(gate));
+    ConstDataId dataId = acc_.GetConstDataId(gate);
     auto newGate = LoadObjectFromConstPool(jsFunc, builder_.Int32(dataId.GetId()));
     // replace newGate
     auto uses = acc_.Uses(gate);

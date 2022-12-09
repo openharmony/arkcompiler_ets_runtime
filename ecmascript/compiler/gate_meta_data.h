@@ -27,7 +27,7 @@
 
 namespace panda::ecmascript::kungfu {
 enum MachineType : uint8_t { // Bit width
-    NOVALUE,
+    NOVALUE = 0,
     ANYVALUE,
     ARCH,
     FLEX,
@@ -38,6 +38,76 @@ enum MachineType : uint8_t { // Bit width
     I64,
     F32,
     F64,
+};
+
+enum class TypedBinOp : uint8_t {
+    TYPED_ADD = 0,
+    TYPED_SUB,
+    TYPED_MUL,
+    TYPED_DIV,
+    TYPED_MOD,
+    TYPED_LESS,
+    TYPED_LESSEQ,
+    TYPED_GREATER,
+    TYPED_GREATEREQ,
+    TYPED_EQ,
+    TYPED_NOTEQ,
+    TYPED_SHL,
+    TYPED_SHR,
+    TYPED_ASHR,
+    TYPED_AND,
+    TYPED_OR,
+    TYPED_XOR,
+    TYPED_EXP,
+};
+
+enum class TypedUnOp : uint8_t {
+    TYPED_TONUMBER = 0,
+    TYPED_NEG,
+    TYPED_NOT,
+    TYPED_INC,
+    TYPED_DEC,
+    TYPED_TOBOOL,
+};
+
+enum class ICmpCondition : uint8_t {
+    EQ = 1,
+    UGT,
+    UGE,
+    ULT,
+    ULE,
+    NE,
+    SGT,
+    SGE,
+    SLT,
+    SLE,
+};
+
+enum class FCmpCondition : uint8_t {
+    ALW_FALSE = 0,
+    OEQ,
+    OGT,
+    OGE,
+    OLT,
+    OLE,
+    ONE,
+    ORD,
+    UNO,
+    UEQ,
+    UGT,
+    UGE,
+    ULT,
+    ULE,
+    UNE,
+    ALW_TRUE,
+};
+
+enum class TypedStoreOp : uint8_t {
+    FLOAT32ARRAY_STORE_ELEMENT = 0,
+};
+
+enum class TypedLoadOp : uint8_t {
+    FLOAT32ARRAY_LOAD_ELEMENT = 0,
 };
 
 std::string MachineTypeToStr(MachineType machineType);
@@ -128,15 +198,15 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DependSelector, DEPEND_SELECTOR, false, 1, value, 0)                \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_ONE_VALUE(V)             \
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)             \
+    V(TypeCheck, TYPE_CHECK, false, 0, 0, 1)              \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, false, 1, 1, 2) \
+    V(TypedUnaryOp, TYPED_UNARY_OP, false, 1, 1, 1)       \
+    V(TypedConvert, TYPE_CONVERT, false, 1, 1, 1)         \
+
+#define GATE_META_DATA_LIST_WITH_VALUE(V)                 \
     V(Icmp, ICMP, false, 0, 0, 2)                         \
     V(Fcmp, FCMP, false, 0, 0, 2)                         \
-    V(TypeCheck, TYPE_CHECK, false, 0, 0, 1)              \
-    V(TypedConvert, TYPE_CONVERT, false, 1, 1, 1)         \
-    V(TypedUnaryOp, TYPED_UNARY_OP, false, 1, 1, 1)       \
-    V(TypedBinaryOp, TYPED_BINARY_OP, false, 1, 1, 3)     \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, false, 1, 1, 2) \
-    V(Arg, ARG, true, 0, 0, 0)                            \
     V(Alloca, ALLOCA, false, 0, 0, 0)                     \
     V(SwitchBranch, SWITCH_BRANCH, false, 1, 0, 1)        \
     V(SwitchCase, SWITCH_CASE, false, 1, 0, 0)            \
@@ -149,38 +219,36 @@ std::string MachineTypeToStr(MachineType machineType);
     V(Constant, CONSTANT, false, 0, 0, 0)                 \
     V(RelocatableData, RELOCATABLE_DATA, false, 0, 0, 0)
 
+#define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
+    V(Arg, ARG, true, 0, 0, 0)                            \
+    GATE_META_DATA_LIST_WITH_VALUE(V)                     \
+    GATE_META_DATA_LIST_WITH_GATE_TYPE(V)
+
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
-
+    V(TYPED_BINARY_OP)
 
 enum class OpCode : uint8_t {
     NOP = 0,
 #define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) OP,
     IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_OPCODE)
-    GATE_META_DATA_LIST_WITH_ONE_VALUE(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 };
 
-struct Properties {
-    MachineType returnValue;
-    std::optional<std::pair<std::vector<OpCode>, bool>> statesIn;
-    size_t dependsIn;
-    std::optional<std::pair<std::vector<MachineType>, bool>> valuesIn;
-    std::optional<OpCode> root;
-};
-
 class GateMetaData : public ChunkObject {
 public:
-    enum Type {
+    enum Kind {
         IMMUTABLE = 0,
         MUTABLE_WITH_SIZE,
-        IMMUTABLE_ONE_VALUE,
-        MUTABLE_ONE_VALUE,
-        JSBYTECODE
+        IMMUTABLE_ONE_PARAMETER,
+        MUTABLE_ONE_PARAMETER,
+        JSBYTECODE,
+        TYPED_BINARY_OP,
     };
     GateMetaData() = default;
     explicit GateMetaData(OpCode opcode, bool hasRoot,
@@ -223,19 +291,20 @@ public:
         return opcode_;
     }
 
-    Type GetType() const
+    Kind GetKind() const
     {
-        return TypeBits::Get(bitField_);
+        return KindBits::Get(bitField_);
     }
 
-    void AssertType([[maybe_unused]] Type type) const
+    void AssertKind([[maybe_unused]] Kind kind) const
     {
-        ASSERT(GetType() == type);
+        ASSERT(GetKind() == kind);
     }
 
-    bool IsOneValueType() const
+    bool IsOneParameterKind() const
     {
-        return GetType() == IMMUTABLE_ONE_VALUE || GetType() == MUTABLE_ONE_VALUE;
+        return GetKind() == IMMUTABLE_ONE_PARAMETER || GetKind() == MUTABLE_ONE_PARAMETER ||
+            GetKind() == TYPED_BINARY_OP;
     }
 
     bool IsRoot() const;
@@ -259,9 +328,9 @@ public:
         return Str(opcode_);
     }
 protected:
-    void SetType(Type type)
+    void SetKind(Kind kind)
     {
-        TypeBits::Set<uint8_t>(type, &bitField_);
+        KindBits::Set<uint8_t>(kind, &bitField_);
     }
 
     bool HasRoot() const
@@ -271,7 +340,7 @@ protected:
 
     void DecreaseIn(size_t idx)
     {
-        ASSERT(GetType() == Type::MUTABLE_WITH_SIZE);
+        ASSERT(GetKind() == Kind::MUTABLE_WITH_SIZE);
         if (idx < statesIn_) {
             statesIn_--;
         } else if (idx < statesIn_ + dependsIn_) {
@@ -286,8 +355,8 @@ private:
     friend class Circuit;
     friend class GateMetaBuilder;
 
-    using TypeBits = panda::BitField<Type, 0, 4>; // 4: type width
-    using HasRootBit = TypeBits::NextFlag;
+    using KindBits = panda::BitField<Kind, 0, 4>; // 4: type width
+    using HasRootBit = KindBits::NextFlag;
 
     OpCode opcode_ { OpCode::NOP };
     uint8_t bitField_ { 0 };
@@ -301,31 +370,19 @@ inline std::ostream& operator<<(std::ostream& os, OpCode opcode)
     return os << GateMetaData::Str(opcode);
 }
 
-class OneValueMetaData : public GateMetaData {
-public:
-    explicit OneValueMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn,
-        uint16_t dependsIn, uint32_t valuesIn, uint64_t value)
-        : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), value_(value)
-    {
-        SetType(GateMetaData::IMMUTABLE_ONE_VALUE);
-    }
-
-    uint64_t GetValue() const
-    {
-        return value_;
-    }
-
-private:
-    uint64_t value_ { 0 };
-};
-
 class JSBytecodeMegaData : public GateMetaData {
 public:
     explicit JSBytecodeMegaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
         : GateMetaData(OpCode::JS_BYTECODE, false, 1, 1, valuesIn),
-          opcode_(opcode), bcIndex_(bcIndex)
+        opcode_(opcode), bcIndex_(bcIndex)
     {
-        SetType(GateMetaData::JSBYTECODE);
+        SetKind(GateMetaData::JSBYTECODE);
+    }
+
+    static const JSBytecodeMegaData* Cast(const GateMetaData* meta)
+    {
+        meta->AssertKind(GateMetaData::JSBYTECODE);
+        return static_cast<const JSBytecodeMegaData*>(meta);
     }
 
     uint32_t GetBytecodeIndex() const
@@ -342,47 +399,126 @@ private:
     uint32_t bcIndex_;
 };
 
-struct GateMetaDataChache;
-class GateMetaBuilder {
+class OneParameterMetaData : public GateMetaData {
 public:
-#define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
-    const GateMetaData* NAME();
-    IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_META)
-#undef DECLARE_GATE_META
-
-#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                        \
-    const GateMetaData* NAME(size_t value);
-    GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_META)
-#undef DECLARE_GATE_META
-
-#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                        \
-    const GateMetaData* NAME(uint64_t value);
-    GATE_META_DATA_LIST_WITH_ONE_VALUE(DECLARE_GATE_META)
-#undef DECLARE_GATE_META
-
-    explicit GateMetaBuilder(Chunk* chunk);
-    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
+    explicit OneParameterMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn,
+        uint16_t dependsIn, uint32_t valuesIn, uint64_t value)
+        : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), value_(value)
     {
-        return new (chunk_) JSBytecodeMegaData(valuesIn, opcode, bcIndex);
+        SetKind(GateMetaData::IMMUTABLE_ONE_PARAMETER);
     }
 
-    const GateMetaData* Nop()
+    static const OneParameterMetaData* Cast(const GateMetaData* meta)
     {
-        return &cachedNop_;
+        ASSERT(meta->IsOneParameterKind());
+        return static_cast<const OneParameterMetaData*>(meta);
     }
 
-    GateMetaData* NewGateMetaData(const GateMetaData* other)
+    uint64_t GetValue() const
     {
-        auto meta = new (chunk_) GateMetaData(other->opcode_, other->HasRoot(),
-            other->statesIn_, other->dependsIn_, other->valuesIn_);
-        meta->SetType(GateMetaData::MUTABLE_WITH_SIZE);
-        return meta;
+        return value_;
     }
 
 private:
-    const GateMetaDataChache& cache_;
-    const GateMetaData cachedNop_ { OpCode::NOP, false, 0, 0, 0 };
-    Chunk* chunk_;
+    uint64_t value_ { 0 };
+};
+
+class TypedBinaryMegaData : public OneParameterMetaData {
+public:
+    explicit TypedBinaryMegaData(uint64_t value, TypedBinOp binOp)
+        : OneParameterMetaData(OpCode::TYPED_BINARY_OP, false, 1, 1, 2, value), // 2: valuesIn
+        binOp_(binOp)
+    {
+        SetKind(GateMetaData::TYPED_BINARY_OP);
+    }
+
+    static const TypedBinaryMegaData* Cast(const GateMetaData* meta)
+    {
+        meta->AssertKind(GateMetaData::TYPED_BINARY_OP);
+        return static_cast<const TypedBinaryMegaData*>(meta);
+    }
+
+    TypedBinOp GetTypedBinaryOp() const
+    {
+        return binOp_;
+    }
+private:
+    TypedBinOp binOp_;
+};
+
+class GateTypeAccessor {
+public:
+    explicit GateTypeAccessor(uint64_t value)
+        : type_(static_cast<uint32_t>(value)) {}
+
+    GateType GetGateType() const
+    {
+        return type_;
+    }
+
+    static uint64_t ToValue(GateType type)
+    {
+        return static_cast<uint64_t>(type.Value());
+    }
+private:
+    GateType type_;
+};
+
+class GatePairTypeAccessor {
+public:
+    // type bits shift
+    static constexpr int OPRAND_TYPE_BITS = 32;
+    explicit GatePairTypeAccessor(uint64_t value) : bitField_(value) {}
+
+    GateType GetLeftType() const
+    {
+        return GateType(LeftBits::Get(bitField_));
+    }
+
+    GateType GetRightType() const
+    {
+        return GateType(RightBits::Get(bitField_));
+    }
+
+    static uint64_t ToValue(GateType leftType, GateType rightType)
+    {
+        return LeftBits::Encode(leftType.Value()) | RightBits::Encode(rightType.Value());
+    }
+
+private:
+    using LeftBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
+    using RightBits = LeftBits::NextField<uint32_t, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
+};
+
+class TypedUnaryAccessor {
+public:
+    // type bits shift
+    static constexpr int OPRAND_TYPE_BITS = 32;
+    explicit TypedUnaryAccessor(uint64_t value) : bitField_(value) {}
+
+    GateType GetTypeValue() const
+    {
+        return GateType(TypedValueBits::Get(bitField_));
+    }
+
+    TypedUnOp GetTypedUnOp() const
+    {
+        return TypedUnOpBits::Get(bitField_);
+    }
+
+    static uint64_t ToValue(GateType typeValue, TypedUnOp unaryOp)
+    {
+        return TypedValueBits::Encode(typeValue.Value())
+            | TypedUnOpBits::Encode(unaryOp);
+    }
+
+private:
+    using TypedValueBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
+    using TypedUnOpBits = TypedValueBits::NextField<TypedUnOp, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
 };
 } // namespace panda::ecmascript::kungfu
 

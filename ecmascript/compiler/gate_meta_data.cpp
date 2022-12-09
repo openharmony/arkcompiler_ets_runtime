@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/gate_meta_data_builder.h"
 
 namespace panda::ecmascript::kungfu {
 std::string MachineTypeToStr(MachineType machineType)
@@ -49,7 +50,7 @@ std::string GateMetaData::Str(OpCode opcode)
 #define GATE_NAME_MAP(NAME, OP, R, S, D, V)  { OpCode::OP, #OP },
     IMMUTABLE_META_DATA_CACHE_LIST(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_SIZE(GATE_NAME_MAP)
-    GATE_META_DATA_LIST_WITH_ONE_VALUE(GATE_NAME_MAP)
+    GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
 #undef GATE_NAME_MAP
 #define GATE_NAME_MAP(OP) { OpCode::OP, #OP },
         GATE_OPCODE_LIST(GATE_NAME_MAP)
@@ -146,55 +147,8 @@ bool GateMetaData::IsTypedOperator() const
             || (opcode_ == OpCode::TYPED_UNARY_OP);
 }
 
-#define CACHED_VALUE_LIST(V) \
-    V(1)                     \
-    V(2)                     \
-    V(3)                     \
-    V(4)                     \
-    V(5)                     \
-
-struct GateMetaDataChache {
-static constexpr size_t ONE_VALUE = 1;
-static constexpr size_t TWO_VALUE = 2;
-static constexpr size_t THREE_VALUE = 3;
-static constexpr size_t FOUR_VALUE = 4;
-static constexpr size_t FIVE_VALUE = 5;
-
-#define DECLARE_CACHED_GATE_META(NAME, OP, R, S, D, V)      \
-    GateMetaData cached##NAME##_ { OpCode::OP, R, S, D, V };
-    IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_CACHED_GATE_META)
-#undef DECLARE_CACHED_GATE_META
-
-#define DECLARE_CACHED_VALUE_META(VALUE)                                           \
-GateMetaData cachedMerge##VALUE##_ { OpCode::MERGE, false, VALUE, 0, 0 };          \
-GateMetaData cachedDependSelector##VALUE##_ { OpCode::DEPEND_SELECTOR, false, 1, VALUE, 0 };
-CACHED_VALUE_LIST(DECLARE_CACHED_VALUE_META)
-#undef DECLARE_CACHED_VALUE_META
-
-#define DECLARE_CACHED_GATE_META(NAME, OP, R, S, D, V)                 \
-    GateMetaData cached##NAME##1_{ OpCode::OP, R, S, D, ONE_VALUE };   \
-    GateMetaData cached##NAME##2_{ OpCode::OP, R, S, D, TWO_VALUE };   \
-    GateMetaData cached##NAME##3_{ OpCode::OP, R, S, D, THREE_VALUE }; \
-    GateMetaData cached##NAME##4_{ OpCode::OP, R, S, D, FOUR_VALUE };  \
-    GateMetaData cached##NAME##5_{ OpCode::OP, R, S, D, FIVE_VALUE };
-GATE_META_DATA_LIST_WITH_VALUE_IN(DECLARE_CACHED_GATE_META)
-#undef DECLARE_CACHED_GATE_META
-
-#define DECLARE_CACHED_GATE_META(NAME, OP, R, S, D, V)                        \
-    OneValueMetaData cached##NAME##1_{ OpCode::OP, R, S, D, V, ONE_VALUE };   \
-    OneValueMetaData cached##NAME##2_{ OpCode::OP, R, S, D, V, TWO_VALUE };   \
-    OneValueMetaData cached##NAME##3_{ OpCode::OP, R, S, D, V, THREE_VALUE }; \
-    OneValueMetaData cached##NAME##4_{ OpCode::OP, R, S, D, V, FOUR_VALUE };  \
-    OneValueMetaData cached##NAME##5_{ OpCode::OP, R, S, D, V, FIVE_VALUE };
-GATE_META_DATA_LIST_WITH_ONE_VALUE(DECLARE_CACHED_GATE_META)
-#undef DECLARE_CACHED_GATE_META
-};
-
-namespace {
-GateMetaDataChache globalGateMetaDataChache;
-}
-
-GateMetaBuilder::GateMetaBuilder(Chunk* chunk) : cache_(globalGateMetaDataChache), chunk_(chunk) {}
+GateMetaBuilder::GateMetaBuilder(Chunk* chunk)
+    : cache_(), chunk_(chunk) {}
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
 const GateMetaData* GateMetaBuilder::NAME()     \
@@ -222,34 +176,62 @@ const GateMetaData* GateMetaBuilder::NAME(size_t value)            \
             break;                                                 \
     }                                                              \
     auto meta = new (chunk_) GateMetaData(OpCode::OP, R, S, D, V); \
-    meta->SetType(GateMetaData::MUTABLE_WITH_SIZE);                \
+    meta->SetKind(GateMetaData::MUTABLE_WITH_SIZE);                \
     return meta;                                                   \
 }
 GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
-#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                               \
-const GateMetaData* GateMetaBuilder::NAME(uint64_t value)                     \
-{                                                                             \
-    switch (value) {                                                          \
-        case GateMetaDataChache::ONE_VALUE:                                   \
-            return &cache_.cached##NAME##1_;                                  \
-        case GateMetaDataChache::TWO_VALUE:                                   \
-            return &cache_.cached##NAME##2_;                                  \
-        case GateMetaDataChache::THREE_VALUE:                                 \
-            return &cache_.cached##NAME##3_;                                  \
-        case GateMetaDataChache::FOUR_VALUE:                                  \
-            return &cache_.cached##NAME##4_;                                  \
-        case GateMetaDataChache::FIVE_VALUE:                                  \
-            return &cache_.cached##NAME##5_;                                  \
-        default:                                                              \
-            break;                                                            \
-    }                                                                         \
-    auto meta = new (chunk_) OneValueMetaData(OpCode::OP, R, S, D, V, value); \
-    meta->SetType(GateMetaData::MUTABLE_ONE_VALUE);                           \
-    return meta;                                                              \
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                                   \
+const GateMetaData* GateMetaBuilder::NAME(uint64_t value)                         \
+{                                                                                 \
+    switch (value) {                                                              \
+        case GateMetaDataChache::ONE_VALUE:                                       \
+            return &cache_.cached##NAME##1_;                                      \
+        case GateMetaDataChache::TWO_VALUE:                                       \
+            return &cache_.cached##NAME##2_;                                      \
+        case GateMetaDataChache::THREE_VALUE:                                     \
+            return &cache_.cached##NAME##3_;                                      \
+        case GateMetaDataChache::FOUR_VALUE:                                      \
+            return &cache_.cached##NAME##4_;                                      \
+        case GateMetaDataChache::FIVE_VALUE:                                      \
+            return &cache_.cached##NAME##5_;                                      \
+        default:                                                                  \
+            break;                                                                \
+    }                                                                             \
+    auto meta = new (chunk_) OneParameterMetaData(OpCode::OP, R, S, D, V, value); \
+    meta->SetKind(GateMetaData::MUTABLE_ONE_PARAMETER);                           \
+    return meta;                                                                  \
 }
-GATE_META_DATA_LIST_WITH_ONE_VALUE(DECLARE_GATE_META)
+GATE_META_DATA_LIST_WITH_VALUE(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
+
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                                   \
+const GateMetaData* GateMetaBuilder::NAME(uint64_t value)                         \
+{                                                                                 \
+    auto meta = new (chunk_) OneParameterMetaData(OpCode::OP, R, S, D, V, value); \
+    meta->SetKind(GateMetaData::MUTABLE_ONE_PARAMETER);                           \
+    return meta;                                                                  \
+}
+GATE_META_DATA_LIST_WITH_GATE_TYPE(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
+
+const GateMetaData* GateMetaBuilder::Arg(uint64_t value)
+{
+    switch (value) {
+#define DECLARE_CACHED_VALUE_CASE(VALUE)                 \
+        case VALUE: {                                    \
+            return &cache_.cachedArg##VALUE##_;          \
+        }
+CACHED_ARG_LIST(DECLARE_CACHED_VALUE_CASE)
+#undef DECLARE_CACHED_VALUE_CASE
+        default:
+            break;
+    }
+
+    auto meta = new (chunk_) OneParameterMetaData(OpCode::ARG, true, 0, 0, 0, value);
+    meta->SetKind(GateMetaData::MUTABLE_ONE_PARAMETER);
+    return meta;
+}
 
 }  // namespace panda::ecmascript::kungfu

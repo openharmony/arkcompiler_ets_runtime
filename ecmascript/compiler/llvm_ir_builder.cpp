@@ -339,7 +339,7 @@ void LLVMIRBuilder::GenPrologue()
         auto ArgList = circuit_->GetArgRoot();
         auto uses = acc_.Uses(ArgList);
         for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
-            int argth = static_cast<int>(acc_.GetBitField(*useIt));
+            int argth = static_cast<int>(acc_.TryGetValue(*useIt));
             LLVMValueRef value = LLVMGetParam(function_, argth);
             if (argth == static_cast<int>(CommonArgIdx::LEXENV)) {
                 SaveLexicalEnvOnOptJSFuncFrame(value);
@@ -855,7 +855,7 @@ void LLVMIRBuilder::HandleAlloca(GateRef gate)
 
 void LLVMIRBuilder::VisitAlloca(GateRef gate)
 {
-    uint64_t machineRep = acc_.GetBitField(gate);
+    uint64_t machineRep = acc_.TryGetValue(gate);
     LLVMTypeRef dataType = GetMachineRepType(static_cast<MachineRep>(machineRep));
     gate2LValue_[gate] = LLVMBuildPtrToInt(builder_, LLVMBuildAlloca(builder_, dataType, ""),
                                               ConvertLLVMTypeFromGate(gate), "");
@@ -1058,7 +1058,7 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
 
 void LLVMIRBuilder::HandleRelocatableData(GateRef gate)
 {
-    uint64_t value = acc_.GetBitField(gate);
+    uint64_t value = acc_.TryGetValue(gate);
     VisitRelocatableData(gate, value);
 }
 
@@ -1090,7 +1090,7 @@ void LLVMIRBuilder::HandleParameter(GateRef gate)
 
 void LLVMIRBuilder::VisitParameter(GateRef gate)
 {
-    int argth = static_cast<int>(acc_.GetBitField(gate));
+    int argth = static_cast<int>(acc_.TryGetValue(gate));
     LLVMValueRef value = LLVMGetParam(function_, argth);
     ASSERT(LLVMTypeOf(value) == ConvertLLVMTypeFromGate(gate));
     gate2LValue_[gate] = value;
@@ -1215,7 +1215,7 @@ void LLVMIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector<G
         }
         curOutBB = EnsureBB(instID2bbID_[acc_.GetId(outList[i])]);
         llvmCurOutBB = curOutBB->GetImpl<BasicBlockImpl>()->lBB_;
-        LLVMAddCase(result, LLVMConstInt(ConvertLLVMTypeFromGate(input), acc_.GetBitField(outList[i]), 0),
+        LLVMAddCase(result, LLVMConstInt(ConvertLLVMTypeFromGate(input), acc_.TryGetValue(outList[i]), 0),
                     llvmCurOutBB);
     }
     EndCurrentBlock();
@@ -1675,11 +1675,11 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
     LLVMRealPredicate realOpcode = LLVMRealPredicateFalse;
     auto op = acc_.GetOpCode(gate);
     if (op == OpCode::ICMP) {
-        auto cond = static_cast<ICmpCondition>(acc_.GetBitField(gate));
+        auto cond = acc_.GetICmpCondition(gate);
         intOpcode = ConvertLLVMPredicateFromICMP(cond);
         result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
     } else if (op == OpCode::FCMP) {
-        auto cond = static_cast<FCmpCondition>(acc_.GetBitField(gate));
+        auto cond = acc_.GetFCmpCondition(gate);
         realOpcode = ConvertLLVMPredicateFromFCMP(cond);
         result = LLVMBuildFCmp(builder_, realOpcode, e1Value, e2Value, "");
     } else {

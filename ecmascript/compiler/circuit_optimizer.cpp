@@ -635,7 +635,7 @@ bool LatticeUpdateRuleSCCP::RunSwitchCase(GateRef gate)
 {
     const bool valueMayMatch =
         valueLatticeMap_(acc_.GetIn(acc_.GetIn(gate, 0), 1))
-            <= ValueLattice(acc_.GetBitField(gate));
+            <= ValueLattice(acc_.TryGetValue(gate));
     return UpdateReachabilityLattice(gate,
                                      reachabilityLatticeMap_(acc_.GetIn(gate, 0)) * ReachabilityLattice(valueMayMatch));
 }
@@ -1105,7 +1105,7 @@ bool LatticeUpdateRuleSCCP::RunIcmp(GateRef gate)
 {
     const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    ICmpCondition cond = static_cast<ICmpCondition>(acc_.GetBitField(gate));
+    ICmpCondition cond = acc_.GetICmpCondition(gate);
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1121,7 +1121,7 @@ bool LatticeUpdateRuleSCCP::RunFcmp(GateRef gate)
 {
     const ValueLattice &operandA = valueLatticeMap_(acc_.GetIn(gate, 0));
     const ValueLattice &operandB = valueLatticeMap_(acc_.GetIn(gate, 1));
-    FCmpCondition cond = static_cast<FCmpCondition>(acc_.GetBitField(gate));
+    FCmpCondition cond = acc_.GetFCmpCondition(gate);
     if (operandA.IsTop() || operandB.IsTop()) {
         return UpdateValueLattice(gate, ValueLattice(LatticeStatus::TOP));
     }
@@ -1578,7 +1578,7 @@ void GlobalValueNumbering::SplitByOpCode(const std::vector<std::shared_ptr<Parti
     std::map<std::tuple<OpCode, BitField, MachineType, uint32_t>, std::shared_ptr<Partition>> opToPartition;
     for (auto node : nodes) {
         auto op = OpCode(acc_.GetOpCode(node->GetGate()));
-        auto bit = acc_.GetBitField(node->GetGate());
+        auto bit = acc_.TryGetValue(node->GetGate());
         auto mt = acc_.GetMachineType(node->GetGate());
         auto gt = acc_.GetGateType(node->GetGate()).Value();
         auto tp = std::make_tuple(op, bit, mt, gt);

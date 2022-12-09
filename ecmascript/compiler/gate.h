@@ -40,79 +40,8 @@ using GateMark = uint8_t;
 using TimeStamp = uint8_t;
 using SecondaryOp = uint8_t;
 using OutIdx = uint32_t;
-using BinaryOp = uint8_t;
 class Gate;
 class BytecodeCircuitBuilder;
-
-enum class TypedBinOp : BinaryOp {
-    TYPED_ADD,
-    TYPED_SUB,
-    TYPED_MUL,
-    TYPED_DIV,
-    TYPED_MOD,
-    TYPED_LESS,
-    TYPED_LESSEQ,
-    TYPED_GREATER,
-    TYPED_GREATEREQ,
-    TYPED_EQ,
-    TYPED_NOTEQ,
-    TYPED_SHL,
-    TYPED_SHR,
-    TYPED_ASHR,
-    TYPED_AND,
-    TYPED_OR,
-    TYPED_XOR,
-    TYPED_EXP,
-};
-
-enum class TypedUnOp : uint8_t {
-    TYPED_TONUMBER,
-    TYPED_NEG,
-    TYPED_NOT,
-    TYPED_INC,
-    TYPED_DEC,
-    TYPED_TOBOOL,
-};
-
-enum class ICmpCondition : uint8_t {
-    EQ = 1,
-    UGT,
-    UGE,
-    ULT,
-    ULE,
-    NE,
-    SGT,
-    SGE,
-    SLT,
-    SLE,
-};
-
-enum class FCmpCondition : uint8_t {
-    ALW_FALSE = 0,
-    OEQ,
-    OGT,
-    OGE,
-    OLT,
-    OLE,
-    ONE,
-    ORD,
-    UNO,
-    UEQ,
-    UGT,
-    UGE,
-    ULT,
-    ULE,
-    UNE,
-    ALW_TRUE,
-};
-
-enum class TypedStoreOp : uint8_t {
-    FLOAT32ARRAY_STORE_ELEMENT,
-};
-
-enum class TypedLoadOp : uint8_t {
-    FLOAT32ARRAY_LOAD_ELEMENT,
-};
 
 enum MarkCode : GateMark {
     NO_MARK,
@@ -284,24 +213,19 @@ public:
         return meta_;
     }
 
-    BitField GetBitField() const
+    const OneParameterMetaData* GetOneParameterMetaData() const
     {
-        if (meta_->IsOneValueType()) {
-            return GetOneValueMetaData()->GetValue();
-        }
-        return 0;
+        return OneParameterMetaData::Cast(meta_);
     }
 
-    const OneValueMetaData* GetOneValueMetaData() const
+    const TypedBinaryMegaData* GetTypedBinaryMegaData() const
     {
-        ASSERT(meta_->IsOneValueType());
-        return static_cast<const OneValueMetaData*>(meta_);
+        return TypedBinaryMegaData::Cast(meta_);
     }
 
     const JSBytecodeMegaData* GetJSBytecodeMetaData() const
     {
-        meta_->AssertType(GateMetaData::JSBYTECODE);
-        return static_cast<const JSBytecodeMegaData*>(meta_);
+        return JSBytecodeMegaData::Cast(meta_);
     }
     std::string MachineTypeStr(MachineType machineType) const;
     std::string GateTypeStr(GateType gateType) const;
@@ -317,6 +241,13 @@ private:
     void SetMetaData(const GateMetaData* meta)
     {
         meta_ = meta;
+    }
+    uint64_t TryGetValue() const
+    {
+        if (meta_->IsOneParameterKind()) {
+            return GetOneParameterMetaData()->GetValue();
+        }
+        return 0;
     }
     // ...
     // out(2)

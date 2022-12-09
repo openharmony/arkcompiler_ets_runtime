@@ -490,8 +490,6 @@ public:
     inline GateRef GetDepend() const;
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
-    // type bits shift
-    static const int OPRAND_TYPE_BITS = 32;
 
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);

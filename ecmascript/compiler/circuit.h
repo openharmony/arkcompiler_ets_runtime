@@ -24,6 +24,7 @@
 
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/gate_meta_data_builder.h"
 #include "ecmascript/frames.h"
 
 #include "libpandabase/macros.h"
@@ -64,12 +65,14 @@ public:
     {
         return isArch64_;
     }
-    void PushFunctionCompilationDataList();
-    void PopFunctionCompilationDataList();
     void InitRoot();
     GateRef GetRoot() const
     {
         return root_;
+    }
+    void SetRoot(GateRef root)
+    {
+        root_ = root;
     }
 
     Chunk* chunk()
@@ -108,7 +111,7 @@ public:
     {                                           \
         return metaBuilder_.NAME(value);        \
     }
-    GATE_META_DATA_LIST_WITH_ONE_VALUE(DECLARE_GATE_META)
+    GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
     const GateMetaData* Nop()
@@ -119,6 +122,11 @@ public:
     const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
     {
         return metaBuilder_.JSBytecode(valuesIn, opcode, bcIndex);
+    }
+
+    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp)
+    {
+        return metaBuilder_.TypedBinaryOp(value, binOp);
     }
 
     const GateMetaData *GetMetaData(GateRef gate) const
@@ -162,14 +170,6 @@ private:
     uint8_t *GetDataPtr(size_t offset);
     Gate *LoadGatePtr(GateRef shift);
     const Gate *LoadGatePtrConst(GateRef shift) const;
-    const Out *InnerMethodArgFirstOut() const
-    {
-        return innerMethodArgFirstOut_;
-    }
-    const Out *InnerMethodReturnFirstOut() const
-    {
-        return innerMethodReturnFirstOut_;
-    }
 
 private:
     void* space_ {nullptr};
@@ -180,8 +180,6 @@ private:
     std::map<BitField, GateRef> constantDataCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
     bool isArch64_ { false };
-    const Out *innerMethodArgFirstOut_ { nullptr };
-    const Out *innerMethodReturnFirstOut_ { nullptr };
 
     Chunk chunk_;
     GateRef root_ { 0 };

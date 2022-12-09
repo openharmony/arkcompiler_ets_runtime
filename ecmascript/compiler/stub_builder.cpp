@@ -4380,6 +4380,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     Label notFastBuiltinsArg1(env);
     Label notFastBuiltinsArg2(env);
     Label notFastBuiltinsArg3(env);
+    Label notFastBuiltins(env);
     // 3. call native
     Bind(&methodIsNative);
     {
@@ -4459,7 +4460,6 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 break;
             case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV: {
-                Label notFastBuiltins(env);
                 CallFastPath(glue, nativeCode, func, thisValue, actualNumArgs, callField,
                     method, &notFastBuiltins, &exit, &result, args, mode);
                 Bind(&notFastBuiltins);
