@@ -363,9 +363,9 @@ public:
 
     TaggedObject *NewObject(const JSHandle<JSHClass> &hclass);
 
-    TaggedObject *NewNonMovableObject(const JSHandle<JSHClass> &hclass, int inobjPropCount = 0);
+    TaggedObject *NewNonMovableObject(const JSHandle<JSHClass> &hclass, uint32_t inobjPropCount = 0);
 
-    void InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, int inobjPropCount);
+    void InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, uint32_t inobjPropCount);
 
     JSHandle<TaggedQueue> NewTaggedQueue(uint32_t length);
 

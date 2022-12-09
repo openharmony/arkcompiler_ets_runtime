@@ -1789,35 +1789,33 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
         case FunctionKind::NORMAL_FUNCTION:
         case FunctionKind::BASE_CONSTRUCTOR: {
             auto hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass, MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass);
             break;
         }
         case FunctionKind::ARROW_FUNCTION: {
             auto normalClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, normalClass, MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, normalClass);
             break;
         }
         case FunctionKind::GENERATOR_FUNCTION: {
             auto generatorClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, generatorClass, MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, generatorClass);
             break;
         }
         case FunctionKind::ASYNC_FUNCTION: {
             auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass, MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass);
             break;
         }
         case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
             auto asyncGeneratorClass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncGeneratorClass,
-                                                    MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncGeneratorClass);
             break;
         }
         case FunctionKind::ASYNC_ARROW_FUNCTION: {
             // Add hclass for async arrow function
             auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass,
-                                                    MemSpaceType::OLD_SPACE);
+            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass);
             break;
         }
         default:

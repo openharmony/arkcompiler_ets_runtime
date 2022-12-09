@@ -1337,7 +1337,7 @@ TaggedObject *ObjectFactory::NewObject(const JSHandle<JSHClass> &hclass)
     return header;
 }
 
-TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclass, int inobjPropCount)
+TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclass, uint32_t inobjPropCount)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(*hclass);
@@ -1347,12 +1347,12 @@ TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclas
     return header;
 }
 
-void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, int inobjPropCount)
+void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, uint32_t inobjPropCount)
 {
     ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < hclass->GetObjectSize());
     auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
     JSTaggedType initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
-    for (int i = 0; i < inobjPropCount; ++i) {
+    for (uint32_t i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
     }
