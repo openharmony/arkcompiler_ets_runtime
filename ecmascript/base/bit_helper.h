@@ -130,9 +130,9 @@ inline To bit_cast(const From &src) noexcept  // NOLINT(readability-identifier-n
 {
     static_assert(sizeof(To) == sizeof(From), "size of the types must be equal");
     // The use of security functions 'memcpy_s' here will have a greater impact on performance
-    Data<From, To> data_;
-    data_.src = src;
-    return data_.dst;
+    Data<From, To> data;
+    data.src = src;
+    return data.dst;
 }
 
 template <typename T>

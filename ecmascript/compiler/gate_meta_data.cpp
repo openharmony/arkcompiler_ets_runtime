@@ -82,14 +82,14 @@ bool GateMetaData::IsFixed() const
 
 bool GateMetaData::IsSchedulable() const
 {
-    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot())
-            && (!IsFixed()) && (GetStateCount() == 0);
+    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot()) &&
+        (!IsFixed()) && (GetStateCount() == 0);
 }
 
 bool GateMetaData::IsState() const
 {
-    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot())
-            && (!IsFixed()) && (GetStateCount() > 0);
+    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot()) &&
+        (!IsFixed()) && (GetStateCount() > 0);
 }
 
 bool GateMetaData::IsGeneralState() const
@@ -120,10 +120,10 @@ bool GateMetaData::IsCFGMerge() const
 
 bool GateMetaData::IsControlCase() const
 {
-    return (opcode_ == OpCode::IF_BRANCH) || (opcode_ == OpCode::SWITCH_BRANCH)
-            || (opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE)
-            || (opcode_ == OpCode::IF_SUCCESS) || (opcode_ == OpCode::IF_EXCEPTION) ||
-            (opcode_ == OpCode::SWITCH_CASE) || (opcode_ == OpCode::DEFAULT_CASE);
+    return (opcode_ == OpCode::IF_BRANCH) || (opcode_ == OpCode::SWITCH_BRANCH) ||
+        (opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE) ||
+        (opcode_ == OpCode::IF_SUCCESS) || (opcode_ == OpCode::IF_EXCEPTION) ||
+        (opcode_ == OpCode::SWITCH_CASE) || (opcode_ == OpCode::DEFAULT_CASE);
 }
 
 bool GateMetaData::IsLoopHead() const
@@ -143,8 +143,8 @@ bool GateMetaData::IsConstant() const
 
 bool GateMetaData::IsTypedOperator() const
 {
-    return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT)
-            || (opcode_ == OpCode::TYPED_UNARY_OP);
+    return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT) ||
+        (opcode_ == OpCode::TYPED_UNARY_OP);
 }
 
 GateMetaBuilder::GateMetaBuilder(Chunk* chunk)
