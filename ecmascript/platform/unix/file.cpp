@@ -29,10 +29,12 @@ bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
     char buffer[PATH_MAX] = { '\0' };
     if (!realpath(path.c_str(), buffer)) {
         // Maybe file does not exist.
-        if (readOnly || errno != ENOENT) {
-            LOG_ECMA(ERROR) << "File path" << path << " realpath failure";
-            return false;
+        if (!readOnly && errno == ENOENT) {
+            realPath = path;
+            return true;
         }
+        LOG_ECMA(ERROR) << "File path" << path << " realpath failure";
+        return false;
     }
     realPath = std::string(buffer);
     return true;
