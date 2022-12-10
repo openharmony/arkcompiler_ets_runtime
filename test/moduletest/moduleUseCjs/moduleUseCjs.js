@@ -27,3 +27,4 @@ print(JSON.stringify(cjs));
 print(JSON.stringify(json));
 fun();
 print(ns.tag);
+ns.con();
