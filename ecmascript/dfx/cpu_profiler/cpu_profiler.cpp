@@ -53,8 +53,6 @@ void CpuProfiler::StartCpuProfilerForInfo()
         return;
     }
     isProfiling_ = true;
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-#else
     struct sigaction sa;
     sa.sa_sigaction = &GetStackSignalHandler;
     if (sigemptyset(&sa.sa_mask) != 0) {
@@ -68,7 +66,6 @@ void CpuProfiler::StartCpuProfilerForInfo()
         isProfiling_ = false;
         return;
     }
-#endif
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     {
         os::memory::LockHolder lock(synchronizationMutex_);
@@ -108,8 +105,6 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
         isProfiling_ = false;
         return;
     }
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-#else
     struct sigaction sa;
     sa.sa_sigaction = &GetStackSignalHandler;
     if (sigemptyset(&sa.sa_mask) != 0) {
@@ -123,16 +118,12 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
         isProfiling_ = false;
         return;
     }
-#endif
     tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
     {
         os::memory::LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
-    uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    SetProfileStart(ts);
     outToFile_ = true;
-    generator_->SetOutToFile(outToFile_);
     vm_->GetJSThread()->SetCallNapiGetStack(callNapiGetStack_);
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
@@ -206,8 +197,7 @@ void CpuProfiler::StopCpuProfilerForFile()
         LOG_ECMA(ERROR) << "sem_[1] wait failed";
         return;
     }
-    generator_->WriteMethodsAndSampleInfo(true);
-    generator_->WriteStateTimeStatistic();
+    generator_->StringifySampleData();
     std::string fileData = generator_->GetSampleData();
     generator_->fileHandle_ << fileData;
 }
@@ -263,7 +253,8 @@ void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProces
     currentProcessInfo.tts = SamplingProcessor::GetMicrosecondsTimeStamp();
 }
 
-RunningState CpuProfiler::GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile) const
+RunningState CpuProfiler::GetRunningState(const FrameIterator &it,
+                                          const JSPandaFile *jsPandaFile, bool isLeaveFrame) const
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
     if (thread->GetGcState()) {
@@ -281,8 +272,10 @@ RunningState CpuProfiler::GetRunningState(const FrameIterator &it, const JSPanda
         }
         return RunningState::BUILTIN;
     }
-    FrameType type = it.GetFrameType();
-    if (type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+    if (isLeaveFrame) {
+        return RunningState::RUNTIME;
+    }
+    if (it.GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
         return RunningState::AOT;
     }
     if (thread->GetRuntimeState()) {
@@ -294,7 +287,7 @@ RunningState CpuProfiler::GetRunningState(const FrameIterator &it, const JSPanda
     return RunningState::CINT;
 }
 
-void CpuProfiler::GetFrameStack(FrameIterator &it)
+void CpuProfiler::GetFrameStack(FrameIterator &it, bool isLeaveFrame)
 {
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     bool firstFrame = true;
@@ -306,7 +299,7 @@ void CpuProfiler::GetFrameStack(FrameIterator &it)
         const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
         struct MethodKey methodKey;
         if (firstFrame) {
-            methodKey.state = GetRunningState(it, jsPandaFile);
+            methodKey.state = GetRunningState(it, jsPandaFile, isLeaveFrame);
             firstFrame = false;
         }
         methodKey.methodIdentifier = GetMethodIdentifier(method, it);
@@ -461,7 +454,7 @@ void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
     if (thread->GetStackSignal()) {
         FrameHandler frameHandler(thread);
         FrameIterator it(frameHandler.GetSp(), thread);
-        GetFrameStack(it);
+        GetFrameStack(it, false);
         if (generator_->SemPost(0) != 0) {
             LOG_ECMA(ERROR) << "sem_[0] post failed";
             return;
@@ -497,15 +490,20 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         pthread_t tid = static_cast<pthread_t>(syscall(SYS_gettid));
         const EcmaVM *vm = profilerMap_[tid];
         if (vm == nullptr) {
+            LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler vm is nullptr";
             return;
         }
         profiler = vm->GetProfiler();
         thread = vm->GetAssociatedJSThread();
         if (profiler == nullptr) {
+            LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler profiler is nullptr";
             return;
         }
     }
-    uint64_t pc = GetPcFromContext(context);
+    uint64_t pc = 0;
+    if (thread->IsAsmInterpreter()) {
+        pc = GetPcFromContext(context);
+    }
     if (thread->IsAsmInterpreter() && profiler->IsAddrAtStubOrAot(pc) &&
         !profiler->IsEntryFrameHeaderOrTail(thread, pc)) {
         [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
@@ -519,22 +517,27 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         fp = reinterpret_cast<void*>(mcontext.regs[29]); // FP is an alias for x29.
         sp = reinterpret_cast<void*>(mcontext.sp);
 #else
-        LOG_FULL(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
+        LOG_FULL(FATAL) << "AsmInterpreter does not currently support other platforms, please run on x64 and arm64";
         return;
 #endif
         if (reinterpret_cast<uint64_t*>(sp) > reinterpret_cast<uint64_t*>(fp)) {
-            LOG_FULL(FATAL) << "sp > fp, stack frame exception";
+            LOG_ECMA(ERROR) << "sp > fp, stack frame exception";
+            if (profiler->generator_->SemPost(0) != 0) {
+                LOG_ECMA(ERROR) << "sem_[0] post failed";
+                return;
+            }
+            return;
         }
         if (profiler->CheckFrameType(thread, reinterpret_cast<JSTaggedType *>(fp))) {
             FrameIterator it(reinterpret_cast<JSTaggedType *>(fp), thread);
-            profiler->GetFrameStack(it);
+            profiler->GetFrameStack(it, false);
         }
     } else if (thread->IsAsmInterpreter()) {
         if (thread->GetLastLeaveFrame() != nullptr) {
             JSTaggedType *leaveFrame = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
             if (profiler->CheckFrameType(thread, leaveFrame)) {
                 FrameIterator it(leaveFrame, thread);
-                profiler->GetFrameStack(it);
+                profiler->GetFrameStack(it, true);
             }
         }
     } else {
@@ -542,7 +545,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
             if (profiler->CheckFrameType(thread, const_cast<JSTaggedType *>(thread->GetCurrentFrame()))) {
                 FrameHandler frameHandler(thread);
                 FrameIterator it(frameHandler.GetSp(), thread);
-                profiler->GetFrameStack(it);
+                profiler->GetFrameStack(it, false);
             }
         }
     }
@@ -611,7 +614,7 @@ uint64_t CpuProfiler::GetPcFromContext(void *context)
 #elif defined(PANDA_TARGET_ARM64)
     pc = static_cast<uint64_t>(mcontext.pc);
 #else
-    LOG_FULL(FATAL) << "Cpuprofiler does not currently support other platforms, please run on x64 and arm64";
+    LOG_FULL(FATAL) << "AsmInterpreter does not currently support other platforms, please run on x64 and arm64";
     pc = 0;
 #endif
     return pc;

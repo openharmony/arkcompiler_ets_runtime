@@ -218,12 +218,6 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     INTERPRETER_TRACE(thread, AsmExecute);
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler *profiler = thread->GetEcmaVM()->GetProfiler();
-    if (profiler != nullptr) {
-        profiler->IsNeedAndGetStack(thread);
-    }
-#endif
     thread->CheckSafepoint();
     uint32_t argc = info->GetArgsNumber();
     uintptr_t argv = reinterpret_cast<uintptr_t>(info->GetArgs());
@@ -251,11 +245,6 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     auto prevEntry = InterpretedEntryFrame::GetFrameFromSp(sp)->GetPrevFrameFp();
     thread->SetCurrentSPFrame(prevEntry);
 
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    if (profiler != nullptr) {
-        profiler->IsNeedAndGetStack(thread);
-    }
-#endif
     return JSTaggedValue(acc);
 }
 

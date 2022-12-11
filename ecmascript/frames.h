@@ -1158,6 +1158,10 @@ public:
     {
         return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, callsiteFp);
     }
+    const JSTaggedType* GetArgv() const
+    {
+        return reinterpret_cast<const JSTaggedType *>(&argc + 1);
+    }
 
 private:
     [[maybe_unused]] FrameType type;
