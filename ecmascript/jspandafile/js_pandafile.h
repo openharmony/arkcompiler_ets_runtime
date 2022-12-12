@@ -84,6 +84,7 @@ public:
     static constexpr char PACKAGE_NAME[] = "pkgName@";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int MODULE_PREFIX_LENGTH = 8;
+    static constexpr uint32_t INVALID_INDEX = -1;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -202,14 +203,9 @@ public:
         return isBundlePack_;
     }
 
-    void SetLoadedAOTStatus(bool status)
-    {
-        isLoadedAOT_ = status;
-    }
-
     bool IsLoadedAOT() const
     {
-        return isLoadedAOT_;
+        return (anFileInfoIndex_ != INVALID_INDEX);
     }
 
     uint32_t GetFileUniqId() const
@@ -274,16 +270,9 @@ public:
         return anFileInfoIndex_;
     }
 
-    // If the system library is loaded, aotFileInfos has two elements
-    // 0: system library, 1: application
-    // Note: There is no system library currently, so the anFileInfoIndex_ is 0
-    void SetAOTFileInfoIndex()
+    void SetAOTFileInfoIndex(uint32_t index)
     {
-        if (IsSystemLib()) {
-            anFileInfoIndex_ = 0;
-        } else {
-            anFileInfoIndex_ = 1;
-        }
+        anFileInfoIndex_ = index;
     }
 
     static bool IsEntryOrPatch(const CString &name)
@@ -326,8 +315,7 @@ private:
     MethodLiteral *methodLiterals_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     CString desc_;
-    bool isLoadedAOT_ {false};
-    uint32_t anFileInfoIndex_ {0};
+    uint32_t anFileInfoIndex_ {INVALID_INDEX};
     bool isNewVersion_ {false};
 
     // marge abc

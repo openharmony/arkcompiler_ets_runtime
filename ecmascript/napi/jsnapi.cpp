@@ -46,6 +46,7 @@
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/js_date_time_format.h"
+#include "ecmascript/js_file_path.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
@@ -348,6 +349,18 @@ void JSNApi::NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress)
 }
 #endif
 
+void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &hapPath)
+{
+    JSRuntimeOptions &jsOption = vm->GetJSOptions();
+    if (jsOption.GetAOTOutputFile().empty()) {
+        return;
+    }
+    std::string hapName = ecmascript::JSFilePath::GetFileName(hapPath);
+    jsOption.SetAOTOutputFile(jsOption.GetAOTOutputFile() + hapName);
+    LOG_ECMA(INFO) << "start to load aot file: " << jsOption.GetAOTOutputFile();
+    vm->LoadAOTFiles();
+}
+
 bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry)
 {
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
@@ -394,12 +407,10 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     JSRuntimeOptions &jsOption = vm->GetJSOptions();
     LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
                     << ", aot: " << jsOption.GetEnableAOT()
-                    << ", an dir: " << option.GetAnDir()
                     << ", bundle name: " <<  option.GetBundleName();
 
     if (jsOption.GetEnableAOT() && option.GetAnDir().size()) {
-        jsOption.SetAOTOutputFile(option.GetAnDir() + "entry");
-        vm->LoadAOTFiles();
+        jsOption.SetAOTOutputFile(option.GetAnDir());
     }
 
     vm->PostFork();

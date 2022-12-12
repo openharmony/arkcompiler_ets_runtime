@@ -24,6 +24,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_file_path.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
@@ -452,6 +453,10 @@ bool AnFileInfo::Load(const std::string &filename)
         funcDes.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
         if (funcDes.isMainFunc_) {
             mainEntryMap_[funcDes.indexInKindOrMethodId_] = funcDes.codeAddr_;
+#ifndef NDEBUG
+            LOG_COMPILER(INFO) << "AnFileInfo Load main method id: " << funcDes.indexInKindOrMethodId_
+                               << " code addr: " << reinterpret_cast<void*>(funcDes.codeAddr_);
+#endif
         }
     }
 
@@ -463,6 +468,9 @@ bool AnFileInfo::Load(const std::string &filename)
 bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const
 {
     auto methodId = jsPandaFile->GetMainMethodIndex(entry);
+#ifndef NDEBUG
+    LOG_COMPILER(INFO) << "AnFileInfo IsLoadMain method id: " << methodId << " entry: " << entry;
+#endif
     auto it = mainEntryMap_.find(methodId);
     if (it == mainEntryMap_.end()) {
         return false;
@@ -490,8 +498,12 @@ void AOTFileManager::LoadAnFile(const std::string &fileName)
     if (!anFileInfo.Load(fileName)) {
         return;
     }
-    AddAnFileInfo(anFileInfo);
     anFileInfo.RewriteRelcateDeoptHandler(vm_);
+
+    // add an file info
+    std::string anBasename = JSFilePath::GetBaseName(fileName);
+    anFileNameToIndexMap_[anBasename] = anFileInfos_.size();
+    anFileInfos_.emplace_back(anFileInfo);
 }
 
 void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filename)
@@ -504,19 +516,20 @@ void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filena
 
 const AnFileInfo *AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
 {
-    uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
-    if (!vm_->GetJSOptions().WasAOTOutputFileSet() &&
-        (jsPandaFile->GetJSPandaFileDesc().find(JSPandaFile::MERGE_ABC_NAME) == std::string::npos)) {
+    uint32_t index = GetAnFileIndex(jsPandaFile);
+    if (index == JSPandaFile::INVALID_INDEX) {
         return nullptr;
     }
-    if (anFileInfoIndex >= anFileInfos_.size()) {
-        return nullptr;
-    }
-    return &anFileInfos_[anFileInfoIndex];
+
+    return &anFileInfos_[index];
 }
 
 bool AOTFileManager::IsLoad(const JSPandaFile *jsPandaFile) const
 {
+    if (vm_->GetJSOptions().GetAOTOutputFile().empty()){
+        return false;
+    }
+
     const AnFileInfo *anFileInfo = GetAnFileInfo(jsPandaFile);
     if (anFileInfo == nullptr) {
         return false;
@@ -526,6 +539,10 @@ bool AOTFileManager::IsLoad(const JSPandaFile *jsPandaFile) const
 
 bool AOTFileManager::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const
 {
+    if (!jsPandaFile->IsLoadedAOT()) {
+        return false;
+    }
+
     const AnFileInfo *anFileInfo = GetAnFileInfo(jsPandaFile);
     if (anFileInfo == nullptr) {
         return false;
@@ -534,22 +551,30 @@ bool AOTFileManager::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &e
     return anFileInfo->IsLoadMain(jsPandaFile, entry);
 }
 
-void AOTFileManager::UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
-                                     std::string_view entryPoint)
+uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
 {
-    uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
-    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
-    // get main func method
-    auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex(entryPoint.data());
-    auto mainEntry = anFileInfo.GetMainFuncEntry(mainFuncMethodId);
-    MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
-    mainMethod->SetAotCodeBit(true);
-    mainMethod->SetNativeBit(false);
-    Method *method = mainFunc->GetCallTarget();
-    method->SetCodeEntryAndMarkAOT(reinterpret_cast<uintptr_t>(mainEntry));
-#ifndef NDEBUG
-    PrintAOTEntry(jsPandaFile, method, mainEntry);
-#endif
+    // run via command line
+    if (vm_->GetJSOptions().WasAOTOutputFileSet()) {
+        std::string jsPandaFileDesc = jsPandaFile->GetJSPandaFileDesc().c_str();
+        std::string baseName = JSFilePath::GetFileName(jsPandaFileDesc);
+        if (baseName.empty()) {
+            return JSPandaFile::INVALID_INDEX;
+        }
+        return anFileNameToIndexMap_.at(baseName + FILE_EXTENSION_AN);
+    }
+
+    // run from app hap
+    std::string hapName = JSFilePath::GetHapName(jsPandaFile);
+    if (hapName.empty()){
+        return JSPandaFile::INVALID_INDEX;
+    }
+    std::string anFileName = hapName + FILE_EXTENSION_AN;
+    auto it = anFileNameToIndexMap_.find(anFileName);
+    if (it == anFileNameToIndexMap_.end()) {
+        return JSPandaFile::INVALID_INDEX;
+    }
+
+    return it->second;
 }
 
 bool AOTFileManager::InsideStub(uintptr_t pc) const
@@ -609,6 +634,24 @@ void AOTFileManager::PrintAOTEntry(const JSPandaFile *file, const Method *method
                        << " -> AOT-Entry = " << reinterpret_cast<void*>(entry);
 }
 
+void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
+                                     std::string_view entryPoint)
+{
+    uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
+    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
+    // get main func method
+    auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex(entryPoint.data());
+    auto mainEntry = anFileInfo.GetMainFuncEntry(mainFuncMethodId);
+    MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
+    mainMethod->SetAotCodeBit(true);
+    mainMethod->SetNativeBit(false);
+    Method *method = mainFunc->GetCallTarget();
+    method->SetCodeEntryAndMarkAOT(reinterpret_cast<uintptr_t>(mainEntry));
+#ifndef NDEBUG
+    PrintAOTEntry(jsPandaFile, method, mainEntry);
+#endif
+}
+
 void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex)
 {
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
@@ -639,8 +682,7 @@ void AOTFileManager::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, c
             if (entryIndex == -1) {
                 continue;
             }
-            SetAOTFuncEntry(jsPandaFile, JSFunction::Cast(value)->GetCallTarget(),
-                static_cast<uint32_t>(entryIndex));
+            SetAOTFuncEntry(jsPandaFile, JSFunction::Cast(value)->GetCallTarget(), static_cast<uint32_t>(entryIndex));
         }
     }
 }

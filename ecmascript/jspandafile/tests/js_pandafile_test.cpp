@@ -286,7 +286,7 @@ HWTEST_F_L0(JSPandaFileTest, SetLoadedAOTStatus_IsLoadedAOT)
     bool isLoadedAOT = pf->IsLoadedAOT();
     EXPECT_EQ(isLoadedAOT, false);
 
-    pf->SetLoadedAOTStatus(true);
+    pf->SetAOTFileInfoIndex(0);
     isLoadedAOT = pf->IsLoadedAOT();
     EXPECT_EQ(isLoadedAOT, true);
     JSPandaFileManager::RemoveJSPandaFile(pf);
