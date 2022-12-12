@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PATCH_PATCH_LOADER_H
 #define ECMASCRIPT_PATCH_PATCH_LOADER_H
 
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
@@ -25,6 +26,7 @@
 namespace panda::ecmascript {
 using EntityId = panda_file::File::EntityId;
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;
+using JSRecordInfo = JSPandaFile::JSRecordInfo;
 
 struct BaseMethodIndex {
     uint32_t constpoolNum {UINT32_MAX};
@@ -72,8 +74,10 @@ private:
                                  CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
 
     static CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
-    static void ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile);
-    static void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile);
+    static void ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                        const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos);
+    static void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                       const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos);
     static CUnorderedMap<CString, BaseMethodIndex> GenerateCachedMethods(JSThread *thread, const JSPandaFile *baseFile,
         const JSPandaFile *patchFile, const CMap<int32_t, JSTaggedValue> &baseConstpoolValues);
 

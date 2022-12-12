@@ -13,15 +13,33 @@
  * limitations under the License.
  */
 
+// normal function.
 function foo() {
   print("base foo")
 }
 
+// anonymous function.
 function A() {
   (()=>{
       print("anonymous: base A");
   })()
 }
 
+// object literal.
+function B() {
+    var obj_1 = {'a': 1, 'b': "base"}
+    var obj = {'a': 1, 'b': obj_1}
+
+    print(JSON.stringify(obj));
+}
+
+// array literal.
+function C() {
+    var arr = ["1", "2", "base"]
+    print(arr);
+}
+
 globalThis.foo = foo
 globalThis.A = A
+globalThis.B = B
+globalThis.C = C

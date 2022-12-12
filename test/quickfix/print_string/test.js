@@ -15,3 +15,5 @@
 
 globalThis.foo()
 globalThis.A()
+globalThis.B()
+globalThis.C()

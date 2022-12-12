@@ -16,10 +16,14 @@ QuickFix start load patch
 QuickFix load patch success
 patch foo
 anonymous: patch A
+{"a":1,"b":{"a":1,"b":"patch"}}
+1,2,patch
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch
 QuickFix unload patch success
 base foo
 anonymous: base A
+{"a":1,"b":{"a":1,"b":"base"}}
+1,2,base
 QuickFix Execute end
