@@ -141,11 +141,11 @@ private:
     void LowerTypedAnd(GateRef gate);
     void LowerTypedOr(GateRef gate);
     void LowerTypedXor(GateRef gate);
-    void LowerTypedInc(GateRef gate, GateType valueType);
-    void LowerTypedDec(GateRef gate, GateType valueType);
-    void LowerTypedNeg(GateRef gate, GateType valueType);
-    void LowerTypedNot(GateRef gate, GateType valueType);
-    void LowerTypedToBool(GateRef gate, GateType valueType);
+    void LowerTypedInc(GateRef gate, GateType value);
+    void LowerTypedDec(GateRef gate, GateType value);
+    void LowerTypedNeg(GateRef gate, GateType value);
+    void LowerTypedNot(GateRef gate, GateType value);
+    void LowerTypedToBool(GateRef gate, GateType value);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);

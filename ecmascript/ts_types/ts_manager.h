@@ -516,7 +516,7 @@ public:
 
     class IHClassData {
     public:
-        IHClassData(JSTaggedType ihc) : ihc_(ihc) {}
+        explicit IHClassData(JSTaggedType ihc) : ihc_(ihc) {}
 
         void Iterate(const RootVisitor &v)
         {
