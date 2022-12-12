@@ -133,7 +133,7 @@ JSTaggedValue BuiltinsArkTools::StartCpuProfiler(EcmaRuntimeCallInfo *info)
     std::string fileName = "";
     if (fileNameValue->IsString()) {
         JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, fileNameValue);
-        fileName = EcmaStringAccessor(str).ToStdString() + ".json";
+        fileName = EcmaStringAccessor(str).ToStdString() + ".cpuprofile";
     } else {
         fileName = GetProfileName();
     }
@@ -185,7 +185,7 @@ std::string BuiltinsArkTools::GetProfileName()
     profileName += time1;
     profileName += "TO";
     profileName += time2;
-    profileName += ".json";
+    profileName += ".cpuprofile";
     return profileName;
 }
 
