@@ -246,8 +246,8 @@ public:
 
     static MemMapAllocator *GetInstance()
     {
-        static MemMapAllocator vmAllocator_;
-        return &vmAllocator_;
+        static MemMapAllocator *vmAllocator_ = new MemMapAllocator();
+        return vmAllocator_;
     }
 
     MemMap Allocate(size_t size, size_t alignment, bool regular, int prot);
