@@ -1428,4 +1428,6 @@ private:
 }  // namespace panda::ecmascript
 extern "C" int step_ark_managed_native_frame(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz);
+extern "C" int get_ark_js_heap_crash_info(
+    int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz);
 #endif // ECMASCRIPT_FRAMES_H

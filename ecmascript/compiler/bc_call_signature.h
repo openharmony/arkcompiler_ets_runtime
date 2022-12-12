@@ -22,6 +22,7 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
+    T(HandleOverflowD6)                                 \
     T(HandleOverflowD7)                                 \
     T(HandleOverflowD8)                                 \
     T(HandleOverflowD9)                                 \
@@ -58,8 +59,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleOverflowF8)                                 \
     T(HandleOverflowF9)                                 \
     T(HandleOverflowFA)                                 \
-    T(HandleOverflowFB)                                 \
-    T(HandleOverflowFC)
+    T(HandleOverflowFB)
 
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
