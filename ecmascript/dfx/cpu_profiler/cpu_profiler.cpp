@@ -301,6 +301,10 @@ void CpuProfiler::GetFrameStack(FrameIterator &it, bool isLeaveFrame)
         if (firstFrame) {
             methodKey.state = GetRunningState(it, jsPandaFile, isLeaveFrame);
             firstFrame = false;
+            JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
+            if (function->IsCallNative()) {
+                methodKey.napiCallCount = napiCallCount_;
+            }
         }
         methodKey.methodIdentifier = GetMethodIdentifier(method, it);
 
@@ -333,6 +337,8 @@ bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
         if (firstFrame) {
             methodKey.state = RunningState::NAPI;
             firstFrame = false;
+            napiCallCount_++;
+            methodKey.napiCallCount = napiCallCount_;
         }
         methodKey.methodIdentifier = GetMethodIdentifier(method, it);
         if (stackInfo.count(methodKey) == 0) {

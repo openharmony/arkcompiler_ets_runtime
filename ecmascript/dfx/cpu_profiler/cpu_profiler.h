@@ -104,6 +104,7 @@ private:
     bool GetFrameStackCallNapi(JSThread *thread);
     void *GetMethodIdentifier(Method *method, const FrameIterator &it);
     RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool isLeaveFrame) const;
+    uint32_t napiCallCount_ = 0;
     bool isProfiling_ = false;
     bool outToFile_ = false;
     std::string fileName_ = "";
