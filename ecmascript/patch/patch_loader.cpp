@@ -38,7 +38,8 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     }
 
     // Get base constpool.
-    ParseAllConstpoolWithMerge(thread, baseFile);
+    const auto &patchRecordInfos = patchFile->GetJSRecordInfo();
+    ParseConstpoolWithMerge(thread, baseFile, patchRecordInfos);
     auto baseConstpoolValues = vm->FindConstpools(baseFile);
     if (!baseConstpoolValues.has_value()) {
         LOG_ECMA(ERROR) << "base constpool is empty";
@@ -47,7 +48,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // Get patch constpool.
-    ParseAllConstpoolWithMerge(thread, patchFile);
+    ParseConstpoolWithMerge(thread, patchFile, patchRecordInfos);
     auto patchConstpoolValues = vm->FindConstpools(patchFile);
     if (!patchConstpoolValues.has_value()) {
         LOG_ECMA(ERROR) << "patch constpool is empty";
@@ -74,7 +75,8 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     return PatchErrorCode::SUCCESS;
 }
 
-void PatchLoader::ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile)
+void PatchLoader::ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                          const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<ConstantPool> constpool;
@@ -90,29 +92,22 @@ void PatchLoader::ParseAllConstpoolWithMerge(JSThread *thread, const JSPandaFile
         }
     }
 
-    const auto &recordInfos = jsPandaFile->GetJSRecordInfo();
     const CString &fileName = jsPandaFile->GetJSPandaFileDesc();
-    for (const auto &item : recordInfos) {
+    for (const auto &item : patchRecordInfos) {
         const CString &recordName = item.first;
-
         vm->GetModuleManager()->HostResolveImportedModuleWithMerge(fileName, recordName);
-
-        uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(recordName);
-        ASSERT(mainMethodIndex != 0);
-        panda_file::File::EntityId mainMethodId(mainMethodIndex);
 
         if (!isNewVersion) {
             PandaFileTranslator::ParseFuncAndLiteralConstPool(vm, jsPandaFile, recordName, constpool);
-        } else {
-            constpool = vm->FindOrCreateConstPool(jsPandaFile, mainMethodId);
         }
     }
     if (isNewVersion) {
-        GenerateConstpoolCache(thread, jsPandaFile);
+        GenerateConstpoolCache(thread, jsPandaFile, patchRecordInfos);
     }
 }
 
-void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile)
+void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                        const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos)
 {
     ASSERT(jsPandaFile->IsNewVersion());
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -124,6 +119,11 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
         CString entry = jsPandaFile->ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+        if (patchRecordInfos.find(entry) == patchRecordInfos.end()) {
+            LOG_ECMA(DEBUG) << "skip record not in patch: " << entry;
+            continue;
+        }
+
         cda.EnumerateMethods([pf, jsPandaFile, thread, &entry](panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
             EcmaVM *vm = thread->GetEcmaVM();
@@ -174,10 +174,10 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
                         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
                             U_FALLTHROUGH;
                         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
-                            uint32_t memberMethodId = bcIns.GetId(0).AsRawValue();
+                            uint32_t constructorId = bcIns.GetId(0).AsRawValue();
                             uint32_t literalId = bcIns.GetId(1).AsRawValue();
                             // class constructor.
-                            ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), memberMethodId);
+                            ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), constructorId);
                             // class member function.
                             ConstantPool::GetClassLiteralFromCache(thread, constpool, literalId, entry);
                             break;

@@ -22,3 +22,15 @@ function A() {
       print("anonymous: patch A");
   })()
 }
+
+function B() {
+  var obj_1 = {'a': 1, 'b': "patch"}
+  var obj = {'a': 1, 'b': obj_1}
+
+  print(JSON.stringify(obj));
+}
+
+function C() {
+  var arr = ["1", "2", "patch"]
+  print(arr);
+}
