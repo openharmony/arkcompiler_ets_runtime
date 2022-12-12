@@ -44,10 +44,12 @@ enum class RunningState : size_t {
 struct MethodKey {
     void *methodIdentifier = nullptr;
     RunningState state = RunningState::OTHER;
+    uint32_t napiCallCount = 0;
     bool operator < (const MethodKey &methodKey) const
     {
         return state < methodKey.state ||
-               (state == methodKey.state && methodIdentifier < methodKey.methodIdentifier);
+               (state == methodKey.state && methodIdentifier < methodKey.methodIdentifier) ||
+               napiCallCount < methodKey.napiCallCount;
     }
 };
 
