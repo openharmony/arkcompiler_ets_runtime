@@ -1,1 +1,1 @@
-test.js;test;module;test.js
+test.js;test;esm;test.js;entry
