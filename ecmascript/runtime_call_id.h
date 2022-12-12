@@ -84,6 +84,7 @@ namespace panda::ecmascript {
     V(Ldnewobjrange)             \
     V(IsIn)                      \
     V(Instanceof)                \
+    V(InstanceofByHandler)       \
     V(NewObjApply)               \
     V(CallArg0)                  \
     V(CallArg1)                  \

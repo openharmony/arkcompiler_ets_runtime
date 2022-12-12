@@ -1391,6 +1391,8 @@ void PandaFileTranslator::UpdateICOffset(MethodLiteral *methodLiteral, uint8_t *
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
             offset = methodLiteral->UpdateSlotSizeWith8Bit(1);
             break;
+        case EcmaOpcode::INSTANCEOF_IMM8_V8:
+            U_FALLTHROUGH;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
             U_FALLTHROUGH;
         case EcmaOpcode::STOWNBYVALUE_IMM8_V8_V8:
