@@ -28,7 +28,6 @@ namespace panda::ecmascript {
 JSThread *JSThread::Create(Runtime *runtime, PandaVM *vm)
 {
     auto jsThread = new JSThread(runtime, vm);
-    jsThread->nativeAreaAllocator_ = EcmaVM::Cast(vm)->GetNativeAreaAllocator();
     jsThread->heapRegionAllocator_ = EcmaVM::Cast(vm)->GetHeapRegionAllocator();
     // algin with 16
     jsThread->frameBase_ = static_cast<JSTaggedType *>(
@@ -43,9 +42,10 @@ JSThread::JSThread(Runtime *runtime, PandaVM *vm)
     : ManagedThread(GetCurrentThreadId(), runtime->GetInternalAllocator(), vm,
                     Thread::ThreadType::THREAD_TYPE_MANAGED)
 {
+    nativeAreaAllocator_ = EcmaVM::Cast(vm)->GetNativeAreaAllocator();
     SetLanguageContext(runtime->GetLanguageContext(panda_file::SourceLang::ECMASCRIPT));
     auto chunk = EcmaVM::Cast(vm)->GetChunk();
-    globalStorage_ = chunk->New<EcmaGlobalStorage>(chunk);
+    globalStorage_ = chunk->New<EcmaGlobalStorage>(nativeAreaAllocator_);
     internalCallParams_ = new InternalCallParams();
     propertiesCache_ = new PropertiesCache();
 }

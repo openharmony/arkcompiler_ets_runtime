@@ -478,7 +478,7 @@ private:
 
     // VM resources.
     CString snapshotFileName_;
-    ChunkVector<JSMethod *> nativeMethods_;
+    ChunkUnorderedMap<const void *, JSMethod *> nativeMethodMaps_;
     ModuleManager *moduleManager_ {nullptr};
     TSLoader *tsLoader_ {nullptr};
     bool optionalLogEnabled_ {false};

@@ -19,6 +19,7 @@
 #include "ecmascript/builtins.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/class_linker/panda_file_translator.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/jspandafile/program_object-inl.h"
 #include "ecmascript/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/ecma_module.h"
@@ -110,7 +111,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options)
       chunk_(nativeAreaAllocator_.get()),
       arrayBufferDataList_(&chunk_),
       frameworkProgramMethods_(&chunk_),
-      nativeMethods_(&chunk_)
+      nativeMethodMaps_(&chunk_)
 {
     options_ = std::move(options);
     icEnable_ = options_.IsIcEnable();
@@ -401,13 +402,17 @@ JSMethod *EcmaVM::GetMethodForNativeFunction(const void *func)
     uint32_t accessFlags = ACC_PUBLIC | ACC_STATIC | ACC_FINAL | ACC_NATIVE;
     uint32_t numArgs = 2;  // function object and this
 
+    auto iter = nativeMethodMaps_.find(func);
+    if (iter != nativeMethodMaps_.end()) {
+        return iter->second;
+    }
     auto method = chunk_.New<JSMethod>(nullptr, panda_file::File::EntityId(0), panda_file::File::EntityId(0),
                                        accessFlags, numArgs, nullptr);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
 
-    nativeMethods_.push_back(method);
-    return nativeMethods_.back();
+    nativeMethodMaps_.emplace(func, method);
+    return method;
 }
 
 JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile)
@@ -766,10 +771,10 @@ void EcmaVM::ExecuteModule(const std::string &moduleFile, std::string_view entry
 
 void EcmaVM::ClearNativeMethodsData()
 {
-    for (auto iter : nativeMethods_) {
-        chunk_.Delete(iter);
+    for (auto iter : nativeMethodMaps_) {
+        chunk_.Delete(iter.second);
     }
-    nativeMethods_.clear();
+    nativeMethodMaps_.clear();
 }
 
 void EcmaVM::SetupRegExpResultCache()

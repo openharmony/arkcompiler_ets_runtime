@@ -1055,9 +1055,7 @@ void *SnapShotSerialize::NativePointerSlotBitToAddr(SlotBit native)
     uint32_t index = native.GetObjectIndex();
     void *addr = nullptr;
 
-    if (index < NATIVE_METHOD_SIZE) {
-        addr = reinterpret_cast<void *>(vm_->nativeMethods_.at(index));
-    } else if (index < NATIVE_METHOD_SIZE + PROGRAM_NATIVE_METHOD_BEGIN) {
+    if (index < NATIVE_METHOD_SIZE + PROGRAM_NATIVE_METHOD_BEGIN) {
         addr = reinterpret_cast<void *>(g_nativeTable[index]);
     } else {
         addr = ToVoidPtr(pandaMethod_.at(index - PROGRAM_NATIVE_METHOD_BEGIN - NATIVE_METHOD_SIZE));

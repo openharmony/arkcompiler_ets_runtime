@@ -16,7 +16,6 @@
 #define ECMASCRIPT_ECMA_GLOABL_STORAGE_INL_H
 
 #include "ecmascript/ecma_global_storage.h"
-#include "ecmascript/mem/chunk.h"
 
 namespace panda::ecmascript {
 inline EcmaGlobalStorage::NodeList *EcmaGlobalStorage::NodeList::NodeToNodeList(
@@ -113,7 +112,7 @@ uintptr_t EcmaGlobalStorage::NewGlobalHandleImplement(NodeList **storage, NodeLi
 {
     if ((*storage)->IsFull() && *freeList == nullptr) {
         // alloc new block
-        auto block = chunk_->New<NodeList>(isWeak);
+        auto block = allocator_->New<NodeList>(isWeak);
         block->LinkTo(*storage);
         *storage = block;
     }
@@ -177,7 +176,7 @@ inline void EcmaGlobalStorage::DisposeGlobalHandle(uintptr_t nodeAddr)
         if (*last == list) {
             *last = list->GetPrev();
         }
-        chunk_->Delete(list);
+        allocator_->Delete(list);
     } else {
         // Add to freeList
         if (list != *freeList && list->GetFreeNext() == nullptr && list->GetFreePrev() == nullptr) {
