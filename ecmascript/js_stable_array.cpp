@@ -71,7 +71,7 @@ JSTaggedValue JSStableArray::Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo
         elements->Set(thread, index, JSTaggedValue::Hole());
     }
     receiver->SetArrayLength(thread, index);
-    return result;
+    return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
 JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
@@ -192,7 +192,7 @@ JSTaggedValue JSStableArray::Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallIn
         elements->Set(thread, index, JSTaggedValue::Hole());
     }
     receiver->SetArrayLength(thread, index);
-    return result;
+    return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
 JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
