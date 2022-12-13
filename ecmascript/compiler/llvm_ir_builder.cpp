@@ -149,6 +149,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ALLOCA, &LLVMIRBuilder::HandleAlloca},
         {OpCode::ARG, &LLVMIRBuilder::HandleParameter},
         {OpCode::CONSTANT, &LLVMIRBuilder::HandleConstant},
+        {OpCode::CONSTSTRING, &LLVMIRBuilder::HandleConstString},
         {OpCode::RELOCATABLE_DATA, &LLVMIRBuilder::HandleRelocatableData},
         {OpCode::ZEXT, &LLVMIRBuilder::HandleZExtInt},
         {OpCode::SEXT, &LLVMIRBuilder::HandleSExtInt},
@@ -1054,6 +1055,21 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
         UNREACHABLE();
     }
     gate2LValue_[gate] = llvmValue;
+}
+
+void LLVMIRBuilder::HandleConstString(GateRef gate)
+{
+    const std::string str = acc_.GetConstantString(gate); // 64: bit width
+    VisitConstString(gate, str);
+}
+
+void LLVMIRBuilder::VisitConstString(GateRef gate, const std::string &str) // 64: bit width
+{
+    ASSERT(acc_.GetMachineType(gate) == MachineType::ARCH);
+    LLVMValueRef llvmValue1 = LLVMConstString(str.c_str(), str.size(), 0);
+    LLVMValueRef addr = LLVMBuildAlloca(builder_, LLVMTypeOf(llvmValue1), "");
+    LLVMBuildStore(builder_, llvmValue1, addr);
+    gate2LValue_[gate] = addr;
 }
 
 void LLVMIRBuilder::HandleRelocatableData(GateRef gate)

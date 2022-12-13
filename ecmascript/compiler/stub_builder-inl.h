@@ -60,6 +60,11 @@ inline GateRef StubBuilder::Int64(int64_t value)
     return env_->GetBuilder()->Int64(value);
 }
 
+inline GateRef StubBuilder::StringPtr(const std::string &str)
+{
+    return env_->GetBuilder()->StringPtr(str);
+}
+
 inline GateRef StubBuilder::IntPtr(int64_t value)
 {
     return env_->Is32Bit() ? Int32(value) : Int64(value);
@@ -2115,6 +2120,11 @@ inline void StubBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool
     GateRef mask = Int32(((1LU << JSHClass::ExtensibleBit::SIZE) - 1) << JSHClass::ExtensibleBit::START_BIT);
     bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
     Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
+}
+
+inline void StubBuilder::Comment(GateRef glue, const std::string &str)
+{
+    CallNGCRuntime(glue, RTSTUB_ID(Comment), { StringPtr(str) });
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

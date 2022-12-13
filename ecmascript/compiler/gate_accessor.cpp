@@ -165,6 +165,13 @@ uint64_t GateAccessor::GetConstantValue(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
+const std::string GateAccessor::GetConstantString(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONSTSTRING);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetStringMetaData()->GetString();
+}
+
 uint32_t GateAccessor::GetBytecodeIndex(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JS_BYTECODE);

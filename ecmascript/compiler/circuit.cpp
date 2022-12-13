@@ -401,6 +401,13 @@ GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
     return gate;
 }
 
+GateRef Circuit::GetConstantStringGate(MachineType machineType, const std::string &str,
+                                       GateType type)
+{
+    auto gate = NewGate(metaBuilder_.ConstString(str), machineType, type);
+    return gate;
+}
+
 GateRef Circuit::NewArg(MachineType machineType, size_t index,
                         GateType type, GateRef argRoot)
 {

@@ -366,6 +366,12 @@ void RuntimeStubs::DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, con
     LOG_INTERPRETER(DEBUG) << inst;
 }
 
+void RuntimeStubs::Comment(uintptr_t argStr)
+{
+    std::string str(reinterpret_cast<char *>(argStr));
+    LOG_ECMA(DEBUG) << str;
+}
+
 void RuntimeStubs::PGOProfiler(uintptr_t argGlue, uintptr_t func)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);

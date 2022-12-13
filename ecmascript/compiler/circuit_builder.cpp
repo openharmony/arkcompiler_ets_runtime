@@ -235,6 +235,11 @@ GateRef CircuitBuilder::IntPtr(int64_t val)
     return GetCircuit()->GetConstantGate(MachineType::ARCH, val, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::StringPtr(const std::string &str)
+{
+    return GetCircuit()->GetConstantStringGate(MachineType::ARCH, str, GateType::NJSValue());
+}
+
 GateRef CircuitBuilder::RelocatableData(uint64_t val)
 {
     return GetCircuit()->NewGate(circuit_->RelocatableData(val),
