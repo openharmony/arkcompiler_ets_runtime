@@ -19,18 +19,18 @@
 #include "ecmascript/js_tagged_value.h"
 
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/chunk.h"
+#include "ecmascript/mem/native_area_allocator.h"
 
 namespace panda::ecmascript {
 class EcmaGlobalStorage {
 public:
     static const int32_t GLOBAL_BLOCK_SIZE = 256;
 
-    explicit EcmaGlobalStorage(Chunk *chunk) : chunk_(chunk)
+    explicit EcmaGlobalStorage(NativeAreaAllocator *allocator) : allocator_(allocator)
     {
-        ASSERT(chunk != nullptr);
-        topGlobalNodes_ = lastGlobalNodes_ = chunk_->New<NodeList>(false);
-        topWeakGlobalNodes_ = lastWeakGlobalNodes_ = chunk_->New<NodeList>(true);
+        ASSERT(allocator != nullptr);
+        topGlobalNodes_ = lastGlobalNodes_ = allocator_->New<NodeList>(false);
+        topWeakGlobalNodes_ = lastWeakGlobalNodes_ = allocator_->New<NodeList>(true);
     }
 
     ~EcmaGlobalStorage()
@@ -40,14 +40,14 @@ public:
         while (next != nullptr) {
             current = next;
             next = current->GetNext();
-            chunk_->Delete(current);
+            allocator_->Delete(current);
         }
 
         next = topWeakGlobalNodes_;
         while (next != nullptr) {
             current = next;
             next = current->GetNext();
-            chunk_->Delete(current);
+            allocator_->Delete(current);
         }
     }
 
@@ -254,7 +254,7 @@ private:
 
     inline uintptr_t NewGlobalHandleImplement(NodeList **storage, NodeList **freeList, bool isWeak, JSTaggedType value);
 
-    Chunk *chunk_ {nullptr};
+    NativeAreaAllocator *allocator_ {nullptr};
     NodeList *topGlobalNodes_ {nullptr};
     NodeList *lastGlobalNodes_ {nullptr};
     NodeList *freeListNodes_ {nullptr};
