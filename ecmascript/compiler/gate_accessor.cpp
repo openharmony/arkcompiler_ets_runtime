@@ -124,8 +124,12 @@ TypedBinOp GateAccessor::GetTypedBinaryOp(GateRef gate) const
 
 GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::TYPE_CHECK
-        || GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK);
+    ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::STABLE_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::INDEX_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
@@ -133,9 +137,9 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
 
 GateType GateAccessor::GetLeftType(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::TYPED_UNARY_OP
-        || GetOpCode(gate) == OpCode::TYPED_BINARY_OP
-        || GetOpCode(gate) == OpCode::TYPE_CONVERT);
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_UNARY_OP ||
+           GetOpCode(gate) == OpCode::TYPED_BINARY_OP ||
+           GetOpCode(gate) == OpCode::TYPE_CONVERT);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GatePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetLeftType();
@@ -143,8 +147,8 @@ GateType GateAccessor::GetLeftType(GateRef gate) const
 
 GateType GateAccessor::GetRightType(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP
-        || GetOpCode(gate) == OpCode::TYPE_CONVERT);
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP ||
+           GetOpCode(gate) == OpCode::TYPE_CONVERT);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GatePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetRightType();
@@ -152,8 +156,8 @@ GateType GateAccessor::GetRightType(GateRef gate) const
 
 size_t GateAccessor::GetVirtualRegisterIndex(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::SAVE_REGISTER
-        || GetOpCode(gate) == OpCode::RESTORE_REGISTER);
+    ASSERT(GetOpCode(gate) == OpCode::SAVE_REGISTER ||
+           GetOpCode(gate) == OpCode::RESTORE_REGISTER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return static_cast<size_t>(gatePtr->GetOneParameterMetaData()->GetValue());
 }

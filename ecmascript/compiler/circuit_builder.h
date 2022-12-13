@@ -222,8 +222,12 @@ public:
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
     // low level interface
+    GateRef ArrayCheck(GateRef gate);
+    GateRef StableArrayCheck(GateRef gate);
+    GateRef TypedArrayCheck(GateType type, GateRef gate);
+    GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
-    GateRef TypeCheck(GateType type, GateRef gate);
+    GateRef PrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef function, GateRef id);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
