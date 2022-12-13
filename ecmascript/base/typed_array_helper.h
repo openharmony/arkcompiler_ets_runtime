@@ -64,6 +64,8 @@ private:
                                                const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArrayBuffer(JSThread *thread, EcmaVM *ecmaVm, const JSHandle<JSObject> &obj,
                                                        uint64_t length, const DataViewType arrayType);
+    static JSTaggedValue FastCopyElementFromArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
+                                                         const DataViewType arrayType);
 };
 }  // namespace panda::ecmascript::base
 
