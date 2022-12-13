@@ -88,6 +88,7 @@ enum CommandValues {
     OPTION_BUILTINS_DTS,
     OPTION_TRACE_BC,
     OPTION_TRACE_DEOPT,
+    OPTION_DEOPT_THRESHOLD,
     OPTION_LOG_LEVEL,
     OPTION_LOG_DEBUG,
     OPTION_LOG_INFO,
@@ -821,6 +822,16 @@ public:
     {
         return traceDeopt_;
     }
+
+    void SetDeoptThreshold(uint16_t value)
+    {
+        deoptThreshold_ = value;
+    }
+
+    uint32_t GetDeoptThreshold() const
+    {
+        return deoptThreshold_;
+    }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -889,6 +900,7 @@ private:
     uint32_t pgoHotnessThreshold_ {2};
     std::string pgoProfilerPath_ {""};
     bool traceDeopt_{false};
+    uint32_t deoptThreshold_ {10};
 };
 }  // namespace panda::ecmascript
 
