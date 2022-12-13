@@ -989,8 +989,8 @@ void HeapSnapshot::AddSyntheticRoot()
         ROOT_EDGE_BUILDER_CORE(type, slot);
     };
     RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
-        ([[maybe_unused]] Root type, [[maybe_unused]]ObjectSlot base, [[maybe_unused]]ObjectSlot derived,
-         [[maybe_unused]]uintptr_t baseOldObject) {
+        ([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
+         [[maybe_unused]] uintptr_t baseOldObject) {
     };
 
     RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type,

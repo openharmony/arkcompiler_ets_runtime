@@ -197,8 +197,8 @@ JSHandle<EcmaString> CjsModule::ResolveFilenameFromNative(JSThread *thread, JSTa
 }
 
 JSTaggedValue CjsModule::Require(JSThread *thread, JSHandle<EcmaString> &request,
-                                 [[maybe_unused]]JSHandle<CjsModule> &parent,
-                                 [[maybe_unused]]bool isMain)
+                                 [[maybe_unused]] JSHandle<CjsModule> &parent,
+                                 [[maybe_unused]] bool isMain)
 {
     Load(thread, request);
     return JSTaggedValue::Undefined();

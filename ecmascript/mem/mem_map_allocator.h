@@ -46,7 +46,7 @@ public:
     NO_COPY_SEMANTIC(MemMapPool);
     NO_MOVE_SEMANTIC(MemMapPool);
 
-    MemMap GetMemFromCache([[maybe_unused]]size_t size)
+    MemMap GetMemFromCache([[maybe_unused]] size_t size)
     {
         ASSERT(size == REGULAR_MMAP_SIZE);
         os::memory::LockHolder lock(lock_);

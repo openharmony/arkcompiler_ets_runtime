@@ -229,7 +229,7 @@ void ParallelEvacuator::UpdateRoot()
         }
     };
     RootBaseAndDerivedVisitor gcUpdateDerived =
-        []([[maybe_unused]]Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
+        []([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
         if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
             derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
         }

@@ -501,7 +501,7 @@ LLVMValueRef LLVMIRBuilder::GetFunction(LLVMValueRef glue, const CallSignature *
     return callee;
 }
 
-LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]]LLVMValueRef glue,
+LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]] LLVMValueRef glue,
     const CallSignature *signature, LLVMValueRef reloc) const
 {
     LLVMTypeRef rtfuncType = llvmModule_->GetFuncType(signature);
@@ -1664,8 +1664,8 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    [[maybe_unused]]auto e1ValCode = acc_.GetMachineType(e1);
-    [[maybe_unused]]auto e2ValCode = acc_.GetMachineType(e2);
+    [[maybe_unused]] auto e1ValCode = acc_.GetMachineType(e1);
+    [[maybe_unused]] auto e2ValCode = acc_.GetMachineType(e2);
     ASSERT((e1ValCode == e2ValCode) ||
         (compCfg_->Is32Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I32)) ||
         (compCfg_->Is64Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I64)) ||

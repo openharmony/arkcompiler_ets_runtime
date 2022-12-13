@@ -943,7 +943,7 @@ HWTEST_F_L0(BuiltinsAtomicsTest, Notify)
     ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<int32_t>(2)));
 
     auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    [[maybe_unused]]JSTaggedValue result = BuiltinsAtomics::Notify(ecmaRuntimeCallInfo);
+    [[maybe_unused]] JSTaggedValue result = BuiltinsAtomics::Notify(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result, JSTaggedValue(0));
 }

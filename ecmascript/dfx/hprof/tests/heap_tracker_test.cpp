@@ -38,7 +38,7 @@ public:
     TestProgress() = default;
     ~TestProgress() = default;
 
-    void ReportProgress([[maybe_unused]]int32_t done, [[maybe_unused]]int32_t total) override {}
+    void ReportProgress([[maybe_unused]] int32_t done, [[maybe_unused]] int32_t total) override {}
 };
 
 class TestStream : public Stream {
@@ -52,7 +52,7 @@ public:
         static const int heapProfilerChunkSise = 100_KB;
         return heapProfilerChunkSise;
     }
-    bool WriteChunk([[maybe_unused]]char *data, [[maybe_unused]]int32_t size) override
+    bool WriteChunk([[maybe_unused]] char *data, [[maybe_unused]] int32_t size) override
     {
         return true;
     }
@@ -61,11 +61,11 @@ public:
         return testStream_.good();
     }
 
-    void UpdateHeapStats([[maybe_unused]]HeapStat* updateData, [[maybe_unused]]int32_t count) override
+    void UpdateHeapStats([[maybe_unused]] HeapStat* updateData, [[maybe_unused]] int32_t count) override
     {
     }
 
-    void UpdateLastSeenObjectId([[maybe_unused]]int32_t lastSeenObjectId) override
+    void UpdateLastSeenObjectId([[maybe_unused]] int32_t lastSeenObjectId) override
     {
     }
 
