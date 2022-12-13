@@ -94,6 +94,11 @@ public:
         return desc_;
     }
 
+    uint32_t GetChecksum() const
+    {
+        return checksum_;
+    }
+
     const panda_file::File *GetPandaFile() const
     {
         return pf_;
@@ -309,6 +314,7 @@ private:
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
 
     uint32_t constpoolIndex_ {0};
+    uint32_t checksum_ {0};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
