@@ -67,6 +67,7 @@ public:
     Region *GetSweepingRegionSafe();
     void AddSweptRegionSafe(Region *region);
     Region *GetSweptRegionSafe();
+    void FreeRegionFromSpace(Region *region);
     Region *TryToGetSuitableSweptRegion(size_t size);
 
     void FreeRegion(Region *current, bool isMain = true);
@@ -116,6 +117,7 @@ public:
     NO_COPY_SEMANTIC(OldSpace);
     NO_MOVE_SEMANTIC(OldSpace);
 
+    Region *TrySweepToGetSuitableRegion(size_t size);
     Region *TryToGetExclusiveRegion(size_t size);
 
     // CSet

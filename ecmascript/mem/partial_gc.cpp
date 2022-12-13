@@ -46,6 +46,9 @@ void PartialGC::RunPhases()
     Mark();
     Sweep();
     Evacuate();
+    if (heap_->IsFullMark()) {
+        heap_->GetSweeper()->PostTask();
+    }
     Finish();
     heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticPartialGC(markingInProgress_, clockScope.GetPauseTime(), freeSize_);
     LOG_GC(DEBUG) << "PartialGC::RunPhases " << clockScope.TotalSpentTime();
