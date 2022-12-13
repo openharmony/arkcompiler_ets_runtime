@@ -87,6 +87,7 @@ private:
     void LowerTypedStObjByName(GateRef gate, bool isThis);
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
+    void LowerTypedLdObjByValue(GateRef gate, bool isThis);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
     void LowerTypedNewObjRange(GateRef gate);
     void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget);
@@ -95,7 +96,7 @@ private:
     void LowerCallThis1Imm8V8V8(GateRef gate);
     bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
 
-    // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
+    // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed, or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
 
     template<TypedBinOp Op>
@@ -109,7 +110,6 @@ private:
     GateRef AppendOverflowCheck(GateRef typeCheck, GateRef intVal);
 
     void AddProfiling(GateRef gate);
-
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;

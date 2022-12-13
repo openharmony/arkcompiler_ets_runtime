@@ -158,7 +158,7 @@ void GuardEliminating::TrustedTypePropagate(std::queue<GateRef>& workList, const
         }
     }
     for (auto check : checkList) {
-        ASSERT(acc_.GetOpCode(check) == OpCode::TYPE_CHECK);
+        ASSERT(acc_.GetOpCode(check) == OpCode::PRIMITIVE_TYPE_CHECK);
         auto phi = acc_.GetValueIn(check, 0);
         if ((trustedInCount.count(phi) == 0) ||
             (trustedInCount.at(phi) != acc_.GetNumValueIn(phi)) ||
@@ -252,7 +252,7 @@ void GuardEliminating::Run()
         if (IsTrustedType(gate)) {
             workList.push(gate);
         }
-        if (acc_.GetOpCode(gate) == OpCode::TYPE_CHECK) {
+        if (acc_.GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK) {
             checkList.emplace_back(gate);
         }
         if (HasGuard(gate)) {

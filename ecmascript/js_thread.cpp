@@ -342,12 +342,14 @@ void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver)
     auto env = GetEcmaVM()->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
+        SetStableArrayElementsGuardians(JSTaggedValue::False());
         stableArrayElementsGuardians_ = false;
     }
 }
 
 void JSThread::ResetGuardians()
 {
+    SetStableArrayElementsGuardians(JSTaggedValue::True());
     stableArrayElementsGuardians_ = true;
 }
 
