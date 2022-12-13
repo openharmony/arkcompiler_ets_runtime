@@ -124,7 +124,7 @@ void Snapshot::SerializeBuiltins(const CString &fileName)
 
     auto globalEnvHandle = vm_->GetGlobalEnv();
     auto constant = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    constant->VisitRangeSlot([&objectQueue, &data, &processor]([[maybe_unused]]Root type,
+    constant->VisitRangeSlot([&objectQueue, &data, &processor]([[maybe_unused]] Root type,
                                                                ObjectSlot start, ObjectSlot end) {
         processor.EncodeTaggedObjectRange(start, end, &objectQueue, &data);
     });

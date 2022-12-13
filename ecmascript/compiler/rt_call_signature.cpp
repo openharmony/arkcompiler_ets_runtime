@@ -40,7 +40,7 @@ void RuntimeStubCSigns::Initialize()
 #define INIT_ASM_SIGNATURES(name)                                                     \
     callSigns_[RuntimeStubCSigns::ID_##name].SetName(std::string("RTStub_") + #name); \
     callSigns_[RuntimeStubCSigns::ID_##name].SetConstructor(                          \
-        []([[maybe_unused]]void* arg) {                                               \
+        []([[maybe_unused]] void* arg) {                                              \
             return static_cast<void*>(new name##Stub());                              \
     });
 

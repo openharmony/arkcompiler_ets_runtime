@@ -360,7 +360,7 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_end(args);
 }
 
-void RuntimeStubs::DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, const uint8_t *pc)
+void RuntimeStubs::DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc)
 {
     BytecodeInstruction inst(pc);
     LOG_INTERPRETER(DEBUG) << inst;
@@ -1913,7 +1913,8 @@ DEF_RUNTIME_STUBS(SlowFlattenString)
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
+JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,
+                                               JSTaggedValue *argvPtr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1989,7 +1990,7 @@ int32_t RuntimeStubs::DoubleToInt(double x)
     return base::NumberHelper::DoubleToInt(x, base::INT32_BITS);
 }
 
-void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue,
+void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset)
 {
     Region *region = Region::ObjectAddressToRange(object);
@@ -1997,7 +1998,7 @@ void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue,
     return region->InsertOldToNewRSet(slotAddr);
 }
 
-void RuntimeStubs::MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
+void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset, TaggedObject *value)
 {
     uintptr_t slotAddr = object + offset;
@@ -2009,7 +2010,7 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
     Barriers::Update(slotAddr, objectRegion, value, valueRegion);
 }
 
-void RuntimeStubs::StoreBarrier([[maybe_unused]]uintptr_t argGlue,
+void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset, TaggedObject *value)
 {
     uintptr_t slotAddr = object + offset;

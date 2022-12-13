@@ -324,15 +324,15 @@ public:
     }
 
     static void DebugPrint(int fmtMessageId, ...);
-    static void DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, const uint8_t *pc);
+    static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
     static void PGOProfiler(uintptr_t argGlue, uintptr_t func);
     static void FatalPrint(int fmtMessageId, ...);
-    static void MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
+    static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
-    static void StoreBarrier([[maybe_unused]]uintptr_t argGlue,
+    static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
-    static JSTaggedType CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
-    static void InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue, uintptr_t object, size_t offset);
+    static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argv);
+    static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
     static JSTaggedType FloatMod(double x, double y);
     static JSTaggedType FloatSqrt(double x);

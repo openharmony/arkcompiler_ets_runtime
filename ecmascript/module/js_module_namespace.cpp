@@ -219,7 +219,7 @@ bool ModuleNamespace::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue
     return false;
 }
 
-bool ModuleNamespace::SetPrototype([[maybe_unused]]const JSHandle<JSTaggedValue> &obj,
+bool ModuleNamespace::SetPrototype([[maybe_unused]] const JSHandle<JSTaggedValue> &obj,
                                    const JSHandle<JSTaggedValue> &proto)
 {
     ASSERT(obj->IsModuleNamespace());

@@ -243,7 +243,7 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
     auto globalConst = const_cast<GlobalEnvConstants *>(ecmaVm2->GetJSThread()->GlobalConstants());
     size_t hclassEndIndex = static_cast<size_t>(ConstantIndex::UNDEFINED_INDEX);
     size_t hclassIndex = 0;
-    globalConst->VisitRangeSlot([&hclassIndex, &hclassEndIndex]([[maybe_unused]]Root type,
+    globalConst->VisitRangeSlot([&hclassIndex, &hclassEndIndex]([[maybe_unused]] Root type,
                                                                 ObjectSlot start, ObjectSlot end) {
         while (start < end) {
             JSTaggedValue object(start.GetTaggedType());

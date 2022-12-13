@@ -526,7 +526,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     }
 }
 
-void OptimizedCall::ConstructorJSCall([[maybe_unused]]ExtendedAssembler *assembler)
+void OptimizedCall::ConstructorJSCall([[maybe_unused]] ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ConstructorJSCall));
     Register jsfunc(X1);
@@ -1093,7 +1093,7 @@ void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
     GenJSCallWithArgV(assembler, false);
 }
 
-void OptimizedCall::ConstructorJSCallWithArgV([[maybe_unused]]ExtendedAssembler *assembler)
+void OptimizedCall::ConstructorJSCallWithArgV([[maybe_unused]] ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ConstructorJSCallWithArgV));
     Register sp(SP);
