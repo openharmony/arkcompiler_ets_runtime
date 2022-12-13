@@ -58,3 +58,15 @@ print(arr5);
 var arr6 = [1,2,3,4,5];
 arr6.reverse();
 print(arr6);
+
+var arr7 = [];
+arr7[2] = 10;
+print(arr7.pop());  // 10
+print(arr7.pop());  // undefined
+print(arr7.pop());  // undefined
+
+var arr8 = [];
+arr8[1] = 8;
+print(arr8.shift());  // undefined
+print(arr8.shift());  // 8
+print(arr8.shift());  // undefined
