@@ -43,6 +43,7 @@ public:
     NO_COPY_SEMANTIC(ConcurrentSweeper);
     NO_MOVE_SEMANTIC(ConcurrentSweeper);
 
+    void PostTask(bool fullGC = false);
     void Sweep(bool fullGC = false);
 
     void WaitAllTaskFinished();

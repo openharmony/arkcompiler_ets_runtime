@@ -29,6 +29,20 @@ ConcurrentSweeper::ConcurrentSweeper(Heap *heap, EnableConcurrentSweepType type)
 {
 }
 
+void ConcurrentSweeper::PostTask(bool fullGC)
+{
+    if (ConcurrentSweepEnabled()) {
+        if (!fullGC) {
+            Taskpool::GetCurrentTaskpool()->PostTask(
+                std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, OLD_SPACE));
+        }
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, NON_MOVABLE));
+        Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, MACHINE_CODE_SPACE));
+    }
+}
+
 void ConcurrentSweeper::Sweep(bool fullGC)
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ConcurrentSweepingInitialize);
@@ -45,14 +59,6 @@ void ConcurrentSweeper::Sweep(bool fullGC)
         for (int type = startSpaceType_; type < FREE_LIST_NUM; type++) {
             remainingTaskNum_[type] = FREE_LIST_NUM - startSpaceType_;
         }
-        if (!fullGC) {
-            Taskpool::GetCurrentTaskpool()->PostTask(
-                std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, OLD_SPACE));
-        }
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, NON_MOVABLE));
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, MACHINE_CODE_SPACE));
     } else {
         if (!fullGC) {
             heap_->GetOldSpace()->Sweep();

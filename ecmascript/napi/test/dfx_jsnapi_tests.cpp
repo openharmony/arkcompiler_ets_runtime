@@ -288,6 +288,7 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
 
     bool fullGC = false;
     sweeper->Sweep(fullGC);
+    sweeper->PostTask();
     DFXJSNApi::NotifyApplicationState(vm_, true);
     EXPECT_TRUE(concurrentMarker->IsDisabled());
     EXPECT_TRUE(sweeper->IsRequestDisabled());
