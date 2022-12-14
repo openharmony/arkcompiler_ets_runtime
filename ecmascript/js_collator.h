@@ -63,7 +63,8 @@ public:
     icu::Collator *GetIcuCollator() const
     {
         ASSERT(GetIcuField().IsJSNativePointer());
-        auto result = JSNativePointer::Cast(GetIcuField().GetTaggedObject())->GetExternalPointer();
+        JSNativePointer *nativePointer = JSNativePointer::Cast(GetIcuField().GetTaggedObject());
+        auto result = nativePointer->GetExternalPointer();
         return reinterpret_cast<icu::Collator *>(result);
     }
 
@@ -82,7 +83,10 @@ public:
     // 11.1.1 InitializeCollator ( collator, locales, options )
     static JSHandle<JSCollator> InitializeCollator(JSThread *thread, const JSHandle<JSCollator> &collator,
                                                    const JSHandle<JSTaggedValue> &locales,
-                                                   const JSHandle<JSTaggedValue> &options);
+                                                   const JSHandle<JSTaggedValue> &options,
+                                                   bool forIcuCache = false);
+
+    static icu::Collator *GetCachedIcuCollator(JSThread *thread, const JSHandle<JSTaggedValue> &locales);
 
     // 11.3.4 Intl.Collator.prototype.resolvedOptions ()
     static JSHandle<JSObject> ResolvedOptions(JSThread *thread, const JSHandle<JSCollator> &collator);

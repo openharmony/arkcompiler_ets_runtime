@@ -193,7 +193,8 @@ JSHandle<EcmaString> JSDateTimeFormat::ToValueString(JSThread *thread, const Val
 JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *thread,
                                                                       const JSHandle<JSDateTimeFormat> &dateTimeFormat,
                                                                       const JSHandle<JSTaggedValue> &locales,
-                                                                      const JSHandle<JSTaggedValue> &options)
+                                                                      const JSHandle<JSTaggedValue> &options,
+                                                                      IcuCacheType type)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -449,7 +450,28 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     std::unique_ptr<icu::Calendar> calendarPtr = BuildCalendar(icuLocale, *icuTimeZone);
     ASSERT_PRINT(calendarPtr != nullptr, "invalid calendar");
     simpleDateFormatIcu->adoptCalendar(calendarPtr.release());
-    SetIcuSimpleDateFormat(thread, dateTimeFormat, *simpleDateFormatIcu, JSDateTimeFormat::FreeSimpleDateFormat);
+    if (type != IcuCacheType::NOT_CACHE) {
+        std::string cacheEntry =
+            locales->IsUndefined() ? "" : JSLocale::ConvertToStdString(JSHandle<EcmaString>::Cast(locales));
+        switch (type) {
+            case IcuCacheType::DEFAULT:
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatDefault, cacheEntry,
+                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                break;
+            case IcuCacheType::DATE:
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatDate, cacheEntry,
+                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                break;
+            case IcuCacheType::TIME:
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatTime, cacheEntry,
+                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                break;
+            default:
+                UNREACHABLE();
+        }
+    } else {
+        SetIcuSimpleDateFormat(thread, dateTimeFormat, *simpleDateFormatIcu, JSDateTimeFormat::FreeSimpleDateFormat);
+    }
 
     // Set dateTimeFormat.[[iso8601]].
     bool iso8601 = strstr(icuLocale.getName(), "calendar=iso8601") != nullptr;
@@ -471,6 +493,20 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
 
     // 39. Return dateTimeFormat.
     return dateTimeFormat;
+}
+
+icu::SimpleDateFormat *JSDateTimeFormat::GetCachedIcuSimpleDateFormat(JSThread *thread,
+                                                                      const JSHandle<JSTaggedValue> &locales,
+                                                                      IcuFormatterType type)
+{
+    std::string cacheEntry =
+        locales->IsUndefined() ? "" : JSLocale::ConvertToStdString(JSHandle<EcmaString>::Cast(locales));
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    void *cachedSimpleDateFormat = ecmaVm->GetIcuFormatterFromCache(type, cacheEntry);
+    if (cachedSimpleDateFormat != nullptr) {
+        return reinterpret_cast<icu::SimpleDateFormat*>(cachedSimpleDateFormat);
+    }
+    return nullptr;
 }
 
 // 13.1.2 ToDateTimeOptions (options, required, defaults)
@@ -607,6 +643,14 @@ JSHandle<EcmaString> JSDateTimeFormat::FormatDateTime(JSThread *thread,
                                                       const JSHandle<JSDateTimeFormat> &dateTimeFormat, double x)
 {
     icu::SimpleDateFormat *simpleDateFormat = dateTimeFormat->GetIcuSimpleDateFormat();
+    JSHandle<EcmaString> res = FormatDateTime(thread, simpleDateFormat, x);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
+    return res;
+}
+
+JSHandle<EcmaString> JSDateTimeFormat::FormatDateTime(JSThread *thread,
+                                                      const icu::SimpleDateFormat *simpleDateFormat, double x)
+{
     // 1. Let parts be ? PartitionDateTimePattern(dateTimeFormat, x).
     double xValue = JSDate::TimeClip(x);
     if (std::isnan(xValue)) {
