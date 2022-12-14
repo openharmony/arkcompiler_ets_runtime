@@ -17,6 +17,7 @@
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -106,7 +107,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(JSTaggedValue(module)));
         JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
         // if cjsModule is not CjsExports, means cjs uses default exports.
-        if (!cjsExports->IsCjsExports()) {
+        if (!cjsExports->IsJSObject()) {
             if (cjsExports->IsHole()) {
                 ObjectFactory *factory = vm_->GetFactory();
                 JSHandle<JSTaggedValue> currentModuleName(thread, SourceTextModule::Cast(
@@ -124,7 +125,12 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         JSHClass *jsHclass = cjsObject->GetJSHClass();
         LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
         PropertyAttributes attr = layoutInfo->GetAttr(idx);
-        return cjsObject->GetProperty(jsHclass, attr);
+        JSTaggedValue value = cjsObject->GetProperty(jsHclass, attr);
+        if (UNLIKELY(value.IsAccessor())) {
+            return FastRuntimeStub::CallGetter(thread, JSTaggedValue(cjsObject), JSTaggedValue(cjsObject), value);
+        }
+        ASSERT(!value.IsAccessor());
+        return value;
     }
     return SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread,
                                                                                     binding->GetIndex(), false);

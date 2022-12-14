@@ -81,7 +81,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         SourceTextModule::Evaluate(thread, moduleRecord, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str());
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str(), excuteFromJob);
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(

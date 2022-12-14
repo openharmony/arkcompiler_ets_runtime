@@ -19,8 +19,12 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+function A () {print("hello world")}
 module.exports.json = "moduleJson";
 module.exports.fun = function foo1 () {
     print("jscall 1");
 };
+Object.defineProperty(module.exports, "con", {
+    get() {return A;}
+})
 exports.tag = true;
