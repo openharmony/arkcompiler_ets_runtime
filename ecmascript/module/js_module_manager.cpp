@@ -106,7 +106,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     if (module->GetTypes() == ModuleTypes::CJSMODULE) {
         JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(JSTaggedValue(module)));
         JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
-        // if cjsModule is not CjsExports, means cjs uses default exports.
+        // if cjsModule is not JSObject, means cjs uses default exports.
         if (!cjsExports->IsJSObject()) {
             if (cjsExports->IsHole()) {
                 ObjectFactory *factory = vm_->GetFactory();
@@ -121,6 +121,9 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
             return cjsExports.GetTaggedValue();
         }
         int32_t idx = binding->GetIndex();
+        if (idx == -1) {
+            return cjsExports.GetTaggedValue();
+        }
         JSObject *cjsObject = JSObject::Cast(cjsExports.GetTaggedValue());
         JSHClass *jsHclass = cjsObject->GetJSHClass();
         LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
