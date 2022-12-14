@@ -80,6 +80,7 @@ class RequireManager;
 struct CJSInfo;
 class QuickFixManager;
 class ConstantPool;
+class OptCodeProfiler;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -575,6 +576,12 @@ public:
             iter++;
         }
     }
+
+    OptCodeProfiler *GetOptCodeProfiler() const
+    {
+        return optCodeProfiler_;
+    }
+
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
@@ -696,6 +703,9 @@ private:
 
     // PGO Profiler
     PGOProfiler *pgoProfiler_;
+
+    // opt code Profiler
+    OptCodeProfiler *optCodeProfiler_;
 
     // For icu objects cache
     struct IcuFormatter {
