@@ -88,7 +88,9 @@ host_unittest_action("EcmaVm_001_Test") {
     sdk_libc_secshared_dep,
   ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!ark_standalone_build) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
 }
 
 host_unittest_action("EcmaVm_002_Test") {
@@ -135,7 +137,9 @@ host_unittest_action("EcmaVm_002_Test") {
     sdk_libc_secshared_dep,
   ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!ark_standalone_build) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
 }
 
 host_unittest_action("EcmaVm_003_Test") {
@@ -191,7 +195,9 @@ host_unittest_action("EcmaVm_003_Test") {
     sdk_libc_secshared_dep,
   ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!ark_standalone_build) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
 }
 
 group("unittest") {

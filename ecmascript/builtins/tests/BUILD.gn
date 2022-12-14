@@ -62,7 +62,9 @@ host_unittest_action("BuiltinsInternational_002_Test") {
     sdk_libc_secshared_dep,
   ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!ark_standalone_build) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
 }
 
 host_unittest_action("BuiltinsNaturalTest") {
@@ -107,7 +109,9 @@ host_unittest_action("BuiltinsNaturalTest") {
     sdk_libc_secshared_dep,
   ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!ark_standalone_build) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
 }
 
 group("unittest") {

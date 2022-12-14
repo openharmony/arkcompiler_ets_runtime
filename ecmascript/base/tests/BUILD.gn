@@ -49,7 +49,9 @@ host_unittest_action("BaseTest") {
     sdk_libc_secshared_dep,
   ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!ark_standalone_build) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
 }
 
 group("unittest") {

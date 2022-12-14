@@ -894,6 +894,11 @@ ohos_shared_library("libark_jsruntime_test") {
     "$ark_root/libpandafile:libarkfile_static",
   ]
 
+  public_deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+  ]
+
   ldflags = []
   if (enable_coverage) {
     ldflags += [ "--coverage" ]

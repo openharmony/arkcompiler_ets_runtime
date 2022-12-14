@@ -36,7 +36,7 @@ enable_cow_array = true
 enable_coverage = false
 enable_asm_assert = false
 asan_lib_path = "/usr/lib/llvm-10/lib/clang/10.0.0/lib/linux"
-if (is_standard_system) {
+if (is_standard_system || ark_standalone_build) {
   icu_part_name = "icu"
   icu_subsystem_name = "thirdparty"
 } else {

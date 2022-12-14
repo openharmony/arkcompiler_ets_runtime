@@ -67,7 +67,9 @@ host_unittest_action("ModuleTest") {
     sdk_libc_secshared_dep,
   ]
 
-  ldflags = [ "-Wl,--lto-O0" ]
+  if (!ark_standalone_build) {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
 
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
