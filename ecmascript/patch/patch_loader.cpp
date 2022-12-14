@@ -15,7 +15,6 @@
 #include "ecmascript/patch/patch_loader.h"
 
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -24,7 +23,6 @@
 #include "libpandafile/method_data_accessor.h"
 
 namespace panda::ecmascript {
-
 PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,
                                               const JSPandaFile *patchFile,
                                               CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
@@ -714,11 +712,7 @@ bool PatchLoader::CheckStarExportEntryMismatch(StarExportEntry *patch, StarExpor
 CUnorderedMap<CString, BaseMethodIndex> PatchLoader::GenerateCachedMethods(JSThread *thread,
     const JSPandaFile *baseFile, const JSPandaFile *patchFile, const CMap<int32_t, JSTaggedValue> &baseConstpoolValues)
 {
-    // key :recordName + "::" + methodName
-    // value :indexInfo
-    CUnorderedMap<CString, BaseMethodIndex> cachedMethods {};
-
-    const CUnorderedMap<uint32_t, MethodLiteral *> &patchMethodLiterals = patchFile->GetMethodLiteralMap();
+    const auto &patchMethodLiterals = patchFile->GetMethodLiteralMap();
     CUnorderedMap<CString, CUnorderedSet<CString>> patchMethodNames {}; // key :recordname; value :methodname
     for (const auto &iter : patchMethodLiterals) {
         MethodLiteral *patch = iter.second;
@@ -733,48 +727,63 @@ CUnorderedMap<CString, BaseMethodIndex> PatchLoader::GenerateCachedMethods(JSThr
         }
     }
 
-    JSMutableHandle<ConstantPool> baseConstpool(thread, JSTaggedValue::Hole());
+    // key :recordName + "::" + methodName
+    // value :indexInfo
+    CUnorderedMap<CString, BaseMethodIndex> cachedMethods;
     for (const auto &iter : baseConstpoolValues) {
-        baseConstpool.Update(iter.second);
+        ConstantPool *baseConstpool = ConstantPool::Cast(iter.second.GetTaggedObject());
         uint32_t constpoolNum = iter.first;
         uint32_t baseConstpoolSize = baseConstpool->GetCacheLength();
         for (uint32_t constpoolIndex = 0; constpoolIndex < baseConstpoolSize; constpoolIndex++) {
             JSTaggedValue constpoolValue = baseConstpool->GetObjectFromCache(constpoolIndex);
+            if (!constpoolValue.IsMethod() && !constpoolValue.IsTaggedArray()) {
+                continue;
+            }
+
+            // For normal function and class constructor.
             if (constpoolValue.IsMethod()) {
                 Method *baseMethod = Method::Cast(constpoolValue.GetTaggedObject());
                 auto baseMethodId = baseMethod->GetMethodId();
-                const char *baseMethodName = MethodLiteral::GetMethodName(baseFile, baseMethodId);
                 CString baseRecordName = GetRecordName(baseFile, baseMethodId);
-
                 auto item = patchMethodNames.find(baseRecordName);
-                if (item != patchMethodNames.end() && item->second.count(CString(baseMethodName))) {
+                if (item == patchMethodNames.end()) {
+                    continue;
+                }
+
+                const char *baseMethodName = MethodLiteral::GetMethodName(baseFile, baseMethodId);
+                if (item->second.count(CString(baseMethodName))) {
                     BaseMethodIndex indexs = {constpoolNum, constpoolIndex};
                     CString methodKey = baseRecordName + "::" + CString(baseMethodName);
                     cachedMethods.emplace(std::move(methodKey), std::move(indexs));
                 }
+                continue;
             }
 
-            if (constpoolValue.IsTaggedArray()) {
-                TaggedArray *classLiteral = TaggedArray::Cast(constpoolValue);
-                uint32_t literalLength = classLiteral->GetLength();
-                for (uint32_t literalIndex = 0; literalIndex < literalLength; literalIndex++) {
-                    JSTaggedValue literalItem = classLiteral->Get(thread, literalIndex);
-                    if (!literalItem.IsJSFunctionBase()) {
-                        continue;
-                    }
+            // For class literal.
+            ASSERT(constpoolValue.IsTaggedArray());
+            TaggedArray *classLiteral = TaggedArray::Cast(constpoolValue);
+            uint32_t literalLength = classLiteral->GetLength();
+            for (uint32_t literalIndex = 0; literalIndex < literalLength; literalIndex++) {
+                JSTaggedValue literalItem = classLiteral->Get(thread, literalIndex);
+                if (!literalItem.IsJSFunctionBase()) {
+                    continue;
+                }
 
-                    JSFunctionBase *func = JSFunctionBase::Cast(literalItem.GetTaggedObject());
-                    Method *baseMethod = Method::Cast(func->GetMethod().GetTaggedObject());
-                    auto baseMethodId = baseMethod->GetMethodId();
-                    const char *baseMethodName = MethodLiteral::GetMethodName(baseFile, baseMethodId);
-                    CString baseRecordName = GetRecordName(baseFile, baseMethodId);
+                // Every record is the same in current class literal.
+                JSFunctionBase *func = JSFunctionBase::Cast(literalItem.GetTaggedObject());
+                Method *baseMethod = Method::Cast(func->GetMethod().GetTaggedObject());
+                auto baseMethodId = baseMethod->GetMethodId();
+                CString baseRecordName = GetRecordName(baseFile, baseMethodId);
+                auto item = patchMethodNames.find(baseRecordName);
+                if (item == patchMethodNames.end()) {
+                    break;
+                }
 
-                    auto item = patchMethodNames.find(baseRecordName);
-                    if (item != patchMethodNames.end() && item->second.count(CString(baseMethodName))) {
-                        BaseMethodIndex indexs = {constpoolNum, constpoolIndex, literalIndex};
-                        CString methodKey = baseRecordName + "::" + CString(baseMethodName);
-                        cachedMethods.emplace(std::move(methodKey), std::move(indexs));
-                    }
+                const char *baseMethodName = MethodLiteral::GetMethodName(baseFile, baseMethodId);
+                if (item->second.count(CString(baseMethodName))) {
+                    BaseMethodIndex indexs = {constpoolNum, constpoolIndex, literalIndex};
+                    CString methodKey = baseRecordName + "::" + CString(baseMethodName);
+                    cachedMethods.emplace(std::move(methodKey), std::move(indexs));
                 }
             }
         }
