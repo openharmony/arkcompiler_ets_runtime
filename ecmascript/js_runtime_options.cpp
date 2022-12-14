@@ -58,6 +58,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
     "--trace-bc: enable tracing bytecode for aot runtime. Default: false\n"
     "--trace-deopt: enable tracing deopt for aot runtime. Default: false\n"
+    "--deopt-threshold: set max count which aot function can occur deoptimization. Default: 10\n"
     "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
     "--enable-force-gc: enable force gc when allocating object. Default: true\n"
     "--enable-ic: switch of inline cache. Default: true\n"
@@ -126,6 +127,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"trace-bc", required_argument, nullptr, OPTION_TRACE_BC},
         {"trace-deopt", required_argument, nullptr, OPTION_TRACE_DEOPT},
+        {"deopt-threshold", required_argument, nullptr, OPTION_DEOPT_THRESHOLD},
         {"enable-cpuprofiler", required_argument, nullptr, OPTION_ENABLE_CPUPROFILER},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},

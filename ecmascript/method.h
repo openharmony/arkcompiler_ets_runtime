@@ -200,6 +200,19 @@ public:
         SetExtraLiteralInfo(newValue);
     }
 
+    void SetDeoptThreshold(uint16_t count)
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        uint64_t newValue = MethodLiteral::SetDeoptThreshold(extraLiteralInfo, count);
+        SetExtraLiteralInfo(newValue);
+    }
+
+    uint16_t GetDeoptThreshold() const
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        return MethodLiteral::GetDeoptThreshold(extraLiteralInfo);
+    }
+
     const void* GetNativePointer() const
     {
         return GetNativePointerOrBytecodeArray();

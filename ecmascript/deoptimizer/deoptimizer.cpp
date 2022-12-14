@@ -244,6 +244,13 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     auto method = GetMethod(callTarget);
     Dump(method);
     ASSERT(thread_ != nullptr);
+    uint16_t deoptThreshold = method->GetDeoptThreshold();
+    if (deoptThreshold > 0) {
+        method->SetDeoptThreshold(--deoptThreshold);
+    } else {
+        method->SetAotCodeBit(false);
+        method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
+    }
 
     FrameWriter frameWriter(this);
     // Push asm interpreter frame

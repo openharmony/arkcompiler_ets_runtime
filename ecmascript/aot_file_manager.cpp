@@ -646,6 +646,7 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     Method *method = mainFunc->GetCallTarget();
+    method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOT(reinterpret_cast<uintptr_t>(mainEntry));
 #ifndef NDEBUG
     PrintAOTEntry(jsPandaFile, method, mainEntry);
@@ -664,6 +665,7 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *met
     if (!codeEntry) {
         return;
     }
+    method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOT(codeEntry);
 }
 
