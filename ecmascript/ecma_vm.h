@@ -390,6 +390,8 @@ public:
 
     void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
 
+    bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
+
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
 
     JSHandle<ConstantPool> FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
