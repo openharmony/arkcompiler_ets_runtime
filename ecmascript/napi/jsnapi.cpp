@@ -361,11 +361,11 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &hapPath)
     vm->LoadAOTFiles();
 }
 
-bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry)
+bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "start to execute ark file: " << fileName;
     JSThread *thread = vm->GetAssociatedJSThread();
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry)) {
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry, needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
@@ -373,12 +373,13 @@ bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string 
     return true;
 }
 
-bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size,
-                     const std::string &entry, const std::string &filename)
+bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
+                     const std::string &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
     JSThread *thread = vm->GetAssociatedJSThread();
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str())) {
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(
+            thread, data, size, entry, filename.c_str(), needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
         return false;

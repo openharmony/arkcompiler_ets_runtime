@@ -24,7 +24,7 @@
 
 namespace panda::ecmascript {
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &filename,
-                                                                   std::string_view entryPoint, bool excuteFromJob)
+    std::string_view entryPoint, bool needUpdate, bool excuteFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename.c_str();
 
@@ -53,7 +53,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         entry = entryPoint.data();
     }
 
-    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str());
+    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(),
+                                                                                        needUpdate);
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
@@ -84,12 +85,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str(), excuteFromJob);
 }
 
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
-    JSThread *thread, const void *buffer, size_t size, std::string_view entryPoint, const CString &filename)
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *thread,
+    const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename.c_str();
     const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, entryPoint, buffer, size);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }

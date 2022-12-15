@@ -511,6 +511,11 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     return result;
 }
 
+bool EcmaVM::HasCachedConstpool(const JSPandaFile *jsPandaFile) const
+{
+    return cachedConstpools_.find(jsPandaFile) != cachedConstpools_.end();
+}
+
 JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t index)
 {
     auto iter = cachedConstpools_.find(jsPandaFile);
