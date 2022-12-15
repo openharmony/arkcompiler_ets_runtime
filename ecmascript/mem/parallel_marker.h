@@ -63,7 +63,8 @@ protected:
     virtual inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) = 0;
     virtual inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
                                          ObjectSlot end) = 0;
-    virtual inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref)
+    virtual inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref,
+                                            [[maybe_unused]] Region *objectRegion)
     {
         LOG(FATAL, ECMASCRIPT) << "can not call this method";
     }
@@ -84,7 +85,7 @@ protected:
                                  ObjectSlot end) override;
 
     inline void HandleOldToNewRSet(uint32_t threadId, Region *region) override;
-    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref) override;
+    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion) override;
 };
 
 class MovableMarker : public Marker {
@@ -118,7 +119,7 @@ protected:
     inline SlotStatus MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot slot) override;
     inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
                                      ObjectSlot slot) override;
-    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref) override;
+    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion = nullptr) override;
 
 private:
     inline bool ShouldBePromoted(TaggedObject *object);
@@ -136,7 +137,7 @@ protected:
 
     inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
                                      ObjectSlot slot) override;
-    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref) override;
+    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion = nullptr) override;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_MARKER_H
