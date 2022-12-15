@@ -129,15 +129,6 @@ public:
     // 20.4.4.36
     JSTaggedValue ToISOString(JSThread *thread) const;
 
-    // 20.4.4.38
-    JSTaggedValue ToLocaleDateString(JSThread *thread) const;
-
-    // 20.4.4.39
-    JSTaggedValue ToLocaleString(JSThread *thread) const;
-
-    // 20.4.4.40
-    JSTaggedValue ToLocaleTimeString(JSThread *thread) const;
-
     // 20.4.4.41
     JSTaggedValue ToString(JSThread *thread) const;
 

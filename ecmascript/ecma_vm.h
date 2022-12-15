@@ -107,6 +107,13 @@ enum class MethodIndex : uint8_t {
     METHOD_END
 };
 
+enum class IcuFormatterType {
+    SimpleDateFormatDefault,
+    SimpleDateFormatDate,
+    SimpleDateFormatTime,
+    NumberFormatter,
+    Collator
+};
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
                                              const JSHandle<JSTaggedValue> reason,
@@ -118,6 +125,7 @@ using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
 using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)>;
+using IcuDeleteEntry = void(*)(void *pointer, void *data);
 
 class EcmaVM {
 public:
@@ -509,6 +517,40 @@ public:
 
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              OptimizedEntryFrame::CallType callType);
+
+    // For icu objects cache
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
+                                IcuDeleteEntry deleteEntry = nullptr)
+    {
+        EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
+        icuObjCache_.insert_or_assign(type, std::move(icuFormatter));
+    }
+
+    void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
+    {
+        auto iter = icuObjCache_.find(type);
+        if (iter != icuObjCache_.end()) {
+            EcmaVM::IcuFormatter icuFormatter = iter->second;
+            if (icuFormatter.locale == locale) {
+                return icuFormatter.icuObj;
+            }
+        }
+        return nullptr;
+    }
+
+    void ClearIcuCache()
+    {
+        auto iter = icuObjCache_.begin();
+        while (iter != icuObjCache_.end()) {
+            EcmaVM::IcuFormatter icuFormatter = iter->second;
+            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
+            if (deleteEntry != nullptr) {
+                deleteEntry(icuFormatter.icuObj, this);
+            }
+            iter->second = EcmaVM::IcuFormatter{};
+            iter++;
+        }
+    }
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
@@ -629,6 +671,18 @@ private:
 
     // PGO Profiler
     PGOProfiler *pgoProfiler_;
+
+    // For icu objects cache
+    struct IcuFormatter {
+        std::string locale;
+        void *icuObj {nullptr};
+        IcuDeleteEntry deleteEntry {nullptr};
+
+        IcuFormatter() = default;
+        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
+            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
+    };
+    std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;
