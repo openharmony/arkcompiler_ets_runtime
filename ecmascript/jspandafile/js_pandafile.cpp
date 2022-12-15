@@ -31,6 +31,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     } else {
         InitializeMergedPF();
     }
+    checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 
