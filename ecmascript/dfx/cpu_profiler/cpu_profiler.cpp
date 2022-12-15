@@ -574,9 +574,11 @@ bool CpuProfiler::CheckFrameType(JSThread *thread, JSTaggedType *sp)
     if (preSp == nullptr) {
         return true;
     }
-    if (!thread->IsLegalSp(reinterpret_cast<uintptr_t>(preSp))) {
+#if defined(PANDA_TARGET_64)
+    if (thread->IsAsmInterpreter() && !thread->IsLegalSp(reinterpret_cast<uintptr_t>(preSp))) {
         return false;
     }
+#endif
     type = FrameHandler::GetFrameType(preSp);
     if (type > FrameType::FRAME_TYPE_LAST || type < FrameType::FRAME_TYPE_FIRST) {
         return false;
