@@ -526,7 +526,7 @@ const AnFileInfo *AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) 
 
 bool AOTFileManager::IsLoad(const JSPandaFile *jsPandaFile) const
 {
-    if (vm_->GetJSOptions().GetAOTOutputFile().empty()){
+    if (vm_->GetJSOptions().GetAOTOutputFile().empty()) {
         return false;
     }
 
@@ -565,7 +565,7 @@ uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
 
     // run from app hap
     std::string hapName = JSFilePath::GetHapName(jsPandaFile);
-    if (hapName.empty()){
+    if (hapName.empty()) {
         return JSPandaFile::INVALID_INDEX;
     }
     std::string anFileName = hapName + FILE_EXTENSION_AN;
@@ -635,7 +635,7 @@ void AOTFileManager::PrintAOTEntry(const JSPandaFile *file, const Method *method
 }
 
 void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
-                                     std::string_view entryPoint)
+    std::string_view entryPoint)
 {
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
     const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
