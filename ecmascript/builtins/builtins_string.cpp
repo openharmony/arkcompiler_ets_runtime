@@ -29,6 +29,7 @@
 #include "ecmascript/internal_call_params.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_collator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_invoker.h"
 #include "ecmascript/js_locale.h"
@@ -584,8 +585,34 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, that_tag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t res = thisHandle->Compare(*thatHandle);
-    return GetTaggedInt(res);
+
+    JSHandle<JSTaggedValue> locales = GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: the second argument
+    bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    if (cacheable) {
+        auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
+        if (collator != nullptr) {
+            JSTaggedValue result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
+            return result;
+        }
+    }
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSTaggedValue> ctor = ecmaVm->GetGlobalEnv()->GetCollatorFunction();
+    JSHandle<JSCollator> collator =
+        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+    JSHandle<JSCollator> initCollator =
+        JSCollator::InitializeCollator(thread, collator, locales, options, cacheable);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    icu::Collator *icuCollator = nullptr;
+    if (cacheable) {
+        icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
+        ASSERT(icuCollator != nullptr);
+    } else {
+        icuCollator = initCollator->GetIcuCollator();
+    }
+    JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
+    return result;
 }
 
 // 21.1.3.11

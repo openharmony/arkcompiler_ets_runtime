@@ -80,6 +80,15 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
+using IcuDeleteEntry = void(*)(void *pointer, void *data);
+
+enum class IcuFormatterType {
+    SimpleDateFormatDefault,
+    SimpleDateFormatDate,
+    SimpleDateFormatTime,
+    NumberFormatter,
+    Collator
+};
 
 class EcmaVM : public PandaVM {
 public:
@@ -401,6 +410,40 @@ public:
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile);
 
+    // For icu objects cache
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
+                                IcuDeleteEntry deleteEntry = nullptr)
+    {
+        EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
+        icuObjCache_.insert_or_assign(type, std::move(icuFormatter));
+    }
+
+    void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
+    {
+        auto iter = icuObjCache_.find(type);
+        if (iter != icuObjCache_.end()) {
+            EcmaVM::IcuFormatter icuFormatter = iter->second;
+            if (icuFormatter.locale == locale) {
+                return icuFormatter.icuObj;
+            }
+        }
+        return nullptr;
+    }
+
+    void ClearIcuCache()
+    {
+        auto iter = icuObjCache_.begin();
+        while (iter != icuObjCache_.end()) {
+            EcmaVM::IcuFormatter icuFormatter = iter->second;
+            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
+            if (deleteEntry != nullptr) {
+                deleteEntry(icuFormatter.icuObj, this);
+            }
+            iter->second = EcmaVM::IcuFormatter{};
+            iter++;
+        }
+    }
+
 protected:
     bool CheckEntrypointSignature([[maybe_unused]] Method *entrypoint) override
     {
@@ -490,6 +533,18 @@ private:
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
     void* data_ {nullptr};
+
+    // For icu objects cache
+    struct IcuFormatter {
+        std::string locale;
+        void *icuObj {nullptr};
+        IcuDeleteEntry deleteEntry {nullptr};
+
+        IcuFormatter() = default;
+        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
+            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
+    };
+    std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
 
     friend class SnapShotSerialize;
     friend class ObjectFactory;

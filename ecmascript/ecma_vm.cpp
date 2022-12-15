@@ -258,6 +258,9 @@ EcmaVM::~EcmaVM()
     // clear c_address: c++ pointer delete
     ClearBufferData();
 
+    // clear icu cache
+    ClearIcuCache();
+
     if (gcStats_ != nullptr) {
         if (options_.IsEnableGCStatsPrint()) {
             gcStats_->PrintStatisticResult(true);
