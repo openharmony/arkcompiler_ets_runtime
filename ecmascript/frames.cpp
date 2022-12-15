@@ -797,22 +797,23 @@ void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t
     for (size_t i = 0; prefix[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
         outStr[strIdx++] = prefix[i];
     }
-    size_t start = GET_MESSAGE_STRING_ID(HandleLdundefined);
+    size_t start = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleLdundefined));
     size_t bytecode = fullBytecode & 0xff;  // 0xff: last byte
     const char *bytecodeName = MessageString::GetMessageString(start + bytecode).c_str();
     for (size_t i = 0; bytecodeName[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
         outStr[strIdx++] = bytecodeName[i];
     }
-    if (start + bytecode == GET_MESSAGE_STRING_ID(HandleDeprecated) ||
-        start + bytecode == GET_MESSAGE_STRING_ID(HandleWide) ||
-        start + bytecode == GET_MESSAGE_STRING_ID(HandleThrow)) {
+    if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecated)) ||
+        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleWide)) ||
+        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow))) {
         size_t startSecond = start;
-        if (start + bytecode == GET_MESSAGE_STRING_ID(HandleDeprecated)) {
-            startSecond = GET_MESSAGE_STRING_ID(HandleDeprecatedLdlexenvPrefNone);
-        } else if (start + bytecode == GET_MESSAGE_STRING_ID(HandleWide)) {
-            startSecond = GET_MESSAGE_STRING_ID(HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8);
-        } else if (start + bytecode == GET_MESSAGE_STRING_ID(HandleThrow)) {
-            startSecond = GET_MESSAGE_STRING_ID(HandleThrowPrefNone);
+        if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecated))) {
+            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecatedLdlexenvPrefNone));
+        } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleWide))) {
+            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(
+                HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8));
+        } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow))) {
+            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrowPrefNone));
         }
         size_t bytecodeSecond = (fullBytecode >> 8) & 0xff;  // 8, 0xff: second last byte
         const char *bytecodeNameSecond = MessageString::GetMessageString(startSecond + bytecodeSecond).c_str();

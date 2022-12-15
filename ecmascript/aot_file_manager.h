@@ -486,7 +486,8 @@ public:
     bool IsLoad(const JSPandaFile *jsPandaFile) const;
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
     uint32_t GetAnFileIndex(const JSPandaFile *jsPandaFile) const;
-    void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
+    void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc,
+        const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
                                    const AOTLiteralInfo *entryIndexes);

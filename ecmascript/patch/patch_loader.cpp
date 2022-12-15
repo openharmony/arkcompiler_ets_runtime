@@ -105,7 +105,7 @@ void PatchLoader::ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *j
 }
 
 void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                        const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos)
+    const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos)
 {
     ASSERT(jsPandaFile->IsNewVersion());
     const panda_file::File *pf = jsPandaFile->GetPandaFile();

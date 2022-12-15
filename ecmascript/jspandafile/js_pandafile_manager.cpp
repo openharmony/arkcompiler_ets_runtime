@@ -275,7 +275,6 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
     ASSERT(GetJSPandaFile(pf) == nullptr);
     JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc);
     auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
-
     if (aotFM->IsLoad(newJsPandaFile)) {
         uint32_t index = aotFM->GetAnFileIndex(newJsPandaFile);
         newJsPandaFile->SetAOTFileInfoIndex(index);

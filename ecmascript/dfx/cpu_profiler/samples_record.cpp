@@ -165,7 +165,7 @@ void SamplesRecord::StringifyStateTimeStatistic()
 void SamplesRecord::StringifyNodes()
 {
     sampleData_ += "\"nodes\":[";
-    size_t nodeCount = profileInfo_->nodeCount;
+    size_t nodeCount = static_cast<size_t>(profileInfo_->nodeCount);
     for (size_t i = 0; i < nodeCount; i++) {
         struct CpuProfileNode node = profileInfo_->nodes[i];
         struct FrameInfo codeEntry = node.codeEntry;
