@@ -2019,6 +2019,7 @@ JSHandle<JSProxy> ObjectFactory::NewJSProxy(const JSHandle<JSTaggedValue> &targe
     }
 
     JSHandle<JSProxy> proxy(thread_, header);
+    proxy->InitializeHash();
     proxy->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_PROXY));
     proxy->SetTarget(thread_, target.GetTaggedValue());
     proxy->SetHandler(thread_, handler.GetTaggedValue());
@@ -2393,6 +2394,7 @@ JSHandle<Program> ObjectFactory::NewProgram()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetProgramClass().GetTaggedObject()));
     JSHandle<Program> p(thread_, header);
+    p->InitializeHash();
     p->SetMainFunction(thread_, JSTaggedValue::Undefined());
     return p;
 }

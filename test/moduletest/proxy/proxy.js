@@ -32,3 +32,10 @@ let addProxy = new Proxy(add, {
 for (var a = 1; a < 4; a++) {
     print(addProxy(a, 12345 * a) == add(12345 * a, a))
 }
+
+class EmployeeEntity {
+}
+let obj = new Proxy(EmployeeEntity,{});
+let arr = [obj];
+let set = new Set(arr);
+print(set.has(obj));
