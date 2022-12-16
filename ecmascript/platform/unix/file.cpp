@@ -16,8 +16,11 @@
 #include "ecmascript/platform/file.h"
 
 #include <climits>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
 bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
@@ -38,5 +41,32 @@ bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
     }
     realPath = std::string(buffer);
     return true;
+}
+
+fd_t Open(const char *file, int flag)
+{
+    return open(file, flag);
+}
+
+void Close(fd_t fd)
+{
+    close(fd);
+}
+
+int64_t GetFileSizeByFd(fd_t fd)
+{
+    return lseek(fd, 0, SEEK_END);
+}
+
+void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, [[maybe_unused]] fd_t *extra)
+{
+    void *addr = mmap(nullptr, size, PAGE_PROT_READWRITE, MAP_PRIVATE, fd, offset);
+    LOG_ECMA_IF(addr == nullptr, FATAL) << "mmap fail";
+    return addr;
+}
+
+int FileUnMap(void *addr, uint64_t size, [[maybe_unused]] fd_t *extra)
+{
+    return munmap(addr, size);
 }
 }  // namespace panda::ecmascript

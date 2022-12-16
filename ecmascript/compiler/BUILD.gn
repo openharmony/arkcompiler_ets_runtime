@@ -26,10 +26,18 @@ config("include_llvm") {
       "//third_party/third_party_llvm-project/llvm/include/",
     ]
   } else {
-    include_dirs = [
-      "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
-      "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
-    ]
+    if (is_mingw) {
+      include_dirs = [
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/llvm/include",
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/include",
+      ]
+    } else {
+      include_dirs = [
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
+      ]
+    }
+    cflags_cc = [ "-DARK_GC_SUPPORT" ]
   }
 }
 
@@ -101,10 +109,18 @@ source_set("libark_jsoptimizer_set") {
   ]
 
   if (compile_llvm_online) {
+    assert(!is_mingw, "compiling llvm online on mingw is not supported!")
     lib_dirs = [ "//third_party/third_party_llvm-project/build/lib" ]
   } else {
-    lib_dirs =
-        [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/lib" ]
+    if (is_mingw) {
+      lib_dirs = [
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/lib",
+        "//prebuilts/mingw-w64/ohos/linux-x86_64/clang-mingw/x86_64-w64-mingw32",
+      ]
+    } else {
+      lib_dirs =
+          [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/lib" ]
+    }
   }
 
   libs = [
@@ -168,6 +184,18 @@ source_set("libark_jsoptimizer_set") {
     "LLVMFrontendOpenMP",
     "LLVMBitWriter",
   ]
+
+  if (is_mingw) {
+    libs += [
+      "kernel32",
+      "shell32",
+      "uuid",
+      "advapi32",
+      "msvcrt",
+      "msvcrt-os",
+      "windowsapp",
+    ]
+  }
 
   deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
 
@@ -239,7 +267,9 @@ ohos_shared_library("libark_jsoptimizer") {
 
   install_enable = false
 
-  output_extension = "so"
+  if (!is_mingw && !is_mac) {
+    output_extension = "so"
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -298,11 +328,34 @@ ohos_executable("ark_stub_compiler") {
 }
 
 ohos_executable("ark_aot_compiler") {
-  deps = [
-    ":ark_aot_compiler_set",
-    "$js_root:libark_jsruntime",
-    "$js_root/ecmascript/compiler:libark_jsoptimizer",
+  deps = [ ":ark_aot_compiler_set" ]
+
+  deps += [
+    ":libark_mock_stub_set",
+    "$ark_root/libpandabase:libarkbase_static",
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_js_intl_set",
+    "$js_root:libark_jsruntime_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
+
+  if (is_mingw && !ark_standalone_build) {
+    deps += [
+      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_windows",
+    ]
+  }
+
+  if (target_os == "ios") {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:static_icui18n",
+      "$ark_third_party_root/icu/icu4c:static_icuuc",
+    ]
+  } else {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:shared_icui18n",
+      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    ]
+  }
 
   install_enable = false
 
