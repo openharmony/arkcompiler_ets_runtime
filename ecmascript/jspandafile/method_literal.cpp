@@ -17,6 +17,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 
+#include "libpandafile/class_data_accessor.h"
 #include "libpandafile/code_data_accessor-inl.h"
 #include "libpandafile/method_data_accessor-inl.h"
 
@@ -81,10 +82,12 @@ std::string MethodLiteral::ParseFunctionName(const JSPandaFile *jsPandaFile, Ent
     if (jsPandaFile == nullptr) {
         return std::string();
     }
-    std::string methodName(utf::Mutf8AsCString(GetName(jsPandaFile, methodId).data));
+
+    std::string methodName(GetMethodName(jsPandaFile, methodId));
     if (LIKELY(methodName[0] != '#')) {
         return methodName;
     }
+
     size_t index = methodName.find_last_of('#');
     return methodName.substr(index + 1);
 }
@@ -94,13 +97,24 @@ const char *MethodLiteral::GetMethodName(const JSPandaFile *jsPandaFile, EntityI
     if (jsPandaFile == nullptr) {
         return "";
     }
-    return utf::Mutf8AsCString(GetName(jsPandaFile, methodId).data);
+
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodId);
+    panda_file::File::StringData sd = pf->GetStringData(mda.GetNameId());
+    return utf::Mutf8AsCString(sd.data);
 }
 
-panda_file::File::StringData MethodLiteral::GetName(const JSPandaFile *jsPandaFile, EntityId methodId)
+CString MethodLiteral::GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId)
 {
-    panda_file::MethodDataAccessor mda(*(jsPandaFile->GetPandaFile()), methodId);
-    return jsPandaFile->GetPandaFile()->GetStringData(mda.GetNameId());
+    if (jsPandaFile == nullptr) {
+        return "";
+    }
+
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodId);
+    panda_file::ClassDataAccessor cda(*pf, mda.GetClassId());
+    CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
+    return jsPandaFile->ParseEntryPoint(desc);
 }
 
 uint32_t MethodLiteral::GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral)
@@ -108,12 +122,15 @@ uint32_t MethodLiteral::GetNumVregs(const JSPandaFile *jsPandaFile, const Method
     if (jsPandaFile == nullptr) {
         return 0;
     }
-    panda_file::MethodDataAccessor mda(*(jsPandaFile->GetPandaFile()), methodLiteral->GetMethodId());
+
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodLiteral->GetMethodId());
     auto codeId = mda.GetCodeId().value();
     if (!codeId.IsValid()) {
         return 0;
     }
-    panda_file::CodeDataAccessor cda(*(jsPandaFile->GetPandaFile()), codeId);
+
+    panda_file::CodeDataAccessor cda(*pf, codeId);
     return cda.GetNumVregs();
 }
 
@@ -122,12 +139,14 @@ uint32_t MethodLiteral::GetCodeSize(const JSPandaFile *jsPandaFile, EntityId met
     if (jsPandaFile == nullptr) {
         return 0;
     }
+
     const panda_file::File *pandaFile = jsPandaFile->GetPandaFile();
     panda_file::MethodDataAccessor mda(*pandaFile, methodId);
     auto codeId = mda.GetCodeId().value();
     if (!codeId.IsValid()) {
         return 0;
     }
+
     panda_file::CodeDataAccessor cda(*pandaFile, codeId);
     return cda.GetCodeSize();
 }
