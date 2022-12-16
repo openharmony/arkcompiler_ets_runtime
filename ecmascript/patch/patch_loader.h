@@ -61,25 +61,23 @@ public:
                                               const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
 
 private:
-    static bool ReplaceMethod(JSThread *thread,
-                              const JSPandaFile *baseFile,
-                              const JSPandaFile *patchFile,
-                              const CMap<int32_t, JSTaggedValue> &baseConstpoolValues,
-                              CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
-    static void ReplaceMethodInner(JSThread *thread,
-                                   Method *destMethod,
-                                   MethodLiteral *srcMethodLiteral,
-                                   JSTaggedValue srcConstpool);
+    static bool FindAndReplaceSameMethod(JSThread *thread,
+                                         const JSPandaFile *baseFile,
+                                         const JSPandaFile *patchFile,
+                                         CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
+    static void ReplaceMethod(JSThread *thread,
+                              Method *destMethod,
+                              MethodLiteral *srcMethodLiteral,
+                              JSTaggedValue srcConstpool);
     static void InsertMethodInfo(BaseMethodIndex methodIndex, MethodLiteral *base,
                                  CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
 
-    static CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static void ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
                                         const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos);
     static void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
                                        const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos);
-    static CUnorderedMap<CString, BaseMethodIndex> GenerateCachedMethods(JSThread *thread, const JSPandaFile *baseFile,
-        const JSPandaFile *patchFile, const CMap<int32_t, JSTaggedValue> &baseConstpoolValues);
+    static CUnorderedMap<CString, BaseMethodIndex> FindSameMethod(JSThread *thread, const JSPandaFile *baseFile,
+                                                                  const JSPandaFile *patchFile);
 
     static bool ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
                                  const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);

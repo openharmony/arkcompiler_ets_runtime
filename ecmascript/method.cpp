@@ -36,6 +36,12 @@ const char *Method::GetMethodName(const JSPandaFile* file) const
     return MethodLiteral::GetMethodName(file, GetMethodId());
 }
 
+const CString Method::GetRecordName() const
+{
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    return MethodLiteral::GetRecordName(jsPandaFile, GetMethodId());
+}
+
 uint32_t Method::GetCodeSize() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();

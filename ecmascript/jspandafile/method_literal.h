@@ -324,6 +324,7 @@ public:
     static const char * PUBLIC_API GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static uint32_t GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId);
+    static CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
 
     const uint8_t *GetBytecodeArray() const
     {
@@ -354,8 +355,6 @@ private:
         NUM_OF_MEMBERS
     };
     static_assert(static_cast<size_t>(Index::NUM_OF_MEMBERS) == NumOfTypes);
-
-    static panda_file::File::StringData GetName(const JSPandaFile *jsPandaFile, EntityId methodId);
 
     alignas(EAS) uint64_t callField_ {0ULL};
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
