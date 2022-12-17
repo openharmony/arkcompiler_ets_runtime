@@ -154,6 +154,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     } else {
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifierString.GetTaggedValue());
+        requestModule = JSPandaFileExecutor::NormalizePath(requestModule);
         const JSPandaFile *jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
         entryPoint =
