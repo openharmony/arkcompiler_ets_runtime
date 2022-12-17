@@ -26,7 +26,6 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/require/js_cjs_module.h"
-
 #ifdef PANDA_TARGET_WINDOWS
 #include <algorithm>
 #endif
@@ -288,11 +287,24 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModuleWithMerge(con
     if (entry != -1) {
         return JSHandle<SourceTextModule>(thread, dict->GetValue(entry));
     }
+
     const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName.c_str());
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName);
     if (jsPandaFile == nullptr) {
-        LOG_FULL(FATAL) << "open jsPandaFile " << moduleFileName << " error";
-        UNREACHABLE();
+        ResolveBufferCallback resolveBufferCallback = thread->GetEcmaVM()->GetResolveBufferCallback();
+        if (resolveBufferCallback != nullptr) {
+            std::vector<uint8_t> data = resolveBufferCallback(JSPandaFile::ParseHapPath(moduleFileName));
+            if (data.empty()) {
+                LOG_FULL(FATAL) << "resolveBufferCallback get buffer failed";
+                UNREACHABLE();
+            }
+            jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName.c_str(),
+                                                                             data.data(), data.size());
+            if (jsPandaFile == nullptr) {
+                LOG_FULL(FATAL) << "open jsPandaFile " << moduleFileName << " error";
+                UNREACHABLE();
+            }
+        }
     }
 
     JSHandle<SourceTextModule> moduleRecord = ResolveModuleWithMerge(thread, jsPandaFile, recordName);
@@ -460,7 +472,7 @@ JSHandle<SourceTextModule> ModuleManager::HostResolveImportedModule(std::string 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
         ResolveBufferCallback resolveBufferCallback = thread->GetEcmaVM()->GetResolveBufferCallback();
         if (resolveBufferCallback != nullptr) {
-            std::vector<uint8_t> data = resolveBufferCallback(baseFilename, moduleFilename);
+            std::vector<uint8_t> data = resolveBufferCallback(baseFilename);
             size_t size = data.size();
             if (data.empty()) {
                 LOG_FULL(FATAL) << " moduleRequest callbackModuleName " << moduleFullname << "is hole failed";

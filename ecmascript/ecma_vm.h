@@ -125,7 +125,7 @@ using PromiseRejectCallback = void (*)(void* info);
 using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
-using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)>;
+using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath)>;
 using IcuDeleteEntry = void(*)(void *pointer, void *data);
 
 class EcmaVM {
