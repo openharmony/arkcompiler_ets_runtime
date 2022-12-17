@@ -590,8 +590,7 @@ void JSNApi::SetHostResolvePathTracker(EcmaVM *vm,
     vm->SetResolvePathCallback(cb);
 }
 
-void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
-    std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)> cb)
+void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb)
 {
     vm->SetResolveBufferCallback(cb);
 }

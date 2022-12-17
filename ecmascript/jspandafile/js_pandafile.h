@@ -76,6 +76,7 @@ public:
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
     static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
+    static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
     static constexpr char NODE_MODULES[] = "node_modules";
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
     static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
@@ -264,6 +265,7 @@ public:
     CString FindEntryPoint(const CString &record) const;
 
     static CString ParseOhmUrl(const CString &fileName);
+    static std::string ParseHapPath(const CString &fileName);
 
     bool IsSystemLib() const
     {
