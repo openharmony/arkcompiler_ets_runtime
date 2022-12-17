@@ -82,6 +82,7 @@ group("ark_js_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/require/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:unittest",
+      "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
     ]
     if (is_ohos && is_standard_system) {
       deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
@@ -115,6 +116,7 @@ group("ark_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/require/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:host_unittest",
+      "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:host_unittest",
     ]
     if (is_standard_system && !run_with_asan) {
       deps += [
