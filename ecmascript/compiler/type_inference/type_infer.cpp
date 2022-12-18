@@ -973,6 +973,7 @@ void TypeInfer::PrintAllByteCodesTypes() const
     const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodLiteral->GetMethodId());
 
     LOG_COMPILER(INFO) << "print bytecode types:";
+    LOG_COMPILER(INFO) << ".recordName " + recordName_;
     LOG_COMPILER(INFO) << ".function " + functionName + "() {";
     uint32_t lastBcIndex = builder_->GetLastBcIndex();
     for (uint32_t bcIndex = 0; bcIndex < lastBcIndex; bcIndex++) {  // ignore last element

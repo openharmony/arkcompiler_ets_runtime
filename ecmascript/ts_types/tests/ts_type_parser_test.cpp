@@ -158,6 +158,7 @@ HWTEST_F_L0(TSTypeParserTest, CreateGT)
     auto vm = thread->GetEcmaVM();
     auto tsManager = vm->GetTSManager();
     const CString fileName = "__TSTypeParserTest.pa";
+    const CString recordName = "TsTypeParserTest";
     JSPandaFile *pf = CreateJSPandaFile(fileName);
     CVector<JSHandle<EcmaString>> recordImportModules {};
     TSTypeParser tsTypeParser(vm, pf, recordImportModules);
@@ -172,7 +173,7 @@ HWTEST_F_L0(TSTypeParserTest, CreateGT)
     GlobalTSTypeRef offsetGt(TSModuleTable::INFER_TABLE_ID, typeId - TSTypeParser::BUILDIN_TYPE_OFFSET + 1);
     typeId = TSTypeParser::USER_DEFINED_TYPE_OFFSET + 1;
     panda_file::File::EntityId offset(typeId);
-    tsManager->AddElementToLiteralOffsetGTMap(pf, offset, offsetGt);
+    tsManager->AddElementToLiteralOffsetGTMap(pf, offset, recordName, offsetGt);
     resultGT = tsTypeParser.CreateGT(typeId);
     EXPECT_EQ(resultGT, tsManager->GetGTFromOffset(pf, offset));
 }

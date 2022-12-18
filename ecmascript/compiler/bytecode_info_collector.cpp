@@ -83,9 +83,9 @@ void BytecodeInfoCollector::ProcessClasses()
                 std::vector<std::string> classNameVec;
                 CollectMethodPcsFromBC(codeSize, insns, methodLiteral, classNameVec);
                 processedInsns[insns] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
-                // only collect className and literal offset when running type infer case
-                if (vm_->GetTSManager()->AssertTypes()) {
-                    CollectClassNameLiteralOffset(methodLiteral, classNameVec);
+                // collect className and literal offset for type infer
+                if (EnableCollectLiteralInfo()) {
+                    CollectClassLiteralInfo(methodLiteral, classNameVec);
                 }
             }
 
@@ -99,11 +99,11 @@ void BytecodeInfoCollector::ProcessClasses()
                        << methodIdx;
 }
 
-void BytecodeInfoCollector::CollectClassNameLiteralOffset(const MethodLiteral *method,
-    const std::vector<std::string> &classNameVec)
+void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,
+                                                    const std::vector<std::string> &classNameVec)
 {
     std::vector<uint32_t> classOffsetVec;
-    GetClassLiteralOffset(method, classOffsetVec);
+    IterateLiteral(method, classOffsetVec);
 
     if (classOffsetVec.size() == classNameVec.size()) {
         for (uint32_t i = 0; i < classOffsetVec.size(); i++) {
@@ -112,10 +112,12 @@ void BytecodeInfoCollector::CollectClassNameLiteralOffset(const MethodLiteral *m
     }
 }
 
-void BytecodeInfoCollector::GetClassLiteralOffset(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector)
+void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
+                                           std::vector<uint32_t> &classOffsetVector)
 {
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     panda_file::File::EntityId fieldId = method->GetMethodId();
+    uint32_t defineMethodOffset = fieldId.GetOffset();
     panda_file::MethodDataAccessor methodDataAccessor(*pf, fieldId);
 
     methodDataAccessor.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
@@ -140,6 +142,9 @@ void BytecodeInfoCollector::GetClassLiteralOffset(const MethodLiteral *method, s
             for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {
                 int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
                 uint32_t typeOffset = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
+                if (classDefBCIndexes_.find(bcOffset) != classDefBCIndexes_.end()) {
+                    bytecodeInfo_.SetClassTypeOffsetAndDefMethod(typeOffset, defineMethodOffset);
+                }
                 if (bcOffset != TypeRecorder::METHOD_ANNOTATION_THIS_TYPE_OFFSET &&
                     typeOffset > TSTypeParser::USER_DEFINED_TYPE_OFFSET) {
                     offsetTypeMap.insert(std::make_pair(bcOffset, typeOffset));
@@ -157,6 +162,7 @@ void BytecodeInfoCollector::GetClassLiteralOffset(const MethodLiteral *method, s
             }
         }
     });
+    classDefBCIndexes_.clear();
 }
 
 void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
@@ -164,18 +170,20 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
 {
     auto bcIns = BytecodeInst(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
+    int32_t bcIndex = 0;
     auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
     methodPcInfos.emplace_back(MethodPcInfo { {}, insSz });
     auto &pcOffsets = methodPcInfos.back().pcOffsets;
     const uint8_t *curPc = bcIns.GetAddress();
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-        CollectMethodInfoFromBC(bcIns, method, classNameVec);
+        CollectMethodInfoFromBC(bcIns, method, classNameVec, bcIndex);
         CollectConstantPoolIndexInfoFromBC(bcIns, method);
         curPc = bcIns.GetAddress();
         auto nextInst = bcIns.GetNext();
         bcIns = nextInst;
         pcOffsets.emplace_back(curPc);
+        bcIndex++;
     }
 }
 
@@ -205,7 +213,8 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
         methodInfo.SetLexEnvStatus(status);
         return;
     }
-    MethodInfo info(GetMethodInfoID(), processedMethodPcInfoIndex, LexEnv::DEFAULT_ROOT, numOfLexVars, status);
+    MethodInfo info(GetMethodInfoID(), processedMethodPcInfoIndex, LexEnv::DEFAULT_ROOT,
+        MethodInfo::DEFAULT_OUTMETHOD_OFFSET, numOfLexVars, status);
     methodList.emplace(methodOffset, info);
 }
 
@@ -234,9 +243,10 @@ void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t inne
     auto innerMethodIter = methodList.find(innerMethodOffset);
     if (innerMethodIter != methodList.end()) {
         innerMethodIter->second.SetOutMethodId(methodInfoId);
+        innerMethodIter->second.SetOutMethodOffset(methodId);
         return;
     }
-    MethodInfo innerInfo(GetMethodInfoID(), 0, methodInfoId);
+    MethodInfo innerInfo(GetMethodInfoID(), 0, methodInfoId, methodId);
     methodList.emplace(innerMethodOffset, innerInfo);
 }
 
@@ -260,7 +270,8 @@ void BytecodeInfoCollector::NewLexEnvWithSize(const MethodLiteral *method, uint6
         methodInfo.SetLexEnvStatus(LexicalEnvStatus::REALITY_LEXENV);
         return;
     }
-    MethodInfo info(GetMethodInfoID(), 0, LexEnv::DEFAULT_ROOT, numOfLexVars, LexicalEnvStatus::REALITY_LEXENV);
+    MethodInfo info(GetMethodInfoID(), 0, LexEnv::DEFAULT_ROOT, MethodInfo::DEFAULT_OUTMETHOD_OFFSET,
+        numOfLexVars, LexicalEnvStatus::REALITY_LEXENV);
     methodList.emplace(methodOffset, info);
 }
 
@@ -275,7 +286,8 @@ void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(const MethodLitera
 }
 
 void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &bcIns,
-                                                    const MethodLiteral *method, std::vector<std::string> &classNameVec)
+                                                    const MethodLiteral *method, std::vector<std::string> &classNameVec,
+                                                    int32_t bcIndex)
 {
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     if (!(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
@@ -301,6 +313,7 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 auto entityId = pf->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 classNameVec.emplace_back(GetClassName(entityId));
+                classDefBCIndexes_.insert(bcIndex);
                 methodId = entityId.GetOffset();
                 CollectInnerMethods(method, methodId);
                 auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
@@ -312,22 +325,12 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 auto entityId = pf->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 classNameVec.emplace_back(GetClassName(entityId));
+                classDefBCIndexes_.insert(bcIndex);
                 methodId = entityId.GetOffset();
                 CollectInnerMethods(method, methodId);
                 auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
                 CollectInnerMethodsFromNewLiteral(method, literalId);
-                break;
-            }
-            case BytecodeInstruction::Opcode::DEPRECATED_DEFINECLASSWITHBUFFER_PREF_ID16_IMM16_IMM16_V8_V8: {
-                methodId = pf->ResolveMethodIndex(method->GetMethodId(),
-                                                  static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
-                auto entityId = pf->ResolveMethodIndex(method->GetMethodId(),
-                    (bcIns.GetId <BytecodeInstruction::Format::PREF_ID16_IMM16_IMM16_V8_V8, 0>()).AsRawValue());
-                classNameVec.emplace_back(GetClassName(entityId));
-                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_ID16_IMM16_IMM16_V8_V8>();
-                CollectInnerMethods(method, methodId);
-                CollectInnerMethodsFromLiteral(method, imm);
                 break;
             }
             case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
