@@ -20,6 +20,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/compiler/compilation_driver.h"
 
 namespace panda::ecmascript {
 enum class MTableIdx : uint8_t {
@@ -429,10 +430,15 @@ public:
     bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
 
     inline void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, uint32_t offset,
-                                               GlobalTSTypeRef gt)
+                                               const CString &recordName, GlobalTSTypeRef gt,
+                                               bool isImportType = false)
     {
         auto key = std::make_pair(jsPandaFile, offset);
         literalOffsetGTMap_.emplace(key, gt);
+        if (!isImportType) {
+            auto value = std::make_pair(recordName, offset);
+            gtLiteralOffsetMap_.emplace(gt, value);
+        }
     }
 
     inline bool HasCreatedGT(const JSPandaFile *jsPandaFile, uint32_t offset) const
@@ -445,6 +451,16 @@ public:
     {
         auto key = std::make_pair(jsPandaFile, offset);
         return literalOffsetGTMap_.at(key);
+    }
+
+    inline bool HasOffsetFromGT(GlobalTSTypeRef gt) const
+    {
+        return gtLiteralOffsetMap_.find(gt) != gtLiteralOffsetMap_.end();
+    }
+
+    inline std::pair<CString, uint32_t> GetOffsetFromGt(GlobalTSTypeRef gt) const
+    {
+        return gtLiteralOffsetMap_.at(gt);
     }
 
     inline void AddTypeToLocalModuleVarGtMap(const JSPandaFile *jsPandaFile, const CString &recordName,
@@ -598,6 +614,16 @@ public:
         std::vector<RecordData> recordInfo_ {};
     };
 
+    void SetCompilationDriver(kungfu::CompilationDriver *cmpDriver)
+    {
+        cmpDriver_ = cmpDriver;
+    }
+
+    kungfu::CompilationDriver *GetCompilationDriver() const
+    {
+        return cmpDriver_;
+    }
+
     JSTaggedValue PUBLIC_API GetSnapshotCPList() const
     {
         return snapshotData_.GetSnapshotCPList();
@@ -703,10 +729,12 @@ private:
     SnapshotData snapshotData_ {};
 
     std::map<std::pair<const JSPandaFile *, uint32_t>, GlobalTSTypeRef> literalOffsetGTMap_ {};
+    std::map<GlobalTSTypeRef, std::pair<CString, uint32_t>> gtLiteralOffsetMap_ {};
     std::vector<uint32_t> builtinOffsets_ {};
     JSPandaFile *builtinPandaFile_ {nullptr};
     CString builtinsRecordName_ {""};
     std::map<LocalModuleInfo, GlobalTSTypeRef> localModuleVarGtMap_{};
+    kungfu::CompilationDriver *cmpDriver_ {nullptr};
 
     friend class EcmaVM;
 

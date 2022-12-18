@@ -155,6 +155,12 @@ int TSManager::GetHClassIndexByClassGateType(const kungfu::GateType &gateType)
 
 int TSManager::GetHClassIndex(GlobalTSTypeRef classGT)
 {
+    if (HasOffsetFromGT(classGT)) {
+        uint32_t literalOffset = 0;
+        CString recordName = "";
+        std::tie(recordName, literalOffset) = GetOffsetFromGt(classGT);
+        GetCompilationDriver()->AddResolvedMethod(recordName, literalOffset);
+    }
     // make sure already setting correct curCP_ and curCPID_ before calling this method
     auto iter = gtIhcMap_.find(classGT);
     if (iter == gtIhcMap_.end()) {

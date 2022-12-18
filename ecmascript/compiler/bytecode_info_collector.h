@@ -67,14 +67,14 @@ public:
 
     inline void Inilialize(uint32_t outMethodId, uint32_t numOfLexVars, LexicalEnvStatus status)
     {
-        outMethodId_ = outMethodId;
+        outerMethodId_ = outMethodId;
         lexVarTypes_.resize(numOfLexVars, GateType::AnyType());
         status_ = status;
     }
 
     inline uint32_t GetOutMethodId() const
     {
-        return outMethodId_;
+        return outerMethodId_;
     }
 
     inline LexicalEnvStatus GetLexEnvStatus() const
@@ -98,7 +98,7 @@ public:
     }
 
 private:
-    uint32_t outMethodId_ { DEFAULT_ROOT };
+    uint32_t outerMethodId_ { DEFAULT_ROOT };
     std::vector<GateType> lexVarTypes_ {};
     LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
 };
@@ -112,23 +112,36 @@ struct MethodPcInfo {
 
 class MethodInfo {
 public:
-    explicit MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx, uint32_t num = 0,
+    explicit MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx,
+                        uint32_t outMethodOffset = MethodInfo::DEFAULT_OUTMETHOD_OFFSET, uint32_t num = 0,
                         LexicalEnvStatus lexEnvStatus = LexicalEnvStatus::VIRTUAL_LEXENV)
-        : methodInfoIndex_(methodInfoIndex), methodPcInfoIndex_(methodPcInfoIndex), outMethodId_(outMethodIdx),
-          numOfLexVars_(num), status_(lexEnvStatus)
+        : methodInfoIndex_(methodInfoIndex), methodPcInfoIndex_(methodPcInfoIndex), outerMethodId_(outMethodIdx),
+          outerMethodOffset_(outMethodOffset), numOfLexVars_(num), status_(lexEnvStatus)
     {
     }
 
     ~MethodInfo() = default;
 
+    static constexpr uint32_t DEFAULT_OUTMETHOD_OFFSET = 0;
+
     inline uint32_t GetOutMethodId() const
     {
-        return outMethodId_;
+        return outerMethodId_;
     }
 
     inline uint32_t SetOutMethodId(uint32_t outMethodId)
     {
-        return outMethodId_ = outMethodId;
+        return outerMethodId_ = outMethodId;
+    }
+
+    inline uint32_t GetOutMethodOffset() const
+    {
+        return outerMethodOffset_;
+    }
+
+    inline uint32_t SetOutMethodOffset(uint32_t outMethodOffset)
+    {
+        return outerMethodOffset_ = outMethodOffset;
     }
 
     inline uint32_t GetNumOfLexVars() const
@@ -181,15 +194,38 @@ public:
         return innerMethods_;
     }
 
+    bool IsPGO() const
+    {
+        return isPgoMarked_;
+    }
+
+    void SetIsPGO(bool pgoMark)
+    {
+        isPgoMarked_ = pgoMark;
+    }
+
+    bool IsCompiled() const
+    {
+        return isCompiled_;
+    }
+
+    void SetIsCompiled(bool isCompiled)
+    {
+        isCompiled_ = isCompiled;
+    }
+
 private:
     // used to record the index of the current MethodInfo to speed up the lookup of lexEnv
     uint32_t methodInfoIndex_ { 0 };
     // used to obtain MethodPcInfo from the vector methodPcInfos of struct BCInfo
     uint32_t methodPcInfoIndex_ { 0 };
     std::vector<uint32_t> innerMethods_ {};
-    uint32_t outMethodId_ { LexEnv::DEFAULT_ROOT };
+    uint32_t outerMethodId_ { LexEnv::DEFAULT_ROOT };
+    uint32_t outerMethodOffset_ { MethodInfo::DEFAULT_OUTMETHOD_OFFSET };
     uint32_t numOfLexVars_ { 0 };
     LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
+    bool isPgoMarked_ {false};
+    bool isCompiled_ {false};
 };
 
 
@@ -231,8 +267,8 @@ private:
 
 class BCInfo {
 public:
-    explicit BCInfo(PGOProfilerLoader &profilerLoader, size_t maxAotMethodSize)
-        : pfLoader_(profilerLoader), maxMethodSize_(maxAotMethodSize)
+    explicit BCInfo(size_t maxAotMethodSize)
+        : maxMethodSize_(maxAotMethodSize)
     {
     }
 
@@ -256,12 +292,44 @@ public:
         return methodList_;
     }
 
+    size_t GetMaxMethodSize() const
+    {
+        return maxMethodSize_;
+    }
+
     bool IsSkippedMethod(uint32_t methodOffset) const
     {
         if (skippedMethods_.find(methodOffset) == skippedMethods_.end()) {
             return false;
         }
         return true;
+    }
+
+    void AddSkippedMethod(uint32_t methodOffset)
+    {
+        skippedMethods_.insert(methodOffset);
+    }
+
+    void EraseSkippedMethod(uint32_t methodOffset)
+    {
+        if (skippedMethods_.find(methodOffset) != skippedMethods_.end()) {
+            skippedMethods_.erase(methodOffset);
+        }
+    }
+
+    void AddRecordName(const CString &recordName)
+    {
+        recordNames_.emplace_back(recordName);
+    }
+
+    CString GetRecordName(uint32_t index) const
+    {
+        return recordNames_[index];
+    }
+
+    void AddMethodOffsetToRecordName(uint32_t methodOffset, CString recordName)
+    {
+        methodOffsetToRecordName_.emplace(methodOffset, recordName);
     }
 
     size_t GetSkippedMethodSize() const
@@ -285,45 +353,23 @@ public:
         }
     }
 
-    template <class Callback>
-    void EnumerateBCInfo(JSPandaFile *jsPandaFile, const Callback &cb)
+    uint32_t GetDefineMethod(const uint32_t classLiteralOffset) const
     {
-        for (uint32_t i = 0; i < mainMethodIndexes_.size(); i++) {
-            std::queue<uint32_t> methodCompiledOrder;
-            methodCompiledOrder.push(mainMethodIndexes_[i]);
-            while (!methodCompiledOrder.empty()) {
-                auto compilingMethod = methodCompiledOrder.front();
-                methodCompiledOrder.pop();
-                methodOffsetToRecordName_.emplace(compilingMethod, recordNames_[i]);
-                auto &methodInfo = methodList_.at(compilingMethod);
-                auto &methodPcInfo = methodPcInfos_[methodInfo.GetMethodPcInfoIndex()];
-                auto methodLiteral = jsPandaFile->FindMethodLiteral(compilingMethod);
-                const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
-                if (FilterMethod(recordNames_[i], methodLiteral, methodPcInfo)) {
-                    skippedMethods_.insert(compilingMethod);
-                    LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
-                } else {
-                    cb(recordNames_[i], methodName, methodLiteral, compilingMethod,
-                       methodPcInfo, methodInfo.GetMethodInfoIndex());
-                }
-                auto &innerMethods = methodInfo.GetInnerMethods();
-                for (auto it : innerMethods) {
-                    methodCompiledOrder.push(it);
-                }
-            }
+        return classTypeLOffsetToDefMethod_.at(classLiteralOffset);
+    }
+
+    bool HasClassDefMethod(const uint32_t classLiteralOffset) const
+    {
+        return classTypeLOffsetToDefMethod_.find(classLiteralOffset) != classTypeLOffsetToDefMethod_.end();
+    }
+
+    void SetClassTypeOffsetAndDefMethod(uint32_t classLiteralOffset, uint32_t methodOffset)
+    {
+        if (classTypeLOffsetToDefMethod_.find(classLiteralOffset) == classTypeLOffsetToDefMethod_.end()) {
+            classTypeLOffsetToDefMethod_.emplace(classLiteralOffset, methodOffset);
         }
     }
 private:
-    bool FilterMethod(const CString &recordName, const MethodLiteral *methodLiteral,
-                      const MethodPcInfo &methodPCInfo) const
-    {
-        if (methodPCInfo.methodsSize > maxMethodSize_ ||
-            !pfLoader_.Match(recordName, methodLiteral->GetMethodId())) {
-            return true;
-        }
-        return false;
-    }
-
     std::vector<uint32_t> mainMethodIndexes_ {};
     std::vector<CString> recordNames_ {};
     std::vector<MethodPcInfo> methodPcInfos_ {};
@@ -331,8 +377,8 @@ private:
     std::unordered_map<uint32_t, CString> methodOffsetToRecordName_ {};
     std::set<uint32_t> skippedMethods_ {};
     ConstantPoolInfo cpInfo_;
-    PGOProfilerLoader &pfLoader_;
     size_t maxMethodSize_;
+    std::unordered_map<uint32_t, uint32_t> classTypeLOffsetToDefMethod_ {};
 };
 
 class LexEnvManager {
@@ -368,15 +414,21 @@ private:
 
 class BytecodeInfoCollector {
 public:
-    explicit BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, PGOProfilerLoader &profilerLoader,
-                                   size_t maxAotMethodSize)
-        : vm_(vm), jsPandaFile_(jsPandaFile), bytecodeInfo_(profilerLoader, maxAotMethodSize)
+    explicit BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile,
+                                   size_t maxAotMethodSize, bool enableCollectLiteralInfo)
+        : vm_(vm), jsPandaFile_(jsPandaFile), bytecodeInfo_(maxAotMethodSize),
+          enableCollectLiteralInfo_(enableCollectLiteralInfo)
     {
         ProcessClasses();
     }
     ~BytecodeInfoCollector() = default;
     NO_COPY_SEMANTIC(BytecodeInfoCollector);
     NO_MOVE_SEMANTIC(BytecodeInfoCollector);
+
+    bool EnableCollectLiteralInfo() const
+    {
+        return enableCollectLiteralInfo_;
+    }
 
     BCInfo& GetBytecodeInfo()
     {
@@ -431,16 +483,18 @@ private:
     void CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index);
     void NewLexEnvWithSize(const MethodLiteral *method, uint64_t numOfLexVars);
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
-    void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns,
-        const MethodLiteral *method, std::vector<std::string> &classNameVec);
+    void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
+                                 std::vector<std::string> &classNameVec, int32_t bcIndex);
     void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
-    void GetClassLiteralOffset(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
-    void CollectClassNameLiteralOffset(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
+    void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
+    void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
 
     EcmaVM *vm_;
     JSPandaFile *jsPandaFile_ {nullptr};
     BCInfo bytecodeInfo_;
     size_t methodInfoIndex_ {0};
+    bool enableCollectLiteralInfo_ {false};
+    std::set<int32_t> classDefBCIndexes_ {};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H

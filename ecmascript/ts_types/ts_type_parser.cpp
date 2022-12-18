@@ -68,7 +68,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     JSHandle<TSTypeTable> table;
     uint32_t moduleId = 0;
     std::tie(table, moduleId) = tsManager_->GenerateTSTypeTable(jsPandaFile, recordName);
-    GlobalTSTypeRef gt = GetGT(jsPandaFile, table, moduleId, typeId);
+    GlobalTSTypeRef gt = GetGT(jsPandaFile, table, moduleId, typeId, recordName);
     JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind, typeId);
     SetTSType(table, type, gt);
 
@@ -91,7 +91,7 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     JSHandle<EcmaString> targetVarName = GenerateImportVar(importVarNamePath);
     JSHandle<TaggedArray> arrayWithGT = GenerateExportTableFromRecord(jsPandaFile, entryPoint);
     GlobalTSTypeRef importedGT = GetExportGTByName(targetVarName, arrayWithGT);
-    tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, importedGT);
+    tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, recordName, importedGT, true);
     return importedGT;
 }
 
@@ -202,7 +202,7 @@ JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSPanda
     ASSERT(static_cast<TSTypeKind>(literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt()) ==
                                    TSTypeKind::CLASS_INSTANCE);
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
-    int32_t classTypeId = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
+    uint32_t classTypeId = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
     auto classGT = CreateGT(jsPandaFile, recordName, classTypeId);
     classInstanceType->SetClassGT(classGT);
     return classInstanceType;
