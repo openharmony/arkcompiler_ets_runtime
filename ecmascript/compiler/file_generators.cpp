@@ -128,6 +128,6 @@ void AOTFileGenerator::SaveSnapshotFile()
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
     vm_->GetTSManager()->ResolveSnapshotConstantPool(methodToEntryIndexMap_);
-    snapshot.Serialize(snapshotPath + ".ai");
+    snapshot.Serialize(snapshotPath + AOTFileManager::FILE_EXTENSION_AI);
 }
 }  // namespace panda::ecmascript::kungfu
