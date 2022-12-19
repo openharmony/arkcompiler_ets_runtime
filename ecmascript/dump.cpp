@@ -1489,8 +1489,8 @@ void JSAPITreeMapIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTagg
     TaggedTreeMap *map =
         TaggedTreeMap::Cast(JSAPITreeMap::Cast(GetIteratedMap().GetTaggedObject())->GetTreeMap().GetTaggedObject());
     map->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
-    vec.push_back(std::make_pair(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind()))));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
+    vec.emplace_back("IterationKind", JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -1604,8 +1604,8 @@ void JSAPITreeSetIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTagg
     TaggedTreeSet *set =
         TaggedTreeSet::Cast(JSAPITreeSet::Cast(GetIteratedSet().GetTaggedObject())->GetTreeSet().GetTaggedObject());
     set->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
-    vec.push_back(std::make_pair(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind()))));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
+    vec.emplace_back("IterationKind", JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -1675,7 +1675,7 @@ void JSAPIPlainArrayIterator::DumpForSnapshot(std::vector<std::pair<CString, JST
 {
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(GetIteratedPlainArray().GetTaggedObject());
     array->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -1988,7 +1988,7 @@ void JSAPIListIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedV
 {
     TaggedSingleList *list = TaggedSingleList::Cast(GetIteratedList().GetTaggedObject());
     list->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -2025,7 +2025,7 @@ void JSAPILinkedListIterator::DumpForSnapshot(std::vector<std::pair<CString, JST
 {
     TaggedDoubleList *linkedList = TaggedDoubleList::Cast(GetIteratedLinkedList().GetTaggedObject());
     linkedList->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -3409,10 +3409,11 @@ static void DumpArrayClass(const TaggedArray *arr,
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t len = arr->GetLength();
+    vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(arr->Get(i));
         CString str = ToCString(i);
-        vec.push_back(std::make_pair(str, val));
+        vec.emplace_back(str, val);
     }
 }
 
@@ -3421,24 +3422,25 @@ static void DumpConstantPoolClass(const ConstantPool *arr,
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t len = arr->GetCacheLength();
+    vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(arr->GetObjectFromCache(i));
         CString str = ToCString(i);
-        vec.push_back(std::make_pair(str, val));
+        vec.emplace_back(str, val);
     }
 }
 
 static void DumpStringClass(const EcmaString *str,
                             std::vector<std::pair<CString, JSTaggedValue>> &vec)
 {
-    vec.push_back(std::make_pair("string", JSTaggedValue(str)));
+    vec.emplace_back("string", JSTaggedValue(str));
 }
 
 static void DumpClass(TaggedObject *obj,
                          std::vector<std::pair<CString, JSTaggedValue>> &vec)
 {
     JSHClass *jshclass = obj->GetClass();
-    vec.push_back(std::make_pair("__proto__", jshclass->GetPrototype()));
+    vec.emplace_back("__proto__", jshclass->GetPrototype());
 }
 
 static void DumpObject(TaggedObject *obj,
@@ -3920,12 +3922,13 @@ void NumberDictionary::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
 {
     DISALLOW_GARBAGE_COLLECTION;
     int size = Size();
+    vec.reserve(vec.size() + size);
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key(GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             JSTaggedValue val(GetValue(hashIndex));
             CString str = ToCString(static_cast<uint32_t>(JSTaggedNumber(key).GetNumber()));
-            vec.push_back(std::make_pair(str, val));
+            vec.emplace_back(str, val);
         }
     }
 }
@@ -3934,13 +3937,14 @@ void NameDictionary::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValu
 {
     DISALLOW_GARBAGE_COLLECTION;
     int size = Size();
+    vec.reserve(vec.size() + size);
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key(GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             JSTaggedValue val(GetValue(hashIndex));
             CString str;
             KeyToStd(str, key);
-            vec.push_back(std::make_pair(str, val));
+            vec.emplace_back(str, val);
         }
     }
 }
@@ -3949,13 +3953,14 @@ void GlobalDictionary::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
 {
     DISALLOW_GARBAGE_COLLECTION;
     int size = Size();
+    vec.reserve(vec.size() + size);
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key(GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;
             KeyToStd(str, key);
             JSTaggedValue val = GetValue(hashIndex);
-            vec.push_back(std::make_pair(str, val));
+            vec.emplace_back(str, val);
         }
     }
 }
@@ -3964,12 +3969,13 @@ void LinkedHashSet::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 {
     DISALLOW_GARBAGE_COLLECTION;
     int capacity = NumberOfElements() + NumberOfDeletedElements();
+    vec.reserve(vec.size() + capacity);
     for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
         JSTaggedValue key(GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;
             KeyToStd(str, key);
-            vec.push_back(std::make_pair(str, JSTaggedValue::Hole()));
+            vec.emplace_back(str, JSTaggedValue::Hole());
         }
     }
 }
@@ -3978,13 +3984,14 @@ void LinkedHashMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 {
     DISALLOW_GARBAGE_COLLECTION;
     int capacity = NumberOfElements() + NumberOfDeletedElements();
+    vec.reserve(vec.size() + capacity);
     for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
         JSTaggedValue key(GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             JSTaggedValue val = GetValue(hashIndex);
             CString str;
             KeyToStd(str, key);
-            vec.push_back(std::make_pair(str, val));
+            vec.emplace_back(str, val);
         }
     }
 }
@@ -3993,13 +4000,14 @@ void TaggedTreeMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 {
     DISALLOW_GARBAGE_COLLECTION;
     int capacity = NumberOfElements() + NumberOfDeletedElements();
+    vec.reserve(vec.size() + capacity);
     for (int index = 0; index < capacity; index++) {
         JSTaggedValue key(GetKey(index));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             JSTaggedValue val = GetValue(index);
             CString str;
             KeyToStd(str, key);
-            vec.push_back(std::make_pair(str, val));
+            vec.emplace_back(str, val);
         }
     }
 }
@@ -4008,12 +4016,13 @@ void TaggedTreeSet::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 {
     DISALLOW_GARBAGE_COLLECTION;
     int capacity = NumberOfElements() + NumberOfDeletedElements();
+    vec.reserve(vec.size() + capacity);
     for (int index = 0; index < capacity; index++) {
         JSTaggedValue key(GetKey(index));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;
             KeyToStd(str, key);
-            vec.push_back(std::make_pair(str, JSTaggedValue::Hole()));
+            vec.emplace_back(str, JSTaggedValue::Hole());
         }
     }
 }
@@ -4022,11 +4031,12 @@ void TaggedDoubleList::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
 {
     DISALLOW_GARBAGE_COLLECTION;
     int capacity = NumberOfNodes();
+    vec.reserve(vec.size() + capacity);
     for (int index = 0; index < capacity; index++) {
         JSTaggedValue val = GetElement(index);
         CString str;
         KeyToStd(str, JSTaggedValue(index));
-        vec.push_back(std::make_pair(str, val));
+        vec.emplace_back(str, val);
     }
 }
 
@@ -4034,11 +4044,12 @@ void TaggedSingleList::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVa
 {
     DISALLOW_GARBAGE_COLLECTION;
     int capacity = NumberOfNodes();
+    vec.reserve(vec.size() + capacity);
     for (int index = 0; index < capacity; index++) {
         JSTaggedValue val = GetElement(index);
         CString str;
         KeyToStd(str, JSTaggedValue(index));
-        vec.push_back(std::make_pair(str, val));
+        vec.emplace_back(str, val);
     }
 }
 
@@ -4046,7 +4057,7 @@ void JSObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &v
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSHClass *jshclass = GetJSHClass();
-    vec.push_back(std::make_pair("__proto__", jshclass->GetPrototype()));
+    vec.emplace_back("__proto__", jshclass->GetPrototype());
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     if (elements->GetLength() == 0) {
@@ -4072,6 +4083,7 @@ void JSObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &v
 
         LayoutInfo *layoutInfo = LayoutInfo::Cast(attrs.GetTaggedObject());
         int propNumber = static_cast<int>(jshclass->NumberOfProps());
+        vec.reserve(vec.size() + propNumber);
         for (int i = 0; i < propNumber; i++) {
             JSTaggedValue key = layoutInfo->GetKey(i);
             PropertyAttributes attr = layoutInfo->GetAttr(i);
@@ -4085,7 +4097,7 @@ void JSObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &v
 
             CString str;
             KeyToStd(str, key);
-            vec.push_back(std::make_pair(str, val));
+            vec.emplace_back(str, val);
         }
     } else {
         NameDictionary *dict = NameDictionary::Cast(properties);
@@ -4099,23 +4111,23 @@ void JSHClass::DumpForSnapshot([[maybe_unused]] std::vector<std::pair<CString, J
 
 void JSFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ProtoOrHClass"), GetProtoOrHClass()));
-    vec.push_back(std::make_pair(CString("LexicalEnv"), GetLexicalEnv()));
-    vec.push_back(std::make_pair(CString("HomeObject"), GetHomeObject()));
-    vec.push_back(std::make_pair(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind()))));
-    vec.push_back(std::make_pair(CString("FunctionExtraInfo"), GetFunctionExtraInfo()));
+    vec.emplace_back("ProtoOrHClass", GetProtoOrHClass());
+    vec.emplace_back("LexicalEnv", GetLexicalEnv());
+    vec.emplace_back("HomeObject", GetHomeObject());
+    vec.emplace_back("FunctionKind", JSTaggedValue(static_cast<int>(GetFunctionKind())));
+    vec.emplace_back("FunctionExtraInfo", GetFunctionExtraInfo());
     JSObject::DumpForSnapshot(vec);
 }
 
 void Method::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ConstantPool"), GetConstantPool()));
-    vec.push_back(std::make_pair(CString("ProfileTypeInfo"), GetProfileTypeInfo()));
+    vec.emplace_back("ConstantPool", GetConstantPool());
+    vec.emplace_back("ProfileTypeInfo", GetProfileTypeInfo());
 }
 
 void Program::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("MainFunction"), GetMainFunction()));
+    vec.emplace_back("MainFunction", GetMainFunction());
 }
 
 void ConstantPool::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4132,27 +4144,27 @@ void JSBoundFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 {
     JSObject::DumpForSnapshot(vec);
 
-    vec.push_back(std::make_pair(CString("BoundTarget"), GetBoundTarget()));
-    vec.push_back(std::make_pair(CString("BoundThis"), GetBoundThis()));
-    vec.push_back(std::make_pair(CString("BoundArguments"), GetBoundArguments()));
+    vec.emplace_back("BoundTarget", GetBoundTarget());
+    vec.emplace_back("BoundThis", GetBoundThis());
+    vec.emplace_back("BoundArguments", GetBoundArguments());
 }
 
 void JSPrimitiveRef::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("subValue"), GetValue()));
+    vec.emplace_back("subValue", GetValue());
     JSObject::DumpForSnapshot(vec);
 }
 
 void BigInt::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Length"), JSTaggedValue(GetLength())));
-    vec.push_back(std::make_pair(CString("Sign"), JSTaggedValue(GetSign())));
+    vec.emplace_back("Length", JSTaggedValue(GetLength()));
+    vec.emplace_back("Sign", JSTaggedValue(GetSign()));
 }
 
 void JSDate::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("time"), GetTime()));
-    vec.push_back(std::make_pair(CString("localOffset"), GetLocalOffset()));
+    vec.emplace_back("time", GetTime());
+    vec.emplace_back("localOffset", GetLocalOffset());
 
     JSObject::DumpForSnapshot(vec);
 }
@@ -4167,10 +4179,10 @@ void JSMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec)
 
 void JSForInIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Object"), GetObject()));
-    vec.push_back(std::make_pair(CString("WasVisited"), JSTaggedValue(GetWasVisited())));
-    vec.push_back(std::make_pair(CString("VisitedObjs"), GetVisitedObjs()));
-    vec.push_back(std::make_pair(CString("RemainingKeys"), GetRemainingKeys()));
+    vec.emplace_back("Object", GetObject());
+    vec.emplace_back("WasVisited", JSTaggedValue(GetWasVisited()));
+    vec.emplace_back("VisitedObjs", GetVisitedObjs());
+    vec.emplace_back("RemainingKeys", GetRemainingKeys());
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4178,8 +4190,8 @@ void JSMapIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 {
     LinkedHashMap *map = LinkedHashMap::Cast(GetIteratedMap().GetTaggedObject());
     map->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
-    vec.push_back(std::make_pair(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind()))));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
+    vec.emplace_back("IterationKind", JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4209,31 +4221,31 @@ void JSWeakSet::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &
 
 void JSWeakRef::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("WeakObject"), GetWeakObject()));
+    vec.emplace_back("WeakObject", GetWeakObject());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSFinalizationRegistry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("CleanupCallback"), GetCleanupCallback()));
+    vec.emplace_back("CleanupCallback", GetCleanupCallback());
     LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister().GetTaggedObject());
     map->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("MaybeUnregister"), GetMaybeUnregister()));
+    vec.emplace_back("MaybeUnregister", GetMaybeUnregister());
     JSObject::DumpForSnapshot(vec);
 }
 
 void CellRecord::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("WeakRefTarget"), GetWeakRefTarget()));
-    vec.push_back(std::make_pair(CString("HeldValue"), GetHeldValue()));
+    vec.emplace_back("WeakRefTarget", GetWeakRefTarget());
+    vec.emplace_back("HeldValue", GetHeldValue());
 }
 
 void JSSetIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     LinkedHashSet *set = LinkedHashSet::Cast(GetIteratedSet().GetTaggedObject());
     set->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
-    vec.push_back(std::make_pair(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind()))));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
+    vec.emplace_back("IterationKind", JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4251,7 +4263,7 @@ void JSAPIArrayListIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTa
 {
     JSAPIArrayList *arraylist = JSAPIArrayList::Cast(GetIteratedArrayList().GetTaggedObject());
     arraylist->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4265,8 +4277,8 @@ void JSAPILightWeightMapIterator::DumpForSnapshot(std::vector<std::pair<CString,
     JSAPILightWeightMap *map =
         JSAPILightWeightMap::Cast(GetIteratedLightWeightMap().GetTaggedObject());
     map->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
-    vec.push_back(std::make_pair(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind()))));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
+    vec.emplace_back("IterationKind", JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4279,7 +4291,7 @@ void JSAPIQueueIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTagged
 {
     JSAPIQueue *queue = JSAPIQueue::Cast(GetIteratedQueue().GetTaggedObject());
     queue->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4292,7 +4304,7 @@ void JSAPIDequeIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTagged
 {
     JSAPIDeque *deque = JSAPIDeque::Cast(GetIteratedDeque().GetTaggedObject());
     deque->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4306,8 +4318,8 @@ void JSAPILightWeightSetIterator::DumpForSnapshot(std::vector<std::pair<CString,
     JSAPILightWeightSet *set =
         JSAPILightWeightSet::Cast(GetIteratedLightWeightSet().GetTaggedObject());
     set->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
-    vec.push_back(std::make_pair(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind()))));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
+    vec.emplace_back("IterationKind", JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4320,7 +4332,7 @@ void JSAPIStackIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTagged
 {
     JSAPIStack *stack = JSAPIStack::Cast(GetIteratedStack().GetTaggedObject());
     stack->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4328,8 +4340,8 @@ void JSArrayIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 {
     JSArray *array = JSArray::Cast(GetIteratedArray().GetTaggedObject());
     array->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
-    vec.push_back(std::make_pair(CString("IterationKind"), JSTaggedValue(static_cast<int>(GetIterationKind()))));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
+    vec.emplace_back("IterationKind", JSTaggedValue(static_cast<int>(GetIterationKind())));
     JSObject::DumpForSnapshot(vec);
 }
 
@@ -4342,67 +4354,70 @@ void JSAPIVectorIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTagge
 {
     JSAPIVector *vector = JSAPIVector::Cast(GetIteratedVector().GetTaggedObject());
     vector->DumpForSnapshot(vec);
-    vec.push_back(std::make_pair(CString("NextIndex"), JSTaggedValue(GetNextIndex())));
+    vec.emplace_back("NextIndex", JSTaggedValue(GetNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSStringIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("IteratedString"), GetIteratedString()));
-    vec.push_back(std::make_pair(CString("StringIteratorNextIndex"), JSTaggedValue(GetStringIteratorNextIndex())));
+    vec.emplace_back("IteratedString", GetIteratedString());
+    vec.emplace_back("StringIteratorNextIndex", JSTaggedValue(GetStringIteratorNextIndex()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSTypedArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("viewed-array-buffer"), GetViewedArrayBuffer()));
-    vec.push_back(std::make_pair(CString("typed-array-name"), GetTypedArrayName()));
-    vec.push_back(std::make_pair(CString("byte-length"), JSTaggedValue(GetByteLength())));
-    vec.push_back(std::make_pair(CString("byte-offset"), JSTaggedValue(GetByteOffset())));
-    vec.push_back(std::make_pair(CString("array-length"), JSTaggedValue(GetArrayLength())));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 5;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("viewed-array-buffer", GetViewedArrayBuffer());
+    vec.emplace_back("typed-array-name", GetTypedArrayName());
+    vec.emplace_back("byte-length", JSTaggedValue(GetByteLength()));
+    vec.emplace_back("byte-offset", JSTaggedValue(GetByteOffset()));
+    vec.emplace_back("array-length", JSTaggedValue(GetArrayLength()));
 }
 
 void ByteArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("length"), JSTaggedValue(GetLength())));
-    vec.push_back(std::make_pair(CString("size"), JSTaggedValue(GetSize())));
+    vec.emplace_back("length", JSTaggedValue(GetLength()));
+    vec.emplace_back("size", JSTaggedValue(GetSize()));
 }
 
 void JSRegExp::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("originalSource"), GetOriginalSource()));
-    vec.push_back(std::make_pair(CString("originalFlags"), GetOriginalFlags()));
-    vec.push_back(std::make_pair(CString("groupName"), GetGroupName()));
+    vec.emplace_back("originalSource", GetOriginalSource());
+    vec.emplace_back("originalFlags", GetOriginalFlags());
+    vec.emplace_back("groupName", GetGroupName());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSRegExpIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("IteratingRegExp"), GetIteratingRegExp()));
-    vec.push_back(std::make_pair(CString("IteratedString"), GetIteratedString()));
-    vec.push_back(std::make_pair(CString("Global"), JSTaggedValue(GetGlobal())));
-    vec.push_back(std::make_pair(CString("Unicode"), JSTaggedValue(GetUnicode())));
-    vec.push_back(std::make_pair(CString("Done"), JSTaggedValue(GetDone())));
+    vec.emplace_back("IteratingRegExp", GetIteratingRegExp());
+    vec.emplace_back("IteratedString", GetIteratedString());
+    vec.emplace_back("Global", JSTaggedValue(GetGlobal()));
+    vec.emplace_back("Unicode", JSTaggedValue(GetUnicode()));
+    vec.emplace_back("Done", JSTaggedValue(GetDone()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSProxy::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("target"), GetTarget()));
-    vec.push_back(std::make_pair(CString("handler"), GetHandler()));
+    vec.emplace_back("target", GetTarget());
+    vec.emplace_back("handler", GetHandler());
 }
 
 void JSSymbol::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("hash-field"), JSTaggedValue(GetHashField())));
-    vec.push_back(std::make_pair(CString("flags"), JSTaggedValue(GetFlags())));
-    vec.push_back(std::make_pair(CString("description"), GetDescription()));
+    vec.emplace_back("hash-field", JSTaggedValue(GetHashField()));
+    vec.emplace_back("flags", JSTaggedValue(GetFlags()));
+    vec.emplace_back("description", GetDescription());
 }
 
 void AccessorData::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("getter"), GetGetter()));
-    vec.push_back(std::make_pair(CString("setter"), GetSetter()));
+    vec.emplace_back("getter", GetGetter());
+    vec.emplace_back("setter", GetSetter());
 }
 
 void LexicalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4413,301 +4428,295 @@ void LexicalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> 
 void GlobalEnv::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     auto globalConst = GetJSThread()->GlobalConstants();
-    vec.push_back(std::make_pair(CString("ObjectFunction"), GetObjectFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("FunctionFunction"), GetFunctionFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("NumberFunction"), GetNumberFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("BigIntFunction"), GetBigIntFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("DateFunction"), GetDateFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("BooleanFunction"), GetBooleanFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ErrorFunction"), GetErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ArrayFunction"), GetArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("TypedArrayFunction"), GetTypedArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("Int8ArrayFunction"), GetInt8ArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("Uint8ArrayFunction"), GetUint8ArrayFunction().GetTaggedValue()));
-    vec.push_back(
-        std::make_pair(CString("Uint8ClampedArrayFunction"), GetUint8ClampedArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("Int16ArrayFunction"), GetInt16ArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("Uint16ArrayFunction"), GetUint16ArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("Int32ArrayFunction"), GetInt32ArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("Uint32ArrayFunction"), GetUint32ArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("Float32ArrayFunction"), GetFloat32ArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("Float64ArrayFunction"), GetFloat64ArrayFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ArrayBufferFunction"), GetArrayBufferFunction().GetTaggedValue()));
-    vec.push_back(
-        std::make_pair(CString("SharedArrayBufferFunction"), GetSharedArrayBufferFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("SymbolFunction"), GetSymbolFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("RangeErrorFunction"), GetRangeErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ReferenceErrorFunction"), GetReferenceErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("TypeErrorFunction"), GetTypeErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("AggregateErrorFunction"), GetAggregateErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("URIErrorFunction"), GetURIErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("SyntaxErrorFunction"), GetSyntaxErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("EvalErrorFunction"), GetEvalErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("OOMErrorFunction"), GetOOMErrorFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("RegExpFunction"), GetRegExpFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("BuiltinsSetFunction"), GetBuiltinsSetFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("BuiltinsMapFunction"), GetBuiltinsMapFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("BuiltinsWeakSetFunction"), GetBuiltinsWeakSetFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("BuiltinsWeakMapFunction"), GetBuiltinsWeakMapFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("BuiltinsWeakRefFunction"), GetBuiltinsWeakRefFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("BuiltinsFinalizationRegistryFunction"),
-                                 GetBuiltinsFinalizationRegistryFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("MathFunction"), GetMathFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("AtomicsFunction"), GetAtomicsFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("JsonFunction"), GetJsonFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("StringFunction"), GetStringFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ProxyFunction"), GetProxyFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ReflectFunction"), GetReflectFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("AsyncFunction"), GetAsyncFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("AsyncFunctionPrototype"), GetAsyncFunctionPrototype().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("JSGlobalObject"), GetJSGlobalObject().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("EmptyArray"), globalConst->GetEmptyArray()));
-    vec.push_back(std::make_pair(CString("EmptyString"), globalConst->GetEmptyString()));
-    vec.push_back(std::make_pair(CString("EmptyTaggedQueue"), globalConst->GetEmptyTaggedQueue()));
-    vec.push_back(std::make_pair(CString("PrototypeString"), globalConst->GetPrototypeString()));
-    vec.push_back(std::make_pair(CString("HasInstanceSymbol"), GetHasInstanceSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("IsConcatSpreadableSymbol"), GetIsConcatSpreadableSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ToStringTagSymbol"), GetToStringTagSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("IteratorSymbol"), GetIteratorSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("AsyncIteratorSymbol"), GetAsyncIteratorSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("MatchSymbol"), GetMatchSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("MatchAllSymbol"), GetMatchAllSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ReplaceSymbol"), GetReplaceSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("SearchSymbol"), GetSearchSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("SpeciesSymbol"), GetSpeciesSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("SplitSymbol"), GetSplitSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ToPrimitiveSymbol"), GetToPrimitiveSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("UnscopablesSymbol"), GetUnscopablesSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("HoleySymbol"), GetHoleySymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("AttachSymbol"), GetAttachSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("DetachSymbol"), GetDetachSymbol().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ConstructorString"), globalConst->GetConstructorString()));
-    vec.push_back(std::make_pair(CString("IteratorPrototype"), GetIteratorPrototype().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ForinIteratorPrototype"), GetForinIteratorPrototype().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("StringIterator"), GetStringIterator().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("MapIteratorPrototype"), GetMapIteratorPrototype().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("SetIteratorPrototype"), GetSetIteratorPrototype().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("RegExpIteratorPrototype"), GetRegExpIteratorPrototype().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ArrayIteratorPrototype"), GetArrayIteratorPrototype().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("StringIteratorPrototype"), GetStringIteratorPrototype().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("LengthString"), globalConst->GetLengthString()));
-    vec.push_back(std::make_pair(CString("ValueString"), globalConst->GetValueString()));
-    vec.push_back(std::make_pair(CString("WritableString"), globalConst->GetWritableString()));
-    vec.push_back(std::make_pair(CString("GetString"), globalConst->GetGetString()));
-    vec.push_back(std::make_pair(CString("SetString"), globalConst->GetSetString()));
-    vec.push_back(std::make_pair(CString("EnumerableString"), globalConst->GetEnumerableString()));
-    vec.push_back(std::make_pair(CString("ConfigurableString"), globalConst->GetConfigurableString()));
-    vec.push_back(std::make_pair(CString("NameString"), globalConst->GetNameString()));
-    vec.push_back(std::make_pair(CString("ValueOfString"), globalConst->GetValueOfString()));
-    vec.push_back(std::make_pair(CString("ToStringString"), globalConst->GetToStringString()));
-    vec.push_back(std::make_pair(CString("ToLocaleStringString"), globalConst->GetToLocaleStringString()));
-    vec.push_back(std::make_pair(CString("UndefinedString"), globalConst->GetUndefinedString()));
-    vec.push_back(std::make_pair(CString("NullString"), globalConst->GetNullString()));
-    vec.push_back(std::make_pair(CString("TrueString"), globalConst->GetTrueString()));
-    vec.push_back(std::make_pair(CString("FalseString"), globalConst->GetFalseString()));
-    vec.push_back(std::make_pair(CString("RegisterSymbols"), GetRegisterSymbols().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ThrowTypeError"), GetThrowTypeError().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("GetPrototypeOfString"), globalConst->GetGetPrototypeOfString()));
-    vec.push_back(std::make_pair(CString("SetPrototypeOfString"), globalConst->GetSetPrototypeOfString()));
-    vec.push_back(std::make_pair(CString("IsExtensibleString"), globalConst->GetIsExtensibleString()));
-    vec.push_back(std::make_pair(CString("PreventExtensionsString"), globalConst->GetPreventExtensionsString()));
-    vec.push_back(
-        std::make_pair(CString("GetOwnPropertyDescriptorString"), globalConst->GetGetOwnPropertyDescriptorString()));
-    vec.push_back(std::make_pair(CString("DefinePropertyString"), globalConst->GetDefinePropertyString()));
-    vec.push_back(std::make_pair(CString("HasString"), globalConst->GetHasString()));
-    vec.push_back(std::make_pair(CString("DeletePropertyString"), globalConst->GetDeletePropertyString()));
-    vec.push_back(std::make_pair(CString("EnumerateString"), globalConst->GetEnumerateString()));
-    vec.push_back(std::make_pair(CString("OwnKeysString"), globalConst->GetOwnKeysString()));
-    vec.push_back(std::make_pair(CString("ApplyString"), globalConst->GetApplyString()));
-    vec.push_back(std::make_pair(CString("ProxyString"), globalConst->GetProxyString()));
-    vec.push_back(std::make_pair(CString("RevokeString"), globalConst->GetRevokeString()));
-    vec.push_back(std::make_pair(CString("ProxyConstructString"), globalConst->GetProxyConstructString()));
-    vec.push_back(std::make_pair(CString("ProxyCallString"), globalConst->GetProxyCallString()));
-    vec.push_back(std::make_pair(CString("DoneString"), globalConst->GetDoneString()));
-    vec.push_back(std::make_pair(CString("NegativeZeroString"), globalConst->GetNegativeZeroString()));
-    vec.push_back(std::make_pair(CString("NextString"), globalConst->GetNextString()));
-    vec.push_back(std::make_pair(CString("PromiseThenString"), globalConst->GetPromiseThenString()));
-    vec.push_back(std::make_pair(CString("PromiseFunction"), GetPromiseFunction().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("PromiseReactionJob"), GetPromiseReactionJob().GetTaggedValue()));
-    vec.push_back(
-        std::make_pair(CString("PromiseResolveThenableJob"), GetPromiseResolveThenableJob().GetTaggedValue()));
-    vec.push_back(
-        std::make_pair(CString("DynamicImportJob"), GetDynamicImportJob().GetTaggedValue()));
-    vec.push_back(std::make_pair(CString("ScriptJobString"), globalConst->GetScriptJobString()));
-    vec.push_back(std::make_pair(CString("PromiseString"), globalConst->GetPromiseString()));
-    vec.push_back(std::make_pair(CString("IdentityString"), globalConst->GetIdentityString()));
-    vec.push_back(std::make_pair(CString("AsyncFunctionString"), globalConst->GetAsyncFunctionString()));
-    vec.push_back(std::make_pair(CString("ThrowerString"), globalConst->GetThrowerString()));
-    vec.push_back(std::make_pair(CString("Undefined"), globalConst->GetUndefined()));
-    vec.push_back(std::make_pair(CString("ArrayListFunction"), globalConst->GetArrayListFunction()));
-    vec.push_back(std::make_pair(CString("ArrayListIteratorPrototype"), globalConst->GetArrayListIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("HashMapIteratorPrototype"), globalConst->GetHashMapIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("HashSetIteratorPrototype"), globalConst->GetHashSetIteratorPrototype()));
-    vec.push_back(
-        std::make_pair(CString("LightWeightMapIteratorPrototype"), globalConst->GetLightWeightMapIteratorPrototype()));
-    vec.push_back(
-        std::make_pair(CString("LightWeightSetIteratorPrototype"), globalConst->GetLightWeightSetIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("TreeMapIteratorPrototype"), globalConst->GetTreeMapIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("TreeSetIteratorPrototype"), globalConst->GetTreeSetIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("VectorFunction"), globalConst->GetVectorFunction()));
-    vec.push_back(std::make_pair(CString("VectorIteratorPrototype"), globalConst->GetVectorIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("QueueIteratorPrototype"), globalConst->GetQueueIteratorPrototype()));
-    vec.push_back(
-        std::make_pair(CString("PlainArrayIteratorPrototype"), globalConst->GetPlainArrayIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("DequeIteratorPrototype"), globalConst->GetDequeIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("StackIteratorPrototype"), globalConst->GetStackIteratorPrototype()));
-    vec.push_back(std::make_pair(CString(
-        "LinkedListIteratorPrototype"), globalConst->GetLinkedListIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("ListIteratorPrototype"), globalConst->GetListIteratorPrototype()));
-    vec.push_back(std::make_pair(CString("GlobalPatch"), GetGlobalPatch().GetTaggedValue()));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 137;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("ObjectFunction", GetObjectFunction().GetTaggedValue());
+    vec.emplace_back("FunctionFunction", GetFunctionFunction().GetTaggedValue());
+    vec.emplace_back("NumberFunction", GetNumberFunction().GetTaggedValue());
+    vec.emplace_back("BigIntFunction", GetBigIntFunction().GetTaggedValue());
+    vec.emplace_back("DateFunction", GetDateFunction().GetTaggedValue());
+    vec.emplace_back("BooleanFunction", GetBooleanFunction().GetTaggedValue());
+    vec.emplace_back("ErrorFunction", GetErrorFunction().GetTaggedValue());
+    vec.emplace_back("ArrayFunction", GetArrayFunction().GetTaggedValue());
+    vec.emplace_back("TypedArrayFunction", GetTypedArrayFunction().GetTaggedValue());
+    vec.emplace_back("Int8ArrayFunction", GetInt8ArrayFunction().GetTaggedValue());
+    vec.emplace_back("Uint8ArrayFunction", GetUint8ArrayFunction().GetTaggedValue());
+    vec.emplace_back("Uint8ClampedArrayFunction", GetUint8ClampedArrayFunction().GetTaggedValue());
+    vec.emplace_back("Int16ArrayFunction", GetInt16ArrayFunction().GetTaggedValue());
+    vec.emplace_back("Uint16ArrayFunction", GetUint16ArrayFunction().GetTaggedValue());
+    vec.emplace_back("Int32ArrayFunction", GetInt32ArrayFunction().GetTaggedValue());
+    vec.emplace_back("Uint32ArrayFunction", GetUint32ArrayFunction().GetTaggedValue());
+    vec.emplace_back("Float32ArrayFunction", GetFloat32ArrayFunction().GetTaggedValue());
+    vec.emplace_back("Float64ArrayFunction", GetFloat64ArrayFunction().GetTaggedValue());
+    vec.emplace_back("ArrayBufferFunction", GetArrayBufferFunction().GetTaggedValue());
+    vec.emplace_back("SharedArrayBufferFunction", GetSharedArrayBufferFunction().GetTaggedValue());
+    vec.emplace_back("SymbolFunction", GetSymbolFunction().GetTaggedValue());
+    vec.emplace_back("RangeErrorFunction", GetRangeErrorFunction().GetTaggedValue());
+    vec.emplace_back("ReferenceErrorFunction", GetReferenceErrorFunction().GetTaggedValue());
+    vec.emplace_back("TypeErrorFunction", GetTypeErrorFunction().GetTaggedValue());
+    vec.emplace_back("AggregateErrorFunction", GetAggregateErrorFunction().GetTaggedValue());
+    vec.emplace_back("URIErrorFunction", GetURIErrorFunction().GetTaggedValue());
+    vec.emplace_back("SyntaxErrorFunction", GetSyntaxErrorFunction().GetTaggedValue());
+    vec.emplace_back("EvalErrorFunction", GetEvalErrorFunction().GetTaggedValue());
+    vec.emplace_back("OOMErrorFunction", GetOOMErrorFunction().GetTaggedValue());
+    vec.emplace_back("RegExpFunction", GetRegExpFunction().GetTaggedValue());
+    vec.emplace_back("BuiltinsSetFunction", GetBuiltinsSetFunction().GetTaggedValue());
+    vec.emplace_back("BuiltinsMapFunction", GetBuiltinsMapFunction().GetTaggedValue());
+    vec.emplace_back("BuiltinsWeakSetFunction", GetBuiltinsWeakSetFunction().GetTaggedValue());
+    vec.emplace_back("BuiltinsWeakMapFunction", GetBuiltinsWeakMapFunction().GetTaggedValue());
+    vec.emplace_back("BuiltinsWeakRefFunction", GetBuiltinsWeakRefFunction().GetTaggedValue());
+    vec.emplace_back("BuiltinsFinalizationRegistryFunction",
+        GetBuiltinsFinalizationRegistryFunction().GetTaggedValue());
+    vec.emplace_back("MathFunction", GetMathFunction().GetTaggedValue());
+    vec.emplace_back("AtomicsFunction", GetAtomicsFunction().GetTaggedValue());
+    vec.emplace_back("JsonFunction", GetJsonFunction().GetTaggedValue());
+    vec.emplace_back("StringFunction", GetStringFunction().GetTaggedValue());
+    vec.emplace_back("ProxyFunction", GetProxyFunction().GetTaggedValue());
+    vec.emplace_back("ReflectFunction", GetReflectFunction().GetTaggedValue());
+    vec.emplace_back("AsyncFunction", GetAsyncFunction().GetTaggedValue());
+    vec.emplace_back("AsyncFunctionPrototype", GetAsyncFunctionPrototype().GetTaggedValue());
+    vec.emplace_back("JSGlobalObject", GetJSGlobalObject().GetTaggedValue());
+    vec.emplace_back("EmptyArray", globalConst->GetEmptyArray());
+    vec.emplace_back("EmptyString", globalConst->GetEmptyString());
+    vec.emplace_back("EmptyTaggedQueue", globalConst->GetEmptyTaggedQueue());
+    vec.emplace_back("PrototypeString", globalConst->GetPrototypeString());
+    vec.emplace_back("HasInstanceSymbol", GetHasInstanceSymbol().GetTaggedValue());
+    vec.emplace_back("IsConcatSpreadableSymbol", GetIsConcatSpreadableSymbol().GetTaggedValue());
+    vec.emplace_back("ToStringTagSymbol", GetToStringTagSymbol().GetTaggedValue());
+    vec.emplace_back("IteratorSymbol", GetIteratorSymbol().GetTaggedValue());
+    vec.emplace_back("AsyncIteratorSymbol", GetAsyncIteratorSymbol().GetTaggedValue());
+    vec.emplace_back("MatchSymbol", GetMatchSymbol().GetTaggedValue());
+    vec.emplace_back("MatchAllSymbol", GetMatchAllSymbol().GetTaggedValue());
+    vec.emplace_back("ReplaceSymbol", GetReplaceSymbol().GetTaggedValue());
+    vec.emplace_back("SearchSymbol", GetSearchSymbol().GetTaggedValue());
+    vec.emplace_back("SpeciesSymbol", GetSpeciesSymbol().GetTaggedValue());
+    vec.emplace_back("SplitSymbol", GetSplitSymbol().GetTaggedValue());
+    vec.emplace_back("ToPrimitiveSymbol", GetToPrimitiveSymbol().GetTaggedValue());
+    vec.emplace_back("UnscopablesSymbol", GetUnscopablesSymbol().GetTaggedValue());
+    vec.emplace_back("HoleySymbol", GetHoleySymbol().GetTaggedValue());
+    vec.emplace_back("AttachSymbol", GetAttachSymbol().GetTaggedValue());
+    vec.emplace_back("DetachSymbol", GetDetachSymbol().GetTaggedValue());
+    vec.emplace_back("ConstructorString", globalConst->GetConstructorString());
+    vec.emplace_back("IteratorPrototype", GetIteratorPrototype().GetTaggedValue());
+    vec.emplace_back("ForinIteratorPrototype", GetForinIteratorPrototype().GetTaggedValue());
+    vec.emplace_back("StringIterator", GetStringIterator().GetTaggedValue());
+    vec.emplace_back("MapIteratorPrototype", GetMapIteratorPrototype().GetTaggedValue());
+    vec.emplace_back("SetIteratorPrototype", GetSetIteratorPrototype().GetTaggedValue());
+    vec.emplace_back("RegExpIteratorPrototype", GetRegExpIteratorPrototype().GetTaggedValue());
+    vec.emplace_back("ArrayIteratorPrototype", GetArrayIteratorPrototype().GetTaggedValue());
+    vec.emplace_back("StringIteratorPrototype", GetStringIteratorPrototype().GetTaggedValue());
+    vec.emplace_back("LengthString", globalConst->GetLengthString());
+    vec.emplace_back("ValueString", globalConst->GetValueString());
+    vec.emplace_back("WritableString", globalConst->GetWritableString());
+    vec.emplace_back("GetString", globalConst->GetGetString());
+    vec.emplace_back("SetString", globalConst->GetSetString());
+    vec.emplace_back("EnumerableString", globalConst->GetEnumerableString());
+    vec.emplace_back("ConfigurableString", globalConst->GetConfigurableString());
+    vec.emplace_back("NameString", globalConst->GetNameString());
+    vec.emplace_back("ValueOfString", globalConst->GetValueOfString());
+    vec.emplace_back("ToStringString", globalConst->GetToStringString());
+    vec.emplace_back("ToLocaleStringString", globalConst->GetToLocaleStringString());
+    vec.emplace_back("UndefinedString", globalConst->GetUndefinedString());
+    vec.emplace_back("NullString", globalConst->GetNullString());
+    vec.emplace_back("TrueString", globalConst->GetTrueString());
+    vec.emplace_back("FalseString", globalConst->GetFalseString());
+    vec.emplace_back("RegisterSymbols", GetRegisterSymbols().GetTaggedValue());
+    vec.emplace_back("ThrowTypeError", GetThrowTypeError().GetTaggedValue());
+    vec.emplace_back("GetPrototypeOfString", globalConst->GetGetPrototypeOfString());
+    vec.emplace_back("SetPrototypeOfString", globalConst->GetSetPrototypeOfString());
+    vec.emplace_back("IsExtensibleString", globalConst->GetIsExtensibleString());
+    vec.emplace_back("PreventExtensionsString", globalConst->GetPreventExtensionsString());
+    vec.emplace_back("GetOwnPropertyDescriptorString", globalConst->GetGetOwnPropertyDescriptorString());
+    vec.emplace_back("DefinePropertyString", globalConst->GetDefinePropertyString());
+    vec.emplace_back("HasString", globalConst->GetHasString());
+    vec.emplace_back("DeletePropertyString", globalConst->GetDeletePropertyString());
+    vec.emplace_back("EnumerateString", globalConst->GetEnumerateString());
+    vec.emplace_back("OwnKeysString", globalConst->GetOwnKeysString());
+    vec.emplace_back("ApplyString", globalConst->GetApplyString());
+    vec.emplace_back("ProxyString", globalConst->GetProxyString());
+    vec.emplace_back("RevokeString", globalConst->GetRevokeString());
+    vec.emplace_back("ProxyConstructString", globalConst->GetProxyConstructString());
+    vec.emplace_back("ProxyCallString", globalConst->GetProxyCallString());
+    vec.emplace_back("DoneString", globalConst->GetDoneString());
+    vec.emplace_back("NegativeZeroString", globalConst->GetNegativeZeroString());
+    vec.emplace_back("NextString", globalConst->GetNextString());
+    vec.emplace_back("PromiseThenString", globalConst->GetPromiseThenString());
+    vec.emplace_back("PromiseFunction", GetPromiseFunction().GetTaggedValue());
+    vec.emplace_back("PromiseReactionJob", GetPromiseReactionJob().GetTaggedValue());
+    vec.emplace_back("PromiseResolveThenableJob", GetPromiseResolveThenableJob().GetTaggedValue());
+    vec.emplace_back("DynamicImportJob", GetDynamicImportJob().GetTaggedValue());
+    vec.emplace_back("ScriptJobString", globalConst->GetScriptJobString());
+    vec.emplace_back("PromiseString", globalConst->GetPromiseString());
+    vec.emplace_back("IdentityString", globalConst->GetIdentityString());
+    vec.emplace_back("AsyncFunctionString", globalConst->GetAsyncFunctionString());
+    vec.emplace_back("ThrowerString", globalConst->GetThrowerString());
+    vec.emplace_back("Undefined", globalConst->GetUndefined());
+    vec.emplace_back("ArrayListFunction", globalConst->GetArrayListFunction());
+    vec.emplace_back("ArrayListIteratorPrototype", globalConst->GetArrayListIteratorPrototype());
+    vec.emplace_back("HashMapIteratorPrototype", globalConst->GetHashMapIteratorPrototype());
+    vec.emplace_back("HashSetIteratorPrototype", globalConst->GetHashSetIteratorPrototype());
+    vec.emplace_back("LightWeightMapIteratorPrototype", globalConst->GetLightWeightMapIteratorPrototype());
+    vec.emplace_back("LightWeightSetIteratorPrototype", globalConst->GetLightWeightSetIteratorPrototype());
+    vec.emplace_back("TreeMapIteratorPrototype", globalConst->GetTreeMapIteratorPrototype());
+    vec.emplace_back("TreeSetIteratorPrototype", globalConst->GetTreeSetIteratorPrototype());
+    vec.emplace_back("VectorFunction", globalConst->GetVectorFunction());
+    vec.emplace_back("VectorIteratorPrototype", globalConst->GetVectorIteratorPrototype());
+    vec.emplace_back("QueueIteratorPrototype", globalConst->GetQueueIteratorPrototype());
+    vec.emplace_back("PlainArrayIteratorPrototype", globalConst->GetPlainArrayIteratorPrototype());
+    vec.emplace_back("DequeIteratorPrototype", globalConst->GetDequeIteratorPrototype());
+    vec.emplace_back("StackIteratorPrototype", globalConst->GetStackIteratorPrototype());
+    vec.emplace_back("LinkedListIteratorPrototype", globalConst->GetLinkedListIteratorPrototype());
+    vec.emplace_back("ListIteratorPrototype", globalConst->GetListIteratorPrototype());
+    vec.emplace_back("GlobalPatch", GetGlobalPatch().GetTaggedValue());
 }
 
 void JSDataView::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("data-view"), GetDataView()));
-    vec.push_back(std::make_pair(CString("buffer"), GetViewedArrayBuffer()));
-    vec.push_back(std::make_pair(CString("byte-length"), JSTaggedValue(GetByteLength())));
-    vec.push_back(std::make_pair(CString("byte-offset"), JSTaggedValue(GetByteOffset())));
+    vec.emplace_back("data-view", GetDataView());
+    vec.emplace_back("buffer", GetViewedArrayBuffer());
+    vec.emplace_back("byte-length", JSTaggedValue(GetByteLength()));
+    vec.emplace_back("byte-offset", JSTaggedValue(GetByteOffset()));
 }
 
 void JSArrayBuffer::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("buffer-data"), GetArrayBufferData()));
-    vec.push_back(std::make_pair(CString("byte-length"), JSTaggedValue(GetArrayBufferByteLength())));
-    vec.push_back(std::make_pair(CString("shared"), JSTaggedValue(GetShared())));
+    vec.emplace_back("buffer-data", GetArrayBufferData());
+    vec.emplace_back("byte-length", JSTaggedValue(GetArrayBufferByteLength()));
+    vec.emplace_back("shared", JSTaggedValue(GetShared()));
 }
 
 void PromiseReaction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("promise-capability"), GetPromiseCapability()));
-    vec.push_back(std::make_pair(CString("handler"), GetHandler()));
-    vec.push_back(std::make_pair(CString("type"), JSTaggedValue(static_cast<int>(GetType()))));
+    vec.emplace_back("promise-capability", GetPromiseCapability());
+    vec.emplace_back("handler", GetHandler());
+    vec.emplace_back("type", JSTaggedValue(static_cast<int>(GetType())));
 }
 
 void PromiseCapability::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("promise"), GetPromise()));
-    vec.push_back(std::make_pair(CString("resolve"), GetResolve()));
-    vec.push_back(std::make_pair(CString("reject"), GetReject()));
+    vec.emplace_back("promise", GetPromise());
+    vec.emplace_back("resolve", GetResolve());
+    vec.emplace_back("reject", GetReject());
 }
 
 void PromiseIteratorRecord::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("iterator"), GetIterator()));
-    vec.push_back(std::make_pair(CString("done"), JSTaggedValue(GetDone())));
+    vec.emplace_back("iterator", GetIterator());
+    vec.emplace_back("done", JSTaggedValue(GetDone()));
 }
 
 void PromiseRecord::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("value"), GetValue()));
+    vec.emplace_back("value", GetValue());
 }
 
 void ResolvingFunctionsRecord::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("resolve-function"), GetResolveFunction()));
-    vec.push_back(std::make_pair(CString("reject-function"), GetRejectFunction()));
+    vec.emplace_back("resolve-function", GetResolveFunction());
+    vec.emplace_back("reject-function", GetRejectFunction());
 }
 
 void AsyncGeneratorRequest::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("completion"), GetCompletion()));
-    vec.push_back(std::make_pair(CString("capability"), GetCapability()));
+    vec.emplace_back("completion", GetCompletion());
+    vec.emplace_back("capability", GetCapability());
 }
 
 void JSPromise::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("promise-state"), JSTaggedValue(static_cast<int>(GetPromiseState()))));
-    vec.push_back(std::make_pair(CString("promise-result"), GetPromiseResult()));
-    vec.push_back(std::make_pair(CString("promise-fulfill-reactions"), GetPromiseFulfillReactions()));
-    vec.push_back(std::make_pair(CString("promise-reject-reactions"), GetPromiseRejectReactions()));
-    vec.push_back(std::make_pair(CString("promise-is-handled"), JSTaggedValue(GetPromiseIsHandled())));
+    vec.emplace_back("promise-state", JSTaggedValue(static_cast<int>(GetPromiseState())));
+    vec.emplace_back("promise-result", GetPromiseResult());
+    vec.emplace_back("promise-fulfill-reactions", GetPromiseFulfillReactions());
+    vec.emplace_back("promise-reject-reactions", GetPromiseRejectReactions());
+    vec.emplace_back("promise-is-handled", JSTaggedValue(GetPromiseIsHandled()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSPromiseReactionsFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("promise"), GetPromise()));
-    vec.push_back(std::make_pair(CString("already-resolved"), GetAlreadyResolved()));
+    vec.emplace_back("promise", GetPromise());
+    vec.emplace_back("already-resolved", GetAlreadyResolved());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSAsyncGeneratorResNextRetProRstFtn::DumpForSnapshot(std::vector<std::pair<CString,
                                                           JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("async-generator-object"), GetAsyncGeneratorObject()));
+    vec.emplace_back("async-generator-object", GetAsyncGeneratorObject());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSPromiseExecutorFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("capability"), GetCapability()));
+    vec.emplace_back("capability", GetCapability());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSPromiseAllResolveElementFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("index"), GetIndex()));
-    vec.push_back(std::make_pair(CString("values"), GetValues()));
-    vec.push_back(std::make_pair(CString("capabilities"), GetCapabilities()));
-    vec.push_back(std::make_pair(CString("remaining-elements"), GetRemainingElements()));
-    vec.push_back(std::make_pair(CString("already-called"), GetAlreadyCalled()));
+    vec.emplace_back("index", GetIndex());
+    vec.emplace_back("values", GetValues());
+    vec.emplace_back("capabilities", GetCapabilities());
+    vec.emplace_back("remaining-elements", GetRemainingElements());
+    vec.emplace_back("already-called", GetAlreadyCalled());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSPromiseAnyRejectElementFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("index"), JSTaggedValue(GetIndex())));
-    vec.push_back(std::make_pair(CString("errors"), GetErrors()));
-    vec.push_back(std::make_pair(CString("capability"), GetCapability()));
-    vec.push_back(std::make_pair(CString("remaining-elements"), GetRemainingElements()));
-    vec.push_back(std::make_pair(CString("already-called"), GetAlreadyCalled()));
+    vec.emplace_back("index", JSTaggedValue(GetIndex()));
+    vec.emplace_back("errors", GetErrors());
+    vec.emplace_back("capability", GetCapability());
+    vec.emplace_back("remaining-elements", GetRemainingElements());
+    vec.emplace_back("already-called", GetAlreadyCalled());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSPromiseAllSettledElementFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("already-called"), GetAlreadyCalled()));
-    vec.push_back(std::make_pair(CString("index"), JSTaggedValue(GetIndex())));
-    vec.push_back(std::make_pair(CString("values"), GetValues()));
-    vec.push_back(std::make_pair(CString("capability"), GetCapability()));
-    vec.push_back(std::make_pair(CString("remaining-elements"), GetRemainingElements()));
+    vec.emplace_back("already-called", GetAlreadyCalled());
+    vec.emplace_back("index", JSTaggedValue(GetIndex()));
+    vec.emplace_back("values", GetValues());
+    vec.emplace_back("capability", GetCapability());
+    vec.emplace_back("remaining-elements", GetRemainingElements());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSPromiseFinallyFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("constructor"), GetConstructor()));
-    vec.push_back(std::make_pair(CString("onFinally"), GetOnFinally()));
+    vec.emplace_back("constructor", GetConstructor());
+    vec.emplace_back("onFinally", GetOnFinally());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSPromiseValueThunkOrThrowerFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("result"), GetResult()));
+    vec.emplace_back("result", GetResult());
     JSObject::DumpForSnapshot(vec);
 }
 
 void MicroJobQueue::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("promise-job-queue"), GetPromiseJobQueue()));
-    vec.push_back(std::make_pair(CString("script-job-queue"), GetScriptJobQueue()));
+    vec.emplace_back("promise-job-queue", GetPromiseJobQueue());
+    vec.emplace_back("script-job-queue", GetScriptJobQueue());
 }
 
 void PendingJob::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("job"), GetJob()));
-    vec.push_back(std::make_pair(CString("arguments"), GetArguments()));
+    vec.emplace_back("job", GetJob());
+    vec.emplace_back("arguments", GetArguments());
 }
 
 void CompletionRecord::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("value"), GetValue()));
-    vec.push_back(std::make_pair(CString("type"), JSTaggedValue(static_cast<int>(GetType()))));
+    vec.emplace_back("value", GetValue());
+    vec.emplace_back("type", JSTaggedValue(static_cast<int>(GetType())));
 }
 
 void JSProxyRevocFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("RevocableProxy"), GetRevocableProxy()));
+    vec.emplace_back("RevocableProxy", GetRevocableProxy());
 }
 
 void JSAsyncFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4717,7 +4726,7 @@ void JSAsyncFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedVal
 
 void JSAsyncAwaitStatusFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("AsyncContext"), GetAsyncContext()));
+    vec.emplace_back("AsyncContext", GetAsyncContext());
 }
 
 void JSGeneratorFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
@@ -4732,340 +4741,366 @@ void JSAsyncGeneratorFunction::DumpForSnapshot(std::vector<std::pair<CString, JS
 
 void JSIntlBoundFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("NumberFormat"), GetNumberFormat()));
-    vec.push_back(std::make_pair(CString("DateTimeFormat"), GetDateTimeFormat()));
-    vec.push_back(std::make_pair(CString("Collator"), GetCollator()));
+    vec.emplace_back("NumberFormat", GetNumberFormat());
+    vec.emplace_back("DateTimeFormat", GetDateTimeFormat());
+    vec.emplace_back("Collator", GetCollator());
     JSObject::DumpForSnapshot(vec);
 }
 
 void PropertyBox::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Value"), GetValue()));
+    vec.emplace_back("Value", GetValue());
 }
 
 void PrototypeHandler::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("HandlerInfo"), GetHandlerInfo()));
-    vec.push_back(std::make_pair(CString("ProtoCell"), GetProtoCell()));
-    vec.push_back(std::make_pair(CString("Holder"), GetHolder()));
+    vec.emplace_back("HandlerInfo", GetHandlerInfo());
+    vec.emplace_back("ProtoCell", GetProtoCell());
+    vec.emplace_back("Holder", GetHolder());
 }
 
 void TransitionHandler::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("HandlerInfo"), GetHandlerInfo()));
-    vec.push_back(std::make_pair(CString("TransitionHClass"), GetTransitionHClass()));
+    vec.emplace_back("HandlerInfo", GetHandlerInfo());
+    vec.emplace_back("TransitionHClass", GetTransitionHClass());
 }
 
 void JSRealm::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Value"), GetValue()));
-    vec.push_back(std::make_pair(CString("GLobalEnv"), GetGlobalEnv()));
+    vec.emplace_back("Value", GetValue());
+    vec.emplace_back("GLobalEnv", GetGlobalEnv());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSIntl::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("FallbackSymbol"), GetFallbackSymbol()));
+    vec.emplace_back("FallbackSymbol", GetFallbackSymbol());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSLocale::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("IcuField"), GetIcuField()));
+    vec.emplace_back("IcuField", GetIcuField());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSDateTimeFormat::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("Calendar"), GetCalendar()));
-    vec.push_back(std::make_pair(CString("NumberingSystem"), GetNumberingSystem()));
-    vec.push_back(std::make_pair(CString("TimeZone"), GetTimeZone()));
-    vec.push_back(std::make_pair(CString("HourCycle"), JSTaggedValue(static_cast<int>(GetHourCycle()))));
-    vec.push_back(std::make_pair(CString("LocaleIcu"), GetLocaleIcu()));
-    vec.push_back(std::make_pair(CString("SimpleDateTimeFormatIcu"), GetSimpleDateTimeFormatIcu()));
-    vec.push_back(std::make_pair(CString("Iso8601"), GetIso8601()));
-    vec.push_back(std::make_pair(CString("DateStyle"), JSTaggedValue(static_cast<int>(GetDateStyle()))));
-    vec.push_back(std::make_pair(CString("TimeStyle"), JSTaggedValue(static_cast<int>(GetTimeStyle()))));
-    vec.push_back(std::make_pair(CString("BoundFormat"), GetBoundFormat()));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 11;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("Locale", GetLocale());
+    vec.emplace_back("Calendar", GetCalendar());
+    vec.emplace_back("NumberingSystem", GetNumberingSystem());
+    vec.emplace_back("TimeZone", GetTimeZone());
+    vec.emplace_back("HourCycle", JSTaggedValue(static_cast<int>(GetHourCycle())));
+    vec.emplace_back("LocaleIcu", GetLocaleIcu());
+    vec.emplace_back("SimpleDateTimeFormatIcu", GetSimpleDateTimeFormatIcu());
+    vec.emplace_back("Iso8601", GetIso8601());
+    vec.emplace_back("DateStyle", JSTaggedValue(static_cast<int>(GetDateStyle())));
+    vec.emplace_back("TimeStyle", JSTaggedValue(static_cast<int>(GetTimeStyle())));
+    vec.emplace_back("BoundFormat", GetBoundFormat());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSRelativeTimeFormat::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("NumberingSystem"), GetNumberingSystem()));
-    vec.push_back(std::make_pair(CString("Style"), JSTaggedValue(static_cast<int>(GetStyle()))));
-    vec.push_back(std::make_pair(CString("Numeric"), JSTaggedValue(static_cast<int>(GetNumeric()))));
-    vec.push_back(std::make_pair(CString("IcuField"), GetIcuField()));
+    vec.emplace_back("Locale", GetLocale());
+    vec.emplace_back("NumberingSystem", GetNumberingSystem());
+    vec.emplace_back("Style", JSTaggedValue(static_cast<int>(GetStyle())));
+    vec.emplace_back("Numeric", JSTaggedValue(static_cast<int>(GetNumeric())));
+    vec.emplace_back("IcuField", GetIcuField());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSNumberFormat::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("NumberingSystem"), GetNumberingSystem()));
-    vec.push_back(std::make_pair(CString("Style"), JSTaggedValue(static_cast<int>(GetStyle()))));
-    vec.push_back(std::make_pair(CString("Currency"), GetCurrency()));
-    vec.push_back(std::make_pair(CString("CurrencyDisplay"), JSTaggedValue(static_cast<int>(GetCurrencyDisplay()))));
-    vec.push_back(std::make_pair(CString("CurrencySign"), JSTaggedValue(static_cast<int>(GetCurrencySign()))));
-    vec.push_back(std::make_pair(CString("Unit"), GetUnit()));
-    vec.push_back(std::make_pair(CString("UnitDisplay"), JSTaggedValue(static_cast<int>(GetUnitDisplay()))));
-    vec.push_back(std::make_pair(CString("MinimumIntegerDigits"), GetMinimumIntegerDigits()));
-    vec.push_back(std::make_pair(CString("MinimumFractionDigits"), GetMinimumFractionDigits()));
-    vec.push_back(std::make_pair(CString("MaximumFractionDigits"), GetMaximumFractionDigits()));
-    vec.push_back(std::make_pair(CString("MinimumSignificantDigits"), GetMinimumSignificantDigits()));
-    vec.push_back(std::make_pair(CString("MaximumSignificantDigits"), GetMaximumSignificantDigits()));
-    vec.push_back(std::make_pair(CString("UseGrouping"), GetUseGrouping()));
-    vec.push_back(std::make_pair(CString("RoundingType"), JSTaggedValue(static_cast<int>(GetRoundingType()))));
-    vec.push_back(std::make_pair(CString("Notation"), JSTaggedValue(static_cast<int>(GetNotation()))));
-    vec.push_back(std::make_pair(CString("CompactDisplay"), JSTaggedValue(static_cast<int>(GetCompactDisplay()))));
-    vec.push_back(std::make_pair(CString("SignDisplay"), JSTaggedValue(static_cast<int>(GetSignDisplay()))));
-    vec.push_back(std::make_pair(CString("BoundFormat"), GetBoundFormat()));
-    vec.push_back(std::make_pair(CString("IcuField"), GetIcuField()));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 20;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("Locale", GetLocale());
+    vec.emplace_back("NumberingSystem", GetNumberingSystem());
+    vec.emplace_back("Style", JSTaggedValue(static_cast<int>(GetStyle())));
+    vec.emplace_back("Currency", GetCurrency());
+    vec.emplace_back("CurrencyDisplay", JSTaggedValue(static_cast<int>(GetCurrencyDisplay())));
+    vec.emplace_back("CurrencySign", JSTaggedValue(static_cast<int>(GetCurrencySign())));
+    vec.emplace_back("Unit", GetUnit());
+    vec.emplace_back("UnitDisplay", JSTaggedValue(static_cast<int>(GetUnitDisplay())));
+    vec.emplace_back("MinimumIntegerDigits", GetMinimumIntegerDigits());
+    vec.emplace_back("MinimumFractionDigits", GetMinimumFractionDigits());
+    vec.emplace_back("MaximumFractionDigits", GetMaximumFractionDigits());
+    vec.emplace_back("MinimumSignificantDigits", GetMinimumSignificantDigits());
+    vec.emplace_back("MaximumSignificantDigits", GetMaximumSignificantDigits());
+    vec.emplace_back("UseGrouping", GetUseGrouping());
+    vec.emplace_back("RoundingType", JSTaggedValue(static_cast<int>(GetRoundingType())));
+    vec.emplace_back("Notation", JSTaggedValue(static_cast<int>(GetNotation())));
+    vec.emplace_back("CompactDisplay", JSTaggedValue(static_cast<int>(GetCompactDisplay())));
+    vec.emplace_back("SignDisplay", JSTaggedValue(static_cast<int>(GetSignDisplay())));
+    vec.emplace_back("BoundFormat", GetBoundFormat());
+    vec.emplace_back("IcuField", GetIcuField());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSCollator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("IcuField"), GetIcuField()));
-    vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("Collation"), GetCollation()));
-    vec.push_back(std::make_pair(CString("BoundCompare"), GetBoundCompare()));
-    vec.push_back(std::make_pair(CString("CaseFirst"), JSTaggedValue(static_cast<int>(GetCaseFirst()))));
-    vec.push_back(std::make_pair(CString("Usage"), JSTaggedValue(static_cast<int>(GetUsage()))));
-    vec.push_back(std::make_pair(CString("Sensitivity"), JSTaggedValue(static_cast<int>(GetSensitivity()))));
-    vec.push_back(std::make_pair(CString("IgnorePunctuation"), JSTaggedValue(GetIgnorePunctuation())));
-    vec.push_back(std::make_pair(CString("Numeric"), JSTaggedValue(GetNumeric())));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 9;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("IcuField", GetIcuField());
+    vec.emplace_back("Locale", GetLocale());
+    vec.emplace_back("Collation", GetCollation());
+    vec.emplace_back("BoundCompare", GetBoundCompare());
+    vec.emplace_back("CaseFirst", JSTaggedValue(static_cast<int>(GetCaseFirst())));
+    vec.emplace_back("Usage", JSTaggedValue(static_cast<int>(GetUsage())));
+    vec.emplace_back("Sensitivity", JSTaggedValue(static_cast<int>(GetSensitivity())));
+    vec.emplace_back("IgnorePunctuation", JSTaggedValue(GetIgnorePunctuation()));
+    vec.emplace_back("Numeric", JSTaggedValue(GetNumeric()));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSPluralRules::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("MinimumIntegerDigits"), GetMinimumIntegerDigits()));
-    vec.push_back(std::make_pair(CString("MinimumFractionDigits"), GetMinimumFractionDigits()));
-    vec.push_back(std::make_pair(CString("MaximumFractionDigits"), GetMaximumFractionDigits()));
-    vec.push_back(std::make_pair(CString("MinimumSignificantDigits"), GetMinimumSignificantDigits()));
-    vec.push_back(std::make_pair(CString("MaximumSignificantDigits"), GetMaximumSignificantDigits()));
-    vec.push_back(std::make_pair(CString("RoundingType"), JSTaggedValue(static_cast<int>(GetRoundingType()))));
-    vec.push_back(std::make_pair(CString("IcuPR"), GetIcuPR()));
-    vec.push_back(std::make_pair(CString("IcuNF"), GetIcuNF()));
-    vec.push_back(std::make_pair(CString("Type"), JSTaggedValue(static_cast<int>(GetType()))));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 10;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("Locale", GetLocale());
+    vec.emplace_back("MinimumIntegerDigits", GetMinimumIntegerDigits());
+    vec.emplace_back("MinimumFractionDigits", GetMinimumFractionDigits());
+    vec.emplace_back("MaximumFractionDigits", GetMaximumFractionDigits());
+    vec.emplace_back("MinimumSignificantDigits", GetMinimumSignificantDigits());
+    vec.emplace_back("MaximumSignificantDigits", GetMaximumSignificantDigits());
+    vec.emplace_back("RoundingType", JSTaggedValue(static_cast<int>(GetRoundingType())));
+    vec.emplace_back("IcuPR", GetIcuPR());
+    vec.emplace_back("IcuNF", GetIcuNF());
+    vec.emplace_back("Type", JSTaggedValue(static_cast<int>(GetType())));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSDisplayNames::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("Type"), JSTaggedValue(static_cast<int>(GetType()))));
-    vec.push_back(std::make_pair(CString("Style"), JSTaggedValue(static_cast<int>(GetStyle()))));
-    vec.push_back(std::make_pair(CString("Fallback"), JSTaggedValue(static_cast<int>(GetFallback()))));
-    vec.push_back(std::make_pair(CString("IcuLDN"), GetIcuLDN()));
+    vec.emplace_back("Locale", GetLocale());
+    vec.emplace_back("Type", JSTaggedValue(static_cast<int>(GetType())));
+    vec.emplace_back("Style", JSTaggedValue(static_cast<int>(GetStyle())));
+    vec.emplace_back("Fallback", JSTaggedValue(static_cast<int>(GetFallback())));
+    vec.emplace_back("IcuLDN", GetIcuLDN());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSListFormat::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Locale"), GetLocale()));
-    vec.push_back(std::make_pair(CString("Type"), JSTaggedValue(static_cast<int>(GetType()))));
-    vec.push_back(std::make_pair(CString("Style"), JSTaggedValue(static_cast<int>(GetStyle()))));
-    vec.push_back(std::make_pair(CString("IcuLF"), GetIcuLF()));
+    vec.emplace_back("Locale", GetLocale());
+    vec.emplace_back("Type", JSTaggedValue(static_cast<int>(GetType())));
+    vec.emplace_back("Style", JSTaggedValue(static_cast<int>(GetStyle())));
+    vec.emplace_back("IcuLF", GetIcuLF());
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSGeneratorObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("GeneratorContext"), GetGeneratorContext()));
-    vec.push_back(std::make_pair(CString("ResumeResult"), GetResumeResult()));
-    vec.push_back(std::make_pair(CString("GeneratorState"), JSTaggedValue(static_cast<int>(GetGeneratorState()))));
-    vec.push_back(std::make_pair(CString("ResumeMode"), JSTaggedValue(static_cast<int>(GetResumeMode()))));
+    vec.emplace_back("GeneratorContext", GetGeneratorContext());
+    vec.emplace_back("ResumeResult", GetResumeResult());
+    vec.emplace_back("GeneratorState", JSTaggedValue(static_cast<int>(GetGeneratorState())));
+    vec.emplace_back("ResumeMode", JSTaggedValue(static_cast<int>(GetResumeMode())));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSAsyncGeneratorObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("GeneratorContext"), GetGeneratorContext()));
-    vec.push_back(std::make_pair(CString("AsyncGeneratorQueue"), GetAsyncGeneratorQueue()));
-    vec.push_back(std::make_pair(CString("GeneratorBrand"), GetGeneratorBrand()));
-    vec.push_back(std::make_pair(CString("ResumeResult"), GetResumeResult()));
-    vec.push_back(std::make_pair(CString("AsyncGeneratorState"),
-                                 JSTaggedValue(static_cast<int>(GetAsyncGeneratorState()))));
-    vec.push_back(std::make_pair(CString("ResumeMode"), JSTaggedValue(static_cast<int>(GetResumeMode()))));
+    vec.emplace_back("GeneratorContext", GetGeneratorContext());
+    vec.emplace_back("AsyncGeneratorQueue", GetAsyncGeneratorQueue());
+    vec.emplace_back("GeneratorBrand", GetGeneratorBrand());
+    vec.emplace_back("ResumeResult", GetResumeResult());
+    vec.emplace_back("AsyncGeneratorState", JSTaggedValue(static_cast<int>(GetAsyncGeneratorState())));
+    vec.emplace_back("ResumeMode", JSTaggedValue(static_cast<int>(GetResumeMode())));
     JSObject::DumpForSnapshot(vec);
 }
 
 void JSAsyncFuncObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Promise"), GetPromise()));
+    vec.emplace_back("Promise", GetPromise());
 }
 
 void GeneratorContext::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("RegsArray"), GetRegsArray()));
-    vec.push_back(std::make_pair(CString("Method"), GetMethod()));
-    vec.push_back(std::make_pair(CString("This"), GetThis()));
-    vec.push_back(std::make_pair(CString("Acc"), GetAcc()));
-    vec.push_back(std::make_pair(CString("GeneratorObject"), GetGeneratorObject()));
-    vec.push_back(std::make_pair(CString("LexicalEnv"), GetLexicalEnv()));
-    vec.push_back(std::make_pair(CString("NRegs"),  JSTaggedValue(GetNRegs())));
-    vec.push_back(std::make_pair(CString("BCOffset"),  JSTaggedValue(GetBCOffset())));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 8;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("RegsArray", GetRegsArray());
+    vec.emplace_back("Method", GetMethod());
+    vec.emplace_back("This", GetThis());
+    vec.emplace_back("Acc", GetAcc());
+    vec.emplace_back("GeneratorObject", GetGeneratorObject());
+    vec.emplace_back("LexicalEnv", GetLexicalEnv());
+    vec.emplace_back("NRegs",  JSTaggedValue(GetNRegs()));
+    vec.emplace_back("BCOffset",  JSTaggedValue(GetBCOffset()));
 }
 
 void ProtoChangeMarker::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Promise"), JSTaggedValue(GetHasChanged())));
+    vec.emplace_back("Promise", JSTaggedValue(GetHasChanged()));
 }
 
 void ProtoChangeDetails::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ChangeListener"), GetChangeListener()));
-    vec.push_back(std::make_pair(CString("RegisterIndex"), JSTaggedValue(GetRegisterIndex())));
+    vec.emplace_back("ChangeListener", GetChangeListener());
+    vec.emplace_back("RegisterIndex", JSTaggedValue(GetRegisterIndex()));
 }
 
 void MachineCode::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("InstructionSizeInBytes"), JSTaggedValue(GetInstructionSizeInBytes())));
+    vec.emplace_back("InstructionSizeInBytes", JSTaggedValue(GetInstructionSizeInBytes()));
 }
 
 void ClassInfoExtractor::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("NonStaticKeys"), GetNonStaticKeys()));
-    vec.push_back(std::make_pair(CString("NonStaticProperties"), GetNonStaticProperties()));
-    vec.push_back(std::make_pair(CString("NonStaticElements"), GetNonStaticElements()));
-    vec.push_back(std::make_pair(CString("StaticKeys"), GetStaticKeys()));
-    vec.push_back(std::make_pair(CString("StaticProperties"), GetStaticProperties()));
-    vec.push_back(std::make_pair(CString("StaticElements"), GetStaticElements()));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 6;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("NonStaticKeys", GetNonStaticKeys());
+    vec.emplace_back("NonStaticProperties", GetNonStaticProperties());
+    vec.emplace_back("NonStaticElements", GetNonStaticElements());
+    vec.emplace_back("StaticKeys", GetStaticKeys());
+    vec.emplace_back("StaticProperties", GetStaticProperties());
+    vec.emplace_back("StaticElements", GetStaticElements());
 }
 
 void TSObjectType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ObjLayoutInfo"), GetObjLayoutInfo()));
-    vec.push_back(std::make_pair(CString("HClass"), GetHClass()));
+    vec.emplace_back("ObjLayoutInfo", GetObjLayoutInfo());
+    vec.emplace_back("HClass", GetHClass());
 }
 
 void TSClassType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("InstanceType"), GetInstanceType()));
-    vec.push_back(std::make_pair(CString("ConstructorType"), GetConstructorType()));
-    vec.push_back(std::make_pair(CString("PrototypeType"), GetPrototypeType()));
-    vec.push_back(std::make_pair(CString("ExtensionGT"), JSTaggedValue(GetExtensionGT().GetType())));
-    vec.push_back(std::make_pair(CString("HasLinked"), JSTaggedValue(GetHasLinked())));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 5;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("InstanceType", GetInstanceType());
+    vec.emplace_back("ConstructorType", GetConstructorType());
+    vec.emplace_back("PrototypeType", GetPrototypeType());
+    vec.emplace_back("ExtensionGT", JSTaggedValue(GetExtensionGT().GetType()));
+    vec.emplace_back("HasLinked", JSTaggedValue(GetHasLinked()));
 }
 
 void TSInterfaceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Fields"), GetFields()));
-    vec.push_back(std::make_pair(CString("Extends"), GetExtends()));
+    vec.emplace_back("Fields", GetFields());
+    vec.emplace_back("Extends", GetExtends());
 }
 
 void TSClassInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ClassGT"), JSTaggedValue(GetClassGT().GetType())));
+    vec.emplace_back("ClassGT", JSTaggedValue(GetClassGT().GetType()));
 }
 
 void TSUnionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ComponentTypes"), GetComponents()));
+    vec.emplace_back("ComponentTypes", GetComponents());
 }
 
 void TSFunctionType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Name"), GetName()));
-    vec.push_back(std::make_pair(CString("ParameterTypes"), GetParameterTypes()));
-    vec.push_back(std::make_pair(CString("ReturnGT"), JSTaggedValue(GetReturnGT().GetType())));
-    vec.push_back(std::make_pair(CString("ThisGT"), JSTaggedValue(GetThisGT().GetType())));
-    vec.push_back(std::make_pair(CString("BitFiled"), JSTaggedValue(GetBitField())));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 5;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("Name", GetName());
+    vec.emplace_back("ParameterTypes", GetParameterTypes());
+    vec.emplace_back("ReturnGT", JSTaggedValue(GetReturnGT().GetType()));
+    vec.emplace_back("ThisGT", JSTaggedValue(GetThisGT().GetType()));
+    vec.emplace_back("BitFiled", JSTaggedValue(GetBitField()));
 }
 
 void TSArrayType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ParameterTypeRef"), JSTaggedValue(GetElementGT().GetType())));
+    vec.emplace_back("ParameterTypeRef", JSTaggedValue(GetElementGT().GetType()));
 }
 
 void TSIteratorInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("kindGT"), JSTaggedValue(GetKindGT().GetType())));
-    vec.push_back(std::make_pair(CString("elementGT"), JSTaggedValue(GetElementGT().GetType())));
+    vec.emplace_back("kindGT", JSTaggedValue(GetKindGT().GetType()));
+    vec.emplace_back("elementGT", JSTaggedValue(GetElementGT().GetType()));
 }
 
 void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Environment"), GetEnvironment()));
-    vec.push_back(std::make_pair(CString("Namespace"), GetNamespace()));
-    vec.push_back(std::make_pair(CString("EcmaModuleFilename"), GetEcmaModuleFilename()));
-    vec.push_back(std::make_pair(CString("EcmaModuleRecordName"), GetEcmaModuleRecordName()));
-    vec.push_back(std::make_pair(CString("RequestedModules"), GetRequestedModules()));
-    vec.push_back(std::make_pair(CString("ImportEntries"), GetImportEntries()));
-    vec.push_back(std::make_pair(CString("LocalExportEntries"), GetLocalExportEntries()));
-    vec.push_back(std::make_pair(CString("IndirectExportEntries"), GetIndirectExportEntries()));
-    vec.push_back(std::make_pair(CString("StarExportEntries"), GetStarExportEntries()));
-    vec.push_back(std::make_pair(CString("Status"), JSTaggedValue(static_cast<int32_t>(GetStatus()))));
-    vec.push_back(std::make_pair(CString("EvaluationError"), JSTaggedValue(GetEvaluationError())));
-    vec.push_back(std::make_pair(CString("DFSIndex"), JSTaggedValue(GetDFSIndex())));
-    vec.push_back(std::make_pair(CString("DFSAncestorIndex"), JSTaggedValue(GetDFSAncestorIndex())));
-    vec.push_back(std::make_pair(CString("NameDictionary"), GetNameDictionary()));
+    // please update the NUM_OF_ITEMS if you change the items below
+    constexpr int16_t NUM_OF_ITEMS = 14;
+    vec.reserve(vec.size() + NUM_OF_ITEMS);
+    vec.emplace_back("Environment", GetEnvironment());
+    vec.emplace_back("Namespace", GetNamespace());
+    vec.emplace_back("EcmaModuleFilename", GetEcmaModuleFilename());
+    vec.emplace_back("EcmaModuleRecordName", GetEcmaModuleRecordName());
+    vec.emplace_back("RequestedModules", GetRequestedModules());
+    vec.emplace_back("ImportEntries", GetImportEntries());
+    vec.emplace_back("LocalExportEntries", GetLocalExportEntries());
+    vec.emplace_back("IndirectExportEntries", GetIndirectExportEntries());
+    vec.emplace_back("StarExportEntries", GetStarExportEntries());
+    vec.emplace_back("Status", JSTaggedValue(static_cast<int32_t>(GetStatus())));
+    vec.emplace_back("EvaluationError", JSTaggedValue(GetEvaluationError()));
+    vec.emplace_back("DFSIndex", JSTaggedValue(GetDFSIndex()));
+    vec.emplace_back("DFSAncestorIndex", JSTaggedValue(GetDFSAncestorIndex()));
+    vec.emplace_back("NameDictionary", GetNameDictionary());
 }
 
 void ImportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ModuleRequest"), GetModuleRequest()));
-    vec.push_back(std::make_pair(CString("ImportName"), GetImportName()));
-    vec.push_back(std::make_pair(CString("LocalName"), GetLocalName()));
+    vec.emplace_back("ModuleRequest", GetModuleRequest());
+    vec.emplace_back("ImportName", GetImportName());
+    vec.emplace_back("LocalName", GetLocalName());
 }
 
 void LocalExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ExportName"), GetExportName()));
-    vec.push_back(std::make_pair(CString("LocalName"), GetLocalName()));
+    vec.emplace_back("ExportName", GetExportName());
+    vec.emplace_back("LocalName", GetLocalName());
 }
 
 void IndirectExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ExportName"), GetExportName()));
-    vec.push_back(std::make_pair(CString("ModuleRequest"), GetModuleRequest()));
-    vec.push_back(std::make_pair(CString("ImportName"), GetImportName()));
+    vec.emplace_back("ExportName", GetExportName());
+    vec.emplace_back("ModuleRequest", GetModuleRequest());
+    vec.emplace_back("ImportName", GetImportName());
 }
 
 void StarExportEntry::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("ModuleRequest"), GetModuleRequest()));
+    vec.emplace_back("ModuleRequest", GetModuleRequest());
 }
 
 void ResolvedBinding::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Module"), GetModule()));
-    vec.push_back(std::make_pair(CString("BindingName"), GetBindingName()));
+    vec.emplace_back("Module", GetModule());
+    vec.emplace_back("BindingName", GetBindingName());
 }
 
 void ResolvedIndexBinding::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Module"), GetModule()));
-    vec.push_back(std::make_pair(CString("Index"), JSTaggedValue(GetIndex())));
+    vec.emplace_back("Module", GetModule());
+    vec.emplace_back("Index", JSTaggedValue(GetIndex()));
 }
 
 void ModuleNamespace::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Module"), GetModule()));
-    vec.push_back(std::make_pair(CString("Exports"), GetExports()));
+    vec.emplace_back("Module", GetModule());
+    vec.emplace_back("Exports", GetExports());
 }
 
 void CjsModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Id"), GetId()));
-    vec.push_back(std::make_pair(CString("Path"), GetPath()));
-    vec.push_back(std::make_pair(CString("Exports"), GetExports()));
-    vec.push_back(std::make_pair(CString("Filename"), GetFilename()));
+    vec.emplace_back("Id", GetId());
+    vec.emplace_back("Path", GetPath());
+    vec.emplace_back("Exports", GetExports());
+    vec.emplace_back("Filename", GetFilename());
 }
 
 void CjsExports::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Exports"), GetExports()));
+    vec.emplace_back("Exports", GetExports());
 }
 
 void CjsRequire::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.push_back(std::make_pair(CString("Cache"), GetCache()));
-    vec.push_back(std::make_pair(CString("Parent"), GetParent()));
+    vec.emplace_back("Cache", GetCache());
+    vec.emplace_back("Parent", GetParent());
 }
 }  // namespace panda::ecmascript
