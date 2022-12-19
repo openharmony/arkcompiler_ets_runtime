@@ -223,6 +223,12 @@ public:
         return TypedBinaryMegaData::Cast(meta_);
     }
 
+    const StringMetaData* GetStringMetaData() const
+    {
+        ASSERT(meta_->IsStringType());
+        return static_cast<const StringMetaData*>(meta_);
+    }
+
     const JSBytecodeMegaData* GetJSBytecodeMetaData() const
     {
         return JSBytecodeMegaData::Cast(meta_);

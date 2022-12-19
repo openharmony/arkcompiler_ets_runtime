@@ -236,6 +236,7 @@ public:
     GateRef Int32(int32_t value);
     GateRef Int64(int64_t value);
     GateRef IntPtr(int64_t val);
+    GateRef StringPtr(const std::string &str);
     GateRef Boolean(bool value);
     GateRef Double(double value);
     GateRef UndefineConstant();

@@ -96,6 +96,7 @@ public:
     GateRef Int16(int16_t value);
     GateRef Int32(int32_t value);
     GateRef Int64(int64_t value);
+    GateRef StringPtr(const std::string &str);
     GateRef IntPtr(int64_t value);
     GateRef IntPtrSize();
     GateRef RelocatableData(uint64_t value);
@@ -563,6 +564,7 @@ public:
     void PGOProfiler(GateRef glue, GateRef func);
 
     GateRef FlattenString(GateRef glue, GateRef str);
+    void Comment(GateRef glue, const std::string &str);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode Op>

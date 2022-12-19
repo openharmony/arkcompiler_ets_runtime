@@ -224,6 +224,9 @@ std::string MachineTypeToStr(MachineType machineType);
     GATE_META_DATA_LIST_WITH_VALUE(V)                     \
     GATE_META_DATA_LIST_WITH_GATE_TYPE(V)
 
+#define GATE_META_DATA_LIST_WITH_STRING(V)                \
+    V(ConstString, CONSTSTRING, false, 0, 0, 0)
+
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
     V(TYPED_BINARY_OP)
@@ -234,6 +237,7 @@ enum class OpCode : uint8_t {
     IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_WITH_STRING(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
@@ -247,6 +251,7 @@ public:
         MUTABLE_WITH_SIZE,
         IMMUTABLE_ONE_PARAMETER,
         MUTABLE_ONE_PARAMETER,
+        MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
     };
@@ -305,6 +310,11 @@ public:
     {
         return GetKind() == IMMUTABLE_ONE_PARAMETER || GetKind() == MUTABLE_ONE_PARAMETER ||
             GetKind() == TYPED_BINARY_OP;
+    }
+
+    bool IsStringType() const
+    {
+        return GetKind() == MUTABLE_STRING;
     }
 
     bool IsRoot() const;
@@ -444,6 +454,24 @@ public:
     }
 private:
     TypedBinOp binOp_;
+};
+
+class StringMetaData : public GateMetaData {
+public:
+    explicit StringMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn,
+        uint16_t dependsIn, uint32_t valuesIn, const std::string &str)
+        : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), str_(str)
+    {
+        SetKind(GateMetaData::MUTABLE_STRING);
+    }
+
+    std::string GetString() const
+    {
+        return str_;
+    }
+
+private:
+    std::string str_;
 };
 
 class GateTypeAccessor {

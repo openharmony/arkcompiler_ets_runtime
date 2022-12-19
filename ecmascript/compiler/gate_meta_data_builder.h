@@ -131,6 +131,7 @@ public:
         return meta;
     }
 
+    const GateMetaData* ConstString(const std::string &str);
 private:
     const GateMetaDataChache cache_;
     const GateMetaData cachedNop_ { OpCode::NOP, false, 0, 0, 0 };

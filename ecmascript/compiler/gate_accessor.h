@@ -314,6 +314,7 @@ public:
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnOp(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
+    const std::string GetConstantString(GateRef gate) const;
     uint32_t GetBytecodeIndex(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void Print(GateRef gate) const;

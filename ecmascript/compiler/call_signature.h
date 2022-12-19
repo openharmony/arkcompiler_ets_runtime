@@ -373,6 +373,7 @@ private:
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
     V(DebugPrintInstruction)                \
+    V(Comment)                              \
     V(PGOProfiler)                          \
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \
