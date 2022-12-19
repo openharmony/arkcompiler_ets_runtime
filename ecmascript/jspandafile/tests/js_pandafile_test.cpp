@@ -143,12 +143,12 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
     });
     EXPECT_EQ(count, 3); // 3 : number of methods
 
-    MethodLiteral method1(pf, methodId[0]);
-    MethodLiteral method2(pf, methodId[1]);
-    MethodLiteral method3(pf, methodId[2]);
-    pf->SetMethodLiteralToMap(&method1);
-    pf->SetMethodLiteralToMap(&method2);
-    pf->SetMethodLiteralToMap(&method3);
+    MethodLiteral *method1 = new MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new MethodLiteral(methodId[1]);
+    MethodLiteral *method3 = new MethodLiteral(methodId[2]);
+    pf->SetMethodLiteralToMap(method1);
+    pf->SetMethodLiteralToMap(method2);
+    pf->SetMethodLiteralToMap(method3);
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[0]).c_str(), "foo1");
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[1]).c_str(), "foo2");
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[2]).c_str(), "foo3");

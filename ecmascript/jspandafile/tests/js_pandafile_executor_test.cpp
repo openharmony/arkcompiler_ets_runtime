@@ -80,8 +80,9 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method(pf, methodId[0]);
-    pf->SetMethodLiteralToMap(&method);
+    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    method->Initialize(pf);
+    pf->SetMethodLiteralToMap(method);
     pfManager->InsertJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::Execute(thread, pf, JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
@@ -114,8 +115,9 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method(pf, methodId[0]);
-    pf->SetMethodLiteralToMap(&method);
+    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    method->Initialize(pf);
+    pf->SetMethodLiteralToMap(method);
     pfManager->InsertJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::ExecuteFromFile(thread, CString(fileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
@@ -151,8 +153,9 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method(pf, methodId[0]);
-    pf->SetMethodLiteralToMap(&method);
+    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    method->Initialize(pf);
+    pf->SetMethodLiteralToMap(method);
     pfManager->InsertJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::ExecuteFromBuffer(
         thread, (void *)data, sizeof(data), JSPandaFile::ENTRY_MAIN_FUNCTION, CString(fileName));

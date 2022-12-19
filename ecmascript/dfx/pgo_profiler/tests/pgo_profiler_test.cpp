@@ -52,7 +52,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     vm_ = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
@@ -64,9 +64,9 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     loader.LoadProfiler("ark-profiler/profiler.aprof", 2);
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
+    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
 #else
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
 #endif
     unlink("ark-profiler/profiler.aprof");
     rmdir("ark-profiler/");
@@ -81,9 +81,9 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     vm_ = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
-    MethodLiteral *methodLiteral1 = new MethodLiteral(nullptr, EntityId(15));
-    MethodLiteral *methodLiteral2 = new MethodLiteral(nullptr, EntityId(20));
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(70));
+    MethodLiteral *methodLiteral1 = new MethodLiteral(EntityId(75));
+    MethodLiteral *methodLiteral2 = new MethodLiteral(EntityId(80));
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiteral1);
     JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiteral2);
@@ -107,12 +107,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     PGOProfilerLoader loader;
     loader.LoadProfiler("ark-profiler1/profiler.aprof", 2);
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(20)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(70)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(80)));
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(15)));
+    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(75)));
 #else
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(15)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
 #endif
     unlink("ark-profiler1/profiler.aprof");
     rmdir("ark-profiler1/");
@@ -127,8 +127,8 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     vm_ = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
-    MethodLiteral *methodLiteral1 = new MethodLiteral(nullptr, EntityId(15));
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
+    MethodLiteral *methodLiteral1 = new MethodLiteral(EntityId(62));
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiteral1);
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
@@ -149,11 +149,11 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     CString expectRecordName = "test";
     CString expectRecordName1 = "test1";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
+    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
 #else
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
 #endif
-    ASSERT_TRUE(loader.Match(expectRecordName1, EntityId(15)));
+    ASSERT_TRUE(loader.Match(expectRecordName1, EntityId(62)));
     unlink("ark-profiler2/profiler.aprof");
     rmdir("ark-profiler2/");
 }
@@ -167,7 +167,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     vm_ = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
@@ -180,7 +180,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     // path is empty()
     loader.LoadProfiler("ark-profiler3/profiler.aprof", 2);
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
     rmdir("ark-profiler3/");
 }
 
@@ -223,7 +223,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     vm_->GetPGOProfiler()->Sample(array.GetTaggedType());
 
     // RecordName is hole
-    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     func->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
@@ -253,8 +253,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     auto vm2 = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm2 != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
-    MethodLiteral *methodLiteral1 = new MethodLiteral(nullptr, EntityId(15));
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(70));
+    MethodLiteral *methodLiteral1 = new MethodLiteral(EntityId(75));
     JSHandle<Method> method = vm2->GetFactory()->NewMethod(methodLiteral);
     JSHandle<JSFunction> func = vm2->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
@@ -278,13 +278,13 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     loader.LoadProfiler("ark-profiler5/profiler", 2);
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(15)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
 
     loader.LoadProfiler("ark-profiler5/profiler.aprof", 2);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(15)));
+    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(75)));
 #else
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(15)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
 #endif
 
     unlink("ark-profiler5/profiler.aprof");
@@ -342,8 +342,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerLoaderNoHotMethod)
     option.SetProfileDir("ark-profiler8/");
     vm_ = JSNApi::CreateJSVM(option);
 
-    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
-
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
@@ -355,9 +354,9 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerLoaderNoHotMethod)
     loader.LoadProfiler("ark-profiler8/profiler.aprof", 2);
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(10)));
+    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
 #else
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(10)));
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
 #endif
 
     unlink("ark-profiler8/profiler.aprof");
@@ -378,8 +377,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     }
 
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
-    for (int i = 0; i < 31; i++) {
-        MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(i));
+    for (int i = 61; i < 91; i++) {
+        MethodLiteral *methodLiteral = new MethodLiteral(EntityId(i));
         JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
         JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
         func->SetModule(vm_->GetJSThread(), recordName);
@@ -394,7 +393,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     PGOProfilerLoader loader;
     loader.LoadProfiler("ark-profiler9/profiler.aprof", 2);
     CString expectRecordName = "test";
-    for (int i = 0; i < 31; i++) {
+    for (int i = 61; i < 91; i++) {
         if (i % 3 == 0) {
             ASSERT_TRUE(loader.Match(expectRecordName, EntityId(i)));
         } else {

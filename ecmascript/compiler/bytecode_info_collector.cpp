@@ -47,16 +47,11 @@ void BytecodeInfoCollector::ProcessClasses()
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
         cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns, &desc,
             &mainMethodIndexes, &recordNames, &methodPcInfos] (panda_file::MethodDataAccessor &mda) {
-            auto codeId = mda.GetCodeId();
             auto methodId = mda.GetMethodId();
-            ASSERT(codeId.has_value());
 
             // Generate all constpool
             vm_->FindOrCreateConstPool(jsPandaFile_, methodId);
 
-            MethodLiteral *methodLiteral = methods + (methodIdx++);
-            panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
-            uint32_t codeSize = codeDataAccessor.GetCodeSize();
             auto methodOffset = methodId.GetOffset();
             CString name = reinterpret_cast<const char *>(pf->GetStringData(mda.GetNameId()).data);
             if (JSPandaFile::IsEntryOrPatch(name)) {
@@ -66,16 +61,21 @@ void BytecodeInfoCollector::ProcessClasses()
                 recordNames.emplace_back(recordName);
             }
 
-            InitializeMemory(methodLiteral, jsPandaFile_, methodId);
-            methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
-            methodLiteral->Initialize(
-                jsPandaFile_, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
-            const uint8_t *insns = codeDataAccessor.GetInstructions();
+            MethodLiteral *methodLiteral = methods + (methodIdx++);
+            InitializeMemory(methodLiteral, methodId);
+            methodLiteral->Initialize(jsPandaFile_);
+
             ASSERT(jsPandaFile_->IsNewVersion());
             panda_file::IndexAccessor indexAccessor(*pf, methodId);
             panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
             FunctionKind kind = JSPandaFile::GetFunctionKind(funcKind);
             methodLiteral->SetFunctionKind(kind);
+
+            auto codeId = mda.GetCodeId();
+            ASSERT(codeId.has_value());
+            panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
+            uint32_t codeSize = codeDataAccessor.GetCodeSize();
+            const uint8_t *insns = codeDataAccessor.GetInstructions();
             auto it = processedInsns.find(insns);
             if (it == processedInsns.end()) {
                 CollectMethodPcsFromBC(codeSize, insns, methodLiteral);
