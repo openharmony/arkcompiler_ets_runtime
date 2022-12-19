@@ -108,7 +108,7 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
     for (const uint32_t index : classIndexes) {
-        panda_file::File::EntityId classId(index);
+        EntityId classId(index);
         if (pf->IsExternal(classId)) {
             continue;
         }
@@ -123,7 +123,7 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
             auto methodId = mda.GetMethodId();
             EcmaVM *vm = thread->GetEcmaVM();
             JSHandle<ConstantPool> constpool =
-                vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(methodId));
+                vm->FindOrCreateConstPool(jsPandaFile, EntityId(methodId));
 
             auto codeId = mda.GetCodeId();
             ASSERT(codeId.has_value());
@@ -256,27 +256,22 @@ bool PatchLoader::ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFil
     EcmaVM *vm = thread->GetEcmaVM();
 
     const auto &recordInfos = patchFile->GetJSRecordInfo();
-    bool isUpdateHotPatch = false;
     bool isHotPatch = false;
     bool isNewVersion = patchFile->IsNewVersion();
     for (const auto &item : recordInfos) {
         const CString &recordName = item.first;
         uint32_t mainMethodIndex = patchFile->GetMainMethodIndex(recordName);
         ASSERT(mainMethodIndex != 0);
-        panda_file::File::EntityId mainMethodId(mainMethodIndex);
+        EntityId mainMethodId(mainMethodIndex);
 
         // For HotPatch, generate program and execute for every record.
-        if (!isUpdateHotPatch) {
-            CString mainMethodName = MethodLiteral::GetMethodName(patchFile, mainMethodId);
-            if (mainMethodName == JSPandaFile::PATCH_FUNCTION_NAME_0) {
-                isHotPatch = true;
-            }
-            isUpdateHotPatch = true;
-        }
-
         if (!isHotPatch) {
-            LOG_ECMA(INFO) << "HotReload no need to execute patch main";
-            return true;
+            CString mainMethodName = MethodLiteral::GetMethodName(patchFile, mainMethodId);
+            if (mainMethodName != JSPandaFile::PATCH_FUNCTION_NAME_0) {
+                LOG_ECMA(INFO) << "HotReload no need to execute patch main";
+                return true;
+            }
+            isHotPatch = true;
         }
 
         JSTaggedValue constpoolVal = JSTaggedValue::Hole();
