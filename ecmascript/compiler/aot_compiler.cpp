@@ -82,10 +82,10 @@ int Main(const int argc, const char **argv)
         LocalScope scope(vm);
         arg_list_t pandaFileNames = base::StringHelper::SplitString(files, ":");
         std::string triple = runtimeOptions.GetTargetTriple();
-        std::string outputFileName = runtimeOptions.GetAOTOutputFile();
-        if (outputFileName.empty()) {
-            outputFileName = "aot_file";
+        if (runtimeOptions.GetAOTOutputFile().empty()) {
+            runtimeOptions.SetAOTOutputFile("aot_file");
         }
+        std::string outputFileName = runtimeOptions.GetAOTOutputFile();
         size_t optLevel = runtimeOptions.GetOptLevel();
         size_t relocMode = runtimeOptions.GetRelocMode();
         std::string logOption = runtimeOptions.GetCompilerLogOption();
@@ -98,7 +98,7 @@ int Main(const int argc, const char **argv)
         BytecodeStubCSigns::Initialize();
         CommonStubCSigns::Initialize();
         RuntimeStubCSigns::Initialize();
-        
+
         CompilerLog log(logOption, isTraceBC);
         log.SetEnableCompilerLogTime(compilerLogTime);
         AotMethodLogList logList(logMethodsList);

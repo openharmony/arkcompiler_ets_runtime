@@ -152,7 +152,7 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
         UNREACHABLE();
     }
 
-    SnapshotProcessor processor(vm_);
+    SnapshotProcessor processor(vm_, snapshotFile);
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
     }
