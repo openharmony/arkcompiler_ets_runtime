@@ -45,7 +45,7 @@ private:
     }
 
     // check whether the patch is loaded.
-    bool HasLoadedPatch(const std::string &patchFileName, const std::string &baseFileName = "") const;
+    bool HasLoadedPatch(const std::string &patchFileName, const std::string &baseFileName) const;
     void InsertBaseInfo(const std::string &patchFileName, const std::string &baseFileName,
                         const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
     CMap<BaseMethodIndex, MethodLiteral *> &FindBaseInfo(const std::string &patchFileName,
