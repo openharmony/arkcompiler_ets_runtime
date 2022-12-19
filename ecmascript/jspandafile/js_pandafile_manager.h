@@ -78,9 +78,9 @@ private:
     };
 
     void ReleaseJSPandaFile(const JSPandaFile *jsPandaFile);
-    const JSPandaFile *FindJSPandaFile(const CString &filename);
+    const JSPandaFile *FindJSPandaFileUnlocked(const CString &filename);
     void InsertJSPandaFile(const JSPandaFile *jsPandaFile);
-    void IncreaseRefJSPandaFile(const JSPandaFile *jsPandaFile);
+    void IncreaseRefJSPandaFileUnlocked(const JSPandaFile *jsPandaFile);
     void DecreaseRefJSPandaFile(const JSPandaFile *jsPandaFile);
 
     static void *AllocateBuffer(size_t size);
