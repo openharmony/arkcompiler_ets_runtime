@@ -259,6 +259,16 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     // Let options be ? ToDateTimeOptions(options, "any", "all").
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
+    bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    if (cacheable) {
+        auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
+            IcuFormatterType::SimpleDateFormatDefault);
+        if (simpleDateFormat != nullptr) {
+            JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return result.GetTaggedValue();
+        }
+    }
     JSHandle<JSObject> dateTimeOptions =
         JSDateTimeFormat::ToDateTimeOptions(thread, options, RequiredOption::ANY, DefaultsOption::ALL);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -266,12 +276,22 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
     JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
-    JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(
-        thread, JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions));
+    IcuCacheType type = cacheable ? IcuCacheType::DEFAULT : IcuCacheType::NOT_CACHE;
+    JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(thread,
+        JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions), type);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (cacheable) {
+        auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
+            IcuFormatterType::SimpleDateFormatDefault);
+        ASSERT(simpleDateFormat != nullptr);
+        JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return result.GetTaggedValue();
+    }
 
     // Return ? FormatDateTime(dateFormat, x).
     JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, dtf, x);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
 }
 
@@ -302,6 +322,16 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     // Let options be ? ToDateTimeOptions(options, "any", "all").
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
+    bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    if (cacheable) {
+        auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
+            IcuFormatterType::SimpleDateFormatDate);
+        if (simpleDateFormat != nullptr) {
+            JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return result.GetTaggedValue();
+        }
+    }
     JSHandle<JSObject> dateTimeOptions =
         JSDateTimeFormat::ToDateTimeOptions(thread, options, RequiredOption::DATE, DefaultsOption::DATE);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -309,12 +339,22 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
     JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
-    JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(
-        thread, JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions));
+    IcuCacheType type = cacheable ? IcuCacheType::DATE : IcuCacheType::NOT_CACHE;
+    JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(thread,
+        JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions), type);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (cacheable) {
+        auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
+            IcuFormatterType::SimpleDateFormatDate);
+        ASSERT(simpleDateFormat != nullptr);
+        JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return result.GetTaggedValue();
+    }
 
     // Return ? FormatDateTime(dateFormat, x).
     JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, dtf, x);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
 }
 
@@ -345,6 +385,16 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     // Let options be ? ToDateTimeOptions(options, "any", "all").
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
+    bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    if (cacheable) {
+        auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
+            IcuFormatterType::SimpleDateFormatTime);
+        if (simpleDateFormat != nullptr) {
+            JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return result.GetTaggedValue();
+        }
+    }
     JSHandle<JSObject> dateTimeOptions =
         JSDateTimeFormat::ToDateTimeOptions(thread, options, RequiredOption::TIME, DefaultsOption::TIME);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -352,12 +402,22 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
     JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
-    JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(
-        thread, JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions));
+    IcuCacheType type = cacheable ? IcuCacheType::TIME : IcuCacheType::NOT_CACHE;
+    JSHandle<JSDateTimeFormat> dtf = JSDateTimeFormat::InitializeDateTimeFormat(thread,
+        JSHandle<JSDateTimeFormat>::Cast(obj), locales, JSHandle<JSTaggedValue>::Cast(dateTimeOptions), type);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (cacheable) {
+        auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
+            IcuFormatterType::SimpleDateFormatTime);
+        ASSERT(simpleDateFormat != nullptr);
+        JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return result.GetTaggedValue();
+    }
 
     // Return ? FormatDateTime(dateFormat, x).
     JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, dtf, x);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
 }
 }  // namespace panda::ecmascript::builtins
