@@ -659,6 +659,7 @@ void Heap::TryTriggerConcurrentMarking()
         markType_ = MarkType::MARK_FULL;
         OPTIONAL_LOG(ecmaVm_, INFO) << " fullMarkRequested, trigger full mark.";
         TriggerConcurrentMarking();
+        return;
     }
     bool isFullMarkNeeded = false;
     double oldSpaceMarkDuration = 0, newSpaceMarkDuration = 0, newSpaceRemainSize = 0, newSpaceAllocToLimitDuration = 0,
