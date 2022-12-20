@@ -2489,8 +2489,7 @@ void SlowPathLowering::LowerStObjByName(GateRef gate, GateRef jsFunc, bool isThi
     GateRef receiver;
     GateRef value;
     if (isThis) {
-        // 3: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 4);
+        ASSERT(acc_.GetNumValueIn(gate) == 4); // 4: number of value inputs
         receiver = acc_.GetValueIn(gate, 3); // 3: this object
         value = acc_.GetValueIn(gate, 2);  // 2: the third para is value
     } else {
@@ -2660,8 +2659,7 @@ void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef jsFunc, bool isTh
     GateRef propKey;
     GateRef value;
     if (isThis) {
-        // 3: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 4);
+        ASSERT(acc_.GetNumValueIn(gate) == 4); // 4: number of value inputs
         receiver = acc_.GetValueIn(gate, 3); // 3: this object
         propKey = acc_.GetValueIn(gate, 1);
         value = acc_.GetValueIn(gate, 2);  // 2: the third parameter
@@ -3448,7 +3446,7 @@ void SlowPathLowering::LowerLdThisByName(GateRef gate, GateRef jsFunc)
     Label accessObject(&builder_);
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    ASSERT(acc_.GetNumValueIn(gate) == 3);  // 2: number of parameter
+    ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: number of parameter
     GateRef thisObj = acc_.GetValueIn(gate, 2); // 2: this object
     GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter

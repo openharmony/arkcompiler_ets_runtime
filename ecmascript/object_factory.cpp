@@ -1347,7 +1347,8 @@ TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclas
     return header;
 }
 
-void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, uint32_t inobjPropCount)
+void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass,
+                                              TaggedObject *obj, uint32_t inobjPropCount)
 {
     ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < hclass->GetObjectSize());
     auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
