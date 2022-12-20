@@ -31,7 +31,8 @@ public:
           dependEntry_(circuit->GetDependRoot()),
           tsManager_(info->GetTSManager()),
           enableLog_(enableLog),
-          methodName_(name) {}
+          profiling_(info->GetCompilerConfig()->IsProfiling()),
+          methodName_(name), glue_(acc_.GetGlueFromArgList()) {}
 
     ~TSTypeLowering() = default;
 
@@ -41,6 +42,11 @@ private:
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    bool IsProfiling() const
+    {
+        return profiling_;
     }
 
     const std::string& GetMethodName() const
@@ -82,8 +88,8 @@ private:
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
-    void LowerTypedNewObjRange(GateRef gate, GateRef glue);
-    void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget, GateRef glue);
+    void LowerTypedNewObjRange(GateRef gate);
+    void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget);
 
     GateRef GetSuperConstructor(GateRef ctor);
     void LowerCallThis1Imm8V8V8(GateRef gate);
@@ -101,13 +107,18 @@ private:
     BuiltinsStubCSigns::ID GetBuiltinId(GateRef func, GateRef receiver);
     template<TypedUnOp Op>
     GateRef AppendOverflowCheck(GateRef typeCheck, GateRef intVal);
+
+    void AddProfiling(GateRef gate);
+
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
+    bool profiling_ {false};
     std::string methodName_;
+    GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H

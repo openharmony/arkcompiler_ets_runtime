@@ -59,7 +59,7 @@ private:
         success_ = success;
     }
 
-    GateRef glue_ {0};
+    GateRef glue_ {Circuit::NullGate()};
     GateRef receiver_ {0};
     GateRef profileTypeInfo_ {0};
     GateRef value_ {0};

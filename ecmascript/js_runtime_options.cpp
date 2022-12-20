@@ -59,6 +59,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--trace-bc: enable tracing bytecode for aot runtime. Default: false\n"
     "--trace-deopt: enable tracing deopt for aot runtime. Default: false\n"
     "--deopt-threshold: set max count which aot function can occur deoptimization. Default: 10\n"
+    "--opt-code-profiler: enable opt code Bytecode Statistics for aot runtime. Default: false\n"
     "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
     "--enable-force-gc: enable force gc when allocating object. Default: true\n"
     "--enable-ic: switch of inline cache. Default: true\n"
@@ -128,6 +129,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"trace-bc", required_argument, nullptr, OPTION_TRACE_BC},
         {"trace-deopt", required_argument, nullptr, OPTION_TRACE_DEOPT},
         {"deopt-threshold", required_argument, nullptr, OPTION_DEOPT_THRESHOLD},
+        {"opt-code-profiler", required_argument, nullptr, OPTION_OPT_CODE_PROFILER},
         {"enable-cpuprofiler", required_argument, nullptr, OPTION_ENABLE_CPUPROFILER},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
@@ -278,6 +280,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTraceDeopt(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_OPT_CODE_PROFILER:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetOptCodeProfiler(argBool);
                 } else {
                     return false;
                 }

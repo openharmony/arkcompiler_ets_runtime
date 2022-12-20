@@ -40,6 +40,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/aot_file_manager.h"
@@ -224,6 +225,9 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
         LoadAOTFiles();
     }
+
+    optCodeProfiler_ = new OptCodeProfiler();
+
     initialized_ = true;
     return true;
 }
@@ -285,6 +289,11 @@ EcmaVM::~EcmaVM()
 
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
         runtimeStat_->Print();
+    }
+
+    if (optCodeProfiler_ != nullptr) {
+        delete optCodeProfiler_;
+        optCodeProfiler_ = nullptr;
     }
 
     // clear c_address: c++ pointer delete

@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
@@ -1822,6 +1823,16 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     auto ecmaOpcode = GetArg(argv, argc, 0).GetInt();
     std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
     LOG_ECMA(INFO) << "aot slowpath " << result;
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ProfileOptimizedCode)
+{
+    RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
+    EcmaOpcode ecmaOpcode = static_cast<EcmaOpcode>(GetArg(argv, argc, 0).GetInt());
+    OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 1).GetInt());
+    OptCodeProfiler *profiler = thread->GetEcmaVM()->GetOptCodeProfiler();
+    profiler->Update(ecmaOpcode, mode);
     return JSTaggedValue::Undefined().GetRawData();
 }
 

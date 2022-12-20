@@ -268,6 +268,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(OptPopLexicalEnv)                   \
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
+    V(ProfileOptimizedCode)               \
     V(GetMethodFromCache)                 \
     V(GetArrayLiteralFromCache)           \
     V(GetObjectLiteralFromCache)          \

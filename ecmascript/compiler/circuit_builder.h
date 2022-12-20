@@ -140,8 +140,10 @@ public:
         TRIPLE_ARM32,
     };
 
-    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false)
-        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler)
+    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false,
+                               bool profiling = false)
+        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler),
+          profiling_(profiling)
     {
     }
     ~CompilationConfig() = default;
@@ -181,6 +183,11 @@ public:
         return enablePGOProfiler_;
     }
 
+    bool IsProfiling() const
+    {
+        return profiling_;
+    }
+
 private:
     inline Triple GetTripleFromString(const std::string &triple)
     {
@@ -201,6 +208,7 @@ private:
     Triple triple_;
     bool isTraceBc_;
     bool enablePGOProfiler_;
+    bool profiling_;
 };
 
 class CircuitBuilder {
