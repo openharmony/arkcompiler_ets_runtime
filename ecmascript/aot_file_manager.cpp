@@ -163,25 +163,34 @@ void StubFileInfo::Save(const std::string &filename)
     file.close();
 }
 
-bool StubFileInfo::Load(const std::string &filename)
+bool StubFileInfo::Load()
 {
-    //  now MachineCode is non movable, code and stackmap sperately is saved to MachineCode
-    // by calling NewMachineCodeObject.
-    //  then MachineCode will support movable, code is saved to MachineCode and stackmap is saved
-    // to different heap which will be freed when stackmap is parsed by EcmaVM is started.
-    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    if (!anFileDataManager->SafeLoad(filename, true)) {
+    if (_binary_stub_an_length <= 1) {
+        LOG_FULL(FATAL) << "stub.an length <= 1, is default and invalid.";
         return false;
     }
 
-    data_ = anFileDataManager->SafeGetAnFileData(ConvertToString(filename));
-    entryNum_ = data_->entryNum;
-    entries_ = data_->entries;
-    moduleNum_ = data_->moduleNum;
-    totalCodeSize_ = data_->totalCodeSize;
-    des_ = data_->des;
-    asmStubSize_ = data_->asmStubSize;
-    asmStubAddr_ = data_->poolAddr;
+    BinaryBufferParser binBufparser(const_cast<uint8_t *>(_binary_stub_an_start), _binary_stub_an_length);
+    binBufparser.ParseBuffer(&entryNum_, sizeof(entryNum_));
+    entries_.resize(entryNum_);
+    binBufparser.ParseBuffer(entries_.data(), sizeof(FuncEntryDes) * entryNum_);
+    binBufparser.ParseBuffer(&moduleNum_, sizeof(moduleNum_));
+    des_.resize(moduleNum_);
+    binBufparser.ParseBuffer(&totalCodeSize_, sizeof(totalCodeSize_));
+
+    ExecutedMemoryAllocator::AllocateBuf(totalCodeSize_, exeMem_);
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(exeMem_.addr_);
+    uint32_t curUnitOffset = 0;
+    uint32_t asmStubSize = 0;
+    binBufparser.ParseBuffer(&asmStubSize, sizeof(asmStubSize));
+    SetAsmStubSize(asmStubSize);
+    binBufparser.ParseBuffer(reinterpret_cast<void *>(codeAddress), asmStubSize);
+    SetAsmStubAddr(codeAddress);
+    curUnitOffset += asmStubSize;
+
+    for (size_t i = 0; i < moduleNum_; i++) {
+        des_[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeAddress);
+    }
 
     for (auto &entry : entries_) {
         if (entry.IsGeneralRTStub()) {
@@ -194,167 +203,6 @@ bool StubFileInfo::Load(const std::string &filename)
     }
     LOG_COMPILER(INFO) << "loaded stub file successfully";
     return true;
-}
-
-AnFileDataManager *AnFileDataManager::GetInstance()
-{
-    static AnFileDataManager anFileDataManager;
-    return &anFileDataManager;
-}
-
-AnFileDataManager::~AnFileDataManager()
-{
-    SafeDestoryAllData();
-}
-
-void AnFileDataManager::SafeDestoryAllData()
-{
-    os::memory::LockHolder lock(lock_);
-    if (loadedData_.size() == 0) {
-        return;
-    }
-    auto iter = loadedData_.begin();
-    while (iter != loadedData_.end()) {
-        void *poolAddr = iter->second->poolAddr;
-        size_t poolSize = iter->second->poolSize;
-        MachineCodePageUnmap(MemMap(poolAddr, poolSize));
-        iter = loadedData_.erase(iter);
-    }
-}
-
-bool AnFileDataManager::SafeLoad(const std::string &filename, bool isStub)
-{
-    std::string realPath;
-    if (isStub) {
-        if (_binary_stub_an_length <= 1) {
-            LOG_FULL(FATAL) << "stub.an length <= 1, is default and invalid.";
-            return false;
-        }
-    } else {
-        if (!RealPath(filename, realPath, false)) {
-            LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
-                                << "please execute ark_aot_compiler with options --aot-file.";
-            UNREACHABLE();
-            return false;
-        }
-    }
-
-    os::memory::LockHolder lock(lock_);
-    const CString &cstrFileName = ConvertToString(filename);
-    const std::shared_ptr<AnFileData const> anFileData = UnsafeFind(cstrFileName);
-    if (anFileData != nullptr) {
-        return true;
-    }
-    if (isStub) {
-        return UnsafeLoadDataFromBinaryBuffer(cstrFileName);
-    } else {
-        return UnsafeLoadDataFromFile(cstrFileName, realPath);
-    }
-}
-
-std::shared_ptr<const AnFileDataManager::AnFileData> AnFileDataManager::UnsafeFind(const CString &filename) const
-{
-    // note: This method is not thread-safe
-    // need to ensure that the instance of AnFileDataManager has been locked before use
-    const auto iter = loadedData_.find(filename);
-    if (iter == loadedData_.end()) {
-        return nullptr;
-    }
-    return iter->second;
-}
-
-std::shared_ptr<const AnFileDataManager::AnFileData> AnFileDataManager::SafeGetAnFileData(const CString &filename)
-{
-    os::memory::LockHolder lock(lock_);
-    return UnsafeFind(filename);
-}
-
-bool AnFileDataManager::UnsafeLoadDataFromFile(const CString &filename, std::string &realPath)
-{
-    // note: This method is not thread-safe
-    // need to ensure that the instance of AnFileDataManager has been locked before use
-    std::ifstream file(realPath.c_str(), std::ofstream::binary);
-    if (!file.good()) {
-        LOG_COMPILER(ERROR) << "Fail to load an file: " << realPath.c_str();
-        file.close();
-        return false;
-    }
-
-    std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> anVersion;
-    file.read(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
-    if (anVersion != AOTFileManager::AOT_VERSION) {
-        auto convToStr = [] (std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> version) -> std::string {
-            std::string ret = "";
-            for (size_t i = 0; i < AOTFileManager::AOT_VERSION_SIZE; ++i) {
-                if (i) {
-                    ret += ".";
-                }
-                ret += std::to_string(version[i]);
-            }
-            return ret;
-        };
-        LOG_COMPILER(ERROR) << "Load an file failed, an file version is incorrect, "
-                            << "expected version is " << convToStr(AOTFileManager::AOT_VERSION)
-                            << ", but got " << convToStr(anVersion);
-        file.close();
-        return false;
-    }
-
-    std::shared_ptr<AnFileData> data = std::make_shared<AnFileData>(AnFileData());
-    loadedData_[filename] = data;
-    file.read(reinterpret_cast<char *>(&data->entryNum), sizeof(data->entryNum));
-    data->entries.resize(data->entryNum);
-    file.read(reinterpret_cast<char *>(data->entries.data()), sizeof(AOTFileInfo::FuncEntryDes) * data->entryNum);
-    file.read(reinterpret_cast<char *>(&data->moduleNum), sizeof(data->moduleNum));
-    data->des.resize(data->moduleNum);
-    file.read(reinterpret_cast<char *>(&data->totalCodeSize), sizeof(data->totalCodeSize));
-
-    auto pool = MachineCodePageMap(AlignUp(data->totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
-    data->poolAddr = pool.GetMem();
-    data->poolSize = pool.GetSize();
-
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
-    uint32_t curUnitOffset = 0;
-    for (size_t i = 0; i < data->moduleNum; i++) {
-        data->des[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
-    }
-    return true;
-}
-
-bool AnFileDataManager::UnsafeLoadDataFromBinaryBuffer(const CString &filename)
-{
-    // note: This method is not thread-safe
-    // need to ensure that the instance of AnFileDataManager has been locked before use
-    BinaryBufferParser binBufparser(const_cast<uint8_t *>(_binary_stub_an_start), _binary_stub_an_length);
-    std::shared_ptr<AnFileData> data = std::make_shared<AnFileData>(AnFileData());
-    loadedData_[filename] = data;
-    binBufparser.ParseBuffer(&data->entryNum, sizeof(data->entryNum));
-    data->entries.resize(data->entryNum);
-    binBufparser.ParseBuffer(data->entries.data(), sizeof(AOTFileInfo::FuncEntryDes) * data->entryNum);
-    binBufparser.ParseBuffer(&data->moduleNum, sizeof(data->moduleNum));
-    data->des.resize(data->moduleNum);
-    binBufparser.ParseBuffer(&data->totalCodeSize, sizeof(data->totalCodeSize));
-
-    auto pool = MachineCodePageMap(AlignUp(data->totalCodeSize, PageSize()), PAGE_PROT_EXEC_READWRITE);
-    data->poolAddr = pool.GetMem();
-    data->poolSize = pool.GetSize();
-
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(pool.GetMem());
-    uint32_t curUnitOffset = 0;
-    binBufparser.ParseBuffer(&data->asmStubSize, sizeof(data->asmStubSize));
-    binBufparser.ParseBuffer(reinterpret_cast<void *>(codeAddress), data->asmStubSize);
-    curUnitOffset += data->asmStubSize;
-    for (size_t i = 0; i < data->moduleNum; i++) {
-        data->des[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeAddress);
-    }
-    return true;
-}
-
-void AnFileInfo::Iterate(const RootVisitor &v)
-{
-    for (auto iter : deserializedCPs_) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&deserializedCPs_.at(iter.first))));
-    }
 }
 
 void AnFileInfo::Save(const std::string &filename)
@@ -413,39 +261,56 @@ void AnFileInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
 #endif
 }
 
-JSHandle<JSTaggedValue> AnFileInfo::GetDeserializedConstantPool(int32_t cpID) const
-{
-    auto iter = deserializedCPs_.find(cpID);
-    if (iter == deserializedCPs_.end()) {
-        LOG_COMPILER(ERROR) << "can not find deserialized constantpool in anFileInfo, constantPoolID is " << cpID;
-        UNREACHABLE();
-    }
-    return JSHandle<JSTaggedValue>(uintptr_t(&iter->second));
-}
-
-void PUBLIC_API AnFileInfo::SetDeserializedConstantPool(JSThread *thread, JSTaggedValue snapshotCPList)
-{
-    JSHandle<TaggedArray> cpList(thread, snapshotCPList);
-    uint32_t len = cpList->GetLength();
-    for (uint32_t pos = 0; pos < len; pos += DESERIALIZED_CP_LIST_ITEM_SIZE) {
-        int32_t constantPoolID = cpList->Get(pos).GetInt();
-        JSTaggedValue cp = cpList->Get(pos + 1);
-        deserializedCPs_.insert({constantPoolID, cp});
-    }
-}
-
 bool AnFileInfo::Load(const std::string &filename)
 {
-    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    if (!anFileDataManager->SafeLoad(filename)) {
+    std::string realPath;
+    if (!RealPath(filename, realPath, false)) {
+        LOG_COMPILER(ERROR) << "Can not load aot file from path [ "  << filename << " ], "
+                            << "please execute ark_aot_compiler with options --aot-file.";
+        UNREACHABLE();
         return false;
     }
-    data_ = anFileDataManager->SafeGetAnFileData(ConvertToString(filename));
-    entryNum_ = data_->entryNum;
-    entries_ = data_->entries;
-    moduleNum_ = data_->moduleNum;
-    totalCodeSize_ = data_->totalCodeSize;
-    des_ = data_->des;
+
+    std::ifstream file(realPath.c_str(), std::ofstream::binary);
+    if (!file.good()) {
+        LOG_COMPILER(ERROR) << "Fail to load an file: " << realPath.c_str();
+        file.close();
+        return false;
+    }
+
+    std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> anVersion;
+    file.read(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
+    if (anVersion != AOTFileManager::AOT_VERSION) {
+        auto convToStr = [] (std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> version) -> std::string {
+            std::string ret = "";
+            for (size_t i = 0; i < AOTFileManager::AOT_VERSION_SIZE; ++i) {
+                if (i) {
+                    ret += ".";
+                }
+                ret += std::to_string(version[i]);
+            }
+            return ret;
+        };
+        LOG_COMPILER(ERROR) << "Load an file failed, an file version is incorrect, "
+                            << "expected version is " << convToStr(AOTFileManager::AOT_VERSION)
+                            << ", but got " << convToStr(anVersion);
+        file.close();
+        return false;
+    }
+
+    file.read(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
+    entries_.resize(entryNum_);
+    file.read(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
+    file.read(reinterpret_cast<char *>(&moduleNum_), sizeof(moduleNum_));
+    des_.resize(moduleNum_);
+    file.read(reinterpret_cast<char *>(&totalCodeSize_), sizeof(totalCodeSize_));
+
+    ExecutedMemoryAllocator::AllocateBuf(totalCodeSize_, exeMem_);
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(exeMem_.addr_);
+    uint32_t curUnitOffset = 0;
+    for (size_t i = 0; i < moduleNum_; i++) {
+        des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
+    }
 
     for (size_t i = 0; i < entries_.size(); i++) {
         FuncEntryDes& funcDes = entries_[i];
@@ -478,32 +343,32 @@ bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry
     return true;
 }
 
-void AOTFileInfo::Iterate(const RootVisitor &v)
+void AOTFileManager::Iterate(const RootVisitor &v)
 {
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&machineCodeObj_)));
+    for (auto &iter : desCPs_) {
+        for (auto &curCP : iter.second) {
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second.at(curCP.first))));
+        }
+    }
 }
 
 void AOTFileManager::LoadStubFile(const std::string &fileName)
 {
-    if (!stubFileInfo_.Load(fileName)) {
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::STUB)) {
         return;
     }
-    auto stubs = stubFileInfo_.GetStubs();
+    auto info = anFileDataManager->SafeGetStubFileInfo();
+    auto stubs = info->GetStubs();
     InitializeStubEntries(stubs);
 }
 
 void AOTFileManager::LoadAnFile(const std::string &fileName)
 {
-    AnFileInfo anFileInfo;
-    if (!anFileInfo.Load(fileName)) {
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT, vm_)) {
         return;
     }
-    anFileInfo.RewriteRelcateDeoptHandler(vm_);
-
-    // add an file info
-    std::string anBasename = JSFilePath::GetBaseName(fileName);
-    anFileNameToIndexMap_[anBasename] = anFileInfos_.size();
-    anFileInfos_.emplace_back(anFileInfo);
 }
 
 void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filename)
@@ -514,14 +379,14 @@ void AOTFileManager::LoadSnapshotFile([[maybe_unused]] const std::string& filena
 #endif
 }
 
-const AnFileInfo *AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
+const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
 {
     uint32_t index = GetAnFileIndex(jsPandaFile);
     if (index == JSPandaFile::INVALID_INDEX) {
         return nullptr;
     }
-
-    return &anFileInfos_[index];
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    return anFileDataManager->SafeGetAnFileInfo(index);
 }
 
 bool AOTFileManager::IsLoad(const JSPandaFile *jsPandaFile) const
@@ -530,7 +395,7 @@ bool AOTFileManager::IsLoad(const JSPandaFile *jsPandaFile) const
         return false;
     }
 
-    const AnFileInfo *anFileInfo = GetAnFileInfo(jsPandaFile);
+    const std::shared_ptr<AnFileInfo> anFileInfo = GetAnFileInfo(jsPandaFile);
     if (anFileInfo == nullptr) {
         return false;
     }
@@ -543,7 +408,7 @@ bool AOTFileManager::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &e
         return false;
     }
 
-    const AnFileInfo *anFileInfo = GetAnFileInfo(jsPandaFile);
+    const std::shared_ptr<AnFileInfo> anFileInfo = GetAnFileInfo(jsPandaFile);
     if (anFileInfo == nullptr) {
         return false;
     }
@@ -553,6 +418,8 @@ bool AOTFileManager::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &e
 
 uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
 {
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+
     // run via command line
     if (vm_->GetJSOptions().WasAOTOutputFileSet()) {
         std::string jsPandaFileDesc = jsPandaFile->GetJSPandaFileDesc().c_str();
@@ -560,7 +427,8 @@ uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
         if (baseName.empty()) {
             return JSPandaFile::INVALID_INDEX;
         }
-        return anFileNameToIndexMap_.at(baseName + FILE_EXTENSION_AN);
+        std::string anFileName = baseName + FILE_EXTENSION_AN;
+        return anFileDataManager->SafeGetFileInfoIndex(anFileName);
     }
 
     // run from app hap
@@ -569,60 +437,26 @@ uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
         return JSPandaFile::INVALID_INDEX;
     }
     std::string anFileName = hapName + FILE_EXTENSION_AN;
-    auto it = anFileNameToIndexMap_.find(anFileName);
-    if (it == anFileNameToIndexMap_.end()) {
-        return JSPandaFile::INVALID_INDEX;
-    }
-
-    return it->second;
+    return anFileDataManager->SafeGetFileInfoIndex(anFileName);
 }
 
 bool AOTFileManager::InsideStub(uintptr_t pc) const
 {
-    uint64_t stubStartAddr = stubFileInfo_.GetAsmStubAddr();
-    uint64_t stubEndAddr = stubStartAddr + stubFileInfo_.GetAsmStubSize();
-    if (pc >= stubStartAddr && pc <= stubEndAddr) {
-        return true;
-    }
-
-    const std::vector<ModuleSectionDes> &des = stubFileInfo_.GetCodeUnits();
-    for (auto &curDes : des) {
-        if (curDes.ContainCode(pc)) {
-            return true;
-        }
-    }
-
-    return false;
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    return anFileDataManager->SafeInsideStub(pc);
 }
 
 bool AOTFileManager::InsideAOT(uintptr_t pc) const
 {
-    for (auto &info : anFileInfos_) {
-        const std::vector<ModuleSectionDes> &des = info.GetCodeUnits();
-        for (auto &curDes : des) {
-            if (curDes.ContainCode(pc)) {
-                return true;
-            }
-        }
-    }
-    return false;
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    return anFileDataManager->SafeInsideAOT(pc);
 }
 
 AOTFileInfo::CallSiteInfo AOTFileManager::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    AOTFileInfo::CallSiteInfo callsiteInfo;
-    bool ans = stubFileInfo_.CalCallSiteInfo(retAddr, callsiteInfo);
-    if (ans) {
-        return callsiteInfo;
-    }
-    // aot
-    for (auto &info : anFileInfos_) {
-        ans = info.CalCallSiteInfo(retAddr, callsiteInfo);
-        if (ans) {
-            return callsiteInfo;
-        }
-    }
-    return callsiteInfo;
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    return anFileDataManager->SafeCalCallSiteInfo(retAddr);
+
 }
 
 void AOTFileManager::PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry)
@@ -637,11 +471,12 @@ void AOTFileManager::PrintAOTEntry(const JSPandaFile *file, const Method *method
 void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
     std::string_view entryPoint)
 {
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
-    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
+    const std::shared_ptr<AnFileInfo> anFileInfo = anFileDataManager->SafeGetAnFileInfo(anFileInfoIndex);
     // get main func method
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex(entryPoint.data());
-    auto mainEntry = anFileInfo.GetMainFuncEntry(mainFuncMethodId);
+    auto mainEntry = anFileInfo->GetMainFuncEntry(mainFuncMethodId);
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
@@ -655,9 +490,10 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
 
 void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex)
 {
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
-    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
-    const AOTFileInfo::FuncEntryDes &entry = anFileInfo.GetStubDes(entryIndex);
+    const std::shared_ptr<AnFileInfo> anFileInfo = anFileDataManager->SafeGetAnFileInfo(anFileInfoIndex);
+    const AOTFileInfo::FuncEntryDes &entry = anFileInfo->GetStubDes(entryIndex);
     uint64_t codeEntry = entry.codeAddr_;
 #ifndef NDEBUG
     PrintAOTEntry(jsPandaFile, method, codeEntry);
@@ -768,25 +604,40 @@ bool AOTFileManager::RewriteDataSection(uintptr_t dataSec, size_t size,
     return true;
 }
 
-void AOTFileManager::AddDeserializedConstantPool(JSTaggedValue deserializedCPList)
+void AOTFileManager::AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList)
 {
-    // There is no system library currently, so the length of anFileInfos_ should be 1
-    ASSERT(anFileInfos_.size() == 1);
-    AnFileInfo &anFileInfo = anFileInfos_.back();
-    anFileInfo.SetDeserializedConstantPool(vm_->GetJSThread(), deserializedCPList);
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    std::string baseName = JSFilePath::GetFileName(snapshotFileName.c_str());
+    uint32_t anFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(baseName + FILE_EXTENSION_AN);
+
+    desCPs_.insert({anFileInfoIndex, CMap<int32_t, JSTaggedValue>{}});
+    CMap<int32_t, JSTaggedValue> &cpMap = desCPs_[anFileInfoIndex];
+
+    JSHandle<TaggedArray> cpList(vm_->GetJSThread(), deserializedCPList);
+    uint32_t len = cpList->GetLength();
+    for (uint32_t pos = 0; pos < len; pos += DESERI_CP_ITEM_SIZE) {
+        int32_t constantPoolID = cpList->Get(pos).GetInt();
+        JSTaggedValue cp = cpList->Get(pos + 1);
+        cpMap.insert({constantPoolID, cp});
+    }
 }
 
 JSHandle<JSTaggedValue> AOTFileManager::GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID)
 {
-    // In some appilication, only the main vm will load '.an' file currently
-    // return the constantpool with HOLE value when other worker try to obtain the
-    // snapshot constantpool from aot_file_manager.
-    if (anFileInfos_.size() == 0) {
+    //The deserialization of the 'ai' data used by the multi-work 
+    // is not implemented yet, so there may be a case where 
+    // desCPs_ is empty, in which case the Hole will be returned
+    if (desCPs_.size() == 0) {
         return JSHandle<JSTaggedValue>(vm_->GetJSThread(), JSTaggedValue::Hole());
     }
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
-    const AnFileInfo &anFileInfo = anFileInfos_[anFileInfoIndex];
-    return anFileInfo.GetDeserializedConstantPool(cpID);
+    CMap<int32_t, JSTaggedValue> &cpMap = desCPs_.at(anFileInfoIndex);
+    auto iter = cpMap.find(cpID);
+    if (iter == cpMap.end()) {
+        LOG_COMPILER(FATAL) << "can not find deserialized constantpool in anFileInfo, constantPoolID is " << cpID;
+        UNREACHABLE();
+    }
+    return JSHandle<JSTaggedValue>(uintptr_t(&iter->second));
 }
 
 AOTFileManager::~AOTFileManager()
@@ -894,5 +745,158 @@ bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
         return true;
     }
     return false;
+}
+
+AnFileDataManager *AnFileDataManager::GetInstance()
+{
+    static AnFileDataManager AnFileDataManager;
+    return &AnFileDataManager;
+}
+
+AnFileDataManager::~AnFileDataManager()
+{
+    SafeDestoryAllData();
+}
+
+void AnFileDataManager::SafeDestoryAllData()
+{
+    os::memory::WriteLockHolder lock(lock_);
+    if (loadedStub_ != nullptr) {
+        ExecutedMemoryAllocator::DestoryBuf(loadedStub_->GetExeMem());
+        loadedStub_ = nullptr;
+    }
+
+    for (auto &iter : loadedAn_) {
+        ExecutedMemoryAllocator::DestoryBuf(iter->GetExeMem());
+    }
+    loadedAn_.clear();
+}
+
+bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, EcmaVM* vm)
+{
+    os::memory::WriteLockHolder lock(lock_);
+    if (type == Type::STUB) {
+        if (loadedStub_ != nullptr) {
+                return true;
+            }
+        return UnsafeLoadFromStub();
+    } else {
+        const std::shared_ptr<const AOTFileInfo> aotFileInfo = UnsafeFind(fileName);
+        if (aotFileInfo != nullptr) {
+            return true;
+        }
+        return UnsafeLoadFromAOT(fileName, vm);
+    }
+}
+
+std::shared_ptr<AnFileInfo> AnFileDataManager::UnsafeFind(const std::string &fileName) const
+{
+    // note: This method is not thread-safe
+    // need to ensure that the instance of AnFileDataManager has been locked before use
+    const auto iter = anFileNameToIndexMap_.find(fileName);
+    if (iter == anFileNameToIndexMap_.end()) {
+        return nullptr;
+    }
+    uint32_t index = iter->second;
+    return loadedAn_.at(index);
+}
+
+bool AnFileDataManager::UnsafeLoadFromStub()
+{
+    // note: This method is not thread-safe
+    // need to ensure that the instance of AnFileDataManager has been locked before use
+    loadedStub_ = std::make_shared<StubFileInfo>(StubFileInfo());
+    if (!loadedStub_->Load()) {
+        return false;
+    }
+    return true;
+}
+
+bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *vm)
+{
+    // note: This method is not thread-safe
+    // need to ensure that the instance of AnFileDataManager has been locked before use
+    std::shared_ptr<AnFileInfo> info = std::make_shared<AnFileInfo>(AnFileInfo());
+    if (!info->Load(fileName)) {
+        return false;
+    }
+    info->RewriteRelcateDeoptHandler(vm);
+    std::string anBasename = JSFilePath::GetBaseName(fileName);
+    anFileNameToIndexMap_.insert({anBasename, loadedAn_.size()});
+    loadedAn_.emplace_back(info);
+    return true;
+}
+
+uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
+{
+    os::memory::ReadLockHolder lock(lock_);
+    auto iter = anFileNameToIndexMap_.find(fileName);
+    if (iter == anFileNameToIndexMap_.end()) {
+        return JSPandaFile::INVALID_INDEX;
+    }
+    return anFileNameToIndexMap_.at(fileName);
+}
+
+std::shared_ptr<AnFileInfo> AnFileDataManager::SafeGetAnFileInfo(uint32_t index)
+{
+    os::memory::ReadLockHolder lock(lock_);
+    return loadedAn_.at(index);
+}
+
+std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()
+{
+    os::memory::ReadLockHolder lock(lock_);
+    return loadedStub_;
+}
+
+bool AnFileDataManager::SafeInsideStub(uintptr_t pc)
+{
+    os::memory::ReadLockHolder lock(lock_);
+    uint64_t stubStartAddr = loadedStub_->GetAsmStubAddr();
+    uint64_t stubEndAddr = stubStartAddr + loadedStub_->GetAsmStubSize();
+    if (pc >= stubStartAddr && pc <= stubEndAddr) {
+        return true;
+    }
+
+    const std::vector<ModuleSectionDes> &des = loadedStub_->GetCodeUnits();
+    for (auto &curDes : des) {
+        if (curDes.ContainCode(pc)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool AnFileDataManager::SafeInsideAOT(uintptr_t pc)
+{
+    os::memory::ReadLockHolder lock(lock_);
+    for (auto &info : loadedAn_) {
+        const std::vector<ModuleSectionDes> &des = info->GetCodeUnits();
+        for (auto &curDes : des) {
+            if (curDes.ContainCode(pc)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+AOTFileInfo::CallSiteInfo AnFileDataManager::SafeCalCallSiteInfo(uintptr_t retAddr)
+{
+    os::memory::ReadLockHolder lock(lock_);
+    AOTFileInfo::CallSiteInfo callsiteInfo;
+    bool ans = loadedStub_->CalCallSiteInfo(retAddr, callsiteInfo);
+    if (ans) {
+        return callsiteInfo;
+    }
+    // aot
+    for (auto &info : loadedAn_) {
+        ans = info->CalCallSiteInfo(retAddr, callsiteInfo);
+        if (ans) {
+            return callsiteInfo;
+        }
+    }
+    return callsiteInfo;
 }
 }
