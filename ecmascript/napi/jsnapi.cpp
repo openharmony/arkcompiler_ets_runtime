@@ -378,8 +378,7 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
 {
     LOG_ECMA(DEBUG) << "start to execute ark buffer: " << filename;
     JSThread *thread = vm->GetAssociatedJSThread();
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(
-            thread, data, size, entry, filename.c_str(), needUpdate)) {
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str(), needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
