@@ -207,7 +207,7 @@ config("ark_jsruntime_compiler_config") {
 
 config("ark_jsruntime_windows_config") {
   ldflags = [ "-lshlwapi" ]
-  if (enable_hilog) {
+  if (enable_hilog && !ark_standalone_build) {
     defines = [ "ENABLE_HILOG" ]
     include_dirs =
         [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
