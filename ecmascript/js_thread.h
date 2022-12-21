@@ -460,6 +460,12 @@ public:
         PGOStatusBits::Set(status, &glueData_.threadStateBitField_);
     }
 
+    bool IsPGOProfilerEnable() const
+    {
+        auto status = PGOStatusBits::Decode(glueData_.threadStateBitField_);
+        return status == PGOProfilerStatus::PGO_PROFILER_ENABLE;
+    }
+
     bool CheckSafepoint() const;
 
     void SetGetStackSignal(bool isParseStack)
