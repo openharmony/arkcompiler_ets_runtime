@@ -51,7 +51,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     auto entry = acc.GetStateRoot();
     auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
-    auto check = builder.TypeCheck(GateType::NumberType(), arg0);
+    auto check = builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
     builder.Return(entry, depend, check);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
@@ -143,7 +143,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     auto arg1 = builder.Arguments(1);
 
     DEFVAlUE(result, (&builder), VariableType::JS_ANY(), builder.Int32ToTaggedPtr(builder.Int32(1)));
-    builder.Branch(builder.TypeCheck(GateType::NumberType(), arg0), &isNumber, &notNumber);
+    builder.Branch(builder.PrimitiveTypeCheck(GateType::NumberType(), arg0), &isNumber, &notNumber);
     builder.Bind(&isNumber);
     auto convert = builder.PrimitiveToNumber(arg1, arg1Type);
     result = builder.NumberBinaryOp<TypedBinOp::TYPED_ADD>(arg0, convert);

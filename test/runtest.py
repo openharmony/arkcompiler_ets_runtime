@@ -237,7 +237,7 @@ class ArkTest():
         return ret
 
     @staticmethod
-    def get_module_name(self, hap_dir):
+    def get_module_name(hap_dir):
         with open(f'{hap_dir}/module.json') as f:
             data = json.load(f)
         if len(data):

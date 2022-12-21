@@ -103,11 +103,13 @@ enum class FCmpCondition : uint8_t {
 };
 
 enum class TypedStoreOp : uint8_t {
-    FLOAT32ARRAY_STORE_ELEMENT = 0,
+    ARRAY_STORE_ELEMENT = 0,
+    FLOAT32ARRAY_STORE_ELEMENT,
 };
 
 enum class TypedLoadOp : uint8_t {
-    FLOAT32ARRAY_LOAD_ELEMENT = 0,
+    ARRAY_LOAD_ELEMENT = 0,
+    FLOAT32ARRAY_LOAD_ELEMENT,
 };
 
 std::string MachineTypeToStr(MachineType machineType);
@@ -146,37 +148,39 @@ std::string MachineTypeToStr(MachineType machineType);
     V(UnsignedFloatToInt, UNSIGNED_FLOAT_TO_INT, false, 0, 0, 1)  \
     V(Bitcast, BITCAST, false, 0, 0, 1)
 
-#define IMMUTABLE_META_DATA_CACHE_LIST(V)               \
-    V(CircuitRoot, CIRCUIT_ROOT, false, 0, 0, 0)        \
-    V(StateEntry, STATE_ENTRY, true, 0, 0, 0)           \
-    V(DependEntry, DEPEND_ENTRY, true, 0, 0, 0)         \
-    V(ReturnList, RETURN_LIST, true, 0, 0, 0)           \
-    V(ArgList, ARG_LIST, true, 0, 0, 0)                 \
-    V(Return, RETURN, true, 1, 1, 1)                    \
-    V(ReturnVoid, RETURN_VOID, true, 1, 1, 0)           \
-    V(Throw, THROW, false, 1, 1, 1)                     \
-    V(OrdinaryBlock, ORDINARY_BLOCK, false, 1, 0, 0)    \
-    V(IfBranch, IF_BRANCH, false, 1, 0, 1)              \
-    V(IfTrue, IF_TRUE, false, 1, 0, 0)                  \
-    V(IfFalse, IF_FALSE, false, 1, 0, 0)                \
-    V(LoopBegin, LOOP_BEGIN, false, 2, 0, 0)            \
-    V(LoopBack, LOOP_BACK, false, 1, 0, 0)              \
-    V(DependRelay, DEPEND_RELAY, false, 1, 1, 0)        \
-    V(DependAnd, DEPEND_AND, false, 0, 2, 0)            \
-    V(IfSuccess, IF_SUCCESS, false, 1, 0, 0)            \
-    V(IfException, IF_EXCEPTION, false, 1, 0, 0)        \
-    V(GetException, GET_EXCEPTION, false, 0, 1, 0)      \
-    V(Guard, GUARD, false, 0, 1, 3)                     \
-    V(Deopt, DEOPT, false, 0, 1, 2)                     \
-    V(Load, LOAD, false, 0, 1, 1)                       \
-    V(Store, STORE, false, 0, 1, 2)                     \
-    V(TypedCallCheck, TYPED_CALL_CHECK, false, 1, 1, 2) \
-    V(LoadProperty, LOAD_PROPERTY, false, 1, 1, 2)      \
-    V(StoreProperty, STORE_PROPERTY, false, 1, 1, 3)    \
-    V(ToLength, TO_LENGTH, false, 1, 1, 1)              \
-    V(GetEnv, GET_ENV, false, 0, 1, 0)                  \
-    V(DefaultCase, DEFAULT_CASE, false, 1, 0, 0)        \
-    BINARY_GATE_META_DATA_CACHE_LIST(V)                 \
+#define IMMUTABLE_META_DATA_CACHE_LIST(V)                   \
+    V(CircuitRoot, CIRCUIT_ROOT, false, 0, 0, 0)            \
+    V(StateEntry, STATE_ENTRY, true, 0, 0, 0)               \
+    V(DependEntry, DEPEND_ENTRY, true, 0, 0, 0)             \
+    V(ReturnList, RETURN_LIST, true, 0, 0, 0)               \
+    V(ArgList, ARG_LIST, true, 0, 0, 0)                     \
+    V(Return, RETURN, true, 1, 1, 1)                        \
+    V(ReturnVoid, RETURN_VOID, true, 1, 1, 0)               \
+    V(Throw, THROW, false, 1, 1, 1)                         \
+    V(OrdinaryBlock, ORDINARY_BLOCK, false, 1, 0, 0)        \
+    V(IfBranch, IF_BRANCH, false, 1, 0, 1)                  \
+    V(IfTrue, IF_TRUE, false, 1, 0, 0)                      \
+    V(IfFalse, IF_FALSE, false, 1, 0, 0)                    \
+    V(LoopBegin, LOOP_BEGIN, false, 2, 0, 0)                \
+    V(LoopBack, LOOP_BACK, false, 1, 0, 0)                  \
+    V(DependRelay, DEPEND_RELAY, false, 1, 1, 0)            \
+    V(DependAnd, DEPEND_AND, false, 0, 2, 0)                \
+    V(IfSuccess, IF_SUCCESS, false, 1, 0, 0)                \
+    V(IfException, IF_EXCEPTION, false, 1, 0, 0)            \
+    V(GetException, GET_EXCEPTION, false, 0, 1, 0)          \
+    V(Guard, GUARD, false, 0, 1, 3)                         \
+    V(Deopt, DEOPT, false, 0, 1, 2)                         \
+    V(Load, LOAD, false, 0, 1, 1)                           \
+    V(Store, STORE, false, 0, 1, 2)                         \
+    V(TypedCallCheck, TYPED_CALL_CHECK, false, 1, 1, 2)     \
+    V(ArrayCheck, ARRAY_CHECK, false, 1, 1, 1)              \
+    V(StableArrayCheck, STABLE_ARRAY_CHECK, false, 1, 1, 1) \
+    V(LoadProperty, LOAD_PROPERTY, false, 1, 1, 2)          \
+    V(StoreProperty, STORE_PROPERTY, false, 1, 1, 3)        \
+    V(ToLength, TO_LENGTH, false, 1, 1, 1)                  \
+    V(GetEnv, GET_ENV, false, 0, 1, 0)                      \
+    V(DefaultCase, DEFAULT_CASE, false, 1, 0, 0)            \
+    BINARY_GATE_META_DATA_CACHE_LIST(V)                     \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                              \
@@ -198,11 +202,13 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DependSelector, DEPEND_SELECTOR, false, 1, value, 0)                \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)             \
-    V(TypeCheck, TYPE_CHECK, false, 0, 0, 1)              \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, false, 1, 1, 2) \
-    V(TypedUnaryOp, TYPED_UNARY_OP, false, 1, 1, 1)       \
-    V(TypedConvert, TYPE_CONVERT, false, 1, 1, 1)         \
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                   \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, false, 0, 0, 1) \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, false, 1, 1, 2)       \
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, false, 1, 1, 1)       \
+    V(IndexCheck, INDEX_CHECK, false, 1, 1, 2)                  \
+    V(TypedUnaryOp, TYPED_UNARY_OP, false, 1, 1, 1)             \
+    V(TypedConvert, TYPE_CONVERT, false, 1, 1, 1)               \
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                 \
     V(Icmp, ICMP, false, 0, 0, 2)                         \

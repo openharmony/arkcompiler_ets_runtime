@@ -211,6 +211,14 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
             LowerTypedStObjByIndex(gate);
             break;
+        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+            LowerTypedLdObjByValue(gate, false);
+            break;
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
+            LowerTypedLdObjByValue(gate, true);
+            break;
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
@@ -585,11 +593,11 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     if (IsTrustedType(left) && IsTrustedType(right)) {
         acc_.DeleteGuardAndFrameState(gate);
     } else if (IsTrustedType(left)) {
-        check = builder_.TypeCheck(rightType, right);
+        check = builder_.PrimitiveTypeCheck(rightType, right);
     } else if (IsTrustedType(right)) {
-        check = builder_.TypeCheck(leftType, left);
+        check = builder_.PrimitiveTypeCheck(leftType, left);
     } else {
-        check = builder_.BoolAnd(builder_.TypeCheck(leftType, left), builder_.TypeCheck(rightType, right));
+        check = builder_.BoolAnd(builder_.PrimitiveTypeCheck(leftType, left), builder_.PrimitiveTypeCheck(rightType, right));
     }
 
     // guard maybe not a GUARD
@@ -609,23 +617,23 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
 }
 
 template<TypedUnOp Op>
-GateRef TSTypeLowering::AppendOverflowCheck(GateRef typeCheck, GateRef intVal)
+GateRef TSTypeLowering::AppendOverflowCheck(GateRef typecheck, GateRef intVal)
 {
-    GateRef check = typeCheck;
+    GateRef check = typecheck;
     switch (Op) {
         case TypedUnOp::TYPED_INC: {
             auto max = builder_.Int64(INT32_MAX);
             auto rangeCheck = builder_.Int64NotEqual(intVal, max);
-            check = typeCheck != Circuit::NullGate()
-                    ? builder_.BoolAnd(typeCheck, rangeCheck)
+            check = typecheck != Circuit::NullGate()
+                    ? builder_.BoolAnd(typecheck, rangeCheck)
                     : rangeCheck;
             break;
         }
         case TypedUnOp::TYPED_DEC: {
             auto min = builder_.Int64(INT32_MIN);
             auto rangeCheck = builder_.Int64NotEqual(intVal, min);
-            check = typeCheck != Circuit::NullGate()
-                    ? builder_.BoolAnd(typeCheck, rangeCheck)
+            check = typecheck != Circuit::NullGate()
+                    ? builder_.BoolAnd(typecheck, rangeCheck)
                     : rangeCheck;
             break;
         }
@@ -635,8 +643,8 @@ GateRef TSTypeLowering::AppendOverflowCheck(GateRef typeCheck, GateRef intVal)
             auto notMin = builder_.Int64NotEqual(intVal, min);
             auto notZero = builder_.Int64NotEqual(intVal, zero);
             auto rangeCheck = builder_.BoolAnd(notMin, notZero);
-            check = typeCheck != Circuit::NullGate()
-                    ? builder_.BoolAnd(typeCheck, rangeCheck)
+            check = typecheck != Circuit::NullGate()
+                    ? builder_.BoolAnd(typecheck, rangeCheck)
                     : rangeCheck;
             break;
         }
@@ -658,7 +666,7 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
             acc_.DeleteGuardAndFrameState(gate);
         }
     } else {
-        check = builder_.TypeCheck(valueType, value);
+        check = builder_.PrimitiveTypeCheck(valueType, value);
     }
 
     if (valueType.IsIntType()) {
@@ -701,7 +709,7 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     if (IsTrustedType(src)) {
         acc_.DeleteGuardAndFrameState(gate);
     } else {
-        check = builder_.TypeCheck(srcType, src);
+        check = builder_.PrimitiveTypeCheck(srcType, src);
     }
 
     // guard maybe not a GUARD
@@ -784,16 +792,15 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     }
 
     AddProfiling(gate);
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    builder_.SetDepend(acc_.GetDep(guard));
 
     GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
     GateRef propertyOffsetGate = builder_.IntPtr(propertyOffset);
     GateRef check = builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
-    // guard maybe not a GUARD
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     acc_.ReplaceIn(guard, 1, check);
-
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
     GateRef result = builder_.LoadProperty(receiver, propertyOffsetGate);
@@ -839,16 +846,15 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     }
 
     AddProfiling(gate);
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    builder_.SetDepend(acc_.GetDep(guard));
 
     GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
     GateRef propertyOffsetGate = builder_.IntPtr(propertyOffset);
     GateRef check = builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
-    // guard maybe not a GUARD
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     acc_.ReplaceIn(guard, 1, check);
-
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
     builder_.StoreProperty(receiver, propertyOffsetGate, value);
@@ -872,14 +878,21 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
 
     AddProfiling(gate);
 
-    GateRef index = acc_.GetValueIn(gate, 0);
-    GateRef check = builder_.ObjectTypeCheck(receiverType, receiver, index);
-
-    // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    builder_.SetDepend(acc_.GetDep(guard));
+    
+    GateRef check = Circuit::NullGate();
+    if (tsManager_->IsFloat32ArrayType(receiverType)) {
+        check = builder_.TypedArrayCheck(receiverType, receiver);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    GateRef index = acc_.GetValueIn(gate, 0);
+    check = builder_.BoolAnd(check, builder_.IndexCheck(receiverType, receiver, index));
+    
     acc_.ReplaceIn(guard, 1, check);
-
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
     GateRef result = Circuit::NullGate();
@@ -909,16 +922,25 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
 
     AddProfiling(gate);
 
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef check = builder_.ObjectTypeCheck(receiverType, receiver, index);
-
-    if (!IsTrustedType(value)) {
-        check = builder_.BoolAnd(check, builder_.TypeCheck(valueType, value));
-    }
-
-    // guard maybe not a GUARD
     GateRef guard = acc_.GetDep(gate);
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    builder_.SetDepend(acc_.GetDep(guard));
+
+    GateRef check = Circuit::NullGate();
+    if (tsManager_->IsFloat32ArrayType(receiverType)) {
+        check = builder_.TypedArrayCheck(receiverType, receiver);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    
+    GateRef index = acc_.GetValueIn(gate, 1);
+    check = builder_.BoolAnd(check, builder_.IndexCheck(receiverType, receiver, index));
+
+    if (!IsTrustedType(value)) {
+        check = builder_.BoolAnd(check, builder_.PrimitiveTypeCheck(valueType, value));
+    }
+
     acc_.ReplaceIn(guard, 1, check);
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
@@ -932,6 +954,49 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
 
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, Circuit::NullGate(), builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
+void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
+{
+    GateRef receiver = Circuit::NullGate();
+    GateRef propKey = Circuit::NullGate();
+    if (isThis) {
+        // 3: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 3);
+        receiver = acc_.GetValueIn(gate, 2); // 2: this object
+        propKey = acc_.GetValueIn(gate, 1);
+    } else {
+        // 3: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 3);
+        receiver = acc_.GetValueIn(gate, 1);
+        propKey = acc_.GetValueIn(gate, 2);  // 2: the third parameter
+    }
+    GateType receiverType = acc_.GetGateType(receiver);
+    GateType propKeyType = acc_.GetGateType(propKey);
+    if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsIntType()) { // slowpath
+        acc_.DeleteGuardAndFrameState(gate);
+        return;
+    }
+
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    builder_.SetDepend(acc_.GetDep(guard));
+    GateRef index = builder_.GetInt32OfTInt(propKey);
+    GateRef check = builder_.StableArrayCheck(receiver);
+    check = builder_.BoolAnd(check, builder_.IndexCheck(receiverType, receiver, index));
+
+    if (!IsTrustedType(propKey)) {
+        check = builder_.BoolAnd(check, builder_.PrimitiveTypeCheck(propKeyType, propKey));
+    }
+
+    acc_.ReplaceIn(guard, 1, check);
+    acc_.SetDep(guard, builder_.GetDepend());
+    builder_.SetDepend(guard);
+    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, index);
+
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
 }
 
@@ -949,7 +1014,7 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
         acc_.DeleteGuardAndFrameState(gate);
         builder_.SetDepend(acc_.GetDep(gate));
     } else {
-        check = builder_.TypeCheck(valueType, value);
+        check = builder_.PrimitiveTypeCheck(valueType, value);
     }
 
     AddProfiling(gate);
@@ -1000,8 +1065,8 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
     builder_.Branch(isBase, &allocateThisObj, &notAllocateThisObj);
     builder_.Bind(&allocateThisObj);
     {
-        // add TypeCheck to detect protoOrHclass is equal with ihclass,
-        // if pass TypeCheck: 1.no need to check whether hclass is valid 2.no need to check return result
+        // add typecheck to detect protoOrHclass is equal with ihclass,
+        // if pass typecheck: 1.no need to check whether hclass is valid 2.no need to check return result
         check = builder_.ObjectTypeCheck(ctorType, ctor, builder_.IntPtr(hclassIndex));
 
         GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
