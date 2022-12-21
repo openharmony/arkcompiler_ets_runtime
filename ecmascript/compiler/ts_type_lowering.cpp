@@ -766,6 +766,28 @@ void TSTypeLowering::LowerTypedNot(GateRef gate)
     }
 }
 
+void TSTypeLowering::LowerTypedLdArrayLength(GateRef gate)
+{
+    AddProfiling(gate);
+
+    GateRef guard = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    builder_.SetDepend(acc_.GetDep(guard));
+
+    GateRef array = acc_.GetValueIn(gate, 2);
+    GateRef check = builder_.ArrayCheck(array);
+    acc_.ReplaceIn(guard, 1, check);
+
+    acc_.SetDep(guard, builder_.GetDepend());
+    builder_.SetDepend(guard);
+
+    GateRef loadLength = builder_.LoadArrayLength(array);
+
+    std::vector<GateRef> removedGate;
+    ReplaceHIRGate(gate, loadLength, builder_.GetState(), builder_.GetDepend(), removedGate);
+    DeleteGates(gate, removedGate);
+}
+
 void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -778,6 +800,15 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
     GateType receiverType = acc_.GetGateType(receiver);
+    if (tsManager_->IsArrayTypeKind(receiverType)) {
+        EcmaString *propString = EcmaString::Cast(prop.GetTaggedObject());
+        EcmaString *lengthString = EcmaString::Cast(thread->GlobalConstants()->GetLengthString().GetTaggedObject());
+        if (propString == lengthString) {
+            LowerTypedLdArrayLength(gate);
+            return;
+        }
+    }
+
     int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
     if (hclassIndex == -1) { // slowpath
         acc_.DeleteGuardAndFrameState(gate);

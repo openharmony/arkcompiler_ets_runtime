@@ -418,6 +418,7 @@ public:
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef offset);
     GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);
+    GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(std::vector<GateRef> args);
 
