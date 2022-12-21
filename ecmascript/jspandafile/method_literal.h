@@ -36,7 +36,7 @@ public:
     static constexpr uint8_t INVALID_IC_SLOT = 0xFFU;
     static constexpr uint16_t MAX_SLOT_SIZE = 0xFFFFU;
 
-    MethodLiteral(const JSPandaFile *jsPandaFile, EntityId methodId);
+    explicit MethodLiteral(EntityId methodId);
     MethodLiteral() = delete;
     ~MethodLiteral() = default;
     MethodLiteral(const MethodLiteral &) = delete;
@@ -71,7 +71,7 @@ public:
         callField_ = IsAotCodeBit::Update(callField_, isCompiled);
     }
 
-    void Initialize(const JSPandaFile *jsPandaFile, uint32_t numVregs, uint32_t numArgs);
+    void Initialize(const JSPandaFile *jsPandaFile);
 
     bool HaveThisWithCallField() const
     {
@@ -228,21 +228,10 @@ public:
         return EntityId(MethodIdBits::Decode(literalInfo_));
     }
 
-    void SetMethodId(EntityId methodId)
-    {
-        literalInfo_ = MethodIdBits::Update(literalInfo_, methodId.GetOffset());
-    }
-
     uint32_t GetSlotSize() const
     {
         auto size = SlotSizeBits::Decode(literalInfo_);
         return size == MAX_SLOT_SIZE ? MAX_SLOT_SIZE + 2 : size;  // 2: last maybe two slot
-    }
-
-    void SetSlotSize(uint32_t size)
-    {
-        size = size > MAX_SLOT_SIZE ? MAX_SLOT_SIZE : size;
-        literalInfo_ = SlotSizeBits::Update(literalInfo_, size);
     }
 
     uint8_t UpdateSlotSizeWith8Bit(uint16_t size)
@@ -320,7 +309,6 @@ public:
         return DeoptCountBits::Decode(literalInfo);
     }
 
-    static uint32_t PUBLIC_API GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral);
     static const char * PUBLIC_API GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static uint32_t GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId);
@@ -355,6 +343,17 @@ private:
         NUM_OF_MEMBERS
     };
     static_assert(static_cast<size_t>(Index::NUM_OF_MEMBERS) == NumOfTypes);
+
+    void SetMethodId(EntityId methodId)
+    {
+        literalInfo_ = MethodIdBits::Update(literalInfo_, methodId.GetOffset());
+    }
+
+    void SetSlotSize(uint32_t size)
+    {
+        size = size > MAX_SLOT_SIZE ? MAX_SLOT_SIZE : size;
+        literalInfo_ = SlotSizeBits::Update(literalInfo_, size);
+    }
 
     alignas(EAS) uint64_t callField_ {0ULL};
     // Native method decides this filed is NativePointer or BytecodeArray pointer.

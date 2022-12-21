@@ -17,7 +17,6 @@
 
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -58,14 +57,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
         cda.EnumerateMethods([jsPandaFile, &translatedCode, methodLiterals, &methodIdx, pf, &methodName, &recordName,
                               &isUpdateMainMethodIndex]
             (panda_file::MethodDataAccessor &mda) {
-            auto codeId = mda.GetCodeId();
             auto methodId = mda.GetMethodId();
-            ASSERT(codeId.has_value());
-
-            MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
-            panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
-            uint32_t codeSize = codeDataAccessor.GetCodeSize();
-
             CString name = reinterpret_cast<const char *>(pf->GetStringData(mda.GetNameId()).data);
             auto methodOffset = methodId.GetOffset();
             if (jsPandaFile->IsBundlePack()) {
@@ -80,15 +72,20 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
                 }
             }
 
-            InitializeMemory(methodLiteral, jsPandaFile, methodId);
-            methodLiteral->SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize));
-            methodLiteral->Initialize(jsPandaFile, codeDataAccessor.GetNumVregs(), codeDataAccessor.GetNumArgs());
+            MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
+            InitializeMemory(methodLiteral, methodId);
+            methodLiteral->Initialize(jsPandaFile);
+
             if (jsPandaFile->IsNewVersion()) {
                 panda_file::IndexAccessor indexAccessor(*pf, methodId);
                 panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
                 FunctionKind kind = JSPandaFile::GetFunctionKind(funcKind);
                 methodLiteral->SetFunctionKind(kind);
             } else {
+                auto codeId = mda.GetCodeId();
+                ASSERT(codeId.has_value());
+                panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
+                uint32_t codeSize = codeDataAccessor.GetCodeSize();
                 const uint8_t *insns = codeDataAccessor.GetInstructions();
                 if (translatedCode.find(insns) == translatedCode.end()) {
                     translatedCode.insert(insns);

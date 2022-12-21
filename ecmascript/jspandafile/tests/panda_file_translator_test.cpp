@@ -80,10 +80,10 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method1(pf, methodId[0]);
-    MethodLiteral method2(pf, methodId[1]);
-    pf->SetMethodLiteralToMap(&method1);
-    pf->SetMethodLiteralToMap(&method2);
+    MethodLiteral *method1 = new MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new MethodLiteral(methodId[1]);
+    pf->SetMethodLiteralToMap(method1);
+    pf->SetMethodLiteralToMap(method2);
     pfManager->InsertJSPandaFile(pf);
 
     JSHandle<ecmascript::Program> program1 =
