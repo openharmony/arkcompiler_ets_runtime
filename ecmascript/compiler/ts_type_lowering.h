@@ -84,6 +84,7 @@ private:
     void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
     void LowerTypedLdObjByName(GateRef gate);
+    void LowerTypedLdArrayLength(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);

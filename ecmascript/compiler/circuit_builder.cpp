@@ -550,6 +550,18 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef offset, GateRef 
     return ret;
 }
 
+GateRef CircuitBuilder::LoadArrayLength(GateRef array)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->LoadArrayLength(), MachineType::I64,
+                                     { currentControl, currentDepend, array }, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::Construct(std::vector<GateRef> args)
 {
     auto currentLabel = env_->GetCurrentLabel();
