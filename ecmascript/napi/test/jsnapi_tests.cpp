@@ -18,6 +18,7 @@
 #include <cstddef>
 
 #include "ecmascript/builtins/builtins_function.h"
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"

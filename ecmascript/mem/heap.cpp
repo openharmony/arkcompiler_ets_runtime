@@ -79,7 +79,6 @@ void Heap::Initialize()
     snapshotSpace_ = new SnapshotSpace(this, snapshotSpaceCapacity, snapshotSpaceCapacity);
     size_t machineCodeSpaceCapacity = config.GetDefaultMachineCodeSpaceSize();
     machineCodeSpace_ = new MachineCodeSpace(this, machineCodeSpaceCapacity, machineCodeSpaceCapacity);
-    machineCodeSpace_->Initialize();
 
     size_t capacities = minSemiSpaceCapacity * 2 + nonmovableSpaceCapacity + snapshotSpaceCapacity +
         machineCodeSpaceCapacity + readOnlySpaceCapacity;
@@ -969,7 +968,7 @@ void Heap::InvokeWeakNodeSecondPassCallback()
         weakNodesSecondCallbacks->pop_back();
         ASSERT(callbackPair.first != nullptr && callbackPair.second != nullptr);
         auto callback = callbackPair.first;
-        callback(callbackPair.second);
+        (*callback)(callbackPair.second);
     }
     runningSecondPassCallbacks_ = false;
 }
