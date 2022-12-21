@@ -456,7 +456,6 @@ AOTFileInfo::CallSiteInfo AOTFileManager::CalCallSiteInfo(uintptr_t retAddr) con
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     return anFileDataManager->SafeCalCallSiteInfo(retAddr);
-
 }
 
 void AOTFileManager::PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry)
@@ -624,8 +623,8 @@ void AOTFileManager::AddConstantPool(const CString &snapshotFileName, JSTaggedVa
 
 JSHandle<JSTaggedValue> AOTFileManager::GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID)
 {
-    //The deserialization of the 'ai' data used by the multi-work 
-    // is not implemented yet, so there may be a case where 
+    // The deserialization of the 'ai' data used by the multi-work
+    // is not implemented yet, so there may be a case where
     // desCPs_ is empty, in which case the Hole will be returned
     if (desCPs_.size() == 0) {
         return JSHandle<JSTaggedValue>(vm_->GetJSThread(), JSTaggedValue::Hole());
@@ -749,8 +748,8 @@ bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
 
 AnFileDataManager *AnFileDataManager::GetInstance()
 {
-    static AnFileDataManager AnFileDataManager;
-    return &AnFileDataManager;
+    static AnFileDataManager anFileDataManager;
+    return &anFileDataManager;
 }
 
 AnFileDataManager::~AnFileDataManager()

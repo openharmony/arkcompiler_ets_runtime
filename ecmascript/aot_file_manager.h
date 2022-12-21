@@ -45,13 +45,15 @@ public:
         size_t size_ {0};
     };
 
-    static void AllocateBuf(uint32_t size, ExeMem &exeMem) {
+    static void AllocateBuf(uint32_t size, ExeMem &exeMem)
+    {
         MemMap buf = MachineCodePageMap(AlignUp(size, PageSize()), PAGE_PROT_EXEC_READWRITE);
         exeMem.addr_ = buf.GetMem();
         exeMem.size_ = buf.GetSize();
     }
 
-    static void DestoryBuf(ExeMem &exeMem) {
+    static void DestoryBuf(ExeMem &exeMem)
+    {
         PageUnmap(MemMap(exeMem.addr_, exeMem.size_));
     }
 };
