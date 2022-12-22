@@ -180,6 +180,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(ToLength, TO_LENGTH, false, 1, 1, 1)                  \
     V(GetEnv, GET_ENV, false, 0, 1, 0)                      \
     V(DefaultCase, DEFAULT_CASE, false, 1, 0, 0)            \
+    V(LoadArrayLength, LOAD_ARRAY_LENGTH, false, 1, 1, 1)   \
     BINARY_GATE_META_DATA_CACHE_LIST(V)                     \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 

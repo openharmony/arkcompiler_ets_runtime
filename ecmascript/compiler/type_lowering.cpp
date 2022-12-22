@@ -77,6 +77,9 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::STORE_PROPERTY:
             LowerStoreProperty(gate, glue);
             break;
+        case OpCode::LOAD_ARRAY_LENGTH:
+            LowerLoadArrayLength(gate);
+            break;
         case OpCode::LOAD_ELEMENT:
             LowerLoadElement(gate);
             break;
@@ -359,6 +362,15 @@ void TypeLowering::LowerStoreProperty(GateRef gate, GateRef glue)
     GateRef value = acc_.GetValueIn(gate, 2);
     builder_.Store(VariableType::JS_ANY(), glue, receiver, offset, value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerLoadArrayLength(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef array = acc_.GetValueIn(gate, 0);
+    GateRef offset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
+    GateRef result = builder_.Load(VariableType::JS_ANY(), array, offset);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypeLowering::LowerLoadElement(GateRef gate)
