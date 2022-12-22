@@ -584,6 +584,16 @@ HWTEST_F_L0(RegExpTest, ParseError47)
     ASSERT_TRUE(parseResult);
 }
 
+HWTEST_F_L0(RegExpTest, ParseError48)
+{
+    RegExpParser parser = RegExpParser(chunk_);
+    CString source("(+");
+    parser.Init(const_cast<char *>(reinterpret_cast<const char *>(source.c_str())), source.size(), 16);
+    parser.Parse();
+    bool parseResult = parser.IsError();
+    ASSERT_TRUE(parseResult);
+}
+
 HWTEST_F_L0(RegExpTest, ParseNoError1)
 {
     RegExpParser parser = RegExpParser(chunk_);
