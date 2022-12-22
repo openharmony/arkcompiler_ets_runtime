@@ -76,6 +76,8 @@ public:
                                            CString moduleRecordName, CString moduleRequestName);
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
+    static bool IsImportedPath(const CString &moduleRequestName, size_t &typePos);
+    static void AddIndexToEntryPoint(const JSPandaFile *jsPandaFile, CString &entryPoint, CString &key);
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);

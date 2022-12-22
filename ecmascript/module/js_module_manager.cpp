@@ -605,6 +605,7 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
 {
     CString entryPoint;
     size_t pos = 0;
+    size_t typePos = CString::npos;
     if (moduleRequestName.find("@bundle:") != CString::npos) {
         pos = moduleRequestName.find('/');
         pos = moduleRequestName.find('/', pos + 1);
@@ -617,11 +618,9 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         baseFilename =
             JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + JSPandaFile::MERGE_ABC_ETS_MODULES;
         entryPoint = moduleRequestName.substr(pos + 1);
-    } else if (moduleRequestName.rfind(".js") != CString::npos || moduleRequestName.find("./") == 0 ||
-               moduleRequestName.find("../") == 0) {
-        pos = moduleRequestName.rfind(".js");
-        if (pos != CString::npos) {
-            moduleRequestName = moduleRequestName.substr(0, pos);
+    } else if (IsImportedPath(moduleRequestName, typePos)) {
+        if (typePos != CString::npos) {
+            moduleRequestName = moduleRequestName.substr(0, typePos);
         }
         pos = moduleRequestName.find("./");
         if (pos == 0) {
@@ -641,6 +640,11 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         } else {
             entryPoint = moduleRequestName;
         }
+
+        if (!jsPandaFile->HasRecord(entryPoint)) {
+            entryPoint += "/index";
+        }
+
         if (!jsPandaFile->HasRecord(entryPoint)) {
             pos = baseFilename.rfind('/');
             if (pos != CString::npos) {
@@ -661,17 +665,17 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         if (pos != CString::npos) {
             auto info = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(moduleRecordName);
             key = info.npmPackageName + "/" + JSPandaFile::NODE_MODULES + "/" + moduleRequestName;
-            entryPoint = jsPandaFile->FindEntryPoint(key);
+            AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
         }
 
         if (entryPoint.empty()) {
             key = JSPandaFile::NODE_MODULES_ZERO + moduleRequestName;
-            entryPoint = jsPandaFile->FindEntryPoint(key);
+            AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
         }
 
         if (entryPoint.empty()) {
             key = JSPandaFile::NODE_MODULES_ONE + moduleRequestName;
-            entryPoint = jsPandaFile->FindEntryPoint(key);
+            AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
         }
 
         if (entryPoint.empty()) {
@@ -681,6 +685,31 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         }
     }
     return entryPoint;
+}
+
+bool ModuleManager::IsImportedPath(const CString &moduleRequestName, size_t &typePos)
+{
+    if (moduleRequestName.rfind(".js") != CString::npos) {
+        typePos = moduleRequestName.rfind(".js");
+        return true;
+    } else if (moduleRequestName.rfind(".ts") != CString::npos) {
+        typePos = moduleRequestName.rfind(".ts");
+        return true;
+    } else if (moduleRequestName.rfind(".ets") != CString::npos) {
+        typePos = moduleRequestName.rfind(".ets");
+        return true;
+    }
+    return moduleRequestName.find("./") == 0 || moduleRequestName.find("../") == 0;
+    
+}
+
+void ModuleManager::AddIndexToEntryPoint(const JSPandaFile *jsPandaFile, CString &entryPoint, CString &key)
+{
+    entryPoint = jsPandaFile->FindEntryPoint(key);
+    if (entryPoint.empty()) {
+        key += "/index";
+        entryPoint = jsPandaFile->FindEntryPoint(key);
+    }
 }
 
 CString ModuleManager::GetRecordName(JSTaggedValue module)
