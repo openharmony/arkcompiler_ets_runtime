@@ -316,6 +316,9 @@ public:
     uint64_t GetConstantValue(GateRef gate) const;
     uint32_t GetBytecodeIndex(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
+    const std::map<std::pair<GateRef, uint32_t>, uint32_t> &GetRestoreRegsInfo(GateRef gate) const;
+    void SetRestoreRegsInfo(GateRef gate, std::pair<GateRef, uint32_t> &info, uint32_t index) const;
+    size_t GetNumOfSaveRegs(GateRef gate) const;
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;
     GateId GetId(GateRef gate) const;

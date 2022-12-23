@@ -51,6 +51,8 @@ std::string GateMetaData::Str(OpCode opcode)
     IMMUTABLE_META_DATA_CACHE_LIST(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_SIZE(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
+    GATE_META_DATA_IN_SAVE_REGISTER(GATE_NAME_MAP)
+    GATE_META_DATA_IN_RESTORE_REGISTER(GATE_NAME_MAP)
 #undef GATE_NAME_MAP
 #define GATE_NAME_MAP(OP) { OpCode::OP, #OP },
         GATE_OPCODE_LIST(GATE_NAME_MAP)
@@ -234,4 +236,12 @@ CACHED_ARG_LIST(DECLARE_CACHED_VALUE_CASE)
     return meta;
 }
 
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                               \
+const GateMetaData* GateMetaBuilder::NAME(uint64_t value)                     \
+{                                                                             \
+    auto meta = new (chunk_) SaveRegsMetaData(OpCode::OP, R, S, D, V, value); \
+    return meta;                                                              \
+}
+GATE_META_DATA_IN_SAVE_REGISTER(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
 }  // namespace panda::ecmascript::kungfu
