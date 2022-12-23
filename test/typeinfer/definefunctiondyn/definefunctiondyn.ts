@@ -22,6 +22,6 @@ declare function AssertType(value:any, type:string):void;
     function sub(a:number, b:number):number {
         return a + b;
     }
-    AssertType(add, "function");
-    AssertType(sub, "function");
+    AssertType(add, "() => string");
+    AssertType(sub, "(number, number) => number");
 }

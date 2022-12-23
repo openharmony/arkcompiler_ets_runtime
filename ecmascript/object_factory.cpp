@@ -3139,6 +3139,7 @@ JSHandle<TSClassType> ObjectFactory::NewTSClassType()
     classType->SetInstanceType(thread_, JSTaggedValue::Undefined());
     classType->SetConstructorType(thread_, JSTaggedValue::Undefined());
     classType->SetPrototypeType(thread_, JSTaggedValue::Undefined());
+    classType->SetName(thread_, JSTaggedValue::Undefined());
     classType->SetExtensionGT(GlobalTSTypeRef::Default());
     classType->SetHasLinked(false);
 

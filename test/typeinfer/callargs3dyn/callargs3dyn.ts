@@ -21,5 +21,5 @@ declare function AssertType(value:any, type:string):void;
         return arr;
     }
     let value = foo(1, 2, 3);
-    AssertType(value, "array");
+    AssertType(value, "number[]");
 }
