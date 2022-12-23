@@ -361,11 +361,9 @@ HWTEST_F_L0(StubTest, FastModTest)
     auto *factory = thread->GetEcmaVM()->GetFactory();
     thread->SetLastLeaveFrame(nullptr);
     auto y5 = factory->NewFromASCII("hello world");
-    auto result5 = fn(thread->GetGlueAddr(), JSTaggedValue(x5).GetRawData(), y5.GetTaggedValue().GetRawData());
-    EXPECT_EQ(result5, JSTaggedValue::Hole());
-    auto expectRes5 = FastRuntimeStub::FastMod(JSTaggedValue(x5), y5.GetTaggedValue());
+    auto result5 = FastRuntimeStub::FastMod(JSTaggedValue(x5), y5.GetTaggedValue());
     LOG_COMPILER(INFO) << "result1 for FastMod(7, 'helloworld') = " << result5.GetRawData();
-    EXPECT_EQ(result5, expectRes5);
+    EXPECT_EQ(result5, JSTaggedValue::Hole());
 }
 
 HWTEST_F_L0(StubTest, TryLoadICByName)

@@ -774,12 +774,15 @@ GateRef SlowPathLowering::LowerCallRuntime(int index, const std::vector<GateRef>
 
 void SlowPathLowering::LowerAdd2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Add2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    auto args = {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)};
-    GateRef newGate = LowerCallRuntime(id, args);
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Add,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerCreateIterResultObj(GateRef gate)
@@ -1243,38 +1246,54 @@ void SlowPathLowering::LowerLdGlobal(GateRef gate)
 
 void SlowPathLowering::LowerSub2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Sub2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Sub,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerMul2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Mul2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Mul,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerDiv2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Div2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Div,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerMod2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Mod2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Mod,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerEq(GateRef gate)
@@ -1305,38 +1324,54 @@ void SlowPathLowering::LowerNotEq(GateRef gate)
 
 void SlowPathLowering::LowerLess(GateRef gate)
 {
-    const int id = RTSTUB_ID(Less);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Less,
+                                       { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerLessEq(GateRef gate)
 {
-    const int id = RTSTUB_ID(LessEq);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::LessEq,
+                                       { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerGreater(GateRef gate)
 {
-    const int id = RTSTUB_ID(Greater);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Greater,
+                                       { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerGreaterEq(GateRef gate)
 {
-    const int id = RTSTUB_ID(GreaterEq);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::GreaterEq,
+                                       { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerGetPropIterator(GateRef gate)
@@ -1404,56 +1439,80 @@ void SlowPathLowering::LowerNot(GateRef gate)
 
 void SlowPathLowering::LowerShl2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Shl2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Shl,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerShr2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Shr2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Shr,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerAshr2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Ashr2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Ashr,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerAnd2(GateRef gate)
 {
-    const int id = RTSTUB_ID(And2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::And,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerOr2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Or2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Or,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerXor2(GateRef gate)
 {
-    const int id = RTSTUB_ID(Xor2);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Xor,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerDelObjProp(GateRef gate)

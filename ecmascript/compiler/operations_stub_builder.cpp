@@ -80,4 +80,1010 @@ GateRef OperationsStubBuilder::NotEqual(GateRef glue, GateRef left, GateRef righ
     env->SubCfgExit();
     return ret;
 }
+
+GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label leftIsInt(env);
+    Label leftOrRightNotInt(env);
+    Label leftLessRight(env);
+    Label leftNotLessRight(env);
+    Label slowPath(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Branch(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    Bind(&leftIsInt);
+    {
+        Label rightIsInt(env);
+        Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        Bind(&rightIsInt);
+        {
+            GateRef intLeft = TaggedGetInt(left);
+            GateRef intRight = TaggedGetInt(right);
+            Branch(Int32LessThan(intLeft, intRight), &leftLessRight, &leftNotLessRight);
+        }
+    }
+    Bind(&leftOrRightNotInt);
+    {
+        Label leftIsNumber(env);
+        Branch(TaggedIsNumber(left), &leftIsNumber, &slowPath);
+        Bind(&leftIsNumber);
+        {
+            Label rightIsNumber(env);
+            Branch(TaggedIsNumber(right), &rightIsNumber, &slowPath);
+            Bind(&rightIsNumber);
+            {
+                // fast path
+                DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0));
+                DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0));
+                Label leftIsInt1(env);
+                Label leftNotInt1(env);
+                Label exit1(env);
+                Label exit2(env);
+                Label rightIsInt1(env);
+                Label rightNotInt1(env);
+                Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+                Bind(&leftIsInt1);
+                {
+                    doubleLeft = ChangeInt32ToFloat64(TaggedGetInt(left));
+                    Jump(&exit1);
+                }
+                Bind(&leftNotInt1);
+                {
+                    doubleLeft = GetDoubleOfTDouble(left);
+                    Jump(&exit1);
+                }
+                Bind(&exit1);
+                {
+                    Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+                }
+                Bind(&rightIsInt1);
+                {
+                    doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
+                    Jump(&exit2);
+                }
+                Bind(&rightNotInt1);
+                {
+                    doubleRight = GetDoubleOfTDouble(right);
+                    Jump(&exit2);
+                }
+                Bind(&exit2);
+                {
+                    Branch(DoubleLessThan(*doubleLeft, *doubleRight), &leftLessRight, &leftNotLessRight);
+                }
+            }
+        }
+    }
+    Bind(&leftLessRight);
+    {
+        result = TaggedTrue();
+        Jump(&exit);
+    }
+    Bind(&leftNotLessRight);
+    {
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Less), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label leftIsInt(env);
+    Label leftOrRightNotInt(env);
+    Label leftLessEqRight(env);
+    Label leftNotLessEqRight(env);
+    Label slowPath(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Branch(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    Bind(&leftIsInt);
+    {
+        Label rightIsInt(env);
+        Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        Bind(&rightIsInt);
+        {
+            GateRef intLeft = TaggedGetInt(left);
+            GateRef intRight = TaggedGetInt(right);
+            Branch(Int32LessThanOrEqual(intLeft, intRight), &leftLessEqRight, &leftNotLessEqRight);
+        }
+    }
+    Bind(&leftOrRightNotInt);
+    {
+        Label leftIsNumber(env);
+        Branch(TaggedIsNumber(left), &leftIsNumber, &slowPath);
+        Bind(&leftIsNumber);
+        {
+            Label rightIsNumber(env);
+            Branch(TaggedIsNumber(right), &rightIsNumber, &slowPath);
+            Bind(&rightIsNumber);
+            {
+                // fast path
+                DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0));
+                DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0));
+                Label leftIsInt1(env);
+                Label leftNotInt1(env);
+                Label exit1(env);
+                Label exit2(env);
+                Label rightIsInt1(env);
+                Label rightNotInt1(env);
+                Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+                Bind(&leftIsInt1);
+                {
+                    doubleLeft = ChangeInt32ToFloat64(TaggedGetInt(left));
+                    Jump(&exit1);
+                }
+                Bind(&leftNotInt1);
+                {
+                    doubleLeft = GetDoubleOfTDouble(left);
+                    Jump(&exit1);
+                }
+                Bind(&exit1);
+                {
+                    Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+                }
+                Bind(&rightIsInt1);
+                {
+                    doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
+                    Jump(&exit2);
+                }
+                Bind(&rightNotInt1);
+                {
+                    doubleRight = GetDoubleOfTDouble(right);
+                    Jump(&exit2);
+                }
+                Bind(&exit2);
+                {
+                    Branch(DoubleLessThanOrEqual(*doubleLeft, *doubleRight), &leftLessEqRight, &leftNotLessEqRight);
+                }
+            }
+        }
+    }
+    Bind(&leftLessEqRight);
+    {
+        result = TaggedTrue();
+        Jump(&exit);
+    }
+    Bind(&leftNotLessEqRight);
+    {
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LessEq), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label leftIsInt(env);
+    Label leftOrRightNotInt(env);
+    Label leftGreaterRight(env);
+    Label leftNotGreaterRight(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Branch(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    Bind(&leftIsInt);
+    {
+        Label rightIsInt(env);
+        Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        Bind(&rightIsInt);
+        {
+            GateRef intLeft = TaggedGetInt(left);
+            GateRef intRight = TaggedGetInt(right);
+            Branch(Int32GreaterThan(intLeft, intRight), &leftGreaterRight, &leftNotGreaterRight);
+        }
+    }
+    Bind(&leftOrRightNotInt);
+    {
+        Label leftIsNumber(env);
+        Branch(TaggedIsNumber(left), &leftIsNumber, &slowPath);
+        Bind(&leftIsNumber);
+        {
+            Label rightIsNumber(env);
+            Branch(TaggedIsNumber(right), &rightIsNumber, &slowPath);
+            Bind(&rightIsNumber);
+            {
+                // fast path
+                DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0));
+                DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0));
+                Label leftIsInt1(env);
+                Label leftNotInt1(env);
+                Label exit1(env);
+                Label exit2(env);
+                Label rightIsInt1(env);
+                Label rightNotInt1(env);
+                Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+                Bind(&leftIsInt1);
+                {
+                    doubleLeft = ChangeInt32ToFloat64(TaggedGetInt(left));
+                    Jump(&exit1);
+                }
+                Bind(&leftNotInt1);
+                {
+                    doubleLeft = GetDoubleOfTDouble(left);
+                    Jump(&exit1);
+                }
+                Bind(&exit1);
+                {
+                    Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+                }
+                Bind(&rightIsInt1);
+                {
+                    doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
+                    Jump(&exit2);
+                }
+                Bind(&rightNotInt1);
+                {
+                    doubleRight = GetDoubleOfTDouble(right);
+                    Jump(&exit2);
+                }
+                Bind(&exit2);
+                {
+                    Branch(DoubleGreaterThan(*doubleLeft, *doubleRight), &leftGreaterRight, &leftNotGreaterRight);
+                }
+            }
+        }
+    }
+    Bind(&leftGreaterRight);
+    {
+        result = TaggedTrue();
+        Jump(&exit);
+    }
+    Bind(&leftNotGreaterRight);
+    {
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Greater), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label leftIsInt(env);
+    Label leftOrRightNotInt(env);
+    Label leftGreaterEqRight(env);
+    Label leftNotGreaterEQRight(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Branch(TaggedIsInt(left), &leftIsInt, &leftOrRightNotInt);
+    Bind(&leftIsInt);
+    {
+        Label rightIsInt(env);
+        Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
+        Bind(&rightIsInt);
+        {
+            GateRef intLeft = TaggedGetInt(left);
+            GateRef intRight = TaggedGetInt(right);
+            Branch(Int32GreaterThanOrEqual(intLeft, intRight), &leftGreaterEqRight, &leftNotGreaterEQRight);
+        }
+    }
+    Bind(&leftOrRightNotInt);
+    {
+        Label leftIsNumber(env);
+        Branch(TaggedIsNumber(left), &leftIsNumber, &slowPath);
+        Bind(&leftIsNumber);
+        {
+            Label rightIsNumber(env);
+            Branch(TaggedIsNumber(right), &rightIsNumber, &slowPath);
+            Bind(&rightIsNumber);
+            {
+                // fast path
+                DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0));
+                DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0));
+                Label leftIsInt1(env);
+                Label leftNotInt1(env);
+                Label exit1(env);
+                Label exit2(env);
+                Label rightIsInt1(env);
+                Label rightNotInt1(env);
+                Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
+                Bind(&leftIsInt1);
+                {
+                    doubleLeft = ChangeInt32ToFloat64(TaggedGetInt(left));
+                    Jump(&exit1);
+                }
+                Bind(&leftNotInt1);
+                {
+                    doubleLeft = GetDoubleOfTDouble(left);
+                    Jump(&exit1);
+                }
+                Bind(&exit1);
+                {
+                    Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
+                }
+                Bind(&rightIsInt1);
+                {
+                    doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
+                    Jump(&exit2);
+                }
+                Bind(&rightNotInt1);
+                {
+                    doubleRight = GetDoubleOfTDouble(right);
+                    Jump(&exit2);
+                }
+                Bind(&exit2);
+                {
+                    Branch(DoubleGreaterThanOrEqual(*doubleLeft, *doubleRight),
+                        &leftGreaterEqRight, &leftNotGreaterEQRight);
+                }
+            }
+        }
+    }
+    Bind(&leftGreaterEqRight);
+    {
+        result = TaggedTrue();
+        Jump(&exit);
+    }
+    Bind(&leftNotGreaterEQRight);
+    {
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(GreaterEq), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Add(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), FastAdd(left, right));
+    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Add2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Sub(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), FastSub(left, right));
+    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Sub2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Mul(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), FastMul(left, right));
+    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Mul2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Div(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), FastDiv(left, right));
+    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Div2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Mod(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), FastMod(glue, left, right));
+    Branch(TaggedIsHole(*result), &slowPath, &exit);
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Mod2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Shl(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(opNumber0, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(opNumber1, VariableType::INT32(), Int32(0));
+
+    Label calculate(env);
+    Label leftIsNumber(env);
+    Label leftNotNumberOrRightNotNumber(env);
+    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(env);
+        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        Bind(&rightIsNumber);
+        {
+            Label leftIsInt(env);
+            Label leftIsDouble(env);
+            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            Bind(&leftIsInt);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+            Bind(&leftIsDouble);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+        }
+    }
+    // slow path
+    Bind(&leftNotNumberOrRightNotNumber);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Shl2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&calculate);
+    {
+        GateRef shift = Int32And(*opNumber1, Int32(0x1f));
+        GateRef val = Int32LSL(*opNumber0, shift);
+        result = IntToTaggedPtr(val);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(opNumber0, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(opNumber1, VariableType::INT32(), Int32(0));
+
+    Label doShr(env);
+    Label overflow(env);
+    Label notOverflow(env);
+    Label leftIsNumber(env);
+    Label leftNotNumberOrRightNotNumber(env);
+    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(env);
+        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        Bind(&rightIsNumber);
+        {
+            Label leftIsInt(env);
+            Label leftIsDouble(env);
+            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            Bind(&leftIsInt);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&doShr);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&doShr);
+                }
+            }
+            Bind(&leftIsDouble);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&doShr);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&doShr);
+                }
+            }
+        }
+    }
+    // slow path
+    Bind(&leftNotNumberOrRightNotNumber);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Shr2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&doShr);
+    {
+        GateRef shift = Int32And(*opNumber1, Int32(0x1f));
+        GateRef val = Int32LSR(*opNumber0, shift);
+        auto condition = Int32UnsignedGreaterThan(val, Int32(INT32_MAX));
+        Branch(condition, &overflow, &notOverflow);
+        Bind(&overflow);
+        {
+            result = DoubleToTaggedDoublePtr(ChangeUInt32ToFloat64(val));
+            Jump(&exit);
+        }
+        Bind(&notOverflow);
+        {
+            result = IntToTaggedPtr(val);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Ashr(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(opNumber0, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(opNumber1, VariableType::INT32(), Int32(0));
+
+    Label calculate(env);
+    Label leftIsNumber(env);
+    Label leftNotNumberOrRightNotNumber(env);
+    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(env);
+        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        Bind(&rightIsNumber);
+        {
+            Label leftIsInt(env);
+            Label leftIsDouble(env);
+            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            Bind(&leftIsInt);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+            Bind(&leftIsDouble);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+        }
+    }
+    // slow path
+    Bind(&leftNotNumberOrRightNotNumber);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Ashr2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&calculate);
+    {
+        GateRef shift = Int32And(*opNumber1, Int32(0x1f));
+        GateRef val = Int32ASR(*opNumber0, shift);
+        result = IntToTaggedPtr(val);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::And(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(opNumber0, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(opNumber1, VariableType::INT32(), Int32(0));
+
+    Label calculate(env);
+    Label leftIsNumber(env);
+    Label leftNotNumberOrRightNotNumber(env);
+    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(env);
+        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        Bind(&rightIsNumber);
+        {
+            Label leftIsInt(env);
+            Label leftIsDouble(env);
+            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            Bind(&leftIsInt);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    opNumber0 = GetInt32OfTInt(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+            Bind(&leftIsDouble);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+        }
+    }
+    // slow path
+    Bind(&leftNotNumberOrRightNotNumber);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(And2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&calculate);
+    {
+        GateRef val = Int32And(*opNumber0, *opNumber1);
+        result = IntToTaggedPtr(val);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Or(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(opNumber0, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(opNumber1, VariableType::INT32(), Int32(0));
+
+    Label calculate(env);
+    Label leftIsNumber(env);
+    Label leftNotNumberOrRightNotNumber(env);
+    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(env);
+        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        Bind(&rightIsNumber);
+        {
+            Label leftIsInt(env);
+            Label leftIsDouble(env);
+            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            Bind(&leftIsInt);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+            Bind(&leftIsDouble);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+        }
+    }
+    // slow path
+    Bind(&leftNotNumberOrRightNotNumber);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Or2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&calculate);
+    {
+        GateRef val = Int32Or(*opNumber0, *opNumber1);
+        result = IntToTaggedPtr(val);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Xor(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(opNumber0, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(opNumber1, VariableType::INT32(), Int32(0));
+
+    Label calculate(env);
+    Label leftIsNumber(env);
+    Label leftNotNumberOrRightNotNumber(env);
+    Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
+    Bind(&leftIsNumber);
+    {
+        Label rightIsNumber(env);
+        Branch(TaggedIsNumber(right), &rightIsNumber, &leftNotNumberOrRightNotNumber);
+        Bind(&rightIsNumber);
+        {
+            Label leftIsInt(env);
+            Label leftIsDouble(env);
+            Branch(TaggedIsInt(left), &leftIsInt, &leftIsDouble);
+            Bind(&leftIsInt);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    opNumber0 = GetInt32OfTInt(left);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+            Bind(&leftIsDouble);
+            {
+                Label rightIsInt(env);
+                Label rightIsDouble(env);
+                Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
+                Bind(&rightIsInt);
+                {
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = GetInt32OfTInt(right);
+                    Jump(&calculate);
+                }
+                Bind(&rightIsDouble);
+                {
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    opNumber0 = DoubleToInt(glue, leftDouble);
+                    opNumber1 = DoubleToInt(glue, rightDouble);
+                    Jump(&calculate);
+                }
+            }
+        }
+    }
+    // slow path
+    Bind(&leftNotNumberOrRightNotNumber);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Xor2), { left, right });
+        Jump(&exit);
+    }
+    Bind(&calculate);
+    {
+        GateRef val = Int32Xor(*opNumber0, *opNumber1);
+        result = IntToTaggedPtr(val);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu
