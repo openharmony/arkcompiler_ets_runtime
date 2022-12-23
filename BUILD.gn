@@ -28,7 +28,10 @@ group("ark_js_packages") {
 group("ark_js_host_windows_tools_packages") {
   deps = []
   if (host_os != "mac" && target_os != "android") {
-    deps += [ "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)" ]
+    deps += [
+      "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mingw:mingw_x86_64)",
+      "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)",
+    ]
   }
 }
 
@@ -665,6 +668,14 @@ if (!is_mingw && !is_mac && target_os != "ios") {
     "ecmascript/snapshot/mem/snapshot_env.cpp",
     "ecmascript/snapshot/mem/snapshot_processor.cpp",
     "ecmascript/base/block_hook_scope.cpp",
+  ]
+}
+
+if (is_mingw) {
+  ecma_profiler_source += [
+    "ecmascript/snapshot/mem/snapshot.cpp",
+    "ecmascript/snapshot/mem/snapshot_env.cpp",
+    "ecmascript/snapshot/mem/snapshot_processor.cpp",
   ]
 }
 

@@ -16,8 +16,6 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 
 #include <cerrno>
-#include <fcntl.h>
-#include <unistd.h>
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -141,14 +139,15 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
         LOG_FULL(FATAL) << "snapshot file path error";
         UNREACHABLE();
     }
-    int fd = open(realPath.c_str(), O_CLOEXEC);  // NOLINT(cppcoreguidelines-pro-type-vararg)
-    if (UNLIKELY(fd == -1)) {
+    fd_t fd = Open(realPath.c_str(), FILE_RDONLY);  // NOLINT(cppcoreguidelines-pro-type-vararg)
+    if (UNLIKELY(fd == INVALID_FD)) {
         LOG_FULL(FATAL) << "open file failed";
         UNREACHABLE();
     }
-    int32_t fileSize = lseek(fd, 0, SEEK_END);
+    int64_t fileSize = GetFileSizeByFd(fd);
     if (fileSize == -1) {
-        LOG_FULL(FATAL) << "lseek failed";
+        Close(fd);
+        LOG_FULL(FATAL) << "GetFileSize failed";
         UNREACHABLE();
     }
 
@@ -156,7 +155,15 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
     }
-    auto readFile = ToUintPtr(mmap(nullptr, fileSize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
+
+    fd_t extra = INVALID_FD;
+    void *addr = FileMmap(fd, fileSize, 0, &extra);
+    if (addr == nullptr) {
+        Close(fd);
+        LOG_FULL(FATAL) << "file mmap failed";
+        UNREACHABLE();
+    }
+    auto readFile = ToUintPtr(addr);
     auto hdr = *ToNativePtr<const Header>(readFile);
     uintptr_t oldSpaceBegin = readFile + sizeof(Header);
     processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
@@ -166,7 +173,7 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     uintptr_t stringEnd = stringBegin + hdr.stringSize;
     processor.DeserializeString(stringBegin, stringEnd);
 
-    munmap(ToNativePtr<void>(readFile), hdr.pandaFileBegin);
+    FileUnMap(addr, hdr.pandaFileBegin, &extra);
     const JSPandaFile *jsPandaFile = nullptr;
     if (static_cast<uint32_t>(fileSize) > hdr.pandaFileBegin) {
         uintptr_t pandaFileMem = readFile + hdr.pandaFileBegin;
@@ -174,7 +181,7 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
             static_cast<uint32_t>(fileSize) - hdr.pandaFileBegin, os::mem::MmapDeleter));
         jsPandaFile = JSPandaFileManager::GetInstance()->NewJSPandaFile(pf.release(), "");
     }
-    close(fd);
+    Close(fd);
     // relocate object field
     processor.Relocate(type, jsPandaFile, hdr.rootObjectSize);
     return jsPandaFile;
