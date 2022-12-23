@@ -244,7 +244,7 @@ std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningStat
         case RunningState::BUILTIN:
             return temp.append("(BUILTIN)");
         case RunningState::NAPI:
-            return temp.append("");
+            return temp.append("NAPI");
         case RunningState::ARKUI_ENGINE:
             return temp.append("(ARKUI_ENGINE)");
         case RunningState::RUNTIME:
