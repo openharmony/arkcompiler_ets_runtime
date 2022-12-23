@@ -26,6 +26,7 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
+using GateRef = int32_t;
 enum MachineType : uint8_t { // Bit width
     NOVALUE = 0,
     ANYVALUE,
@@ -218,8 +219,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(SwitchBranch, SWITCH_BRANCH, false, 1, 0, 1)        \
     V(SwitchCase, SWITCH_CASE, false, 1, 0, 0)            \
     V(HeapAlloc, HEAP_ALLOC, false, 1, 1, 1)              \
-    V(RestoreRegister, RESTORE_REGISTER, false, 0, 1, 0)  \
-    V(SaveRegister, SAVE_REGISTER, false, 0, 1, 1)        \
     V(LoadElement, LOAD_ELEMENT, false, 1, 1, 2)          \
     V(StoreElement, STORE_ELEMENT, false, 1, 1, 3)        \
     V(ConstData, CONST_DATA, false, 0, 0, 0)              \
@@ -234,6 +233,12 @@ std::string MachineTypeToStr(MachineType machineType);
 #define GATE_META_DATA_LIST_WITH_STRING(V)                \
     V(ConstString, CONSTSTRING, false, 0, 0, 0)
 
+#define GATE_META_DATA_IN_SAVE_REGISTER(V)         \
+    V(SaveRegister, SAVE_REGISTER, false, 0, 1, value)
+
+#define GATE_META_DATA_IN_RESTORE_REGISTER(V)      \
+    V(RestoreRegister, RESTORE_REGISTER, false, 0, 1, 0)
+
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
     V(TYPED_BINARY_OP)
@@ -245,6 +250,8 @@ enum class OpCode : uint8_t {
     GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_STRING(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_IN_SAVE_REGISTER(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_IN_RESTORE_REGISTER(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
@@ -261,6 +268,8 @@ public:
         MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
+        SAVE_REGISTERS_OP,
+        RESTORE_REGISTERS_OP,
     };
     GateMetaData() = default;
     explicit GateMetaData(OpCode opcode, bool hasRoot,
@@ -322,6 +331,16 @@ public:
     bool IsStringType() const
     {
         return GetKind() == MUTABLE_STRING;
+    }
+
+    bool IsSaveRegisterOp() const
+    {
+        return GetKind() == SAVE_REGISTERS_OP;
+    }
+
+    bool IsRestoreRegisterOp() const
+    {
+        return GetKind() == RESTORE_REGISTERS_OP;
     }
 
     bool IsRoot() const;
@@ -439,6 +458,55 @@ public:
 private:
     uint64_t value_ { 0 };
 };
+
+class SaveRegsMetaData : public GateMetaData {
+public:
+    explicit SaveRegsMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn, uint16_t dependsIn, uint32_t valuesIn,
+        uint64_t value) : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), numValue_(value)
+    {
+        SetKind(GateMetaData::SAVE_REGISTERS_OP);
+    }
+
+    static const SaveRegsMetaData* Cast(const GateMetaData* meta)
+    {
+        ASSERT(meta->IsSaveRegisterOp());
+        return static_cast<const SaveRegsMetaData*>(meta);
+    }
+
+    uint64_t GetNumValue() const
+    {
+        return numValue_;
+    }
+private:
+    uint64_t numValue_ { 0 };
+};
+
+class RestoreRegsMetaData : public GateMetaData {
+public:
+    explicit RestoreRegsMetaData() : GateMetaData(OpCode::RESTORE_REGISTER, false, 0, 1, 0)
+    {
+        SetKind(GateMetaData::RESTORE_REGISTERS_OP);
+    }
+
+    static const RestoreRegsMetaData* Cast(const GateMetaData* meta)
+    {
+        ASSERT(meta->IsRestoreRegisterOp());
+        return static_cast<const RestoreRegsMetaData*>(meta);
+    }
+
+    const std::map<std::pair<GateRef, uint32_t>, uint32_t> &GetRestoreRegsInfo() const
+    {
+        return restoreRegsInfo_;
+    }
+
+    void SetRestoreRegsInfo(std::pair<GateRef, uint32_t> &needReplaceInfo, uint32_t regIdx)
+    {
+        restoreRegsInfo_[needReplaceInfo] = regIdx;
+    }
+private:
+    std::map<std::pair<GateRef, uint32_t>, uint32_t> restoreRegsInfo_;
+};
+
 
 class TypedBinaryMegaData : public OneParameterMetaData {
 public:
