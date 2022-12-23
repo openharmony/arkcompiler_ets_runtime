@@ -26,17 +26,22 @@
 #include "ecmascript/taskpool/task.h"
 
 namespace panda::ecmascript {
+enum class SampleMode : uint8_t {
+    HOTNESS_MODE,
+    CALL_MODE,
+};
 /*
  * Support statistics of JS Function call heat. Save the method ID whose calls are less than MIN_COUNT.
  *
  * The saving format is as follows:
- * "recordName1:[methodId/count/name,methodId/count/name......]"
- * "recordName2:[methodId/count/name,methodId/count/name,methodId/count/name......]"
- *                                 "......"
+ * "recordName1:[methodId/count/mode/name,methodId/count/mode/name......]"
+ * "recordName2:[methodId/count/mode/name,methodId/count/mode/name,methodId/count/mode/name......]"
+ *                                     "......"
  * */
 class MethodProfilerInfo {
 public:
-    MethodProfilerInfo(uint32_t count, const std::string &methodName) : count_(count), methodName_(methodName) {}
+    MethodProfilerInfo(uint32_t count, const std::string &methodName, SampleMode mode)
+        : count_(count), methodName_(methodName), mode_(mode) {}
 
     void IncreaseCount()
     {
@@ -48,18 +53,33 @@ public:
         count_ = 0;
     }
 
-    void AddCount(uint32_t count)
+    void Merge(const MethodProfilerInfo *info)
     {
-        count_ += count;
+        count_ += info->GetCount();
+        SetSampleMode(info->GetSampleMode());
     }
 
     uint32_t GetCount() const
     {
         return count_;
     }
+
     const std::string &GetMethodName() const
     {
         return methodName_;
+    }
+
+    void SetSampleMode(SampleMode mode)
+    {
+        if (mode_ == SampleMode::HOTNESS_MODE) {
+            return;
+        }
+        mode_ = mode;
+    }
+
+    SampleMode GetSampleMode() const
+    {
+        return mode_;
     }
 
     NO_COPY_SEMANTIC(MethodProfilerInfo);
@@ -68,6 +88,7 @@ public:
 private:
     uint32_t count_ {0};
     std::string methodName_;
+    SampleMode mode_ {SampleMode::CALL_MODE};
 };
 
 class PGOProfiler {
@@ -75,7 +96,7 @@ public:
     NO_COPY_SEMANTIC(PGOProfiler);
     NO_MOVE_SEMANTIC(PGOProfiler);
 
-    void Sample(JSTaggedType value);
+    void Sample(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE);
 private:
     PGOProfiler(EcmaVM *vm, bool isEnable)
         : isEnable_(isEnable), chunk_(vm->GetNativeAreaAllocator()), profilerMap_(&chunk_) {};

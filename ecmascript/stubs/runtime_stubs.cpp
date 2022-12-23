@@ -906,6 +906,9 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
+        if (thread->IsPGOProfilerEnable()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->Sample(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
+        }
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();
