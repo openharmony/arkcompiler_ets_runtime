@@ -35,49 +35,103 @@
 #endif
 
 namespace panda::ecmascript::kungfu {
+#define BINARY_CALL_SIGNATURE(name)                             \
+    /* 3 : 3 input parameters */                                \
+    CallSignature signature(#name, 0, 3,                        \
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); \
+    *callSign = signature;                                      \
+    /* 3 : 3 input parameters */                                \
+    std::array<VariableType, 3> params = {                      \
+        VariableType::NATIVE_POINTER(),                         \
+        VariableType::JS_ANY(),                                 \
+        VariableType::JS_ANY(),                                 \
+    };                                                          \
+    callSign->SetParameters(params.data());                     \
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+
 DEF_CALL_SIGNATURE(Add)
 {
-    // 3 : 3 input parameters
-    CallSignature Add("Add", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); // number or hole
-    *callSign = Add;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    BINARY_CALL_SIGNATURE(Add)
 }
 
 DEF_CALL_SIGNATURE(Sub)
 {
-    // 3 : 3 input parameters
-    CallSignature Sub("Sub", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); // number or hole
-    *callSign = Sub;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    BINARY_CALL_SIGNATURE(Sub)
 }
 
 DEF_CALL_SIGNATURE(Mul)
 {
-    // 3 : 3 input parameters
-    CallSignature Mul("Mul", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); // number or hole
-    *callSign = Mul;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    BINARY_CALL_SIGNATURE(Mul)
+}
+
+DEF_CALL_SIGNATURE(Div)
+{
+    BINARY_CALL_SIGNATURE(Div)
+}
+
+DEF_CALL_SIGNATURE(Mod)
+{
+    BINARY_CALL_SIGNATURE(Mod)
+}
+
+DEF_CALL_SIGNATURE(Equal)
+{
+    BINARY_CALL_SIGNATURE(Equal)
+}
+
+DEF_CALL_SIGNATURE(NotEqual)
+{
+    BINARY_CALL_SIGNATURE(NotEqual)
+}
+
+DEF_CALL_SIGNATURE(Less)
+{
+    BINARY_CALL_SIGNATURE(Less)
+}
+
+DEF_CALL_SIGNATURE(LessEq)
+{
+    BINARY_CALL_SIGNATURE(LessEq)
+}
+
+DEF_CALL_SIGNATURE(Greater)
+{
+    BINARY_CALL_SIGNATURE(Greater)
+}
+
+DEF_CALL_SIGNATURE(GreaterEq)
+{
+    BINARY_CALL_SIGNATURE(GreaterEq)
+}
+
+DEF_CALL_SIGNATURE(Shl)
+{
+    BINARY_CALL_SIGNATURE(Shl)
+}
+
+DEF_CALL_SIGNATURE(Shr)
+{
+    BINARY_CALL_SIGNATURE(Shr)
+}
+
+DEF_CALL_SIGNATURE(Ashr)
+{
+    BINARY_CALL_SIGNATURE(Ashr)
+}
+
+DEF_CALL_SIGNATURE(And)
+{
+    BINARY_CALL_SIGNATURE(And)
+}
+
+DEF_CALL_SIGNATURE(Or)
+{
+    BINARY_CALL_SIGNATURE(Or)
+}
+
+DEF_CALL_SIGNATURE(Xor)
+{
+    BINARY_CALL_SIGNATURE(Xor)
 }
 
 #ifndef NDEBUG
@@ -99,37 +153,6 @@ DEF_CALL_SIGNATURE(MulGCTest)
 DEF_CALL_SIGNATURE(MulGCTest) {}
 #endif
 
-DEF_CALL_SIGNATURE(Div)
-{
-    // 3 : 3 input parameters
-    CallSignature Div("Div", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); // float or hole
-    *callSign = Div;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
-}
-
-DEF_CALL_SIGNATURE(Mod)
-{
-    // 3 : 3 input parameters
-    CallSignature Mod("Mod", 0, 3,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); // int,float or hole
-    *callSign = Mod;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
-}
-
 DEF_CALL_SIGNATURE(TypeOf)
 {
     // 2 input parameters
@@ -139,36 +162,6 @@ DEF_CALL_SIGNATURE(TypeOf)
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(), // glue
         VariableType::JS_ANY(), // ACC
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
-}
-
-DEF_CALL_SIGNATURE(Equal)
-{
-    // 3 input parameters, return may be true/false/hole
-    CallSignature Equal("Equal", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = Equal;
-    // 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
-}
-
-DEF_CALL_SIGNATURE(NotEqual)
-{
-    // 3 input parameters, return may be true/false/hole
-    CallSignature NotEqual("NotEqual", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
-    *callSign = NotEqual;
-    // 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),  // glue
-        VariableType::JS_ANY(),          // left
-        VariableType::JS_ANY(),          // right
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

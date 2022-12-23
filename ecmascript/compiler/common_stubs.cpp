@@ -32,37 +32,37 @@ using namespace panda::ecmascript;
 void AddStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    Return(FastAdd(x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Add(glue, x, y));
 }
 
 void SubStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    Return(FastSub(x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Sub(glue, x, y));
 }
 
 void MulStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    Return(FastMul(x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Mul(glue, x, y));
 }
 
 void DivStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    Return(FastDiv(x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Div(glue, x, y));
 }
 
 void ModStubBuilder::GenerateCircuit()
@@ -70,7 +70,8 @@ void ModStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    Return(FastMod(glue, x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Mod(glue, x, y));
 }
 
 void TypeOfStubBuilder::GenerateCircuit()
@@ -96,6 +97,96 @@ void NotEqualStubBuilder::GenerateCircuit()
     GateRef y = TaggedArgument(2); // 2: 3rd argument
     OperationsStubBuilder operationBuilder(this);
     Return(operationBuilder.NotEqual(glue, x, y));
+}
+
+void LessStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Less(glue, x, y));
+}
+
+void LessEqStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.LessEq(glue, x, y));
+}
+
+void GreaterStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Greater(glue, x, y));
+}
+
+void GreaterEqStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.GreaterEq(glue, x, y));
+}
+
+void ShlStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Shl(glue, x, y));
+}
+
+void ShrStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Shr(glue, x, y));
+}
+
+void AshrStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Ashr(glue, x, y));
+}
+
+void AndStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.And(glue, x, y));
+}
+
+void OrStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Or(glue, x, y));
+}
+
+void XorStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Xor(glue, x, y));
 }
 
 void GetPropertyByIndexStubBuilder::GenerateCircuit()
