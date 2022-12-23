@@ -279,7 +279,7 @@ void Circuit::ModifyIn(GateRef gate, size_t idx, GateRef in)
 {
 #ifndef NDEBUG
     ASSERT(idx < LoadGatePtrConst(gate)->GetNumIns());
-    ASSERT(!Circuit::IsInGateNull(gate, idx));
+    ASSERT(!Circuit::IsInGateNull(gate, idx) || (GetOpCode(gate) == OpCode::SAVE_REGISTER));
 #endif
     LoadGatePtr(gate)->ModifyIn(idx, LoadGatePtr(in));
 }

@@ -130,6 +130,16 @@ public:
         return metaBuilder_.TypedBinaryOp(value, binOp);
     }
 
+    const GateMetaData* SaveRegister(uint64_t value)
+    {
+        return metaBuilder_.SaveRegister(value);
+    }
+
+    const GateMetaData* RestoreRegister()
+    {
+        return metaBuilder_.RestoreRegister();
+    }
+
     const GateMetaData *GetMetaData(GateRef gate) const
     {
         return LoadGatePtrConst(gate)->GetMetaData();

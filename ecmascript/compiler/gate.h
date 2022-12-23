@@ -233,6 +233,16 @@ public:
     {
         return JSBytecodeMegaData::Cast(meta_);
     }
+
+    const RestoreRegsMetaData* GetRestoreRegsMetaData() const
+    {
+        return RestoreRegsMetaData::Cast(meta_);
+    }
+
+    const SaveRegsMetaData* GetSaveRegsMetaData() const
+    {
+        return SaveRegsMetaData::Cast(meta_);
+    }
     std::string MachineTypeStr(MachineType machineType) const;
     std::string GateTypeStr(GateType gateType) const;
     ~Gate() = default;
