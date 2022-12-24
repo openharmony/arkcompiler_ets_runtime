@@ -73,7 +73,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
         return ret;
     }
 
-    InsertBaseInfo(patchFileName, baseFileName, baseMethodInfo);
+    methodInfos_.emplace(patchFileName + ":" + baseFileName, baseMethodInfo);
     LOG_ECMA(INFO) << "Load patch success!";
     return PatchErrorCode::SUCCESS;
 }
@@ -107,7 +107,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
         return ret;
     }
 
-    InsertBaseInfo(patchFileName, baseFileName, baseMethodInfo);
+    methodInfos_.emplace(patchFileName + ":" + baseFileName, baseMethodInfo);
     LOG_ECMA(INFO) << "Load patch success!";
     return PatchErrorCode::SUCCESS;
 }
@@ -121,14 +121,15 @@ PatchErrorCode QuickFixManager::UnloadPatch(JSThread *thread, const std::string 
         return PatchErrorCode::PATCH_NOT_LOADED;
     }
 
-    const auto &baseMethodInfo = FindBaseInfo(patchFileName, baseFileName);
+    const std::string key = patchFileName + ":" + baseFileName;
+    const auto &baseMethodInfo = methodInfos_.find(key)->second;
     auto ret = PatchLoader::UnloadPatchInternal(thread, patchFileName.c_str(), baseFileName.c_str(), baseMethodInfo);
     if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Unload patch fail!";
         return ret;
     }
 
-    DeleteBaseInfo(patchFileName, baseFileName);
+    methodInfos_.erase(key);
     LOG_ECMA(INFO) << "Unload patch success!";
     return PatchErrorCode::SUCCESS;
 }
@@ -137,31 +138,6 @@ bool QuickFixManager::HasLoadedPatch(const std::string &patchFileName, const std
 {
     const std::string key = patchFileName + ":" + baseFileName;
     return methodInfos_.find(key) != methodInfos_.end();
-}
-
-void QuickFixManager::InsertBaseInfo(const std::string &patchFileName, const std::string &baseFileName,
-                                     const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
-{
-    const std::string key = patchFileName + ":" + baseFileName;
-    if (methodInfos_.find(key) != methodInfos_.end()) {
-        LOG_ECMA(FATAL) << "Already load patch " << patchFileName;
-        UNREACHABLE();
-    }
-
-    methodInfos_.emplace(key, baseMethodInfo);
-}
-
-CMap<BaseMethodIndex, MethodLiteral *> &QuickFixManager::FindBaseInfo(const std::string &patchFileName,
-                                                                      const std::string &baseFileName)
-{
-    const std::string key = patchFileName + ":" + baseFileName;
-    auto iter = methodInfos_.find(key);
-    if (iter == methodInfos_.end()) {
-        LOG_FULL(FATAL) << "find base info failed, patch: " << patchFileName << ", base: " << baseFileName;
-        UNREACHABLE();
-    }
-
-    return iter->second;
 }
 
 std::string QuickFixManager::GetBaseFileName(const std::string &patchFileName) const
@@ -176,16 +152,6 @@ std::string QuickFixManager::GetBaseFileName(const std::string &patchFileName) c
     }
     LOG_ECMA(ERROR) << "get base file name failed, patch: " << patchFileName;
     return "";
-}
-
-void QuickFixManager::DeleteBaseInfo(const std::string &patchFileName, const std::string &baseFileName)
-{
-    const std::string key = patchFileName + ":" + baseFileName;
-    if (methodInfos_.find(key) == methodInfos_.end()) {
-        LOG_FULL(FATAL) << "delete base method info failed, patch: " << patchFileName << ", base: " << baseFileName;
-        UNREACHABLE();
-    }
-    methodInfos_.erase(key);
 }
 
 bool QuickFixManager::IsQuickFixCausedException(JSThread *thread,
