@@ -688,6 +688,29 @@ JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
     return tsType;
 }
 
+bool TSManager::IsBuiltinArrayType(kungfu::GateType gateType) const
+{
+    if (!IsClassInstanceTypeKind(gateType)) {
+        return false;
+    }
+    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
+    GlobalTSTypeRef classGT = GetClassType(gateGT);
+    if (IsBuiltinsDTSEnabled()) {
+        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::ARRAY);
+        const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
+        uint32_t arrayOffset = GetBuiltinOffset(idx);
+        bool hasCreatedGT = HasCreatedGT(builtinPandaFile, arrayOffset);
+        if (hasCreatedGT) {
+            auto gt = GetGTFromOffset(builtinPandaFile, arrayOffset);
+            return (gt == classGT);
+        }
+    }
+    uint32_t m = classGT.GetModuleId();
+    uint32_t l = classGT.GetLocalId();
+    return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
+           (l == static_cast<uint32_t>(BuiltinTypeId::ARRAY));
+}
+
 bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
 {
     if (!IsClassInstanceTypeKind(gateType)) {

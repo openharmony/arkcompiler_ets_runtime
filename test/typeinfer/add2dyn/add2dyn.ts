@@ -72,8 +72,8 @@ declare function AssertType(value:any, type:string):void;
     AssertType(ans14, "number");
     AssertType(ans15, "number");
     AssertType(ans16, "number");
-    AssertType(ans17, "number");
-    AssertType(ans18, "number");
-    AssertType(ans19, "number");
-    AssertType(ans20, "number");
+    AssertType(ans17, "double");
+    AssertType(ans18, "double");
+    AssertType(ans19, "double");
+    AssertType(ans20, "double");
 }

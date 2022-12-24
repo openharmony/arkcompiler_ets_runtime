@@ -427,6 +427,8 @@ public:
     IS_TSTYPEKIND_METHOD_LIST(IS_TSTYPEKIND)
 #undef IS_TSTYPEKIND
 
+    bool PUBLIC_API IsBuiltinArrayType(kungfu::GateType gateType) const;
+
     bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
