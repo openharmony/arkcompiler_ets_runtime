@@ -284,7 +284,7 @@ bool DFXJSNApi::IsSuspended(const EcmaVM *vm)
 bool DFXJSNApi::CheckSafepoint(const EcmaVM *vm)
 {
     ecmascript::JSThread* thread = vm->GetJSThread();
-    return  thread->CheckSafepoint();
+    return thread->CheckSafepoint();
 }
 
 bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames)

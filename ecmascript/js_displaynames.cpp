@@ -221,8 +221,8 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    UDisplayContext display_context[] = {uStyle};
-    icu::LocaleDisplayNames *icudisplaynames(icu::LocaleDisplayNames::createInstance(icuLocale, display_context, 1));
+    UDisplayContext displayContext[] = {uStyle};
+    icu::LocaleDisplayNames *icudisplaynames(icu::LocaleDisplayNames::createInstance(icuLocale, displayContext, 1));
     SetIcuLocaleDisplayNames(thread, displayNames, icudisplaynames, JSDisplayNames::FreeIcuLocaleDisplayNames);
     return displayNames;
 }

@@ -73,8 +73,8 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    ClassDataAccessor cda(*file, class_id);
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
         methodId.push_back(mda.GetMethodId());
@@ -108,8 +108,8 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    ClassDataAccessor cda(*file, class_id);
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
         methodId.push_back(mda.GetMethodId());
@@ -146,8 +146,8 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    ClassDataAccessor cda(*file, class_id);
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
         methodId.push_back(mda.GetMethodId());

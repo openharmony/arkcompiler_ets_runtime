@@ -501,7 +501,7 @@ template <typename T>
 WaitResult BuiltinsAtomics::DoWait(JSThread *thread, JSHandle<JSTaggedValue> &arrayBuffer,
                                    size_t index, T execpt, double timeout)
 {
-    MutexGuard lock_guard(g_mutex);
+    MutexGuard lockGuard(g_mutex);
     void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer.GetTaggedValue());
     ASSERT(buffer != nullptr);
     WaiterListNode *node = thread->GetEcmaVM()->GetWaiterListNode();
@@ -551,7 +551,7 @@ uint32_t BuiltinsAtomics::Signal(JSHandle<JSTaggedValue> &arrayBuffer, const siz
 {
     void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer.GetTaggedValue());
     ASSERT(buffer != nullptr);
-    MutexGuard lock_guard(g_mutex);
+    MutexGuard lockGuard(g_mutex);
     auto &locationListMap = g_waitLists->locationListMap_;
     auto iter = locationListMap.find(reinterpret_cast<int8_t *>(buffer) + index);
     if (iter == locationListMap.end()) {

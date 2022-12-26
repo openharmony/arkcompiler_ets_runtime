@@ -724,7 +724,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, 
                     { constPool, Int32ToTaggedInt(index), module });
                 Jump(&exit);
             }
-        } else if (type == ConstPoolType::OBJECT_LITERAL)  {
+        } else if (type == ConstPoolType::OBJECT_LITERAL) {
             Label isAOTLiteralInfo(env_);
             Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
             Bind(&isAOTLiteralInfo);

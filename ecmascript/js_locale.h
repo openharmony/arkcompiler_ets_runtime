@@ -359,8 +359,8 @@ public:
 
     static bool IsWellCollation(const icu::Locale &locale, const std::string &value)
     {
-        std::set<std::string>  irregularList = {"standard", "search"};
-        if (irregularList.find(value) !=  irregularList.end()) {
+        std::set<std::string> irregularList = {"standard", "search"};
+        if (irregularList.find(value) != irregularList.end()) {
             return false;
         }
         return IsWellExtension<icu::Collator>(locale, "collation", value);
@@ -435,7 +435,7 @@ public:
         if (value.length() < 3) {
             return false;
         }
-        char lastChar  = value[value.length() - 1];
+        char lastChar = value[value.length() - 1];
         if (lastChar == '-') {
             return false;
         }

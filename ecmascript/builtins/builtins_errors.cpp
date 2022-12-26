@@ -73,7 +73,7 @@ JSTaggedValue BuiltinsTypeError::ToString(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypeError::ThrowTypeError(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
-    [[maybe_unused]] EcmaHandleScope handle_scope(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     THROW_TYPE_ERROR_AND_RETURN(thread, "type error", JSTaggedValue::Exception());
 }
 

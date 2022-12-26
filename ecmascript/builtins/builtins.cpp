@@ -952,11 +952,11 @@ void Builtins::InitializeAsyncFunction(const JSHandle<GlobalEnv> &env, const JSH
     // AsyncFunction.prototype
     JSHandle<JSObject> asyncFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
     JSObject::SetPrototype(thread_, asyncFuncPrototype, env->GetFunctionPrototype());
-    JSHandle<JSTaggedValue> async_func_prototype_value(asyncFuncPrototype);
+    JSHandle<JSTaggedValue> asyncFuncPrototypeValue(asyncFuncPrototype);
 
     // AsyncFunction.prototype_or_hclass
     JSHandle<JSHClass> asyncFuncInstanceHClass =
-        factory_->NewEcmaHClass(JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, async_func_prototype_value);
+        factory_->NewEcmaHClass(JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, asyncFuncPrototypeValue);
 
     // AsyncFunction = new Function()
     JSHandle<JSFunction> asyncFunction = NewBuiltinConstructor(
@@ -1950,10 +1950,10 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     SetGetter(JSHandle<JSObject>(arrayFunction), speciesSymbol, speciesGetter);
 
     constexpr int arrProtoLen = 0;
-    JSHandle<JSTaggedValue> key_string = thread_->GlobalConstants()->GetHandledLengthString();
+    JSHandle<JSTaggedValue> keyString = thread_->GlobalConstants()->GetHandledLengthString();
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(arrProtoLen)), true, false,
                                   false);
-    JSObject::DefineOwnProperty(thread_, arrFuncPrototype, key_string, descriptor);
+    JSObject::DefineOwnProperty(thread_, arrFuncPrototype, keyString, descriptor);
 
     JSHandle<JSTaggedValue> valuesKey(factory_->NewFromASCII("values"));
     PropertyDescriptor desc(thread_);

@@ -265,7 +265,7 @@ HWTEST_F_L0(TaggedDictionaryTest, NumberDictionary_GetAllKey)
     EXPECT_TRUE(*dictHandle != nullptr);
     JSHandle<TaggedArray> storeKeyArray = factory->NewTaggedArray(keyNumbers);
     // create key and values
-    for (int i = keyNumbers - 2; i >= 0 ; i--) {
+    for (int i = keyNumbers - 2; i >= 0; i--) {
         JSHandle<NumberDictionary> tempHandle = dictHandle;
         JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(i));
         JSHandle<JSTaggedValue> valueHandle(JSTaggedValue::ToString(thread, keyHandle));

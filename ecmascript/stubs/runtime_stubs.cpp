@@ -570,8 +570,8 @@ DEF_RUNTIME_STUBS(AsyncFunctionResolveOrReject)
     RUNTIME_STUBS_HEADER(AsyncFunctionResolveOrReject);
     JSHandle<JSTaggedValue> asyncFuncObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSTaggedValue is_resolve = GetArg(argv, argc, 2);  // 2: means the second parameter
-    return RuntimeAsyncFunctionResolveOrReject(thread, asyncFuncObj, value, is_resolve.IsTrue()).GetRawData();
+    JSTaggedValue isResolve = GetArg(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeAsyncFunctionResolveOrReject(thread, asyncFuncObj, value, isResolve.IsTrue()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(AsyncGeneratorResolve)

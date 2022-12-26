@@ -379,7 +379,7 @@ public:
         if (pos != std::string::npos) {
             std::string strStart = strAsmOpcodeDisableRange.substr(0, pos);
             std::string strEnd = strAsmOpcodeDisableRange.substr(pos + 1);
-            int start =  strStart.empty() ? 0 : std::stoi(strStart);
+            int start = strStart.empty() ? 0 : std::stoi(strStart);
             int end = strEnd.empty() ? kungfu::BYTECODE_STUB_END_ID : std::stoi(strEnd);
             if (start >= 0 && start < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS &&
                 end >= 0 && end < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS &&

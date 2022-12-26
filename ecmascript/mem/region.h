@@ -261,7 +261,7 @@ public:
 
     bool InNonMovableSpace() const
     {
-        return packedData_.flags_.spaceFlag_  == RegionSpaceFlag::IN_NON_MOVABLE_SPACE;
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_NON_MOVABLE_SPACE;
     }
 
     bool InSnapshotSpace() const

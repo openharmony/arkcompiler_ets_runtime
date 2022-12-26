@@ -89,7 +89,7 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
 class FrameWriter;
 class Deoptimizier {
 public:
-    explicit Deoptimizier(JSThread * thread) : thread_(thread)
+    explicit Deoptimizier(JSThread *thread) : thread_(thread)
     {
         kungfu::CalleeReg callreg;
         numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());

@@ -59,7 +59,7 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
         auto ecmaVm = thread->GetEcmaVM();
         JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
         // disable gc
-        [[maybe_unused]] DisallowGarbageCollection no_gc;
+        [[maybe_unused]] DisallowGarbageCollection noGc;
         // 4.a Let newTarget be the active function object.
         newTarget = env->GetRegExpFunction();
         JSHandle<JSTaggedValue> constructorString = globalConst->GetHandledConstructorString();

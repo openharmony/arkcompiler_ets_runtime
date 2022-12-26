@@ -149,7 +149,7 @@ JSTaggedValue RuntimeStubs::RuntimeInstanceofByHandler(JSThread *thread, JSHandl
     }
 
     // 6. Return ? OrdinaryHasInstance(target, object).
-    bool res =  JSFunction::OrdinaryHasInstance(thread, target, object);
+    bool res = JSFunction::OrdinaryHasInstance(thread, target, object);
     return JSTaggedValue(res);
 }
 
@@ -2496,7 +2496,7 @@ OptimizedJSFunctionFrame *RuntimeStubs::GetOptimizedJSFunctionFrame(JSThread *th
     ASSERT(FrameHandler::GetFrameType(current) == FrameType::LEAVE_FRAME);
     FrameIterator it(current, thread);
     it.Advance();
-    ASSERT(it.GetFrameType()  == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    ASSERT(it.GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     return it.GetFrame<OptimizedJSFunctionFrame>();
 }
 

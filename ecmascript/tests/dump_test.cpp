@@ -1023,7 +1023,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::RB_TREENODE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), RBTreeNode::SIZE, 7U);;
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), RBTreeNode::SIZE, 7U);
                 break;
             }
             case JSType::JS_API_HASH_MAP: {

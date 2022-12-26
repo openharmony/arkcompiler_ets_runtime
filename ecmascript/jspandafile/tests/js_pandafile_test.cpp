@@ -131,10 +131,10 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    EXPECT_TRUE(class_id.IsValid());
+    File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
 
-    ClassDataAccessor cda(*file, class_id);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     int count = 0;
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
@@ -166,10 +166,10 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    EXPECT_TRUE(class_id.IsValid());
+    File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
 
-    ClassDataAccessor cda(*file, class_id);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     int count = 0;
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
@@ -217,10 +217,10 @@ HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    EXPECT_TRUE(class_id.IsValid());
+    File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
 
-    ClassDataAccessor cda(*file, class_id);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     int count = 0;
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
@@ -251,8 +251,8 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    EXPECT_TRUE(class_id.IsValid());
+    File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
 
     const File::Header *header = file->GetHeader();
     Span fileData(file->GetBase(), header->file_size);

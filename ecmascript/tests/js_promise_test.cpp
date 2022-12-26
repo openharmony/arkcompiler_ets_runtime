@@ -86,10 +86,10 @@ HWTEST_F_L0(JSPromiseTest, NewPromiseCapability)
     EXPECT_EQ(resolve.GetTaggedValue().IsCallable(), true);
     EXPECT_EQ(resolve.GetTaggedValue().IsCallable(), true);
 
-    JSHandle<JSPromise> resolve_promise(thread, resolve->GetPromise());
-    JSHandle<JSPromise> reject_promise(thread, reject->GetPromise());
-    EXPECT_EQ(JSTaggedValue::SameValue(newPromise.GetTaggedValue(), resolve_promise.GetTaggedValue()), true);
-    EXPECT_EQ(JSTaggedValue::SameValue(newPromise.GetTaggedValue(), reject_promise.GetTaggedValue()), true);
+    JSHandle<JSPromise> resolvedPromise(thread, resolve->GetPromise());
+    JSHandle<JSPromise> rejectedPromise(thread, reject->GetPromise());
+    EXPECT_EQ(JSTaggedValue::SameValue(newPromise.GetTaggedValue(), resolvedPromise.GetTaggedValue()), true);
+    EXPECT_EQ(JSTaggedValue::SameValue(newPromise.GetTaggedValue(), rejectedPromise.GetTaggedValue()), true);
 }
 
 HWTEST_F_L0(JSPromiseTest, FullFillPromise)

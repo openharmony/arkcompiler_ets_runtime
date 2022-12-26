@@ -191,7 +191,7 @@ public:
             return c;
         }
         int l = 0;
-        if (c >=  UICODE_FROM_UTF8[1] && c <= UICODE_FROM_UTF8[2]) { // 1 - 2: 0000 0080 - 0000 07FF
+        if (c >= UICODE_FROM_UTF8[1] && c <= UICODE_FROM_UTF8[2]) { // 1 - 2: 0000 0080 - 0000 07FF
             l = 1; // 1: 0000 0080 - 0000 07FF Unicode
         } else if (c >= UICODE_FROM_UTF8[3] && c <= UICODE_FROM_UTF8[4]) { // 3 - 4: 0000 0800 - 0000 FFFF
             l = 2; // 2: 0000 0800 - 0000 FFFF Unicode

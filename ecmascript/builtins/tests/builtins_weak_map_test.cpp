@@ -102,11 +102,11 @@ HWTEST_F_L0(BuiltinsWeakMapTest, CreateAndGetSize)
     JSHandle<JSWeakMap> map(thread, CreateBuiltinsWeakMap(thread));
 
     JSHandle<TaggedArray> array(factory->NewTaggedArray(1));
-    JSHandle<TaggedArray> internal_array(factory->NewTaggedArray(2));
+    JSHandle<TaggedArray> internalArray(factory->NewTaggedArray(2));
     JSTaggedValue value(JSObjectTestCreate(thread));
-    internal_array->Set(thread, 0, value);
-    internal_array->Set(thread, 1, JSTaggedValue(0));
-    auto result = JSArray::CreateArrayFromList(thread, internal_array);
+    internalArray->Set(thread, 0, value);
+    internalArray->Set(thread, 1, JSTaggedValue(0));
+    auto result = JSArray::CreateArrayFromList(thread, internalArray);
     array->Set(thread, 0, result);
 
     JSHandle<JSArray> values = JSArray::CreateArrayFromList(thread, array);

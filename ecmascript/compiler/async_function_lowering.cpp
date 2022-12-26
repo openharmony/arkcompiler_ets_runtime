@@ -200,7 +200,7 @@ void AsyncFunctionLowering::UpdateValueSelector(GateRef prevLoopBeginGate,
 
 bool AsyncFunctionLowering::IsAsyncRelated() const
 {
-    return  bcBuilder_->GetAsyncRelatedGates().size() > 0;
+    return bcBuilder_->GetAsyncRelatedGates().size() > 0;
 }
 }  // panda::ecmascript::kungfu
 

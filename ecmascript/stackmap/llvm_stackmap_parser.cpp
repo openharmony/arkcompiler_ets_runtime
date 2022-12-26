@@ -65,7 +65,7 @@ void LLVMStackMapParser::CalcCallSite()
             struct LocationTy loc = llvmStackMap_.StkMapRecord[recordNum + recordId].Locations[j];
             uint32_t instructionOffset = recordHead.InstructionOffset;
             uintptr_t callsite = address + instructionOffset;
-            uint64_t  patchPointID = recordHead.PatchPointID;
+            uint64_t patchPointID = recordHead.PatchPointID;
             if (j == LocationTy::CONSTANT_DEOPT_CNT_INDEX) {
                 ASSERT(loc.location == LocationTy::Kind::CONSTANT);
                 lastDeoptIndex = loc.OffsetOrSmallConstant + LocationTy::CONSTANT_DEOPT_CNT_INDEX;
