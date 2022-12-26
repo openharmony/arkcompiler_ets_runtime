@@ -27,9 +27,24 @@ public:
     NO_MOVE_SEMANTIC(OperationsStubBuilder);
     NO_COPY_SEMANTIC(OperationsStubBuilder);
     void GenerateCircuit() override {}
-
+    // binary op
     GateRef Equal(GateRef glue, GateRef left, GateRef right);
     GateRef NotEqual(GateRef glue, GateRef left, GateRef right);
+    GateRef Less(GateRef glue, GateRef left, GateRef right);
+    GateRef LessEq(GateRef glue, GateRef left, GateRef right);
+    GateRef Greater(GateRef glue, GateRef left, GateRef right);
+    GateRef GreaterEq(GateRef glue, GateRef left, GateRef right);
+    GateRef Add(GateRef glue, GateRef left, GateRef right);
+    GateRef Sub(GateRef glue, GateRef left, GateRef right);
+    GateRef Mul(GateRef glue, GateRef left, GateRef right);
+    GateRef Div(GateRef glue, GateRef left, GateRef right);
+    GateRef Mod(GateRef glue, GateRef left, GateRef right);
+    GateRef Shl(GateRef glue, GateRef left, GateRef right);
+    GateRef Shr(GateRef glue, GateRef left, GateRef right);
+    GateRef Ashr(GateRef glue, GateRef left, GateRef right);
+    GateRef And(GateRef glue, GateRef left, GateRef right);
+    GateRef Or(GateRef glue, GateRef left, GateRef right);
+    GateRef Xor(GateRef glue, GateRef left, GateRef right);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_OPERATIONS_STUB_BUILDER_H
