@@ -134,6 +134,11 @@ DEF_CALL_SIGNATURE(Xor)
     BINARY_CALL_SIGNATURE(Xor)
 }
 
+DEF_CALL_SIGNATURE(Instanceof)
+{
+    BINARY_CALL_SIGNATURE(Instanceof)
+}
+
 #ifndef NDEBUG
 DEF_CALL_SIGNATURE(MulGCTest)
 {
@@ -152,6 +157,39 @@ DEF_CALL_SIGNATURE(MulGCTest)
 #else
 DEF_CALL_SIGNATURE(MulGCTest) {}
 #endif
+
+#define UNARY_CALL_SIGNATURE(name)                              \
+    /* 2 : 2 input parameters */                                \
+    CallSignature signature(#name, 0, 2,                        \
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY()); \
+    *callSign = signature;                                      \
+    /* 2 : 2 input parameters */                                \
+    std::array<VariableType, 2> params = {                      \
+        VariableType::NATIVE_POINTER(),                         \
+        VariableType::JS_ANY(),                                 \
+    };                                                          \
+    callSign->SetParameters(params.data());                     \
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+
+DEF_CALL_SIGNATURE(Inc)
+{
+    UNARY_CALL_SIGNATURE(Inc)
+}
+
+DEF_CALL_SIGNATURE(Dec)
+{
+    UNARY_CALL_SIGNATURE(Dec)
+}
+
+DEF_CALL_SIGNATURE(Neg)
+{
+    UNARY_CALL_SIGNATURE(Neg)
+}
+
+DEF_CALL_SIGNATURE(Not)
+{
+    UNARY_CALL_SIGNATURE(Not)
+}
 
 DEF_CALL_SIGNATURE(TypeOf)
 {

@@ -269,6 +269,11 @@ GateRef CircuitBuilder::TaggedIsNumber(GateRef x)
     return BoolNot(TaggedIsObject(x));
 }
 
+GateRef CircuitBuilder::TaggedIsNumeric(GateRef x)
+{
+    return BoolOr(TaggedIsNumber(x), TaggedIsBigInt(x));
+}
+
 GateRef CircuitBuilder::DoubleIsINF(GateRef x)
 {
     GateRef infinity = Double(base::POSITIVE_INFINITY);
