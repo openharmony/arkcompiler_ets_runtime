@@ -134,7 +134,7 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, slice1)
     ecmaRuntimeCallInfo1->SetThis(arrBuf1.GetTaggedValue());
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result2 = BuiltinsSharedArrayBuffer::GetByteLength(ecmaRuntimeCallInfo1);
-
+    TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(result2.GetRawData(), JSTaggedValue(4).GetRawData());
 
     // IsShared false
@@ -142,14 +142,14 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, slice1)
     JSHandle<JSArrayBuffer> arrBuf2(thread, JSArrayBuffer::Cast(
                                     reinterpret_cast<TaggedObject *>(tagged1.GetRawData())));
     arrBuf2->SetShared(false);
-    ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(arrBuf2.GetTaggedValue());
-    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(1)));
-    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(5)));
+    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(arrBuf2.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(1)));
+    ecmaRuntimeCallInfo2->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(5)));
 
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSTaggedValue result3 = BuiltinsSharedArrayBuffer::Slice(ecmaRuntimeCallInfo);
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result3 = BuiltinsSharedArrayBuffer::Slice(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(thread->HasPendingException());
     EXPECT_EQ(result3, JSTaggedValue::Exception());
