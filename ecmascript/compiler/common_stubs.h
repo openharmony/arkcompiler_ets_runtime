@@ -38,7 +38,12 @@ namespace panda::ecmascript::kungfu {
     V(And)                            \
     V(Or)                             \
     V(Xor)                            \
+    V(Instanceof)                     \
     V(TypeOf)                         \
+    V(Inc)                            \
+    V(Dec)                            \
+    V(Neg)                            \
+    V(Not)                            \
     V(GetPropertyByName)              \
     V(DeprecatedGetPropertyByName)    \
     V(SetPropertyByName)              \

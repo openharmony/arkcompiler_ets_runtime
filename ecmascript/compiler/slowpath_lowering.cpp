@@ -1396,47 +1396,87 @@ void SlowPathLowering::LowerCloseIterator(GateRef gate)
 
 void SlowPathLowering::LowerInc(GateRef gate)
 {
-    const int id = RTSTUB_ID(Inc);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Inc,
+        { glue_, acc_.GetValueIn(gate, 0) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerDec(GateRef gate)
 {
-    const int id = RTSTUB_ID(Dec);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Dec,
+        { glue_, acc_.GetValueIn(gate, 0) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerToNumber(GateRef gate)
 {
-    const int id = RTSTUB_ID(ToNumber);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    Label notNumber(&builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), value);
+    builder_.Branch(builder_.TaggedIsNumber(value), &successExit, &notNumber);
+    builder_.Bind(&notNumber);
+    {
+        result = LowerCallRuntime(RTSTUB_ID(ToNumber), { value }, true);
+        builder_.Branch(builder_.TaggedIsException(*result), &exceptionExit, &successExit);
+    }
+    GateRef ret;
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> exceptionControl;
+    builder_.Bind(&successExit);
+    {
+        ret = *result;
+        successControl.emplace_back(builder_.GetState());
+        successControl.emplace_back(builder_.GetDepend());
+    }
+    builder_.Bind(&exceptionExit);
+    {
+        exceptionControl.emplace_back(builder_.GetState());
+        exceptionControl.emplace_back(builder_.GetDepend());
+    }
+
+    ReplaceHirToSubCfg(gate, ret, successControl, exceptionControl);
 }
 
 void SlowPathLowering::LowerNeg(GateRef gate)
 {
-    const int id = RTSTUB_ID(Neg);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Neg,
+        { glue_, acc_.GetValueIn(gate, 0) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerNot(GateRef gate)
 {
-    const int id = RTSTUB_ID(Not);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Not,
+        { glue_, acc_.GetValueIn(gate, 0) });
+    builder_.Branch(builder_.TaggedIsException(result), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerShl2(GateRef gate)
@@ -1546,11 +1586,15 @@ void SlowPathLowering::LowerIsIn(GateRef gate)
 
 void SlowPathLowering::LowerInstanceof(GateRef gate)
 {
-    const int id = RTSTUB_ID(InstanceOf);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Instanceof,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+    builder_.Branch(builder_.HasPendingException(glue_), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerFastStrictNotEqual(GateRef gate)
@@ -1896,11 +1940,35 @@ void SlowPathLowering::LowerLdBigInt(GateRef gate)
 
 void SlowPathLowering::LowerToNumeric(GateRef gate)
 {
-    const int id = RTSTUB_ID(ToNumeric);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0)});
-    ReplaceHirToCall(gate, newGate);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    Label notNumber(&builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), value);
+    builder_.Branch(builder_.TaggedIsNumeric(value), &successExit, &notNumber);
+    builder_.Bind(&notNumber);
+    {
+        result = LowerCallRuntime(RTSTUB_ID(ToNumeric), { value }, true);
+        builder_.Branch(builder_.TaggedIsException(*result), &exceptionExit, &successExit);
+    }
+    GateRef ret;
+    std::vector<GateRef> successControl;
+    std::vector<GateRef> exceptionControl;
+    builder_.Bind(&successExit);
+    {
+        ret = *result;
+        successControl.emplace_back(builder_.GetState());
+        successControl.emplace_back(builder_.GetDepend());
+    }
+    builder_.Bind(&exceptionExit);
+    {
+        exceptionControl.emplace_back(builder_.GetState());
+        exceptionControl.emplace_back(builder_.GetDepend());
+    }
+
+    ReplaceHirToSubCfg(gate, ret, successControl, exceptionControl);
 }
 
 void SlowPathLowering::LowerDynamicImport(GateRef gate, GateRef jsFunc)

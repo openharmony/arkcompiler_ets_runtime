@@ -1086,4 +1086,199 @@ GateRef OperationsStubBuilder::Xor(GateRef glue, GateRef left, GateRef right)
     env->SubCfgExit();
     return ret;
 }
+
+GateRef OperationsStubBuilder::Inc(GateRef glue, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label valueIsInt(env);
+    Label valueNotInt(env);
+    Label slowPath(env);
+    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
+    Bind(&valueIsInt);
+    {
+        GateRef valueInt = GetInt32OfTInt(value);
+        Label valueNoOverflow(env);
+        Branch(Int32Equal(valueInt, Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
+        Bind(&valueNoOverflow);
+        {
+            result = IntToTaggedPtr(Int32Add(valueInt, Int32(1)));
+            Jump(&exit);
+        }
+    }
+    Bind(&valueNotInt);
+    {
+        Label valueIsDouble(env);
+        Branch(TaggedIsDouble(value), &valueIsDouble, &slowPath);
+        Bind(&valueIsDouble);
+        {
+            GateRef valueDouble = GetDoubleOfTDouble(value);
+            result = DoubleToTaggedDoublePtr(DoubleAdd(valueDouble, Double(1.0)));
+            Jump(&exit);
+        }
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Inc), { value });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Dec(GateRef glue, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label valueIsInt(env);
+    Label valueNotInt(env);
+    Label slowPath(env);
+    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
+    Bind(&valueIsInt);
+    {
+        GateRef valueInt = GetInt32OfTInt(value);
+        Label valueNoOverflow(env);
+        Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueNotInt, &valueNoOverflow);
+        Bind(&valueNoOverflow);
+        {
+            result = IntToTaggedPtr(Int32Sub(valueInt, Int32(1)));
+            Jump(&exit);
+        }
+    }
+    Bind(&valueNotInt);
+    {
+        Label valueIsDouble(env);
+        Branch(TaggedIsDouble(value), &valueIsDouble, &slowPath);
+        Bind(&valueIsDouble);
+        {
+            GateRef valueDouble = GetDoubleOfTDouble(value);
+            result = DoubleToTaggedDoublePtr(DoubleSub(valueDouble, Double(1.0)));
+            Jump(&exit);
+        }
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(Dec), { value });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label valueIsInt(env);
+    Label valueNotInt(env);
+    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
+    Bind(&valueIsInt);
+    {
+        GateRef valueInt = GetInt32OfTInt(value);
+        Label valueIsZero(env);
+        Label valueNotZero(env);
+        Branch(Int32Equal(valueInt, Int32(0)), &valueIsZero, &valueNotZero);
+        Bind(&valueIsZero);
+        {
+            result = DoubleToTaggedDoublePtr(Double(-0.0));
+            Jump(&exit);
+        }
+        Bind(&valueNotZero);
+        {
+            Label valueIsInt32Min(env);
+            Label valueNotInt32Min(env);
+            Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueIsInt32Min, &valueNotInt32Min);
+            Bind(&valueIsInt32Min);
+            {
+                result = DoubleToTaggedDoublePtr(Double(-static_cast<double>(INT32_MIN)));
+                Jump(&exit);
+            }
+            Bind(&valueNotInt32Min);
+            {
+                result = IntToTaggedPtr(Int32Sub(Int32(0), valueInt));
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&valueNotInt);
+    {
+        Label valueIsDouble(env);
+        Label valueNotDouble(env);
+        Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
+        Bind(&valueIsDouble);
+        {
+            GateRef valueDouble = GetDoubleOfTDouble(value);
+            result = DoubleToTaggedDoublePtr(DoubleSub(Double(0), valueDouble));
+            Jump(&exit);
+        }
+        Bind(&valueNotDouble);
+        {
+            // slow path
+            result = CallRuntime(glue, RTSTUB_ID(Neg), { value });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::Not(GateRef glue, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label numberIsInt(env);
+    Label numberNotInt(env);
+    Branch(TaggedIsInt(value), &numberIsInt, &numberNotInt);
+    Bind(&numberIsInt);
+    {
+        GateRef valueInt = GetInt32OfTInt(value);
+        result = IntToTaggedPtr(Int32Not(valueInt));
+        Jump(&exit);
+    }
+    Bind(&numberNotInt);
+    {
+        Label numberIsDouble(env);
+        Label numberNotDouble(env);
+        Branch(TaggedIsDouble(value), &numberIsDouble, &numberNotDouble);
+        Bind(&numberIsDouble);
+        {
+            GateRef valueDouble = GetDoubleOfTDouble(value);
+            result = IntToTaggedPtr(Int32Not(DoubleToInt(glue, valueDouble)));
+            Jump(&exit);
+        }
+        Bind(&numberNotDouble);
+        {
+            // slow path
+            result = CallRuntime(glue, RTSTUB_ID(Not), { value });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu

@@ -27,6 +27,12 @@ public:
     NO_MOVE_SEMANTIC(OperationsStubBuilder);
     NO_COPY_SEMANTIC(OperationsStubBuilder);
     void GenerateCircuit() override {}
+    // unary op
+    GateRef Inc(GateRef glue, GateRef value);
+    GateRef Dec(GateRef glue, GateRef value);
+    GateRef Neg(GateRef glue, GateRef value);
+    GateRef Not(GateRef glue, GateRef value);
+
     // binary op
     GateRef Equal(GateRef glue, GateRef left, GateRef right);
     GateRef NotEqual(GateRef glue, GateRef left, GateRef right);

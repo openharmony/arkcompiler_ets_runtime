@@ -577,6 +577,13 @@ GateRef CircuitBuilder::Construct(std::vector<GateRef> args)
     return callGate;
 }
 
+GateRef CircuitBuilder::HasPendingException(GateRef glue)
+{
+    GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
+    GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
+    return TaggedIsNotHole(exception);
+}
+
 GateRef CircuitBuilder::TaggedIsString(GateRef obj)
 {
     Label entry(env_);

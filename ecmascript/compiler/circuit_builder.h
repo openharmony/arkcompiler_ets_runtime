@@ -347,6 +347,7 @@ public:
     inline GateRef TaggedIsDouble(GateRef x);
     inline GateRef TaggedIsObject(GateRef x);
     inline GateRef TaggedIsNumber(GateRef x);
+    inline GateRef TaggedIsNumeric(GateRef x);
     inline GateRef TaggedIsNotHole(GateRef x);
     inline GateRef TaggedIsHole(GateRef x);
     inline GateRef TaggedIsUndefined(GateRef x);
@@ -400,6 +401,7 @@ public:
     inline GateRef GetGlobalConstantString(ConstantIndex index);
 
     GateRef IsJSHClass(GateRef obj);
+    GateRef HasPendingException(GateRef glue);
 
     // middle ir: operations with any type
     template<TypedBinOp Op>

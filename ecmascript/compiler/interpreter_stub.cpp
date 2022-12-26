@@ -828,185 +828,32 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStlexvarPrefImm4Imm4V8)
 
 DECLARE_ASM_HANDLER(HandleIncImm8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef value = *varAcc;
-    Label valueIsInt(env);
-    Label valueNotInt(env);
-    Label slowPath(env);
-    Label accDispatch(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
-    Bind(&valueIsInt);
-    {
-        GateRef valueInt = GetInt32OfTInt(value);
-        Label valueNoOverflow(env);
-        Branch(Int32Equal(valueInt, Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
-        Bind(&valueNoOverflow);
-        {
-            varAcc = IntToTaggedPtr(Int32Add(valueInt, Int32(1)));
-            Jump(&accDispatch);
-        }
-    }
-    Bind(&valueNotInt);
-    {
-        Label valueIsDouble(env);
-        Label valueNotDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
-        Bind(&valueIsDouble);
-        {
-            GateRef valueDouble = GetDoubleOfTDouble(value);
-            varAcc = DoubleToTaggedDoublePtr(DoubleAdd(valueDouble, Double(1.0)));
-            Jump(&accDispatch);
-        }
-        Bind(&valueNotDouble);
-        Jump(&slowPath);
-    }
-    Bind(&slowPath);
-    {
-        // slow path
-        GateRef result = CallRuntime(glue, RTSTUB_ID(Inc), { value });
-        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(INC_IMM8));
-    }
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(INC_IMM8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Inc(glue, acc);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(INC_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedIncPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    Label valueIsInt(env);
-    Label valueNotInt(env);
-    Label slowPath(env);
-    Label accDispatch(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
-    Bind(&valueIsInt);
-    {
-        GateRef valueInt = GetInt32OfTInt(value);
-        Label valueNoOverflow(env);
-        Branch(Int32Equal(valueInt, Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
-        Bind(&valueNoOverflow);
-        {
-            varAcc = IntToTaggedPtr(Int32Add(valueInt, Int32(1)));
-            Jump(&accDispatch);
-        }
-    }
-    Bind(&valueNotInt);
-    {
-        Label valueIsDouble(env);
-        Label valueNotDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
-        Bind(&valueIsDouble);
-        {
-            GateRef valueDouble = GetDoubleOfTDouble(value);
-            varAcc = DoubleToTaggedDoublePtr(DoubleAdd(valueDouble, Double(1.0)));
-            Jump(&accDispatch);
-        }
-        Bind(&valueNotDouble);
-        Jump(&slowPath);
-    }
-    Bind(&slowPath);
-    {
-        // slow path
-        GateRef result = CallRuntime(glue, RTSTUB_ID(Inc), { value });
-        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_INC_PREF_V8));
-    }
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(DEPRECATED_INC_PREF_V8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Inc(glue, value);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_INC_PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleDecImm8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef value = *varAcc;
-    Label valueIsInt(env);
-    Label valueNotInt(env);
-    Label slowPath(env);
-    Label accDispatch(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
-    Bind(&valueIsInt);
-    {
-        GateRef valueInt = GetInt32OfTInt(value);
-        Label valueNoOverflow(env);
-        Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueNotInt, &valueNoOverflow);
-        Bind(&valueNoOverflow);
-        {
-            varAcc = IntToTaggedPtr(Int32Sub(valueInt, Int32(1)));
-            Jump(&accDispatch);
-        }
-    }
-    Bind(&valueNotInt);
-    {
-        Label valueIsDouble(env);
-        Label valueNotDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
-        Bind(&valueIsDouble);
-        {
-            GateRef valueDouble = GetDoubleOfTDouble(value);
-            varAcc = DoubleToTaggedDoublePtr(DoubleSub(valueDouble, Double(1.0)));
-            Jump(&accDispatch);
-        }
-        Bind(&valueNotDouble);
-        Jump(&slowPath);
-    }
-    Bind(&slowPath);
-    {
-        // slow path
-        GateRef result = CallRuntime(glue, RTSTUB_ID(Dec), { value });
-        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEC_IMM8));
-    }
-
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(DEC_IMM8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Dec(glue, acc);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEC_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedDecPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    Label valueIsInt(env);
-    Label valueNotInt(env);
-    Label slowPath(env);
-    Label accDispatch(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
-    Bind(&valueIsInt);
-    {
-        GateRef valueInt = GetInt32OfTInt(value);
-        Label valueNoOverflow(env);
-        Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueNotInt, &valueNoOverflow);
-        Bind(&valueNoOverflow);
-        {
-            varAcc = IntToTaggedPtr(Int32Sub(valueInt, Int32(1)));
-            Jump(&accDispatch);
-        }
-    }
-    Bind(&valueNotInt);
-    {
-        Label valueIsDouble(env);
-        Label valueNotDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
-        Bind(&valueIsDouble);
-        {
-            GateRef valueDouble = GetDoubleOfTDouble(value);
-            varAcc = DoubleToTaggedDoublePtr(DoubleSub(valueDouble, Double(1.0)));
-            Jump(&accDispatch);
-        }
-        Bind(&valueNotDouble);
-        Jump(&slowPath);
-    }
-    Bind(&slowPath);
-    {
-        // slow path
-        GateRef result = CallRuntime(glue, RTSTUB_ID(Dec), { value });
-        CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_DEC_PREF_V8));
-    }
-
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(DEPRECATED_DEC_PREF_V8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Dec(glue, value);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_DEC_PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleExpImm8V8)
@@ -1742,193 +1589,32 @@ DECLARE_ASM_HANDLER(HandleWideStownbyindexPrefV8Imm32)
 
 DECLARE_ASM_HANDLER(HandleNegImm8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef value = *varAcc;
-
-    Label valueIsInt(env);
-    Label valueNotInt(env);
-    Label accDispatch(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
-    Bind(&valueIsInt);
-    {
-        GateRef valueInt = GetInt32OfTInt(value);
-        Label valueIsZero(env);
-        Label valueNotZero(env);
-        Branch(Int32Equal(valueInt, Int32(0)), &valueIsZero, &valueNotZero);
-        Bind(&valueIsZero);
-        {
-            // Format::IMM8_V8： size = 3
-            varAcc = DoubleToTaggedDoublePtr(Double(-0.0));
-            Jump(&accDispatch);
-        }
-        Bind(&valueNotZero);
-        {
-            Label valueIsInt32Min(env);
-            Label valueNotInt32Min(env);
-            Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueIsInt32Min, &valueNotInt32Min);
-            Bind(&valueIsInt32Min);
-            {
-                varAcc = DoubleToTaggedDoublePtr(Double(-static_cast<double>(INT32_MIN)));
-                Jump(&accDispatch);
-            }
-            Bind(&valueNotInt32Min);
-            {
-                varAcc = IntToTaggedPtr(Int32Sub(Int32(0), valueInt));
-                Jump(&accDispatch);
-            }
-        }
-    }
-    Bind(&valueNotInt);
-    {
-        Label valueIsDouble(env);
-        Label valueNotDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
-        Bind(&valueIsDouble);
-        {
-            GateRef valueDouble = GetDoubleOfTDouble(value);
-            varAcc = DoubleToTaggedDoublePtr(DoubleSub(Double(0), valueDouble));
-            Jump(&accDispatch);
-        }
-        Bind(&valueNotDouble);
-        {
-            // slow path
-            GateRef result = CallRuntime(glue, RTSTUB_ID(Neg), { value });
-            CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(NEG_IMM8));
-        }
-    }
-
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(NEG_IMM8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Neg(glue, acc);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NEG_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedNegPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-
-    Label valueIsInt(env);
-    Label valueNotInt(env);
-    Label accDispatch(env);
-    Branch(TaggedIsInt(value), &valueIsInt, &valueNotInt);
-    Bind(&valueIsInt);
-    {
-        GateRef valueInt = GetInt32OfTInt(value);
-        Label valueIsZero(env);
-        Label valueNotZero(env);
-        Branch(Int32Equal(valueInt, Int32(0)), &valueIsZero, &valueNotZero);
-        Bind(&valueIsZero);
-        {
-            // Format::IMM8_V8： size = 3
-            varAcc = DoubleToTaggedDoublePtr(Double(-0.0));
-            Jump(&accDispatch);
-        }
-        Bind(&valueNotZero);
-        {
-            varAcc = IntToTaggedPtr(Int32Sub(Int32(0), valueInt));
-            Jump(&accDispatch);
-        }
-    }
-    Bind(&valueNotInt);
-    {
-        Label valueIsDouble(env);
-        Label valueNotDouble(env);
-        Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
-        Bind(&valueIsDouble);
-        {
-            GateRef valueDouble = GetDoubleOfTDouble(value);
-            varAcc = DoubleToTaggedDoublePtr(DoubleSub(Double(0), valueDouble));
-            Jump(&accDispatch);
-        }
-        Bind(&valueNotDouble);
-        {
-            // slow path
-            GateRef result = CallRuntime(glue, RTSTUB_ID(Neg), { value });
-            CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(DEPRECATED_NEG_PREF_V8));
-        }
-    }
-
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(DEPRECATED_NEG_PREF_V8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Neg(glue, value);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_NEG_PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleNotImm8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef value = *varAcc;
-    DEFVARIABLE(number, VariableType::INT32(), Int32(0));
-    Label numberIsInt(env);
-    Label numberNotInt(env);
-    Label accDispatch(env);
-    Branch(TaggedIsInt(value), &numberIsInt, &numberNotInt);
-    Bind(&numberIsInt);
-    {
-        number = GetInt32OfTInt(value);
-        varAcc = IntToTaggedPtr(Int32Not(*number));
-        Jump(&accDispatch);
-    }
-    Bind(&numberNotInt);
-    {
-        Label numberIsDouble(env);
-        Label numberNotDouble(env);
-        Branch(TaggedIsDouble(value), &numberIsDouble, &numberNotDouble);
-        Bind(&numberIsDouble);
-        {
-            GateRef valueDouble = GetDoubleOfTDouble(value);
-            number = DoubleToInt(glue, valueDouble);
-            varAcc = IntToTaggedPtr(Int32Not(*number));
-            Jump(&accDispatch);
-        }
-        Bind(&numberNotDouble);
-        {
-            // slow path
-            GateRef result = CallRuntime(glue, RTSTUB_ID(Not), { value });
-            CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(NOT_IMM8));
-        }
-    }
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(NOT_IMM8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Not(glue, acc);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NOT_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedNotPrefV8)
 {
-    auto env = GetEnvironment();
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
-    DEFVARIABLE(number, VariableType::INT32(), Int32(0));
-    Label numberIsInt(env);
-    Label numberNotInt(env);
-    Label accDispatch(env);
-    Branch(TaggedIsInt(value), &numberIsInt, &numberNotInt);
-    Bind(&numberIsInt);
-    {
-        number = GetInt32OfTInt(value);
-        varAcc = IntToTaggedPtr(Int32Not(*number));
-        Jump(&accDispatch);
-    }
-    Bind(&numberNotInt);
-    {
-        Label numberIsDouble(env);
-        Label numberNotDouble(env);
-        Branch(TaggedIsDouble(value), &numberIsDouble, &numberNotDouble);
-        Bind(&numberIsDouble);
-        {
-            GateRef valueDouble = GetDoubleOfTDouble(value);
-            number = DoubleToInt(glue, valueDouble);
-            varAcc = IntToTaggedPtr(Int32Not(*number));
-            Jump(&accDispatch);
-        }
-        Bind(&numberNotDouble);
-        {
-            // slow path
-            GateRef result = CallRuntime(glue, RTSTUB_ID(Not), { value });
-            CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(DEPRECATED_NOT_PREF_V8));
-        }
-    }
-    Bind(&accDispatch);
-    DISPATCH_WITH_ACC(DEPRECATED_NOT_PREF_V8);
+    OperationsStubBuilder builder(this);
+    GateRef result = builder.Not(glue, value);
+    CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEPRECATED_NOT_PREF_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleAnd2Imm8V8)
