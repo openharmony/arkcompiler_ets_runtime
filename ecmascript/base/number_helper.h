@@ -63,6 +63,15 @@ static constexpr size_t INT32_BITS = 32;
 static constexpr size_t INT16_BITS = 16;
 static constexpr size_t INT8_BITS = 8;
 
+// help defines for random
+static constexpr int LEFT52 = 52 ;
+static constexpr int RIGHT12 = 12;
+static constexpr uint32_t USE_LEFT = 0x3ff;
+static constexpr int SECONDS_TO_SUBTLE = 1000000;
+static constexpr int RIGHT27 = 27;
+static constexpr int LEFT25 = 25;
+static constexpr uint64_t  GET_MULTIPLY = 0x2545F4914F6CDD1D;
+
 class NumberHelper {
 public:
     static bool IsFinite(JSTaggedValue number)
@@ -93,6 +102,14 @@ private:
     static CString IntergerToString(double number, int radix);
     static CString DecimalsToString(double *numberInteger, double fraction, int radix, double delta);
     static bool GotoNonspace(uint8_t **ptr, const uint8_t *end);
+};
+class RandomGenerator {
+public:
+    static uint64_t &GetRandomState();
+    static uint64_t XorShift64(uint64_t *pVal);
+    static void InitRandom();
+private:
+    static thread_local uint64_t randomState;
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_NUMBER_HELPER_H
