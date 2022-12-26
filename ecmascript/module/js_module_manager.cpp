@@ -20,10 +20,12 @@
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/js_module_source_text.h"
+
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/require/js_cjs_module.h"
 #ifdef PANDA_TARGET_WINDOWS
@@ -626,21 +628,13 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         if (pos == 0) {
             moduleRequestName = moduleRequestName.substr(2); // 2 means jump "./"
         }
-        size_t left = 0;
-        while ((pos = moduleRequestName.find("../", left)) != CString::npos) {
-            size_t index = moduleRecordName.rfind('/');
-            ASSERT(index != CString::npos);
-            moduleRecordName = moduleRecordName.substr(0, index);
-            left = pos + 3; // 3 : means jump current "../"
-        }
-        moduleRequestName = moduleRequestName.substr(left);
         pos = moduleRecordName.rfind('/');
         if (pos != CString::npos) {
             entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
         } else {
             entryPoint = moduleRequestName;
         }
-
+        entryPoint = JSPandaFileExecutor::NormalizePath(entryPoint);
         if (!jsPandaFile->HasRecord(entryPoint)) {
             entryPoint += "/index";
         }
@@ -664,8 +658,12 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         CString key = "";
         if (pos != CString::npos) {
             auto info = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(moduleRecordName);
-            key = info.npmPackageName + "/" + JSPandaFile::NODE_MODULES + "/" + moduleRequestName;
-            AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
+            CString PackageName = info.npmPackageName;
+            while (entryPoint.empty() && (pos = PackageName.rfind(JSPandaFile::NODE_MODULES)) != CString::npos) {
+                key = PackageName + "/" + JSPandaFile::NODE_MODULES + moduleRequestName;
+                AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
+                PackageName = PackageName.substr(0, pos > 0 ? pos - 1 : 0);
+            }
         }
 
         if (entryPoint.empty()) {
@@ -700,7 +698,6 @@ bool ModuleManager::IsImportedPath(const CString &moduleRequestName, size_t &typ
         return true;
     }
     return moduleRequestName.find("./") == 0 || moduleRequestName.find("../") == 0;
-    
 }
 
 void ModuleManager::AddIndexToEntryPoint(const JSPandaFile *jsPandaFile, CString &entryPoint, CString &key)

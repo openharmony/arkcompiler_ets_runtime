@@ -106,7 +106,6 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     } else {
         CString currentEntryPoint = ConvertToString(entrypointVal.GetTaggedValue());
         CString requestStr = ConvertToString(request.GetTaggedValue());
-        requestStr = JSPandaFileExecutor::NormalizePath(requestStr);
         requestEntryPoint = ModuleManager::ConcatFileNameWithMerge(jsPandaFile, mergedFilename,
                                                                    currentEntryPoint, requestStr);
         filename.Update(factory->NewFromUtf8(requestEntryPoint));
