@@ -31,6 +31,8 @@ public:
     struct JSRecordInfo {
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
+        bool isJson {false};
+        int jsonStringId {-1};
         CUnorderedSet<const EcmaVM *> vmListOfParsedConstPool;
         int moduleRecordIdx {-1};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
@@ -73,6 +75,7 @@ public:
     static constexpr char TYPE_SUMMARY_OFFSET[] = "typeSummaryOffset";
 
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
+    static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
     static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
@@ -203,6 +206,10 @@ public:
     bool PUBLIC_API IsModule(const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
     bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
+
+    bool IsJson(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+
+    const char *GetJsonStringId(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
     bool IsBundlePack() const
     {
