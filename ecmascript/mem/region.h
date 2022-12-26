@@ -274,6 +274,11 @@ public:
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
     }
 
+    bool InAppSpawnSpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_APPSPAWN_SPACE;
+    }
+
     bool InHeapSpace() const
     {
         uint8_t space = packedData_.flags_.spaceFlag_;

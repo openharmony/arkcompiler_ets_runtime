@@ -2114,7 +2114,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
     dstElements->SetLength(newLength);
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace()) {
+    if (region->InYoungSpace() && !region->IsMarking()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
