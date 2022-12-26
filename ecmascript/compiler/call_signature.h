@@ -324,6 +324,11 @@ private:
     V(And)                                  \
     V(Or)                                   \
     V(Xor)                                  \
+    V(Instanceof)                           \
+    V(Inc)                                  \
+    V(Dec)                                  \
+    V(Neg)                                  \
+    V(Not)                                  \
     V(SetPropertyByName)                    \
     V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \

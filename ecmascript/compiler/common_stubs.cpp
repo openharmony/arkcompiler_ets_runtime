@@ -189,6 +189,46 @@ void XorStubBuilder::GenerateCircuit()
     Return(operationBuilder.Xor(glue, x, y));
 }
 
+void InstanceofStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    Return(InstanceOf(glue, x, y));
+}
+
+void IncStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Inc(glue, x));
+}
+
+void DecStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Dec(glue, x));
+}
+
+void NegStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Neg(glue, x));
+}
+
+void NotStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Not(glue, x));
+}
+
 void GetPropertyByIndexStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
