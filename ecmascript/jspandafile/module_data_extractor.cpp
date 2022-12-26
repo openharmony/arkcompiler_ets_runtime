@@ -20,6 +20,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/module/js_module_manager.h"
 
 #include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/literal_data_accessor-inl.h"
@@ -96,6 +97,28 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::CJSMODULE);
+    moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
+
+    return JSHandle<JSTaggedValue>::Cast(moduleRecord);
+}
+
+JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                             const CString &moduleFilename, const CString &recordName)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
+
+    JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
+    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
+    SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
+    JSTaggedValue jsonData = ModuleManager::JsonParse(thread, jsPandaFile, recordName);
+    moduleRecord->StoreModuleValue(thread, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
+
+    JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
+    moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
+
+    moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
+    moduleRecord->SetTypes(ModuleTypes::JSONMODULE);
     moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
