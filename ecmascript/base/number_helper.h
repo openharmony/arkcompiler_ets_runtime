@@ -66,7 +66,7 @@ static constexpr size_t INT8_BITS = 8;
 static constexpr size_t JS_DTOA_BUF_SIZE = 128;
 
 // help defines for random
-static constexpr int LEFT52 = 52 ;
+static constexpr int LEFT52 = 52;
 static constexpr int RIGHT12 = 12;
 static constexpr uint32_t USE_LEFT = 0x3ff;
 static constexpr int SECONDS_TO_SUBTLE = 1000000;

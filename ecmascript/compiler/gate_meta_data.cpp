@@ -47,7 +47,7 @@ std::string MachineTypeToStr(MachineType machineType)
 std::string GateMetaData::Str(OpCode opcode)
 {
     const std::map<OpCode, const char *> strMap = {
-#define GATE_NAME_MAP(NAME, OP, R, S, D, V)  { OpCode::OP, #OP },
+#define GATE_NAME_MAP(NAME, OP, R, S, D, V) { OpCode::OP, #OP },
     IMMUTABLE_META_DATA_CACHE_LIST(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_SIZE(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)

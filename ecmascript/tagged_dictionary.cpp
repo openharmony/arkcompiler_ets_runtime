@@ -199,8 +199,8 @@ void NumberDictionary::GetAllEnumKeys(const JSThread *thread, const JSHandle<Num
     }
     std::sort(sortArr.begin(), sortArr.end(), CompKey);
     for (auto entry : sortArr) {
-        JSHandle<JSTaggedValue> key_handle(thread, entry);
-        JSHandle<EcmaString> str = JSTaggedValue::ToString(const_cast<JSThread *>(thread), key_handle);
+        JSHandle<JSTaggedValue> keyHandle(thread, entry);
+        JSHandle<EcmaString> str = JSTaggedValue::ToString(const_cast<JSThread *>(thread), keyHandle);
         ASSERT_NO_ABRUPT_COMPLETION(thread);
         keyArray->Set(thread, arrayIndex + static_cast<uint32_t>(offset), str.GetTaggedValue());
         arrayIndex++;

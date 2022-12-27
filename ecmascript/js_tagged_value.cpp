@@ -241,9 +241,9 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
             }
         }
         if (y->IsNumber() || y->IsStringOrSymbol() || y->IsBoolean() || y->IsBigInt()) {
-            JSHandle<JSTaggedValue> x_primitive(thread, ToPrimitive(thread, x));
+            JSHandle<JSTaggedValue> xPrimitive(thread, ToPrimitive(thread, x));
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x_primitive, y);
+            return Equal(thread, xPrimitive, y);
         }
         return false;
     }
@@ -887,8 +887,8 @@ bool JSTaggedValue::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
         return JSProxy::HasProperty(thread, JSHandle<JSProxy>(obj), keyHandle);
     }
     if (obj->IsTypedArray()) {
-        JSHandle<JSTaggedValue> key_handle(thread, JSTaggedValue(key));
-        return JSTypedArray::HasProperty(thread, obj, key_handle);
+        JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
+        return JSTypedArray::HasProperty(thread, obj, keyHandle);
     }
     if (obj->IsSpecialContainer()) {
         return HasContainerProperty(thread, obj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(key)));

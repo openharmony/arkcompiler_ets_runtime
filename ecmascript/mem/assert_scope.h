@@ -97,13 +97,13 @@ using AllowHeapAlloc = AssertScopeT<AssertType::HEAP_ALLOC_ASSERT, true, IS_ALLO
 
 #if (!defined NDEBUG) || (defined RUN_TEST)
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DISALLOW_GARBAGE_COLLECTION [[maybe_unused]] DisallowGarbageCollection no_gc
+#define DISALLOW_GARBAGE_COLLECTION [[maybe_unused]] DisallowGarbageCollection noGc
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ALLOW_GARBAGE_COLLECTION [[maybe_unused]] AllowGarbageCollection allow_gc
+#define ALLOW_GARBAGE_COLLECTION [[maybe_unused]] AllowGarbageCollection allowGc
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define DISALLOW_HEAP_ALLOC [[maybe_unused]] DisAllowHeapAlloc no_heap_alloc
+#define DISALLOW_HEAP_ALLOC [[maybe_unused]] DisAllowHeapAlloc noHeapAlloc
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ALLOW_HEAP_ALLOC [[maybe_unused]] AllowHeapAlloc allow_heap_alloc
+#define ALLOW_HEAP_ALLOC [[maybe_unused]] AllowHeapAlloc allowHeapAlloc
 #else
 #define DISALLOW_GARBAGE_COLLECTION
 #define ALLOW_GARBAGE_COLLECTION

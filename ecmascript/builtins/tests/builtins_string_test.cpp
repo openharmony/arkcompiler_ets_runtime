@@ -572,18 +572,18 @@ HWTEST_F_L0(BuiltinsStringTest, toLocaleLowerCase2)
 {
     ASSERT_NE(thread, nullptr);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<EcmaString> this_str = factory->NewFromUtf8("有ABC");
+    JSHandle<EcmaString> thisStr = factory->NewFromUtf8("有ABC");
 
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(this_str.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsString::ToLocaleLowerCase(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
-    JSHandle<EcmaString> result_handle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
+    JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> test = factory->NewFromUtf8("有abc");
-    ASSERT_EQ(EcmaStringAccessor::Compare(instance, result_handle, test), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "ABC".toLowerCase()
@@ -737,20 +737,20 @@ HWTEST_F_L0(BuiltinsStringTest, normalize1)
 {
     ASSERT_NE(thread, nullptr);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<EcmaString> this_str = factory->NewFromASCII("abc");
+    JSHandle<EcmaString> thisStr = factory->NewFromASCII("abc");
     JSHandle<EcmaString> val = factory->NewFromASCII("NFC");
 
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(this_str.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(thisStr.GetTaggedValue());
     ecmaRuntimeCallInfo->SetCallArg(0, val.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsString::Normalize(ecmaRuntimeCallInfo);
     ASSERT_TRUE(result.IsString());
-    JSHandle<EcmaString> result_handle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
+    JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
     JSHandle<EcmaString> test = factory->NewFromASCII("abc");
-    ASSERT_EQ(EcmaStringAccessor::Compare(instance, result_handle, test), 0);
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
 // "abc".repeat(5)

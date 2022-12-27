@@ -144,12 +144,12 @@ JSTaggedValue BuiltinsDate::SetTime(EcmaRuntimeCallInfo *argv)
     if (!msg->IsDate()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    JSHandle<JSDate> js_data(thread, JSDate::Cast(msg->GetTaggedObject()));
+    JSHandle<JSDate> jsDate(thread, JSDate::Cast(msg->GetTaggedObject()));
     JSTaggedNumber res = JSTaggedValue::ToNumber(thread, GetCallArg(argv, 0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(argv->GetThread());
     double number = res.GetNumber();
     double value = JSDate::TimeClip(number);
-    js_data->SetTimeValue(thread, JSTaggedValue(value));
+    jsDate->SetTimeValue(thread, JSTaggedValue(value));
     return GetTaggedDouble(value);
 }
 

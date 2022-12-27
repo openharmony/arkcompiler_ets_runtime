@@ -414,8 +414,8 @@ JSHandle<TaggedArray> TSTypeParser::GetExportDataFromRecord(const JSPandaFile *j
     }
 
     JSHandle<TaggedArray> typeOfExportedSymbols(thread_, thread_->GlobalConstants()->GetEmptyArray());
-    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
-        panda_file::AnnotationDataAccessor ada(pf, annotation_id);
+    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotationId) {
+        panda_file::AnnotationDataAccessor ada(pf, annotationId);
         auto *annotationName = reinterpret_cast<const char *>(pf.GetStringData(ada.GetClassId()).data);
         ASSERT(annotationName != nullptr);
         if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {

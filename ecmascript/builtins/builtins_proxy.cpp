@@ -85,11 +85,11 @@ JSTaggedValue BuiltinsProxy::InvalidateProxyFunction(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<JSObject> revoke_obj(GetThis(argv));
+    JSHandle<JSObject> revokeObj(GetThis(argv));
     JSHandle<JSTaggedValue> revokeKey = thread->GlobalConstants()->GetHandledRevokeString();
 
     PropertyDescriptor desc(thread);
-    JSObject::GetOwnProperty(thread, revoke_obj, revokeKey, desc);
+    JSObject::GetOwnProperty(thread, revokeObj, revokeKey, desc);
     JSProxyRevocFunction::ProxyRevocFunctions(thread, JSHandle<JSProxyRevocFunction>(desc.GetValue()));
     return JSTaggedValue::Undefined();
 }

@@ -277,7 +277,7 @@ HWTEST_F_L0(ContainersListTest, Equal)
     
     // Length Not Equal
     JSHandle<JSAPIList> list2 = CreateJSAPIList();
-    for (uint32_t i = 0; i < NODE_NUMBERS / 2 ; i++) {
+    for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {
         result = ListAdd(list2, JSTaggedValue(i));
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(result, JSTaggedValue::True());

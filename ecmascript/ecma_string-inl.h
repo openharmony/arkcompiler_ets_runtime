@@ -328,7 +328,7 @@ inline size_t EcmaStringAccessor::GetUtf8Length() const
     return string_->GetUtf8Length();
 }
 
-inline void EcmaStringAccessor::ReadData(EcmaString * dst, EcmaString *src,
+inline void EcmaStringAccessor::ReadData(EcmaString *dst, EcmaString *src,
     uint32_t start, uint32_t destSize, uint32_t length)
 {
     dst->WriteData(src, start, destSize, length);

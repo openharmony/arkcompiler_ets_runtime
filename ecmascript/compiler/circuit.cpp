@@ -119,7 +119,7 @@ void Circuit::PrintAllGatesWithBytecode() const
     for (const auto &gate : gateList) {
         if (GetOpCode(gate) == OpCode::JS_BYTECODE) {
             const Gate *gatePtr = LoadGatePtrConst(gate);
-            auto opcode =  gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
+            auto opcode = gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
             std::string bytecodeStr = GetEcmaOpcodeStr(opcode);
             LoadGatePtrConst(gate)->PrintByteCode(bytecodeStr);
         } else {

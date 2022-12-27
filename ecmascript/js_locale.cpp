@@ -716,7 +716,7 @@ std::string JSLocale::UnicodeExtensionValue(const std::string extension, const s
             size_t e = extension.find("-", k);
             size_t len;
             // ii. If e = -1, let len be size - k; else let len be e - k.
-            if  (e == std::string::npos) {
+            if (e == std::string::npos) {
                 len = size - k;
             } else {
                 len = e - k;
@@ -820,7 +820,7 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
 
         // g. Let supportedExtensionAddition be "".
         // h. If r has an [[extension]] field, then
-        std::string  supportedExtensionAddition;
+        std::string supportedExtensionAddition;
         size_t found = foundLocale.find("-u-");
         if (found != std::string::npos) {
             std::string extension = foundLocale.substr(found + INTL_INDEX_ONE);

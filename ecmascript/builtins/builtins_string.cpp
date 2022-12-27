@@ -519,11 +519,11 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), String, LocaleCompare);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> that_tag = BuiltinsString::GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> thatTag = BuiltinsString::GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, that_tag);
+    JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, thatTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 1);

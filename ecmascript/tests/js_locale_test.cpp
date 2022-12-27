@@ -85,7 +85,7 @@ HWTEST_F_L0(JSLocaleTest, JSIntlIteratorTest)
     uint32_t arrayDataLength = languageVector.size();
     JSHandle<TaggedArray> arrayData = factory->NewTaggedArray(arrayDataLength);
 
-    for (uint32_t i = 0 ; i < arrayDataLength; i++) {
+    for (uint32_t i = 0; i < arrayDataLength; i++) {
         JSHandle<JSTaggedValue> languageStr(factory->NewFromASCII(languageVector[i].c_str()));
         arrayData->Set(thread, i, languageStr);
     }
@@ -93,7 +93,7 @@ HWTEST_F_L0(JSLocaleTest, JSIntlIteratorTest)
     JSIntlIterator jsIntlIterator(arrayData, arrayDataLength);
     EXPECT_TRUE(jsIntlIterator.hasNext());
     // call "next" function to traverse the container
-    for (uint32_t i = 0 ; i < arrayDataLength; i++) {
+    for (uint32_t i = 0; i < arrayDataLength; i++) {
         EXPECT_TRUE(jsIntlIterator.next() != nullptr);
         EXPECT_STREQ(jsIntlIterator[i].c_str(), languageVector[i].c_str());
     }

@@ -120,7 +120,7 @@ public:
 
     inline size_t GetGroupNamesSize() const
     {
-        return groupNames_.size_ ;
+        return groupNames_.size_;
     }
     
     inline bool IsError() const
