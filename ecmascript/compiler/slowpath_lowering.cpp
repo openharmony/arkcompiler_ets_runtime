@@ -823,7 +823,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
         if (tmpGate != hole) {
             builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, taggedArray, builder_.Int32(idx), tmpGate);
         }
-     }
+    }
  
     acc_.DeleteGate(saveRegister);
 
@@ -3257,7 +3257,7 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
         } else {
             use++;
         }
-     }
+    }
         acc_.DeleteGate(restoreRegs);
 
     // 1: number of value inputs

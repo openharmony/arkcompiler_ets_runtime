@@ -1040,7 +1040,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
 }
 
 // recursive variables renaming algorithm
-GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc, 
+GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc,
                                            std::pair<GateRef, uint32_t> &needReplaceInfo)
 {
     auto tmpReg = reg;
