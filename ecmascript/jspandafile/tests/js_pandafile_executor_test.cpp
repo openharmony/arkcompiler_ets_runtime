@@ -163,4 +163,29 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     const JSPandaFile *foundPf = pfManager->FindJSPandaFile(fileName);
     pfManager->RemoveJSPandaFile((void *)foundPf);
 }
+
+HWTEST_F_L0(JSPandaFileExecutorTest, NormalizePath)
+{
+    CString res1 = "node_modules/0/moduleTest/index";
+    CString moduleRecordName1 = "node_modules///0//moduleTest/index";
+    
+    CString res2 = "./node_modules/0/moduleTest/index";
+    CString moduleRecordName2 = "./node_modules///0//moduleTest/index";
+
+    CString res3 = "../node_modules/0/moduleTest/index";
+    CString moduleRecordName3 = "../node_modules/0/moduleTest///index";
+
+    CString res4 = "./moduleTest/index";
+    CString moduleRecordName4 = "./node_modules/..//moduleTest////index";
+
+    CString normalName1 = JSPandaFileExecutor::NormalizePath(moduleRecordName1);
+    CString normalName2 = JSPandaFileExecutor::NormalizePath(moduleRecordName2);
+    CString normalName3 = JSPandaFileExecutor::NormalizePath(moduleRecordName3);
+    CString normalName4 = JSPandaFileExecutor::NormalizePath(moduleRecordName4);
+
+    EXPECT_EQ(res1, normalName1);
+    EXPECT_EQ(res2, normalName2);
+    EXPECT_EQ(res3, normalName3);
+    EXPECT_EQ(res4, normalName4);
+}
 }  // namespace panda::test
