@@ -56,7 +56,7 @@ public:
     {
         return !key.IsHole();
     }
-    
+
 private:
     static void TreeingBin(JSThread *thread, const JSHandle<TaggedHashArray> &tab, int hash);
     static void NodeDisperse(JSThread *thread, const JSHandle<TaggedHashArray> &newTab,

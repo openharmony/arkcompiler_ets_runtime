@@ -285,7 +285,7 @@ public:
         }
         return;
     }
-    
+
     static inline JSTaggedValue ShlWithTSType(JSThread *thread, JSTaggedValue left,
                                               JSTaggedValue right, JSTaggedValue argType)
     {

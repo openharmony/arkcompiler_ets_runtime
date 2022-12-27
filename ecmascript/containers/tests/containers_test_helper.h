@@ -79,5 +79,5 @@ using panda::ecmascript::EcmaRuntimeCallInfo;
     return callInfo;
 }
 } // namespace panda::test
-    
+
 #endif // ECMASCRIPT_TESTS_CONTAINERS_TEST_HELPER_H

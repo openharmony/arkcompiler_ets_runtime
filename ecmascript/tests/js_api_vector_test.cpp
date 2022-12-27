@@ -123,7 +123,7 @@ HWTEST_F_L0(JSAPIVectorTest, AddGetHas)
     EXPECT_EXCEPTION();
     JSAPIVector::Get(thread, toor, static_cast<int32_t>(NODE_NUMBERS));
     EXPECT_EXCEPTION();
-    
+
     toor->Dump();
 }
 
@@ -159,7 +159,7 @@ HWTEST_F_L0(JSAPIVectorTest, RemoveByIndexAndRemove)
     JSTaggedValue result1 = JSAPIVector::RemoveByIndex(thread, toor, NODE_NUMBERS);
     EXPECT_EQ(result1, JSTaggedValue::Exception());
     EXPECT_EXCEPTION();
-    
+
     toor->Dump();
 }
 
@@ -364,7 +364,7 @@ HWTEST_F_L0(JSAPIVectorTest, SetLengthGetIndexFromGetLastElementGetLastIndexOf)
     uint32_t elementsNums = 20;
     JSHandle<JSTaggedValue> obj(thread, JSTaggedValue(elementsNums - 1));
     EXPECT_EQ(JSAPIVector::GetLastIndexOf(thread, toor, obj), -1);
-    
+
     for (uint32_t i = 0; i < elementsNums; i++) {
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
         JSAPIVector::Add(thread, toor, value);
@@ -372,7 +372,7 @@ HWTEST_F_L0(JSAPIVectorTest, SetLengthGetIndexFromGetLastElementGetLastIndexOf)
 
     // test GetIndexFrom
     EXPECT_EQ(JSAPIVector::GetIndexFrom(thread, toor, obj, -1), static_cast<int32_t>(elementsNums - 1));
-    
+
     EXPECT_EQ(JSAPIVector::GetIndexFrom(thread, toor, obj, elementsNums), -1);
     EXPECT_EXCEPTION();
 
@@ -385,13 +385,13 @@ HWTEST_F_L0(JSAPIVectorTest, SetLengthGetIndexFromGetLastElementGetLastIndexOf)
     // test GetLastIndexFrom
     EXPECT_EQ(JSAPIVector::GetLastIndexFrom(
         thread, toor, obj, elementsNums - 1), static_cast<int32_t>(elementsNums - 1));
-    
+
     EXPECT_EQ(JSAPIVector::GetLastIndexFrom(thread, toor, obj, elementsNums), -1);
     EXPECT_EXCEPTION();
 
     JSHandle<JSTaggedValue> obj1(thread, JSTaggedValue(-elementsNums));
     EXPECT_EQ(JSAPIVector::GetLastIndexFrom(thread, toor, obj1, -1), -1);
-    
+
     // test SetLength
     JSAPIVector::SetLength(thread, toor, elementsNums * 3);
     EXPECT_EQ(toor->GetLength(), static_cast<int32_t>(elementsNums * 3));
@@ -448,7 +448,7 @@ HWTEST_F_L0(JSAPIVectorTest, ExceptionOfSubVector)
     // from < 0
     JSAPIVector::SubVector(thread, toor, -1, 0);
     EXPECT_EXCEPTION();
-    
+
     // toIndex < 0
     JSAPIVector::SubVector(thread, toor, 0, -1);
     EXPECT_EXCEPTION();

@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #ifndef ECMASCRIPT_JS_ASYNC_GENERATOR_OBJECT_H
 #define ECMASCRIPT_JS_ASYNC_GENERATOR_OBJECT_H
 
@@ -97,7 +97,7 @@ public:
     static JSTaggedValue ProcessorFulfilledFunc(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue ProcessorRejectedFunc(EcmaRuntimeCallInfo *argv);
-    
+
     inline bool IsSuspendYield() const
     {
         return GetAsyncGeneratorState() == JSAsyncGeneratorState::SUSPENDED_YIELD;

@@ -139,7 +139,7 @@ HWTEST_F_L0(JSAPIQueueIteratorTest, SpecialReturnOfNext)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIQueueIterator> queueIterator = factory->NewJSAPIQueueIterator(jsQueue);
     queueIterator->SetIteratedQueue(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

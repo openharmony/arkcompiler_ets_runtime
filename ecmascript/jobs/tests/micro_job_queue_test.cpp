@@ -184,7 +184,7 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_001)
     auto env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
     JSHandle<MicroJobQueue> handleMicrojob = thread->GetEcmaVM()->GetMicroJobQueue();
-    
+
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve());
@@ -227,7 +227,7 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_002)
     auto env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
     JSHandle<MicroJobQueue> handleMicrojob = thread->GetEcmaVM()->GetMicroJobQueue();
-    
+
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> capbility1 = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<JSTaggedValue> resolve(thread, capbility1->GetResolve());

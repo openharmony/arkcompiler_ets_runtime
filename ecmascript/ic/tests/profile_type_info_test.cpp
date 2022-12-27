@@ -285,7 +285,7 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddGlobalHandlerKey)
     EXPECT_EQ(resultArr1->GetLength(), 2U);
     EXPECT_TRUE(resultArr1->Get(0).IsWeak());
     EXPECT_EQ(resultArr1->Get(1).GetInt(), 222);
-    
+
     slotId = 1;
     ProfileTypeAccessor handleProfileTypeAccessor1(thread, handleProfileTypeInfo, slotId, ICKind::StoreIC);
     handleProfileTypeAccessor1.AddGlobalHandlerKey(arrayKey, HandlerValue);
@@ -312,7 +312,7 @@ HWTEST_F_L0(ProfileTypeInfoTest, AddGlobalRecordHandler)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> HandlerValue1(thread, JSTaggedValue(232));
     JSHandle<JSTaggedValue> HandlerValue2(thread, JSTaggedValue(5));
-    
+
     JSHandle<TaggedArray> handleDetailsArray = factory->NewTaggedArray(2);
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleDetailsArray);
     uint32_t slotId = 0;
@@ -391,7 +391,7 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetRefFromWeak)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    
+
     JSHandle<JSObject> handleProfileTypeValue = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSTaggedValue handleProfileType(handleProfileTypeValue.GetTaggedValue());
     handleProfileType.CreateWeakRef();

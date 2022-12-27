@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/js_api/js_api_plain_array.h"
 
 #include "ecmascript/containers/containers_errors.h"
@@ -197,7 +197,7 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
                                                                         JSTaggedValue::Exception(),
                                                                         PropertyMetaData(false)));
     }
-    
+
     return OperationResult(thread, obj->Get(JSTaggedValue(index)), PropertyMetaData(false));
 }
 
@@ -227,7 +227,7 @@ JSHandle<JSAPIPlainArray> JSAPIPlainArray::Clone(JSThread *thread, const JSHandl
     newPlainArray->SetLength(length);
     JSHandle<TaggedArray> srcKeyArray(thread, obj->GetKeys());
     JSHandle<TaggedArray> srcValueArray(thread, obj->GetValues());
-    
+
     JSHandle<TaggedArray> dstKeyArray = factory->NewAndCopyTaggedArray(srcKeyArray, length, length);
     JSHandle<TaggedArray> dstValueArray = factory->NewAndCopyTaggedArray(srcValueArray, length, length);
 

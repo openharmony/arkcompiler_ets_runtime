@@ -100,7 +100,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_001)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    
+
     JSHandle<JSTaggedValue> handleObj = JSHandle<JSTaggedValue>(thread, CreateBaseJSObject(thread, "z"));
     JSHandle<JSFunction> handleFunc1 = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForStringfy1));
     JSHandle<JSFunction> handleFunc2 = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForStringfy2));

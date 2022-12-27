@@ -227,7 +227,7 @@ HWTEST_F_L0(JSAPILightWeightMapTest, Remove)
     JSAPILightWeightMap::Set(thread, lwm, key2, value2);
 
     JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(4));
-    
+
     JSHandle<JSTaggedValue> result =
         JSHandle<JSTaggedValue>(thread, JSAPILightWeightMap::Remove(thread, lwm, key2));
     JSHandle<JSTaggedValue> resultNoExist =
@@ -257,7 +257,7 @@ HWTEST_F_L0(JSAPILightWeightMapTest, RemoveAt)
     JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(3));
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(4));
     JSAPILightWeightMap::Set(thread, lwm, key2, value2);
-    
+
     int32_t removeIndex = JSAPILightWeightMap::GetIndexOfKey(thread, lwm, key1);
     EXPECT_EQ(JSAPILightWeightMap::RemoveAt(thread, lwm, removeIndex), JSTaggedValue::True());
     JSHandle<JSTaggedValue> result(thread, JSAPILightWeightMap::Get(thread, lwm, key1));
@@ -282,7 +282,7 @@ HWTEST_F_L0(JSAPILightWeightMapTest, SetValueAt)
     JSAPILightWeightMap::Set(thread, lwm, key, value);
     EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread,
         JSAPILightWeightMap::Get(thread, lwm, key)), value));
-    
+
     JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(2));
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(3));
     JSAPILightWeightMap::Set(thread, lwm, key1, value1);
@@ -321,7 +321,7 @@ HWTEST_F_L0(JSAPILightWeightMapTest, GetStateOfKey)
         JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(setVector[i]));
         JSAPILightWeightMap::Set(thread, lwm, key3, value3);
     }
-    
+
     // check
     for (uint32_t i = 0; i < setVector.size() - 1; i++) {
         JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(setVector[i]));

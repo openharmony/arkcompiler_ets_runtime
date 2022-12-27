@@ -482,7 +482,7 @@ static JSTaggedValue JSDateTimeFormatForObj_001(JSThread *thread)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    
+
     JSHandle<JSTaggedValue> timeZoneName = globalConst->GetHandledTimeZoneNameString();
     JSHandle<JSTaggedValue> localesString(factory->NewFromASCII("en-US"));
     JSHandle<JSTaggedValue> digitValue(factory->NewFromASCII("2-digit"));
@@ -576,7 +576,7 @@ static JSTaggedValue JSDateTimeFormatForObj_002(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
-    
+
     JSHandle<JSTaggedValue> timeZoneName = globalConst->GetHandledTimeZoneNameString();
     JSHandle<JSTaggedValue> timeZone = globalConst->GetHandledTimeZoneString();
     JSHandle<JSTaggedValue> numicValue(factory->NewFromASCII("numeric"));

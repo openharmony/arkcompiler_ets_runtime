@@ -149,7 +149,7 @@ HWTEST_F_L0(JSAPITreeSetIteratorTest, SetNextIndex)
     JSHandle<JSAPITreeSetIterator> treeSetIterator =
         factory->NewJSAPITreeSetIterator(jsTreeSet, IterationKind::KEY_AND_VALUE);
     EXPECT_EQ(treeSetIterator->GetNextIndex(), 0U);
-    
+
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         treeSetIterator->SetNextIndex(i);
         EXPECT_EQ(treeSetIterator->GetNextIndex(), i);
@@ -237,7 +237,7 @@ HWTEST_F_L0(JSAPITreeSetIteratorTest, SpecialReturnOfNext)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPITreeSetIterator> treeSetIterator = factory->NewJSAPITreeSetIterator(jsTreeSet, IterationKind::KEY);
     treeSetIterator->SetIteratedSet(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -293,7 +293,7 @@ HWTEST_F_L0(JSAPITreeSetIteratorTest, KEY_AND_VALUE_Next)
         JSHandle<JSObject> resultObj(thread, result);
         std::string resultKeyAndValue = setKey + std::to_string(i + 1U);
         key.Update(factory->NewFromStdString(resultKeyAndValue).GetTaggedValue());
-        
+
         JSHandle<JSTaggedValue> keyValueArr(JSObject::GetProperty(thread, resultObj, valueStr).GetValue());
         for (int index = 0; index < 2; index++) {
             JSHandle<JSTaggedValue> indexValue(thread, JSTaggedValue(index));

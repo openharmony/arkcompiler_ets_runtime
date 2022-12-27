@@ -133,7 +133,7 @@ HWTEST_F_L0(ContainersDequeTest, DequeConstructor)
     JSTaggedValue resultProto = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(deque));
     JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
     ASSERT_EQ(resultProto, funcProto);
-    
+
     // test DequeConstructor exception
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersDeque, DequeConstructor, objCallInfo);

@@ -81,7 +81,7 @@ HWTEST_F_L0(BitHelperTest, CountLeadingZeros_CountTrailingZeros)
     EXPECT_EQ(CountLeadingZeros<uint32_t>(uint32MinValue), 32U);
     EXPECT_EQ(CountTrailingZeros<uint32_t>(uint32MaxValue), 0U);
     EXPECT_EQ(CountTrailingZeros<uint32_t>(uint32MinValue), 32U);
-    
+
     uint64_t uint64MaxValue = std::numeric_limits<uint64_t>::max();
     uint64_t uint64MinValue = std::numeric_limits<uint64_t>::min();
     EXPECT_EQ(CountLeadingZeros<uint64_t>(uint64MaxValue), 0U);

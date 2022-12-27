@@ -31,7 +31,7 @@ JSTaggedValue BuiltinsAsyncGenerator::AsyncGeneratorFunctionConstructor(EcmaRunt
 
 // ecma 27.6.1.2 AsyncGenerator.prototype.next
 JSTaggedValue BuiltinsAsyncGenerator::AsyncGeneratorPrototypeNext(EcmaRuntimeCallInfo *argv)
-{   
+{
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, AsyncGenerator, PrototypeNext);
     // 1.Let g be the this value.

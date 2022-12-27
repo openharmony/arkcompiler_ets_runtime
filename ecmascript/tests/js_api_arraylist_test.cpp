@@ -157,7 +157,7 @@ HWTEST_F_L0(JSAPIArrayListTest, Insert)
             EXPECT_EQ(elements->Get(i), JSTaggedValue((i - insertNums) * 10));
         }
     }
-    
+
     // throw error
     // index < 0
     JSHandle<JSTaggedValue> zeroValue(thread, JSTaggedValue(0));
@@ -245,7 +245,7 @@ HWTEST_F_L0(JSAPIArrayListTest, GetCapacity_IncreaseCapacityTo)
             growCapacityTimes++;
         }
     }
-    
+
     // Expand capacity to a specified capacity value
     uint32_t newCapacity = JSAPIArrayList::GetCapacity(thread, arrayList);
     EXPECT_EQ(newCapacity, currentCapacity);
@@ -429,7 +429,7 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByRange)
         // endIndex <= startIndex
         JSAPIArrayList::RemoveByRange(thread, arrayList, zeroIndexValue, zeroIndexValue);
         EXPECT_EXCEPTION();
-        
+
         // endIndex < 0
         JSAPIArrayList::RemoveByRange(thread, arrayList, zeroIndexValue, smallIndexValue);
         EXPECT_EXCEPTION();

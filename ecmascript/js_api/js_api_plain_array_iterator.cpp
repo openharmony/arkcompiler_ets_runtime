@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/js_api/js_api_plain_array_iterator.h"
 
 #include "ecmascript/base/typed_array_helper.h"
@@ -45,7 +45,7 @@ JSTaggedValue JSAPIPlainArrayIterator::Next(EcmaRuntimeCallInfo *argv)
     if (plainArray->IsUndefined()) {
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
     }
-    
+
     JSHandle<JSAPIPlainArray> apiPlainArray(plainArray);
     ASSERT(plainArray->IsJSAPIPlainArray());
 

@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/js_api/js_api_lightweightset.h"
 
 #include "ecmascript/containers/containers_errors.h"
@@ -163,7 +163,7 @@ void JSAPILightWeightSet::SizeCopy(const JSThread *thread, const JSHandle<JSAPIL
     JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
     hashArray = thread->GetEcmaVM()->GetFactory()->CopyArray(hashArray, capacity, newCapacity);
     valueArray = thread->GetEcmaVM()->GetFactory()->CopyArray(valueArray, capacity, newCapacity);
-    
+
     obj->SetValues(thread, hashArray);
     obj->SetHashes(thread, valueArray);
 }
@@ -398,7 +398,7 @@ JSTaggedValue JSAPILightWeightSet::ToString(JSThread *thread, const JSHandle<JSA
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::u16string sepStr = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> {}.from_bytes(",");
-    
+
     uint32_t length = obj->GetSize();
     JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
     std::u16string concatStr;

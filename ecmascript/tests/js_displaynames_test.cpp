@@ -73,7 +73,7 @@ HWTEST_F_L0(JSDisplayNamesTest, GetIcuLocaleDisplayNames)
     JSHandle<JSTaggedValue> ctor = env->GetDisplayNamesFunction();
     JSHandle<JSDisplayNames> displayNames =
         JSHandle<JSDisplayNames>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    
+
     icu::Locale icuLocale("en");
     UDisplayContext display_context[] = {UDISPCTX_LENGTH_SHORT};
     icu::LocaleDisplayNames* iculocaledisplaynames =
@@ -235,7 +235,7 @@ HWTEST_F_L0(JSDisplayNamesTest, ResolvedOptions)
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> displayOptions = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("zh-Hant"));
-    
+
     std::map<std::string, std::string> displayOptionsProperty {
         { "style", "short" },
         { "type", "region" },
@@ -247,7 +247,7 @@ HWTEST_F_L0(JSDisplayNamesTest, ResolvedOptions)
     SetOptionProperties(thread, displayOptions, displayOptionsProperty);
     JSHandle<JSDisplayNames> initDisplayNames =
         JSDisplayNames::InitializeDisplayNames(thread, displayNames, locale, JSHandle<JSTaggedValue>(displayOptions));
-    
+
     JSDisplayNames::ResolvedOptions(thread, initDisplayNames, displayOptions);
     EXPECT_EQ(JSTaggedValue::SameValue(
         JSObject::GetProperty(thread, displayOptions, styleKey).GetValue(), styleValue), true);

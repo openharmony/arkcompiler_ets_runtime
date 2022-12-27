@@ -64,7 +64,7 @@ public:
             JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
             JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
             [[maybe_unused]] JSHandle<JSTaggedValue> map = GetCallArg(argv, 2); // 2 means the secode arg
-            
+
             JSHandle<JSAPILightWeightMap> jsTreeMap(GetThis(argv));
             JSAPILightWeightMap::Set(thread, jsTreeMap, key, value);
             return JSTaggedValue::Undefined();

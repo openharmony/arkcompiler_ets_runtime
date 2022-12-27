@@ -109,7 +109,7 @@ HWTEST_F_L0(JSAPILightWeightMapIteratorTest, SpecailReturnOfNextCreateLightWeigh
     JSHandle<JSAPILightWeightMapIterator> lightWeightMapIterator = factory->NewJSAPILightWeightMapIterator(
         jsLightWeightMap, IterationKind::KEY_AND_VALUE);
     lightWeightMapIterator->SetIteratedLightWeightMap(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

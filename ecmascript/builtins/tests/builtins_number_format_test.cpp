@@ -134,7 +134,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_001)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-   
+
     JSHandle<JSTaggedValue> styleKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> styleValue(factory->NewFromASCII("decimal"));
     JSHandle<JSTaggedValue> localeString(factory->NewFromASCII("en-US"));
@@ -155,7 +155,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_002)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-   
+
     JSHandle<JSTaggedValue> styleKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> currencyKey = globalConst->GetHandledCurrencyString();
     JSHandle<JSTaggedValue> currencyDisplayKey = globalConst->GetHandledCurrencyDisplayString();
@@ -167,7 +167,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_002)
     JSHandle<JSTaggedValue> currencySignDisplayValue(factory->NewFromASCII("accounting"));
     JSHandle<JSTaggedValue> localeString(factory->NewFromASCII("en-US"));
     JSHandle<JSTaggedValue> numberVal(thread, JSTaggedValue(static_cast<int32_t>(-3500)));
-    
+
     JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSObject::SetProperty(thread, optionsObj, styleKey, styleValue);
     JSObject::SetProperty(thread, optionsObj, currencyKey, currencyValue);
@@ -186,7 +186,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_003)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-   
+
     JSHandle<JSTaggedValue> styleKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> signDisplayKey = globalConst->GetHandledSignDisplayString();
 
@@ -194,7 +194,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_003)
     JSHandle<JSTaggedValue> signDisplayValue(factory->NewFromASCII("exceptZero"));
     JSHandle<JSTaggedValue> localeString(factory->NewFromASCII("en-US"));
     JSHandle<JSTaggedValue> numberVal(thread, JSTaggedValue(static_cast<double>(0.55)));
-    
+
     JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSObject::SetProperty(thread, optionsObj, styleKey, styleValue);
     JSObject::SetProperty(thread, optionsObj, signDisplayKey, signDisplayValue);
@@ -211,7 +211,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_004)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-   
+
     JSHandle<JSTaggedValue> styleKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> unitKey = globalConst->GetHandledUnitString();
 
@@ -219,7 +219,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_004)
     JSHandle<JSTaggedValue> unitValue(factory->NewFromASCII("liter"));
     JSHandle<JSTaggedValue> localeString(factory->NewFromASCII("en-US"));
     JSHandle<JSTaggedValue> numberVal(thread, JSTaggedValue(3500));
-    
+
     JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSObject::SetProperty(thread, optionsObj, styleKey, styleValue);
     JSObject::SetProperty(thread, optionsObj, unitKey, unitValue);
@@ -236,12 +236,12 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_005)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-   
+
     JSHandle<JSTaggedValue> notationKey = globalConst->GetHandledNotationString();
     JSHandle<JSTaggedValue> notationValue(factory->NewFromASCII("compact"));
     JSHandle<JSTaggedValue> localeString(factory->NewFromASCII("zh-CN"));
     JSHandle<JSTaggedValue> numberVal(thread, JSTaggedValue(987654321));
-    
+
     JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSObject::SetProperty(thread, optionsObj, notationKey, notationValue);
     JSTaggedValue formatResult = BuiltinsFormatTest(thread, optionsObj, numberVal, localeString);
@@ -274,7 +274,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, FormatToParts)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-   
+
     JSHandle<JSTaggedValue> styleKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> currencyKey = globalConst->GetHandledCurrencyString();
 
@@ -282,7 +282,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, FormatToParts)
     JSHandle<JSTaggedValue> currencyValue(factory->NewFromASCII("EUR"));
     JSHandle<JSTaggedValue> localeString(factory->NewFromASCII("de-DE"));
     JSHandle<JSTaggedValue> numberVal(thread, JSTaggedValue(3500));
-    
+
     JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSObject::SetProperty(thread, optionsObj, styleKey, styleValue);
     JSObject::SetProperty(thread, optionsObj, currencyKey, currencyValue);
@@ -301,7 +301,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, FormatToParts)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSTaggedValue result = BuiltinsNumberFormat::FormatToParts(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
-    
+
     JSHandle<JSArray> resultHandle(thread, result);
     JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
     EXPECT_EQ(elements->GetLength(), 10U); // "3","." ,"5" ,"0" ,"0" ,"," ,"0" ,0" ," " ,"€"
@@ -313,14 +313,14 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, ResolvedOptions)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-   
+
     JSHandle<JSTaggedValue> styleKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> currencyKey = globalConst->GetHandledCurrencyString();
 
     JSHandle<JSTaggedValue> styleValue(factory->NewFromASCII("currency"));
     JSHandle<JSTaggedValue> currencyValue(factory->NewFromASCII("USD"));
     JSHandle<JSTaggedValue> localeString(factory->NewFromASCII("en-US"));
-    
+
     JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSObject::SetProperty(thread, optionsObj, styleKey, styleValue);
     JSObject::SetProperty(thread, optionsObj, currencyKey, currencyValue);

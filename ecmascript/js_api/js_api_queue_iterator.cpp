@@ -44,7 +44,7 @@ JSTaggedValue JSAPIQueueIterator::Next(EcmaRuntimeCallInfo *argv)
     if (queue->IsUndefined()) {
         return globalConst->GetUndefinedIterResult();
     }
-    
+
     uint32_t index = iter->GetNextIndex();
     uint32_t length = JSAPIQueue::GetArrayLength(thread, JSHandle<JSAPIQueue>(queue));
     if (index >= length) {

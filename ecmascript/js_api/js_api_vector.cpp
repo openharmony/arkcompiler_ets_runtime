@@ -215,7 +215,7 @@ JSTaggedValue JSAPIVector::RemoveByRange(JSThread *thread, const JSHandle<JSAPIV
         THROW_RANGE_ERROR_AND_RETURN(thread, "the fromIndex or the toIndex is out-of-bounds",
                                      JSTaggedValue::Exception());
     }
-    
+
     int32_t endIndex = toIndex >= length ? length : toIndex;
     TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
@@ -223,7 +223,7 @@ JSTaggedValue JSAPIVector::RemoveByRange(JSThread *thread, const JSHandle<JSAPIV
     for (int32_t i = 0; i < numMoved; i++) {
         elements->Set(thread, fromIndex + i, elements->Get(endIndex + i));
     }
-    
+
     int32_t newLength = length - (endIndex - fromIndex);
     vector->SetLength(newLength);
     return JSTaggedValue::True();
@@ -337,7 +337,7 @@ JSTaggedValue JSAPIVector::ReplaceAllElements(JSThread *thread, const JSHandle<J
         }
         vector->Set(thread, k, funcResult);
     }
-    
+
     return JSTaggedValue::Undefined();
 }
 
@@ -389,7 +389,7 @@ bool JSAPIVector::Has(const JSTaggedValue &value) const
     if (length == 0) {
         return false;
     }
-    
+
     for (int32_t i = 0; i < length; i++) {
         if (JSTaggedValue::SameValue(elements->Get(i), value)) {
             return true;

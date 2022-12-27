@@ -176,7 +176,7 @@ HWTEST_F_L0(ContainersTreeMapTest, TreeMapConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = mapHandle->GetSize();
     ASSERT_EQ(size, 0);
-    
+
     // test TreeMapConstructor exception
     objCallInfo->SetCallArg(0, JSTaggedValue(0));
     CONTAINERS_API_EXCEPTION_TEST(ContainersTreeMap, TreeMapConstructor, objCallInfo);

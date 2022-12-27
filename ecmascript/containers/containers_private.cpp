@@ -676,12 +676,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
                       FuncLength::ZERO);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "getValueAt", ContainersPlainArray::GetValueAt,
                       FuncLength::ZERO);
-    
+
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersPlainArray::GetSize, "length",
                                                         FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey = globalConst->GetHandledLengthString();
     SetGetter(thread, plainArrayFuncPrototype, lengthKey, lengthGetter);
-    
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetFunctionAtSymbol(thread, env, plainArrayFuncPrototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
                         ContainersPlainArray::GetIteratorObj, FuncLength::ONE);
@@ -814,7 +814,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     SetFrozenFunction(thread, prototype, "getFirstElement", ContainersVector::GetFirstElement, FuncLength::ZERO);
     SetFrozenFunction(thread, prototype, "trimToCurrentLength",
                       ContainersVector::TrimToCurrentLength, FuncLength::ZERO);
-    
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, prototype, "Vector");
 
@@ -1163,7 +1163,7 @@ void ContainersPrivate::InitializeHashMapIterator(JSThread *thread)
     // HashMapIterator.prototype.next()
     SetFrozenFunction(thread, hashMapIteratorPrototype, "next", JSAPIHashMapIterator::Next, FuncLength::ZERO);
     SetStringTagSymbol(thread, env, hashMapIteratorPrototype, "HashMap Iterator");
-    
+
     globalConst->SetConstant(ConstantIndex::HASHMAP_ITERATOR_PROTOTYPE_INDEX,
                              hashMapIteratorPrototype.GetTaggedValue());
 }
@@ -1197,7 +1197,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
     SetFrozenFunction(thread, hashSetFuncPrototype, "entries", ContainersHashSet::Entries, FuncLength::ZERO);
     SetFrozenFunction(thread, hashSetFuncPrototype, "forEach", ContainersHashSet::ForEach, FuncLength::TWO,
                       BUILTINS_STUB_ID(HashSetForEach));
-    
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // @@ToStringTag
     SetStringTagSymbol(thread, env, hashSetFuncPrototype, "HashSet");

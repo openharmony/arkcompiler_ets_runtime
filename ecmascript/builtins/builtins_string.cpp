@@ -644,7 +644,7 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
                                             JSTaggedValue::Exception());
             }
         }
-        
+
         if (regexp->IsECMAObject()) {
             // c. c. Let matcher be ? GetMethod(regexp, @@matchAll).
             // d. d. If matcher is not undefined, then
@@ -964,7 +964,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         replaceTag = JSHandle<JSTaggedValue>(JSTaggedValue::ToString(thread, replaceTag));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    
+
     // 7. Let searchLength be the length of searchString.
     // 8. Let advanceBy be max(1, searchLength).
     int32_t searchLength = static_cast<int32_t>(EcmaStringAccessor(searchString).GetLength());
@@ -1021,7 +1021,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         endOfLastMatch = pos + searchLength;
         pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, searchString, pos + advanceBy);
     }
-    
+
     if (endOfLastMatch < static_cast<int32_t>(EcmaStringAccessor(thisString).GetLength())) {
         auto thisLen = EcmaStringAccessor(thisString).GetLength();
         JSHandle<EcmaString> suffixString(thread,

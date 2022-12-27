@@ -114,7 +114,7 @@ HWTEST_F_L0(ContainersHashSetTest, HashSetConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = setHandle->GetSize();
     ASSERT_EQ(size, 0);
-      
+
     // test HashSetConstructor exception
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersHashSet, HashSetConstructor, objCallInfo);

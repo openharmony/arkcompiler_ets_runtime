@@ -112,7 +112,7 @@ public:
     {
         return defaultReadOnlySpaceSize_;
     }
-        
+
     size_t GetDefaultNonMovableSpaceSize() const
     {
         return defaultNonMovableSpaceSize_;

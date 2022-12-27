@@ -187,7 +187,7 @@ bool JSAPIArrayList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayLi
     for (int i = index; i <= length - 2; i++) { // 2 : 2 get index of (lastElementIndex - 1)
         elements->Set(thread, i, elements->Get(i + 1));
     }
-    
+
     arrayList->SetLength(thread, JSTaggedValue(--length));
     return true;
 }
@@ -243,7 +243,7 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
     for (int32_t i = 0; i <= numMoved; i++) {
         elements->Set(thread, startIndex + i, elements->Get(static_cast<uint32_t>(toIndex + i)));
     }
-    
+
     int32_t newLength = length - (toIndex - startIndex);
     arrayList->SetLength(thread, JSTaggedValue(newLength));
     return JSTaggedValue::True();
@@ -271,7 +271,7 @@ JSTaggedValue JSAPIArrayList::ReplaceAllElements(JSThread *thread, const JSHandl
 
         arrayList->Set(thread, k, funcResult);
     }
-    
+
     return JSTaggedValue::Undefined();
 }
 
@@ -323,7 +323,7 @@ JSTaggedValue JSAPIArrayList::SubArrayList(JSThread *thread, const JSHandle<JSAP
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
     ASSERT(!elements->IsDictionaryMode());
     subArrayList->SetLength(thread, JSTaggedValue(newLength));
-    
+
     for (int i = 0; i < newLength; i++) {
         subArrayList->Set(thread, i, elements->Get(fromIndex + i));
     }
@@ -382,7 +382,7 @@ bool JSAPIArrayList::Has(const JSTaggedValue value) const
     if (length == 0) {
         return false;
     }
-    
+
     for (int32_t i = 0; i < length; i++) {
         if (JSTaggedValue::SameValue(elements->Get(i), value)) {
             return true;

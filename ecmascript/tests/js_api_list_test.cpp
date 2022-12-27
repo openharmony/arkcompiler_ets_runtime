@@ -117,7 +117,7 @@ HWTEST_F_L0(JSAPIListTest, AddHasAndIsEmpty)
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        
+
         JSTaggedValue gValue = toor->Get(i);
         EXPECT_EQ(gValue, value.GetTaggedValue());
     }

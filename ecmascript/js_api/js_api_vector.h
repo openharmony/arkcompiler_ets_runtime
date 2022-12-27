@@ -35,7 +35,7 @@ public:
                        const JSHandle<JSTaggedValue> &value, int32_t index);
 
     static void SetLength(JSThread *thread, const JSHandle<JSAPIVector> &vector, uint32_t newSize);
-    
+
     uint32_t GetCapacity();
 
     static void IncreaseCapacityTo(JSThread *thread, const JSHandle<JSAPIVector> &vector, int32_t newCapacity);
@@ -45,7 +45,7 @@ public:
 
     static int32_t GetIndexFrom(JSThread *thread, const JSHandle<JSAPIVector> &vector,
                             const JSHandle<JSTaggedValue> &obj, int32_t index);
-    
+
     bool IsEmpty() const;
 
     JSTaggedValue GetLastElement();
@@ -81,7 +81,7 @@ public:
     JSTaggedValue Set(JSThread *thread, int32_t index, const JSTaggedValue &value);
 
     bool Has(const JSTaggedValue &value) const;
-    
+
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPIVector> &obj);
     static JSHandle<TaggedArray> OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIVector> &obj);
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSAPIVector> &obj, const JSHandle<JSTaggedValue> &key);

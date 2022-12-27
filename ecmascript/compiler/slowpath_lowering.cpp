@@ -824,7 +824,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
             builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, taggedArray, builder_.Int32(idx), tmpGate);
         }
     }
- 
+
     acc_.DeleteGate(saveRegister);
 
     // setRegsArrays

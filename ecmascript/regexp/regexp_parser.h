@@ -122,7 +122,7 @@ public:
     {
         return groupNames_.size_;
     }
-    
+
     inline bool IsError() const
     {
         return isError_;
