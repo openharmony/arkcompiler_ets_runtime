@@ -597,7 +597,8 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     } else if (IsTrustedType(right)) {
         check = builder_.PrimitiveTypeCheck(leftType, left);
     } else {
-        check = builder_.BoolAnd(builder_.PrimitiveTypeCheck(leftType, left), builder_.PrimitiveTypeCheck(rightType, right));
+        check = builder_.BoolAnd(builder_.PrimitiveTypeCheck(leftType, left),
+            builder_.PrimitiveTypeCheck(rightType, right));
     }
 
     // guard maybe not a GUARD

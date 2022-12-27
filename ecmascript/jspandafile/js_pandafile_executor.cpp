@@ -161,10 +161,10 @@ CString JSPandaFileExecutor::NormalizePath(const CString &fileName)
     if (fileName.find("//") == CString::npos && fileName.find("../") == CString::npos) {
         return fileName;
     }
-    const char DELIM = '/';
+    const char delim = '/';
     CString res = "";
     size_t prev = 0;
-    size_t curr = fileName.find(DELIM);
+    size_t curr = fileName.find(delim);
     CVector<CString> elems;
     while (curr != CString::npos) {
         if (curr > prev) {
@@ -172,23 +172,23 @@ CString JSPandaFileExecutor::NormalizePath(const CString &fileName)
             if (elem.compare("..") == 0 && !elems.empty()) {
                 elems.pop_back();
                 prev = curr + 1;
-                curr = fileName.find(DELIM, prev);
+                curr = fileName.find(delim, prev);
                 continue;
             }
             elems.push_back(elem);
         }
         prev = curr + 1;
-        curr = fileName.find(DELIM, prev);
+        curr = fileName.find(delim, prev);
     }
     if (prev != fileName.size()) {
         elems.push_back(fileName.substr(prev));
     }
     for (auto e : elems) {
-        if (res.size() == 0 && fileName.at(0) != DELIM) {
+        if (res.size() == 0 && fileName.at(0) != delim) {
             res.append(e);
             continue;
         }
-        res.append(1, DELIM).append(e);
+        res.append(1, delim).append(e);
     }
     return res;
 }

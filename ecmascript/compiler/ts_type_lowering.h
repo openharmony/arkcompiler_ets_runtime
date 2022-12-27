@@ -97,7 +97,8 @@ private:
     void LowerCallThis1Imm8V8V8(GateRef gate);
     bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
 
-    // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed, or the gate is constant and no need to check.
+    // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
+    // or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
 
     template<TypedBinOp Op>
@@ -108,7 +109,7 @@ private:
     void SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID Op);
     BuiltinsStubCSigns::ID GetBuiltinId(GateRef func, GateRef receiver);
     template<TypedUnOp Op>
-    GateRef AppendOverflowCheck(GateRef typeCheck, GateRef intVal);
+    GateRef AppendOverflowCheck(GateRef typecheck, GateRef intVal);
 
     void AddProfiling(GateRef gate);
     Circuit *circuit_ {nullptr};
