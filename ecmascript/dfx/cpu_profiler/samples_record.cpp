@@ -165,7 +165,7 @@ void SamplesRecord::StringifyStateTimeStatistic()
 void SamplesRecord::StringifyNodes()
 {
     sampleData_ += "\"nodes\":[";
-    size_t nodeCount = profileInfo_->nodeCount;
+    size_t nodeCount = static_cast<size_t>(profileInfo_->nodeCount);
     for (size_t i = 0; i < nodeCount; i++) {
         struct CpuProfileNode node = profileInfo_->nodes[i];
         struct FrameInfo codeEntry = node.codeEntry;
@@ -244,7 +244,7 @@ std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningStat
         case RunningState::BUILTIN:
             return temp.append("(BUILTIN)");
         case RunningState::NAPI:
-            return temp.append("");
+            return temp.append("NAPI");
         case RunningState::ARKUI_ENGINE:
             return temp.append("(ARKUI_ENGINE)");
         case RunningState::RUNTIME:

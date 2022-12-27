@@ -274,6 +274,11 @@ public:
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
     }
 
+    bool InAppSpawnSpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_APPSPAWN_SPACE;
+    }
+
     bool InHeapSpace() const
     {
         uint8_t space = packedData_.flags_.spaceFlag_;
@@ -545,8 +550,8 @@ private:
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingRSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
-    uint64_t wasted_;
-    os::memory::Mutex lock_;
+    alignas(16) os::memory::Mutex lock_;  // 16: 16 bytes align to ensure Mutex occupies 16 bytes
+    alignas(16) uint64_t wasted_;         // 16: 16 bytes align to ensure Mutex occupies 16 bytes
 
     friend class Snapshot;
     friend class SnapshotProcessor;

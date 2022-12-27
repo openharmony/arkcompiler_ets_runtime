@@ -1809,6 +1809,27 @@ declare class Map extends Object {
     //4.[index: string]: T;
 }
 
+declare class Promise extends Object {
+
+    constructor(executor: (resolve: (value: any) => void, reject: (reason?: any) => void) => void): Promise;
+
+    static all(values: Iterable<any>): Promise;
+
+    static race(values: Iterable<any>): Promise;
+
+    static reject(reason?: any): Promise;
+
+    static resolve(): Promise;
+
+    static resolve(value: any): Promise;
+
+    then(onfulfilled?: ((value: any) => any) | undefined | null, onrejected?: ((reason: any) => any) | undefined | null): Promise;
+
+    catch(onrejected?: ((reason: any) => any) | undefined | null): Promise;
+
+    inally(onfinally?: (() => void) | undefined | null): Promise;
+}
+
 declare function parseFloat(string: string): number;
 
 declare function parseInt(string: string, radix?: number): number;
@@ -1831,4 +1852,4 @@ declare function encodeURIComponent(uriComponent: string | number | boolean): st
 
 // globalThis, ArkPrivate
 // namespace, undefined
-// Intl, Reflect, Promise, TypedArray, Proxy
+// Intl, Reflect, TypedArray, Proxy

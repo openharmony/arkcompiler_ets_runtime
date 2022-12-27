@@ -279,7 +279,7 @@ void Circuit::ModifyIn(GateRef gate, size_t idx, GateRef in)
 {
 #ifndef NDEBUG
     ASSERT(idx < LoadGatePtrConst(gate)->GetNumIns());
-    ASSERT(!Circuit::IsInGateNull(gate, idx));
+    ASSERT(!Circuit::IsInGateNull(gate, idx) || (GetOpCode(gate) == OpCode::SAVE_REGISTER));
 #endif
     LoadGatePtr(gate)->ModifyIn(idx, LoadGatePtr(in));
 }
@@ -398,6 +398,13 @@ GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
     }
     auto gate = NewGate(metaBuilder_.Constant(value), machineType, type);
     constantCache_[{machineType, value, type}] = gate;
+    return gate;
+}
+
+GateRef Circuit::GetConstantStringGate(MachineType machineType, const std::string &str,
+                                       GateType type)
+{
+    auto gate = NewGate(metaBuilder_.ConstString(str), machineType, type);
     return gate;
 }
 

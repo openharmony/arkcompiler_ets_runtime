@@ -107,6 +107,11 @@ public:
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                        \
+    const GateMetaData* NAME(uint64_t value);
+    GATE_META_DATA_IN_SAVE_REGISTER(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
+
     explicit GateMetaBuilder(Chunk* chunk);
     const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
     {
@@ -123,6 +128,11 @@ public:
         return &cachedNop_;
     }
 
+    const GateMetaData* RestoreRegister()
+    {
+        return new (chunk_) RestoreRegsMetaData();
+    }
+
     GateMetaData* NewGateMetaData(const GateMetaData* other)
     {
         auto meta = new (chunk_) GateMetaData(other->opcode_, other->HasRoot(),
@@ -131,6 +141,7 @@ public:
         return meta;
     }
 
+    const GateMetaData* ConstString(const std::string &str);
 private:
     const GateMetaDataChache cache_;
     const GateMetaData cachedNop_ { OpCode::NOP, false, 0, 0, 0 };

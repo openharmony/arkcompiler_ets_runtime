@@ -314,6 +314,21 @@ private:
     V(TypeOf)                               \
     V(Equal)                                \
     V(NotEqual)                             \
+    V(Less)                                 \
+    V(LessEq)                               \
+    V(Greater)                              \
+    V(GreaterEq)                            \
+    V(Shl)                                  \
+    V(Shr)                                  \
+    V(Ashr)                                 \
+    V(And)                                  \
+    V(Or)                                   \
+    V(Xor)                                  \
+    V(Instanceof)                           \
+    V(Inc)                                  \
+    V(Dec)                                  \
+    V(Neg)                                  \
+    V(Not)                                  \
     V(SetPropertyByName)                    \
     V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \
@@ -373,6 +388,7 @@ private:
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
     V(DebugPrintInstruction)                \
+    V(Comment)                              \
     V(PGOProfiler)                          \
     V(FatalPrint)                           \
     V(InsertOldToNewRSet)                   \

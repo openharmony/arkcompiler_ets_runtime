@@ -31,6 +31,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     } else {
         InitializeMergedPF();
     }
+    checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 
@@ -260,6 +261,21 @@ CString JSPandaFile::ParseOhmUrl(const CString &fileName)
 
     return result;
 }
+
+std::string JSPandaFile::ParseHapPath(const CString &fileName)
+{
+    CString bundleSubInstallName(BUNDLE_SUB_INSTALL_PATH);
+    size_t startStrLen = bundleSubInstallName.length();
+    if (fileName.length() > startStrLen && fileName.compare(0, startStrLen, bundleSubInstallName) == 0) {
+        CString hapPath = fileName.substr(startStrLen);
+        size_t pos = hapPath.find(MERGE_ABC_ETS_MODULES);
+        if (pos != CString::npos) {
+            return hapPath.substr(0, pos).c_str();
+        }
+    }
+    return "";
+}
+
 
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
 {

@@ -26,6 +26,7 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
+using GateRef = int32_t;
 enum MachineType : uint8_t { // Bit width
     NOVALUE = 0,
     ANYVALUE,
@@ -103,11 +104,13 @@ enum class FCmpCondition : uint8_t {
 };
 
 enum class TypedStoreOp : uint8_t {
-    FLOAT32ARRAY_STORE_ELEMENT = 0,
+    ARRAY_STORE_ELEMENT = 0,
+    FLOAT32ARRAY_STORE_ELEMENT,
 };
 
 enum class TypedLoadOp : uint8_t {
-    FLOAT32ARRAY_LOAD_ELEMENT = 0,
+    ARRAY_LOAD_ELEMENT = 0,
+    FLOAT32ARRAY_LOAD_ELEMENT,
 };
 
 std::string MachineTypeToStr(MachineType machineType);
@@ -146,37 +149,40 @@ std::string MachineTypeToStr(MachineType machineType);
     V(UnsignedFloatToInt, UNSIGNED_FLOAT_TO_INT, false, 0, 0, 1)  \
     V(Bitcast, BITCAST, false, 0, 0, 1)
 
-#define IMMUTABLE_META_DATA_CACHE_LIST(V)               \
-    V(CircuitRoot, CIRCUIT_ROOT, false, 0, 0, 0)        \
-    V(StateEntry, STATE_ENTRY, true, 0, 0, 0)           \
-    V(DependEntry, DEPEND_ENTRY, true, 0, 0, 0)         \
-    V(ReturnList, RETURN_LIST, true, 0, 0, 0)           \
-    V(ArgList, ARG_LIST, true, 0, 0, 0)                 \
-    V(Return, RETURN, true, 1, 1, 1)                    \
-    V(ReturnVoid, RETURN_VOID, true, 1, 1, 0)           \
-    V(Throw, THROW, false, 1, 1, 1)                     \
-    V(OrdinaryBlock, ORDINARY_BLOCK, false, 1, 0, 0)    \
-    V(IfBranch, IF_BRANCH, false, 1, 0, 1)              \
-    V(IfTrue, IF_TRUE, false, 1, 0, 0)                  \
-    V(IfFalse, IF_FALSE, false, 1, 0, 0)                \
-    V(LoopBegin, LOOP_BEGIN, false, 2, 0, 0)            \
-    V(LoopBack, LOOP_BACK, false, 1, 0, 0)              \
-    V(DependRelay, DEPEND_RELAY, false, 1, 1, 0)        \
-    V(DependAnd, DEPEND_AND, false, 0, 2, 0)            \
-    V(IfSuccess, IF_SUCCESS, false, 1, 0, 0)            \
-    V(IfException, IF_EXCEPTION, false, 1, 0, 0)        \
-    V(GetException, GET_EXCEPTION, false, 0, 1, 0)      \
-    V(Guard, GUARD, false, 0, 1, 3)                     \
-    V(Deopt, DEOPT, false, 0, 1, 2)                     \
-    V(Load, LOAD, false, 0, 1, 1)                       \
-    V(Store, STORE, false, 0, 1, 2)                     \
-    V(TypedCallCheck, TYPED_CALL_CHECK, false, 1, 1, 2) \
-    V(LoadProperty, LOAD_PROPERTY, false, 1, 1, 2)      \
-    V(StoreProperty, STORE_PROPERTY, false, 1, 1, 3)    \
-    V(ToLength, TO_LENGTH, false, 1, 1, 1)              \
-    V(GetEnv, GET_ENV, false, 0, 1, 0)                  \
-    V(DefaultCase, DEFAULT_CASE, false, 1, 0, 0)        \
-    BINARY_GATE_META_DATA_CACHE_LIST(V)                 \
+#define IMMUTABLE_META_DATA_CACHE_LIST(V)                   \
+    V(CircuitRoot, CIRCUIT_ROOT, false, 0, 0, 0)            \
+    V(StateEntry, STATE_ENTRY, true, 0, 0, 0)               \
+    V(DependEntry, DEPEND_ENTRY, true, 0, 0, 0)             \
+    V(ReturnList, RETURN_LIST, true, 0, 0, 0)               \
+    V(ArgList, ARG_LIST, true, 0, 0, 0)                     \
+    V(Return, RETURN, true, 1, 1, 1)                        \
+    V(ReturnVoid, RETURN_VOID, true, 1, 1, 0)               \
+    V(Throw, THROW, false, 1, 1, 1)                         \
+    V(OrdinaryBlock, ORDINARY_BLOCK, false, 1, 0, 0)        \
+    V(IfBranch, IF_BRANCH, false, 1, 0, 1)                  \
+    V(IfTrue, IF_TRUE, false, 1, 0, 0)                      \
+    V(IfFalse, IF_FALSE, false, 1, 0, 0)                    \
+    V(LoopBegin, LOOP_BEGIN, false, 2, 0, 0)                \
+    V(LoopBack, LOOP_BACK, false, 1, 0, 0)                  \
+    V(DependRelay, DEPEND_RELAY, false, 1, 1, 0)            \
+    V(DependAnd, DEPEND_AND, false, 0, 2, 0)                \
+    V(IfSuccess, IF_SUCCESS, false, 1, 0, 0)                \
+    V(IfException, IF_EXCEPTION, false, 1, 0, 0)            \
+    V(GetException, GET_EXCEPTION, false, 0, 1, 0)          \
+    V(Guard, GUARD, false, 0, 1, 3)                         \
+    V(Deopt, DEOPT, false, 0, 1, 2)                         \
+    V(Load, LOAD, false, 0, 1, 1)                           \
+    V(Store, STORE, false, 0, 1, 2)                         \
+    V(TypedCallCheck, TYPED_CALL_CHECK, false, 1, 1, 2)     \
+    V(ArrayCheck, ARRAY_CHECK, false, 1, 1, 1)              \
+    V(StableArrayCheck, STABLE_ARRAY_CHECK, false, 1, 1, 1) \
+    V(LoadProperty, LOAD_PROPERTY, false, 1, 1, 2)          \
+    V(StoreProperty, STORE_PROPERTY, false, 1, 1, 3)        \
+    V(ToLength, TO_LENGTH, false, 1, 1, 1)                  \
+    V(GetEnv, GET_ENV, false, 0, 1, 0)                      \
+    V(DefaultCase, DEFAULT_CASE, false, 1, 0, 0)            \
+    V(LoadArrayLength, LOAD_ARRAY_LENGTH, false, 1, 1, 1)   \
+    BINARY_GATE_META_DATA_CACHE_LIST(V)                     \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                              \
@@ -198,11 +204,13 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DependSelector, DEPEND_SELECTOR, false, 1, value, 0)                \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)             \
-    V(TypeCheck, TYPE_CHECK, false, 0, 0, 1)              \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, false, 1, 1, 2) \
-    V(TypedUnaryOp, TYPED_UNARY_OP, false, 1, 1, 1)       \
-    V(TypedConvert, TYPE_CONVERT, false, 1, 1, 1)         \
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                   \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, false, 0, 0, 1) \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, false, 1, 1, 2)       \
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, false, 1, 1, 1)       \
+    V(IndexCheck, INDEX_CHECK, false, 1, 1, 2)                  \
+    V(TypedUnaryOp, TYPED_UNARY_OP, false, 1, 1, 1)             \
+    V(TypedConvert, TYPE_CONVERT, false, 1, 1, 1)               \
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                 \
     V(Icmp, ICMP, false, 0, 0, 2)                         \
@@ -211,8 +219,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(SwitchBranch, SWITCH_BRANCH, false, 1, 0, 1)        \
     V(SwitchCase, SWITCH_CASE, false, 1, 0, 0)            \
     V(HeapAlloc, HEAP_ALLOC, false, 1, 1, 1)              \
-    V(RestoreRegister, RESTORE_REGISTER, false, 0, 1, 0)  \
-    V(SaveRegister, SAVE_REGISTER, false, 0, 1, 1)        \
     V(LoadElement, LOAD_ELEMENT, false, 1, 1, 2)          \
     V(StoreElement, STORE_ELEMENT, false, 1, 1, 3)        \
     V(ConstData, CONST_DATA, false, 0, 0, 0)              \
@@ -224,6 +230,15 @@ std::string MachineTypeToStr(MachineType machineType);
     GATE_META_DATA_LIST_WITH_VALUE(V)                     \
     GATE_META_DATA_LIST_WITH_GATE_TYPE(V)
 
+#define GATE_META_DATA_LIST_WITH_STRING(V)                \
+    V(ConstString, CONSTSTRING, false, 0, 0, 0)
+
+#define GATE_META_DATA_IN_SAVE_REGISTER(V)         \
+    V(SaveRegister, SAVE_REGISTER, false, 0, 1, value)
+
+#define GATE_META_DATA_IN_RESTORE_REGISTER(V)      \
+    V(RestoreRegister, RESTORE_REGISTER, false, 0, 1, 0)
+
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
     V(TYPED_BINARY_OP)
@@ -234,6 +249,9 @@ enum class OpCode : uint8_t {
     IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_WITH_STRING(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_IN_SAVE_REGISTER(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_IN_RESTORE_REGISTER(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
@@ -247,8 +265,11 @@ public:
         MUTABLE_WITH_SIZE,
         IMMUTABLE_ONE_PARAMETER,
         MUTABLE_ONE_PARAMETER,
+        MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
+        SAVE_REGISTERS_OP,
+        RESTORE_REGISTERS_OP,
     };
     GateMetaData() = default;
     explicit GateMetaData(OpCode opcode, bool hasRoot,
@@ -305,6 +326,21 @@ public:
     {
         return GetKind() == IMMUTABLE_ONE_PARAMETER || GetKind() == MUTABLE_ONE_PARAMETER ||
             GetKind() == TYPED_BINARY_OP;
+    }
+
+    bool IsStringType() const
+    {
+        return GetKind() == MUTABLE_STRING;
+    }
+
+    bool IsSaveRegisterOp() const
+    {
+        return GetKind() == SAVE_REGISTERS_OP;
+    }
+
+    bool IsRestoreRegisterOp() const
+    {
+        return GetKind() == RESTORE_REGISTERS_OP;
     }
 
     bool IsRoot() const;
@@ -423,6 +459,55 @@ private:
     uint64_t value_ { 0 };
 };
 
+class SaveRegsMetaData : public GateMetaData {
+public:
+    explicit SaveRegsMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn, uint16_t dependsIn, uint32_t valuesIn,
+        uint64_t value) : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), numValue_(value)
+    {
+        SetKind(GateMetaData::SAVE_REGISTERS_OP);
+    }
+
+    static const SaveRegsMetaData* Cast(const GateMetaData* meta)
+    {
+        ASSERT(meta->IsSaveRegisterOp());
+        return static_cast<const SaveRegsMetaData*>(meta);
+    }
+
+    uint64_t GetNumValue() const
+    {
+        return numValue_;
+    }
+private:
+    uint64_t numValue_ { 0 };
+};
+
+class RestoreRegsMetaData : public GateMetaData {
+public:
+    explicit RestoreRegsMetaData() : GateMetaData(OpCode::RESTORE_REGISTER, false, 0, 1, 0)
+    {
+        SetKind(GateMetaData::RESTORE_REGISTERS_OP);
+    }
+
+    static const RestoreRegsMetaData* Cast(const GateMetaData* meta)
+    {
+        ASSERT(meta->IsRestoreRegisterOp());
+        return static_cast<const RestoreRegsMetaData*>(meta);
+    }
+
+    const std::map<std::pair<GateRef, uint32_t>, uint32_t> &GetRestoreRegsInfo() const
+    {
+        return restoreRegsInfo_;
+    }
+
+    void SetRestoreRegsInfo(std::pair<GateRef, uint32_t> &needReplaceInfo, uint32_t regIdx)
+    {
+        restoreRegsInfo_[needReplaceInfo] = regIdx;
+    }
+private:
+    std::map<std::pair<GateRef, uint32_t>, uint32_t> restoreRegsInfo_;
+};
+
+
 class TypedBinaryMegaData : public OneParameterMetaData {
 public:
     explicit TypedBinaryMegaData(uint64_t value, TypedBinOp binOp)
@@ -444,6 +529,24 @@ public:
     }
 private:
     TypedBinOp binOp_;
+};
+
+class StringMetaData : public GateMetaData {
+public:
+    explicit StringMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn,
+        uint16_t dependsIn, uint32_t valuesIn, const std::string &str)
+        : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), str_(str)
+    {
+        SetKind(GateMetaData::MUTABLE_STRING);
+    }
+
+    std::string GetString() const
+    {
+        return str_;
+    }
+
+private:
+    std::string str_;
 };
 
 class GateTypeAccessor {

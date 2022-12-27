@@ -411,17 +411,31 @@ private:
         bytecodeInfo_.AddIndexToCPInfo(type, index, methodOffset);
     }
 
+    inline std::string GetClassName(const EntityId entityId)
+    {
+        std::string className(MethodLiteral::GetMethodName(jsPandaFile_, entityId));
+        if (LIKELY(className.find('#') != std::string::npos)) {
+            size_t poiIndex = className.find_last_of('#');
+            className = className.substr(poiIndex + 1);
+        }
+        return className;
+    }
+
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
     void ProcessClasses();
-    void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr, const MethodLiteral *method);
+    void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
+        const MethodLiteral *method, std::vector<std::string> &classNameVec);
     void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo);
     void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset);
     void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset);
     void CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index);
     void NewLexEnvWithSize(const MethodLiteral *method, uint64_t numOfLexVars);
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
-    void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
+    void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns,
+        const MethodLiteral *method, std::vector<std::string> &classNameVec);
     void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
+    void GetClassLiteralOffset(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
+    void CollectClassNameLiteralOffset(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
 
     EcmaVM *vm_;
     JSPandaFile *jsPandaFile_ {nullptr};

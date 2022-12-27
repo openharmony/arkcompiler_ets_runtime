@@ -84,13 +84,11 @@ host_unittest_action("EcmaVm_001_Test") {
   ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
-
-  if (!ark_standalone_build) {
-    ldflags = [ "-Wl,--lto-O0" ]
-  }
 }
 
 host_unittest_action("EcmaVm_002_Test") {
@@ -136,10 +134,6 @@ host_unittest_action("EcmaVm_002_Test") {
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
-
-  if (!ark_standalone_build) {
-    ldflags = [ "-Wl,--lto-O0" ]
-  }
 }
 
 host_unittest_action("EcmaVm_003_Test") {
@@ -190,14 +184,12 @@ host_unittest_action("EcmaVm_003_Test") {
   ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     "//arkcompiler/runtime_core/assembler:libarkassembler_static",
     sdk_libc_secshared_dep,
   ]
-
-  if (!ark_standalone_build) {
-    ldflags = [ "-Wl,--lto-O0" ]
-  }
 }
 
 group("unittest") {

@@ -140,8 +140,10 @@ public:
         TRIPLE_ARM32,
     };
 
-    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false)
-        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler)
+    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false,
+                               bool profiling = false)
+        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler),
+          profiling_(profiling)
     {
     }
     ~CompilationConfig() = default;
@@ -181,6 +183,11 @@ public:
         return enablePGOProfiler_;
     }
 
+    bool IsProfiling() const
+    {
+        return profiling_;
+    }
+
 private:
     inline Triple GetTripleFromString(const std::string &triple)
     {
@@ -201,6 +208,7 @@ private:
     Triple triple_;
     bool isTraceBc_;
     bool enablePGOProfiler_;
+    bool profiling_;
 };
 
 class CircuitBuilder {
@@ -214,8 +222,12 @@ public:
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
     // low level interface
+    GateRef ArrayCheck(GateRef gate);
+    GateRef StableArrayCheck(GateRef gate);
+    GateRef TypedArrayCheck(GateType type, GateRef gate);
+    GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
-    GateRef TypeCheck(GateType type, GateRef gate);
+    GateRef PrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef function, GateRef id);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
@@ -236,6 +248,7 @@ public:
     GateRef Int32(int32_t value);
     GateRef Int64(int64_t value);
     GateRef IntPtr(int64_t val);
+    GateRef StringPtr(const std::string &str);
     GateRef Boolean(bool value);
     GateRef Double(double value);
     GateRef UndefineConstant();
@@ -334,6 +347,7 @@ public:
     inline GateRef TaggedIsDouble(GateRef x);
     inline GateRef TaggedIsObject(GateRef x);
     inline GateRef TaggedIsNumber(GateRef x);
+    inline GateRef TaggedIsNumeric(GateRef x);
     inline GateRef TaggedIsNotHole(GateRef x);
     inline GateRef TaggedIsHole(GateRef x);
     inline GateRef TaggedIsUndefined(GateRef x);
@@ -387,6 +401,7 @@ public:
     inline GateRef GetGlobalConstantString(ConstantIndex index);
 
     GateRef IsJSHClass(GateRef obj);
+    GateRef HasPendingException(GateRef glue);
 
     // middle ir: operations with any type
     template<TypedBinOp Op>
@@ -407,6 +422,7 @@ public:
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef offset);
     GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);
+    GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(std::vector<GateRef> args);
 

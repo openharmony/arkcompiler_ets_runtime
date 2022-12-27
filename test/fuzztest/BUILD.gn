@@ -214,6 +214,7 @@ group("fuzztest") {
     "jsnapisethostpromiserejectiontracker_fuzzer:fuzztest",
     "jsnapisethostresolvepathtracker_fuzzer:fuzztest",
     "jsnapistartdebugger_fuzzer:fuzztest",
+    "jsonparse_fuzzer:fuzztest",
     "jsonstringify_fuzzer:fuzztest",
     "nativepointernew1_fuzzer:fuzztest",
     "nativepointernew2_fuzzer:fuzztest",

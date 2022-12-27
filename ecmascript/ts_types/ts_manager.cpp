@@ -672,8 +672,8 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
     if (IsBuiltinsDTSEnabled()) {
         for (uint32_t i = static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_FIRST);
              i <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST); i++) {
-            if ((HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(i))) &&
-                (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(i)) == classGT)) {
+            bool hasCreatedGT = HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(i));
+            if (hasCreatedGT && (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(i)) == classGT)) {
                 return true;
             }
         }
@@ -704,6 +704,203 @@ bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
            (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY));
 }
 
+std::string TSManager::GetBuiltinsName(uint32_t index) const
+{
+    ASSERT(index >= static_cast<uint32_t>(BuiltinTypeId::FUNCTION) &&
+           index <=static_cast<uint32_t>(BuiltinTypeId::INTL));
+    BuiltinTypeId typeId = static_cast<BuiltinTypeId>(index);
+    switch (typeId) {
+        case BuiltinTypeId::FUNCTION:
+            return "Function";
+        case BuiltinTypeId::RANGE_ERROR:
+            return "RangeError";
+        case BuiltinTypeId::ERROR:
+            return "Error";
+        case BuiltinTypeId::OBJECT:
+            return "Object";
+        case BuiltinTypeId::SYNTAX_ERROR:
+            return "SyntaxError";
+        case BuiltinTypeId::TYPE_ERROR:
+            return "TypeError";
+        case BuiltinTypeId::REFERENCE_ERROR:
+            return "ReferenceError";
+        case BuiltinTypeId::URI_ERROR:
+            return "URIError";
+        case BuiltinTypeId::SYMBOL:
+            return "Symbol";
+        case BuiltinTypeId::EVAL_ERROR:
+            return "EvalError";
+        case BuiltinTypeId::NUMBER:
+            return "Number";
+        case BuiltinTypeId::PARSE_FLOAT:
+            return "parseFloat";
+        case BuiltinTypeId::DATE:
+            return "Date";
+        case BuiltinTypeId::BOOLEAN:
+            return "Boolean";
+        case BuiltinTypeId::BIG_INT:
+            return "BigInt";
+        case BuiltinTypeId::PARSE_INT:
+            return "parseInt";
+        case BuiltinTypeId::WEAK_MAP:
+            return "WeakMap";
+        case BuiltinTypeId::REG_EXP:
+            return "RegExp";
+        case BuiltinTypeId::SET:
+            return "Set";
+        case BuiltinTypeId::MAP:
+            return "Map";
+        case BuiltinTypeId::WEAK_REF:
+            return "WeakRef";
+        case BuiltinTypeId::WEAK_SET:
+            return "WeakSet";
+        case BuiltinTypeId::FINALIZATION_REGISTRY:
+            return "FinalizationRegistry";
+        case BuiltinTypeId::ARRAY:
+            return "Array";
+        case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
+            return "Uint8ClampedArray";
+        case BuiltinTypeId::UINT8_ARRAY:
+            return "Uint8Array";
+        case BuiltinTypeId::TYPED_ARRAY:
+            return "TypedArray";
+        case BuiltinTypeId::INT8_ARRAY:
+            return "Int8Array";
+        case BuiltinTypeId::UINT16_ARRAY:
+            return "Uint16Array";
+        case BuiltinTypeId::UINT32_ARRAY:
+            return "Uint32Array";
+        case BuiltinTypeId::INT16_ARRAY:
+            return "Int16Array";
+        case BuiltinTypeId::INT32_ARRAY:
+            return "Int32Array";
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            return "Float32Array";
+        case BuiltinTypeId::FLOAT64_ARRAY:
+            return "Float64Array";
+        case BuiltinTypeId::BIG_INT64_ARRAY:
+            return "BigInt64Array";
+        case BuiltinTypeId::BIG_UINT64_ARRAY:
+            return "BigUint64Array";
+        case BuiltinTypeId::SHARED_ARRAY_BUFFER:
+            return "SharedArrayBuffer";
+        case BuiltinTypeId::DATA_VIEW:
+            return "DataView";
+        case BuiltinTypeId::STRING:
+            return "String";
+        case BuiltinTypeId::ARRAY_BUFFER:
+            return "ArrayBuffer";
+        case BuiltinTypeId::EVAL:
+            return "eval";
+        case BuiltinTypeId::IS_FINITE:
+            return "isFinite";
+        case BuiltinTypeId::ARK_PRIVATE:
+            return "ArkPrivate";
+        case BuiltinTypeId::PRINT:
+            return "print";
+        case BuiltinTypeId::DECODE_URI:
+            return "decodeURI";
+        case BuiltinTypeId::DECODE_URI_COMPONENT:
+            return "decodeURIComponent";
+        case BuiltinTypeId::IS_NAN:
+            return "isNaN";
+        case BuiltinTypeId::ENCODE_URI:
+            return "encodeURI";
+        case BuiltinTypeId::JS_NAN:
+            return "NaN";
+        case BuiltinTypeId::GLOBAL_THIS:
+            return "globalThis";
+        case BuiltinTypeId::ENCODE_URI_COMPONENT:
+            return "encodeURIComponent";
+        case BuiltinTypeId::JS_INFINITY:
+            return "Infinity";
+        case BuiltinTypeId::MATH:
+            return "Math";
+        case BuiltinTypeId::JSON:
+            return "JSON";
+        case BuiltinTypeId::ATOMICS:
+            return "Atomics";
+        case BuiltinTypeId::UNDEFINED:
+            return "undefined";
+        case BuiltinTypeId::REFLECT:
+            return "Reflect";
+        case BuiltinTypeId::PROMISE:
+            return "Promise";
+        case BuiltinTypeId::PROXY:
+            return "Proxy";
+        case BuiltinTypeId::GENERATOR_FUNCTION:
+            return "GeneratorFunction";
+        case BuiltinTypeId::INTL:
+            return "Intl";
+        default:
+            UNREACHABLE();
+    }
+}
+
+uint32_t TSManager::GetBuiltinIndex(GlobalTSTypeRef builtinGT) const
+{
+    ASSERT(builtinGT.GetModuleId() == TSModuleTable::BUILTINS_TABLE_ID);
+    if (IsBuiltinsDTSEnabled()) {
+        for (uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::FUNCTION);
+            idx <= static_cast<uint32_t>(BuiltinTypeId::INTL); idx++) {
+            if ((HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
+               (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == builtinGT)) {
+                   return idx;
+               }
+        }
+    }
+    return builtinGT.GetLocalId();
+}
+
+std::string TSManager::GetClassTypeStr(GlobalTSTypeRef gt) const
+{
+    if (gt.GetModuleId() == TSModuleTable::BUILTINS_TABLE_ID) {
+        uint32_t index = GetBuiltinIndex(gt);
+        return GetBuiltinsName(index);
+    }
+
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSClassType());
+    JSHandle<TSClassType> classType = JSHandle<TSClassType>(tsType);
+    JSTaggedValue taggedValue = classType->GetName();
+    EcmaStringAccessor accessor(taggedValue);
+    return accessor.ToStdString();
+}
+
+std::string TSManager::GetClassInstanceTypeStr(GlobalTSTypeRef gt) const
+{
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSClassInstanceType());
+    JSHandle<TSClassInstanceType> classInstance(tsType);
+    return GetClassTypeStr(classInstance->GetClassGT());
+}
+
+std::string TSManager::GetFunctionTypeStr(GlobalTSTypeRef gt) const
+{
+    std::string functionStr = "(";
+    uint32_t parameterLength = GetFunctionTypeLength(gt);
+    for (uint32_t i = 0; i < parameterLength; i++) {
+        GlobalTSTypeRef parameterGT = GetFuncParameterTypeGT(gt, i);
+        std::string parameterStr = GetTypeStr(kungfu::GateType(parameterGT));
+        if (i != parameterLength - 1) {
+            functionStr = functionStr + parameterStr + ", ";
+        } else {
+            functionStr = functionStr + parameterStr;
+        }
+    }
+    GlobalTSTypeRef returnGT = GetFuncReturnValueTypeGT(gt);
+    std::string returnStr = GetTypeStr(kungfu::GateType(returnGT));
+    functionStr = functionStr + ") => " + returnStr;
+    return functionStr;
+}
+
+std::string TSManager::GetArrayTypeStr(GlobalTSTypeRef gt) const
+{
+    GlobalTSTypeRef elementGt = GetArrayParameterTypeGT(gt);
+    std::string arrayStr = GetTypeStr(kungfu::GateType(elementGt)) + "[]";
+    return arrayStr;
+}
+
 std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
 {
     GlobalTSTypeRef gt = gateType.GetGTRef();
@@ -712,15 +909,15 @@ std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
         case TSTypeKind::PRIMITIVE:
             return GetPrimitiveStr(gt);
         case TSTypeKind::CLASS:
-            return "class";
+            return "typeof " + GetClassTypeStr(gt);
         case TSTypeKind::CLASS_INSTANCE:
-            return "class_instance";
+            return GetClassInstanceTypeStr(gt);
         case TSTypeKind::FUNCTION:
-            return "function";
+            return GetFunctionTypeStr(gt);
         case TSTypeKind::UNION:
             return "union";
         case TSTypeKind::ARRAY:
-            return "array";
+            return GetArrayTypeStr(gt);
         case TSTypeKind::OBJECT:
             return "object";
         case TSTypeKind::IMPORT:

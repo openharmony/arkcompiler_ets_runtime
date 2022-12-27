@@ -35,7 +35,7 @@ PartialGC::PartialGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManage
 
 void PartialGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsFullMark()));
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
     ClockScope clockScope;
 

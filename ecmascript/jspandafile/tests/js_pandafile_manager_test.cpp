@@ -187,8 +187,8 @@ HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method(pf, methodId[0]);
-    pf->SetMethodLiteralToMap(&method);
+    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    pf->SetMethodLiteralToMap(method);
     pfManager->InsertJSPandaFile(pf);
 
     JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(vm, pf, JSPandaFile::ENTRY_FUNCTION_NAME);

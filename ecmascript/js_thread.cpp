@@ -18,13 +18,13 @@
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/dfx/native_dfx/backtrace.h"
 #endif
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_param_configuration.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
-
 
 namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
@@ -209,10 +209,13 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
             // There are some reasonable framework-level global objects in the initial phase.
             // The value can be adjusted as required.
             static const int MIN_NUMBER_COUNT = 110000;
+            static const int GLOBAL_NUMBER_COUNT = 10000;
             static const int MARK_INTERVAL_TIMES = 10;
             // Print global information about possible memory leaks.
             // You can print the global new stack within the range of the leaked global number.
-            if (node->GetGlobalNumber() > MIN_NUMBER_COUNT && ((node->GetMarkCount() % MARK_INTERVAL_TIMES) == 0)) {
+            if (node->GetGlobalNumber() > MIN_NUMBER_COUNT &&
+                node->GetGlobalNumber() < MIN_NUMBER_COUNT + GLOBAL_NUMBER_COUNT &&
+                ((node->GetMarkCount() % MARK_INTERVAL_TIMES) == 0)) {
                 LOG_ECMA(INFO) << "Global maybe leak object address:" << std::hex << object
                                << ", type:" << JSHClass::DumpJSType(JSType(object->GetClass()->GetObjectType()))
                                << ", node address:" << node
@@ -339,12 +342,14 @@ void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver)
     auto env = GetEcmaVM()->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
+        SetStableArrayElementsGuardians(JSTaggedValue::False());
         stableArrayElementsGuardians_ = false;
     }
 }
 
 void JSThread::ResetGuardians()
 {
+    SetStableArrayElementsGuardians(JSTaggedValue::True());
     stableArrayElementsGuardians_ = true;
 }
 

@@ -28,7 +28,10 @@ group("ark_js_packages") {
 group("ark_js_host_windows_tools_packages") {
   deps = []
   if (host_os != "mac" && target_os != "android") {
-    deps += [ "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)" ]
+    deps += [
+      "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mingw:mingw_x86_64)",
+      "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)",
+    ]
   }
 }
 
@@ -207,7 +210,7 @@ config("ark_jsruntime_compiler_config") {
 
 config("ark_jsruntime_windows_config") {
   ldflags = [ "-lshlwapi" ]
-  if (enable_hilog) {
+  if (enable_hilog && !ark_standalone_build) {
     defines = [ "ENABLE_HILOG" ]
     include_dirs =
         [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
@@ -372,6 +375,9 @@ config("ecma_test_config") {
   }
 
   ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+  if (!ark_standalone_build) {
+    ldflags += [ "-Wl,--lto-O0" ]
+  }
 }
 
 # ecmascript icu path for testcase config
@@ -462,6 +468,7 @@ ecma_source = [
   "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
+  "ecmascript/dfx/vmstat/opt_code_profiler.cpp",
   "ecmascript/dfx/vmstat/runtime_stat.cpp",
   "ecmascript/dfx/vm_thread_control.cpp",
   "ecmascript/dump.cpp",
@@ -664,6 +671,14 @@ if (!is_mingw && !is_mac && target_os != "ios") {
     "ecmascript/snapshot/mem/snapshot_env.cpp",
     "ecmascript/snapshot/mem/snapshot_processor.cpp",
     "ecmascript/base/block_hook_scope.cpp",
+  ]
+}
+
+if (is_mingw) {
+  ecma_profiler_source += [
+    "ecmascript/snapshot/mem/snapshot.cpp",
+    "ecmascript/snapshot/mem/snapshot_env.cpp",
+    "ecmascript/snapshot/mem/snapshot_processor.cpp",
   ]
 }
 
@@ -892,11 +907,6 @@ ohos_shared_library("libark_jsruntime_test") {
   deps = [
     ":libark_jsruntime_test_set",
     "$ark_root/libpandafile:libarkfile_static",
-  ]
-
-  public_deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
   ]
 
   ldflags = []

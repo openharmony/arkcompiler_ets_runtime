@@ -394,22 +394,21 @@ void FrameStateBuilder::SaveBBBeginStateInfo(size_t bbId)
 
 void FrameStateBuilder::UpdateVirtualRegistersOfSuspend(GateRef gate)
 {
-    auto saveGate = gateAcc_.GetDep(gate);
-    while (gateAcc_.GetOpCode(saveGate) == OpCode::SAVE_REGISTER) {
-        auto vreg = static_cast<size_t>(gateAcc_.GetVirtualRegisterIndex(saveGate));
-        auto def = gateAcc_.GetValueIn(saveGate, 0);
-        UpdateVirtualRegister(vreg, def);
-        saveGate = gateAcc_.GetDep(saveGate);
+    auto saveRegsGate = gateAcc_.GetDep(gate);
+    size_t numOfRegs = gateAcc_.GetNumOfSaveRegs(saveRegsGate);
+    for (size_t i = 0; i < numOfRegs; i++) {
+        GateRef def = gateAcc_.GetValueIn(saveRegsGate, i);
+        UpdateVirtualRegister(i, def);
     }
 }
 
 void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
 {
     auto restoreGate = gateAcc_.GetDep(gate);
-    while (gateAcc_.GetOpCode(restoreGate) == OpCode::RESTORE_REGISTER) {
-        auto vreg = static_cast<size_t>(gateAcc_.GetVirtualRegisterIndex(restoreGate));
+    auto info = gateAcc_.GetRestoreRegsInfo(restoreGate);
+    for (auto it = info.begin(); it != info.end(); ++it) {
+        auto vreg = it->second;
         UpdateVirtualRegister(vreg, Circuit::NullGate());
-        restoreGate = gateAcc_.GetDep(restoreGate);
     }
 }
 }

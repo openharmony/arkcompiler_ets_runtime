@@ -223,9 +223,25 @@ public:
         return TypedBinaryMegaData::Cast(meta_);
     }
 
+    const StringMetaData* GetStringMetaData() const
+    {
+        ASSERT(meta_->IsStringType());
+        return static_cast<const StringMetaData*>(meta_);
+    }
+
     const JSBytecodeMegaData* GetJSBytecodeMetaData() const
     {
         return JSBytecodeMegaData::Cast(meta_);
+    }
+
+    const RestoreRegsMetaData* GetRestoreRegsMetaData() const
+    {
+        return RestoreRegsMetaData::Cast(meta_);
+    }
+
+    const SaveRegsMetaData* GetSaveRegsMetaData() const
+    {
+        return SaveRegsMetaData::Cast(meta_);
     }
     std::string MachineTypeStr(MachineType machineType) const;
     std::string GateTypeStr(GateType gateType) const;

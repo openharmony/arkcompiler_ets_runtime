@@ -26,7 +26,7 @@ declare function AssertType(value:any, type:string):void;
     }
     function f():any {
         let stu1 = new Student("Jack", 10);
-        AssertType(stu1, "class_instance");
+        AssertType(stu1, "Student");
         let n1 = stu1.name;
         AssertType(n1, "string");
         let a1 = stu1.age;
@@ -36,7 +36,7 @@ declare function AssertType(value:any, type:string):void;
     }
 
     let stu2 = new Student("Tom", 10);
-    AssertType(stu2, "class_instance");
+    AssertType(stu2, "Student");
     let n2 = stu2.name;
     AssertType(n2, "string");
     let a2 = stu2.age;

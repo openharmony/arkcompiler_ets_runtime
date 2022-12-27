@@ -52,7 +52,8 @@ def parse_args():
     parser.add_argument('-c', '--clean', action='store_true', help='clean output files')
     parser.add_argument('--npm', action='store_true', help='npm install')
     parser.add_argument('--bt', dest='builtin', action='store_true', help='aot compile with lib_ark_builtins.d.ts')
-    parser.add_argument('--pgo', action='store_true', help=f'aot compile with pgo, default threshold is {DEFAULT_PGO_THRESHOLD}')
+    parser.add_argument('--pgo', action='store_true',
+        help=f'aot compile with pgo, default threshold is {DEFAULT_PGO_THRESHOLD}')
     parser.add_argument('--pgo-th', metavar='n', default=DEFAULT_PGO_THRESHOLD, type=int,
         help=f'pgo hotness threshold, default is {DEFAULT_PGO_THRESHOLD}')
     parser.add_argument('--timeout', metavar='n', default=DEFAULT_TIMEOUT, type=int,
@@ -235,7 +236,8 @@ class ArkTest():
             print(ret[2])
         return ret
 
-    def get_module_name(self, hap_dir):
+    @staticmethod
+    def get_module_name(hap_dir):
         with open(f'{hap_dir}/module.json') as f:
             data = json.load(f)
         if len(data):

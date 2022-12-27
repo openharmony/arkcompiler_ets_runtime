@@ -49,7 +49,7 @@ struct MethodKey {
     {
         return state < methodKey.state ||
                (state == methodKey.state && methodIdentifier < methodKey.methodIdentifier) ||
-               napiCallCount < methodKey.napiCallCount;
+               (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier && napiCallCount < methodKey.napiCallCount);
     }
 };
 

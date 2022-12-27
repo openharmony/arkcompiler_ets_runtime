@@ -142,13 +142,7 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef ind
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    auto guard = currentLabel->GetDepend();
-    auto currentDepend = Circuit::NullGate();
-    if (acc_.GetOpCode(guard) != OpCode::GUARD) {
-        currentDepend = guard;
-    } else {
-        currentDepend = acc_.GetDep(guard);
-    }
+    auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, gate, index}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -156,9 +150,57 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef ind
     return ret;
 }
 
-GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate)
+GateRef CircuitBuilder::ArrayCheck(GateRef gate)
 {
-    return GetCircuit()->NewGate(circuit_->TypeCheck(static_cast<size_t>(type.Value())),
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayCheck(),
+        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::StableArrayCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->StableArrayCheck(),
+        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::TypedArrayCheck(GateType type, GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, gate, index}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::PrimitiveTypeCheck(GateType type, GateRef gate)
+{
+    return GetCircuit()->NewGate(circuit_->PrimitiveTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {gate}, GateType::NJSValue());
 }
 
@@ -233,6 +275,11 @@ GateRef CircuitBuilder::Int64(int64_t val)
 GateRef CircuitBuilder::IntPtr(int64_t val)
 {
     return GetCircuit()->GetConstantGate(MachineType::ARCH, val, GateType::NJSValue());
+}
+
+GateRef CircuitBuilder::StringPtr(const std::string &str)
+{
+    return GetCircuit()->GetConstantStringGate(MachineType::ARCH, str, GateType::NJSValue());
 }
 
 GateRef CircuitBuilder::RelocatableData(uint64_t val)
@@ -503,6 +550,18 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef offset, GateRef 
     return ret;
 }
 
+GateRef CircuitBuilder::LoadArrayLength(GateRef array)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->LoadArrayLength(), MachineType::I64,
+                                     { currentControl, currentDepend, array }, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::Construct(std::vector<GateRef> args)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -516,6 +575,13 @@ GateRef CircuitBuilder::Construct(std::vector<GateRef> args)
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
     return callGate;
+}
+
+GateRef CircuitBuilder::HasPendingException(GateRef glue)
+{
+    GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
+    GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
+    return TaggedIsNotHole(exception);
 }
 
 GateRef CircuitBuilder::TaggedIsString(GateRef obj)

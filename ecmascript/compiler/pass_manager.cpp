@@ -41,7 +41,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
                                                 LOptions(optLevel_, true, relocMode_));
 
-    CompilationConfig cmpCfg(triple_, false, log_->IsTraceBC());
+    CompilationConfig cmpCfg(triple_, false, log_->IsTraceBC(), vm_->GetJSOptions().GetOptCodeProfiler());
     Bytecodes bytecodes;
     auto &bytecodeInfo = bcInfoCollector.GetBytecodeInfo();
     auto lexEnvManager = LexEnvManager(bytecodeInfo);

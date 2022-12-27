@@ -48,6 +48,11 @@ public:
  */
 HWTEST_F_L0(FrameTest, GetArkJSHeapCrashInfoTest)
 {
+    if (sizeof(uintptr_t) == sizeof(uint32_t)) {  // 32 bit
+        // The frame structure is different between 32 bit and 64 bit.
+        // Skip 32 bit because there is no ArkJS Heap.
+        return;
+    }
     uint8_t bytecode[] = {
         12,  // 12: HandleMul2Imm8V8
         34,  // 34: HandleDecImm8

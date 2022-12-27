@@ -30,13 +30,11 @@ host_unittest_action("PGOProfilerTest") {
   ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
-
-  if (!ark_standalone_build) {
-    ldflags = [ "-Wl,--lto-O0" ]
-  }
 }
 
 group("unittest") {

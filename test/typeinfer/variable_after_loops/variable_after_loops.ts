@@ -15,6 +15,6 @@ declare function AssertType(value:any, type:string):void;
             v += i;
         }
         let s = new A(v);
-        AssertType(s, "class_instance");
+        AssertType(s, "A");
     }
 }

@@ -40,6 +40,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/aot_file_manager.h"
@@ -133,7 +134,7 @@ void EcmaVM::PostFork()
 {
     heap_->SetIsFork(true);
     GetAssociatedJSThread()->SetThreadId();
-    Taskpool::GetCurrentTaskpool()->Initialize();
+    heap_->EnableParallelGC();
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
@@ -224,6 +225,9 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
         LoadAOTFiles();
     }
+
+    optCodeProfiler_ = new OptCodeProfiler();
+
     initialized_ = true;
     return true;
 }
@@ -285,6 +289,11 @@ EcmaVM::~EcmaVM()
 
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
         runtimeStat_->Print();
+    }
+
+    if (optCodeProfiler_ != nullptr) {
+        delete optCodeProfiler_;
+        optCodeProfiler_ = nullptr;
     }
 
     // clear c_address: c++ pointer delete
@@ -509,6 +518,11 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         HandleUncaughtException(exception.GetTaggedObject());
     }
     return result;
+}
+
+bool EcmaVM::HasCachedConstpool(const JSPandaFile *jsPandaFile) const
+{
+    return cachedConstpools_.find(jsPandaFile) != cachedConstpools_.end();
 }
 
 JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t index)

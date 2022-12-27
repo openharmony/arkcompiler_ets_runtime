@@ -24,7 +24,6 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/dfx/vm_thread_control.h"
-#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
@@ -36,6 +35,8 @@ class EcmaHandleScope;
 class EcmaVM;
 class HeapRegionAllocator;
 class PropertiesCache;
+class EcmaGlobalStorage;
+using WeakClearCallback = void (*)(void *);
 
 enum class MarkStatus : uint8_t {
     READY_TO_MARK,
@@ -278,7 +279,7 @@ public:
         return handleScopeStorageEnd_;
     }
 
-    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> *GetWeakNodeNativeFinalizeCallbacks()
+    std::vector<std::pair<WeakClearCallback, void *>> *GetWeakNodeNativeFinalizeCallbacks()
     {
         return &weakNodeNativeFinalizeCallbacks_;
     }
@@ -335,6 +336,16 @@ public:
     void SetGlobalObject(JSTaggedValue globalObject)
     {
         glueData_.globalObject_ = globalObject;
+    }
+
+    JSTaggedValue GetStableArrayElementsGuardians() const
+    {
+        return glueData_.stableArrayElementsGuardians_;
+    }
+
+    void SetStableArrayElementsGuardians(JSTaggedValue guardians)
+    {
+        glueData_.stableArrayElementsGuardians_ = guardians;
     }
 
     const GlobalEnvConstants *GlobalConstants() const
@@ -457,6 +468,12 @@ public:
         PGOProfilerStatus status =
             enable ? PGOProfilerStatus::PGO_PROFILER_ENABLE : PGOProfilerStatus::PGO_PROFILER_DISABLE;
         PGOStatusBits::Set(status, &glueData_.threadStateBitField_);
+    }
+
+    bool IsPGOProfilerEnable() const
+    {
+        auto status = PGOStatusBits::Decode(glueData_.threadStateBitField_);
+        return status == PGOProfilerStatus::PGO_PROFILER_ENABLE;
     }
 
     bool CheckSafepoint() const;
@@ -590,6 +607,7 @@ public:
                                                  BCStubEntries,
                                                  JSTaggedValue,
                                                  JSTaggedValue,
+                                                 JSTaggedValue,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -609,6 +627,7 @@ public:
             BCStubEntriesIndex = 0,
             ExceptionIndex,
             GlobalObjIndex,
+            StableArrayElementsGuardiansIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -636,6 +655,11 @@ public:
         static size_t GetGlobalObjOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::GlobalObjIndex)>(isArch32);
+        }
+
+        static size_t GetStableArrayElementsGuardiansOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::StableArrayElementsGuardiansIndex)>(isArch32);
         }
 
         static size_t GetGlobalConstOffset(bool isArch32)
@@ -721,6 +745,7 @@ public:
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
+        alignas(EAS) JSTaggedValue stableArrayElementsGuardians_ {JSTaggedValue::True()};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
@@ -764,7 +789,7 @@ private:
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
     EcmaHandleScope *lastHandleScope_ {nullptr};
-    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> weakNodeNativeFinalizeCallbacks_ {};
+    std::vector<std::pair<WeakClearCallback, void *>> weakNodeNativeFinalizeCallbacks_ {};
 
     PropertiesCache *propertiesCache_ {nullptr};
     EcmaGlobalStorage *globalStorage_ {nullptr};

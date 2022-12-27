@@ -53,6 +53,6 @@ declare function AssertType(value:any, type:string):void;
     AssertType(a.fun1(), "void");
     AssertType(a.fun2(), "string");
     AssertType(a.fun3(), "boolean");
-    AssertType(a.fun4(), "class_instance");
-    AssertType(a.fun5(), "array");
+    AssertType(a.fun4(), "B");
+    AssertType(a.fun5(), "number[]");
 }

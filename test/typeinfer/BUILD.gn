@@ -15,6 +15,7 @@ group("ark_typeinfer_test") {
   testonly = true
   deps = [
     "add2dyn:add2dynAotTypeInferAction",
+    "assertTypeRules:assertTypeRulesAotTypeInferAction",
     "bitwise_op:bitwise_opAotTypeInferAction",
     "builtins:builtinsAotTypeInferAction",
     "callarg0dyn:callarg0dynAotTypeInferAction",

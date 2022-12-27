@@ -1463,7 +1463,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod1)
 HWTEST_F_L0(JSSerializerTest, SerializeMethod2)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(10));
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
     JSHandle<Method> method = factory->NewMethod(methodLiteral);
     EXPECT_TRUE(method.GetTaggedValue().IsMethod());
 

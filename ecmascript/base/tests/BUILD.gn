@@ -48,10 +48,6 @@ host_unittest_action("BaseTest") {
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
-
-  if (!ark_standalone_build) {
-    ldflags = [ "-Wl,--lto-O0" ]
-  }
 }
 
 group("unittest") {

@@ -28,7 +28,22 @@ namespace panda::ecmascript::kungfu {
     V(Mod)                            \
     V(Equal)                          \
     V(NotEqual)                       \
+    V(Less)                           \
+    V(LessEq)                         \
+    V(Greater)                        \
+    V(GreaterEq)                      \
+    V(Shl)                            \
+    V(Shr)                            \
+    V(Ashr)                           \
+    V(And)                            \
+    V(Or)                             \
+    V(Xor)                            \
+    V(Instanceof)                     \
     V(TypeOf)                         \
+    V(Inc)                            \
+    V(Dec)                            \
+    V(Neg)                            \
+    V(Not)                            \
     V(GetPropertyByName)              \
     V(DeprecatedGetPropertyByName)    \
     V(SetPropertyByName)              \

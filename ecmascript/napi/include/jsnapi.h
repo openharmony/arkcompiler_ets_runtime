@@ -1227,9 +1227,9 @@ public:
     static void LoadAotFile(EcmaVM *vm, const std::string &hapPath);
 
     // JS code
-    static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry);
+    static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
-                        const std::string &filename = "");
+                        const std::string &filename = "", bool needUpdate = false);
     // merge abc, execute module buffer
     static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "");
     static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
@@ -1266,8 +1266,7 @@ public:
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetHostResolvePathTracker(EcmaVM *vm,
                                           std::function<std::string(std::string dirPath, std::string requestPath)> cb);
-    static void SetHostResolveBufferTracker(EcmaVM *vm,
-        std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)> cb);
+    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);

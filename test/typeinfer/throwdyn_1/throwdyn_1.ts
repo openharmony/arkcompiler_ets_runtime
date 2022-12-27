@@ -16,6 +16,6 @@
 declare function AssertType(value:any, type:string):void;
 {
     let arr1 :number[] = [1, 2, 3];
-    AssertType(arr1, "array");
+    AssertType(arr1, "number[]");
     throw arr1;
 }

@@ -1337,7 +1337,7 @@ TaggedObject *ObjectFactory::NewObject(const JSHandle<JSHClass> &hclass)
     return header;
 }
 
-TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclass, int inobjPropCount)
+TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclass, uint32_t inobjPropCount)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(*hclass);
@@ -1347,12 +1347,13 @@ TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclas
     return header;
 }
 
-void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, int inobjPropCount)
+void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass,
+                                              TaggedObject *obj, uint32_t inobjPropCount)
 {
     ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < hclass->GetObjectSize());
     auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
     JSTaggedType initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
-    for (int i = 0; i < inobjPropCount; ++i) {
+    for (uint32_t i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
     }
@@ -2019,6 +2020,7 @@ JSHandle<JSProxy> ObjectFactory::NewJSProxy(const JSHandle<JSTaggedValue> &targe
     }
 
     JSHandle<JSProxy> proxy(thread_, header);
+    proxy->InitializeHash();
     proxy->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_PROXY));
     proxy->SetTarget(thread_, target.GetTaggedValue());
     proxy->SetHandler(thread_, handler.GetTaggedValue());
@@ -2112,7 +2114,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
     dstElements->SetLength(newLength);
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace()) {
+    if (region->InYoungSpace() && !region->IsMarking()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
@@ -2393,6 +2395,7 @@ JSHandle<Program> ObjectFactory::NewProgram()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetProgramClass().GetTaggedObject()));
     JSHandle<Program> p(thread_, header);
+    p->InitializeHash();
     p->SetMainFunction(thread_, JSTaggedValue::Undefined());
     return p;
 }
@@ -3136,6 +3139,7 @@ JSHandle<TSClassType> ObjectFactory::NewTSClassType()
     classType->SetInstanceType(thread_, JSTaggedValue::Undefined());
     classType->SetConstructorType(thread_, JSTaggedValue::Undefined());
     classType->SetPrototypeType(thread_, JSTaggedValue::Undefined());
+    classType->SetName(thread_, JSTaggedValue::Undefined());
     classType->SetExtensionGT(GlobalTSTypeRef::Default());
     classType->SetHasLinked(false);
 

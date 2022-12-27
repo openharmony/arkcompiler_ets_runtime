@@ -120,7 +120,7 @@ private:
 
     void Lower(GateRef gate);
     void LowerType(GateRef gate);
-    void LowerTypeCheck(GateRef gate);
+    void LowerPrimitiveTypeCheck(GateRef gate);
     void LowerTypedBinaryOp(GateRef gate);
     void LowerTypeConvert(GateRef gate);
     void LowerTypedUnaryOp(GateRef gate);
@@ -174,14 +174,22 @@ private:
     void LowerNumberNot(GateRef gate, GateType valueType);
     void LowerNumberToBool(GateRef gate, GateType valueType);
     void LowerBooleanToBool(GateRef gate);
+    void LowerIndexCheck(GateRef gate);
     void LowerObjectTypeCheck(GateRef gate, GateRef glue);
     void LowerClassInstanceCheck(GateRef gate, GateRef glue);
     void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
+    void LowerArrayCheck(GateRef gate, GateRef glue);
+    void LowerStableArrayCheck(GateRef gate, GateRef glue);
+    void LowerTypedArrayCheck(GateRef gate, GateRef glue);
+    void LowerFloat32ArrayIndexCheck(GateRef gate);
+    void LowerArrayIndexCheck(GateRef gate);
     void LowerNewObjTypeCheck(GateRef gate);
     void LowerLoadProperty(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate, GateRef glue);
+    void LowerLoadArrayLength(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
     void LowerLoadElement(GateRef gate);
+    void LowerArrayLoadElement(GateRef gate);
     void LowerFloat32ArrayLoadElement(GateRef gate);
     void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
     void LowerHeapAllocate(GateRef gate, GateRef glue);

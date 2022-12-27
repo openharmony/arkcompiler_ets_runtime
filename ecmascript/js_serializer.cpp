@@ -1039,9 +1039,9 @@ JSDeserializer::~JSDeserializer()
 
 JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
 {
-    size_t maxSerializerSize_ = thread_->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
+    size_t maxSerializerSize = thread_->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
     uint8_t dataSize = end_ - begin_;
-    if (dataSize > maxSerializerSize_) {
+    if (dataSize > maxSerializerSize) {
         LOG_ECMA(ERROR) << "The Serialization data size exceed limit Size";
         return JSHandle<JSTaggedValue>();
     }

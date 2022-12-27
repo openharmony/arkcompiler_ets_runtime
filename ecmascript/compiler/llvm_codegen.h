@@ -19,7 +19,6 @@
 #include <iostream>
 #include <list>
 #include <map>
-#include <sys/mman.h>
 #include <vector>
 
 #include "ecmascript/compiler/binary_section.h"
@@ -67,11 +66,13 @@ struct CodeInfo {
     using sectionInfo = std::pair<uint8_t *, size_t>;
     CodeInfo()
     {
-        reqSecs_ = static_cast<uint8_t *>(mmap(nullptr, REQUIRED_SECS_LIMIT, protRWX, flags, -1, 0));
+        ASSERT(REQUIRED_SECS_LIMIT == AlignUp(REQUIRED_SECS_LIMIT, PageSize()));
+        reqSecs_ = static_cast<uint8_t *>(PageMap(REQUIRED_SECS_LIMIT, PAGE_PROT_EXEC_READWRITE).GetMem());
         if (reqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
             reqSecs_ = nullptr;
         }
-        unreqSecs_ = static_cast<uint8_t *>(mmap(nullptr, UNREQUIRED_SECS_LIMIT, protRWX, flags, -1, 0));
+        ASSERT(UNREQUIRED_SECS_LIMIT == AlignUp(UNREQUIRED_SECS_LIMIT, PageSize()));
+        unreqSecs_ = static_cast<uint8_t *>(PageMap(UNREQUIRED_SECS_LIMIT, PAGE_PROT_EXEC_READWRITE).GetMem());
         if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
             unreqSecs_ = nullptr;
         }
@@ -81,11 +82,11 @@ struct CodeInfo {
     {
         Reset();
         if (reqSecs_ != nullptr) {
-            munmap(reqSecs_, REQUIRED_SECS_LIMIT);
+            PageUnmap(MemMap(reqSecs_, REQUIRED_SECS_LIMIT));
         }
         reqSecs_ = nullptr;
         if (unreqSecs_ != nullptr) {
-            munmap(unreqSecs_, UNREQUIRED_SECS_LIMIT);
+            PageUnmap(MemMap(unreqSecs_, UNREQUIRED_SECS_LIMIT));
         }
         unreqSecs_ = nullptr;
     }
@@ -167,9 +168,6 @@ struct CodeInfo {
 private:
     static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
     static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
-    static constexpr int protRWX = PROT_READ | PROT_WRITE | PROT_EXEC;  // NOLINT(hicpp-signed-bitwise)
-    static constexpr int protRW = PROT_READ | PROT_WRITE;               // NOLINT(hicpp-signed-bitwise)
-    static constexpr int flags = MAP_ANONYMOUS | MAP_SHARED;            // NOLINT(hicpp-signed-bitwise)
     // start point of the buffer reserved for sections required in executing phase
     uint8_t *reqSecs_ {nullptr};
     size_t reqBufPos_ {0};

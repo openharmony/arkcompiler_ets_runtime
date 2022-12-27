@@ -19,17 +19,19 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 
 namespace panda::ecmascript {
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &filename,
-                                                                   std::string_view entryPoint, bool excuteFromJob)
+    std::string_view entryPoint, bool needUpdate, bool excuteFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename.c_str();
 
     CString entry;
     CString name = filename;
+    CString normalName = NormalizePath(filename);
     if (!thread->GetEcmaVM()->IsBundlePack()) {
 #if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
         entry = entryPoint.data();
@@ -37,7 +39,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         if (excuteFromJob) {
             entry = entryPoint.data();
         } else {
-            entry = JSPandaFile::ParseOhmUrl(filename);
+            entry = JSPandaFile::ParseOhmUrl(normalName);
         }
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
         name = thread->GetEcmaVM()->GetAssetPath().c_str();
@@ -53,7 +55,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         entry = entryPoint.data();
     }
 
-    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str());
+    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(),
+                                                                                        needUpdate);
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
@@ -84,12 +87,13 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str(), excuteFromJob);
 }
 
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
-    JSThread *thread, const void *buffer, size_t size, std::string_view entryPoint, const CString &filename)
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *thread,
+    const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename.c_str();
+    CString normalName = NormalizePath(filename);
     const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, entryPoint, buffer, size);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
@@ -97,7 +101,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(
     bool isModule = jsPandaFile->IsModule(entry);
     bool isBundle = jsPandaFile->IsBundlePack();
     if (isModule) {
-        return CommonExecuteBuffer(thread, isBundle, filename, entry, buffer, size);
+        return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size);
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry);
 }
@@ -116,7 +120,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
     name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
-    CString entry = JSPandaFile::ParseOhmUrl(filename);
+    CString normalName = NormalizePath(filename);
+    CString entry = JSPandaFile::ParseOhmUrl(normalName);
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), buffer, size);
     if (jsPandaFile == nullptr) {
@@ -149,6 +154,43 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, moduleRecord, buffer, size);
     return JSTaggedValue::Undefined();
+}
+
+CString JSPandaFileExecutor::NormalizePath(const CString &fileName)
+{
+    if (fileName.find("//") == CString::npos && fileName.find("../") == CString::npos) {
+        return fileName;
+    }
+    const char delim = '/';
+    CString res = "";
+    size_t prev = 0;
+    size_t curr = fileName.find(delim);
+    CVector<CString> elems;
+    while (curr != CString::npos) {
+        if (curr > prev) {
+            CString elem = fileName.substr(prev, curr - prev);
+            if (elem.compare("..") == 0 && !elems.empty()) {
+                elems.pop_back();
+                prev = curr + 1;
+                curr = fileName.find(delim, prev);
+                continue;
+            }
+            elems.push_back(elem);
+        }
+        prev = curr + 1;
+        curr = fileName.find(delim, prev);
+    }
+    if (prev != fileName.size()) {
+        elems.push_back(fileName.substr(prev));
+    }
+    for (auto e : elems) {
+        if (res.size() == 0 && fileName.at(0) != delim) {
+            res.append(e);
+            continue;
+        }
+        res.append(1, delim).append(e);
+    }
+    return res;
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile,

@@ -607,6 +607,21 @@ public:
 
     void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
 
+    void AddElementToClassNameMap(const JSPandaFile *jsPandaFile, uint32_t offset, std::string className)
+    {
+        literalOffsetClassNameMap_.emplace(std::make_pair(jsPandaFile, offset), className);
+    }
+
+    const std::string GetClassNameByOffset(const JSPandaFile *jsPandaFile, uint32_t typeId) const
+    {
+        std::pair<const JSPandaFile *, uint32_t> pair = std::make_pair(jsPandaFile, typeId);
+        std::string name = "";
+        if (literalOffsetClassNameMap_.find(pair) != literalOffsetClassNameMap_.end()) {
+            name = literalOffsetClassNameMap_.at(pair);
+        }
+        return name;
+    }
+
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
@@ -625,11 +640,23 @@ private:
 
     TSTypeKind PUBLIC_API GetTypeKind(const GlobalTSTypeRef &gt) const;
 
+    std::string GetClassTypeStr(GlobalTSTypeRef gt) const;
+
+    std::string GetClassInstanceTypeStr(GlobalTSTypeRef gt) const;
+
+    std::string GetFunctionTypeStr(GlobalTSTypeRef gt) const;
+
+    std::string GetArrayTypeStr(GlobalTSTypeRef gt) const;
+
     std::string GetPrimitiveStr(const GlobalTSTypeRef &gt) const;
 
     int GetHClassIndex(GlobalTSTypeRef classGT);
 
     uint32_t RecordIhcToVecAndIndexMap(IHClassData &ihcData);
+
+    uint32_t GetBuiltinIndex(GlobalTSTypeRef builtinGT) const;
+
+    std::string GetBuiltinsName(uint32_t index) const;
 
     void CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                             JSHandle<ConstantPool> snapshotConstantPool,
@@ -682,6 +709,8 @@ private:
     std::map<LocalModuleInfo, GlobalTSTypeRef> localModuleVarGtMap_{};
 
     friend class EcmaVM;
+
+    std::map<std::pair<const JSPandaFile *, uint32_t>, std::string> literalOffsetClassNameMap_ {};
 };
 }  // namespace panda::ecmascript
 
