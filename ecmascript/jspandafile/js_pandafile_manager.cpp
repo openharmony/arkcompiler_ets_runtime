@@ -30,10 +30,8 @@ JSPandaFileManager *JSPandaFileManager::GetInstance()
 JSPandaFileManager::~JSPandaFileManager()
 {
     os::memory::LockHolder lock(jsPandaFileLock_);
-    auto pos = extractors_.begin();
-    while (pos != extractors_.end()) {
-        pos = extractors_.erase(pos);
-    }
+
+    extractors_.clear();
 
     auto iterOld = oldJSPandaFiles_.begin();
     while (iterOld != oldJSPandaFiles_.end()) {

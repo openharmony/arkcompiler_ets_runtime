@@ -2458,24 +2458,23 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
         LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id, constpool);
 
     ASSERT(elementsLiteral->GetLength() > 0);
+
+    auto *scopeDebugInfo = ecmaVm->GetNativeAreaAllocator()->New<ScopeDebugInfo>();
+    if (scopeDebugInfo == nullptr) {
+        return JSTaggedValue::Hole();
+    }
+
     size_t length = elementsLiteral->GetLength();
-
-    auto buffer = ecmaVm->GetNativeAreaAllocator()->New<struct ScopeDebugInfo>();
-    auto scopeDebugInfo = static_cast<struct ScopeDebugInfo *>(buffer);
-
     for (size_t i = 1; i < length; i += 2) {  // 2: Each literal buffer contains a pair of key-value.
         JSTaggedValue val = elementsLiteral->Get(i);
         ASSERT(val.IsString());
         CString name = ConvertToString(EcmaString::Cast(val.GetTaggedObject()));
         int32_t slot = elementsLiteral->Get(i + 1).GetInt();
-        if (scopeDebugInfo == nullptr) {
-            return JSTaggedValue::Hole();
-        }
         scopeDebugInfo->scopeInfo.emplace(name, slot);
     }
 
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(
-        buffer, NativeAreaAllocator::FreeObjectFunc<struct ScopeDebugInfo>, ecmaVm->GetNativeAreaAllocator());
+        scopeDebugInfo, NativeAreaAllocator::FreeObjectFunc<ScopeDebugInfo>, ecmaVm->GetNativeAreaAllocator());
     return pointer.GetTaggedValue();
 }
 

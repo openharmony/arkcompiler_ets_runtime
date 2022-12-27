@@ -44,14 +44,14 @@ std::unique_ptr<Task> TaskQueue::PopTask()
 void TaskQueue::TerminateTask(int32_t id, TaskType type)
 {
     os::memory::LockHolder holder(mtx_);
-    for (auto iter = tasks_.begin(); iter != tasks_.end(); iter++) {
-        if (id != ALL_TASK_ID && id != (*iter)->GetId()) {
+    for (auto &task : tasks_) {
+        if (id != ALL_TASK_ID && id != task->GetId()) {
             continue;
         }
-        if (type != TaskType::ALL && type != (*iter)->GetTaskType()) {
+        if (type != TaskType::ALL && type != task->GetTaskType()) {
             continue;
         }
-        (*iter)->Terminated();
+        task->Terminated();
     }
 }
 
