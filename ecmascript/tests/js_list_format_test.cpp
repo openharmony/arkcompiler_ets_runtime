@@ -308,7 +308,7 @@ HWTEST_F_L0(JSListFormatTest, FormatListToParts)
     JSHandle<JSArray> valueArr = JSHandle<JSArray>::Cast(valueObj);
     JSHandle<EcmaString> valueStr = JSListFormat::FormatList(thread, jsFormatter, valueArr);
     EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString().c_str(), "苹果、梨子和桃");
-    
+
     JSHandle<JSTaggedValue> typeKey = globalConst->GetHandledTypeString();
     JSHandle<JSTaggedValue> valueKey = globalConst->GetHandledValueString();
     JSHandle<JSArray> parts = JSListFormat::FormatListToParts(thread, jsFormatter, valueArr);

@@ -1725,7 +1725,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, TryToLower)
         EXPECT_TRUE(EcmaStringAccessor(lowerEcmaString).IsUtf8());
         EXPECT_FALSE(EcmaStringAccessor(lowerEcmaString).IsUtf16());
     }
-    
+
     {
         JSHandle<EcmaString> lowerEcmaString(thread, EcmaStringAccessor::TryToLower(ecmaVMPtr, upperStr));
         EXPECT_TRUE(JSTaggedValue::SameValue(lowerStr.GetTaggedValue(), lowerEcmaString.GetTaggedValue()));

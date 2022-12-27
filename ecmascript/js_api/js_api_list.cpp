@@ -253,7 +253,7 @@ OperationResult JSAPIList::GetProperty(JSThread *thread, const JSHandle<JSAPILis
                                                                         JSTaggedValue::Exception(),
                                                                         PropertyMetaData(false)));
     }
-    
+
     return OperationResult(thread, singleList->Get(index), PropertyMetaData(false));
 }
 

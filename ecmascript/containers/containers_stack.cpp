@@ -184,7 +184,7 @@ JSTaggedValue ContainersStack::ForEach(EcmaRuntimeCallInfo *argv)
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
-    
+
     JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(thisHandle);
     int len = stack->GetSize();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -197,7 +197,7 @@ JSTaggedValue ContainersStack::ForEach(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    
+
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     int k = 0;

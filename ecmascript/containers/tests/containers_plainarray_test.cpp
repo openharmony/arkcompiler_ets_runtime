@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/containers/containers_plainarray.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -68,7 +68,7 @@ public:
                 JSHandle<JSTaggedValue> newValue(thread, JSTaggedValue(value->GetInt() * 2)); // 2 means the value
                 JSAPIPlainArray::Add(thread, plainArray, key, newValue);
             }
- 
+
             return JSTaggedValue::True();
         }
     };
@@ -164,7 +164,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, PlainArrayConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = arrayHandle->GetSize();
     ASSERT_EQ(size, 0);
-    
+
     // test PlainArrayConstructor exception
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersPlainArray, PlainArrayConstructor, objCallInfo);
@@ -173,7 +173,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, PlainArrayConstructor)
 HWTEST_F_L0(ContainersPlainArrayTest, AddAndHas)
 {
     constexpr uint32_t NODE_NUMBERS = 8;    // 8 means the value
-    
+
     JSHandle<JSAPIPlainArray> tArray1 = CreateJSAPIPlainArray();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo =

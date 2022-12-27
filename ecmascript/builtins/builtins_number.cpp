@@ -431,7 +431,7 @@ JSTaggedValue BuiltinsNumber::ValueOf(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Number, ValueOf);
     // 1. Let x be ? thisNumberValue(this value).
     JSTaggedValue x = ThisNumberValue(thread, argv);
-    
+
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return x;
 }

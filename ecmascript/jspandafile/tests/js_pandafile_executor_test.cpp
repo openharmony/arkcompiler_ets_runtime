@@ -171,7 +171,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, NormalizePath)
 {
     CString res1 = "node_modules/0/moduleTest/index";
     CString moduleRecordName1 = "node_modules///0//moduleTest/index";
-    
+
     CString res2 = "./node_modules/0/moduleTest/index";
     CString moduleRecordName2 = "./node_modules///0//moduleTest/index";
 

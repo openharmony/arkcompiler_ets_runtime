@@ -253,7 +253,7 @@ HWTEST_F_L0(DFXJSNApiTests, Start_Stop_RuntimeStat)
 
     DFXJSNApi::StartRuntimeStat(vm_);
     EXPECT_TRUE(ecmaRuntimeStat->IsRuntimeStatEnabled());
-    
+
     DFXJSNApi::StopRuntimeStat(vm_);
     EXPECT_TRUE(!ecmaRuntimeStat->IsRuntimeStatEnabled());
 }

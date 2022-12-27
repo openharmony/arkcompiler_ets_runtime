@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #ifndef ECMASCRIPT_JS_API_STACK_ITERATOR_H
 #define ECMASCRIPT_JS_API_STACK_ITERATOR_H
 

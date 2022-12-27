@@ -83,7 +83,7 @@ JSTaggedValue TaggedList<Derived>::AddNode(const JSThread *thread, const JSHandl
     int deleteNodeLength = list->NumberOfDeletedNodes();
     int nodeLength = list->NumberOfNodes();
     int finalDataIndex = ELEMENTS_START_INDEX + (nodeLength + 1 + deleteNodeLength) * Derived::ENTRY_SIZE;
-    
+
     list->InsertNode(thread, value, prevDataIndex, finalDataIndex);
     if (index == -1 || nodeLength == index) {
         list->SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(finalDataIndex));
@@ -113,7 +113,7 @@ template <typename Derived>
 JSTaggedValue TaggedList<Derived>::TaggedListToArray(const JSThread *thread, const JSHandle<Derived> &list)
 {
     uint32_t numberOfNodes = static_cast<uint32_t>(list->NumberOfNodes());
-    
+
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSArray> array = factory->NewJSArray();
     array->SetArrayLength(thread, numberOfNodes);
@@ -414,7 +414,7 @@ JSTaggedValue TaggedSingleList::Sort(JSThread *thread, const JSHandle<JSTaggedVa
     // create index map
     std::vector<int> nodeIndexMapToDataIndex(length, 0);
     taggedList->MapNodeIndexToDataIndex(nodeIndexMapToDataIndex, length);
-    
+
     int beginIndex = 0;
     int endIndex = 0;
     int middleIndex = 0;
@@ -443,7 +443,7 @@ JSTaggedValue TaggedSingleList::Sort(JSThread *thread, const JSHandle<JSTaggedVa
             taggedList->SetElement(thread, nodeIndexMapToDataIndex[endIndex], presentValue.GetTaggedValue());
         }
     }
-    
+
     return JSTaggedValue::Undefined();
 }
 

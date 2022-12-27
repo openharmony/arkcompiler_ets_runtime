@@ -909,7 +909,7 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
             // v. Let n be n+1
             ++index;
         }
-        
+
         // j. Let namedCaptures be ? Get(result, "groups").
         JSHandle<JSTaggedValue> groupsKey = globalConst->GetHandledGroupsString();
         JSTaggedValue named =

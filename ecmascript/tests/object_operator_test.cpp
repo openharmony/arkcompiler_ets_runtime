@@ -167,7 +167,7 @@ HWTEST_F_L0(ObjectOperatorTest, SetAsDefaultAttr)
 HWTEST_F_L0(ObjectOperatorTest, GetHolder)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    
+
     JSHandle<JSObject> handleHolder = factory->NewEmptyJSObject();
     JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(1));
     ObjectOperator objectOperator(thread, handleHolder, handleKey);
@@ -179,7 +179,7 @@ HWTEST_F_L0(ObjectOperatorTest, GetHolder)
 HWTEST_F_L0(ObjectOperatorTest, GetReceiver)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    
+
     JSHandle<EcmaString> handleNameString = factory->NewFromASCII("name");
     JSHandle<JSTaggedValue> handleReceiver(thread, JSTaggedValue(1));
 
@@ -190,7 +190,7 @@ HWTEST_F_L0(ObjectOperatorTest, GetReceiver)
 HWTEST_F_L0(ObjectOperatorTest, GetElementIndex)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    
+
     JSHandle<JSTaggedValue> handleKey1(thread, JSTaggedValue(1));
     JSHandle<JSTaggedValue> handleKey2(thread, JSTaggedValue(2.0));
     JSHandle<JSTaggedValue> handleKey3(factory->NewFromASCII("2"));
@@ -297,7 +297,7 @@ HWTEST_F_L0(ObjectOperatorTest, ToPropertyDescriptor)
 HWTEST_F_L0(ObjectOperatorTest, handleKey)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    
+
     JSHandle<JSTaggedValue> handleString(factory->NewFromASCII("key"));
     JSHandle<JSTaggedValue> handleObject(factory->NewEmptyJSObject());
     JSHandle<JSTaggedValue> handleSymbol(factory->NewJSSymbol());
@@ -307,14 +307,14 @@ HWTEST_F_L0(ObjectOperatorTest, handleKey)
     JSHandle<JSTaggedValue> handleKey4(thread, handleSymbol.GetTaggedValue());
     JSHandle<JSTaggedValue> handleKey5(thread, handleObject.GetTaggedValue());
     JSHandle<JSTaggedValue> handleKey6(thread, JSTaggedValue(1.11));
-   
+
     ObjectOperator objectOperator1(thread, handleKey1);
     ObjectOperator objectOperator2(thread, handleKey2);
     ObjectOperator objectOperator3(thread, handleKey3);
     ObjectOperator objectOperator4(thread, handleKey4);
     ObjectOperator objectOperator5(thread, handleKey5);
     ObjectOperator objectOperator6(thread, handleKey6);
-   
+
     JSHandle<EcmaString> handleEcmaStrTo1(objectOperator1.GetKey());
     EXPECT_STREQ("-1", EcmaStringAccessor(handleEcmaStrTo1).ToCString().c_str());
 
@@ -323,7 +323,7 @@ HWTEST_F_L0(ObjectOperatorTest, handleKey)
 
     EcmaString *str1 = EcmaString::Cast(objectOperator3.GetKey()->GetTaggedObject());
     EXPECT_TRUE(EcmaStringAccessor(str1).IsInternString());
-    
+
     EXPECT_TRUE(objectOperator4.GetKey()->IsSymbol());
 
     EcmaString *str2 = EcmaString::Cast(objectOperator5.GetKey()->GetTaggedObject());
@@ -337,7 +337,7 @@ HWTEST_F_L0(ObjectOperatorTest, FastGetValue)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    
+
     JSHandle<EcmaString> handleNameString = factory->NewFromASCII("name");
     JSHandle<AccessorData> handleAccessorData = factory->NewAccessorData();
     JSHandle<JSTaggedValue> handleReceiver(thread, JSTaggedValue(123));
@@ -775,7 +775,7 @@ HWTEST_F_L0(ObjectOperatorTest, WriteDataProperty_002)
     handleProperties->SetValue(thread, handleAttr.GetDictionaryOrder(), cellHandle2.GetTaggedValue());
     handleGlobalObject->SetProperties(thread, handleProperties.GetTaggedValue());
     objectOperator.SetIndex(handleProperties->FindEntry(handleKey.GetTaggedValue()));
-    
+
     EXPECT_TRUE(objectOperator.WriteDataProperty(handleGlobalObject, handleDesc));
     auto resultDict = GlobalDictionary::Cast(handleGlobalObject->GetProperties().GetTaggedObject());
     EXPECT_EQ(resultDict->GetAttributes(objectOperator.GetIndex()).GetPropertyMetaData(), 4);
@@ -963,7 +963,7 @@ HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement1)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject1), handleKey1, handleKey1);
     TaggedArray *handleElements = TaggedArray::Cast(handleObject1->GetElements().GetTaggedObject());
     EXPECT_EQ(handleElements->Get(index).GetInt(), 1);
-    
+
     ObjectOperator objectOperator1(thread, JSHandle<JSTaggedValue>(handleObject1), index);
     objectOperator1.DeletePropertyInHolder();
     TaggedArray *resultElements = TaggedArray::Cast(handleObject1->GetElements().GetTaggedObject());
@@ -1025,7 +1025,7 @@ HWTEST_F_L0(ObjectOperatorTest, Property_DeleteProperty)
         thread, globalDict, handleKey, JSHandle<JSTaggedValue>(cellHandle), PropertyAttributes(12));
     handleGlobalObject->SetProperties(thread, handleProperties.GetTaggedValue());
     ObjectOperator objectOperator1(thread, handleGlobalObject, handleKey);
-    
+
     objectOperator1.DeletePropertyInHolder();
     auto resultDict = GlobalDictionary::Cast(handleGlobalObject->GetProperties().GetTaggedObject());
     // key not found

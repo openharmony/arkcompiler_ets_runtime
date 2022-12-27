@@ -133,7 +133,7 @@ HWTEST_F_L0(JSAPIDequeIteratorTest, SpecialReturnOfNext)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIDequeIterator> dequeIterator = factory->NewJSAPIDequeIterator(jsDeque);
     dequeIterator->SetIteratedDeque(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

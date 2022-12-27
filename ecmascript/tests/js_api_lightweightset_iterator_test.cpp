@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string.h"
@@ -104,7 +104,7 @@ HWTEST_F_L0(JSAPILightWeightSetIteratorTest, SpecailReturnOfNextCreateLightWeigh
     JSHandle<JSAPILightWeightSetIterator> lightWeightSetIterator = factory->NewJSAPILightWeightSetIterator(
         jsLightWeightSet, IterationKind::KEY);
     lightWeightSetIterator->SetIteratedLightWeightSet(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

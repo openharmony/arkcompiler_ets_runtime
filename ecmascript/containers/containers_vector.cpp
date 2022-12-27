@@ -76,7 +76,7 @@ JSTaggedValue ContainersVector::Insert(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, Vector, Insert);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
- 
+
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
@@ -194,7 +194,7 @@ JSTaggedValue ContainersVector::Get(EcmaRuntimeCallInfo *argv)
     int32_t indexInt = JSTaggedValue::ToInt32(thread, index);
     JSTaggedValue value = JSAPIVector::Get(thread, JSHandle<JSAPIVector>::Cast(self), indexInt);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    
+
     return value;
 }
 

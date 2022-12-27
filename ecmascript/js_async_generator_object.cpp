@@ -274,7 +274,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
     // 5. Let request be AsyncGeneratorRequest { [[Completion]]: completion, [[Capability]]: promiseCapability }.
     ObjectFactory *fty = thread->GetEcmaVM()->GetFactory();
     JSHandle<AsyncGeneratorRequest> asyncGeneratorRst = fty->NewAsyncGeneratorRequest();
-    
+
     asyncGeneratorRst->SetCompletion(thread, completionRecord);
     asyncGeneratorRst->SetCapability(thread, pcap);
     // 6. Append request to the end of queue.
@@ -329,7 +329,7 @@ JSTaggedValue JSAsyncGeneratorObject::ProcessorFulfilledFunc(EcmaRuntimeCallInfo
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> asyncResNextRtnPro =
         JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(base::BuiltinsBase::GetConstructor(argv));
     JSHandle<JSAsyncGeneratorObject> asyncGen(thread, asyncResNextRtnPro->GetAsyncGeneratorObject());
-    
+
     // 2. Set F.[[Generator]].[[AsyncGeneratorState]] to completed.
     asyncGen->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);
 

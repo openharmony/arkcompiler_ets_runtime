@@ -76,7 +76,7 @@ JSTaggedValue BuiltinsCjsModule::Require(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue::Hole();
 }
-    
+
 JSTaggedValue BuiltinsCjsModule::GetExportsForCircularRequire(EcmaRuntimeCallInfo *msg)
 {
     ASSERT(msg);

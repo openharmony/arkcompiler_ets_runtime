@@ -119,7 +119,7 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
-    
+
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<JSTaggedValue> reject(thread, capbility->GetReject());
 
@@ -155,7 +155,7 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_002)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<JSTaggedValue> paramMsg(factory->NewFromASCII("resolve"));
-    
+
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve());
 
@@ -191,7 +191,7 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_003)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<JSTaggedValue> paramMsg(factory->NewFromASCII("Thrower"));
-    
+
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<PromiseReaction> rejectReaction = factory->NewPromiseReaction();
     rejectReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
@@ -237,7 +237,7 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_004)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<JSTaggedValue> paramMsg(factory->NewFromASCII("after_resolve"));
-    
+
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve());
 

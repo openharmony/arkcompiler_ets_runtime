@@ -113,7 +113,7 @@ public:
     {
         Set(thread, NUMBER_OF_ELEMENTS_INDEX, JSTaggedValue(num));
     }
-    
+
     inline void SetNumberOfDeletedElements(const JSThread *thread, int num)
     {
         Set(thread, NUMBER_OF_HOLE_ENTRIES_INDEX, JSTaggedValue(num));

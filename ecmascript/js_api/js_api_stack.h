@@ -60,7 +60,7 @@ public:
     JSTaggedValue Get(const uint32_t index);
 
     JSTaggedValue Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
-    
+
     static constexpr size_t TOP_OFFSET = JSObject::SIZE;
     ACCESSORS_PRIMITIVE_FIELD(Top, int, TOP_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);

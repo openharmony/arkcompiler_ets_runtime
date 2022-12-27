@@ -186,7 +186,7 @@ HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
     size_t newNativeSize = heap->GetNativeBindingSize();
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-    
+
         auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
         [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(newData,
             NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
@@ -196,7 +196,7 @@ HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
         auto newData1 = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(1 * 1024 * 1024);
         [[maybe_unused]] JSHandle<JSNativePointer> obj2 = factory->NewJSNativePointer(newData1,
             NativeAreaAllocator::FreeBufferFunc, nullptr, false, 1 * 1024 * 1024);
-    
+
         EXPECT_TRUE(newNativeSize - oldNativeSize > 0);
         EXPECT_TRUE(newNativeSize - oldNativeSize <= 2 * 1024 *1024);
         for (int i = 0; i < 20; i++) {

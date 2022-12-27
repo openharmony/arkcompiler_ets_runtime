@@ -34,7 +34,7 @@ public:
 
 private:
     static std::string DecodeFunctionName(const std::string &name);
-    
+
     static JSHandle<JSTaggedValue> GetErrorJSFunction(JSThread *thread);
 
     static JSHandle<EcmaString> BuildEcmaStackTrace(JSThread *thread);

@@ -100,7 +100,7 @@ HWTEST_F_L0(JSAPIHashMapIteratorTest, SpecailReturnOfNextCreateHashMapIterator)
     JSHandle<JSAPIHashMapIterator> hashMapIterator = factory->NewJSAPIHashMapIterator(
         jsHashMap, IterationKind::KEY_AND_VALUE);
     hashMapIterator->SetIteratedHashMap(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

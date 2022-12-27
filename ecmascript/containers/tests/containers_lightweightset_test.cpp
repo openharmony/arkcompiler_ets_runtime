@@ -129,7 +129,7 @@ HWTEST_F_L0(ContainersLightWeightSetTest, LightWeightSetConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int length = mapHandle->GetLength();
     ASSERT_EQ(length, 0);   // 0 means the value
-     
+
     // test LightWeightSetConstructor exception
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersLightWeightSet, LightWeightSetConstructor, objCallInfo);
@@ -283,7 +283,7 @@ HWTEST_F_L0(ContainersLightWeightSetTest, HasAllAndHas)
             TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);   // 6 means the value
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(lwsFalse.GetTaggedValue());
-        
+
         if (i == 2) {
             callInfo->SetCallArg(0, JSTaggedValue(i + 1 + 10));
             [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
@@ -529,7 +529,7 @@ HWTEST_F_L0(ContainersLightWeightSetTest, ForEach)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersLightWeightSet::GetValueAt(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        
+
         callInfo =
             TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);   // 6 means the value
         callInfo->SetFunction(JSTaggedValue::Undefined());

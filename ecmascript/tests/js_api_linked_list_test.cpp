@@ -114,7 +114,7 @@ HWTEST_F_L0(JSAPILinkedListTest, AddAndHas)
     for (int i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        
+
         JSTaggedValue gValue = toor->Get(i);
         EXPECT_EQ(gValue, value.GetTaggedValue());
     }
@@ -281,7 +281,7 @@ HWTEST_F_L0(JSAPILinkedListTest, SpecialReturnOfRemove)
     JSHandle<TaggedDoubleList> doubleList(thread, linkedList->GetDoubleList());
     doubleList->SetNumberOfNodes(thread, -1);
     EXPECT_EQ(linkedList->Remove(thread, value.GetTaggedValue()), JSTaggedValue::False());
-    
+
     JSAPILinkedList::RemoveFirstFound(thread, linkedList, value.GetTaggedValue());
     EXPECT_EXCEPTION();
 }

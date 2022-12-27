@@ -109,7 +109,7 @@ HWTEST_F_L0(BuiltinsStringIteratorTest, Next_002)
     JSHandle<JSStringIterator> stringIterator =
         JSHandle<JSStringIterator>(thread, CreateBuiltinsJSStringIterator(thread, string));
     JSHandle<JSTaggedValue> valueStr = globalConst->GetHandledValueString();
-    
+
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo1->SetThis(stringIterator.GetTaggedValue());

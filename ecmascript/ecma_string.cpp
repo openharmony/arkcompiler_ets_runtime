@@ -42,7 +42,7 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
     }
 
     bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
-    
+
     // if the result string is small, make a LineString
     if (newLength < TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH) {
         ASSERT(strLeft->IsLineString());

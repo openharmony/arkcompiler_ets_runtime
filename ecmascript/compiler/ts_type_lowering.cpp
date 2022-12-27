@@ -913,7 +913,7 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
     GateRef guard = acc_.GetDep(gate);
     ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
     builder_.SetDepend(acc_.GetDep(guard));
-    
+
     GateRef check = Circuit::NullGate();
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         check = builder_.TypedArrayCheck(receiverType, receiver);
@@ -923,7 +923,7 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
     }
     GateRef index = acc_.GetValueIn(gate, 0);
     check = builder_.BoolAnd(check, builder_.IndexCheck(receiverType, receiver, index));
-    
+
     acc_.ReplaceIn(guard, 1, check);
     acc_.SetDep(guard, builder_.GetDepend());
     builder_.SetDepend(guard);
@@ -965,7 +965,7 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    
+
     GateRef index = acc_.GetValueIn(gate, 1);
     check = builder_.BoolAnd(check, builder_.IndexCheck(receiverType, receiver, index));
 

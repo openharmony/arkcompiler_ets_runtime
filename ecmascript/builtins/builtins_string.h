@@ -70,7 +70,7 @@ public:
     static JSTaggedValue MatchAll(EcmaRuntimeCallInfo *argv);
     // 21.1.3.12
     static JSTaggedValue Normalize(EcmaRuntimeCallInfo *argv);
-    
+
     static JSTaggedValue PadStart(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue PadEnd(EcmaRuntimeCallInfo *argv);
@@ -102,7 +102,7 @@ public:
     static JSTaggedValue ToUpperCase(EcmaRuntimeCallInfo *argv);
     // 21.1.3.25
     static JSTaggedValue Trim(EcmaRuntimeCallInfo *argv);
-    
+
     static JSTaggedValue TrimStart(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue TrimEnd(EcmaRuntimeCallInfo *argv);

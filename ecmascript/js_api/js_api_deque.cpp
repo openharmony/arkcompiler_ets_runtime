@@ -77,7 +77,7 @@ JSTaggedValue JSAPIDeque::GetFront()
     if (JSAPIDeque::IsEmpty()) {
         return JSTaggedValue::Undefined();
     }
-    
+
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
     return elements->Get(GetFirst());
@@ -201,7 +201,7 @@ bool JSAPIDeque::Has(JSTaggedValue value) const
 JSHandle<TaggedArray> JSAPIDeque::OwnKeys(JSThread *thread, const JSHandle<JSAPIDeque> &deque)
 {
     uint32_t length = deque->GetSize();
-    
+
     JSHandle<TaggedArray> oldElements(thread, deque->GetElements());
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldCapacity = oldElements->GetLength();
@@ -220,7 +220,7 @@ JSHandle<TaggedArray> JSAPIDeque::OwnKeys(JSThread *thread, const JSHandle<JSAPI
 JSHandle<TaggedArray> JSAPIDeque::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIDeque> &deque)
 {
     uint32_t length = deque->GetSize();
-    
+
     JSHandle<TaggedArray> oldElements(thread, deque->GetElements());
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldCapacity = oldElements->GetLength();

@@ -111,7 +111,7 @@ protected:
         JSHandle<JSAPIList> list(thread, result);
         return list;
     }
-    
+
     JSTaggedValue ListAdd(JSHandle<JSAPIList> list, JSTaggedValue value)
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -274,7 +274,7 @@ HWTEST_F_L0(ContainersListTest, Equal)
     }
     result = ListEqual(list, list1);
     EXPECT_EQ(result, JSTaggedValue::True());
-    
+
     // Length Not Equal
     JSHandle<JSAPIList> list2 = CreateJSAPIList();
     for (uint32_t i = 0; i < NODE_NUMBERS / 2; i++) {

@@ -151,7 +151,7 @@ protected:
         callInfo->SetThis(arrayList.GetTaggedValue());
         callInfo->SetCallArg(0, startIndex);
         callInfo->SetCallArg(1, endIndex);
-        
+
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersArrayList::SubArrayList(callInfo);
         TestHelper::TearDownFrame(thread, prev);
@@ -180,7 +180,7 @@ HWTEST_F_L0(ContainersArrayListTest, ArrayListConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int length = arrayList->GetLength().GetInt();
     ASSERT_EQ(length, 0);   // 0 means the value
-    
+
     // test ArrayListConstructor exception
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersArrayList, ArrayListConstructor, objCallInfo);
@@ -236,7 +236,7 @@ HWTEST_F_L0(ContainersArrayListTest, SubArrayList)
         EXPECT_EQ(result, JSTaggedValue::True());
         EXPECT_EQ(arrayList->GetSize(), static_cast<int>(i + 1));
     }
-    
+
     // input startIndex type error
     {
         JSTaggedValue result = ArrayListSubArrayList(arrayList, JSTaggedValue::Undefined(), JSTaggedValue(2));
@@ -252,7 +252,7 @@ HWTEST_F_L0(ContainersArrayListTest, SubArrayList)
         EXPECT_EQ(result, JSTaggedValue::Exception());
         thread->ClearException();
     }
-    
+
     // success
     {
         JSTaggedValue newArrayList = ArrayListSubArrayList(arrayList, JSTaggedValue(1), JSTaggedValue(3));
@@ -284,7 +284,7 @@ HWTEST_F_L0(ContainersArrayListTest, GetAndSet)
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(retult, JSTaggedValue(i));
     }
-    
+
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         callInfo->SetCallArg(0, JSTaggedValue(i));
         callInfo->SetCallArg(1, JSTaggedValue(-i - 1));
@@ -317,7 +317,7 @@ HWTEST_F_L0(ContainersArrayListTest, ProxyOfGetSetAndGetSize)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         ContainersArrayList::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        
+
         [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue retult = ContainersArrayList::GetSize(callInfo);
         TestHelper::TearDownFrame(thread, prev1);

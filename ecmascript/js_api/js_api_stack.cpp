@@ -117,7 +117,7 @@ bool JSAPIStack::Has(JSTaggedValue value) const
     if (top == -1) {
         return false;
     }
-    
+
     for (int i = 0; i < top + 1; i++) {
         if (JSTaggedValue::SameValue(elements->Get(i), value)) {
             return true;

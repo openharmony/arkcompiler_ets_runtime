@@ -68,7 +68,7 @@ JSTaggedValue AsyncGeneratorHelper::Return(JSThread *thread, const JSHandle<Gene
 {
     JSHandle<JSTaggedValue> val(thread, completionRecord->GetValue());
     JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
-    
+
     genObject->SetResumeResult(thread, val);
     if (genObject->IsSuspendYield() || genObject->IsExecuting()) {
         genObject->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);

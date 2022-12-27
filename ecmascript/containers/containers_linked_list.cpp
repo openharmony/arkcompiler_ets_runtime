@@ -175,7 +175,7 @@ JSTaggedValue ContainersLinkedList::Insert(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
-    
+
     if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         CString errorMsg =
@@ -416,7 +416,7 @@ JSTaggedValue ContainersLinkedList::RemoveFirstFound(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 0);
-    
+
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSTaggedValue result = JSAPILinkedList::RemoveFirstFound(thread, jsAPILinkedList, element.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

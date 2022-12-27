@@ -174,7 +174,7 @@ HWTEST_F_L0(ContainersLinkedListTest, LinkedListConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = list->Length();
     ASSERT_EQ(size, 0);
-    
+
     // test PlainArrayConstructor exception
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersLinkedList, LinkedListConstructor, objCallInfo);
@@ -204,7 +204,7 @@ HWTEST_F_L0(ContainersLinkedListTest, InsertAndGet)
     result = LinkedListInsert(linkedlist, JSTaggedValue(NODE_NUMBERS + 2), JSTaggedValue(10));
     EXPECT_EQ(result, JSTaggedValue::True());
     EXPECT_EQ(linkedlist->Length(), static_cast<int>(NODE_NUMBERS + 3));
-    
+
     uint32_t length = static_cast<uint32_t>(linkedlist->Length());
     for (uint32_t i = 0; i < length; i++) {
         if (i == 0) {
