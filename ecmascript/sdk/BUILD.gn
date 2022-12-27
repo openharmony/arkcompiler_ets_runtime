@@ -26,9 +26,19 @@ if (is_standard_system) {
   }
 
   if (is_mingw) {
-    ohos_copy("copy_ark_aot_compiler_library") {
+    ohos_copy("copy_ark_aot_compiler_library_win") {
       deps = []
       sources = []
+
+      # Add executable "ark_aot_compiler"
+      deps +=
+          [ "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler" ]
+      ark_aot_compiler_path = get_label_info(
+              "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler",
+              "root_out_dir")
+      sources += [
+        "$ark_aot_compiler_path/arkcompiler/ets_runtime/ark_aot_compiler.exe",
+      ]
 
       # Add dynamic library "ark_jsruntime"
       ark_js_path = get_label_info("//arkcompiler/ets_runtime:libark_jsruntime",
@@ -72,8 +82,89 @@ if (is_standard_system) {
       ]
 
       # Set the output directory for all dynamic libraries.
+      outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-win/bin/{{source_file_part}}" ]
+      module_source_dir =
+          target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-win/bin/"
+      module_install_name = ""
+    }
+
+    # remove this after build merged
+    ohos_copy("copy_ark_aot_compiler_library") {
+      deps = []
+      sources = []
+
+      # Add dynamic library "ark_jsruntime"
+      ark_js_path = get_label_info("//arkcompiler/ets_runtime:libark_jsruntime",
+                                   "root_out_dir")
+      deps += [ "//arkcompiler/ets_runtime:libark_jsruntime" ]
+      sources += [
+        "$ark_js_path/arkcompiler/ets_runtime/libark_jsruntime${dylib_suffix}",
+      ]
+
+      # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/toolchain/aot/bin/{{source_file_part}}" ]
       module_source_dir = target_out_dir + "/toolchain/aot/bin/"
+      module_install_name = ""
+    }
+  } else if (is_linux) {
+    ohos_copy("copy_ark_aot_compiler_library") {
+      deps = []
+      sources = []
+
+      # Add executable "ark_aot_compiler"
+      deps +=
+          [ "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler" ]
+      ark_aot_compiler_path = get_label_info(
+              "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler",
+              "root_out_dir")
+      sources +=
+          [ "$ark_aot_compiler_path/arkcompiler/ets_runtime/ark_aot_compiler" ]
+
+      # Add dynamic library "ark_jsruntime"
+      ark_js_path = get_label_info("//arkcompiler/ets_runtime:libark_jsruntime",
+                                   "root_out_dir")
+      deps += [ "//arkcompiler/ets_runtime:libark_jsruntime" ]
+      sources += [
+        "$ark_js_path/arkcompiler/ets_runtime/libark_jsruntime${dylib_suffix}",
+      ]
+
+      # Add dynamic library "hilog"
+      hilog_path = get_label_info(
+              "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_linux",
+              "root_out_dir")
+      deps += [
+        "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_linux",
+      ]
+      sources += [
+        "${hilog_path}/hiviewdfx/hilog_native/libhilog_linux${dylib_suffix}",
+      ]
+
+      # Add dynamic library "icu"
+      icu_path =
+          get_label_info("//third_party/icu/icu4c:shared_icuuc", "root_out_dir")
+      deps += [
+        "//third_party/icu/icu4c:shared_icui18n",
+        "//third_party/icu/icu4c:shared_icuuc",
+      ]
+      sources += [
+        "$icu_path/thirdparty/icu/libhmicui18n${dylib_suffix}",
+        "$icu_path/thirdparty/icu/libhmicuuc${dylib_suffix}",
+      ]
+
+      # Add dynamic library "libsec_shared"
+      sec_path =
+          get_label_info("//third_party/bounds_checking_function:libsec_shared",
+                         "root_out_dir")
+      deps += [ "//third_party/bounds_checking_function:libsec_shared" ]
+      sources += [
+        sec_path +
+            "/thirdparty/bounds_checking_function/libsec_shared${dylib_suffix}",
+      ]
+
+      # Set the output directory for all dynamic libraries.
+      outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/bin/{{source_file_part}}" ]
+      module_source_dir =
+          target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/bin/"
       module_install_name = ""
     }
   }
