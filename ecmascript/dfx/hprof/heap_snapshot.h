@@ -120,7 +120,7 @@ public:
     {
         traceId_ = traceId;
     }
-    static Node *NewNode(const EcmaVM *vm, size_t id, size_t index, const CString *name, NodeType type, size_t size,
+    static Node *NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, NodeType type, size_t size,
                          TaggedObject *entry, bool isLive = true);
     template<typename T>
     static Address NewAddress(T *addr)
@@ -180,7 +180,7 @@ public:
     {
         to_ = node;
     }
-    static Edge *NewEdge(const EcmaVM *vm, uint64_t id, EdgeType type, Node *from, Node *to, CString *name);
+    static Edge *NewEdge(Chunk *chunk, uint64_t id, EdgeType type, Node *from, Node *to, CString *name);
     static constexpr int EDGE_FIELD_COUNT = 3;
     ~Edge() = default;
 
@@ -356,8 +356,10 @@ public:
     static constexpr int SEQ_STEP = 2;
     NO_MOVE_SEMANTIC(HeapSnapshot);
     NO_COPY_SEMANTIC(HeapSnapshot);
-    explicit HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool trackAllocations)
-        : stringTable_(vm), vm_(vm), isVmMode_(isVmMode), isPrivate_(isPrivate), trackAllocations_(trackAllocations)
+    explicit HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool trackAllocations,
+                          Chunk *chunk)
+        : stringTable_(vm), vm_(vm), isVmMode_(isVmMode), isPrivate_(isPrivate), trackAllocations_(trackAllocations),
+          chunk_(chunk)
     {
     }
     ~HeapSnapshot();
@@ -489,6 +491,7 @@ private:
     TraceTree traceTree_;
     CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
+    Chunk *chunk_ {nullptr};
 };
 
 class EntryVisitor {
