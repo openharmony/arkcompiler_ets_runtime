@@ -190,8 +190,6 @@ void GuardEliminating::Run()
         LOG_COMPILER(INFO) << "";
     }
 
-    GlobalValueNumbering(circuit_, IsLogEnabled()).Run();
-
     // calculate dominator tree
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
