@@ -117,9 +117,8 @@ public:
 
     void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
-        if (methodLiteral != nullptr) {
-            methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
-        }
+        ASSERT(methodLiteral != nullptr);
+        methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
     }
 
     const CUnorderedMap<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const

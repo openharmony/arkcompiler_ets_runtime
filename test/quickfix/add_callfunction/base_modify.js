@@ -16,12 +16,18 @@ function A() {
     print("patch A()");
     B();
     C();
+    // add function in a function.
+    function D() {
+        print("patch D()");
+    }
+    D();
 }
 
 function B() {
     print("patch B()");
 }
 
+// add function in func_main_0.
 function C() {
     print("patch C()");
 }

@@ -21,7 +21,6 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
-#include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/literal_data_accessor-inl.h"
 
 namespace panda::ecmascript {
@@ -65,13 +64,14 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ModuleDataAccessor mda(*pf, moduleId);
     const std::vector<uint32_t> &requestModules = mda.getRequestModules();
-    JSHandle<TaggedArray> requestModuleArray = factory->NewTaggedArray(requestModules.size());
-    for (size_t idx = 0; idx < requestModules.size(); idx++) {
+    size_t len = requestModules.size();
+    JSHandle<TaggedArray> requestModuleArray = factory->NewTaggedArray(len);
+    for (size_t idx = 0; idx < len; idx++) {
         StringData sd = pf->GetStringData(panda_file::File::EntityId(requestModules[idx]));
         JSTaggedValue value(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
         requestModuleArray->Set(thread, idx, value);
     }
-    if (requestModules.size()) {
+    if (len > 0) {
         moduleRecord->SetRequestedModules(thread, requestModuleArray);
     }
 

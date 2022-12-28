@@ -39,10 +39,9 @@ public:
     explicit MethodLiteral(EntityId methodId);
     MethodLiteral() = delete;
     ~MethodLiteral() = default;
-    MethodLiteral(const MethodLiteral &) = delete;
-    MethodLiteral(MethodLiteral &&) = delete;
-    MethodLiteral &operator=(const MethodLiteral &) = delete;
-    MethodLiteral &operator=(MethodLiteral &&) = delete;
+
+    NO_COPY_SEMANTIC(MethodLiteral);
+    NO_MOVE_SEMANTIC(MethodLiteral);
 
     static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455
     using HaveThisBit = BitField<bool, 0, 1>;  // offset 0
