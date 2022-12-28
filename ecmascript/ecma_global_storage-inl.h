@@ -168,7 +168,7 @@ inline void EcmaGlobalStorage::DisposeGlobalHandle(uintptr_t nodeAddr)
     if (!list->HasUsagedNode() && (*top != *last)) {
         list->RemoveList();
         if (*freeList == list) {
-            *freeList = list->GetNext();
+            *freeList = list->GetFreeNext();
         }
         if (*top == list) {
             *top = list->GetNext();
