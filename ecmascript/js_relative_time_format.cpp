@@ -29,7 +29,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     // 1.Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSRelativeTimeFormat, thread);
 
     // 2&3. If options is undefined, then Let options be ObjectCreate(null). else Let options be ? ToObject(options).
@@ -63,7 +63,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
         if (EcmaStringAccessor(numberingSystemString).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", relativeTimeFormat);
         }
-        numberingSystemStdStr = JSLocale::ConvertToStdString(numberingSystemString);
+        numberingSystemStdStr = base::LocaleHelper::ConvertToStdString(numberingSystemString);
         if (!JSLocale::IsNormativeNumberingSystem(numberingSystemStdStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", relativeTimeFormat);
         }
@@ -76,7 +76,8 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     if (requestedLocales->GetLength() == 0) {
         availableLocales = factory->EmptyArray();
     } else {
-        std::vector<std::string> availableStringLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+        std::vector<std::string> availableStringLocales =
+            base::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
         availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     }
     std::set<std::string> relevantExtensionKeys{"nu"};
@@ -86,7 +87,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     icu::Locale icuLocale = r.localeData;
 
     // 12. Let locale be r.[[Locale]].
-    JSHandle<EcmaString> localeStr = JSLocale::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
 
     // 13. Set relativeTimeFormat.[[Locale]] to locale.
     relativeTimeFormat->SetLocale(thread, localeStr.GetTaggedValue());
@@ -414,7 +415,8 @@ void FormatToArray(JSThread *thread, const JSHandle<JSArray> &array,
         // so add a literal type with value of formattedText.sub(0, start)
         if (start > previousLimit) {
             typeString.Update(globalConst->GetLiteralString());
-            JSHandle<EcmaString> substring = JSLocale::IcuToString(thread, formattedText, previousLimit, start);
+            JSHandle<EcmaString> substring =
+                base::LocaleHelper::UStringToString(thread, formattedText, previousLimit, start);
             JSLocale::PutElement(thread, index++, array, typeString, JSHandle<JSTaggedValue>::Cast(substring));
             RETURN_IF_ABRUPT_COMPLETION(thread);
         }
@@ -423,7 +425,8 @@ void FormatToArray(JSThread *thread, const JSHandle<JSArray> &array,
         for (auto it = separatorFields.begin(); it != separatorFields.end(); it++) {
             if (it->first > start) {
                 // Add Integer type element
-                JSHandle<EcmaString> resString = JSLocale::IcuToString(thread, formattedText, start, it->first);
+                JSHandle<EcmaString> resString =
+                    base::LocaleHelper::UStringToString(thread, formattedText, start, it->first);
                 typeString.Update(
                     JSLocale::GetNumberFieldType(thread, taggedValue.GetTaggedValue(), fieldId).GetTaggedValue());
                 JSHandle<JSObject> record =
@@ -432,7 +435,7 @@ void FormatToArray(JSThread *thread, const JSHandle<JSArray> &array,
                 JSObject::CreateDataPropertyOrThrow(thread, record, unitString, JSHandle<JSTaggedValue>::Cast(unit));
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 // Add Group type element
-                resString = JSLocale::IcuToString(thread, formattedText, it->first, it->second);
+                resString = base::LocaleHelper::UStringToString(thread, formattedText, it->first, it->second);
                 typeString.Update(JSLocale::GetNumberFieldType(thread, taggedValue.GetTaggedValue(),
                                                                UNUM_GROUPING_SEPARATOR_FIELD).GetTaggedValue());
                 record =
@@ -444,7 +447,7 @@ void FormatToArray(JSThread *thread, const JSHandle<JSArray> &array,
             }
         }
         // Add current field unit
-        JSHandle<EcmaString> subString = JSLocale::IcuToString(thread, formattedText, start, limit);
+        JSHandle<EcmaString> subString = base::LocaleHelper::UStringToString(thread, formattedText, start, limit);
         typeString.Update(JSLocale::GetNumberFieldType(thread, taggedValue.GetTaggedValue(), fieldId).GetTaggedValue());
         JSHandle<JSObject> record =
             JSLocale::PutElement(thread, index++, array, typeString, JSHandle<JSTaggedValue>::Cast(subString));
@@ -458,7 +461,7 @@ void FormatToArray(JSThread *thread, const JSHandle<JSArray> &array,
     if (formattedText.length() > previousLimit) {
         typeString.Update(globalConst->GetLiteralString());
         JSHandle<EcmaString> substring =
-            JSLocale::IcuToString(thread, formattedText, previousLimit, formattedText.length());
+            base::LocaleHelper::UStringToString(thread, formattedText, previousLimit, formattedText.length());
         JSLocale::PutElement(thread, index, array, typeString, JSHandle<JSTaggedValue>::Cast(substring));
         RETURN_IF_ABRUPT_COMPLETION(thread);
     }

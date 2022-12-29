@@ -17,6 +17,7 @@
 
 #include <algorithm>
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
@@ -31,7 +32,6 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_locale.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_regexp.h"
@@ -722,7 +722,7 @@ JSTaggedValue BuiltinsString::Normalize(EcmaRuntimeCallInfo *argv)
     int32_t option = 0;
 
     icu::Normalizer::normalize(src, uForm, option, res, errorCode);
-    JSHandle<EcmaString> str = JSLocale::IcuToString(thread, res);
+    JSHandle<EcmaString> str = base::LocaleHelper::UStringToString(thread, res);
     return JSTaggedValue(*str);
 }
 
@@ -1509,29 +1509,29 @@ JSTaggedValue BuiltinsString::ToLocaleLowerCase(EcmaRuntimeCallInfo *argv)
         EcmaString *result = EcmaStringAccessor::TryToLower(ecmaVm, string);
         return JSTaggedValue(result);
     }
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If requestedLocales is not an empty List, then Let requestedLocale be requestedLocales[0].
     // Else, Let requestedLocale be DefaultLocale().
-    JSHandle<EcmaString> requestedLocale = JSLocale::DefaultLocale(thread);
+    JSHandle<EcmaString> requestedLocale = base::LocaleHelper::DefaultLocale(thread);
     if (requestedLocales->GetLength() != 0) {
         requestedLocale = JSHandle<EcmaString>(thread, requestedLocales->Get(0));
     }
 
     // Let noExtensionsLocale be the String value that is requestedLocale with all Unicode locale extension sequences
     // removed.
-    JSLocale::ParsedLocale noExtensionsLocale = JSLocale::HandleLocale(requestedLocale);
+    base::LocaleHelper::ParsedLocale noExtensionsLocale = base::LocaleHelper::HandleLocale(requestedLocale);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let availableLocales be a List with language tags that includes the languages for which the Unicode Character
     // Database contains language sensitive case mappings. Implementations may add additional language tags
     // if they support case mapping for additional locales.
-    std::vector<std::string> availableLocales = JSLocale::GetAvailableLocales(thread, nullptr, nullptr);
+    std::vector<std::string> availableLocales = base::LocaleHelper::GetAvailableLocales(thread, nullptr, nullptr);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let locale be BestAvailableLocale(availableLocales, noExtensionsLocale).
-    std::string locale = JSLocale::BestAvailableLocale(availableLocales, noExtensionsLocale.base);
+    std::string locale = base::LocaleHelper::BestAvailableLocale(availableLocales, noExtensionsLocale.base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If locale is undefined, let locale be "und".
@@ -1565,29 +1565,29 @@ JSTaggedValue BuiltinsString::ToLocaleUpperCase(EcmaRuntimeCallInfo *argv)
 
     // Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If requestedLocales is not an empty List, then Let requestedLocale be requestedLocales[0].
     // Else, Let requestedLocale be DefaultLocale().
-    JSHandle<EcmaString> requestedLocale = JSLocale::DefaultLocale(thread);
+    JSHandle<EcmaString> requestedLocale = base::LocaleHelper::DefaultLocale(thread);
     if (requestedLocales->GetLength() != 0) {
         requestedLocale = JSHandle<EcmaString>(thread, requestedLocales->Get(0));
     }
 
     // Let noExtensionsLocale be the String value that is requestedLocale with all Unicode locale extension sequences
     // removed.
-    JSLocale::ParsedLocale noExtensionsLocale = JSLocale::HandleLocale(requestedLocale);
+    base::LocaleHelper::ParsedLocale noExtensionsLocale = base::LocaleHelper::HandleLocale(requestedLocale);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let availableLocales be a List with language tags that includes the languages for which the Unicode Character
     // Database contains language sensitive case mappings. Implementations may add additional language tags
     // if they support case mapping for additional locales.
-    std::vector<std::string> availableLocales = JSLocale::GetAvailableLocales(thread, nullptr, nullptr);
+    std::vector<std::string> availableLocales = base::LocaleHelper::GetAvailableLocales(thread, nullptr, nullptr);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let locale be BestAvailableLocale(availableLocales, noExtensionsLocale).
-    std::string locale = JSLocale::BestAvailableLocale(availableLocales, noExtensionsLocale.base);
+    std::string locale = base::LocaleHelper::BestAvailableLocale(availableLocales, noExtensionsLocale.base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If locale is undefined, let locale be "und".

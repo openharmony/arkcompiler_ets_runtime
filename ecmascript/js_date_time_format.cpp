@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_date_time_format.h"
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
@@ -201,7 +202,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     // 1. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
 
     // 2. Let options be ? ToDateTimeOptions(options, "any", "date").
@@ -227,7 +228,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     std::string calendarStr;
     if (!calendar->IsUndefined()) {
         JSHandle<EcmaString> calendarEcmaStr = JSHandle<EcmaString>::Cast(calendar);
-        calendarStr = JSLocale::ConvertToStdString(calendarEcmaStr);
+        calendarStr = base::LocaleHelper::ConvertToStdString(calendarEcmaStr);
         if (!JSLocale::IsNormativeCalendar(calendarStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid calendar", dateTimeFormat);
         }
@@ -246,7 +247,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     std::string nsStr;
     if (!numberingSystem->IsUndefined()) {
         JSHandle<EcmaString> nsEcmaStr = JSHandle<EcmaString>::Cast(numberingSystem);
-        nsStr = JSLocale::ConvertToStdString(nsEcmaStr);
+        nsStr = base::LocaleHelper::ConvertToStdString(nsEcmaStr);
         if (!JSLocale::IsWellNumberingSystem(nsStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", dateTimeFormat);
         }
@@ -310,7 +311,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     if (!operationResult.GetValue()->IsUndefined()) {
         JSHandle<EcmaString> timezone = JSTaggedValue::ToString(thread, operationResult.GetValue());
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
-        icuTimeZone = ConstructTimeZone(JSLocale::ConvertToStdString(timezone));
+        icuTimeZone = ConstructTimeZone(base::LocaleHelper::ConvertToStdString(timezone));
         if (icuTimeZone == nullptr) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid timeZone", dateTimeFormat);
         }
@@ -485,7 +486,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
             ASSERT_PRINT(U_SUCCESS(status), "resolvedIcuLocaleCopy set hc failed");
         }
     }
-    JSHandle<EcmaString> localeStr = JSLocale::ToLanguageTag(thread, resolvedIcuLocaleCopy);
+    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, resolvedIcuLocaleCopy);
     dateTimeFormat->SetLocale(thread, localeStr.GetTaggedValue());
 
     // Set dateTimeFormat.[[boundFormat]].
@@ -663,7 +664,7 @@ JSHandle<EcmaString> JSDateTimeFormat::FormatDateTime(JSThread *thread,
     simpleDateFormat->format(xValue, result);
 
     // 4. Return result.
-    return JSLocale::IcuToString(thread, result);
+    return base::LocaleHelper::UStringToString(thread, result);
 }
 
 // 13.1.8 FormatDateTimeToParts (dateTimeFormat, x)
@@ -711,8 +712,8 @@ JSHandle<JSArray> JSDateTimeFormat::FormatDateTimeToParts(JSThread *thread,
 
     // 4. For each part in parts, do
     for (auto part : parts) {
-        substring.Update(JSLocale::IcuToString(thread, formattedParts, part.fBeginIndex,
-                                               part.fEndIndex).GetTaggedValue());
+        substring.Update(base::LocaleHelper::UStringToString(thread, formattedParts, part.fBeginIndex,
+            part.fEndIndex).GetTaggedValue());
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
         // Let O be ObjectCreate(%ObjectPrototype%).
         // Perform ! CreateDataPropertyOrThrow(O, "type", part.[[Type]]).
@@ -874,7 +875,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
             (canonicalTimezone == UNICODE_STRING_SIMPLE("Etc/GMT")) != 0) {
             timezoneValue.Update(globalConst->GetUTCString());
         } else {
-            timezoneValue.Update(JSLocale::IcuToString(thread, canonicalTimezone).GetTaggedValue());
+            timezoneValue.Update(base::LocaleHelper::UStringToString(thread, canonicalTimezone).GetTaggedValue());
         }
     }
     property = globalConst->GetHandledTimeZoneString();
@@ -990,7 +991,7 @@ JSHandle<EcmaString> JSDateTimeFormat::NormDateTimeRange(JSThread *thread, const
             break;
         }
     }
-    result = JSLocale::IcuToString(thread, formatResult);
+    result = base::LocaleHelper::UStringToString(thread, formatResult);
     if (!outputRange) {
         return FormatDateTime(thread, dtf, x);
     }
@@ -1026,7 +1027,7 @@ JSHandle<TaggedArray> JSDateTimeFormat::GainAvailableLocales(JSThread *thread)
     const char *key = "calendar";
     const char *path = nullptr;
     if (dateTimeFormatLocales->IsUndefined()) {
-        std::vector<std::string> availableStringLocales = JSLocale::GetAvailableLocales(thread, key, path);
+        std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
         JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
         env->SetDateTimeFormatLocales(thread, availableLocales);
         return availableLocales;
@@ -1098,8 +1099,8 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
         parts.emplace_back(CommonDateFormatPart(-1, preEndPos, length, index, true));
     }
     for (auto part : parts) {
-        substring.Update(JSLocale::IcuToString(thread, formattedValue, part.fBeginIndex,
-                                               part.fEndIndex).GetTaggedValue());
+        substring.Update(base::LocaleHelper::UStringToString(thread, formattedValue, part.fBeginIndex,
+            part.fEndIndex).GetTaggedValue());
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
         JSHandle<JSObject> element;
         if (part.isPreExist) {
