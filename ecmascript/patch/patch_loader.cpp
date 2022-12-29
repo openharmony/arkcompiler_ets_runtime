@@ -187,69 +187,6 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
     }
 }
 
-bool PatchLoader::FindAndReplaceSameMethod(JSThread *thread,
-                                           const JSPandaFile *baseFile,
-                                           const JSPandaFile *patchFile,
-                                           CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
-{
-    EcmaVM *vm = thread->GetEcmaVM();
-
-    const CUnorderedMap<CString, BaseMethodIndex> &cachedMethods = FindSameMethod(thread, baseFile, patchFile);
-    const CUnorderedMap<uint32_t, MethodLiteral *> &patchMethodLiterals = patchFile->GetMethodLiteralMap();
-    CMap<int32_t, JSTaggedValue> &baseConstpoolValues = vm->FindConstpools(baseFile).value();
-    for (const auto &item : patchMethodLiterals) {
-        MethodLiteral *patch = item.second;
-        auto methodId = patch->GetMethodId();
-        CString patchMethodName = MethodLiteral::GetMethodName(patchFile, methodId);
-        // Skip func_main_0, patch_main_0 and patch_main_1.
-        if (patchMethodName == JSPandaFile::ENTRY_FUNCTION_NAME ||
-            patchMethodName == JSPandaFile::PATCH_FUNCTION_NAME_0 ||
-            patchMethodName == JSPandaFile::PATCH_FUNCTION_NAME_1) {
-            continue;
-        }
-
-        CString patchRecordName = MethodLiteral::GetRecordName(patchFile, methodId);
-        CString methodKey = patchRecordName + "::" + patchMethodName;
-        if (cachedMethods.find(methodKey) == cachedMethods.end()) {
-            continue;
-        }
-
-        BaseMethodIndex indexSet = cachedMethods.at(methodKey);
-        uint32_t constpoolNum = indexSet.constpoolNum;
-        uint32_t constpoolIndex = indexSet.constpoolIndex;
-        uint32_t literalIndex = indexSet.literalIndex;
-        JSHandle<ConstantPool> baseConstpool(thread, baseConstpoolValues[constpoolNum]);
-        JSTaggedValue constpoolValue = baseConstpool->GetObjectFromCache(constpoolIndex);
-
-        Method *baseMethod = nullptr;
-        if (literalIndex < UINT32_MAX) {
-            // For class inner function modified.
-            TaggedArray *classLiteral = TaggedArray::Cast(constpoolValue);
-            JSTaggedValue literalItem = classLiteral->Get(thread, literalIndex);
-            JSFunctionBase *func = JSFunctionBase::Cast(literalItem.GetTaggedObject());
-            baseMethod = Method::Cast(func->GetMethod().GetTaggedObject());
-        } else {
-            // For normal function and class constructor modified.
-            baseMethod = Method::Cast(constpoolValue.GetTaggedObject());
-        }
-
-        // Save base MethodLiteral and base method index.
-        MethodLiteral *base = baseFile->FindMethodLiteral(baseMethod->GetMethodId().GetOffset());
-        ASSERT(base != nullptr);
-        JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, methodId);
-        ReplaceMethod(thread, baseMethod, patch, patchConstpoolValue);
-
-        InsertMethodInfo(indexSet, base, baseMethodInfo);
-        LOG_ECMA(INFO) << "Replace method: " << patchRecordName << ":" << patchMethodName;
-    }
-
-    if (baseMethodInfo.empty()) {
-        LOG_ECMA(ERROR) << "can not find same method to base";
-        return false;
-    }
-    return true;
-}
-
 bool PatchLoader::ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
                                    const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
 {
@@ -689,27 +626,34 @@ bool PatchLoader::CheckStarExportEntryMismatch(StarExportEntry *patch, StarExpor
     return false;
 }
 
-CUnorderedMap<CString, BaseMethodIndex> PatchLoader::FindSameMethod(JSThread *thread,
-    const JSPandaFile *baseFile, const JSPandaFile *patchFile)
+bool PatchLoader::FindAndReplaceSameMethod(JSThread *thread,
+    const JSPandaFile *baseFile, const JSPandaFile *patchFile, CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo)
 {
     const auto &patchMethodLiterals = patchFile->GetMethodLiteralMap();
     CUnorderedMap<CString, CUnorderedSet<CString>> patchMethodNames {}; // key :recordname; value :methodname
+    CUnorderedMap<CString, MethodLiteral *> patchReplacedMethodLiterals {}; // key :recordname + "::" + methodname
     for (const auto &iter : patchMethodLiterals) {
         MethodLiteral *patch = iter.second;
-        auto patchMethodId = patch->GetMethodId();
+        EntityId patchMethodId = patch->GetMethodId();
         CString patchMethodName = MethodLiteral::GetMethodName(patchFile, patchMethodId);
         CString patchRecordName = MethodLiteral::GetRecordName(patchFile, patchMethodId);
+        if (patchMethodName == JSPandaFile::ENTRY_FUNCTION_NAME ||
+            patchMethodName == JSPandaFile::PATCH_FUNCTION_NAME_0 ||
+            patchMethodName == JSPandaFile::PATCH_FUNCTION_NAME_1) {
+            continue;
+        }
+
+        CString methodKey = patchRecordName + "::" + patchMethodName;
         if (patchMethodNames.find(patchRecordName) != patchMethodNames.end()) {
             patchMethodNames[patchRecordName].insert(patchMethodName);
         } else {
             CUnorderedSet<CString> patchMethodNameSet {patchMethodName};
             patchMethodNames.emplace(std::move(patchRecordName), std::move(patchMethodNameSet));
         }
+        patchReplacedMethodLiterals.emplace(std::move(methodKey), patch);
     }
 
-    // key :recordName + "::" + methodName
-    // value :indexInfo
-    CUnorderedMap<CString, BaseMethodIndex> cachedMethods;
+    EcmaVM *vm = thread->GetEcmaVM();
     const CMap<int32_t, JSTaggedValue> &baseConstpoolValues = thread->GetEcmaVM()->FindConstpools(baseFile).value();
     for (const auto &iter : baseConstpoolValues) {
         ConstantPool *baseConstpool = ConstantPool::Cast(iter.second.GetTaggedObject());
@@ -735,7 +679,17 @@ CUnorderedMap<CString, BaseMethodIndex> PatchLoader::FindSameMethod(JSThread *th
                 if (item->second.count(baseMethodName)) {
                     BaseMethodIndex indexs = {constpoolNum, constpoolIndex};
                     CString methodKey = baseRecordName + "::" + baseMethodName;
-                    cachedMethods.emplace(std::move(methodKey), std::move(indexs));
+
+                    MethodLiteral *patch = patchReplacedMethodLiterals[methodKey];
+                    ASSERT(patch != nullptr);
+                    MethodLiteral *base = baseFile->FindMethodLiteral(baseMethod->GetMethodId().GetOffset());
+                    ASSERT(base != nullptr);
+                    EntityId methodId = patch->GetMethodId();
+                    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, methodId);
+                    ReplaceMethod(thread, baseMethod, patch, patchConstpoolValue);
+
+                    InsertMethodInfo(indexs, base, baseMethodInfo);
+                    LOG_ECMA(INFO) << "Replace method: " << baseRecordName << ":" << baseMethodName;
                 }
                 continue;
             }
@@ -764,11 +718,25 @@ CUnorderedMap<CString, BaseMethodIndex> PatchLoader::FindSameMethod(JSThread *th
                 if (item->second.count(baseMethodName)) {
                     BaseMethodIndex indexs = {constpoolNum, constpoolIndex, literalIndex};
                     CString methodKey = baseRecordName + "::" + baseMethodName;
-                    cachedMethods.emplace(std::move(methodKey), std::move(indexs));
+
+                    MethodLiteral *patch = patchReplacedMethodLiterals[methodKey];
+                    ASSERT(patch != nullptr);
+                    MethodLiteral *base = baseFile->FindMethodLiteral(baseMethod->GetMethodId().GetOffset());
+                    ASSERT(base != nullptr);
+                    EntityId methodId = patch->GetMethodId();
+                    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, methodId);
+                    ReplaceMethod(thread, baseMethod, patch, patchConstpoolValue);
+
+                    InsertMethodInfo(indexs, base, baseMethodInfo);
+                    LOG_ECMA(INFO) << "Replace method: " << baseRecordName << ":" << baseMethodName;
                 }
             }
         }
     }
-    return cachedMethods;
+    if (baseMethodInfo.empty()) {
+        LOG_ECMA(ERROR) << "can not find same method to base";
+        return false;
+    }
+    return true;
 }
 }  // namespace panda::ecmascript

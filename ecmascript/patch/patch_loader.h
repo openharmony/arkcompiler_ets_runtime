@@ -76,8 +76,6 @@ private:
                                         const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos);
     static void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
                                        const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos);
-    static CUnorderedMap<CString, BaseMethodIndex> FindSameMethod(JSThread *thread, const JSPandaFile *baseFile,
-                                                                  const JSPandaFile *patchFile);
 
     static bool ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
                                  const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
