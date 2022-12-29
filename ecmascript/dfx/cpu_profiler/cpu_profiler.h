@@ -113,6 +113,9 @@ private:
     const EcmaVM *vm_ = nullptr;
     uint32_t interval_ = 0;
     bool callNapiGetStack_ = true;
+    int line_ = 0;
+    int column_ = 0;
+    char url_[500] = {0}; // 500:the maximum size of the url
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_CPU_PROFILE_H
