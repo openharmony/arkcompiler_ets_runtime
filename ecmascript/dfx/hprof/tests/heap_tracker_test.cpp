@@ -290,7 +290,7 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
     bool traceAllocation = false;
     HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation, instance->GetChunk());
     size_t beginNode = heapSnapshot.GetNodeCount();
-    heapSnapshot.UpdateNode();
+    heapSnapshot.UpdateNodes();
     size_t endNode = heapSnapshot.GetNodeCount();
     EXPECT_TRUE(beginNode != endNode);
 }
