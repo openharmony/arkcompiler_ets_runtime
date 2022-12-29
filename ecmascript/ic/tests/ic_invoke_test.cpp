@@ -104,31 +104,4 @@ HWTEST_F_L0(ICInvokeTest, SetPolyConstuctCacheSlot)
     ASSERT_EQ(slotArray->Get(thread, 5), JSTaggedValue(789));
     ASSERT_EQ(array->Get(thread, slotId + 1), JSTaggedValue::Hole());
 }
-
-HWTEST_F_L0(ICInvokeTest, CheckPolyInvokeCache)
-{
-    auto globalEnv = ecmaVm->GetGlobalEnv();
-    auto factory = ecmaVm->GetFactory();
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(6);
-
-    JSHandle<JSFunction> func0 = factory->NewJSFunction(globalEnv);
-    JSHandle<JSFunction> func1 = factory->NewJSFunction(globalEnv);
-    JSHandle<JSFunction> func2 = factory->NewJSFunction(globalEnv);
-    JSHandle<JSFunction> func3 = factory->NewJSFunction(globalEnv);
-    array->Set(thread, 0, func0.GetTaggedValue());
-    array->Set(thread, 1, JSTaggedValue(123));
-    array->Set(thread, 2, func1.GetTaggedValue());
-    array->Set(thread, 3, JSTaggedValue(456));
-    array->Set(thread, 4, func2.GetTaggedValue());
-    array->Set(thread, 5, JSTaggedValue(789));
-
-    JSTaggedValue testValue0 = InvokeCache::CheckPolyInvokeCache(array.GetTaggedValue(), func0.GetTaggedValue());
-    ASSERT_EQ(testValue0, JSTaggedValue(123));
-    JSTaggedValue testValue1 = InvokeCache::CheckPolyInvokeCache(array.GetTaggedValue(), func1.GetTaggedValue());
-    ASSERT_EQ(testValue1, JSTaggedValue(456));
-    JSTaggedValue testValue2 = InvokeCache::CheckPolyInvokeCache(array.GetTaggedValue(), func2.GetTaggedValue());
-    ASSERT_EQ(testValue2, JSTaggedValue(789));
-    JSTaggedValue testValue3 = InvokeCache::CheckPolyInvokeCache(array.GetTaggedValue(), func3.GetTaggedValue());
-    ASSERT_EQ(testValue3, JSTaggedValue::Hole());
-}
 }
