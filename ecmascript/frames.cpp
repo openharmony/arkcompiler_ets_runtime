@@ -361,6 +361,23 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc
     }
 }
 
+uint32_t FrameIterator::GetBytecodeOffset() const
+{
+    FrameType type = this->GetFrameType();
+    if (type == FrameType::ASM_INTERPRETER_FRAME ||
+            type == FrameType::INTERPRETER_CONSTRUCTOR_FRAME) {
+        auto *frame = this->GetFrame<AsmInterpretedFrame>();
+        Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+        auto offset = frame->GetPc() - method->GetBytecodeArray();
+        return static_cast<uint32_t>(offset);
+    } else {
+        auto *frame = this->GetFrame<InterpretedFrame>();
+        Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+        auto offset = frame->GetPc() - method->GetBytecodeArray();
+        return static_cast<uint32_t>(offset);
+    }
+}
+
 uintptr_t FrameIterator::GetPrevFrame() const
 {
     FrameType type = GetFrameType();
