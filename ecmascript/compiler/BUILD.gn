@@ -236,6 +236,10 @@ source_set("ark_aot_compiler_set") {
     "$js_root:ark_jsruntime_compiler_config",
     "$js_root:ark_jsruntime_public_config",
   ]
+
+  deps = [
+    "$js_root:libark_jsruntime",
+  ]
 }
 
 source_set("libark_stub_set") {

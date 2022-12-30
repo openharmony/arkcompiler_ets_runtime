@@ -88,7 +88,6 @@ public:
     static constexpr char PACKAGE_NAME[] = "pkgName@";
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
     static constexpr int PACKAGE_NAME_LEN = 8;
-    static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
     static constexpr int MODULE_PREFIX_LENGTH = 8;
     static constexpr uint32_t INVALID_INDEX = -1;
     static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;

@@ -87,6 +87,23 @@ if (is_standard_system) {
           target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-win/bin/"
       module_install_name = ""
     }
+
+    ohos_copy("copy_ark_aot_builtins_win") {
+      deps = []
+      sources = []
+
+      # Add lib_ark_builtins
+      sources += [
+        "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts",
+      ]
+
+      # Set the output directory
+      outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-win/aot/src/{{source_file_part}}" ]
+      module_source_dir =
+          target_out_dir +
+          "/ets/build-tools/ets-loader/bin/ark/build-win/aot/src/"
+      module_install_name = ""
+    }
   } else if (is_linux) {
     ohos_copy("copy_ark_aot_compiler_library") {
       deps = []
@@ -146,6 +163,21 @@ if (is_standard_system) {
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/bin/{{source_file_part}}" ]
       module_source_dir =
           target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/bin/"
+      module_install_name = ""
+    }
+    ohos_copy("copy_ark_aot_builtins") {
+      deps = []
+      sources = []
+
+      # Add lib_ark_builtins
+      sources += [
+        "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts",
+      ]
+
+      # Set the output directory
+      outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/aot/src/{{source_file_part}}" ]
+      module_source_dir =
+          target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/aot/src/"
       module_install_name = ""
     }
   }
