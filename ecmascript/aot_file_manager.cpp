@@ -885,7 +885,11 @@ AOTFileInfo::CallSiteInfo AnFileDataManager::SafeCalCallSiteInfo(uintptr_t retAd
 {
     os::memory::ReadLockHolder lock(lock_);
     AOTFileInfo::CallSiteInfo callsiteInfo;
-    bool ans = loadedStub_->CalCallSiteInfo(retAddr, callsiteInfo);
+
+    bool ans = false;
+    if (loadedStub_ != nullptr) {
+        ans = loadedStub_->CalCallSiteInfo(retAddr, callsiteInfo);
+    }
     if (ans) {
         return callsiteInfo;
     }

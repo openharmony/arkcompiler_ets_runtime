@@ -309,7 +309,6 @@ std::string JSPandaFile::ParseHapPath(const CString &fileName)
     return "";
 }
 
-
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
 {
     FunctionKind kind;

@@ -290,10 +290,12 @@ bool PatchLoader::ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFil
         }
 
         // For add a new function, Call patch_main_0.
-        JSHandle<JSTaggedValue> global = thread->GetEcmaVM()->GetGlobalEnv()->GetJSGlobalObject();
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-        JSHandle<JSTaggedValue> func(thread, program->GetMainFunction());
-        EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, global, undefined, 0);
+        JSHandle<JSFunction> func = JSHandle<JSFunction>(thread, program->GetMainFunction());
+        JSHandle<SourceTextModule> module = vm->GetModuleManager()->HostGetImportedModule(recordName);
+        func->SetModule(thread, module);
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(func), undefined, undefined, 0);
         EcmaInterpreter::Execute(info);
 
         if (thread->HasPendingException()) {
