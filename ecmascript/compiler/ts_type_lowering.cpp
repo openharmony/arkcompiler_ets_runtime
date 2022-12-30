@@ -54,12 +54,12 @@ void TSTypeLowering::VerifyGuard() const
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             auto depend = acc_.GetDep(gate);
-            if (acc_.GetOpCode(depend) == OpCode::GUARD) {
+            if (acc_.GetOpCode(depend) == OpCode::STATE_SPLIT) {
                 auto opcode = acc_.GetByteCodeOpcode(gate);
                 std::string bytecodeStr = GetEcmaOpcodeStr(opcode);
                 LOG_COMPILER(ERROR) << "[ts_type_lowering][Error] the depend of ["
                                     << "id: " << acc_.GetId(gate) << ", JS_BYTECODE: " << bytecodeStr
-                                    << "] should not be GUARD after ts type lowring";
+                                    << "] should not be STATE_SPLIT after ts type lowring";
             }
         }
     }
@@ -346,7 +346,7 @@ void TSTypeLowering::LowerTypedAdd(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_ADD>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -359,7 +359,7 @@ void TSTypeLowering::LowerTypedSub(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_SUB>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -372,7 +372,7 @@ void TSTypeLowering::LowerTypedMul(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_MUL>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -385,7 +385,7 @@ void TSTypeLowering::LowerTypedMod(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_MOD>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -398,7 +398,7 @@ void TSTypeLowering::LowerTypedLess(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_LESS>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -411,7 +411,7 @@ void TSTypeLowering::LowerTypedLessEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_LESSEQ>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -424,7 +424,7 @@ void TSTypeLowering::LowerTypedGreater(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_GREATER>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -437,7 +437,7 @@ void TSTypeLowering::LowerTypedGreaterEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_GREATEREQ>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -450,7 +450,7 @@ void TSTypeLowering::LowerTypedDiv(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_DIV>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -463,7 +463,7 @@ void TSTypeLowering::LowerTypedEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_EQ>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -476,7 +476,7 @@ void TSTypeLowering::LowerTypedNotEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_NOTEQ>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -489,7 +489,7 @@ void TSTypeLowering::LowerTypedShl(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_SHL>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -502,7 +502,7 @@ void TSTypeLowering::LowerTypedShr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_SHR>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -515,7 +515,7 @@ void TSTypeLowering::LowerTypedAshr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_ASHR>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -528,7 +528,7 @@ void TSTypeLowering::LowerTypedAnd(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_AND>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -541,7 +541,7 @@ void TSTypeLowering::LowerTypedOr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_OR>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -554,7 +554,7 @@ void TSTypeLowering::LowerTypedXor(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         SpeculateNumbers<TypedBinOp::TYPED_XOR>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -565,7 +565,7 @@ void TSTypeLowering::LowerTypedInc(GateRef gate)
     if (valueType.IsNumberType()) {
         SpeculateNumber<TypedUnOp::TYPED_INC>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -576,7 +576,7 @@ void TSTypeLowering::LowerTypedDec(GateRef gate)
     if (valueType.IsNumberType()) {
         SpeculateNumber<TypedUnOp::TYPED_DEC>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -589,70 +589,26 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
-    GateRef check = Circuit::NullGate();
-    if (IsTrustedType(left) && IsTrustedType(right)) {
-        acc_.DeleteGuardAndFrameState(gate);
-    } else if (IsTrustedType(left)) {
-        check = builder_.PrimitiveTypeCheck(rightType, right);
-    } else if (IsTrustedType(right)) {
-        check = builder_.PrimitiveTypeCheck(leftType, left);
-    } else {
-        check = builder_.BoolAnd(builder_.PrimitiveTypeCheck(leftType, left),
-            builder_.PrimitiveTypeCheck(rightType, right));
-    }
+    builder_.PrimitiveTypeCheck(leftType, left);
+    builder_.PrimitiveTypeCheck(rightType, right);
 
-    // guard maybe not a GUARD
-    GateRef guard = acc_.GetDep(gate);
-    if (check != Circuit::NullGate()) {
-        ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-        acc_.ReplaceIn(guard, 1, check);
-    }
-
-    // Replace the old NumberBinaryOp<Op> with TypedBinaryOp<Op>
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType);
 
-    acc_.SetDep(result, guard);
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
 }
 
-template<TypedUnOp Op>
-GateRef TSTypeLowering::AppendOverflowCheck(GateRef typecheck, GateRef intVal)
+bool TSTypeLowering::NeedInt32OverflowCheck(TypedUnOp op) const
 {
-    GateRef check = typecheck;
-    switch (Op) {
-        case TypedUnOp::TYPED_INC: {
-            auto max = builder_.Int64(INT32_MAX);
-            auto rangeCheck = builder_.Int64NotEqual(intVal, max);
-            check = typecheck != Circuit::NullGate()
-                    ? builder_.BoolAnd(typecheck, rangeCheck)
-                    : rangeCheck;
-            break;
-        }
-        case TypedUnOp::TYPED_DEC: {
-            auto min = builder_.Int64(INT32_MIN);
-            auto rangeCheck = builder_.Int64NotEqual(intVal, min);
-            check = typecheck != Circuit::NullGate()
-                    ? builder_.BoolAnd(typecheck, rangeCheck)
-                    : rangeCheck;
-            break;
-        }
-        case TypedUnOp::TYPED_NEG: {
-            auto min = builder_.Int64(INT32_MIN);
-            auto zero = builder_.Int64(0);
-            auto notMin = builder_.Int64NotEqual(intVal, min);
-            auto notZero = builder_.Int64NotEqual(intVal, zero);
-            auto rangeCheck = builder_.BoolAnd(notMin, notZero);
-            check = typecheck != Circuit::NullGate()
-                    ? builder_.BoolAnd(typecheck, rangeCheck)
-                    : rangeCheck;
-            break;
-        }
-        default:
-            break;
+    if (op == TypedUnOp::TYPED_INC || op == TypedUnOp::TYPED_DEC ||
+        op == TypedUnOp::TYPED_NEG) {
+        return true;
     }
-    return check;
+    return false;
 }
 
 template<TypedUnOp Op>
@@ -661,30 +617,17 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
     GateType gateType = acc_.GetGateType(gate);
-    GateRef check = Circuit::NullGate();
-    if (IsTrustedType(value)) {
-        if (!valueType.IsIntType()) {
-            acc_.DeleteGuardAndFrameState(gate);
-        }
-    } else {
-        check = builder_.PrimitiveTypeCheck(valueType, value);
+
+    builder_.PrimitiveTypeCheck(valueType, value);
+    if (valueType.IsIntType() && NeedInt32OverflowCheck(Op)) {
+        builder_.Int32OverflowCheck<Op>(value);
     }
 
-    if (valueType.IsIntType()) {
-        auto intVal = builder_.GetInt64OfTInt(value);
-        check = AppendOverflowCheck<Op>(check, intVal);
-    }
-
-    // guard maybe not a GUARD
-    GateRef guard = acc_.GetDep(gate);
-    if (check != Circuit::NullGate()) {
-        ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-        acc_.ReplaceIn(guard, 1, check);
-    }
-
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, gateType);
 
-    acc_.SetDep(result, guard);
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -698,7 +641,7 @@ void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
         AddProfiling(gate);
         LowerPrimitiveTypeToNumber(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -706,22 +649,13 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-    GateRef check = Circuit::NullGate();
-    if (IsTrustedType(src)) {
-        acc_.DeleteGuardAndFrameState(gate);
-    } else {
-        check = builder_.PrimitiveTypeCheck(srcType, src);
-    }
+    builder_.PrimitiveTypeCheck(srcType, src);
 
-    // guard maybe not a GUARD
-    GateRef guard = acc_.GetDep(gate);
-    if (check != Circuit::NullGate()) {
-        ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-        acc_.ReplaceIn(guard, 1, check);
-    }
-
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
-    acc_.SetDep(result, guard);
+
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -752,7 +686,7 @@ void TSTypeLowering::LowerTypedNeg(GateRef gate)
     if (valueType.IsNumberType()) {
         SpeculateNumber<TypedUnOp::TYPED_NEG>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -763,25 +697,19 @@ void TSTypeLowering::LowerTypedNot(GateRef gate)
     if (valueType.IsNumberType()) {
         SpeculateNumber<TypedUnOp::TYPED_NOT>(gate);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
 void TSTypeLowering::LowerTypedLdArrayLength(GateRef gate)
 {
     AddProfiling(gate);
-
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    builder_.SetDepend(acc_.GetDep(guard));
-
     GateRef array = acc_.GetValueIn(gate, 2);
-    GateRef check = builder_.ArrayCheck(array);
-    acc_.ReplaceIn(guard, 1, check);
+    builder_.ArrayCheck(array);
 
-    acc_.SetDep(guard, builder_.GetDepend());
-    builder_.SetDepend(guard);
-
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef loadLength = builder_.LoadArrayLength(array);
 
     std::vector<GateRef> removedGate;
@@ -812,29 +740,26 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
 
     int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
     if (hclassIndex == -1) { // slowpath
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
     JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex);
 
     auto propertyOffset = tsManager_->GetPropertyOffset(hclass, prop);
     if (propertyOffset == -1) { // slowpath
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
 
     AddProfiling(gate);
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    builder_.SetDepend(acc_.GetDep(guard));
 
     GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
     GateRef propertyOffsetGate = builder_.IntPtr(propertyOffset);
-    GateRef check = builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+    builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
-    acc_.ReplaceIn(guard, 1, check);
-    acc_.SetDep(guard, builder_.GetDepend());
-    builder_.SetDepend(guard);
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef result = builder_.LoadProperty(receiver, propertyOffsetGate);
 
     std::vector<GateRef> removedGate;
@@ -866,29 +791,26 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     GateType receiverType = acc_.GetGateType(receiver);
     int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
     if (hclassIndex == -1) { // slowpath
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
     JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex);
 
     auto propertyOffset = tsManager_->GetPropertyOffset(hclass, prop);
     if (propertyOffset == -1) { // slowpath
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
 
     AddProfiling(gate);
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    builder_.SetDepend(acc_.GetDep(guard));
 
     GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
     GateRef propertyOffsetGate = builder_.IntPtr(propertyOffset);
-    GateRef check = builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+    builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
-    acc_.ReplaceIn(guard, 1, check);
-    acc_.SetDep(guard, builder_.GetDepend());
-    builder_.SetDepend(guard);
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     builder_.StoreProperty(receiver, propertyOffsetGate, value);
 
     std::vector<GateRef> removedGate;
@@ -904,29 +826,24 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateType receiverType = acc_.GetGateType(receiver);
     if (!tsManager_->IsFloat32ArrayType(receiverType)) { // slowpath
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
 
     AddProfiling(gate);
 
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    builder_.SetDepend(acc_.GetDep(guard));
-
-    GateRef check = Circuit::NullGate();
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
-        check = builder_.TypedArrayCheck(receiverType, receiver);
+        builder_.TypedArrayCheck(receiverType, receiver);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     GateRef index = acc_.GetValueIn(gate, 0);
-    check = builder_.BoolAnd(check, builder_.IndexCheck(receiverType, receiver, index));
+    builder_.IndexCheck(receiverType, receiver, index);
 
-    acc_.ReplaceIn(guard, 1, check);
-    acc_.SetDep(guard, builder_.GetDepend());
-    builder_.SetDepend(guard);
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef result = Circuit::NullGate();
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index);
@@ -934,6 +851,7 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
+
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -948,35 +866,25 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     GateType receiverType = acc_.GetGateType(receiver);
     GateType valueType = acc_.GetGateType(value);
     if ((!tsManager_->IsFloat32ArrayType(receiverType)) || (!valueType.IsNumberType())) { // slowpath
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
 
     AddProfiling(gate);
 
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    builder_.SetDepend(acc_.GetDep(guard));
-
-    GateRef check = Circuit::NullGate();
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
-        check = builder_.TypedArrayCheck(receiverType, receiver);
+        builder_.TypedArrayCheck(receiverType, receiver);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-
     GateRef index = acc_.GetValueIn(gate, 1);
-    check = builder_.BoolAnd(check, builder_.IndexCheck(receiverType, receiver, index));
+    builder_.IndexCheck(receiverType, receiver, index);
+    builder_.PrimitiveTypeCheck(valueType, value);
 
-    if (!IsTrustedType(value)) {
-        check = builder_.BoolAnd(check, builder_.PrimitiveTypeCheck(valueType, value));
-    }
-
-    acc_.ReplaceIn(guard, 1, check);
-    acc_.SetDep(guard, builder_.GetDepend());
-    builder_.SetDepend(guard);
-
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
     } else {
@@ -1007,24 +915,20 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     GateType receiverType = acc_.GetGateType(receiver);
     GateType propKeyType = acc_.GetGateType(propKey);
     if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsIntType()) { // slowpath
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
 
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    builder_.SetDepend(acc_.GetDep(guard));
+    AddProfiling(gate);
+
+    builder_.StableArrayCheck(receiver);
     GateRef index = builder_.GetInt32OfTInt(propKey);
-    GateRef check = builder_.StableArrayCheck(receiver);
-    check = builder_.BoolAnd(check, builder_.IndexCheck(receiverType, receiver, index));
+    builder_.IndexCheck(receiverType, receiver, index);
+    builder_.PrimitiveTypeCheck(propKeyType, propKey);
 
-    if (!IsTrustedType(propKey)) {
-        check = builder_.BoolAnd(check, builder_.PrimitiveTypeCheck(propKeyType, propKey));
-    }
-
-    acc_.ReplaceIn(guard, 1, check);
-    acc_.SetDep(guard, builder_.GetDepend());
-    builder_.SetDepend(guard);
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, index);
 
     std::vector<GateRef> removedGate;
@@ -1038,30 +942,23 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     auto value = acc_.GetValueIn(gate, 0);
     auto valueType = acc_.GetGateType(value);
     if ((!valueType.IsNumberType()) && (!valueType.IsBooleanType())) {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
-    }
-    auto check = Circuit::NullGate();
-    if (IsTrustedType(value)) {
-        acc_.DeleteGuardAndFrameState(gate);
-        builder_.SetDepend(acc_.GetDep(gate));
-    } else {
-        check = builder_.PrimitiveTypeCheck(valueType, value);
     }
 
     AddProfiling(gate);
 
-    // guard maybe not a GUARD
-    auto guard = acc_.GetDep(gate);
-    if (check != Circuit::NullGate()) {
-        ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-        acc_.ReplaceIn(guard, 1, check);
-    }
+    builder_.PrimitiveTypeCheck(valueType, value);
+
+    auto stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     auto toBool = builder_.TypedUnaryOp<TypedUnOp::TYPED_TOBOOL>(value, valueType, GateType::NJSValue());
     if (!flag) {
         toBool = builder_.BoolNot(toBool);
     }
     auto result = builder_.BooleanToTaggedBooleanPtr(toBool);
+
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -1072,7 +969,7 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
     if (!tsManager_->IsClassTypeKind(ctorType)) {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
 
@@ -1080,40 +977,33 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
 
     int hclassIndex = tsManager_->GetHClassIndexByClassGateType(ctorType);
 
-    // guard maybe not a GUARD
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
     auto currentLabel = builder_.GetCurrentEnvironment()->GetCurrentLabel();
-    auto currentDepend = acc_.GetDep(guard);
+    auto currentDepend = acc_.GetDep(stateSplit);
     currentLabel->SetDepend(currentDepend);
 
     DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
     Label allocateThisObj(&builder_);
-    Label notAllocateThisObj(&builder_);
     Label construct(&builder_);
 
     GateRef isBase = builder_.IsBase(ctor);
-    builder_.Branch(isBase, &allocateThisObj, &notAllocateThisObj);
+    builder_.Branch(isBase, &allocateThisObj, &construct);
     builder_.Bind(&allocateThisObj);
     {
         // add typecheck to detect protoOrHclass is equal with ihclass,
         // if pass typecheck: 1.no need to check whether hclass is valid 2.no need to check return result
-        check = builder_.ObjectTypeCheck(ctorType, ctor, builder_.IntPtr(hclassIndex));
+        currentDepend = builder_.GetDepend();
+        builder_.SetDepend(stateSplit);
+        builder_.ObjectTypeCheck(ctorType, ctor, builder_.IntPtr(hclassIndex));
+        builder_.SetDepend(currentDepend);
 
         GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
                                               builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         thisObj = builder_.HeapAlloc(protoOrHclass, GateType::AnyType(), RegionSpaceFlag::IN_YOUNG_SPACE);
         builder_.Jump(&construct);
     }
-    builder_.Bind(&notAllocateThisObj);
-    {
-        check = builder_.Boolean(true);
-        builder_.Jump(&construct);
-    }
     builder_.Bind(&construct);
-
-    acc_.ReplaceIn(guard, 1, *check);
 
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);
@@ -1128,7 +1018,6 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
 
     GateRef constructGate = builder_.Construct(args);
 
-    acc_.SetDep(constructGate, guard);
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, constructGate, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -1138,29 +1027,27 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
 {
     GateType ctorType = acc_.GetGateType(ctor);  // ldfunction in derived constructor get function type
     if (!tsManager_->IsClassTypeKind(ctorType) && !tsManager_->IsFunctionTypeKind(ctorType)) {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
 
     AddProfiling(gate);
 
-    // guard maybe not a GUARD
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    auto currentLabel = builder_.GetCurrentEnvironment()->GetCurrentLabel();
-    auto currentDepend = acc_.GetDep(guard);
-    currentLabel->SetDepend(currentDepend);
+    // stateSplit maybe not a STATE_SPLIT
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    GateRef frameState = acc_.GetValueIn(stateSplit, 0);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
 
     DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.True());
     Label allocateThisObj(&builder_);
-    Label notAllocateThisObj(&builder_);
     Label construct(&builder_);
 
     GateRef superCtor = GetSuperConstructor(ctor);
     GateRef isBase = builder_.IsBase(superCtor);
 
-    builder_.Branch(isBase, &allocateThisObj, &notAllocateThisObj);
+    builder_.Branch(isBase, &allocateThisObj, &construct);
     builder_.Bind(&allocateThisObj);
     {
         GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), newTarget,
@@ -1169,14 +1056,9 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
         thisObj = builder_.HeapAlloc(protoOrHclass, GateType::AnyType(), RegionSpaceFlag::IN_YOUNG_SPACE);
         builder_.Jump(&construct);
     }
-    builder_.Bind(&notAllocateThisObj);
-    {
-        check = builder_.Boolean(true);
-        builder_.Jump(&construct);
-    }
     builder_.Bind(&construct);
+    builder_.DeoptCheck(*check, frameState);
 
-    acc_.ReplaceIn(guard, 1, *check);
 
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);
@@ -1191,7 +1073,6 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
 
     GateRef constructGate = builder_.Construct(args);
 
-    acc_.SetDep(constructGate, guard);
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, constructGate, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -1208,18 +1089,13 @@ void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID i
 {
     GateRef function = acc_.GetValueIn(gate, 2); // 2:function
     GateRef a0 = acc_.GetValueIn(gate, 1);
-    GateRef guard = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(guard) == OpCode::GUARD);
-    builder_.SetDepend(acc_.GetDep(guard));
-    GateRef funcheck = builder_.CallTargetCheck(function, builder_.IntPtr(static_cast<int64_t>(id)));
-    BuiltinLowering lowering(circuit_);
-    GateRef paracheck = lowering.CheckPara(gate, id);
-    GateRef check = builder_.BoolAnd(paracheck, funcheck);
+    builder_.CallTargetCheck(function, builder_.IntPtr(static_cast<int64_t>(id)), a0);
 
-    acc_.ReplaceIn(guard, 1, check);
-    builder_.SetDepend(guard);
-
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef result = builder_.TypedCallBuiltin(a0, id);
+
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
     DeleteGates(gate, removedGate);
@@ -1251,18 +1127,18 @@ void TSTypeLowering::LowerCallThis1Imm8V8V8(GateRef gate)
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, id);
     } else {
-        acc_.DeleteGuardAndFrameState(gate);
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
 void TSTypeLowering::AddProfiling(GateRef gate)
 {
     if (IsProfiling()) {
-        // see guard as a part of JSByteCode if exists
-        GateRef maybeGuard = acc_.GetDep(gate);
+        // see stateSplit as a part of JSByteCode if exists
+        GateRef maybeStateSplit = acc_.GetDep(gate);
         GateRef current = Circuit::NullGate();
-        if (acc_.GetOpCode(maybeGuard) == OpCode::GUARD) {
-            current = maybeGuard;
+        if (acc_.GetOpCode(maybeStateSplit) == OpCode::STATE_SPLIT) {
+            current = maybeStateSplit;
         } else {
             current = gate;
         }
@@ -1275,7 +1151,7 @@ void TSTypeLowering::AddProfiling(GateRef gate)
         GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(current),
                                                  {constOpcode, mode});
         acc_.SetDep(current, profiling);
-        builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or guard
+        builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
     }
 }
 }  // namespace panda::ecmascript

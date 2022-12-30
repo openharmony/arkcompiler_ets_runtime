@@ -297,6 +297,7 @@ private:
     void LowerWideStPatchVar(GateRef gate);
     void LowerLdThisByName(GateRef gate, GateRef jsFunc);
     void LowerConstPoolData(GateRef gate);
+    void LowerDeoptCheck(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};

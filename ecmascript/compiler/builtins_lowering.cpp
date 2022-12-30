@@ -256,23 +256,22 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
     return ret;
 }
 
-void BuiltinLowering::LowerCallTargetCheck(GateRef gate)
+GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
 {
-    Environment env(gate, circuit_, &builder_);
+    builder_.SetEnvironment(env);
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+
+    GateRef stateSplit = acc_.GetDep(gate);
+    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
     GateRef id = acc_.GetValueIn(gate, 1); // 1: buitin id
     Label isHeapObject(&builder_);
-    Label notHeapObject(&builder_);
     Label funcIsCallable(&builder_);
     Label exit(&builder_);
     GateRef isObject = builder_.TaggedIsHeapObject(function);
     DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.False());
-    builder_.Branch(isObject, &isHeapObject, &notHeapObject);
-    builder_.Bind(&notHeapObject);
-    {
-        builder_.Jump(&exit);
-    }
-
+    builder_.Branch(isObject, &isHeapObject, &exit);
     builder_.Bind(&isHeapObject);
     {
         GateRef callable = builder_.IsCallable(function);
@@ -287,7 +286,9 @@ void BuiltinLowering::LowerCallTargetCheck(GateRef gate)
         }
     }
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 BuiltinsStubCSigns::ID BuiltinLowering::GetBuiltinId(std::string idStr)
@@ -307,9 +308,11 @@ BuiltinsStubCSigns::ID BuiltinLowering::GetBuiltinId(std::string idStr)
     return BUILTINS_STUB_ID(NONE);
 }
 
-GateRef BuiltinLowering::CheckPara(GateRef gate, BuiltinsStubCSigns::ID id)
+GateRef BuiltinLowering::CheckPara(GateRef gate)
 {
-    GateRef para1 = acc_.GetValueIn(gate, 1);
+    GateRef idGate = acc_.GetValueIn(gate, 1);
+    BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
+    GateRef para1 = acc_.GetValueIn(gate, 2);
     GateRef paracheck = builder_.TaggedIsNumber(para1);
     switch (id) {
         case BuiltinsStubCSigns::ID::SQRT:
@@ -319,11 +322,10 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, BuiltinsStubCSigns::ID id)
         case BuiltinsStubCSigns::ID::ATAN:
         case BuiltinsStubCSigns::ID::ABS:
         case BuiltinsStubCSigns::ID::FLOOR: {
-            paracheck = builder_.TaggedIsNumber(para1);
             break;
         }
         default: {
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

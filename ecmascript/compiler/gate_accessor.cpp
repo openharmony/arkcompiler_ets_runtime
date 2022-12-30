@@ -315,6 +315,16 @@ void GateAccessor::GetOutStates(GateRef gate, std::vector<GateRef>& outStates) c
     }
 }
 
+void GateAccessor::GetStateUses(GateRef gate, std::vector<GateRef>& outStates)
+{
+    auto uses = Uses(gate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (IsStateIn(it)) {
+            outStates.emplace_back(*it);
+        }
+    }
+}
+
 void GateAccessor::GetAllGates(std::vector<GateRef>& gates) const
 {
     circuit_->GetAllGates(gates);
@@ -368,6 +378,167 @@ bool GateAccessor::IsConstantValue(GateRef gate, uint64_t value) const
 bool GateAccessor::IsTypedOperator(GateRef gate) const
 {
     return GetMetaData(gate)->IsTypedOperator();
+}
+
+bool GateAccessor::IsNotWrite(GateRef gate) const
+{
+    auto op = GetOpCode(gate);
+    switch (op)
+    {
+        case OpCode::STATE_ENTRY:
+        case OpCode::RETURN:
+        case OpCode::RETURN_VOID:
+        case OpCode::ORDINARY_BLOCK:
+        case OpCode::MERGE:
+        case OpCode::IF_BRANCH:
+        case OpCode::IF_TRUE:
+        case OpCode::IF_FALSE:
+        case OpCode::IF_SUCCESS:
+        case OpCode::IF_EXCEPTION:
+        case OpCode::TO_LENGTH:
+        case OpCode::ARRAY_CHECK:
+        case OpCode::STABLE_ARRAY_CHECK:
+        case OpCode::PRIMITIVE_TYPE_CHECK:
+        case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::TYPED_ARRAY_CHECK:
+        case OpCode::INDEX_CHECK:
+        case OpCode::INT32_OVERFLOW_CHECK:
+        case OpCode::TYPED_UNARY_OP:
+        case OpCode::TYPED_BINARY_OP:
+        case OpCode::TYPE_CONVERT:
+        case OpCode::LOAD_ELEMENT:
+        case OpCode::LOAD_PROPERTY:
+        case OpCode::LOAD_ARRAY_LENGTH:
+            return true;
+        default:
+            break;
+    }
+    if (op == OpCode::JS_BYTECODE) {
+        auto ecmaOp = GetByteCodeOpcode(gate);
+        switch (ecmaOp)
+        {
+            case EcmaOpcode::INC_IMM8:
+            case EcmaOpcode::DEC_IMM8:
+            case EcmaOpcode::GETPROPITERATOR:
+            case EcmaOpcode::GETRESUMEMODE:
+            case EcmaOpcode::ADD2_IMM8_V8:
+            case EcmaOpcode::SUB2_IMM8_V8:
+            case EcmaOpcode::MUL2_IMM8_V8:
+            case EcmaOpcode::DIV2_IMM8_V8:
+            case EcmaOpcode::MOD2_IMM8_V8:
+            case EcmaOpcode::EQ_IMM8_V8:
+            case EcmaOpcode::NOTEQ_IMM8_V8:
+            case EcmaOpcode::LESS_IMM8_V8:
+            case EcmaOpcode::LESSEQ_IMM8_V8:
+            case EcmaOpcode::GREATER_IMM8_V8:
+            case EcmaOpcode::GREATEREQ_IMM8_V8:
+            case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
+            case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
+            case EcmaOpcode::GETITERATOR_IMM8:
+            case EcmaOpcode::GETITERATOR_IMM16:
+            case EcmaOpcode::TYPEOF_IMM8:
+            case EcmaOpcode::TYPEOF_IMM16:
+            case EcmaOpcode::LDSYMBOL:
+            case EcmaOpcode::LDGLOBAL:
+            case EcmaOpcode::TONUMBER_IMM8:
+            case EcmaOpcode::NEG_IMM8:
+            case EcmaOpcode::NOT_IMM8:
+            case EcmaOpcode::SHL2_IMM8_V8:
+            case EcmaOpcode::SHR2_IMM8_V8:
+            case EcmaOpcode::ASHR2_IMM8_V8:
+            case EcmaOpcode::AND2_IMM8_V8:
+            case EcmaOpcode::OR2_IMM8_V8:
+            case EcmaOpcode::XOR2_IMM8_V8:
+            case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
+            case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
+            case EcmaOpcode::EXP_IMM8_V8:
+            case EcmaOpcode::ISIN_IMM8_V8:
+            case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+            case EcmaOpcode::STRICTEQ_IMM8_V8:
+            case EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
+            case EcmaOpcode::GETTEMPLATEOBJECT_IMM16:
+            case EcmaOpcode::LDBIGINT_ID16:
+            case EcmaOpcode::TONUMERIC_IMM8:
+            case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+            case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+            case EcmaOpcode::GETMODULENAMESPACE_IMM8:
+            case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
+            case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::JEQZ_IMM8:
+            case EcmaOpcode::JEQZ_IMM16:
+            case EcmaOpcode::JEQZ_IMM32:
+            case EcmaOpcode::JNEZ_IMM8:
+            case EcmaOpcode::JNEZ_IMM16:
+            case EcmaOpcode::JNEZ_IMM32:
+            case EcmaOpcode::ISTRUE:
+            case EcmaOpcode::ISFALSE:
+            case EcmaOpcode::GETNEXTPROPNAME_V8:
+            case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8:
+            case EcmaOpcode::LDSUPERBYVALUE_IMM16_V8:
+            case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
+            case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
+            case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
+            case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
+            case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
+            case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
+            case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+            case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+            case EcmaOpcode::LDTHISBYVALUE_IMM8:
+            case EcmaOpcode::LDTHISBYVALUE_IMM16:
+            case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16:
+            case EcmaOpcode::LDSUPERBYNAME_IMM16_ID16:
+            case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+            case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+            case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+            case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
+            case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
+            case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+            case EcmaOpcode::JSTRICTEQZ_IMM8:
+            case EcmaOpcode::JSTRICTEQZ_IMM16:
+            case EcmaOpcode::JNSTRICTEQZ_IMM8:
+            case EcmaOpcode::JNSTRICTEQZ_IMM16:
+            case EcmaOpcode::JEQNULL_IMM8:
+            case EcmaOpcode::JEQNULL_IMM16:
+            case EcmaOpcode::JNENULL_IMM8:
+            case EcmaOpcode::JNENULL_IMM16:
+            case EcmaOpcode::JSTRICTEQNULL_IMM8:
+            case EcmaOpcode::JSTRICTEQNULL_IMM16:
+            case EcmaOpcode::JNSTRICTEQNULL_IMM8:
+            case EcmaOpcode::JNSTRICTEQNULL_IMM16:
+            case EcmaOpcode::JEQUNDEFINED_IMM8:
+            case EcmaOpcode::JEQUNDEFINED_IMM16:
+            case EcmaOpcode::JNEUNDEFINED_IMM8:
+            case EcmaOpcode::JNEUNDEFINED_IMM16:
+            case EcmaOpcode::JSTRICTEQUNDEFINED_IMM8:
+            case EcmaOpcode::JSTRICTEQUNDEFINED_IMM16:
+            case EcmaOpcode::JNSTRICTEQUNDEFINED_IMM8:
+            case EcmaOpcode::JNSTRICTEQUNDEFINED_IMM16:
+            case EcmaOpcode::JEQ_V8_IMM8:
+            case EcmaOpcode::JEQ_V8_IMM16:
+            case EcmaOpcode::JNE_V8_IMM8:
+            case EcmaOpcode::JNE_V8_IMM16:
+            case EcmaOpcode::JSTRICTEQ_V8_IMM8:
+            case EcmaOpcode::JSTRICTEQ_V8_IMM16:
+            case EcmaOpcode::JNSTRICTEQ_V8_IMM8:
+            case EcmaOpcode::JNSTRICTEQ_V8_IMM16:
+            case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+            case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+                return true;
+            default:
+                break;
+        }
+    }
+    return false;
+}
+
+bool GateAccessor::IsCheckWithTwoIns(GateRef gate) const
+{
+    return GetMetaData(gate)->IsCheckWithTwoIns();
+}
+
+bool GateAccessor::IsCheckWithOneIn(GateRef gate) const
+{
+    return GetMetaData(gate)->IsCheckWithOneIn();
 }
 
 bool GateAccessor::IsSchedulable(GateRef gate) const
@@ -590,15 +761,15 @@ bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
     return (index >= valueStartIndex && index < valueEndIndex);
 }
 
-void GateAccessor::DeleteGuardAndFrameState(GateRef gate)
+void GateAccessor::DeleteStateSplitAndFrameState(GateRef gate)
 {
-    GateRef guard = GetDep(gate);
-    if (GetOpCode(guard) == OpCode::GUARD) {
-        GateRef dep = GetDep(guard);
+    GateRef stateSplit = GetDep(gate);
+    if (GetOpCode(stateSplit) == OpCode::STATE_SPLIT) {
+        GateRef dep = GetDep(stateSplit);
         ReplaceDependIn(gate, dep);
-        GateRef frameState = GetValueIn(guard, 1);
+        GateRef frameState = GetValueIn(stateSplit, 0);
         DeleteGate(frameState);
-        DeleteGate(guard);
+        DeleteGate(stateSplit);
     }
 }
 

@@ -190,7 +190,7 @@ void LLVMIRBuilder::InitializeHandlers()
         OpCode::RETURN_LIST,
         OpCode::ARG_LIST, OpCode::THROW,
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY, OpCode::DEPEND_AND,
-        OpCode::FRAME_STATE, OpCode::GUARD
+        OpCode::FRAME_STATE, OpCode::STATE_SPLIT
     };
 }
 

@@ -229,9 +229,9 @@ public:
         return static_cast<const StringMetaData*>(meta_);
     }
 
-    const JSBytecodeMegaData* GetJSBytecodeMetaData() const
+    const JSBytecodeMetaData* GetJSBytecodeMetaData() const
     {
-        return JSBytecodeMegaData::Cast(meta_);
+        return JSBytecodeMetaData::Cast(meta_);
     }
 
     const RestoreRegsMetaData* GetRestoreRegsMetaData() const

@@ -222,13 +222,16 @@ public:
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
     // low level interface
+    template<TypedUnOp Op>
+    inline GateRef Int32OverflowCheck(GateRef gate);
     GateRef ArrayCheck(GateRef gate);
     GateRef StableArrayCheck(GateRef gate);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef PrimitiveTypeCheck(GateType type, GateRef gate);
-    GateRef CallTargetCheck(GateRef function, GateRef id);
+    GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param);
+    GateRef DeoptCheck(GateRef condition, GateRef frameState);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
     GateRef TypedCallOperator(MachineType type, const std::initializer_list<GateRef>& args);
