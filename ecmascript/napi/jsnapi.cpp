@@ -947,6 +947,12 @@ int StringRef::WriteUtf8(char *buffer, int length, bool isWriteBuffer)
         .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length, isWriteBuffer);
 }
 
+int StringRef::WriteLatin1(char *buffer, int length)
+{
+    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
+        .WriteToOneByte(reinterpret_cast<uint8_t *>(buffer), length);
+}
+
 Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
 {
     JSHandle<JSTaggedValue> napiWapperString = vm->GetJSThread()->GlobalConstants()->GetHandledNapiWrapperString();
