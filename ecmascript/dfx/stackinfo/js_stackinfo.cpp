@@ -14,15 +14,16 @@
  */
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
-
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+#include "ecmascript/dfx/native_dfx/backtrace.h"
+#endif
 
 namespace panda::ecmascript {
-
 std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset)
 {
     std::string data;
@@ -84,6 +85,11 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
             strm << addr;
             data.append("    at native method (").append(strm.str()).append(")\n");
         }
+    }
+    if (data.empty()) {
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+        data = PrintBacktraceReturnString();
+#endif
     }
     return data;
 }
