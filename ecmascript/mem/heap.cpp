@@ -845,6 +845,20 @@ void Heap::ChangeGCParams(bool inBackground)
     }
 }
 
+void Heap::TriggerCompressCollection(int idleMicroSec)
+{
+    if (!needIdleGC_) {
+        return;
+    }
+    int64_t curTime = static_cast<int64_t>(JSDate::Now().GetDouble());
+    if (curTime - idleTime_ > IDLE_TIME_INTERVAL && idleTime_ != 0 && idleMicroSec >= IDLE_TIME_LIMIT) {
+        LOG_ECMA(INFO) << "Start Idle GC";
+        CollectGarbage(TriggerGCType::FULL_GC);
+        needIdleGC_ = false;
+    }
+    idleTime_ = curTime;
+}
+
 void Heap::NotifyMemoryPressure(bool inHighMemoryPressure)
 {
     if (inHighMemoryPressure) {
