@@ -23,6 +23,11 @@
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
+std::string GetFileDelimiter()
+{
+    return ":";
+}
+
 bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
 {
     if (path.empty() || path.size() > PATH_MAX) {

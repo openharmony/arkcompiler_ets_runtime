@@ -191,6 +191,11 @@ DEF_CALL_SIGNATURE(Not)
     UNARY_CALL_SIGNATURE(Not)
 }
 
+DEF_CALL_SIGNATURE(ToBoolean)
+{
+    UNARY_CALL_SIGNATURE(ToBoolean)
+}
+
 DEF_CALL_SIGNATURE(TypeOf)
 {
     // 2 input parameters

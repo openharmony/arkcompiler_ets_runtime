@@ -18,6 +18,7 @@
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>
 
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/compiler_log.h"
@@ -26,7 +27,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript::kungfu {
 std::string GetHelper()
@@ -80,7 +81,8 @@ int Main(const int argc, const char **argv)
 
     {
         LocalScope scope(vm);
-        arg_list_t pandaFileNames = base::StringHelper::SplitString(files, ":");
+        std::string delimiter = GetFileDelimiter();
+        arg_list_t pandaFileNames = base::StringHelper::SplitString(files, delimiter);
         std::string triple = runtimeOptions.GetTargetTriple();
         if (runtimeOptions.GetAOTOutputFile().empty()) {
             runtimeOptions.SetAOTOutputFile("aot_file");

@@ -229,6 +229,14 @@ void NotStubBuilder::GenerateCircuit()
     Return(operationBuilder.Not(glue, x));
 }
 
+void ToBooleanStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    (void)glue;
+    GateRef x = TaggedArgument(1);
+    Return(FastToBoolean(x));
+}
+
 void GetPropertyByIndexStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);

@@ -87,25 +87,6 @@ if (is_standard_system) {
           target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-win/bin/"
       module_install_name = ""
     }
-
-    # remove this after build merged
-    ohos_copy("copy_ark_aot_compiler_library") {
-      deps = []
-      sources = []
-
-      # Add dynamic library "ark_jsruntime"
-      ark_js_path = get_label_info("//arkcompiler/ets_runtime:libark_jsruntime",
-                                   "root_out_dir")
-      deps += [ "//arkcompiler/ets_runtime:libark_jsruntime" ]
-      sources += [
-        "$ark_js_path/arkcompiler/ets_runtime/libark_jsruntime${dylib_suffix}",
-      ]
-
-      # Set the output directory for all dynamic libraries.
-      outputs = [ target_out_dir + "/toolchain/aot/bin/{{source_file_part}}" ]
-      module_source_dir = target_out_dir + "/toolchain/aot/bin/"
-      module_install_name = ""
-    }
   } else if (is_linux) {
     ohos_copy("copy_ark_aot_compiler_library") {
       deps = []
