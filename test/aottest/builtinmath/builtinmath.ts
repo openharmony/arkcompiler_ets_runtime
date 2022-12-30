@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 declare function print(arg:any):string;
 let len:number = 1;
 len = 1 / Math.sqrt(len);

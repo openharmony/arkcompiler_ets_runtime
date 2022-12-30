@@ -43,11 +43,11 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
 
 void BuiltinLowering::LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id)
 {
-    auto ret = TypeTrigonometric(gate, id);
+    auto ret = TypedTrigonometric(gate, id);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
-GateRef BuiltinLowering::TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id)
+GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -57,13 +57,13 @@ GateRef BuiltinLowering::TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID 
     Label notNumberBranch(&builder_);
     Label exit(&builder_);
 
-    GateRef a0 = acc_.GetValueIn(gate, 0);
+    GateRef para1 = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
-    builder_.Branch(builder_.TaggedIsNumber(a0), &numberBranch, &notNumberBranch);
+    builder_.Branch(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
     builder_.Bind(&numberBranch);
     {
-        GateRef value = builder_.GetDoubleOfTNumber(a0);
+        GateRef value = builder_.GetDoubleOfTNumber(para1);
         Label IsNan(&builder_);
         Label NotNan(&builder_);
         GateRef condition = builder_.DoubleIsNAN(value);
@@ -139,25 +139,25 @@ GateRef BuiltinLowering::TypedSqrt(GateRef gate)
     Label numberBranch(&builder_);
     Label notNumberBranch(&builder_);
     Label exit(&builder_);
-    GateRef a0 = acc_.GetValueIn(gate, 0);
+    GateRef para1 = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
-    builder_.Branch(builder_.TaggedIsNumber(a0), &numberBranch, &notNumberBranch);
+    builder_.Branch(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
     builder_.Bind(&numberBranch);
     {
-        Label IsInt(&builder_);
-        Label NotInt(&builder_);
+        Label isInt(&builder_);
+        Label notInt(&builder_);
         Label calc(&builder_);
         DEFVAlUE(value, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-        builder_.Branch(builder_.TaggedIsInt(a0), &IsInt, &NotInt);
-        builder_.Bind(&IsInt);
+        builder_.Branch(builder_.TaggedIsInt(para1), &isInt, &notInt);
+        builder_.Bind(&isInt);
         {
-            value = builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(a0));
+            value = builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(para1));
             builder_.Jump(&calc);
         }
-        builder_.Bind(&NotInt);
+        builder_.Bind(&notInt);
         {
-            value = builder_.GetDoubleOfTDouble(a0);
+            value = builder_.GetDoubleOfTDouble(para1);
             builder_.Jump(&calc);
         }
         builder_.Bind(&calc);
@@ -227,15 +227,15 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
     env->SubCfgEntry(&entry);
 
     Label exit(&builder_);
-    GateRef a0 = acc_.GetValueIn(gate, 0);
+    GateRef para1 = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
 
     Label isInt(&builder_);
     Label notInt(&builder_);
-    builder_.Branch(builder_.TaggedIsInt(a0), &isInt, &notInt);
+    builder_.Branch(builder_.TaggedIsInt(para1), &isInt, &notInt);
     builder_.Bind(&isInt);
     {
-        auto value = builder_.GetInt32OfTInt(a0);
+        auto value = builder_.GetInt32OfTInt(para1);
         auto temp = builder_.Int32ASR(value, builder_.Int32(JSTaggedValue::INT_SIGN_BIT_OFFSET));
         auto res = builder_.Int32Xor(value, temp);
         result = IntToTaggedIntPtr(builder_.Int32Sub(res, temp));
@@ -243,7 +243,7 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
     }
     builder_.Bind(&notInt);
     {
-        auto value = builder_.GetDoubleOfTDouble(a0);
+        auto value = builder_.GetDoubleOfTDouble(para1);
         // set the sign bit to 0 by shift left then right.
         auto temp = builder_.Int64LSL(builder_.CastDoubleToInt64(value), builder_.Int64(1));
         auto res = builder_.Int64LSR(temp, builder_.Int64(1));
@@ -309,8 +309,8 @@ BuiltinsStubCSigns::ID BuiltinLowering::GetBuiltinId(std::string idStr)
 
 GateRef BuiltinLowering::CheckPara(GateRef gate, BuiltinsStubCSigns::ID id)
 {
-    GateRef a0 = acc_.GetValueIn(gate, 1);
-    GateRef paracheck = builder_.TaggedIsNumber(a0);
+    GateRef para1 = acc_.GetValueIn(gate, 1);
+    GateRef paracheck = builder_.TaggedIsNumber(para1);
     switch (id) {
         case BuiltinsStubCSigns::ID::SQRT:
         case BuiltinsStubCSigns::ID::COS:
@@ -319,7 +319,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, BuiltinsStubCSigns::ID id)
         case BuiltinsStubCSigns::ID::ATAN:
         case BuiltinsStubCSigns::ID::ABS:
         case BuiltinsStubCSigns::ID::FLOOR: {
-            paracheck = builder_.TaggedIsNumber(a0);
+            paracheck = builder_.TaggedIsNumber(para1);
             break;
         }
         default: {

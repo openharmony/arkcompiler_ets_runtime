@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
+#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/ts_types/ts_type.h"
