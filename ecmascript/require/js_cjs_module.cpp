@@ -16,6 +16,7 @@
 #include "ecmascript/require/js_cjs_module.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
@@ -25,6 +26,8 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
+using BuiltinsJson = builtins::BuiltinsJson;
+
 void CjsModule::InitializeModule(JSThread *thread, JSHandle<CjsModule> &module,
                                  JSHandle<JSTaggedValue> &filename, JSHandle<JSTaggedValue> &dirname)
 {
@@ -124,6 +127,15 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     InitializeModule(thread, module, filename, dirname);
     PutIntoCache(thread, module, filename);
 
+    if (jsPandaFile->IsJson(thread, requestEntryPoint))
+    {
+        JSTaggedValue result = ModuleManager::JsonParse(thread, jsPandaFile, requestEntryPoint);
+        // Set module.exports ---> exports
+        JSHandle<JSTaggedValue> exportsKey = thread->GlobalConstants()->GetHandledCjsExportsString();
+        SlowRuntimeStub::StObjByName(thread, module.GetTaggedValue(), exportsKey.GetTaggedValue(),
+                                     result);
+        return JSHandle<JSTaggedValue>(thread, result);
+    }
     // Execute required JSPandaFile
     RequireExecution(thread, mergedFilename, requestEntryPoint);
 

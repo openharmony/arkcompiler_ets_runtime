@@ -15,6 +15,7 @@
 #include "ecmascript/module/js_module_manager.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
@@ -32,6 +33,8 @@
 #endif
 
 namespace panda::ecmascript {
+using BuiltinsJson = builtins::BuiltinsJson;
+
 ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 {
     resolvedModules_ = NameDictionary::Create(vm_->GetJSThread(), DEAULT_DICTIONART_CAPACITY).GetTaggedValue();
@@ -387,8 +390,10 @@ JSHandle<SourceTextModule> ModuleManager::ResolveModule(JSThread *thread, const 
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     } else if (jsPandaFile->IsModule()) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
+    } else if (jsPandaFile->IsJson(thread)) {
+        moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName);
     } else {
-        LOG_FULL(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
+        LOG_FULL(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule or JsonModule";
         UNREACHABLE();
     }
 
@@ -410,8 +415,10 @@ JSHandle<SourceTextModule> ModuleManager::ResolveModuleWithMerge(
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     } else if (jsPandaFile->IsModule(recordName)) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordName, moduleFileName);
+    } else if (jsPandaFile->IsJson(thread, recordName)) {
+        moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName, recordName);
     } else {
-        LOG_FULL(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule";
+        LOG_FULL(FATAL) << "jsPandaFile: " << moduleFileName << " is not CjsModule or EcmaModule or JsonModule";
         UNREACHABLE();
     }
 
@@ -754,5 +761,17 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
         }
     }
     return index;
+}
+
+JSTaggedValue ModuleManager::JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint)
+{
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        EcmaInterpreter::NewRuntimeCallInfo(
+            thread, undefined, undefined, undefined, 1); // 1 : argument numbers
+    CString value = jsPandaFile->GetJsonStringId(thread, entryPoint);
+    JSHandle<JSTaggedValue> arg0(thread->GetEcmaVM()->GetFactory()->NewFromASCII(value));
+    info->SetCallArg(arg0.GetTaggedValue());
+    return BuiltinsJson::Parse(info);
 }
 } // namespace panda::ecmascript
