@@ -17,7 +17,6 @@
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
-
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
@@ -234,32 +233,33 @@ CString JSPandaFile::FindEntryPoint(const CString &recordName) const
     return entryPoint;
 }
 
-CString JSPandaFile::ParseOhmUrl(const CString &fileName)
+CString JSPandaFile::ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName)
 {
     CString bundleInstallName(BUNDLE_INSTALL_PATH);
     size_t startStrLen = bundleInstallName.length();
     size_t pos = CString::npos;
 
-    if (fileName.length() > startStrLen && fileName.compare(0, startStrLen, bundleInstallName) == 0) {
+    if (inputFileName.length() > startStrLen && inputFileName.compare(0, startStrLen, bundleInstallName) == 0) {
         pos = startStrLen;
     }
-    CString result = fileName;
+    CString entryPoint;
     if (pos != CString::npos) {
-        result = fileName.substr(pos);
-        pos = result.find('/');
-        if (pos != CString::npos) {
-            result = result.substr(pos + 1);
+        pos = inputFileName.find('/', startStrLen);
+        ASSERT(pos != CString::npos);
+        CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
+        if (moduleName != vm->GetModuleName()) {
+            outFileName = CString(BUNDLE_INSTALL_PATH) + moduleName + CString(MERGE_ABC_ETS_MODULES);
         }
+        entryPoint = vm->GetBundleName() + "/" + inputFileName.substr(startStrLen);
     } else {
         // Temporarily handle the relative path sent by arkui
-        result = MODULE_DEFAULE_ETS + result;
+        entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
     }
-    pos = result.find_last_of(".");
+    pos = entryPoint.rfind(".abc");
     if (pos != CString::npos) {
-        result = result.substr(0, pos);
+        entryPoint = entryPoint.substr(0, pos);
     }
-
-    return result;
+    return entryPoint;
 }
 
 std::string JSPandaFile::ParseHapPath(const CString &fileName)
