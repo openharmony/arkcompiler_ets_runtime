@@ -2050,23 +2050,16 @@ void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, bool flag)
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     auto value = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), value);
-    auto condition = builder_.TaggedIsUndefinedOrNull(value);
-    builder_.Branch(condition, &isFalse, &slowpath);
-    builder_.Bind(&slowpath);
-    {
-        GateRef callResult = LowerCallRuntime(RTSTUB_ID(ToBoolean), { value }, true);
-        builder_.Branch(builder_.IsSpecial(callResult, JSTaggedValue::VALUE_TRUE), &isTrue, &isFalse);
-    }
+    result = builder_.CallStub(glue_, CommonStubCSigns::ToBoolean, { glue_, value });
+    builder_.Branch(builder_.TaggedIsTrue(*result), &isTrue, &isFalse);
     builder_.Bind(&isTrue);
     {
-        auto trueResult = flag ? builder_.TaggedTrue() : builder_.TaggedFalse();
-        result = trueResult;
+        result = flag ? builder_.TaggedTrue() : builder_.TaggedFalse();
         builder_.Jump(&successExit);
     }
     builder_.Bind(&isFalse);
     {
-        auto falseResult = flag ? builder_.TaggedFalse() : builder_.TaggedTrue();
-        result = falseResult;
+        result = flag ? builder_.TaggedFalse() : builder_.TaggedTrue();
         builder_.Jump(&successExit);
     }
     builder_.Bind(&successExit);

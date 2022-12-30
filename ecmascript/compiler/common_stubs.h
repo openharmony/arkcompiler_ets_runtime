@@ -44,6 +44,7 @@ namespace panda::ecmascript::kungfu {
     V(Dec)                            \
     V(Neg)                            \
     V(Not)                            \
+    V(ToBoolean)                      \
     V(GetPropertyByName)              \
     V(DeprecatedGetPropertyByName)    \
     V(SetPropertyByName)              \
