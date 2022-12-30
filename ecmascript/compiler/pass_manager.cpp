@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/pass.h"
+#include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
@@ -35,7 +36,10 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     }
 
     profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
-    BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, profilerLoader_, maxAotMethodSize_);
+    bool enableCollectLiteralInfo = EnableTypeInfer() &&
+        (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
+    BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, maxAotMethodSize_,
+        enableCollectLiteralInfo);
     ResolveModule(jsPandaFile, fileName);
     auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
@@ -47,14 +51,16 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     auto lexEnvManager = LexEnvManager(bytecodeInfo);
     bool enableMethodLog = !log_->NoneMethod();
 
+    CompilationDriver cmpDriver(jsPandaFile, profilerLoader_, bytecodeInfo);
     // ts type system
     TSManager *tsManager = vm_->GetTSManager();
+    tsManager->SetCompilationDriver(&cmpDriver);
     PassInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_,
         jsPandaFile, &bcInfoCollector, aotModule);
 
-    bytecodeInfo.EnumerateBCInfo(jsPandaFile, [this, &fileName, &enableMethodLog, &info]
-        (const CString &recordName, const std::string &methodName, MethodLiteral *methodLiteral,
-         uint32_t methodOffset, MethodPcInfo &methodPCInfo, size_t methodInfoIndex) {
+    cmpDriver.Run([this, &fileName, &enableMethodLog, &info]
+        (const CString recordName, const std::string &methodName, MethodLiteral *methodLiteral,
+         uint32_t methodOffset, const MethodPcInfo &methodPCInfo, size_t methodInfoIndex) {
         auto jsPandaFile = info.GetJSPandaFile();
         auto cmpCfg = info.GetCompilerConfig();
         auto tsManager = info.GetTSManager();

@@ -40,12 +40,12 @@ private:
     static constexpr const char* EXPORTED_SYMBOL_TYPES = "exportedSymbolTypes";
 
     inline GlobalTSTypeRef GetGT(const JSPandaFile *jsPandaFile, JSHandle<TSTypeTable> table,
-                                 uint32_t moduleId, uint32_t typeId)
+                                 uint32_t moduleId, uint32_t typeId, const CString &recordName)
     {
         auto localId = table->GetNumberOfTypes() + 1;
         table->SetNumberOfTypes(thread_, localId);
         GlobalTSTypeRef gt = GlobalTSTypeRef(moduleId, localId);
-        tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, gt);
+        tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, recordName, gt);
         return gt;
     }
 
