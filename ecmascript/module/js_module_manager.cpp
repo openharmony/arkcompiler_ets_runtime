@@ -624,6 +624,7 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         }
         entryPoint = moduleRequestName;
     } else if (moduleRequestName.find("@module:") != CString::npos) {
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
         moduleRequestName = moduleRequestName.substr(JSPandaFile::MODULE_OR_BUNDLE_PREFIX_LEN);
         pos = moduleRequestName.find('/');
         ASSERT(pos != CString::npos);
@@ -631,6 +632,10 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
             JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + JSPandaFile::MERGE_ABC_ETS_MODULES;
         pos = moduleRecordName.find('/');
         entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
+#else
+        entryPoint = JSPandaFile::PREVIEW_OF_ACROSS_HAP_FLAG;
+        LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
+#endif
     } else if (IsImportedPath(moduleRequestName, typePos)) {
         if (typePos != CString::npos) {
             moduleRequestName = moduleRequestName.substr(0, typePos);
