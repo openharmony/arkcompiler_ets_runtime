@@ -35,6 +35,7 @@
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
@@ -2676,5 +2677,40 @@ void JSNApi::SetLoop(EcmaVM *vm, void *loop)
 std::string JSNApi::GetAssetPath(EcmaVM *vm)
 {
     return vm->GetAssetPath().c_str();
+}
+
+void JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> tran_func)
+{
+    JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(tran_func);
+    JSHandle<JSFunction> transfer_func = JSHandle<JSFunction>::Cast(funcVal);
+    auto thread = vm->GetJSThread();
+    JSHandle<Method> method(thread, transfer_func->GetMethod());
+	auto jsPandaFile = method->GetJSPandaFile();
+
+	// 根据 methodId 查找 recordName
+    auto recordName = method->GetRecordName();
+
+	auto program = JSPandaFileManager::GetInstance()->GenerateProgram(vm, jsPandaFile, recordName.c_str());
+	auto func = JSHandle<JSFunction>(thread, program->GetMainFunction());
+
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+
+	global = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
+	auto moduleName = jsPandaFile->GetJSPandaFileDesc();
+	if (!jsPandaFile->IsBundlePack()) {
+		moduleName = recordName;
+	}
+    ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
+	auto module = moduleManager->HostGetImportedModule(moduleName);
+	func->SetModule(thread, module);
+	transfer_func->SetModule(thread, module); // 设置模块化参数
+
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(func), global, undefined, 0);
+    ecmascript::EcmaInterpreter::Execute(info);  // 指令里面设置到当前函数
+
+	transfer_func->SetLexicalEnv(thread, func->GetLexicalEnv()); // 设置lexenv
 }
 }  // namespace panda
