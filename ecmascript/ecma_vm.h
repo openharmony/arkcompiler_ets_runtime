@@ -494,6 +494,26 @@ public:
         return assetPath_;
     }
 
+    void SetBundleName(const CString &bundleName)
+    {
+        bundleName_ = bundleName;
+    }
+
+    CString GetBundleName() const
+    {
+        return bundleName_;
+    }
+
+    void SetModuleName(const CString &moduleName)
+    {
+        moduleName_ = moduleName;
+    }
+
+    CString GetModuleName() const
+    {
+        return moduleName_;
+    }
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
@@ -654,7 +674,8 @@ private:
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
     CString assetPath_;
-
+    CString bundleName_;
+    CString moduleName_;
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};

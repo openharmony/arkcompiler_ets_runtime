@@ -645,7 +645,8 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
 {
     ecmascript::CString entry = file.c_str();
     if (!vm->IsBundlePack()) {
-        entry = ecmascript::JSPandaFile::ParseOhmUrl(entry);
+        ecmascript::CString name;
+        entry = ecmascript::JSPandaFile::ParseOhmUrl(vm, entry, name);
     }
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
@@ -2677,4 +2678,27 @@ std::string JSNApi::GetAssetPath(EcmaVM *vm)
 {
     return vm->GetAssetPath().c_str();
 }
+
+void JSNApi::SetBundleName(EcmaVM *vm, std::string bundleName)
+{
+    ecmascript::CString name = bundleName.c_str();
+    vm->SetBundleName(name);
+}
+
+std::string JSNApi::GetBundleName(EcmaVM *vm)
+{
+    return vm->GetBundleName().c_str();
+}
+
+void JSNApi::SetModuleName(EcmaVM *vm, std::string moduleName)
+{
+    ecmascript::CString name = moduleName.c_str();
+    vm->SetModuleName(name);
+}
+
+std::string JSNApi::GetModuleName(EcmaVM *vm)
+{
+    return vm->GetModuleName().c_str();
+}
+
 }  // namespace panda

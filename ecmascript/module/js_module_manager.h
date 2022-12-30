@@ -100,7 +100,7 @@ private:
 
     EcmaVM *vm_ {nullptr};
     JSTaggedValue resolvedModules_ {JSTaggedValue::Hole()};
-    bool isExecuteBuffer_ = false;
+    bool isExecuteBuffer_ {false};
 
     friend class EcmaVM;
     friend class PatchLoader;

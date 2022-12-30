@@ -30,19 +30,22 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename.c_str();
 
     CString entry;
-    CString name = filename;
+    CString name;
     CString normalName = NormalizePath(filename);
     if (!thread->GetEcmaVM()->IsBundlePack()) {
 #if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
+        name = filename;
         entry = entryPoint.data();
 #else
         if (excuteFromJob) {
             entry = entryPoint.data();
         } else {
-            entry = JSPandaFile::ParseOhmUrl(normalName);
+            entry = JSPandaFile::ParseOhmUrl(thread->GetEcmaVM(), normalName, name);
         }
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
-        name = thread->GetEcmaVM()->GetAssetPath().c_str();
+        if (name.empty()) {
+            name = thread->GetEcmaVM()->GetAssetPath().c_str();
+        }
 #elif defined(PANDA_TARGET_WINDOWS)
         CString assetPath = thread->GetEcmaVM()->GetAssetPath().c_str();
         name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
@@ -52,6 +55,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 #endif
 #endif
     } else {
+        name = filename;
         entry = entryPoint.data();
     }
 
@@ -65,7 +69,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         [[maybe_unused]] EcmaHandleScope scope(thread);
         EcmaVM *vm = thread->GetEcmaVM();
         ModuleManager *moduleManager = vm->GetModuleManager();
-        moduleManager->SetExecuteMode(false);
         JSHandle<SourceTextModule> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
         if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(name);
@@ -121,7 +124,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
     CString normalName = NormalizePath(filename);
-    CString entry = JSPandaFile::ParseOhmUrl(normalName);
+    CString entry = JSPandaFile::ParseOhmUrl(thread->GetEcmaVM(), normalName, name);
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), buffer, size);
     if (jsPandaFile == nullptr) {
