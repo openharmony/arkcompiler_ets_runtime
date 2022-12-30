@@ -175,8 +175,12 @@ private:
     void LowerNumberToBool(GateRef gate, GateType valueType);
     void LowerBooleanToBool(GateRef gate);
     void LowerIndexCheck(GateRef gate);
-    void LowerObjectTypeCheck(GateRef gate, GateRef glue);
-    void LowerClassInstanceCheck(GateRef gate, GateRef glue);
+    void LowerOverflowCheck(GateRef gate);
+    void LowerTypedIncOverflowCheck(GateRef gate);
+    void LowerTypedDecOverflowCheck(GateRef gate);
+    void LowerTypedNegOverflowCheck(GateRef gate);
+    void LowerObjectTypeCheck(GateRef gate);
+    void LowerClassInstanceCheck(GateRef gate);
     void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
     void LowerArrayCheck(GateRef gate, GateRef glue);
     void LowerStableArrayCheck(GateRef gate, GateRef glue);
@@ -202,8 +206,6 @@ private:
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 
-    template<OpCode Op>
-    GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
     template<OpCode Op>
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<OpCode Op>
@@ -236,6 +238,7 @@ private:
     GateType GetRightType(GateRef gate);
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef GetFrameState(GateRef gate);
 
     Circuit *circuit_;
     GateAccessor acc_;

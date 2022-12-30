@@ -69,17 +69,12 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo
     return circuit_->NewGate(circuit_->FrameState(frameStateInputs), inList);
 }
 
-void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo)
+void FrameStateBuilder::BindStateSplit(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo)
 {
     auto depend = gateAcc_.GetDep(gate);
-    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
     GateRef frameState = FrameState(pcOffset, stateInfo);
-    auto trueGate = circuit_->GetConstantGate(MachineType::I1,
-                                              1, // 1: true
-                                              GateType::NJSValue());
-    GateRef guard = circuit_->NewGate(circuit_->Guard(),
-        {depend, trueGate, frameState, glue});
-    gateAcc_.ReplaceDependIn(gate, guard);
+    GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {depend, frameState});
+    gateAcc_.ReplaceDependIn(gate, stateSplit);
     if (builder_->IsLogEnabled()) {
         gateAcc_.ShortPrint(frameState);
     }
@@ -295,7 +290,7 @@ void FrameStateBuilder::BuildFrameState()
     liveOutResult_ = CreateEmptyStateInfo();
     BuildPostOrderList(size);
     ComputeLiveState();
-    BindGuard(size);
+    BindStateSplit(size);
 }
 
 void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo)
@@ -354,7 +349,7 @@ void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &byt
     }
 }
 
-void FrameStateBuilder::BindGuard(size_t size)
+void FrameStateBuilder::BindStateSplit(size_t size)
 {
     for (size_t i = 0; i < size; i++) {
         auto &bb = builder_->GetBasicBlockById(i);
@@ -368,7 +363,7 @@ void FrameStateBuilder::BindGuard(size_t size)
                 auto gate = builder_->GetGateByBcIndex(index);
                 auto pcOffset = builder_->GetPcOffset(index);
                 auto stateInfo = GetCurrentFrameInfo(bb, index);
-                BindGuard(gate, pcOffset, stateInfo);
+                BindStateSplit(gate, pcOffset, stateInfo);
             }
             return true;
         });

@@ -28,9 +28,9 @@ public:
                                        acc_(circuit) {}
     ~BuiltinLowering() = default;
     void LowerTypedCallBuitin(GateRef gate);
-    void LowerCallTargetCheck(GateRef gate);
+    GateRef LowerCallTargetCheck(Environment *env, GateRef gate);
     static BuiltinsStubCSigns::ID GetBuiltinId(std::string idStr);
-    GateRef CheckPara(GateRef gate, BuiltinsStubCSigns::ID id);
+    GateRef CheckPara(GateRef gate);
 private:
     void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);

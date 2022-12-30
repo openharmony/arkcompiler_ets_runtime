@@ -96,17 +96,17 @@ bool GateMetaData::IsState() const
 
 bool GateMetaData::IsGeneralState() const
 {
-    return ((opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE)
-        || (opcode_ == OpCode::JS_BYTECODE) || (opcode_ == OpCode::IF_SUCCESS)
-        || (opcode_ == OpCode::IF_EXCEPTION) || (opcode_ == OpCode::SWITCH_CASE)
-        || (opcode_ == OpCode::DEFAULT_CASE) || (opcode_ == OpCode::MERGE)
-        || (opcode_ == OpCode::LOOP_BEGIN) || (opcode_ == OpCode::ORDINARY_BLOCK)
-        || (opcode_ == OpCode::STATE_ENTRY) || (opcode_ == OpCode::TYPED_BINARY_OP)
-        || (opcode_ == OpCode::TYPE_CONVERT) || (opcode_ == OpCode::TYPED_UNARY_OP)
-        || (opcode_ == OpCode::TO_LENGTH) || (opcode_ == OpCode::HEAP_ALLOC)
-        || (opcode_ == OpCode::LOAD_ELEMENT) || (opcode_ == OpCode::LOAD_PROPERTY)
-        || (opcode_ == OpCode::STORE_ELEMENT) || (opcode_ == OpCode::STORE_PROPERTY)
-        || (opcode_ == OpCode::TYPED_CALL));
+    return ((opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE) ||
+        (opcode_ == OpCode::JS_BYTECODE) || (opcode_ == OpCode::IF_SUCCESS) ||
+        (opcode_ == OpCode::IF_EXCEPTION) || (opcode_ == OpCode::SWITCH_CASE) ||
+        (opcode_ == OpCode::DEFAULT_CASE) || (opcode_ == OpCode::MERGE) ||
+        (opcode_ == OpCode::LOOP_BEGIN) || (opcode_ == OpCode::ORDINARY_BLOCK) ||
+        (opcode_ == OpCode::STATE_ENTRY) || (opcode_ == OpCode::TYPED_BINARY_OP) ||
+        (opcode_ == OpCode::TYPE_CONVERT) || (opcode_ == OpCode::TYPED_UNARY_OP) ||
+        (opcode_ == OpCode::TO_LENGTH) || (opcode_ == OpCode::HEAP_ALLOC) ||
+        (opcode_ == OpCode::LOAD_ELEMENT) || (opcode_ == OpCode::LOAD_PROPERTY) ||
+        (opcode_ == OpCode::STORE_ELEMENT) || (opcode_ == OpCode::STORE_PROPERTY) ||
+        (opcode_ == OpCode::TYPED_CALL)) || (opcode_ == OpCode::DEOPT_CHECK);
 }
 
 bool GateMetaData::IsTerminalState() const
@@ -147,6 +147,20 @@ bool GateMetaData::IsTypedOperator() const
 {
     return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT)
         || (opcode_ == OpCode::TYPED_UNARY_OP);
+}
+
+bool GateMetaData::IsCheckWithTwoIns() const {
+    return (opcode_ == OpCode::OBJECT_TYPE_CHECK) ||
+           (opcode_ == OpCode::INDEX_CHECK) ||
+           (opcode_ == OpCode::TYPED_CALL_CHECK);
+}
+
+bool GateMetaData::IsCheckWithOneIn() const {
+    return (opcode_ == OpCode::PRIMITIVE_TYPE_CHECK) ||
+           (opcode_ == OpCode::INT32_OVERFLOW_CHECK) ||
+           (opcode_ == OpCode::ARRAY_CHECK) ||
+           (opcode_ == OpCode::STABLE_ARRAY_CHECK) ||
+           (opcode_ == OpCode::TYPED_ARRAY_CHECK);
 }
 
 GateMetaBuilder::GateMetaBuilder(Chunk* chunk)

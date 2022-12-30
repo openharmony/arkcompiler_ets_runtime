@@ -99,8 +99,8 @@ private:
     {
         UpdateVirtualRegister(accumulatorIndex_, gate);
     }
-    void BindGuard(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo);
-    void BindGuard(size_t size);
+    void BindStateSplit(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo);
+    void BindStateSplit(size_t size);
     void UpdateVirtualRegister(size_t id, size_t index, GateRef gate);
     GateRef FrameState(size_t pcOffset, FrameStateInfo *stateInfo);
 
