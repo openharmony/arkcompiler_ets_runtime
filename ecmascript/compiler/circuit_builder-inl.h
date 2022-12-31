@@ -594,6 +594,16 @@ GateRef CircuitBuilder::IsJSObject(GateRef obj)
     return LogicAnd(TaggedIsHeapObject(obj), ret);
 }
 
+GateRef CircuitBuilder::IsJSFunction(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef greater = Int32GreaterThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
+    GateRef less = Int32LessThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
+    return BoolAnd(greater, less);
+}
+
 GateRef CircuitBuilder::TaggedObjectIsString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -884,6 +894,18 @@ inline GateRef CircuitBuilder::IsBase(GateRef ctor)
     GateRef kind = Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
                             Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1));
     return Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
+}
+
+inline GateRef CircuitBuilder::IsConstructor(GateRef ctor)
+{
+    GateRef hClass = LoadHClass(ctor);
+    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    // decode
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::ConstructorBit::START_BIT)),
+                 Int32((1LU << JSHClass::ConstructorBit::SIZE) - 1)),
+        Int32(0));
 }
 
 inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef x, BuiltinsStubCSigns::ID id)

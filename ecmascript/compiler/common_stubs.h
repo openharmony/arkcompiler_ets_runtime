@@ -67,6 +67,8 @@ namespace panda::ecmascript::kungfu {
     V(TryStoreICByName)               \
     V(TryStoreICByValue)              \
     V(SetValueWithBarrier)            \
+    V(NewThisObjectChecked)           \
+    V(ConstructorCheck)               \
     V(JsProxyCallInternal)
 
 #define COMMON_STUB_ID_LIST(V)          \

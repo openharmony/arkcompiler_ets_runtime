@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
@@ -576,6 +577,23 @@ void SetValueWithBarrierStubBuilder::GenerateCircuit()
     GateRef value = TaggedArgument(3); // 3 : 4th para
     SetValueWithBarrier(glue, obj, offset, value);
     Return();
+}
+
+void NewThisObjectCheckedStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef ctor = TaggedArgument(1);
+    NewObjectStubBuilder newBuilder(this);
+    Return(newBuilder.NewThisObjectChecked(glue, ctor));
+}
+
+void ConstructorCheckStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef ctor = TaggedArgument(1);
+    GateRef value = TaggedArgument(2); // 2 : 3rd para
+    GateRef thisObj = TaggedArgument(3); // 3 : 4th para
+    Return(ConstructorCheck(glue, ctor, value, thisObj));
 }
 
 void JsProxyCallInternalStubBuilder::GenerateCircuit()
