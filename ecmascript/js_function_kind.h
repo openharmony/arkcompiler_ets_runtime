@@ -49,6 +49,7 @@ enum class FunctionKind : uint8_t {
     // END generators
     // END constructable functions.
     ASYNC_GENERATOR_FUNCTION,
+    CONCURRENT_FUNCTION,
 
     LAST_FUNCTION_KIND,
 };

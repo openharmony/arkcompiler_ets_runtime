@@ -886,7 +886,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 9;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numDeprecatedOps = 47;
+    constexpr size_t numDeprecatedOps = 48;
 
     static std::array<const void *, numOps> instDispatchTable {
 #include "templates/instruction_dispatch.inl"
@@ -4277,6 +4277,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue parentLexenv = LexicalEnv::Cast(currentLexenv.GetTaggedObject())->GetParentEnv();
         GET_FRAME(sp)->env = parentLexenv;
         DISPATCH(DEPRECATED_POPLEXENV_PREF_NONE);
+    }
+    HANDLE_OPCODE(DEPRECATED_STLEXENV_PREF_NONE) {
+        JSTaggedValue func = GetFunction(sp);
+        JSFunction *thisFunc = JSFunction::Cast(func.GetTaggedObject());
+        InterpretedFrame *state = GET_FRAME(sp);
+        JSTaggedValue envHandle = state->env;
+        thisFunc->SetLexicalEnv(thread, envHandle);
+        DISPATCH(DEPRECATED_STLEXENV_PREF_NONE);
     }
     HANDLE_OPCODE(GETITERATOR_IMM8) {
         LOG_INST() << "intrinsics::getiterator";
