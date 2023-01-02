@@ -31,6 +31,8 @@ public:
     struct JSRecordInfo {
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
+        bool isJson {false};
+        int jsonStringId {-1};
         CUnorderedSet<const EcmaVM *> vmListOfParsedConstPool;
         int moduleRecordIdx {-1};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
@@ -73,8 +75,9 @@ public:
     static constexpr char TYPE_SUMMARY_OFFSET[] = "typeSummaryOffset";
 
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
+    static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
-    static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
+    static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
     static constexpr char NODE_MODULES[] = "node_modules/";
@@ -84,7 +87,7 @@ public:
     static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
     static constexpr char PACKAGE_NAME[] = "pkgName@";
     static constexpr int PACKAGE_NAME_LEN = 8;
-    static constexpr int MODULE_PREFIX_LENGTH = 8;
+    static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
     static constexpr uint32_t INVALID_INDEX = -1;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
@@ -117,9 +120,8 @@ public:
 
     void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
-        if (methodLiteral != nullptr) {
-            methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
-        }
+        ASSERT(methodLiteral != nullptr);
+        methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
     }
 
     const CUnorderedMap<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
@@ -204,6 +206,10 @@ public:
 
     bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
+    bool IsJson(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+
+    const char *GetJsonStringId(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+
     bool IsBundlePack() const
     {
         return isBundlePack_;
@@ -264,7 +270,7 @@ public:
 
     CString FindEntryPoint(const CString &record) const;
 
-    static CString ParseOhmUrl(const CString &fileName);
+    static CString ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName);
     static std::string ParseHapPath(const CString &fileName);
 
     bool IsSystemLib() const

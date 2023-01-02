@@ -24,10 +24,9 @@
 #include "ecmascript/dfx/hprof/file_stream.h"
 
 namespace panda::ecmascript {
-HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm)
+HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), chunk_(vm->GetNativeAreaAllocator())
 {
-    jsonSerializer_ =
-        const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())->New<HeapSnapshotJSONSerializer>();
+    jsonSerializer_ = GetChunk()->New<HeapSnapshotJSONSerializer>();
     if (UNLIKELY(jsonSerializer_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc snapshot json serializer failed";
         UNREACHABLE();
@@ -36,7 +35,7 @@ HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm)
 HeapProfiler::~HeapProfiler()
 {
     ClearSnapshot();
-    const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(jsonSerializer_);
+    GetChunk()->Delete(jsonSerializer_);
     jsonSerializer_ = nullptr;
 }
 
@@ -191,8 +190,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMod
     const_cast<Heap *>(vm_->GetHeap())->Prepare();
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
-            auto *snapshot = const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())
-                                ->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation);
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -202,8 +200,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMod
             return snapshot;
         }
         case SampleType::REAL_TIME: {
-            auto *snapshot = const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())
-                                ->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation);
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -229,7 +226,7 @@ void HeapProfiler::AddSnapshot(HeapSnapshot *snapshot)
 void HeapProfiler::ClearSnapshot()
 {
     for (auto *snapshot : hprofs_) {
-        const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(snapshot);
+        GetChunk()->Delete(snapshot);
     }
     hprofs_.clear();
 }

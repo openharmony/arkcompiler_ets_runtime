@@ -22,7 +22,6 @@ host_unittest_action("TSTypeTest") {
   sources = [
     # test file
     "ts_type_parser_test.cpp",
-    "ts_type_test.cpp",
   ]
 
   configs = [

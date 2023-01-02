@@ -255,7 +255,7 @@ class BytecodeCircuitBuilder {
 public:
     explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
                                     const MethodLiteral *methodLiteral,
-                                    MethodPcInfo &methodPCInfo,
+                                    const MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
                                     Circuit *circuit,
                                     Bytecodes *bytecodes,

@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_BUILTIN_LOWERING_LOWERING_H
-#define ECMASCRIPT_COMPILER_BUILTIN_LOWERING_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_BUILTIN_LOWERING_H
+#define ECMASCRIPT_COMPILER_BUILTIN_LOWERING_H
 
 #include <string>
-#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -32,7 +32,7 @@ public:
     GateRef CheckPara(GateRef gate, BuiltinsStubCSigns::ID id);
 private:
     void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
-    GateRef TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
+    GateRef TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef IntToTaggedIntPtr(GateRef x);
     void LowerTypedSqrt(GateRef gate);
     GateRef TypedSqrt(GateRef gate);
@@ -44,4 +44,4 @@ private:
     GateAccessor acc_;
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_BUILTIN_LOWERING_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_BUILTIN_LOWERING_H

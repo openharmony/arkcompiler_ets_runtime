@@ -217,9 +217,15 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
     // Test moduleRequestName start with "@bundle"
     CString moduleRecordName = "moduleTest1";
     CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
-    CString result = "requestModuleName1";
+    CString result = "com.bundleName.test/moduleName/requestModuleName1";
     CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(result, entryPoint);
+
+    // Test cross application
+    moduleRecordName = "@bundle:com.bundleName1.test/moduleName/requestModuleName1";
+    CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/ets/modules.abc";
+    ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(baseFilename, newBaseFileName);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
@@ -293,6 +299,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     entryPoint = ModuleManager::ConcatFileNameWithMerge(pf2, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
+
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
@@ -321,6 +328,32 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
     const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({result, info});
     CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge5)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // Test moduleRequestName start with "@module"
+    CString moduleRecordName = "com.bundleName.test/moduleName1/moduleTest1";
+    CString moduleRequestName = "@module:moduleName/requestModuleName1";
+    CString result = "com.bundleName.test/moduleName/requestModuleName1";
+    CString newBaseFileName = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
+    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+    EXPECT_EQ(baseFilename, newBaseFileName);
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetRecordName1)

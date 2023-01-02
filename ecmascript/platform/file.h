@@ -46,6 +46,7 @@ using fd_t = int;
 #define FILE_SUCCESS 1
 #define FILE_FAILED 0
 
+std::string GetFileDelimiter();
 bool RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
 int64_t GetFileSizeByFd(fd_t fd);
 fd_t Open(const char *file, int flag);

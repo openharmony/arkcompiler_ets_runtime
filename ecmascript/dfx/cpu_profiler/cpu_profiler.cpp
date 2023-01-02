@@ -339,6 +339,50 @@ bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
             napiCallCount_++;
             methodKey.napiCallCount = napiCallCount_;
             firstFrame = false;
+            FrameIterator itNext(const_cast<JSTaggedType *>(thread->GetCurrentFrame()), thread);
+            itNext.Advance<GCVisitedFlag::IGNORED>();
+            auto nextMethod = itNext.CheckAndGetMethod();
+            if (nextMethod == nullptr) {
+                continue;
+            }
+            JSFunction* function = JSFunction::Cast(itNext.GetFunction().GetTaggedObject());
+            JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
+            if (!extraInfoValue.IsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
+                DebugInfoExtractor *debugExtractor =
+                    JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
+                panda_file::File::EntityId methodId =
+                    reinterpret_cast<MethodLiteral *>(GetMethodIdentifier(nextMethod, itNext))->GetMethodId();
+                const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
+                const char *tempVariable;
+                if (sourceFile.empty()) {
+                    tempVariable = "";
+                } else {
+                    tempVariable = sourceFile.c_str();
+                }
+
+                if (!CheckAndCopy(url_, sizeof(url_), tempVariable)) {
+                    return false;
+                }
+                int lineNumber = 0;
+                auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+                    lineNumber = line + 1;
+                    return true;
+                };
+                int columnNumber = 0;
+                auto callbackColumnFunc = [&columnNumber](int32_t column) -> bool {
+                    columnNumber += column + 1;
+                    return true;
+                };
+                uint32_t offset = itNext.GetBytecodeOffset();
+                if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset)) {
+                    line_ = '?';
+                }
+                if (!debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
+                    column_ = '?';
+                }
+                line_ = lineNumber;
+                column_ = columnNumber;
+            }
         }
         methodKey.methodIdentifier = GetMethodIdentifier(method, it);
         if (stackInfo.count(methodKey) == 0) {
@@ -366,6 +410,14 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
             return false;
         }
+        if (isCallNapi) {
+            codeEntry.lineNumber = line_;
+            codeEntry.columnNumber = column_;
+            if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), url_)) {
+                return false;
+            }
+        }
+
         GetNativeStack(it, codeEntry.functionName, sizeof(codeEntry.functionName));
     } else {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {

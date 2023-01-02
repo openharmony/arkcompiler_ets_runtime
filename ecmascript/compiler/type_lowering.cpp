@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/type_lowering.h"
+#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
@@ -564,7 +564,7 @@ void TypeLowering::LowerHeapAllocateInYoung(GateRef gate, GateRef glue)
     }
     builder_.Bind(&callRuntime);
     {
-        result = LowerCallRuntime(glue, RTSTUB_ID(AllocateInYoung),  { builder_.ToTaggedInt(size) }, true);
+        result = LowerCallRuntime(glue, RTSTUB_ID(AllocateInYoung),  {builder_.ToTaggedInt(size)}, true);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -2583,7 +2583,7 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
                 {
                     GateRef glue = acc_.GetGlueFromArgList();
                     result = builder_.CallNGCRuntime(
-                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, { *doubleLeft, *doubleRight });
+                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, {*doubleLeft, *doubleRight});
                     builder_.Jump(&exit);
                 }
             }

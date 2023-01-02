@@ -329,6 +329,7 @@ private:
     V(Dec)                                  \
     V(Neg)                                  \
     V(Not)                                  \
+    V(ToBoolean)                            \
     V(SetPropertyByName)                    \
     V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \

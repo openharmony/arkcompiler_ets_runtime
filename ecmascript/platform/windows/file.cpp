@@ -27,6 +27,10 @@
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
+std::string GetFileDelimiter()
+{
+    return ";";
+}
 
 bool RealPath(const std::string &path, std::string &realPath, [[maybe_unused]] bool readOnly)
 {

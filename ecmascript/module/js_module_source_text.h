@@ -24,7 +24,7 @@
 
 namespace panda::ecmascript {
 enum class ModuleStatus : uint8_t { UNINSTANTIATED = 0x01, INSTANTIATING, INSTANTIATED, EVALUATING, EVALUATED };
-enum class ModuleTypes : uint8_t { ECMAMODULE = 0x01, CJSMODULE, UNKNOWN};
+enum class ModuleTypes : uint8_t { ECMAMODULE = 0x01, CJSMODULE, JSONMODULE, UNKNOWN};
 
 class SourceTextModule final : public ModuleRecord {
 public:
@@ -98,7 +98,7 @@ public:
 
     // define BitField
     static constexpr size_t STATUS_BITS = 3;
-    static constexpr size_t MODULE_TYPE_BITS = 2;
+    static constexpr size_t MODULE_TYPE_BITS = 3;
     static constexpr size_t IS_NEW_BC_VERSION_BITS = 1;
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
     NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE_BITS, Status)

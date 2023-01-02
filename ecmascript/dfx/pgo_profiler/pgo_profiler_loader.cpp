@@ -97,7 +97,7 @@ void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::u
 {
     std::vector<std::string> methodCountString = base::StringHelper::SplitString(methodInfo, "/");
     if (methodCountString.size() < METHOD_INFO_COUNT) {
-        LOG_ECMA(ERROR) << "method info format error" << methodInfo;
+        LOG_ECMA(ERROR) << "method info format error " << methodInfo;
         return;
     }
     char *endPtr = nullptr;
@@ -105,7 +105,7 @@ void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::u
     SampleMode mode =
         static_cast<SampleMode>(strtol(methodCountString[METHOD_MODE_INDEX].c_str(), &endPtr, NUMBER_BASE));
     if (endPtr == methodCountString[METHOD_MODE_INDEX].c_str() || *endPtr != '\0') {
-        LOG_ECMA(ERROR) << "method mode strtol error" << methodCountString[METHOD_MODE_INDEX];
+        LOG_ECMA(ERROR) << "method mode strtol error " << methodCountString[METHOD_MODE_INDEX];
         return;
     }
     bool isHotness = true;
@@ -113,7 +113,7 @@ void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::u
         uint32_t count =
             static_cast<uint32_t>(strtol(methodCountString[METHOD_COUNT_INDEX].c_str(), &endPtr, NUMBER_BASE));
         if (endPtr == methodCountString[METHOD_COUNT_INDEX].c_str() || *endPtr != '\0') {
-            LOG_ECMA(ERROR) << "method count strtol error" << methodCountString[METHOD_COUNT_INDEX];
+            LOG_ECMA(ERROR) << "method count strtol error " << methodCountString[METHOD_COUNT_INDEX];
             return;
         }
         if (count < hotnessThreshold_) {
@@ -125,7 +125,7 @@ void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::u
         uint32_t methodId =
             static_cast<uint32_t>(strtol(methodCountString[METHOD_ID_INDEX].c_str(), &endPtr, NUMBER_BASE));
         if (endPtr == methodCountString[METHOD_ID_INDEX].c_str() || *endPtr != '\0') {
-            LOG_ECMA(ERROR) << "method id strtol error" << methodCountString[METHOD_ID_INDEX];
+            LOG_ECMA(ERROR) << "method id strtol error " << methodCountString[METHOD_ID_INDEX];
             return;
         }
         methodIds.emplace(methodId);

@@ -703,6 +703,11 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
             }
             // c. Set index to ? InnerModuleEvaluation(requiredModule, stack, index).
             JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
+            // if requiredModule is jsonModule, then don't need to execute.
+            if (requiredModule->GetTypes() == ModuleTypes::JSONMODULE) {
+                requiredModule->SetStatus(ModuleStatus::EVALUATED);
+                continue;
+            }
             index = SourceTextModule::InnerModuleEvaluation(thread, requiredModuleRecord, stack, index);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             // d. Assert: requiredModule.[[Status]] is either "evaluating" or "evaluated".
