@@ -49,6 +49,7 @@
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
@@ -2680,40 +2681,39 @@ std::string JSNApi::GetAssetPath(EcmaVM *vm)
     return vm->GetAssetPath().c_str();
 }
 
-void JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> tran_func)
+bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
 {
-    JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(tran_func);
-    JSHandle<JSFunction> transfer_func = JSHandle<JSFunction>::Cast(funcVal);
-    auto thread = vm->GetJSThread();
-    JSHandle<Method> method(thread, transfer_func->GetMethod());
-	auto jsPandaFile = method->GetJSPandaFile();
-
-	// 根据 methodId 查找 recordName
-    auto recordName = method->GetRecordName();
-
-	auto program = JSPandaFileManager::GetInstance()->GenerateProgram(vm, jsPandaFile, recordName.c_str());
-	auto func = JSHandle<JSFunction>(thread, program->GetMainFunction());
+    JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(function);
+    JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
+    if (transFunc->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        return false;
+    }
+    ecmascript::JSThread *thread = vm->GetJSThread();
+    JSHandle<Method> method(thread, transFunc->GetMethod());
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    ecmascript::CString recordName = method->GetRecordName();
+    JSHandle<ecmascript::Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm, jsPandaFile, recordName.c_str());
+    JSHandle<JSFunction> func(thread, program->GetMainFunction());
 
     JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
-
-	global = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
-	auto moduleName = jsPandaFile->GetJSPandaFileDesc();
-	if (!jsPandaFile->IsBundlePack()) {
-		moduleName = recordName;
-	}
+    global = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
+    ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+    if (!jsPandaFile->IsBundlePack()) {
+        moduleName = recordName;
+    }
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
-	auto module = moduleManager->HostGetImportedModule(moduleName);
-	func->SetModule(thread, module);
-	transfer_func->SetModule(thread, module); // 设置模块化参数
-
+    JSHandle<ecmascript::SourceTextModule> module = moduleManager->HostGetImportedModule(moduleName);
+    func->SetModule(thread, module);
+    transFunc->SetModule(thread, module);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(func), global, undefined, 0);
-    ecmascript::EcmaInterpreter::Execute(info);  // 指令里面设置到当前函数
-
-	transfer_func->SetLexicalEnv(thread, func->GetLexicalEnv()); // 设置lexenv
+    ecmascript::EcmaInterpreter::Execute(info);
+    transFunc->SetLexicalEnv(thread, func->GetLexicalEnv());
+    return true;
 }
+
 void JSNApi::SetBundleName(EcmaVM *vm, std::string bundleName)
 {
     ecmascript::CString name = bundleName.c_str();

@@ -1294,7 +1294,7 @@ public:
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetLoop(EcmaVM *vm, void *loop);
     static std::string GetAssetPath(EcmaVM *vm);
-    static void InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
+    static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
     static void SetBundleName(EcmaVM *vm, std::string bundleName);
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, std::string moduleName);
