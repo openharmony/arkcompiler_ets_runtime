@@ -25,7 +25,7 @@ namespace panda::ecmascript::x64 {
 class ExtendedAssembler : public AssemblerX64 {
 public:
     static constexpr int FRAME_SLOT_SIZE = 8;
-    explicit ExtendedAssembler(Chunk *chunk, kungfu::AssemblerModule *module)
+    ExtendedAssembler(Chunk *chunk, kungfu::AssemblerModule *module)
         : AssemblerX64(chunk), module_(module)
     {
     }

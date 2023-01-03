@@ -112,7 +112,7 @@ struct FrameInfoTemp {
 
 class SamplesRecord {
 public:
-    explicit SamplesRecord();
+    SamplesRecord();
     virtual ~SamplesRecord();
 
     void AddSample(uint64_t sampleTimeStamp);

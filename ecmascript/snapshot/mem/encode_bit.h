@@ -34,7 +34,7 @@ namespace panda::ecmascript {
 class EncodeBit final {
 public:
     ~EncodeBit() = default;
-    explicit EncodeBit() = delete;
+    EncodeBit() = delete;
 
     DEFAULT_COPY_SEMANTIC(EncodeBit);
     DEFAULT_MOVE_SEMANTIC(EncodeBit);

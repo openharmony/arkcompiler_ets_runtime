@@ -23,7 +23,7 @@ class GateAccessor {
 public:
     // do not create new gate or modify self during iteration
     struct ConstUseIterator {
-        explicit ConstUseIterator(const Circuit* circuit, const Out* out) : circuit_(circuit), out_(out)
+        ConstUseIterator(const Circuit* circuit, const Out* out) : circuit_(circuit), out_(out)
         {
         }
 
@@ -80,7 +80,7 @@ public:
 
     // do not create new gate or modify self during iteration
     struct UseIterator {
-        explicit UseIterator(Circuit* circuit, Out* out) : circuit_(circuit), out_(out)
+        UseIterator(Circuit* circuit, Out* out) : circuit_(circuit), out_(out)
         {
         }
 
@@ -134,7 +134,7 @@ public:
     };
 
     struct ConstInsIterator {
-        explicit ConstInsIterator(const Circuit* circuit, const In* in) : circuit_(circuit), in_(in)
+        ConstInsIterator(const Circuit* circuit, const In* in) : circuit_(circuit), in_(in)
         {
         }
 
@@ -176,7 +176,7 @@ public:
     };
 
     struct InsIterator {
-        explicit InsIterator(const Circuit* circuit, In* in) : circuit_(circuit), in_(in)
+        InsIterator(const Circuit* circuit, In* in) : circuit_(circuit), in_(in)
         {
         }
 
@@ -481,7 +481,7 @@ private:
 class ConstGateAccessor {
 public:
     struct ConstInsIterator {
-        explicit ConstInsIterator(const Circuit* circuit, const In* in) : circuit_(circuit), in_(in)
+        ConstInsIterator(const Circuit* circuit, const In* in) : circuit_(circuit), in_(in)
         {
         }
 

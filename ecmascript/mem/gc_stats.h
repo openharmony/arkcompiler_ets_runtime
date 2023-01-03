@@ -30,7 +30,7 @@ class GCStats {
 
 public:
     explicit GCStats(const Heap *heap) : heap_(heap) {}
-    explicit GCStats(const Heap *heap, size_t longPuaseTime) : heap_(heap),
+    GCStats(const Heap *heap, size_t longPuaseTime) : heap_(heap),
         longPauseTime_(longPuaseTime) {}
     ~GCStats() = default;
 

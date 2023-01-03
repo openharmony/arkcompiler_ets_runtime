@@ -32,29 +32,29 @@ enum class OperatorType : uint8_t {
 
 class ObjectOperator final {
 public:
-    explicit ObjectOperator() = default;
+    ObjectOperator() = default;
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &key,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSObject> &holder, const JSHandle<JSTaggedValue> &key,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSObject> &holder, const JSHandle<JSTaggedValue> &key,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder, const JSHandle<JSTaggedValue> &key,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder, const JSHandle<JSTaggedValue> &key,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder,
-                            const JSHandle<JSTaggedValue> &receiver, const JSHandle<JSTaggedValue> &key,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder,
+                   const JSHandle<JSTaggedValue> &receiver, const JSHandle<JSTaggedValue> &key,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder, uint32_t index,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder, uint32_t index,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
     // op for fast path, name can only string and symbol, and can't be number.
-    explicit ObjectOperator(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
     // op for fast add
-    explicit ObjectOperator(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
-                            const PropertyAttributes &attr);
+    ObjectOperator(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
+                   const PropertyAttributes &attr);
 
     static void FastAdd(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
                         const JSHandle<JSTaggedValue> &value, const PropertyAttributes &attr);

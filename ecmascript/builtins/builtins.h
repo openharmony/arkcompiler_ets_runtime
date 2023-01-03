@@ -35,7 +35,7 @@ enum FunctionLength : uint8_t { ZERO = 0, ONE, TWO, THREE, FOUR };
 
 class Builtins {
 public:
-    explicit Builtins() = default;
+    Builtins() = default;
     ~Builtins() = default;
     NO_COPY_SEMANTIC(Builtins);
     NO_MOVE_SEMANTIC(Builtins);

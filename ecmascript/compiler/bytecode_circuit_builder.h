@@ -253,17 +253,17 @@ using BytecodeGraph = std::vector<BytecodeRegion>;
 
 class BytecodeCircuitBuilder {
 public:
-    explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
-                                    const MethodLiteral *methodLiteral,
-                                    const MethodPcInfo &methodPCInfo,
-                                    TSManager *tsManager,
-                                    Circuit *circuit,
-                                    Bytecodes *bytecodes,
-                                    bool hasTypes,
-                                    bool enableLog,
-                                    bool enableTypeLowering,
-                                    std::string name,
-                                    const CString &recordName)
+    BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
+                           const MethodLiteral *methodLiteral,
+                           const MethodPcInfo &methodPCInfo,
+                           TSManager *tsManager,
+                           Circuit *circuit,
+                           Bytecodes *bytecodes,
+                           bool hasTypes,
+                           bool enableLog,
+                           bool enableTypeLowering,
+                           std::string name,
+                           const CString &recordName)
         : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
           typeRecorder_(jsPandaFile, method_, tsManager, recordName), hasTypes_(hasTypes),

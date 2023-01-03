@@ -25,7 +25,7 @@ using EntityId = panda_file::File::EntityId;
 
 class ModuleDataExtractor {
 public:
-    explicit ModuleDataExtractor() = default;
+    ModuleDataExtractor() = default;
     virtual ~ModuleDataExtractor() = default;
 
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(ModuleDataExtractor);

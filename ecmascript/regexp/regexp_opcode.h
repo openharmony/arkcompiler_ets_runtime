@@ -311,7 +311,7 @@ public:
     {
         Insert(value, value);
     }
-    explicit RangeSet(uint32_t start, uint32_t end)
+    RangeSet(uint32_t start, uint32_t end)
     {
         Insert(start, end);
     }

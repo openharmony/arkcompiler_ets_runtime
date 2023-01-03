@@ -270,7 +270,7 @@ private:
 
 class Deserializer {
 public:
-    explicit Deserializer(JSThread *thread, SerializationData *data, void *hint)
+    Deserializer(JSThread *thread, SerializationData *data, void *hint)
         : valueDeserializer_(thread, data->GetData(), data->GetSize(), hint) {}
     ~Deserializer() = default;
 

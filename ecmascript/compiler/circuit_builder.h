@@ -214,7 +214,7 @@ private:
 class CircuitBuilder {
 public:
     explicit CircuitBuilder(Circuit *circuit) : circuit_(circuit), acc_(circuit) {}
-    explicit CircuitBuilder(Circuit *circuit, CompilationConfig *cmpCfg)
+    CircuitBuilder(Circuit *circuit, CompilationConfig *cmpCfg)
         : circuit_(circuit), acc_(circuit), cmpCfg_(cmpCfg)
     {
     }
@@ -520,7 +520,7 @@ private:
 
 class Label {
 public:
-    explicit Label() = default;
+    Label() = default;
     explicit Label(Environment *env);
     explicit Label(CircuitBuilder *cirBuilder);
     ~Label() = default;

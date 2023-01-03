@@ -21,12 +21,12 @@
 namespace panda::ecmascript::kungfu {
 class VariableType {
 public:
-    explicit VariableType()
+    VariableType()
         : machineType_(MachineType::NOVALUE), gateType_(GateType::Empty())
     {
     }
 
-    explicit VariableType(MachineType machine_type, GateType gate_type)
+    VariableType(MachineType machine_type, GateType gate_type)
         : machineType_(machine_type), gateType_(gate_type)
     {
     }

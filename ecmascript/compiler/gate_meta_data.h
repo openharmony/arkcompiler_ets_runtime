@@ -272,7 +272,7 @@ public:
         RESTORE_REGISTERS_OP,
     };
     GateMetaData() = default;
-    explicit GateMetaData(OpCode opcode, bool hasRoot,
+    GateMetaData(OpCode opcode, bool hasRoot,
         uint32_t statesIn, uint16_t dependsIn, uint32_t valuesIn)
         : opcode_(opcode), bitField_(HasRootBit::Encode(hasRoot)),
         statesIn_(statesIn), dependsIn_(dependsIn), valuesIn_(valuesIn) {}
@@ -408,7 +408,7 @@ inline std::ostream& operator<<(std::ostream& os, OpCode opcode)
 
 class JSBytecodeMegaData : public GateMetaData {
 public:
-    explicit JSBytecodeMegaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
+    JSBytecodeMegaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
         : GateMetaData(OpCode::JS_BYTECODE, false, 1, 1, valuesIn),
         opcode_(opcode), bcIndex_(bcIndex)
     {
@@ -437,7 +437,7 @@ private:
 
 class OneParameterMetaData : public GateMetaData {
 public:
-    explicit OneParameterMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn,
+    OneParameterMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn,
         uint16_t dependsIn, uint32_t valuesIn, uint64_t value)
         : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), value_(value)
     {
@@ -461,7 +461,7 @@ private:
 
 class SaveRegsMetaData : public GateMetaData {
 public:
-    explicit SaveRegsMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn, uint16_t dependsIn, uint32_t valuesIn,
+    SaveRegsMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn, uint16_t dependsIn, uint32_t valuesIn,
         uint64_t value) : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), numValue_(value)
     {
         SetKind(GateMetaData::SAVE_REGISTERS_OP);
@@ -483,7 +483,7 @@ private:
 
 class RestoreRegsMetaData : public GateMetaData {
 public:
-    explicit RestoreRegsMetaData() : GateMetaData(OpCode::RESTORE_REGISTER, false, 0, 1, 0)
+    RestoreRegsMetaData() : GateMetaData(OpCode::RESTORE_REGISTER, false, 0, 1, 0)
     {
         SetKind(GateMetaData::RESTORE_REGISTERS_OP);
     }
@@ -510,7 +510,7 @@ private:
 
 class TypedBinaryMegaData : public OneParameterMetaData {
 public:
-    explicit TypedBinaryMegaData(uint64_t value, TypedBinOp binOp)
+    TypedBinaryMegaData(uint64_t value, TypedBinOp binOp)
         : OneParameterMetaData(OpCode::TYPED_BINARY_OP, false, 1, 1, 2, value), // 2: valuesIn
         binOp_(binOp)
     {
@@ -533,7 +533,7 @@ private:
 
 class StringMetaData : public GateMetaData {
 public:
-    explicit StringMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn,
+    StringMetaData(OpCode opcode, bool hasRoot, uint32_t statesIn,
         uint16_t dependsIn, uint32_t valuesIn, const std::string &str)
         : GateMetaData(opcode, hasRoot, statesIn, dependsIn, valuesIn), str_(str)
     {

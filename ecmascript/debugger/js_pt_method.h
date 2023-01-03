@@ -24,7 +24,7 @@
 namespace panda::ecmascript::tooling {
 class PtMethod {
 public:
-    explicit PtMethod(const JSPandaFile *jsPandaFile, EntityId methodId, bool isNative)
+    PtMethod(const JSPandaFile *jsPandaFile, EntityId methodId, bool isNative)
         : jsPandaFile_(jsPandaFile), methodId_(methodId), isNative_(isNative)
     {
     }

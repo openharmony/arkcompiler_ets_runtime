@@ -71,7 +71,7 @@ class StubBuilder {
 public:
     explicit StubBuilder(StubBuilder *parent)
         : callSignature_(parent->GetCallSignature()), env_(parent->GetEnvironment()) {}
-    explicit StubBuilder(CallSignature *callSignature, Environment *env)
+    StubBuilder(CallSignature *callSignature, Environment *env)
         : callSignature_(callSignature), env_(env) {}
     explicit StubBuilder(Environment *env)
         : env_(env) {}

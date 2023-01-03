@@ -21,8 +21,8 @@
 namespace panda::ecmascript::kungfu {
 class CompilationDriver {
 public:
-    explicit CompilationDriver(JSPandaFile *jsPandaFile, PGOProfilerLoader &profilerLoader,
-                               BCInfo &bytecodeInfo)
+    CompilationDriver(JSPandaFile *jsPandaFile, PGOProfilerLoader &profilerLoader,
+                      BCInfo &bytecodeInfo)
         : jsPandaFile_(jsPandaFile), pfLoader_(profilerLoader), bytecodeInfo_(bytecodeInfo)
     {
     }

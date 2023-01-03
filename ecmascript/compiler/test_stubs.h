@@ -25,7 +25,7 @@ namespace panda::ecmascript::kungfu {
 #define DECLARE_STUB_CLASS(name)                                                    \
     class name##StubBuilder : public StubBuilder {                                  \
     public:                                                                         \
-        explicit name##StubBuilder(CallSignature *callSignature, Environment *env)  \
+        name##StubBuilder(CallSignature *callSignature, Environment *env)           \
             : StubBuilder(callSignature, env) {}                                    \
         ~name##StubBuilder() = default;                                             \
         NO_MOVE_SEMANTIC(name##StubBuilder);                                        \

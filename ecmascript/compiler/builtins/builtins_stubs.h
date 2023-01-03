@@ -106,7 +106,7 @@ public:
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \
     class name##StubBuilder : public BuiltinsStubBuilder {                                          \
     public:                                                                                         \
-        explicit name##StubBuilder(CallSignature *callSignature, Environment *env)                  \
+        name##StubBuilder(CallSignature *callSignature, Environment *env)                           \
             : BuiltinsStubBuilder(callSignature, env) {}                                            \
         ~name##StubBuilder() = default;                                                             \
         NO_MOVE_SEMANTIC(name##StubBuilder);                                                        \

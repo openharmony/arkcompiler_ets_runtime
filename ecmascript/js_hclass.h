@@ -331,7 +331,7 @@ public:
     static JSHandle<JSHClass> TransitionProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                               const JSHandle<JSTaggedValue> &proto);
     static JSHandle<JSHClass> TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                              const JSHandle<JSTaggedValue> &proto);
+                                                      const JSHandle<JSTaggedValue> &proto);
     static void TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
 
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -692,7 +692,7 @@ public:
     inline bool IsJsPrimitiveRef() const
     {
         return GetObjectType() == JSType::JS_PRIMITIVE_REF;
-    };
+    }
 
     bool IsJSSet() const
     {

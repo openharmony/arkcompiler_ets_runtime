@@ -112,9 +112,9 @@ struct MethodPcInfo {
 
 class MethodInfo {
 public:
-    explicit MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx,
-                        uint32_t outMethodOffset = MethodInfo::DEFAULT_OUTMETHOD_OFFSET, uint32_t num = 0,
-                        LexicalEnvStatus lexEnvStatus = LexicalEnvStatus::VIRTUAL_LEXENV)
+    MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx,
+               uint32_t outMethodOffset = MethodInfo::DEFAULT_OUTMETHOD_OFFSET, uint32_t num = 0,
+               LexicalEnvStatus lexEnvStatus = LexicalEnvStatus::VIRTUAL_LEXENV)
         : methodInfoIndex_(methodInfoIndex), methodPcInfoIndex_(methodPcInfoIndex), outerMethodId_(outMethodIdx),
           outerMethodOffset_(outMethodOffset), numOfLexVars_(num), status_(lexEnvStatus)
     {
@@ -414,8 +414,8 @@ private:
 
 class BytecodeInfoCollector {
 public:
-    explicit BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile,
-                                   size_t maxAotMethodSize, bool enableCollectLiteralInfo)
+    BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile,
+                          size_t maxAotMethodSize, bool enableCollectLiteralInfo)
         : vm_(vm), jsPandaFile_(jsPandaFile), bytecodeInfo_(maxAotMethodSize),
           enableCollectLiteralInfo_(enableCollectLiteralInfo)
     {

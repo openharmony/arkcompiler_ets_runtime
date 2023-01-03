@@ -43,7 +43,7 @@ JSTaggedValue BuiltinsProxy::ProxyConstructor(EcmaRuntimeCallInfo *argv)
 }
 
 // 26.2.2.1 Proxy.revocable ( target, handler )
-JSTaggedValue BuiltinsProxy::Revocable([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsProxy::Revocable(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Proxy, Revocable);

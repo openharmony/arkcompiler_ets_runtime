@@ -27,7 +27,7 @@ enum class FieldTag : uint8_t { OBJECTLITERAL = 0, ARRAYLITERAL };
 
 class LiteralDataExtractor {
 public:
-    explicit LiteralDataExtractor() = default;
+    LiteralDataExtractor() = default;
     virtual ~LiteralDataExtractor() = default;
 
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(LiteralDataExtractor);

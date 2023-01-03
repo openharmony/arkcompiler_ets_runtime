@@ -88,7 +88,7 @@ private:
 
 class HeapSnapshotJSONSerializer {
 public:
-    explicit HeapSnapshotJSONSerializer() = default;
+    HeapSnapshotJSONSerializer() = default;
     ~HeapSnapshotJSONSerializer() = default;
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);

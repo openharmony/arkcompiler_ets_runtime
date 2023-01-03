@@ -81,7 +81,7 @@ struct ModuleSectionDes {
         arkStackMapRawPtr_ = ptr;
     }
 
-    uint8_t* GetArkStackMapRawPtr()
+    uint8_t* GetArkStackMapRawPtr() const
     {
         return arkStackMapRawPtr_;
     }
@@ -145,7 +145,7 @@ struct ModuleSectionDes {
         return it == sectionsInfo_.end() ? 0 : it->second.second;
     }
 
-    uint32_t GetSecInfosSize()
+    uint32_t GetSecInfosSize() const
     {
         return sectionsInfo_.size();
     }

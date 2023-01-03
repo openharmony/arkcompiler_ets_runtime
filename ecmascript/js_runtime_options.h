@@ -111,7 +111,7 @@ enum CommandValues {
 
 class PUBLIC_API JSRuntimeOptions {
 public:
-    explicit JSRuntimeOptions() {}
+    JSRuntimeOptions() {}
     ~JSRuntimeOptions() = default;
     DEFAULT_COPY_SEMANTIC(JSRuntimeOptions);
     DEFAULT_MOVE_SEMANTIC(JSRuntimeOptions);

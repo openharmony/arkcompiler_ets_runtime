@@ -36,10 +36,10 @@ class PassInfo;
 
 class PassData {
 public:
-    explicit PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassInfo *info, CompilerLog *log,
-                      std::string methodName, size_t methodInfoIndex = 0,
-                      bool hasTypes = false, const CString &recordName = "",
-                      MethodLiteral *methodLiteral = nullptr, uint32_t methodOffset = 0)
+    PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassInfo *info, CompilerLog *log,
+             std::string methodName, size_t methodInfoIndex = 0,
+             bool hasTypes = false, const CString &recordName = "",
+             MethodLiteral *methodLiteral = nullptr, uint32_t methodOffset = 0)
         : builder_(builder), circuit_(circuit), info_(info), log_(log), methodName_(methodName),
           methodInfoIndex_(methodInfoIndex), hasTypes_(hasTypes), recordName_(recordName),
           methodLiteral_(methodLiteral), methodOffset_(methodOffset)

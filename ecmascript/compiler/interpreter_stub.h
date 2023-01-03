@@ -155,7 +155,7 @@ private:
 
 class InterpreterToolsStubBuilder : private InterpreterStubBuilder {
 public:
-    explicit InterpreterToolsStubBuilder(CallSignature *callSignature, Environment *env)
+    InterpreterToolsStubBuilder(CallSignature *callSignature, Environment *env)
         : InterpreterStubBuilder(callSignature, env) {}
     ~InterpreterToolsStubBuilder() override = default;
     NO_MOVE_SEMANTIC(InterpreterToolsStubBuilder);

@@ -112,7 +112,7 @@ public:
 
 class HProfTestHelper {
 public:
-    explicit HProfTestHelper(const std::string &aFilePath, EcmaVM *vm)
+    HProfTestHelper(const std::string &aFilePath, EcmaVM *vm)
         : instance(vm),
           filePath(aFilePath)
     {
