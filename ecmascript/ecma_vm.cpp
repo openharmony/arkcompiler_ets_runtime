@@ -666,8 +666,8 @@ void EcmaVM::HandleUncaughtException(TaggedObject *exception)
     if (exceptionHandle->IsJSError()) {
         PrintJSErrorInfo(exceptionHandle);
         if (thread_->IsPrintBCOffset() && exceptionBCList_.size() != 0) {
-            for (auto info : exceptionBCList_) {
-                LOG_ECMA(ERROR) << "Exception at function " << info.first << ": " << info.second;
+            for (const auto &[methodName, bcOffset] : exceptionBCList_) {
+                LOG_ECMA(ERROR) << "Exception at function " << methodName << ": " << bcOffset;
             }
         }
         return;
