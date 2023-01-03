@@ -180,6 +180,11 @@ void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->ChangeGCParams(inBackground);
 }
 
+void DFXJSNApi::TriggerCompressCollection(const EcmaVM *vm, int idleMicroSec)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->TriggerCompressCollection(idleMicroSec);
+}
+
 void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
 {
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
