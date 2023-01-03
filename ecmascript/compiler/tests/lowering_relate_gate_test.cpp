@@ -48,12 +48,17 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
     GateAccessor acc(&circuit);
-    auto entry = acc.GetStateRoot();
+    Environment env(1, &builder);
+    builder.SetEnvironment(&env);
     auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
+    auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
+    auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
+    auto stateSplit = circuit.NewGate(circuit.StateSplit(), {depend, frameState});
+    builder.SetDepend(stateSplit);
     auto check = builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
-    builder.Return(entry, depend, check);
-    EXPECT_TRUE(Verifier::Run(&circuit));
+    builder.ReturnVoid(check, depend);
+
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
     TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeCheckFramework");
     typeLowering.RunTypeLowering();
@@ -130,29 +135,23 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     ecmascript::NativeAreaAllocator allocator;
     Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
+    GateAccessor acc(&circuit);
     Environment env(2, &builder);
     builder.SetEnvironment(&env);
-    Label isNumber(&builder);
-    Label notNumber(&builder);
-    Label exit(&builder);
     VariableType arg1Type(MachineType::I64, GateType::BooleanType());
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
     TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeOpCodeFramework");
-
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
-
-    DEFVAlUE(result, (&builder), VariableType::JS_ANY(), builder.Int32ToTaggedPtr(builder.Int32(1)));
-    builder.Branch(builder.PrimitiveTypeCheck(GateType::NumberType(), arg0), &isNumber, &notNumber);
-    builder.Bind(&isNumber);
+    auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
+    auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
+    auto stateSplit = circuit.NewGate(circuit.StateSplit(), {depend, frameState});
+    builder.SetDepend(stateSplit);
+    builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
     auto convert = builder.PrimitiveToNumber(arg1, arg1Type);
-    result = builder.NumberBinaryOp<TypedBinOp::TYPED_ADD>(arg0, convert);
-    builder.Jump(&exit);
-    builder.Bind(&notNumber);
-    builder.Jump(&exit);
-    builder.Bind(&exit);
-    builder.Return(*result);
-    EXPECT_TRUE(Verifier::Run(&circuit));
+    auto result = builder.NumberBinaryOp<TypedBinOp::TYPED_ADD>(arg0, convert);
+    builder.Return(result);
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }

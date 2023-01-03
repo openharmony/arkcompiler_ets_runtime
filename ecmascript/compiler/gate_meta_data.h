@@ -169,13 +169,14 @@ std::string MachineTypeToStr(MachineType machineType);
     V(IfSuccess, IF_SUCCESS, false, 1, 0, 0)                \
     V(IfException, IF_EXCEPTION, false, 1, 0, 0)            \
     V(GetException, GET_EXCEPTION, false, 0, 1, 0)          \
-    V(Guard, GUARD, false, 0, 1, 3)                         \
+    V(StateSplit, STATE_SPLIT, false, 0, 1, 1)              \
     V(Deopt, DEOPT, false, 0, 1, 2)                         \
     V(Load, LOAD, false, 0, 1, 1)                           \
     V(Store, STORE, false, 0, 1, 2)                         \
-    V(TypedCallCheck, TYPED_CALL_CHECK, false, 1, 1, 2)     \
+    V(TypedCallCheck, TYPED_CALL_CHECK, false, 1, 1, 3)     \
     V(ArrayCheck, ARRAY_CHECK, false, 1, 1, 1)              \
     V(StableArrayCheck, STABLE_ARRAY_CHECK, false, 1, 1, 1) \
+    V(DeoptCheck, DEOPT_CHECK, false, 1, 1, 2)              \
     V(LoadProperty, LOAD_PROPERTY, false, 1, 1, 2)          \
     V(StoreProperty, STORE_PROPERTY, false, 1, 1, 3)        \
     V(ToLength, TO_LENGTH, false, 1, 1, 1)                  \
@@ -205,10 +206,11 @@ std::string MachineTypeToStr(MachineType machineType);
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
 #define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                   \
-    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, false, 0, 0, 1) \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, false, 1, 1, 1) \
     V(ObjectTypeCheck, OBJECT_TYPE_CHECK, false, 1, 1, 2)       \
     V(TypedArrayCheck, TYPED_ARRAY_CHECK, false, 1, 1, 1)       \
     V(IndexCheck, INDEX_CHECK, false, 1, 1, 2)                  \
+    V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, false, 1, 1, 1) \
     V(TypedUnaryOp, TYPED_UNARY_OP, false, 1, 1, 1)             \
     V(TypedConvert, TYPE_CONVERT, false, 1, 1, 1)               \
 
@@ -356,6 +358,8 @@ public:
     bool IsNop() const;
     bool IsConstant() const;
     bool IsTypedOperator() const;
+    bool IsCheckWithOneIn() const;
+    bool IsCheckWithTwoIns() const;
     ~GateMetaData() = default;
 
     static std::string Str(OpCode opcode);
@@ -406,19 +410,19 @@ inline std::ostream& operator<<(std::ostream& os, OpCode opcode)
     return os << GateMetaData::Str(opcode);
 }
 
-class JSBytecodeMegaData : public GateMetaData {
+class JSBytecodeMetaData : public GateMetaData {
 public:
-    JSBytecodeMegaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
+    explicit JSBytecodeMetaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
         : GateMetaData(OpCode::JS_BYTECODE, false, 1, 1, valuesIn),
         opcode_(opcode), bcIndex_(bcIndex)
     {
         SetKind(GateMetaData::JSBYTECODE);
     }
 
-    static const JSBytecodeMegaData* Cast(const GateMetaData* meta)
+    static const JSBytecodeMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::JSBYTECODE);
-        return static_cast<const JSBytecodeMegaData*>(meta);
+        return static_cast<const JSBytecodeMetaData*>(meta);
     }
 
     uint32_t GetBytecodeIndex() const

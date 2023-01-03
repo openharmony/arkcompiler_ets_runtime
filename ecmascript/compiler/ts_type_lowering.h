@@ -100,6 +100,7 @@ private:
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
     // or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
+    bool NeedInt32OverflowCheck(TypedUnOp op) const;
 
     template<TypedBinOp Op>
     void SpeculateNumbers(GateRef gate);
@@ -108,8 +109,6 @@ private:
     void SpeculateConditionJump(GateRef gate);
     void SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID Op);
     BuiltinsStubCSigns::ID GetBuiltinId(GateRef func, GateRef receiver);
-    template<TypedUnOp Op>
-    GateRef AppendOverflowCheck(GateRef typecheck, GateRef intVal);
 
     void AddProfiling(GateRef gate);
     Circuit *circuit_ {nullptr};

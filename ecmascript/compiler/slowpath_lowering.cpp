@@ -49,6 +49,8 @@ void SlowPathLowering::CallRuntimeLowering()
             LowerExceptionHandler(gate);
         } else if (op == OpCode::CONST_DATA) {
             LowerConstPoolData(gate);
+        } else if (op == OpCode::DEOPT_CHECK) {
+            LowerDeoptCheck(gate);
         }
     }
 
@@ -3602,5 +3604,25 @@ void SlowPathLowering::LowerConstPoolData(GateRef gate)
 
     // delete old gate
     acc_.DeleteGate(gate);
+}
+
+void SlowPathLowering::LowerDeoptCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef condition = acc_.GetValueIn(gate, 0);
+    GateRef frameState = acc_.GetValueIn(gate, 1);
+
+    Label success(&builder_);
+    Label fail(&builder_);
+    builder_.Branch(condition, &success, &fail);
+    builder_.Bind(&fail);
+    {
+        GateRef glue = acc_.GetGlueFromArgList();
+        GateRef deoptCall = circuit_->NewGate(circuit_->Deopt(), {builder_.GetDepend(), frameState, glue});
+        builder_.SetDepend(deoptCall);
+        builder_.Return(deoptCall);
+    }
+    builder_.Bind(&success);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript

@@ -107,7 +107,7 @@ bool GateMetaData::IsGeneralState() const
         (opcode_ == OpCode::TO_LENGTH) || (opcode_ == OpCode::HEAP_ALLOC) ||
         (opcode_ == OpCode::LOAD_ELEMENT) || (opcode_ == OpCode::LOAD_PROPERTY) ||
         (opcode_ == OpCode::STORE_ELEMENT) || (opcode_ == OpCode::STORE_PROPERTY) ||
-        (opcode_ == OpCode::TYPED_CALL));
+        (opcode_ == OpCode::TYPED_CALL)) || (opcode_ == OpCode::DEOPT_CHECK);
 }
 
 bool GateMetaData::IsTerminalState() const
@@ -148,6 +148,20 @@ bool GateMetaData::IsTypedOperator() const
 {
     return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT) ||
         (opcode_ == OpCode::TYPED_UNARY_OP);
+}
+
+bool GateMetaData::IsCheckWithTwoIns() const {
+    return (opcode_ == OpCode::OBJECT_TYPE_CHECK) ||
+           (opcode_ == OpCode::INDEX_CHECK) ||
+           (opcode_ == OpCode::TYPED_CALL_CHECK);
+}
+
+bool GateMetaData::IsCheckWithOneIn() const {
+    return (opcode_ == OpCode::PRIMITIVE_TYPE_CHECK) ||
+           (opcode_ == OpCode::INT32_OVERFLOW_CHECK) ||
+           (opcode_ == OpCode::ARRAY_CHECK) ||
+           (opcode_ == OpCode::STABLE_ARRAY_CHECK) ||
+           (opcode_ == OpCode::TYPED_ARRAY_CHECK);
 }
 
 GateMetaBuilder::GateMetaBuilder(Chunk* chunk)

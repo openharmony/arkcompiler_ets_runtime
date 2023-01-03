@@ -1032,6 +1032,21 @@ GateRef Environment::GetInput(size_t index) const
 {
     return inputList_.at(index);
 }
+
+// only for int32
+template<TypedUnOp Op>
+GateRef CircuitBuilder::Int32OverflowCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+
+    uint64_t value = TypedUnaryAccessor::ToValue(GateType::Empty(), Op);
+    GateRef ret = GetCircuit()->NewGate(circuit_->Int32OverflowCheck(value),
+        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    return ret;
+}
 } // namespace panda::ecmascript::kungfu
 
 #endif

@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_GUARD_ELIMINATING_H
-#define ECMASCRIPT_COMPILER_GUARD_ELIMINATING_H
+#ifndef ECMASCRIPT_COMPILER_CHECK_ELIMINATION_H
+#define ECMASCRIPT_COMPILER_CHECK_ELIMINATION_H
 
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
-class GuardEliminating {
+class CheckElimination {
 public:
-    GuardEliminating(Circuit *circuit, CompilationConfig *cmpCfg,
+    CheckElimination(Circuit *circuit, CompilationConfig *cmpCfg,
         bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
         enableLog_(enableLog), methodName_(name) {}
 
-    ~GuardEliminating() = default;
+    ~CheckElimination() = default;
 
     void Run();
 
@@ -42,15 +42,15 @@ private:
         return methodName_;
     }
 
-    bool HasGuard(GateRef gate) const;
-    void ProcessTwoConditions(GateRef gate, std::set<GateRef> &conditionSet);
-    void ProcessOneCondition(GateRef gate, std::set<GateRef> &conditionSet);
-    void RemoveConditionFromSet(GateRef condition, std::set<GateRef> &conditionSet);
     bool IsTrustedType(GateRef gate) const;
+    bool IsCheckWithTwoIns(GateRef gate) const;
+    bool IsCheckWithOneIn(GateRef gate) const;
+    bool IsPrimitiveTypeCheck(GateRef gate) const;
     void TrustedTypePropagate(std::queue<GateRef>& workList, const std::vector<GateRef>& checkList);
-    void RemoveOneTrusted(GateRef gate);
-    void RemoveTwoTrusted(GateRef gate);
-    void RemoveTrustedTypeCheck(const std::vector<GateRef>& guardedList);
+    void RemoveCheck(GateRef gate);
+    void RemovePassedCheck();
+    void RemoveTypeTrustedCheck();
+
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
@@ -58,4 +58,4 @@ private:
     std::string methodName_;
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_GUARD_ELIMINATING_H
+#endif  // ECMASCRIPT_COMPILER_CHECK_ELIMINATION_H
