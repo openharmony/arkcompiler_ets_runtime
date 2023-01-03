@@ -42,7 +42,6 @@ void ParallelEvacuator::Finalize()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuatorFinalize);
     delete allocator_;
-    heap_->Resume(OLD_GC);
 }
 
 void ParallelEvacuator::Evacuate()
