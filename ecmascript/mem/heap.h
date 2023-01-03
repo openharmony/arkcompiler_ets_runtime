@@ -254,6 +254,7 @@ public:
         return parallelGC_;
     }
     void ChangeGCParams(bool inBackground);
+    void TriggerCompressCollection(int idleMicroSec);
     void NotifyMemoryPressure(bool inHighMemoryPressure);
     bool CheckCanDistributeTask();
 
@@ -457,6 +458,8 @@ public:
         return nonNewSpaceNativeBindingSize_;
     }
 private:
+    static constexpr int64_t IDLE_TIME_INTERVAL = 200;
+    static constexpr int IDLE_TIME_LIMIT = 15;
     void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
@@ -572,6 +575,7 @@ private:
     bool shouldThrowOOMError_ {false};
     bool runningNativeFinalizeCallbacks_ {false};
     bool isFork_ {false};
+    bool needIdleGC_ {true};
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};
@@ -588,6 +592,7 @@ private:
     uint32_t maxMarkTaskCount_ {0};
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
+    int64_t idleTime_ {0};
     os::memory::Mutex waitTaskFinishedMutex_;
     os::memory::ConditionVariable waitTaskFinishedCV_;
 
