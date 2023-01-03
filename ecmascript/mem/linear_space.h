@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 class LinearSpace : public Space {
 public:
-    explicit LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
+    LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     NO_COPY_SEMANTIC(LinearSpace);
     NO_MOVE_SEMANTIC(LinearSpace);
     uintptr_t Allocate(size_t size, bool isPromoted = false);
@@ -72,7 +72,7 @@ protected:
 
 class SemiSpace : public LinearSpace {
 public:
-    explicit SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SemiSpace() override = default;
     NO_COPY_SEMANTIC(SemiSpace);
     NO_MOVE_SEMANTIC(SemiSpace);
@@ -109,7 +109,7 @@ private:
 
 class SnapshotSpace : public LinearSpace {
 public:
-    explicit SnapshotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    SnapshotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SnapshotSpace() override = default;
     NO_COPY_SEMANTIC(SnapshotSpace);
     NO_MOVE_SEMANTIC(SnapshotSpace);
@@ -130,7 +130,7 @@ private:
 
 class ReadOnlySpace : public LinearSpace {
 public:
-    explicit ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~ReadOnlySpace() override = default;
     void SetReadOnly()
     {

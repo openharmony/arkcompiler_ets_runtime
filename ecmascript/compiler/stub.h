@@ -24,7 +24,7 @@ namespace panda::ecmascript::kungfu {
 class StubBuilder;
 class Stub {
 public:
-    explicit Stub(const CallSignature *callSignature, Circuit *circuit);
+    Stub(const CallSignature *callSignature, Circuit *circuit);
     NO_MOVE_SEMANTIC(Stub);
     NO_COPY_SEMANTIC(Stub);
 

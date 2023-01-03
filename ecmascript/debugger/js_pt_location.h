@@ -27,7 +27,7 @@ class JSPtLocation {
 public:
     using EntityId = panda_file::File::EntityId;
 
-    explicit JSPtLocation(const JSPandaFile *jsPandaFile, EntityId methodId, uint32_t bytecodeOffset,
+    JSPtLocation(const JSPandaFile *jsPandaFile, EntityId methodId, uint32_t bytecodeOffset,
         const std::string &sourceFile = "") : jsPandaFile_(jsPandaFile), methodId_(methodId),
         bytecodeOffset_(bytecodeOffset), sourceFile_(sourceFile)
     {

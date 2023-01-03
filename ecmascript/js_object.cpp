@@ -1162,7 +1162,6 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
 // 9.1.12 [[OwnPropertyKeys]] ( )
 JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)
 {
-    [[maybe_unused]] uint32_t elementIndex = 0;
     uint32_t numOfElements = obj->GetNumberOfElements();
     uint32_t keyLen = numOfElements + obj->GetNumberOfKeys();
 
@@ -1177,7 +1176,6 @@ JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHan
 
 JSHandle<TaggedArray> JSObject::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)
 {
-    [[maybe_unused]] uint32_t elementIndex = 0;
     uint32_t numOfElements = obj->GetNumberOfElements();
     uint32_t keyLen = numOfElements + obj->GetNumberOfKeys();
 

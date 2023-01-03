@@ -31,7 +31,7 @@ enum class LatticeStatus {
 
 class ValueLattice {
 public:
-    explicit ValueLattice();
+    ValueLattice();
     explicit ValueLattice(LatticeStatus status);
     explicit ValueLattice(uint64_t value);
     ~ValueLattice() = default;
@@ -57,7 +57,7 @@ private:
 
 class ReachabilityLattice {
 public:
-    explicit ReachabilityLattice();
+    ReachabilityLattice();
     explicit ReachabilityLattice(bool reachable);
     ~ReachabilityLattice() = default;
     [[nodiscard]] bool IsReachable() const;

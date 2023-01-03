@@ -135,7 +135,7 @@ public:
 
     static bool Destroy(EcmaVM *vm);
 
-    explicit EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config);
+    EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config);
 
     EcmaVM();
 

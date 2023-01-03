@@ -38,7 +38,7 @@ public:
 
 class CodeGenerator {
 public:
-    explicit CodeGenerator(std::unique_ptr<CodeGeneratorImpl> &impl, const std::string& methodName)
+    CodeGenerator(std::unique_ptr<CodeGeneratorImpl> &impl, const std::string& methodName)
         : impl_(std::move(impl)), methodName_(methodName)
     {
     }

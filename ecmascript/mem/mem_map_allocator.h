@@ -30,7 +30,7 @@ namespace panda::ecmascript {
 // Regular region with length of DEFAULT_REGION_SIZE(256kb)
 class MemMapPool {
 public:
-    explicit MemMapPool() = default;
+    MemMapPool() = default;
     ~MemMapPool() = default;
 
     void Finalize()

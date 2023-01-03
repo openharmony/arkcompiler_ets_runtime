@@ -46,7 +46,7 @@ enum class PropertyBoxType {
 
 class PropertyAttributes {
 public:
-    explicit PropertyAttributes() = default;
+    PropertyAttributes() = default;
     ~PropertyAttributes() = default;
 
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(PropertyAttributes);

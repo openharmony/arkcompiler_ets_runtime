@@ -75,17 +75,17 @@ class NameDictionary;
 template <typename T>
 class JSHandle {
 public:
-    inline explicit JSHandle() : address_(reinterpret_cast<uintptr_t>(nullptr)) {}
+    inline JSHandle() : address_(reinterpret_cast<uintptr_t>(nullptr)) {}
     ~JSHandle() = default;
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(JSHandle);
     DEFAULT_COPY_SEMANTIC(JSHandle);
 
-    explicit JSHandle(const JSThread *thread, JSTaggedValue value)
+    JSHandle(const JSThread *thread, JSTaggedValue value)
     {
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), value.GetRawData());
     }
 
-    explicit JSHandle(const JSThread *thread, const TaggedObject *value)
+    JSHandle(const JSThread *thread, const TaggedObject *value)
     {
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());
     }
@@ -189,18 +189,6 @@ inline JSTaggedValue *JSHandle<JSTaggedValue>::operator*() const
     return reinterpret_cast<JSTaggedValue *>(GetAddress());
 }
 
-template <>
-inline JSTaggedNumber *JSHandle<JSTaggedNumber>::operator->() const
-{
-    return reinterpret_cast<JSTaggedNumber *>(GetAddress());
-}
-
-template <>
-inline JSTaggedNumber *JSHandle<JSTaggedNumber>::operator*() const
-{
-    return reinterpret_cast<JSTaggedNumber *>(GetAddress());
-}
-
 template <typename T>
 class JSMutableHandle : public JSHandle<T> {
 public:
@@ -209,10 +197,10 @@ public:
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(JSMutableHandle);
     DEFAULT_COPY_SEMANTIC(JSMutableHandle);
 
-    explicit JSMutableHandle(const JSThread *thread, JSTaggedValue value) : JSHandle<T>(thread, value) {}
-    explicit JSMutableHandle(const JSThread *thread, const TaggedArray *value) : JSHandle<T>(thread, value) {}
+    JSMutableHandle(const JSThread *thread, JSTaggedValue value) : JSHandle<T>(thread, value) {}
+    JSMutableHandle(const JSThread *thread, const TaggedArray *value) : JSHandle<T>(thread, value) {}
     template <typename S>
-    explicit JSMutableHandle(const JSThread *thread, const JSHandle<S> &handle)
+    JSMutableHandle(const JSThread *thread, const JSHandle<S> &handle)
         : JSHandle<T>(thread, handle.GetTaggedValue())
     {
     }

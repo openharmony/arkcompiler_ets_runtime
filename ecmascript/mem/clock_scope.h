@@ -25,7 +25,7 @@ using Clock = std::chrono::high_resolution_clock;
 using Duration = std::chrono::duration<uint64_t, std::nano>;
 
 public:
-    explicit ClockScope()
+    ClockScope()
     {
         start_ = Clock::now();
     }

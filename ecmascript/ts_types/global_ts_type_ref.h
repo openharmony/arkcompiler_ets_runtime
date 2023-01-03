@@ -66,7 +66,7 @@ enum class TSRuntimeType : int {
 class GlobalTSTypeRef {
 public:
     explicit GlobalTSTypeRef(uint32_t type = 0) : type_(type) {}
-    explicit GlobalTSTypeRef(int moduleId, int localId) : type_(0)
+    GlobalTSTypeRef(int moduleId, int localId) : type_(0)
     {
         SetLocalId(static_cast<uint16_t>(localId));
         SetModuleId(static_cast<uint16_t>(moduleId));

@@ -27,7 +27,7 @@ class ExtendedAssembler : public AssemblerAarch64 {
 public:
     static constexpr int FRAME_SLOT_SIZE = 8;
     static constexpr int PAIR_SLOT_SIZE = 16;
-    explicit ExtendedAssembler(Chunk *chunk, AssemblerModule *module)
+    ExtendedAssembler(Chunk *chunk, AssemblerModule *module)
         : AssemblerAarch64(chunk), module_(module)
     {
     }

@@ -240,9 +240,9 @@ private:
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
 class LLVMIRBuilder {
 public:
-    explicit LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
-                           LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
-                           CallSignature::CallConv callConv, bool enableLog = false);
+    LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
+                  LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
+                  CallSignature::CallConv callConv, bool enableLog = false);
     ~LLVMIRBuilder();
     void Build();
 

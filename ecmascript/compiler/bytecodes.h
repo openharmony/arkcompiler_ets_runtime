@@ -334,7 +334,7 @@ private:
 
 class ConstDataId {
 public:
-    explicit ConstDataId(ConstDataIDType type, uint16_t id)
+    ConstDataId(ConstDataIDType type, uint16_t id)
         :type_(type), id_(id)
     {
     }
@@ -521,7 +521,7 @@ private:
 class BytecodeIterator {
 public:
     BytecodeIterator() = default;
-    explicit BytecodeIterator(BytecodeCircuitBuilder *builder,
+    BytecodeIterator(BytecodeCircuitBuilder *builder,
         uint32_t start, uint32_t end)
         : builder_(builder), start_(start), end_(end) {}
     void Reset(BytecodeCircuitBuilder *builder,

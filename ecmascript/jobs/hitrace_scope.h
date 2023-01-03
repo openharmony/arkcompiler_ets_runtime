@@ -30,7 +30,7 @@ using namespace OHOS::HiviewDFX;
 class PendingJob;
 class EnqueueJobScope {
 public:
-    explicit EnqueueJobScope(const JSHandle<PendingJob> &pendingJob, job::QueueType queueType);
+    EnqueueJobScope(const JSHandle<PendingJob> &pendingJob, job::QueueType queueType);
 
     ~EnqueueJobScope();
 };

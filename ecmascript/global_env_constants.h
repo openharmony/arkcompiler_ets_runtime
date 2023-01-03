@@ -444,12 +444,11 @@ enum class ConstantIndex : size_t {
 
 class GlobalEnvConstants {
 public:
-    explicit GlobalEnvConstants() = default;
+    GlobalEnvConstants() = default;
+    ~GlobalEnvConstants() = default;
 
     DEFAULT_MOVE_SEMANTIC(GlobalEnvConstants);
     DEFAULT_COPY_SEMANTIC(GlobalEnvConstants);
-
-    ~GlobalEnvConstants() = default;
 
     const JSTaggedValue *BeginSlot() const;
 

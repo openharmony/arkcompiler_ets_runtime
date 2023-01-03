@@ -25,7 +25,7 @@ struct ScopeDebugInfo {
 
 class ScopeInfoExtractor {
 public:
-    explicit ScopeInfoExtractor() = default;
+    ScopeInfoExtractor() = default;
     virtual ~ScopeInfoExtractor() = default;
 
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(ScopeInfoExtractor);

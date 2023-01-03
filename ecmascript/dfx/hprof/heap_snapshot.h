@@ -49,8 +49,8 @@ enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WE
 
 class Node {
 public:
-    explicit Node(uint64_t id, uint64_t index, const CString *name, NodeType type, size_t size, uint64_t traceId,
-                  Address address, bool isLive = true)
+    Node(uint64_t id, uint64_t index, const CString *name, NodeType type, size_t size, uint64_t traceId,
+         Address address, bool isLive = true)
         : id_(id),
           index_(index),
           name_(name),
@@ -144,7 +144,7 @@ private:
 
 class Edge {
 public:
-    explicit Edge(uint64_t id, EdgeType type, Node *from, Node *to, CString *name)
+    Edge(uint64_t id, EdgeType type, Node *from, Node *to, CString *name)
         : id_(id), edgeType_(type), from_(from), to_(to), name_(name)
     {
     }
@@ -356,8 +356,8 @@ public:
     static constexpr int SEQ_STEP = 2;
     NO_MOVE_SEMANTIC(HeapSnapshot);
     NO_COPY_SEMANTIC(HeapSnapshot);
-    explicit HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool trackAllocations,
-                          Chunk *chunk)
+    HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool trackAllocations,
+                 Chunk *chunk)
         : stringTable_(vm), vm_(vm), isVmMode_(isVmMode), isPrivate_(isPrivate), trackAllocations_(trackAllocations),
           chunk_(chunk)
     {
@@ -498,7 +498,7 @@ class EntryVisitor {
 public:
     NO_MOVE_SEMANTIC(EntryVisitor);
     NO_COPY_SEMANTIC(EntryVisitor);
-    explicit EntryVisitor() = default;
+    EntryVisitor() = default;
     ~EntryVisitor() = default;
     static CString ConvertKey(JSTaggedValue key);
 };
@@ -523,7 +523,7 @@ enum class FrontType {
 
 class NodeTypeConverter {
 public:
-    explicit NodeTypeConverter() = default;
+    NodeTypeConverter() = default;
     ~NodeTypeConverter() = default;
     NO_MOVE_SEMANTIC(NodeTypeConverter);
     NO_COPY_SEMANTIC(NodeTypeConverter);

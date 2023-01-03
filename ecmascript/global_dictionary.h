@@ -64,7 +64,7 @@ public:
     inline void SetEntry(const JSThread *thread, int entry, const JSTaggedValue &key, const JSTaggedValue &value,
                          const PropertyAttributes &detail);
 
-    inline void ClearEntry([[maybe_unused]] const JSThread *thread, int entry);
+    inline void ClearEntry(const JSThread *thread, int entry);
 
     inline void UpdateValueAndAttributes(const JSThread *thread, int entry, const JSTaggedValue &value,
                                          const PropertyAttributes &metaData);

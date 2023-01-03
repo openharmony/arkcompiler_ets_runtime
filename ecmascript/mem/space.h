@@ -213,8 +213,8 @@ protected:
 
 class HugeObjectSpace : public Space {
 public:
-    explicit HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
-                             size_t maximumCapacity);
+    HugeObjectSpace(Heap* heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
+                    size_t maximumCapacity);
     ~HugeObjectSpace() override = default;
     NO_COPY_SEMANTIC(HugeObjectSpace);
     NO_MOVE_SEMANTIC(HugeObjectSpace);

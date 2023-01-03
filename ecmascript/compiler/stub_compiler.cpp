@@ -33,7 +33,7 @@
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
-    explicit StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log)
+    StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log)
         : PassData(nullptr, nullptr, nullptr, log, "stubs"), module_(module), stub_(stub) {}
     ~StubPassData() = default;
 

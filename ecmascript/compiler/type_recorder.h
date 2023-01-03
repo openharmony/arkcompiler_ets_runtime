@@ -31,8 +31,8 @@ enum class TypedArgIdx : uint8_t {
 
 class TypeRecorder {
 public:
-    explicit TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
-                          TSManager *tsManager, const CString &recordName);
+    TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
+                 TSManager *tsManager, const CString &recordName);
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
