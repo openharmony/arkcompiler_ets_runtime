@@ -132,7 +132,7 @@ void EcmaVM::PreFork()
 void EcmaVM::PostFork()
 {
     GetAssociatedJSThread()->SetThreadId();
-    Taskpool::GetCurrentTaskpool()->Initialize();
+    heap_->EnableParallelGC();
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)

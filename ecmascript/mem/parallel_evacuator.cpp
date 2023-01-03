@@ -161,7 +161,7 @@ void ParallelEvacuator::VerifyHeapObject(TaggedObject *object)
                     if (!heap_->IsFullMark() && !objectRegion->InYoungSpace()) {
                         continue;
                     }
-                    if (!objectRegion->Test(value.GetTaggedObject())) {
+                    if (!objectRegion->Test(value.GetTaggedObject()) && !objectRegion->InAppSpawnSpace()) {
                         LOG_GC(FATAL) << "Miss mark value: " << value.GetTaggedObject()
                                             << ", body address:" << slot.SlotAddress()
                                             << ", header address:" << object;
