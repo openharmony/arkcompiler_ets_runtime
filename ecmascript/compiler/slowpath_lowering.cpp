@@ -3188,10 +3188,10 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
     for (auto use = uses.begin(); use != uses.end();) {
         int32_t vregId;
         if (acc_.GetOpCode(*use) == OpCode::SAVE_REGISTER) {
-            vregId = use.GetIndex() - 1;
+            vregId = static_cast<int32_t>(use.GetIndex() - 1);
         } else {
             std::pair<GateRef, uint32_t> info(*use, use.GetIndex());
-            vregId = restoreInfo[info];
+            vregId = static_cast<int32_t>(restoreInfo[info]);
         }
         auto vregIdOffset = builder_.Int32(vregId);
         GateRef value = GetValueFromTaggedArray(arrayGate, vregIdOffset);

@@ -1298,7 +1298,6 @@ public:
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, std::string moduleName);
     static std::string GetModuleName(EcmaVM *vm);
-    //static std::string SetCurrentBundleName(EcmaVM *vm);
 
 private:
     static int vmCount_;
