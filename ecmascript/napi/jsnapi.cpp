@@ -35,7 +35,6 @@
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
@@ -49,7 +48,6 @@
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
@@ -2681,36 +2679,8 @@ std::string JSNApi::GetAssetPath(EcmaVM *vm)
     return vm->GetAssetPath().c_str();
 }
 
-bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
+bool JSNApi::InitForConcurrentFunction([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] Local<JSValueRef> function)
 {
-    JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(function);
-    JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
-    if (transFunc->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
-        return false;
-    }
-    ecmascript::JSThread *thread = vm->GetJSThread();
-    JSHandle<Method> method(thread, transFunc->GetMethod());
-    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    ecmascript::CString recordName = method->GetRecordName();
-    JSHandle<ecmascript::Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm, jsPandaFile, recordName.c_str());
-    JSHandle<JSFunction> func(thread, program->GetMainFunction());
-
-    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
-    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
-    global = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
-    ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-    if (!jsPandaFile->IsBundlePack()) {
-        moduleName = recordName;
-    }
-    ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
-    JSHandle<ecmascript::SourceTextModule> module = moduleManager->HostGetImportedModule(moduleName);
-    func->SetModule(thread, module);
-    transFunc->SetModule(thread, module);
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info =
-        ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(func), global, undefined, 0);
-    ecmascript::EcmaInterpreter::Execute(info);
-    transFunc->SetLexicalEnv(thread, func->GetLexicalEnv());
     return true;
 }
 
