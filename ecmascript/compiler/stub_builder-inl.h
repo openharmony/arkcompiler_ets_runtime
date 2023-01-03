@@ -1080,6 +1080,12 @@ inline GateRef StubBuilder::IsJsArray(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
+inline GateRef StubBuilder::IsByteArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BYTE_ARRAY)));
+}
+
 inline GateRef StubBuilder::IsJSAPIVector(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -1621,6 +1627,16 @@ inline GateRef StubBuilder::LoadObjectFromWeakRef(GateRef x)
     return env_->GetBuilder()->PtrAdd(x, IntPtr(-JSTaggedValue::TAG_WEAK));
 }
 
+inline GateRef StubBuilder::ExtFloat32ToDouble(GateRef x)
+{
+    return env_->GetBuilder()->ExtFloat32ToDouble(x);
+}
+
+inline GateRef StubBuilder::ChangeInt32ToFloat32(GateRef x)
+{
+    return env_->GetBuilder()->ChangeInt32ToFloat32(x);
+}
+
 inline GateRef StubBuilder::ChangeInt32ToFloat64(GateRef x)
 {
     return env_->GetBuilder()->ChangeInt32ToFloat64(x);
@@ -1646,6 +1662,11 @@ inline GateRef StubBuilder::Int64ToTaggedPtr(GateRef x)
     return env_->GetBuilder()->Int64ToTaggedPtr(x);
 }
 
+inline GateRef StubBuilder::CastInt32ToFloat32(GateRef x)
+{
+    return env_->GetBuilder()->CastInt32ToFloat32(x);
+}
+
 inline GateRef StubBuilder::CastInt64ToFloat64(GateRef x)
 {
     return env_->GetBuilder()->CastInt64ToFloat64(x);
@@ -1664,6 +1685,16 @@ inline GateRef StubBuilder::SExtInt16ToInt64(GateRef x)
 inline GateRef StubBuilder::SExtInt8ToInt64(GateRef x)
 {
     return env_->GetBuilder()->SExtInt8ToInt64(x);
+}
+
+inline GateRef StubBuilder::SExtInt8ToInt32(GateRef x)
+{
+    return env_->GetBuilder()->SExtInt8ToInt32(x);
+}
+
+inline GateRef StubBuilder::SExtInt16ToInt32(GateRef x)
+{
+    return env_->GetBuilder()->SExtInt16ToInt32(x);
 }
 
 inline GateRef StubBuilder::SExtInt1ToInt64(GateRef x)

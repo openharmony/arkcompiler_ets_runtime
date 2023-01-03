@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_object.h"
@@ -1873,8 +1874,8 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             Branch(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
             Bind(&isFastTypeArray);
             {
-                result = CallRuntime(glue, RTSTUB_ID(GetTypeArrayPropertyByIndex),
-                    { *holder, IntToTaggedInt(index), IntToTaggedInt(jsType)});
+                TypedArrayStubBuilder typedArrayStubBuilder(this);
+                result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
             }
             Bind(&notFastTypeArray);
@@ -4868,8 +4869,8 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
         Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            result = CallRuntime(glue, RTSTUB_ID(GetTypeArrayPropertyByIndex),
-                                 { holder, IntToTaggedInt(index), IntToTaggedInt(jsType) });
+            TypedArrayStubBuilder typedArrayStubBuilder(this);
+            result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, holder, index, jsType);
             Jump(&exit);
         }
         Bind(&notValidIndex);

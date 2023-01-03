@@ -240,7 +240,7 @@ void Gate::CheckStateOutput() const
 void Gate::CheckBranchOutput() const
 {
     std::map<std::pair<OpCode, BitField>, size_t> setOfOps;
-    if (GetOpCode() == OpCode::IF_BRANCH || GetOpCode() == OpCode::SWITCH_BRANCH) {
+    if (GetOpCode() == OpCode::IF_BRANCH) {
         size_t cnt = 0;
         const Gate *curGate = this;
         if (!curGate->IsFirstOutNull()) {

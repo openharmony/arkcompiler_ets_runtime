@@ -81,6 +81,7 @@ class Variable;
     V(Int64Not, Rev, MachineType::I64)                                 \
     V(CastDoubleToInt64, Bitcast, MachineType::I64)                    \
     V(CastInt64ToFloat64, Bitcast, MachineType::F64)                   \
+    V(CastInt32ToFloat32, Bitcast, MachineType::F32)                   \
     V(SExtInt32ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt1ToInt64, Sext, MachineType::I64)                         \
     V(SExtInt1ToInt32, Sext, MachineType::I32)                         \
@@ -110,9 +111,10 @@ class Variable;
     V(ChangeInt32ToFloat32, SignedIntToFloat, MachineType::F32)        \
     V(ChangeUInt32ToFloat64, UnsignedIntToFloat, MachineType::F64)     \
     V(ChangeFloat64ToInt32, FloatToSignedInt, MachineType::I32)        \
-    V(SExtInt16ToInt64, Sext, MachineType::I64)        \
-    V(SExtInt16ToInt32, Sext, MachineType::I32)        \
-    V(SExtInt8ToInt64, Sext, MachineType::I64)        \
+    V(SExtInt16ToInt64, Sext, MachineType::I64)                        \
+    V(SExtInt16ToInt32, Sext, MachineType::I32)                        \
+    V(SExtInt8ToInt32, Sext, MachineType::I32)                         \
+    V(SExtInt8ToInt64, Sext, MachineType::I64)                         \
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                              \
     V(DoubleLessThan, Fcmp, static_cast<BitField>(FCmpCondition::OLT))                  \

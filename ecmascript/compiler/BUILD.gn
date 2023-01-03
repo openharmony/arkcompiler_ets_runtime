@@ -91,6 +91,7 @@ source_set("libark_jsoptimizer_set") {
     "type_inference/type_infer.cpp",
     "type_lowering.cpp",
     "type_recorder.cpp",
+    "typed_array_stub_builder.cpp",
     "verifier.cpp",
   ]
 
