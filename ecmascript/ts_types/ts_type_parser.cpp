@@ -202,7 +202,7 @@ JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSPanda
     ASSERT(static_cast<TSTypeKind>(literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt()) ==
                                    TSTypeKind::CLASS_INSTANCE);
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
-    uint32_t classTypeId = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
+    uint32_t classTypeId = static_cast<uint32_t>(literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt());
     auto classGT = CreateGT(jsPandaFile, recordName, classTypeId);
     classInstanceType->SetClassGT(classGT);
     return classInstanceType;

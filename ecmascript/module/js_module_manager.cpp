@@ -676,7 +676,7 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         if (pos != CString::npos) {
             auto info = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(moduleRecordName);
             CString PackageName = info.npmPackageName;
-            while (entryPoint.empty() && ((pos = PackageName.rfind(JSPandaFile::NODE_MODULES)) != CString::npos)) {
+            while ((pos = PackageName.rfind(JSPandaFile::NODE_MODULES)) != CString::npos) {
                 key = PackageName + "/" + JSPandaFile::NODE_MODULES + moduleRequestName;
                 AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
                 PackageName = PackageName.substr(0, pos > 0 ? pos - 1 : 0);
