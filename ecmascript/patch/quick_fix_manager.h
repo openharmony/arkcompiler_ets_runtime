@@ -46,11 +46,6 @@ private:
 
     // check whether the patch is loaded.
     bool HasLoadedPatch(const std::string &patchFileName, const std::string &baseFileName) const;
-    void InsertBaseInfo(const std::string &patchFileName, const std::string &baseFileName,
-                        const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
-    CMap<BaseMethodIndex, MethodLiteral *> &FindBaseInfo(const std::string &patchFileName,
-                                                         const std::string &baseFileName);
-    void DeleteBaseInfo(const std::string &patchFileName, const std::string &baseFileName);
     std::string GetBaseFileName(const std::string &patchFileName) const;
 
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
