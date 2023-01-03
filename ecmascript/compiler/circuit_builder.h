@@ -440,6 +440,7 @@ public:
     inline GateRef IsExtensible(GateRef object);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef IsJSObject(GateRef obj);
+    inline GateRef IsJSFunction(GateRef obj);
     inline GateRef TaggedObjectIsString(GateRef obj);
     inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef IsCallable(GateRef obj);
@@ -509,7 +510,8 @@ public:
 
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);
-    GateRef IsBase(GateRef ctor);
+    inline GateRef IsBase(GateRef ctor);
+    inline GateRef IsConstructor(GateRef ctor);
 
 private:
     Circuit *circuit_ {nullptr};

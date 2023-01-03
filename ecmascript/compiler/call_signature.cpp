@@ -588,6 +588,38 @@ DEF_CALL_SIGNATURE(SetValueWithBarrier)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(NewThisObjectChecked)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("NewThisObjectChecked", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // ctor
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(ConstructorCheck)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("ConstructorCheck", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // ctor
+        VariableType::JS_ANY(),          // result
+        VariableType::JS_ANY(),          // thisObj
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(GetTaggedArrayPtrTest)
 {
     // 2 : 2 input parameters
