@@ -229,6 +229,15 @@ DECLARE_ASM_HANDLER(HandleDeprecatedPoplexenvPrefNone)
     DISPATCH(DEPRECATED_POPLEXENV_PREF_NONE);
 }
 
+DECLARE_ASM_HANDLER(HandleDeprecatedStlexenvPrefNone)
+{
+    GateRef state = GetFrame(sp);
+    GateRef currentLexEnv = GetEnvFromFrame(state);
+    GateRef currentFunc = GetFunctionFromFrame(state);
+    SetLexicalEnvToFunction(glue, currentFunc, currentLexEnv);
+    DISPATCH(DEPRECATED_STLEXENV_PREF_NONE);
+}
+
 DECLARE_ASM_HANDLER(HandleGetunmappedargs)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);

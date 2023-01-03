@@ -332,6 +332,9 @@ FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
         case panda_file::FunctionKind::ASYNC_NC_FUNCTION:
             kind = FunctionKind::ASYNC_ARROW_FUNCTION;
             break;
+        case panda_file::FunctionKind::CONCURRENT_FUNCTION:
+            kind = FunctionKind::CONCURRENT_FUNCTION;
+            break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

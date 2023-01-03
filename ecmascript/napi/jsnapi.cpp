@@ -2679,6 +2679,11 @@ std::string JSNApi::GetAssetPath(EcmaVM *vm)
     return vm->GetAssetPath().c_str();
 }
 
+bool JSNApi::InitForConcurrentFunction([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] Local<JSValueRef> function)
+{
+    return true;
+}
+
 void JSNApi::SetBundleName(EcmaVM *vm, std::string bundleName)
 {
     ecmascript::CString name = bundleName.c_str();
