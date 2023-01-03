@@ -67,6 +67,7 @@ private:
                                    bool isPrivate = false, bool traceAllocation = false);
     std::string GenDumpFileName(DumpFormat dumpFormat);
     CString GetTimeStamp();
+    void UpdateHeapObjects(HeapSnapshot *snapshot);
     void ClearSnapshot();
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
