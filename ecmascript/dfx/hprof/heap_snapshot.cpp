@@ -914,7 +914,7 @@ void HeapSnapshot::FillEdges()
                 entryTo = entryMap_.FindEntry(Node::NewAddress(to));
             }
             if (entryTo == nullptr) {
-                entryTo = GenerateNode(toValue);
+                entryTo = GenerateNode(toValue, 0, -1, true);
             }
             if (entryTo != nullptr) {
                 Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT, *iter, entryTo, GetString(it.first));
