@@ -50,7 +50,10 @@ public:
                            bool traceAllocation = false, bool newThread = true) override;
     bool StopHeapTracking(Stream *stream, Progress *progress = nullptr, bool newThread = true) override;
     bool UpdateHeapTracking(Stream *stream) override;
-
+    Chunk *GetChunk() const
+    {
+        return const_cast<Chunk *>(&chunk_);
+    }
 private:
     /**
      * trigger full gc to make sure no unreachable objects in heap
@@ -71,6 +74,7 @@ private:
     CVector<HeapSnapshot *> hprofs_;
     HeapSnapshotJSONSerializer *jsonSerializer_ {nullptr};
     std::unique_ptr<HeapTracker> heapTracker_;
+    Chunk chunk_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_HPROF_HEAP_PROFILER_H

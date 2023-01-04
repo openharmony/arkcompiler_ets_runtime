@@ -19,6 +19,14 @@
 #include "ecmascript/dfx/hprof/string_hashmap.h"
 
 namespace panda::ecmascript {
+
+HeapSnapshotJSONSerializer::~HeapSnapshotJSONSerializer()
+{
+    if (!writer_) {
+        delete writer_;
+    }
+}
+
 bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *stream)
 {
     // Serialize Node/Edge/String-Table
