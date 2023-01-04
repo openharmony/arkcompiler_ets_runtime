@@ -1014,7 +1014,14 @@ inline GateRef StubBuilder::IsJSFunctionBase(GateRef obj)
 
 inline GateRef StubBuilder::IsConstructor(GateRef object)
 {
-    return env_->GetBuilder()->IsConstructor(object);
+    GateRef hClass = LoadHClass(object);
+    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    // decode
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::ConstructorBit::START_BIT)),
+                 Int32((1LU << JSHClass::ConstructorBit::SIZE) - 1)),
+        Int32(0));
 }
 
 inline GateRef StubBuilder::IsBase(GateRef func)
@@ -1952,7 +1959,12 @@ inline GateRef StubBuilder::GetPropertiesFromJSObject(GateRef object)
 
 inline GateRef StubBuilder::IsJSFunction(GateRef obj)
 {
-    return env_->GetBuilder()->IsJSFunction(obj);
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef greater = Int32GreaterThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
+    GateRef less = Int32LessThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
+    return BoolAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsBoundFunction(GateRef obj)

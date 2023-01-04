@@ -352,8 +352,6 @@ private:
     V(TryStoreICByName)                     \
     V(TryStoreICByValue)                    \
     V(SetValueWithBarrier)                  \
-    V(NewThisObjectChecked)                 \
-    V(ConstructorCheck)                     \
     V(GetTaggedArrayPtrTest)                \
     V(BytecodeHandler)                      \
     V(Builtins)                             \
