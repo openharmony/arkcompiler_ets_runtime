@@ -312,7 +312,8 @@ bool AnFileInfo::Load(const std::string &filename)
         des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
     }
 
-    for (size_t i = 0; i < entries_.size(); i++) {
+    size_t len = entries_.size();
+    for (size_t i = 0; i < len; i++) {
         FuncEntryDes& funcDes = entries_[i];
         auto moduleDes = des_[funcDes.moduleIndex_];
         funcDes.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
@@ -558,7 +559,8 @@ void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
 void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs)
 {
     auto thread = vm_->GetAssociatedJSThread();
-    for (size_t i = 0; i < stubs.size(); i++) {
+    size_t len = stubs.size();
+    for (size_t i = 0; i < len; i++) {
         auto des = stubs[i];
         if (des.IsCommonStub()) {
             thread->SetFastStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
@@ -712,7 +714,8 @@ bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
     auto cmp = [](const AOTFileInfo::FuncEntryDes &a, const AOTFileInfo::FuncEntryDes &b) {
                     return a.codeAddr_ < b.codeAddr_;
                 };
-    for (size_t i = 0; i < des.size(); i++) {
+    size_t len = des.size();
+    for (size_t i = 0; i < len; i++) {
         auto d = des[i];
         uint64_t addr = d.GetSecAddr(ElfSecName::TEXT);
         uint32_t size = d.GetSecSize(ElfSecName::TEXT);

@@ -60,7 +60,7 @@ private:
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
     CircuitBuilder builder_;
-    [[maybe_unused]] bool enableLog_ {false};
+    bool enableLog_ {false};
     GateRef stateEntry_ {Circuit::NullGate()};
     GateRef dependEntry_ {Circuit::NullGate()};
     GateAccessor accessor_;

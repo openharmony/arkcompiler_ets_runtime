@@ -4124,7 +4124,7 @@ void InterpreterAssembly::HandleDeprecatedAsyncfunctionrejectPrefV8V8V8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
-    [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
+    uint16_t v1 = READ_INST_8_2();
     uint16_t v2 = READ_INST_8_3();
     LOG_INST() << "intrinsics::asyncfunctionreject"
                << " v" << v0 << " v" << v1 << " v" << v2;
@@ -4143,7 +4143,7 @@ void InterpreterAssembly::HandleDeprecatedAsyncfunctionresolvePrefV8V8V8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
-    [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
+    uint16_t v1 = READ_INST_8_2();
     uint16_t v2 = READ_INST_8_3();
     LOG_INST() << "intrinsics::asyncfunctionresolve"
                << " v" << v0 << " v" << v1 << " v" << v2;

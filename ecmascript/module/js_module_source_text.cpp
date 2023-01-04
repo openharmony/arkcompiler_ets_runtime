@@ -613,7 +613,7 @@ int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule
 {
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is "instantiated" or "evaluated".
-    [[maybe_unused]] ModuleStatus status = module->GetStatus();
+    ModuleStatus status = module->GetStatus();
     ASSERT((status == ModuleStatus::INSTANTIATED || status == ModuleStatus::EVALUATED));
     // 3. Let stack be a new empty List.
     CVector<JSHandle<SourceTextModule>> stack;

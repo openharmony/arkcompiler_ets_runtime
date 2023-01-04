@@ -38,7 +38,7 @@ STWYoungGC::STWYoungGC(Heap *heap, bool parallelGC)
 void STWYoungGC::RunPhases()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), STWYoungGC_RunPhases);
-    [[maybe_unused]] ClockScope clockScope;
+    ClockScope clockScope;
 
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "STWYoungGC::RunPhases");
     if (heap_->CheckOngoingConcurrentMarking()) {

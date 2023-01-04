@@ -684,7 +684,7 @@ uint64_t CpuProfiler::GetPcFromContext(void *context)
 {
     [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
     [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
-    [[maybe_unused]] uint64_t pc = 0;
+    uint64_t pc = 0;
 #if defined(PANDA_TARGET_AMD64)
     pc = static_cast<uint64_t>(mcontext.gregs[REG_RIP]);
 #elif defined(PANDA_TARGET_ARM64)

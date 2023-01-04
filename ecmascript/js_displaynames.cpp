@@ -61,7 +61,6 @@ void JSDisplayNames::FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] v
     delete icuLocaleDisplayNames;
 }
 
-
 void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
                                               icu::LocaleDisplayNames* iculocaledisplaynames,
                                               const DeleteEntryPoint &callback)

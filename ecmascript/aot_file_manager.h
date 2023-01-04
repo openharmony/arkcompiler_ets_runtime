@@ -180,7 +180,7 @@ public:
         uint32_t moduleIndex_;
         int fpDeltaPrevFrameSp_;
         uint32_t funcSize_;
-        [[maybe_unused]] uint32_t calleeRegisterNum_;
+        uint32_t calleeRegisterNum_;
         int32_t CalleeReg2Offset_[2 * kungfu::MAX_CALLEE_SAVE_REIGISTER_NUM];
         bool IsStub() const
         {

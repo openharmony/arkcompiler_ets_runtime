@@ -457,10 +457,10 @@ JSTaggedValue BuiltinsPromiseHandler::AllSettledRejectElementFunction(EcmaRuntim
     JSHandle<PromiseRecord> values =
         JSHandle<PromiseRecord>::Cast(JSHandle<JSTaggedValue>(thread, rejectElement->GetValues()));
     // 7. Let promiseCapability be F.[[Capability]].
-    [[maybe_unused]] JSHandle<PromiseCapability> capa =
+    JSHandle<PromiseCapability> capa =
         JSHandle<PromiseCapability>::Cast(JSHandle<JSTaggedValue>(thread, rejectElement->GetCapability()));
     // 8. Let remainingElementsCount be F.[[RemainingElements]].
-    [[maybe_unused]] JSHandle<PromiseRecord> remainCnt =
+    JSHandle<PromiseRecord> remainCnt =
         JSHandle<PromiseRecord>::Cast(JSHandle<JSTaggedValue>(thread, rejectElement->GetRemainingElements()));
     // 9. Let obj be ! OrdinaryObjectCreate(%Object.prototype%).
     JSHandle<JSTaggedValue> proto = env->GetObjectFunctionPrototype();
@@ -514,10 +514,10 @@ JSTaggedValue BuiltinsPromiseHandler::AnyRejectElementFunction(EcmaRuntimeCallIn
     // 4. Let index be F.[[Index]].
     uint32_t index = rejectElement->GetIndex();
     // 5. Let errors be F.[[Errors]].
-    [[maybe_unused]] JSHandle<PromiseRecord> errors =
+    JSHandle<PromiseRecord> errors =
         JSHandle<PromiseRecord>::Cast(JSHandle<JSTaggedValue>(thread, rejectElement->GetErrors()));
     // 6. Let promiseCapability be F.[[Capability]].
-    [[maybe_unused]] JSHandle<PromiseCapability> capa =
+    JSHandle<PromiseCapability> capa =
         JSHandle<PromiseCapability>::Cast(JSHandle<JSTaggedValue>(thread, rejectElement->GetCapability()));
     // 7. Let remainingElementsCount be F.[[RemainingElements]].
     JSHandle<PromiseRecord> remainCnt =

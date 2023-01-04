@@ -6175,7 +6175,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEPRECATED_ASYNCFUNCTIONRESOLVE_PREF_V8_V8_V8) {
         uint16_t v0 = READ_INST_8_1();
-        [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
+        uint16_t v1 = READ_INST_8_2();
         uint16_t v2 = READ_INST_8_3();
         LOG_INST() << "intrinsics::asyncfunctionresolve"
                    << " v" << v0 << " v" << v1 << " v" << v2;
@@ -6203,7 +6203,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEPRECATED_ASYNCFUNCTIONREJECT_PREF_V8_V8_V8) {
         uint16_t v0 = READ_INST_8_1();
-        [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
+        uint16_t v1 = READ_INST_8_2();
         uint16_t v2 = READ_INST_8_3();
         LOG_INST() << "intrinsics::asyncfunctionreject"
                    << " v" << v0 << " v" << v1 << " v" << v2;

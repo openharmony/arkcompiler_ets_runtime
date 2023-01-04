@@ -222,7 +222,7 @@ JSHandle<JSArray> JSLocale::SupportedLocales(JSThread *thread, const JSHandle<Ta
     //    a. Let options be ? ToObject(options).
     //    b. Let matcher be ? GetOption(options, "localeMatcher", "string", « "lookup", "best fit" », "best fit").
     // 2. Else, let matcher be "best fit".
-    [[maybe_unused]] LocaleMatcherOption matcher = LocaleMatcherOption::BEST_FIT;
+    LocaleMatcherOption matcher = LocaleMatcherOption::BEST_FIT;
     if (!options->IsUndefined()) {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, options);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);

@@ -270,7 +270,7 @@ private:
     {
         return callSiteSp;
     }
-    [[maybe_unused]] alignas(EAS) uintptr_t callSiteSp {0};
+    alignas(EAS) uintptr_t callSiteSp {0};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
