@@ -161,7 +161,7 @@ HWTEST_F_L0(JSSetIteratorTest, KEY_Next)
         JSTaggedValue result = JSSetIterator::Next(ecmaRuntimeCallInfo);
         JSHandle<JSTaggedValue> resultObj(thread, result);
         if (i < 3) {
-            EXPECT_EQ(setIterator->GetNextIndex(), static_cast<uint32_t>(i+1));
+            EXPECT_EQ(setIterator->GetNextIndex(), static_cast<uint32_t>(i + 1));
             EXPECT_EQ(i, JSIterator::IteratorValue(thread, resultObj)->GetInt());
         }
         else {

@@ -27,7 +27,7 @@
 namespace panda::ecmascript {
 long CStringToL(const CString &str)
 {
-    [[maybe_unused]] char *endPtr = nullptr;
+    char *endPtr = nullptr;
     int64_t result = std::strtol(str.c_str(), &endPtr, BASE);
     ASSERT(!(result == 0 && str.c_str() == endPtr) && "CString argument is not long int");
     return result;
@@ -35,7 +35,7 @@ long CStringToL(const CString &str)
 
 int64_t CStringToLL(const CString &str)
 {
-    [[maybe_unused]] char *endPtr = nullptr;
+    char *endPtr = nullptr;
     int64_t result = std::strtoll(str.c_str(), &endPtr, BASE);
     ASSERT(!(result == 0 && str.c_str() == endPtr) && "CString argument is not long long int");
     return result;
@@ -43,7 +43,7 @@ int64_t CStringToLL(const CString &str)
 
 uint64_t CStringToULL(const CString &str)
 {
-    [[maybe_unused]] char *endPtr = nullptr;
+    char *endPtr = nullptr;
     uint64_t result = std::strtoull(str.c_str(), &endPtr, BASE);
     ASSERT(!(result == 0 && str.c_str() == endPtr) && "CString argument is not unsigned long long int");
     return result;
@@ -51,7 +51,7 @@ uint64_t CStringToULL(const CString &str)
 
 float CStringToF(const CString &str)
 {
-    [[maybe_unused]] char *endPtr = nullptr;
+    char *endPtr = nullptr;
     float result = std::strtof(str.c_str(), &endPtr);
     ASSERT(result != HUGE_VALF && "CString argument is not float");
     ASSERT(!(result == 0 && str.c_str() == endPtr) && "CString argument is not float");
@@ -60,7 +60,7 @@ float CStringToF(const CString &str)
 
 double CStringToD(const CString &str)
 {
-    [[maybe_unused]] char *endPtr = nullptr;
+    char *endPtr = nullptr;
     double result = std::strtod(str.c_str(), &endPtr);
     ASSERT(result != HUGE_VALF && "CString argument is not double");
     ASSERT(!(result == 0 && str.c_str() == endPtr) && "CString argument is not double");

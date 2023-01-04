@@ -203,7 +203,7 @@ public:
     }
 
 private:
-    [[maybe_unused]] JSThread *thread_ {nullptr};
+    JSThread *thread_ {nullptr};
     const JSTaggedType *oldSp_ {nullptr};
 };
 

@@ -526,7 +526,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     }
 }
 
-void OptimizedCall::ConstructorJSCall([[maybe_unused]] ExtendedAssembler *assembler)
+void OptimizedCall::ConstructorJSCall(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ConstructorJSCall));
     Register jsfunc(X1);

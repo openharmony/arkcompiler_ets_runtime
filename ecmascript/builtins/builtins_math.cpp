@@ -582,7 +582,7 @@ JSTaggedValue BuiltinsMath::Pow(EcmaRuntimeCallInfo *argv)
 }
 
 // 20.2.2.27
-JSTaggedValue BuiltinsMath::Random([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsMath::Random(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();

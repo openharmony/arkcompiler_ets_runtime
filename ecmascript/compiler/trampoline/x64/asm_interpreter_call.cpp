@@ -1091,7 +1091,7 @@ void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)
 // %r13 - acc
 // %rbp - prevSp
 // %r12 - sp
-void AsmInterpreterCall::ResumeRspAndReturn([[maybe_unused]] ExtendedAssembler *assembler)
+void AsmInterpreterCall::ResumeRspAndReturn(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturn));
     Register currentSp = r12;

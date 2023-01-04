@@ -289,7 +289,7 @@ public:
         handleScopeStorageEnd_ = value;
     }
 
-    int GetCurrentHandleStorageIndex()
+    int GetCurrentHandleStorageIndex() const
     {
         return currentHandleStorageIndex_;
     }
@@ -309,7 +309,7 @@ public:
         lastHandleScope_ = scope;
     }
 
-    EcmaHandleScope *GetLastHandleScope()
+    EcmaHandleScope *GetLastHandleScope() const
     {
         return lastHandleScope_;
     }

@@ -79,7 +79,7 @@ void GlobalEnvConstants::Init(JSThread *thread, JSHClass *hClass)
     InitGlobalConstant(thread);
 }
 
-void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHClass *hClass)
+void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
 {
     // Global constants are readonly.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

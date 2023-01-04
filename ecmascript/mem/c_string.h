@@ -76,16 +76,16 @@ std::enable_if_t<std::is_integral_v<T>, CString> ToCString(T number)
     char buf[BUFF_SIZE];
     uint32_t position = BUFF_SIZE - 1;
     buf[position] = '\0';
-    bool IsNeg = number < 0;
+    bool isNeg = number < 0;
     while (number != 0) {
-        if (IsNeg) {
+        if (isNeg) {
             buf[--position] = static_cast<int8_t>('0' - (number % 10)); // 10 : decimal
         } else {
             buf[--position] = static_cast<int8_t>('0' + (number % 10)); // 10 : decimal
         }
         number /= 10; // 10 : decimal
     }
-    if (IsNeg) {
+    if (isNeg) {
         buf[--position] = '-';
     }
     return CString(&buf[position]);

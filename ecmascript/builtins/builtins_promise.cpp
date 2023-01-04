@@ -36,7 +36,7 @@
 namespace panda::ecmascript::builtins {
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
 // 25.4.3.1 Promise ( executor )
-JSTaggedValue BuiltinsPromise::PromiseConstructor([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsPromise::PromiseConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Promise, Constructor);
@@ -318,7 +318,7 @@ JSTaggedValue BuiltinsPromise::Reject(EcmaRuntimeCallInfo *argv)
 }
 
 // 25.4.4.6 get Promise [ @@species ]
-JSTaggedValue BuiltinsPromise::GetSpecies([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsPromise::GetSpecies(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     return JSTaggedValue(GetThis(argv).GetTaggedValue());

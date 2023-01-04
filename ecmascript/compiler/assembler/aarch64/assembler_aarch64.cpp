@@ -768,7 +768,7 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shif
 void AssemblerAarch64::Lsl(const Register &rd, const Register &rn, unsigned shift)
 {
     unsigned immr = 0;
-    [[maybe_unused]] unsigned imms = 0;
+    unsigned imms = 0;
     if (rd.IsW()) {
         // 32 : 32-bit variant Applies when sf == 0 && N == 0 && imms != 011111
         // LSL <Wd>, <Wn>, #<shift> is equivalent to UBFM <Wd>, <Wn>, #(-<shift> MOD 32), #(31-<shift>)

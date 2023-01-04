@@ -494,7 +494,7 @@ void JSProxyRevocFunction::ProxyRevocFunctions(const JSThread *thread, const JSH
     proxyHandle->SetHandler(thread, JSTaggedValue::Null());
 }
 
-JSTaggedValue JSFunction::AccessCallerArgumentsThrowTypeError([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue JSFunction::AccessCallerArgumentsThrowTypeError(EcmaRuntimeCallInfo *argv)
 {
     THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(),
                                 "Under strict mode, 'caller' and 'arguments' properties must not be accessed.",

@@ -118,7 +118,7 @@ void FrameIterator::Advance()
 {
     ASSERT(!Done());
     FrameType t = GetFrameType();
-    [[maybe_unused]] bool needCalCallSiteInfo = false;
+    bool needCalCallSiteInfo = false;
     switch (t) {
         case FrameType::OPTIMIZED_FRAME : {
             auto frame = GetFrame<OptimizedFrame>();
@@ -418,7 +418,7 @@ bool FrameIterator::IteratorStackMap(const RootVisitor &visitor, const RootBaseA
 }
 
 ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
-    [[maybe_unused]] const RootVisitor &visitor,
+    const RootVisitor &visitor,
     [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
     const RootBaseAndDerivedVisitor &derivedVisitor) const
 {

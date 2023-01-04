@@ -76,7 +76,7 @@ public:
     }
 
     // NOLINTNEXTLINE(readability-identifier-naming)
-    void deallocate([[maybe_unused]] pointer p, [[maybe_unused]] size_type n)
+    void deallocate(pointer p, [[maybe_unused]] size_type n)
     {
         Free(static_cast<void *>(p));
     }

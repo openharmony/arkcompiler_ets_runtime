@@ -131,7 +131,7 @@ JSTaggedValue BuiltinsGlobal::DecodeURI(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let uriString be ToString(encodedURI).
     // 2. ReturnIfAbrupt(uriString).
-    [[maybe_unused]] JSHandle<EcmaString> uriString = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
+    JSHandle<EcmaString> uriString = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Let reservedURISet be a String containing one instance of each code unit valid in uriReserved plus "#".
@@ -147,7 +147,7 @@ JSTaggedValue BuiltinsGlobal::EncodeURI(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let uriString be ToString(uri).
     // 2. ReturnIfAbrupt(uriString).
-    [[maybe_unused]] JSHandle<EcmaString> uriString = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
+    JSHandle<EcmaString> uriString = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Let unescapedURISet be a String containing one instance of
@@ -164,7 +164,7 @@ JSTaggedValue BuiltinsGlobal::DecodeURIComponent(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let componentString be ToString(encodedURIComponent).
     // 2. ReturnIfAbrupt(componentString).
-    [[maybe_unused]] JSHandle<EcmaString> componentString = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
+    JSHandle<EcmaString> componentString = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Let reservedURIComponentSet be the empty String.
@@ -180,7 +180,7 @@ JSTaggedValue BuiltinsGlobal::EncodeURIComponent(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let componentString be ToString(uriComponent).
     // 2. ReturnIfAbrupt(componentString).
-    [[maybe_unused]] JSHandle<EcmaString> componentString = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
+    JSHandle<EcmaString> componentString = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Let unescapedURIComponentSet be a String containing one instance of each code unit valid in uriUnescaped.
@@ -291,7 +291,7 @@ uint8_t BuiltinsGlobal::GetValueFromTwoHex(uint16_t front, uint16_t behind)
 JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
 {
     // 1. Let strLen be the number of code units in string.
-    [[maybe_unused]] int32_t strLen = static_cast<int32_t>(EcmaStringAccessor(str).GetLength());
+    int32_t strLen = static_cast<int32_t>(EcmaStringAccessor(str).GetLength());
     // 2. Let R be the empty String.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::u16string resStr;

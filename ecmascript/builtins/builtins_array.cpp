@@ -388,7 +388,7 @@ JSTaggedValue BuiltinsArray::Of(EcmaRuntimeCallInfo *argv)
 }
 
 // 22.1.2.5 get Array [ @@species ]
-JSTaggedValue BuiltinsArray::Species([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsArray::Species(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     // 1. Return the this value.

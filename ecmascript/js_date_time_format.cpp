@@ -1375,14 +1375,15 @@ std::string JSDateTimeFormat::ToTitleCaseTimezonePosition(const std::string &inp
         }
     }
     std::string result;
-    for (size_t i = 0; i < titleEntry.size()-1; i++) {
+    size_t len = titleEntry.size();
+    for (size_t i = 0; i < len - 1; i++) {
         std::string titleValue = ToTitleCaseFunction(titleEntry[i]);
         if (titleValue == "Of" || titleValue == "Es" || titleValue == "Au") {
             titleValue[0] = static_cast<int8_t>(tolower(titleValue[0]));
         }
         result = result + titleValue + charEntry[i];
     }
-    result = result + ToTitleCaseFunction(titleEntry[titleEntry.size()-1]);
+    result = result + ToTitleCaseFunction(titleEntry[len - 1]);
     return result;
 }
 

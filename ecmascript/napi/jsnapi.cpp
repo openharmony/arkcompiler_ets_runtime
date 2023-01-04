@@ -1435,7 +1435,6 @@ int32_t ArrayRef::Length([[maybe_unused]] const EcmaVM *vm)
     return JSArray::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetArrayLength();
 }
 
-
 Local<JSValueRef> ArrayRef::GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index)
 {
     JSThread *thread = vm->GetJSThread();
