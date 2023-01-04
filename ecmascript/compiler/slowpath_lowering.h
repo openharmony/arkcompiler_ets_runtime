@@ -286,7 +286,6 @@ private:
     void LowerGetUnmappedArgs(GateRef gate, GateRef actualArgc);
     void LowerCopyRestArgs(GateRef gate, GateRef actualArgc);
     GateRef LowerCallRuntime(int index, const std::vector<GateRef> &args, bool useLabel = false);
-    GateRef LowerCallNGCRuntime(int index, const std::vector<GateRef> &args, bool useLabel = false);
     int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
     void LowerCreateAsyncGeneratorObj(GateRef gate);
     void LowerAsyncGeneratorResolve(GateRef gate);
