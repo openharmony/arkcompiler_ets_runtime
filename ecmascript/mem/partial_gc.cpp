@@ -82,6 +82,7 @@ void PartialGC::Initialize()
 void PartialGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Finish");
+    heap_->Resume(OLD_GC);
     if (markingInProgress_) {
         auto marker = heap_->GetConcurrentMarker();
         marker->Reset(false);
