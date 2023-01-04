@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_list_format.h"
@@ -275,7 +276,7 @@ std::string GetListPartStringTest(JSThread *thread, JSHandle<JSTaggedValue> key,
     JSHandle<JSObject> partObj = JSHandle<JSObject>::Cast(part);
     JSHandle<JSTaggedValue> partValue = JSObject::GetProperty(thread, partObj, key).GetValue();
     JSHandle<EcmaString> partEcmaStr = JSHandle<EcmaString>::Cast(partValue);
-    std::string partStr = JSLocale::ConvertToStdString(partEcmaStr);
+    std::string partStr = base::LocaleHelper::ConvertToStdString(partEcmaStr);
     return partStr;
 }
 

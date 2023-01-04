@@ -121,6 +121,7 @@ host_unittest_action("EcmaVm_002_Test") {
     "js_proxy_test.cpp",
     "js_regexp_iterator_test.cpp",
     "js_relative_time_format_test.cpp",
+    "locale_helper_test.cpp",
   ]
 
   configs = [

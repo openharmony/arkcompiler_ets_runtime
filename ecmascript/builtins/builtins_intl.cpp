@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_intl.h"
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_tagged_value.h"
@@ -28,7 +29,7 @@ JSTaggedValue BuiltinsIntl::GetCanonicalLocales(EcmaRuntimeCallInfo *argv)
 
     // 1.Let ll be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
-    JSHandle<TaggedArray> elements = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> elements = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 2.Return CreateArrayFromList(ll).

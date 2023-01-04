@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_locale.h"
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
@@ -39,87 +40,6 @@
 
 namespace panda::ecmascript {
 const std::string LATN_STRING = "latn";
-// 6.2.2 IsStructurallyValidLanguageTag( locale )
-bool JSLocale::IsStructurallyValidLanguageTag(const JSHandle<EcmaString> &tag)
-{
-    std::string tagCollection = ConvertToStdString(tag);
-    std::vector<std::string> containers;
-    std::string substring;
-    std::set<std::string> uniqueSubtags;
-    size_t address = 1;
-    for (auto it = tagCollection.begin(); it != tagCollection.end(); it++) {
-        if (*it != '-' && it != tagCollection.end() - 1) {
-            substring += *it;
-        } else {
-            if (it == tagCollection.end() - 1) {
-                substring += *it;
-            }
-            containers.push_back(substring);
-            if (IsVariantSubtag(substring)) {
-                std::transform(substring.begin(), substring.end(), substring.begin(), AsciiAlphaToLower);
-                if (!uniqueSubtags.insert(substring).second) {
-                    return false;
-                }
-            }
-            substring.clear();
-        }
-    }
-    bool result = DealwithLanguageTag(containers, address);
-    return result;
-}
-
-std::string JSLocale::ConvertToStdString(const JSHandle<EcmaString> &ecmaStr)
-{
-    return std::string(ConvertToString(*ecmaStr, StringConvertedUsage::LOGICOPERATION));
-}
-
-// 6.2.3 CanonicalizeUnicodeLocaleId( locale )
-JSHandle<EcmaString> JSLocale::CanonicalizeUnicodeLocaleId(JSThread *thread, const JSHandle<EcmaString> &locale)
-{
-    [[maybe_unused]] ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    if (!IsStructurallyValidLanguageTag(locale)) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
-    }
-
-    if (EcmaStringAccessor(locale).GetLength() == 0 || EcmaStringAccessor(locale).IsUtf16()) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
-    }
-
-    std::string localeCStr = ConvertToStdString(locale);
-    std::transform(localeCStr.begin(), localeCStr.end(), localeCStr.begin(), AsciiAlphaToLower);
-    UErrorCode status = U_ZERO_ERROR;
-    icu::Locale formalLocale = icu::Locale::forLanguageTag(localeCStr.c_str(), status);
-    if ((U_FAILURE(status) != 0) || (formalLocale.isBogus() != 0)) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
-    }
-
-    // Resets the LocaleBuilder to match the locale.
-    // Returns an instance of Locale created from the fields set on this builder.
-    formalLocale = icu::LocaleBuilder().setLocale(formalLocale).build(status);
-    // Canonicalize the locale ID of this object according to CLDR.
-    formalLocale.canonicalize(status);
-    if ((U_FAILURE(status) != 0) || (formalLocale.isBogus() != 0)) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
-    }
-    JSHandle<EcmaString> languageTag = ToLanguageTag(thread, formalLocale);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
-    return languageTag;
-}
-
-// 6.2.4 DefaultLocale ()
-JSHandle<EcmaString> JSLocale::DefaultLocale(JSThread *thread)
-{
-    icu::Locale defaultLocale;
-    auto globalConst = thread->GlobalConstants();
-    if (strcmp(defaultLocale.getName(), "en_US_POSIX") == 0 || strcmp(defaultLocale.getName(), "c") == 0) {
-        return JSHandle<EcmaString>::Cast(globalConst->GetHandledEnUsString());
-    }
-    if (defaultLocale.isBogus() != 0) {
-        return JSHandle<EcmaString>::Cast(globalConst->GetHandledUndString());
-    }
-    return ToLanguageTag(thread, defaultLocale);
-}
-
 // 6.4.1 IsValidTimeZoneName ( timeZone )
 bool JSLocale::IsValidTimeZoneName(const icu::TimeZone &tz)
 {
@@ -130,204 +50,6 @@ bool JSLocale::IsValidTimeZoneName(const icu::TimeZone &tz)
     icu::TimeZone::getCanonicalID(id, canonical, status);
     UBool canonicalFlag = (canonical != icu::UnicodeString("Etc/Unknown", -1, US_INV));
     return (U_SUCCESS(status) != 0) && (canonicalFlag != 0);
-}
-
-void JSLocale::HandleLocaleExtension(size_t &start, size_t &extensionEnd,
-                                     const std::string result, size_t len)
-{
-    while (start < len - INTL_INDEX_TWO) {
-        if (result[start] != '-') {
-            start++;
-            continue;
-        }
-        if (result[start + INTL_INDEX_TWO] == '-') {
-            extensionEnd = start;
-            break;
-        }
-        start += INTL_INDEX_THREE;
-    }
-}
-
-JSLocale::ParsedLocale JSLocale::HandleLocale(const JSHandle<EcmaString> &localeString)
-{
-    std::string result = ConvertToStdString(localeString);
-    size_t len = result.size();
-    ParsedLocale parsedResult;
-
-    // a. The single-character subtag ’x’ as the primary subtag indicates
-    //    that the language tag consists solely of subtags whose meaning is
-    //    defined by private agreement.
-    // b. Extensions cannot be used in tags that are entirely private use.
-    if (IsPrivateSubTag(result, len)) {
-        parsedResult.base = result;
-        return parsedResult;
-    }
-    // If cannot find "-u-", return the whole string as base.
-    size_t foundExtension = result.find("-u-");
-    if (foundExtension == std::string::npos) {
-        parsedResult.base = result;
-        return parsedResult;
-    }
-    // Let privateIndex be Call(%StringProto_indexOf%, foundLocale, « "-x-" »).
-    size_t privateIndex = result.find("-x-");
-    if (privateIndex != std::string::npos && privateIndex < foundExtension) {
-        parsedResult.base = result;
-        return parsedResult;
-    }
-    const std::string basis = result.substr(INTL_INDEX_ZERO, foundExtension);
-    size_t extensionEnd = len;
-    ASSERT(len > INTL_INDEX_TWO);
-    size_t start = foundExtension + INTL_INDEX_ONE;
-    HandleLocaleExtension(start, extensionEnd, result, len);
-    const std::string end = result.substr(extensionEnd);
-    parsedResult.base = basis + end;
-    parsedResult.extension = result.substr(foundExtension, extensionEnd - foundExtension);
-    return parsedResult;
-}
-
-// 9.2.1 CanonicalizeLocaleList ( locales )
-JSHandle<TaggedArray> JSLocale::CanonicalizeLocaleList(JSThread *thread, const JSHandle<JSTaggedValue> &locales)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 1. If locales is undefined, then
-    //    a. Return a new empty List.
-    if (locales->IsUndefined()) {
-        return factory->EmptyArray();
-    }
-    // 2. Let seen be a new empty List.
-    JSHandle<TaggedArray> localeSeen = factory->NewTaggedArray(1);
-    // 3. If Type(locales) is String or Type(locales) is Object and locales has an [[InitializedLocale]] internal slot,
-    //    then
-    //    a. Let O be CreateArrayFromList(« locales »).
-    // 4. Else,
-    //    a.Let O be ? ToObject(locales).
-    if (locales->IsString()) {
-        JSHandle<EcmaString> tag = JSHandle<EcmaString>::Cast(locales);
-        JSHandle<TaggedArray> temp = factory->NewTaggedArray(1);
-        temp->Set(thread, 0, tag.GetTaggedValue());
-        JSHandle<JSArray> obj = JSArray::CreateArrayFromList(thread, temp);
-        JSHandle<TaggedArray> finalSeen = CanonicalizeHelper<JSArray>(thread, obj, localeSeen);
-        return finalSeen;
-    } else if (locales->IsJSLocale()) {
-        JSHandle<EcmaString> tag = JSLocale::ToString(thread, JSHandle<JSLocale>::Cast(locales));
-        JSHandle<TaggedArray> temp = factory->NewTaggedArray(1);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-        temp->Set(thread, 0, tag.GetTaggedValue());
-        JSHandle<JSArray> obj = JSArray::CreateArrayFromList(thread, temp);
-        JSHandle<TaggedArray> finalSeen = CanonicalizeHelper<JSArray>(thread, obj, localeSeen);
-        return finalSeen;
-    } else {
-        JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, locales);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-        JSHandle<TaggedArray> finalSeen = CanonicalizeHelper<JSObject>(thread, obj, localeSeen);
-        return finalSeen;
-    }
-    return localeSeen;
-}
-
-template<typename T>
-JSHandle<TaggedArray> JSLocale::CanonicalizeHelper(JSThread *thread, JSHandle<T> &obj, JSHandle<TaggedArray> &seen)
-{
-    OperationResult operationResult = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(obj),
-                                                                 thread->GlobalConstants()->GetHandledLengthString());
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-    JSTaggedNumber len = JSTaggedValue::ToLength(thread, operationResult.GetValue());
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // 2. Let seen be a new empty List.
-    uint32_t requestedLocalesLen = len.ToUint32();
-    seen = factory->NewTaggedArray(requestedLocalesLen);
-    // 6. Let k be 0.
-    // 7. Repeat, while k < len
-    JSMutableHandle<JSTaggedValue> pk(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> tag(thread, JSTaggedValue::Undefined());
-    uint32_t index = 0;
-    JSHandle<JSTaggedValue> objTagged = JSHandle<JSTaggedValue>::Cast(obj);
-    for (uint32_t k = 0; k < requestedLocalesLen; k++) {
-        // a. Let Pk be ToString(k).
-        JSHandle<JSTaggedValue> kHandle(thread, JSTaggedValue(k));
-        JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, kHandle);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-        pk.Update(str.GetTaggedValue());
-        // b. Let kPresent be ? HasProperty(O, Pk).
-        bool kPresent = JSTaggedValue::HasProperty(thread, objTagged, pk);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-
-        // c. If kPresent is true, then
-        if (kPresent) {
-            // i. Let kValue be ? Get(O, Pk).
-            OperationResult result = JSTaggedValue::GetProperty(thread, objTagged, pk);
-            RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-            JSHandle<JSTaggedValue> kValue = result.GetValue();
-            // ii. If Type(kValue) is not String or Object, throw a TypeError exception.
-            if (!kValue->IsString() && !kValue->IsJSObject()) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "kValue is not String or Object.", factory->EmptyArray());
-            }
-            // iii. If Type(kValue) is Object and kValue has an [[InitializedLocale]] internal slot, then
-            //        1. Let tag be kValue.[[Locale]].
-            // iv.  Else,
-            //        1. Let tag be ? ToString(kValue).
-            if (kValue->IsJSLocale()) {
-                JSHandle<EcmaString> kValueStr = JSLocale::ToString(thread, JSHandle<JSLocale>::Cast(kValue));
-                RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-                tag.Update(kValueStr.GetTaggedValue());
-            } else {
-                JSHandle<EcmaString> kValueString = JSTaggedValue::ToString(thread, kValue);
-                RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-                JSHandle<EcmaString> canonicalStr = CanonicalizeUnicodeLocaleId(thread, kValueString);
-                RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-                tag.Update(canonicalStr.GetTaggedValue());
-            }
-            // vii. If canonicalizedTag is not an element of seen, append canonicalizedTag as the last element of seen.
-            bool isExist = false;
-            uint32_t seenLen = seen->GetLength();
-            for (uint32_t i = 0; i < seenLen; i++) {
-                if (JSTaggedValue::SameValue(seen->Get(thread, i), tag.GetTaggedValue())) {
-                    isExist = true;
-                }
-            }
-            if (!isExist) {
-                seen->Set(thread, index++, JSHandle<JSTaggedValue>::Cast(tag));
-            }
-        }
-        // d. Increase k by 1.
-    }
-    // set capacity
-    seen = TaggedArray::SetCapacity(thread, seen, index);
-    // 8. Return seen.
-    return seen;
-}
-
-// 9.2.2 BestAvailableLocale ( availableLocales, locale )
-std::string JSLocale::BestAvailableLocale(const std::vector<std::string> &availableLocales,
-                                          const std::string &locale)
-{
-    // 1. Let candidate be locale.
-    std::string localeCandidate = locale;
-    std::string undefined = std::string();
-    // 2. Repeat,
-    uint32_t length = availableLocales.size();
-    while (true) {
-        // a. If availableLocales contains an element equal to candidate, return candidate.
-        for (uint32_t i = 0; i < length; ++i) {
-            std::string itemStr = availableLocales[i];
-            if (itemStr == localeCandidate) {
-                return localeCandidate;
-            }
-        }
-        // b. Let pos be the character index of the last occurrence of "-" (U+002D) within candidate.
-        //    If that character does not occur, return undefined.
-        size_t pos = localeCandidate.rfind('-');
-        if (pos == std::string::npos) {
-            return undefined;
-        }
-        // c. If pos ≥ 2 and the character "-" occurs at index pos-2 of candidate, decrease pos by 2.
-        if (pos >= INTL_INDEX_TWO && localeCandidate[pos - INTL_INDEX_TWO] == '-') {
-            pos -= INTL_INDEX_TWO;
-        }
-        // d. Let candidate be the substring of candidate from position 0, inclusive, to position pos, exclusive.
-        localeCandidate = localeCandidate.substr(0, pos);
-    }
 }
 
 // 9.2.3 LookupMatcher ( availableLocales, requestedLocales )
@@ -345,9 +67,10 @@ JSHandle<EcmaString> JSLocale::LookupMatcher(JSThread *thread, const JSHandle<Ta
         locale.Update(requestedLocales->Get(thread, i));
         // 2. a. Let noExtensionsLocale be the String value that is locale
         //       with all Unicode locale extension sequences removed.
-        ParsedLocale parsedResult = HandleLocale(locale);
+        base::LocaleHelper::ParsedLocale parsedResult = base::LocaleHelper::HandleLocale(locale);
         // 2. b. Let availableLocale be BestAvailableLocale(availableLocales, noExtensionsLocale).
-        std::string availableLocale = BestAvailableLocale(availableStringLocales, parsedResult.base);
+        std::string availableLocale =
+            base::LocaleHelper::BestAvailableLocale(availableStringLocales, parsedResult.base);
         // 2. c. If availableLocale is not undefined, append locale to the end of subset.
         if (!availableLocale.empty()) {
             result = {std::string(), std::string()};
@@ -369,7 +92,7 @@ JSHandle<EcmaString> JSLocale::LookupMatcher(JSThread *thread, const JSHandle<Ta
     // 3. Let defLocale be DefaultLocale();
     // 4. Set result.[[locale]] to defLocale.
     // 5. Return result.
-    std::string defLocale = ConvertToStdString(DefaultLocale(thread));
+    std::string defLocale = base::LocaleHelper::ConvertToStdString(base::LocaleHelper::DefaultLocale(thread));
     result.locale = defLocale;
     return factory->NewFromStdString(result.locale);
 }
@@ -377,7 +100,7 @@ JSHandle<EcmaString> JSLocale::LookupMatcher(JSThread *thread, const JSHandle<Ta
 icu::LocaleMatcher BuildLocaleMatcher(JSThread *thread, uint32_t *availableLength, UErrorCode *status,
                                       const JSHandle<TaggedArray> &availableLocales)
 {
-    std::string locale = JSLocale::ConvertToStdString(JSLocale::DefaultLocale(thread));
+    std::string locale = base::LocaleHelper::ConvertToStdString(base::LocaleHelper::DefaultLocale(thread));
     icu::Locale defaultLocale = icu::Locale::forLanguageTag(locale, *status);
     ASSERT_PRINT(U_SUCCESS(*status), "icu::Locale::forLanguageTag failed");
     icu::LocaleMatcher::Builder builder;
@@ -387,7 +110,7 @@ icu::LocaleMatcher BuildLocaleMatcher(JSThread *thread, uint32_t *availableLengt
     JSMutableHandle<EcmaString> item(thread, JSTaggedValue::Undefined());
     for (*availableLength = 0; *availableLength < length; ++(*availableLength)) {
         item.Update(availableLocales->Get(thread, *availableLength));
-        std::string itemStr = JSLocale::ConvertToStdString(item);
+        std::string itemStr = base::LocaleHelper::ConvertToStdString(item);
         icu::Locale localeForLanguageTag = icu::Locale::forLanguageTag(itemStr, *status);
         if (U_SUCCESS(*status) != 0) {
             builder.addSupportedLocale(localeForLanguageTag);
@@ -414,7 +137,7 @@ JSHandle<EcmaString> JSLocale::BestFitMatcher(JSThread *thread, const JSHandle<T
     auto bestFit = matcher.getBestMatch(iter, status)->toLanguageTag<std::string>(status);
 
     if (U_FAILURE(status) != 0) {
-        return DefaultLocale(thread);
+        return base::LocaleHelper::DefaultLocale(thread);
     }
 
     for (uint32_t i = 0; i < requestedLocalesLength; ++i) {
@@ -443,8 +166,9 @@ JSHandle<TaggedArray> JSLocale::LookupSupportedLocales(JSThread *thread, const J
     //    c. If availableLocale is not undefined, append locale to the end of subset.
     for (uint32_t i = 0; i < length; ++i) {
         item.Update(requestedLocales->Get(thread, i));
-        ParsedLocale foundationResult = HandleLocale(item);
-        std::string availableLocale = BestAvailableLocale(availableStringLocales, foundationResult.base);
+        base::LocaleHelper::ParsedLocale foundationResult = base::LocaleHelper::HandleLocale(item);
+        std::string availableLocale =
+            base::LocaleHelper::BestAvailableLocale(availableStringLocales, foundationResult.base);
         if (!availableLocale.empty()) {
             subset->Set(thread, index++, item.GetTaggedValue());
         }
@@ -464,7 +188,7 @@ JSHandle<TaggedArray> JSLocale::BestFitSupportedLocales(JSThread *thread, const 
     ASSERT(U_SUCCESS(status));
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<EcmaString> defaultLocale = DefaultLocale(thread);
+    JSHandle<EcmaString> defaultLocale = base::LocaleHelper::DefaultLocale(thread);
     JSHandle<TaggedArray> result = factory->NewTaggedArray(requestLength);
 
     uint32_t index = 0;
@@ -475,7 +199,7 @@ JSHandle<TaggedArray> JSLocale::BestFitSupportedLocales(JSThread *thread, const 
             result->Set(thread, index++, locale.GetTaggedValue());
         } else {
             status = U_ZERO_ERROR;
-            std::string localeStr = ConvertToStdString(locale);
+            std::string localeStr = base::LocaleHelper::ConvertToStdString(locale);
             icu::Locale desired = icu::Locale::forLanguageTag(localeStr, status);
             auto bestFit = matcher.getBestMatch(desired, status)->toLanguageTag<std::string>(status);
             if ((U_SUCCESS(status) != 0) &&
@@ -486,55 +210,6 @@ JSHandle<TaggedArray> JSLocale::BestFitSupportedLocales(JSThread *thread, const 
     }
     result = TaggedArray::SetCapacity(thread, result, index);
     return result;
-}
-
-JSHandle<EcmaString> JSLocale::ToLanguageTag(JSThread *thread, const icu::Locale &locale)
-{
-    UErrorCode status = U_ZERO_ERROR;
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto result = locale.toLanguageTag<std::string>(status);
-    bool flag = (U_FAILURE(status) == 0) ? true : false;
-    if (!flag) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
-    }
-    size_t findBeginning = result.find("-u-");
-    std::string finalRes;
-    std::string tempRes;
-    if (findBeginning == std::string::npos) {
-        return factory->NewFromStdString(result);
-    }
-    size_t specialBeginning = findBeginning + INTL_INDEX_THREE;
-    size_t specialCount = 0;
-    while ((specialBeginning < result.size()) && (result[specialBeginning] != '-')) {
-        specialCount++;
-        specialBeginning++;
-    }
-    if (findBeginning != std::string::npos) {
-        // It begin with "-u-xx" or with more elements.
-        tempRes = result.substr(0, findBeginning + INTL_INDEX_THREE + specialCount);
-        if (result.size() <= findBeginning + INTL_INDEX_THREE + specialCount) {
-            return factory->NewFromStdString(result);
-        }
-        std::string leftStr = result.substr(findBeginning + INTL_INDEX_THREE + specialCount + INTL_INDEX_ONE);
-        std::istringstream temp(leftStr);
-        std::string buffer;
-        std::vector<std::string> resContainer;
-        while (getline(temp, buffer, '-')) {
-            if (buffer != "true" && buffer != "yes") {
-                resContainer.push_back(buffer);
-            }
-        }
-        for (auto it = resContainer.begin(); it != resContainer.end(); it++) {
-            std::string tag = "-";
-            tag += *it;
-            finalRes += tag;
-        }
-    }
-    if (!finalRes.empty()) {
-        tempRes += finalRes;
-    }
-    result = tempRes;
-    return factory->NewFromStdString(result);
 }
 
 // 9.2.10 SupportedLocales ( availableLocales, requestedLocales, options )
@@ -640,7 +315,7 @@ bool JSLocale::GetOptionOfString(JSThread *thread, const JSHandle<JSObject> &opt
     if (EcmaStringAccessor(valueEStr).IsUtf16()) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Value out of range for locale options property", false);
     }
-    *optionValue = JSLocale::ConvertToStdString(valueEStr);
+    *optionValue = base::LocaleHelper::ConvertToStdString(valueEStr);
     if (values.empty()) {
         return true;
     }
@@ -776,7 +451,7 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
     //    a. Let r be BestFitMatcher(availableLocales, requestedLocales).
     JSMutableHandle<EcmaString> locale(thread, JSTaggedValue::Undefined());
     if (availableLocales->GetLength() == 0 && requestedLocales->GetLength() == 0) {
-        locale.Update(DefaultLocale(thread).GetTaggedValue());
+        locale.Update(base::LocaleHelper::DefaultLocale(thread).GetTaggedValue());
     } else {
         locale.Update(LookupMatcher(thread, availableLocales, requestedLocales).GetTaggedValue());
     }
@@ -785,12 +460,12 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
     // 5. Let result be a new Record.
     // 6. Set result.[[dataLocale]] to foundLocale.
     // 7. Let supportedExtension be "-u".
-    std::string foundLocale = ConvertToStdString(locale);
+    std::string foundLocale = base::LocaleHelper::ConvertToStdString(locale);
     icu::Locale foundLocaleData = BuildICULocale(foundLocale);
     ResolvedLocale result;
     result.localeData = foundLocaleData;
-    JSHandle<EcmaString> tag = ToLanguageTag(thread, foundLocaleData);
-    result.locale = ConvertToStdString(tag);
+    JSHandle<EcmaString> tag = base::LocaleHelper::ToLanguageTag(thread, foundLocaleData);
+    result.locale = base::LocaleHelper::ConvertToStdString(tag);
     std::string supportedExtension = "-u";
     icu::LocaleBuilder localeBuilder;
     localeBuilder.setLocale(foundLocaleData).clearExtensions();
@@ -894,13 +569,13 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
             foundLocale = preExtension + supportedExtension + postExtension;
         }
 
-        tag = ToLanguageTag(thread, foundLocaleData);
-        if (!IsStructurallyValidLanguageTag(tag)) {
+        tag = base::LocaleHelper::ToLanguageTag(thread, foundLocaleData);
+        if (!base::LocaleHelper::IsStructurallyValidLanguageTag(tag)) {
             result.extensions.erase(result.extensions.begin(), result.extensions.end());
             result.locale = foundLocale;
         }
-        tag = CanonicalizeUnicodeLocaleId(thread, tag);
-        foundLocale = ConvertToStdString(tag);
+        tag = base::LocaleHelper::CanonicalizeUnicodeLocaleId(thread, tag);
+        foundLocale = base::LocaleHelper::ConvertToStdString(tag);
     }
 
     // 10. Set result.[[locale]] to foundLocale.
@@ -934,18 +609,6 @@ JSHandle<TaggedArray> JSLocale::ConstructLocaleList(JSThread *thread,
         locales->Set(thread, index++, localeStr);
     }
     return locales;
-}
-
-JSHandle<EcmaString> JSLocale::IcuToString(JSThread *thread, const icu::UnicodeString &string)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewFromUtf16(reinterpret_cast<const uint16_t *>(string.getBuffer()), string.length());
-}
-
-JSHandle<EcmaString> JSLocale::IcuToString(JSThread *thread, const icu::UnicodeString &string, int32_t begin,
-                                           int32_t end)
-{
-    return IcuToString(thread, string.tempSubStringBetween(begin, end));
 }
 
 std::string JSLocale::GetNumberingSystem(const icu::Locale &icuLocale)
@@ -1060,8 +723,8 @@ bool JSLocale::ApplyOptionsToTag(JSThread *thread, const JSHandle<EcmaString> &t
     if (*tag == *(factory->GetEmptyString())) {
         return false;
     }
-    // 2. If IsStructurallyValidLanguageTag(tag) is false, throw a RangeError exception.
-    if (!IsStructurallyValidLanguageTag(tag)) {
+    // 2. If base::LocaleHelper::IsStructurallyValidLanguageTag(tag) is false, throw a RangeError exception.
+    if (!base::LocaleHelper::IsStructurallyValidLanguageTag(tag)) {
         return false;
     }
 
@@ -1073,7 +736,8 @@ bool JSLocale::ApplyOptionsToTag(JSThread *thread, const JSHandle<EcmaString> &t
     // 4. If language is not undefined, then
     //    a. If language does not match the unicode_language_subtag production, throw a RangeError exception.
     if (!tagElements.language->IsUndefined()) {
-        std::string languageStr = ConvertToStdString(JSHandle<EcmaString>::Cast(tagElements.language));
+        std::string languageStr =
+            base::LocaleHelper::ConvertToStdString(JSHandle<EcmaString>::Cast(tagElements.language));
         if (languageStr[INTL_INDEX_ZERO] == '\0' ||
             IsAlpha(languageStr, INTL_INDEX_FOUR, INTL_INDEX_FOUR)) {
             return false;
@@ -1089,7 +753,8 @@ bool JSLocale::ApplyOptionsToTag(JSThread *thread, const JSHandle<EcmaString> &t
     // 6. If script is not undefined, then
     //    a. If script does not match the unicode_script_subtag production, throw a RangeError exception.
     if (!tagElements.script->IsUndefined()) {
-        std::string scriptStr = JSLocale::ConvertToStdString((JSHandle<EcmaString>::Cast(tagElements.script)));
+        std::string scriptStr =
+            base::LocaleHelper::ConvertToStdString((JSHandle<EcmaString>::Cast(tagElements.script)));
         if (scriptStr[INTL_INDEX_ZERO] == '\0') {
             return false;
         }
@@ -1104,7 +769,7 @@ bool JSLocale::ApplyOptionsToTag(JSThread *thread, const JSHandle<EcmaString> &t
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
     if (!tagElements.region->IsUndefined()) {
-        std::string regionStr = ConvertToStdString(JSHandle<EcmaString>::Cast(tagElements.region));
+        std::string regionStr = base::LocaleHelper::ConvertToStdString(JSHandle<EcmaString>::Cast(tagElements.region));
         if (regionStr[INTL_INDEX_ZERO] == '\0') {
             return false;
         }
@@ -1115,7 +780,7 @@ bool JSLocale::ApplyOptionsToTag(JSThread *thread, const JSHandle<EcmaString> &t
 bool BuildOptionsTags(const JSHandle<EcmaString> &tag, icu::LocaleBuilder *builder, JSHandle<JSTaggedValue> language,
                       JSHandle<JSTaggedValue> script, JSHandle<JSTaggedValue> region)
 {
-    std::string tagStr = JSLocale::ConvertToStdString(tag);
+    std::string tagStr = base::LocaleHelper::ConvertToStdString(tag);
     int32_t len = static_cast<int32_t>(tagStr.length());
     ASSERT(len > 0);
     builder->setLanguageTag({ tagStr.c_str(), len });
@@ -1128,7 +793,7 @@ bool BuildOptionsTags(const JSHandle<EcmaString> &tag, icu::LocaleBuilder *build
     builder->setLocale(locale);
 
     if (!language->IsUndefined()) {
-        std::string languageStr = JSLocale::ConvertToStdString(JSHandle<EcmaString>::Cast(language));
+        std::string languageStr = base::LocaleHelper::ConvertToStdString(JSHandle<EcmaString>::Cast(language));
         builder->setLanguage(languageStr);
         builder->build(status);
         if ((U_FAILURE(status) != 0)) {
@@ -1137,7 +802,7 @@ bool BuildOptionsTags(const JSHandle<EcmaString> &tag, icu::LocaleBuilder *build
     }
 
     if (!script->IsUndefined()) {
-        std::string scriptStr = JSLocale::ConvertToStdString((JSHandle<EcmaString>::Cast(script)));
+        std::string scriptStr = base::LocaleHelper::ConvertToStdString((JSHandle<EcmaString>::Cast(script)));
         builder->setScript(scriptStr);
         builder->build(status);
         if ((U_FAILURE(status) != 0)) {
@@ -1146,7 +811,7 @@ bool BuildOptionsTags(const JSHandle<EcmaString> &tag, icu::LocaleBuilder *build
     }
 
     if (!region->IsUndefined()) {
-        std::string regionStr = JSLocale::ConvertToStdString(JSHandle<EcmaString>::Cast(region));
+        std::string regionStr = base::LocaleHelper::ConvertToStdString(JSHandle<EcmaString>::Cast(region));
         builder->setRegion(regionStr);
         builder->build(status);
         if ((U_FAILURE(status) != 0)) {
@@ -1255,53 +920,6 @@ JSHandle<JSLocale> JSLocale::InitializeLocale(JSThread *thread, const JSHandle<J
     return locale;
 }
 
-bool JSLocale::DealwithLanguageTag(const std::vector<std::string> &containers, size_t &address)
-{
-    // The abstract operation returns true if locale can be generated from the ABNF grammar in section 2.1 of the RFC,
-    // starting with Language-Tag, and does not contain duplicate variant or singleton subtags
-    // If language tag is empty, return false.
-    if (containers.empty()) {
-        return false;
-    }
-
-    // a. if the first tag is not language, return false.
-    if (!IsLanguageSubtag(containers[0])) {
-        return false;
-    }
-
-    // if the tag include language only, like "zh" or "de", return true;
-    if (containers.size() == 1) {
-        return true;
-    }
-
-    // Else, then
-    // if is unique singleton subtag, script and region tag.
-    if (IsExtensionSingleton(containers[1])) {
-        return true;
-    }
-
-    if (IsScriptSubtag(containers[address])) {
-        address++;
-        if (containers.size() == address) {
-            return true;
-        }
-    }
-
-    if (IsRegionSubtag(containers[address])) {
-        address++;
-    }
-
-    for (size_t i = address; i < containers.size(); i++) {
-        if (IsExtensionSingleton(containers[i])) {
-            return true;
-        }
-        if (!IsVariantSubtag(containers[i])) {
-            return false;
-        }
-    }
-    return true;
-}
-
 int ConvertValue(const UErrorCode &status, std::string &value, const std::string &key)
 {
     if (status == U_ILLEGAL_ARGUMENT_ERROR || value.empty()) {
@@ -1345,49 +963,8 @@ JSHandle<EcmaString> JSLocale::ToString(JSThread *thread, const JSHandle<JSLocal
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         return factory->GetEmptyString();
     }
-    JSHandle<EcmaString> result = ToLanguageTag(thread, *icuLocale);
+    JSHandle<EcmaString> result = base::LocaleHelper::ToLanguageTag(thread, *icuLocale);
     return result;
-}
-
-std::vector<std::string> JSLocale::GetAvailableLocales(JSThread *thread, const char *localeKey, const char *localePath)
-{
-    UErrorCode status = U_ZERO_ERROR;
-    auto globalConst = thread->GlobalConstants();
-    JSHandle<EcmaString> specialValue = JSHandle<EcmaString>::Cast(globalConst->GetHandledEnUsPosixString());
-    std::string specialString = ConvertToStdString(specialValue);
-    UEnumeration *uenum = uloc_openAvailableByType(ULOC_AVAILABLE_WITH_LEGACY_ALIASES, &status);
-    std::vector<std::string> allLocales;
-    const char *loc = nullptr;
-    for (loc = uenum_next(uenum, nullptr, &status); loc != nullptr; loc = uenum_next(uenum, nullptr, &status)) {
-        ASSERT(U_SUCCESS(status));
-        std::string locStr(loc);
-        std::replace(locStr.begin(), locStr.end(), '_', '-');
-        if (locStr == specialString) {
-            locStr = "en-US-u-va-posix";
-        }
-
-        if (localePath != nullptr || localeKey != nullptr) {
-            icu::Locale locale(locStr.c_str());
-            bool res = false;
-            if (!CheckLocales(locale, localeKey, localePath, res)) {
-                continue;
-            }
-        }
-        bool isScript = false;
-        allLocales.push_back(locStr);
-        icu::Locale formalLocale = icu::Locale::createCanonical(locStr.c_str());
-        std::string scriptStr = formalLocale.getScript();
-        isScript = scriptStr.empty() ? false : true;
-        if (isScript) {
-            std::string languageStr = formalLocale.getLanguage();
-            std::string countryStr = formalLocale.getCountry();
-            std::string shortLocale = icu::Locale(languageStr.c_str(), countryStr.c_str()).getName();
-            std::replace(shortLocale.begin(), shortLocale.end(), '_', '-');
-            allLocales.push_back(shortLocale);
-        }
-    }
-    uenum_close(uenum);
-    return allLocales;
 }
 
 std::vector<std::string> JSLocale::GetAvailableStringLocales(JSThread *thread,
@@ -1398,7 +975,7 @@ std::vector<std::string> JSLocale::GetAvailableStringLocales(JSThread *thread,
     uint32_t availablecalesLength = availableLocales->GetLength();
     for (uint32_t i = 0; i < availablecalesLength; i++) {
         availableItem.Update(availableLocales->Get(thread, i));
-        availableStringLocales.emplace_back(ConvertToStdString(availableItem));
+        availableStringLocales.emplace_back(base::LocaleHelper::ConvertToStdString(availableItem));
     }
     return availableStringLocales;
 }
