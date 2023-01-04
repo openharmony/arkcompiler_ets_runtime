@@ -2729,6 +2729,7 @@ void Builtins::SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandl
         // { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }.
         PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), false, false, false);
         JSObject::DefineOwnProperty(thread_, obj, symbol, descriptor);
+        env->SetHasInstanceFunction(thread_, function);
         return;
     }
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), true, false, true);
