@@ -120,6 +120,9 @@ int Main(const int argc, const char **argv)
         }
         generator.SaveAOTFile(outputFileName + AOTFileManager::FILE_EXTENSION_AN);
         generator.SaveSnapshotFile();
+        if (log.GetEnableCompilerLogTime()) {
+            log.PrintTime();
+        }
     }
 
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");

@@ -66,6 +66,40 @@ struct ModuleSectionDes {
     uint32_t arkStackMapSize_ {0};
     uint8_t *arkStackMapRawPtr_ {nullptr};
 
+    std::string GetSecName(const ElfSecName idx) const
+    {
+        switch (idx) {
+            case ElfSecName::RODATA:
+                return "rodata";
+            case ElfSecName::RODATA_CST4:
+                return "rodata.cst4";
+            case ElfSecName::RODATA_CST8:
+                return "rodata.cst8";
+            case ElfSecName::RODATA_CST16:
+                return "rodata.cst16";
+            case ElfSecName::RODATA_CST32:
+                return "rodata.cst32";
+            case ElfSecName::TEXT:
+                return "text";
+            case ElfSecName::DATA:
+                return "data";
+            case ElfSecName::GOT:
+                return "got";
+            case ElfSecName::RELATEXT:
+                return "rela.text";
+            case ElfSecName::STRTAB:
+                return "strtab";
+            case ElfSecName::SYMTAB:
+                return "symtab";
+            case ElfSecName::LLVM_STACKMAP:
+                return "llvm_stackmaps";
+            default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+            }
+        }
+    }
+
     void SetArkStackMapPtr(std::shared_ptr<uint8_t> ptr)
     {
         arkStackMapPtr_ = ptr;
@@ -164,6 +198,11 @@ struct ModuleSectionDes {
     void LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset,
         uint64_t codeAddress);
     void LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset);
+
+private:
+    static constexpr int DECIMAL_LENS = 2;
+    static constexpr int HUNDRED_TIME = 100;
+    static constexpr int PERCENT_LENS = 4;
 };
 
 class PUBLIC_API AOTFileInfo {
@@ -329,6 +368,9 @@ public:
         }
         return static_cast<uintptr_t>(it->second);
     }
+
+    template<size_t Size>
+    bool AnVersionCheck(std::array<uint8_t, Size> anVersion);
 
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
 

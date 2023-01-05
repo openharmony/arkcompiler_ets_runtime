@@ -17,6 +17,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/deoptimizer/relocator.h"
 #include "ecmascript/ecma_vm.h"
@@ -45,11 +46,15 @@ using BytecodeStubCSigns = kungfu::BytecodeStubCSigns;
 void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
 {
     uint32_t secInfoSize = GetSecInfosSize();
+    uint32_t secSize = 0;
     file.write(reinterpret_cast<char *>(&secInfoSize), sizeof(secInfoSize));
+    std::multimap<std::string, double> SecMap;
     for (auto &s : sectionsInfo_) {
         uint8_t secName = static_cast<uint8_t>(s.first);
         uint32_t curSecSize = GetSecSize(s.first);
         uint64_t curSecAddr = GetSecAddr(s.first);
+        secSize += curSecSize;
+        SecMap.insert(make_pair(GetSecName(s.first), static_cast<double>(curSecSize)));
         file.write(reinterpret_cast<char *>(&secName), sizeof(secName));
         file.write(reinterpret_cast<char *>(&curSecSize), sizeof(curSecSize));
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
@@ -63,6 +68,15 @@ void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
     uint32_t cnt = GetFuncCount();
     file.write(reinterpret_cast<char *>(&index), sizeof(index));
     file.write(reinterpret_cast<char *>(&cnt), sizeof(cnt));
+    for (auto [key, val] : SecMap) {
+        LOG_COMPILER(DEBUG) << key << " size is "
+                            << std::fixed << std::setprecision(DECIMAL_LENS)
+                            << val / 1_KB << "KB "<< "percentage:"
+                            << std::fixed << std::setprecision(PERCENT_LENS)
+                            << val / secSize * HUNDRED_TIME << "% ";
+    }
+    LOG_COMPILER(DEBUG) << "elf secitions size = " << (secSize / 1_KB) << "KB"
+                        << ", ark stack map size = " << (size / 1_KB) << "KB";
 }
 
 void ModuleSectionDes::LoadStackMapSection(BinaryBufferParser &parser, uintptr_t secBegin, uint32_t &curUnitOffset)
@@ -220,6 +234,7 @@ void AnFileInfo::Save(const std::string &filename)
     uint32_t moduleNum = GetCodeUnitsNum();
     file.write(reinterpret_cast<char *>(&moduleNum), sizeof(moduleNum_));
     file.write(reinterpret_cast<char *>(&totalCodeSize_), sizeof(totalCodeSize_));
+    LOG_COMPILER(DEBUG) << "total code size = " << (totalCodeSize_ / 1_KB) << "KB";
     for (size_t i = 0; i < moduleNum; i++) {
         des_[i].SaveSectionsInfo(file);
     }
@@ -280,20 +295,7 @@ bool AnFileInfo::Load(const std::string &filename)
 
     std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> anVersion;
     file.read(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
-    if (anVersion != AOTFileManager::AOT_VERSION) {
-        auto convToStr = [] (std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> version) -> std::string {
-            std::string ret = "";
-            for (size_t i = 0; i < AOTFileManager::AOT_VERSION_SIZE; ++i) {
-                if (i) {
-                    ret += ".";
-                }
-                ret += std::to_string(version[i]);
-            }
-            return ret;
-        };
-        LOG_COMPILER(ERROR) << "Load an file failed, an file version is incorrect, "
-                            << "expected version is " << convToStr(AOTFileManager::AOT_VERSION)
-                            << ", but got " << convToStr(anVersion);
+    if (!AnVersionCheck(anVersion)) {
         file.close();
         return false;
     }
@@ -328,6 +330,28 @@ bool AnFileInfo::Load(const std::string &filename)
 
     LOG_COMPILER(INFO) << "loaded aot file: " << filename.c_str();
     isLoad_ = true;
+    return true;
+}
+
+template<size_t Size>
+bool AnFileInfo::AnVersionCheck(std::array<uint8_t, Size> anVersion)
+{
+    if (anVersion > AOTFileManager::AOT_VERSION) {
+        auto convToStr = [] (std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> version) -> std::string {
+            std::string ret = "";
+            for (size_t i = 0; i < AOTFileManager::AOT_VERSION_SIZE; ++i) {
+                if (i) {
+                    ret += ".";
+                }
+                ret += std::to_string(version[i]);
+            }
+            return ret;
+        };
+        LOG_COMPILER(ERROR) << "Load an file failed, an file version is incorrect, "
+                            << "expected version should be less or equal than " << convToStr(AOTFileManager::AOT_VERSION)
+                            << ", but got " << convToStr(anVersion);
+        return false;
+    }
     return true;
 }
 
@@ -854,6 +878,11 @@ std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()
 bool AnFileDataManager::SafeInsideStub(uintptr_t pc)
 {
     os::memory::ReadLockHolder lock(lock_);
+    if (loadedStub_ == nullptr) {
+        LOG_COMPILER(ERROR) << "SafeInsideStub: The stub file is not loaded.";
+        return false;
+    }
+
     uint64_t stubStartAddr = loadedStub_->GetAsmStubAddr();
     uint64_t stubEndAddr = stubStartAddr + loadedStub_->GetAsmStubSize();
     if (pc >= stubStartAddr && pc <= stubEndAddr) {

@@ -107,9 +107,6 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     });
     LOG_COMPILER(INFO) << bytecodeInfo.GetSkippedMethodSize() << " methods in "
                        << fileName << " have been skipped";
-    if (log_->GetEnableCompilerLogTime()) {
-        log_->PrintTime();
-    }
     generator.AddModule(aotModule, aotModuleAssembler, &bcInfoCollector);
     return true;
 }
