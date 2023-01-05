@@ -7343,8 +7343,8 @@ void InterpreterAssembly::ExceptionHandler(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     FrameHandler frameHandler(thread);
-    uint32_t pcOffset = INVALID_INDEX;
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    uint32_t pcOffset = panda_file::INVALID_OFFSET;
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             thread->SetLastFp(frameHandler.GetFp());
             return;

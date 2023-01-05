@@ -43,7 +43,7 @@ uint32_t DebuggerApi::GetStackDepth(const EcmaVM *ecmaVm)
 {
     uint32_t count = 0;
     FrameHandler frameHandler(ecmaVm->GetJSThread());
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             continue;
         }
@@ -60,7 +60,7 @@ std::shared_ptr<FrameHandler> DebuggerApi::NewFrameHandler(const EcmaVM *ecmaVm)
 bool DebuggerApi::StackWalker(const EcmaVM *ecmaVm, std::function<StackState(const FrameHandler *)> func)
 {
     FrameHandler frameHandler(ecmaVm->GetJSThread());
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             continue;
         }
@@ -315,7 +315,7 @@ JSTaggedValue DebuggerApi::GetCurrentModule(const EcmaVM *ecmaVm)
 {
     JSThread *thread = ecmaVm->GetJSThread();
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
@@ -566,7 +566,7 @@ Local<JSValueRef> DebuggerApi::EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<Functio
 bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
 {
     FrameHandler frameHandler(ecmaVm->GetJSThread());
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             return false;
         }

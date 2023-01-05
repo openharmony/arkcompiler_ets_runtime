@@ -739,8 +739,8 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
 {
     traceNodeIndex_.clear();
     FrameHandler frameHandler(vm_->GetAssociatedJSThread());
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
-        if (!frameHandler.IsInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (!frameHandler.IsJSFrame()) {
             continue;
         }
         auto method = frameHandler.CheckAndGetMethod();

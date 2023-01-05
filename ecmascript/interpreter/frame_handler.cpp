@@ -26,16 +26,16 @@ namespace panda::ecmascript {
 FrameHandler::FrameHandler(const JSThread *thread)
     : sp_(const_cast<JSTaggedType *>(thread->GetCurrentFrame())), thread_(thread)
 {
-    AdvanceToInterpretedFrame();
+    AdvanceToJSFrame();
 }
 
 FrameHandler::FrameHandler(const JSThread *thread, void *fp)
     : sp_(reinterpret_cast<JSTaggedType *>(fp)), thread_(thread)
 {
-    AdvanceToInterpretedFrame();
+    AdvanceToJSFrame();
 }
 
-ARK_INLINE void FrameHandler::AdvanceToInterpretedFrame()
+ARK_INLINE void FrameHandler::AdvanceToJSFrame()
 {
     if (!thread_->IsAsmInterpreter()) {
         return;
@@ -43,14 +43,14 @@ ARK_INLINE void FrameHandler::AdvanceToInterpretedFrame()
     FrameIterator it(sp_, thread_);
     for (; !it.Done(); it.Advance()) {
         FrameType t = it.GetFrameType();
-        if (IsInterpretedFrame(t) || IsInterpretedEntryFrame(t)) {
+        if (IsJSFrame(t) || IsAsmInterpretedEntryFrame(t)) {
             break;
         }
     }
     sp_ = it.GetSp();
 }
 
-ARK_INLINE void FrameHandler::PrevInterpretedFrame()
+ARK_INLINE void FrameHandler::PrevJSFrame()
 {
     if (!thread_->IsAsmInterpreter()) {
         FrameIterator it(sp_, thread_);
@@ -58,7 +58,7 @@ ARK_INLINE void FrameHandler::PrevInterpretedFrame()
         sp_ = it.GetSp();
         return;
     }
-    AdvanceToInterpretedFrame();
+    AdvanceToJSFrame();
     FrameIterator it(sp_, thread_);
     FrameType t = it.GetFrameType();
     if (t == FrameType::ASM_INTERPRETER_FRAME) {
@@ -69,12 +69,12 @@ ARK_INLINE void FrameHandler::PrevInterpretedFrame()
     }
     it.Advance();
     sp_ = it.GetSp();
-    AdvanceToInterpretedFrame();
+    AdvanceToJSFrame();
 }
 
-JSTaggedType* FrameHandler::GetPrevInterpretedFrame()
+JSTaggedType* FrameHandler::GetPrevJSFrame()
 {
-    PrevInterpretedFrame();
+    PrevJSFrame();
     return GetSp();
 }
 
@@ -135,14 +135,14 @@ uint32_t FrameHandler::GetBytecodeOffset() const
 
 Method *FrameHandler::GetMethod() const
 {
-    ASSERT(IsInterpretedFrame());
+    ASSERT(IsJSFrame());
     auto function = GetFunction();
     return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
 }
 
 Method *FrameHandler::CheckAndGetMethod() const
 {
-    ASSERT(IsInterpretedFrame());
+    ASSERT(IsJSFrame());
     auto function = GetFunction();
     if (function.IsJSFunctionBase() || function.IsJSProxy()) {
         return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
@@ -165,7 +165,7 @@ JSTaggedValue FrameHandler::GetThis() const
 
 JSTaggedValue FrameHandler::GetFunction() const
 {
-    ASSERT(IsInterpretedFrame());
+    ASSERT(IsJSFrame());
     if (thread_->IsAsmInterpreter()) {
         FrameType type = GetFrameType();
         switch (type) {
@@ -181,6 +181,10 @@ JSTaggedValue FrameHandler::GetFunction() const
             case FrameType::BUILTIN_ENTRY_FRAME:
             case FrameType::BUILTIN_FRAME: {
                 auto *frame = BuiltinFrame::GetFrameFromSp(sp_);
+                return frame->GetFunction();
+            }
+            case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+                auto *frame = OptimizedJSFunctionFrame::GetFrameFromSp(sp_);
                 return frame->GetFunction();
             }
             case FrameType::INTERPRETER_FRAME:
@@ -249,7 +253,7 @@ void FrameHandler::DumpStack(std::ostream &os) const
 {
     size_t i = 0;
     FrameHandler frameHandler(thread_);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         os << "[" << i++
         << "]:" << frameHandler.GetMethod()->ParseFunctionName()
         << "\n";
