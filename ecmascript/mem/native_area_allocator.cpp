@@ -107,7 +107,7 @@ void *NativeAreaAllocator::AllocateBuffer(size_t size)
         UNREACHABLE();
     }
 #endif
-    IncreaseNativeMemoryUsage(size);
+    IncreaseNativeMemoryUsage(MallocUsableSize(ptr));
     return ptr;
 }
 
