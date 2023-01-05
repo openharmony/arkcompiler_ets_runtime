@@ -37,7 +37,8 @@ void CheckElimination::Run()
     }
 }
 
-bool CheckElimination::IsPrimitiveTypeCheck(GateRef gate) const {
+bool CheckElimination::IsPrimitiveTypeCheck(GateRef gate) const
+{
     auto op = acc_.GetOpCode(gate);
     return op == OpCode::PRIMITIVE_TYPE_CHECK;
 }
@@ -93,7 +94,8 @@ void CheckElimination::TrustedTypePropagate(std::queue<GateRef>& workList, const
     }
 }
 
-void CheckElimination::RemoveCheck(GateRef gate) {
+void CheckElimination::RemoveCheck(GateRef gate)
+{
     auto state = acc_.GetState(gate);
     auto depend = acc_.GetDep(gate);
     auto uses = acc_.Uses(gate);
@@ -168,12 +170,12 @@ void CheckElimination::RemovePassedCheck()
                 }
                 continue;
             }
-            if ((outs.size() == 2) && (acc_.GetOpCode(gate) == OpCode::JS_BYTECODE)) {
-                if(acc_.GetOpCode(outs[0]) == OpCode::IF_SUCCESS) {
+            if ((outs.size() == 2) && (acc_.GetOpCode(gate) == OpCode::JS_BYTECODE)) { // 2: outs.size()
+                if (acc_.GetOpCode(outs[0]) == OpCode::IF_SUCCESS) {
                     gate = outs[0];
                     continue;
                 }
-                if(acc_.GetOpCode(outs[1]) == OpCode::IF_SUCCESS) {
+                if (acc_.GetOpCode(outs[1]) == OpCode::IF_SUCCESS) {
                     gate = outs[1];
                     continue;
                 }
@@ -191,7 +193,8 @@ void CheckElimination::RemovePassedCheck()
     }
 }
 
-void CheckElimination::RemoveTypeTrustedCheck() {
+void CheckElimination::RemoveTypeTrustedCheck()
+{
     // eliminate type check for type trusted gate (for primitive type check)
     std::vector<GateRef> allGates;
     acc_.GetAllGates(allGates);
