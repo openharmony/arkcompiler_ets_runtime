@@ -90,6 +90,7 @@ public:
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
+    static constexpr int DEFAULT_TYPE_SUMMARY_OFFSET = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -331,14 +332,20 @@ public:
 
     bool HasTSTypes(const CString &recordName) const
     {
-        JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
-        return recordInfo.HasTSTypes();
+        auto it = jsRecordInfo_.find(recordName);
+        if (it != jsRecordInfo_.end()) {
+            return it->second.HasTSTypes();
+        }
+        return false;
     }
 
     uint32_t GetTypeSummaryOffset(const CString &recordName) const
     {
-        JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
-        return recordInfo.GetTypeSummaryOffset();
+        auto it = jsRecordInfo_.find(recordName);
+        if (it != jsRecordInfo_.end()) {
+            return it->second.GetTypeSummaryOffset();
+        }
+        return DEFAULT_TYPE_SUMMARY_OFFSET;
     }
 
     void DeleteParsedConstpoolVM(const EcmaVM *vm)
