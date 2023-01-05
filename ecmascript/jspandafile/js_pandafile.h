@@ -86,6 +86,7 @@ public:
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
     static constexpr char PACKAGE_NAME[] = "pkgName@";
+    static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
     static constexpr uint32_t INVALID_INDEX = -1;
