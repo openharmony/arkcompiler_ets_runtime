@@ -17,7 +17,7 @@
 
 #include "ecmascript/base/atomic_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
-#include "utils/time.h"
+#include "libpandabase/utils/time.h"
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;

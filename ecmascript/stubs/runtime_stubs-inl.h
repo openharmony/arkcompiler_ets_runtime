@@ -2450,11 +2450,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
     Method *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     JSHandle<ConstantPool> constpool(thread, method->GetConstantPool());
-
-    panda_file::File::IndexHeader *indexHeader = constpool->GetIndexHeader();
-    auto pf = jsPandaFile->GetPandaFile();
-    Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
-    panda_file::File::EntityId id = indexs[scopeId];
+    panda_file::File::EntityId id = constpool->GetEntityId(scopeId);
     JSHandle<TaggedArray> elementsLiteral =
         LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id, constpool);
 

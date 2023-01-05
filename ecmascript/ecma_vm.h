@@ -531,8 +531,6 @@ public:
         return pgoProfiler_;
     }
 
-    bool FindCatchBlock(Method *method, uint32_t pc) const;
-
     void PreFork();
     void PostFork();
 

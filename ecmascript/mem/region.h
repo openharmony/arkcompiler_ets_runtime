@@ -26,7 +26,6 @@
 #include "ecmascript/platform/map.h"
 
 #include "libpandabase/os/mutex.h"
-#include "libpandabase/utils/aligned_storage.h"
 
 #include "securec.h"
 

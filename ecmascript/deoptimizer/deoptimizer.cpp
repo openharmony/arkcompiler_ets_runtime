@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
+
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/frames.h"

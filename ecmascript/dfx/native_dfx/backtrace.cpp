@@ -22,7 +22,7 @@
 #include <unwind.h>
 
 #include "ecmascript/log_wrapper.h"
-#include "mem/mem.h"
+#include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";

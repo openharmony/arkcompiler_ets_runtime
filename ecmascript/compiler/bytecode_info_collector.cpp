@@ -42,7 +42,7 @@ void BytecodeInfoCollector::ProcessClasses()
 
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
-        if (pf->IsExternal(classId)) {
+        if (jsPandaFile_->IsExternal(classId)) {
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
@@ -55,7 +55,7 @@ void BytecodeInfoCollector::ProcessClasses()
             vm_->FindOrCreateConstPool(jsPandaFile_, methodId);
 
             auto methodOffset = methodId.GetOffset();
-            CString name = reinterpret_cast<const char *>(pf->GetStringData(mda.GetNameId()).data);
+            CString name = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(mda.GetNameId()).data);
             if (JSPandaFile::IsEntryOrPatch(name)) {
                 const CString recordName = jsPandaFile_->ParseEntryPoint(desc);
                 jsPandaFile_->UpdateMainMethodIndex(methodOffset, recordName);
@@ -289,7 +289,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                                                     const MethodLiteral *method, std::vector<std::string> &classNameVec,
                                                     int32_t bcIndex)
 {
-    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     if (!(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
         BytecodeInstruction::HasId(BytecodeInstruction::GetFormat(bcIns.GetOpcode()), 0))) {
         BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
@@ -297,46 +296,46 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             uint32_t methodId;
             case BytecodeInstruction::Opcode::DEFINEFUNC_IMM8_ID16_IMM8:
             case BytecodeInstruction::Opcode::DEFINEFUNC_IMM16_ID16_IMM8: {
-                methodId = pf->ResolveMethodIndex(method->GetMethodId(),
-                                                  static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
+                methodId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
+                    static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
                 CollectInnerMethods(method, methodId);
                 break;
             }
             case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:
             case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
-                methodId = pf->ResolveMethodIndex(method->GetMethodId(),
-                                                  static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
+                methodId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
+                    static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
                 CollectInnerMethods(method, methodId);
                 break;
             }
             case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:{
-                auto entityId = pf->ResolveMethodIndex(method->GetMethodId(),
+                auto entityId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 classNameVec.emplace_back(GetClassName(entityId));
                 classDefBCIndexes_.insert(bcIndex);
                 methodId = entityId.GetOffset();
                 CollectInnerMethods(method, methodId);
-                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
+                auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
                 CollectInnerMethodsFromNewLiteral(method, literalId);
                 break;
             }
             case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
-                auto entityId = pf->ResolveMethodIndex(method->GetMethodId(),
+                auto entityId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
                 classNameVec.emplace_back(GetClassName(entityId));
                 classDefBCIndexes_.insert(bcIndex);
                 methodId = entityId.GetOffset();
                 CollectInnerMethods(method, methodId);
-                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
+                auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
                 CollectInnerMethodsFromNewLiteral(method, literalId);
                 break;
             }
             case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
             case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
-                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
-                                                        static_cast<uint16_t>(bcIns.GetId().AsRawValue()));
+                auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
+                    static_cast<uint16_t>(bcIns.GetId().AsRawValue()));
                 CollectInnerMethodsFromNewLiteral(method, literalId);
                 break;
             }
@@ -347,8 +346,8 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             }
             case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
             case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
-                auto literalId = pf->ResolveMethodIndex(method->GetMethodId(),
-                                                        static_cast<uint16_t>(bcIns.GetId().AsRawValue()));
+                auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
+                    static_cast<uint16_t>(bcIns.GetId().AsRawValue()));
                 CollectInnerMethodsFromNewLiteral(method, literalId);
                 break;
             }

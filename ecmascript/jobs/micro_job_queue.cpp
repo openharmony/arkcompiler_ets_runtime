@@ -26,8 +26,6 @@
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/tagged_queue.h"
 
-#include "utils/expected.h"
-
 namespace panda::ecmascript::job {
 void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue, QueueType queueType,
     const JSHandle<JSFunction> &job, const JSHandle<TaggedArray> &argv)

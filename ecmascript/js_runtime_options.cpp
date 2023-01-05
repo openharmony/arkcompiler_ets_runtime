@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_runtime_options.h"
+
 #include <cerrno>
 #include <cstdlib>
 #include <iostream>
 #include <getopt.h>
 
 #include "ecmascript/mem/mem_common.h"
-#include "js_runtime_options.h"
 
 namespace panda::ecmascript {
 const std::string PUBLIC_API COMMON_HELP_HEAD_MSG =

@@ -15,7 +15,8 @@
 
 #include "ecmascript/taskpool/runner.h"
 
-#include "os/thread.h"
+#include "libpandabase/os/mutex.h"
+#include "libpandabase/os/thread.h"
 
 namespace panda::ecmascript {
 Runner::Runner(uint32_t threadNum) : totalThreadNum_(threadNum)

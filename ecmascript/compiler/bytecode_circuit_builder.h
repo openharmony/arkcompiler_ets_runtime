@@ -264,7 +264,7 @@ public:
                            bool enableTypeLowering,
                            std::string name,
                            const CString &recordName)
-        : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile), pf_(jsPandaFile->GetPandaFile()),
+        : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
           typeRecorder_(jsPandaFile, method_, tsManager, recordName), hasTypes_(hasTypes),
           enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
@@ -455,7 +455,6 @@ private:
     std::vector<GateRef> byteCodeToJSGate_;
     BytecodeGraph graph_;
     const JSPandaFile *file_ {nullptr};
-    const panda_file::File *pf_ {nullptr};
     const MethodLiteral *method_ {nullptr};
     GateAccessor gateAcc_;
     ArgumentAccessor argAcc_;

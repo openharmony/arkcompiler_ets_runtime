@@ -22,7 +22,7 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 
-#include "os/mutex.h"
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 using JSTaggedType = uint64_t;

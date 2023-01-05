@@ -40,7 +40,7 @@ void Snapshot::Serialize(const CString &fileName)
     Serialize(root.GetTaggedObject(), nullptr, fileName);
 }
 
-void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf, const CString &fileName)
+void Snapshot::Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaFile, const CString &fileName)
 {
     std::string realPath;
     if (!RealPath(std::string(fileName), realPath, false)) {
@@ -65,7 +65,7 @@ void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf,
     processor.EncodeTaggedObject(objectHeader, &objectQueue, &data);
     size_t rootObjSize = objectQueue.size();
     processor.ProcessObjectQueue(&objectQueue, &data);
-    WriteToFile(writer, pf, rootObjSize, processor);
+    WriteToFile(writer, jsPandaFile, rootObjSize, processor);
 }
 
 void Snapshot::Serialize(uintptr_t startAddr, size_t size, const CString &fileName)
@@ -195,7 +195,8 @@ size_t Snapshot::AlignUpPageSize(size_t spaceSize)
     return Constants::PAGE_SIZE_ALIGN_UP * (spaceSize / Constants::PAGE_SIZE_ALIGN_UP + 1);
 }
 
-void Snapshot::WriteToFile(std::fstream &writer, const panda_file::File *pf, size_t size, SnapshotProcessor &processor)
+void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
+                           size_t size, SnapshotProcessor &processor)
 {
     uint32_t totalStringSize = 0U;
     CVector<uintptr_t> stringVector = processor.GetStringVector();
@@ -226,9 +227,9 @@ void Snapshot::WriteToFile(std::fstream &writer, const panda_file::File *pf, siz
         writer.flush();
     }
     ASSERT(static_cast<size_t>(writer.tellp()) == totalObjSize + sizeof(Header));
-    if (pf) {
+    if (jsPandaFile) {
         writer.seekp(pandaFileBegin);
-        writer.write(reinterpret_cast<const char *>(pf->GetBase()), pf->GetHeader()->file_size);
+        writer.write(static_cast<const char *>(jsPandaFile->GetHeader()), jsPandaFile->GetFileSize());
     }
     writer.close();
 }

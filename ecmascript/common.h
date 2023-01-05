@@ -40,6 +40,7 @@ enum TriggerGCType {
 };
 
 constexpr uint32_t NUM_MANDATORY_JSFUNC_ARGS = 3;
+constexpr uint32_t INVALID_INDEX = std::numeric_limits<uint32_t>::max();
 
 using Address = uintptr_t;
 

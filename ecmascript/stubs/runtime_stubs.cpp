@@ -1029,7 +1029,7 @@ DEF_RUNTIME_STUBS(UpFrame)
 {
     RUNTIME_STUBS_HEADER(UpFrame);
     FrameHandler frameHandler(thread);
-    uint32_t pcOffset = panda_file::INVALID_OFFSET;
+    uint32_t pcOffset = INVALID_INDEX;
     for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             thread->SetCurrentFrame(frameHandler.GetSp());
@@ -1037,8 +1037,8 @@ DEF_RUNTIME_STUBS(UpFrame)
             return JSTaggedValue(static_cast<uint64_t>(0)).GetRawData();
         }
         auto method = frameHandler.GetMethod();
-        pcOffset = InterpreterAssembly::FindCatchBlock(method, frameHandler.GetBytecodeOffset());
-        if (pcOffset != panda_file::INVALID_OFFSET) {
+        pcOffset = method->FindCatchBlock(frameHandler.GetBytecodeOffset());
+        if (pcOffset != INVALID_INDEX) {
             thread->SetCurrentFrame(frameHandler.GetSp());
             thread->SetLastFp(frameHandler.GetFp());
             uintptr_t pc = reinterpret_cast<uintptr_t>(method->GetBytecodeArray() + pcOffset);

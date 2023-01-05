@@ -22,7 +22,6 @@
 #include "ecmascript/mem/c_string.h"
 
 #include "libpandabase/macros.h"
-#include "libpandafile/file.h"
 
 namespace panda::ecmascript {
 class Program;
@@ -35,7 +34,7 @@ public:
     ~Snapshot() = default;
 
     void Serialize(const CString &fileName = "./snapshot");
-    void Serialize(TaggedObject *objectHeader, const panda_file::File *pf, const CString &fileName = "./snapshot");
+    void Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaFile, const CString &fileName = "./snapshot");
     void Serialize(uintptr_t startAddr, size_t size, const CString &fileName = "./snapshot");
     void SerializeBuiltins(const CString &fileName = "./snapshot");
     const JSPandaFile *Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins = false);
@@ -54,7 +53,7 @@ private:
 
 private:
     size_t AlignUpPageSize(size_t spaceSize);
-    void WriteToFile(std::fstream &writer, const panda_file::File *pf, size_t size, SnapshotProcessor &processor);
+    void WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile, size_t size, SnapshotProcessor &processor);
 
     NO_MOVE_SEMANTIC(Snapshot);
     NO_COPY_SEMANTIC(Snapshot);

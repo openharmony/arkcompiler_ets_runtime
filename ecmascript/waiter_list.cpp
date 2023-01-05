@@ -17,8 +17,6 @@
 
 #include "ecmascript/base/number_helper.h"
 
-#include "libpandabase/os/time.h"
-
 namespace panda::ecmascript {
 // --------------------------WaiterList------------------------------
 void WaiterList::AddNode(WaiterListNode *node)

@@ -1053,9 +1053,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
         int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
         JSHandle<ConstantPool> oldCP(thread_, vm_->FindConstpool(jsPandaFile, oldCPID));
 
-        panda_file::File::IndexHeader *indexHeader = oldCP->GetIndexHeader();
-        Span<const panda_file::File::EntityId> indexs = jsPandaFile->GetPandaFile()->GetMethodIndex(indexHeader);
-        uint32_t methodOffset = indexs[data.index].GetOffset();
+        uint32_t methodOffset = oldCP->GetEntityId(data.index).GetOffset();
 
         uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
         JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);

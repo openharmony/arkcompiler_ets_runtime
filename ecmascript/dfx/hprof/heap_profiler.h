@@ -24,8 +24,6 @@
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/progress.h"
 
-#include "os/mem.h"
-
 namespace panda::ecmascript {
 class HeapSnapshot;
 class EcmaVM;

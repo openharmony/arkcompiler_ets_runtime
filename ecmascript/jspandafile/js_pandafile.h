@@ -24,6 +24,7 @@
 
 #include "libpandafile/file.h"
 #include "libpandafile/file_items.h"
+
 namespace panda {
 namespace ecmascript {
 class JSPandaFile {
@@ -89,7 +90,6 @@ public:
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
-    static constexpr uint32_t INVALID_INDEX = -1;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -201,6 +201,41 @@ public:
     Span<const uint32_t> GetClasses() const
     {
         return pf_->GetClasses();
+    }
+
+    inline bool IsExternal(panda_file::File::EntityId id) const
+    {
+        return pf_->IsExternal(id);
+    }
+
+    inline panda_file::File::StringData GetStringData(panda_file::File::EntityId id) const
+    {
+        return pf_->GetStringData(id);
+    }
+
+    panda_file::File::EntityId ResolveMethodIndex(panda_file::File::EntityId id, uint16_t idx) const
+    {
+        return pf_->ResolveMethodIndex(id, idx);
+    }
+
+    panda_file::File::EntityId GetLiteralArraysId() const
+    {
+        return pf_->GetLiteralArraysId();
+    }
+
+    Span<const panda_file::File::EntityId> GetMethodIndex(const panda_file::File::IndexHeader *indexHeader) const
+    {
+        return pf_->GetMethodIndex(indexHeader);
+    }
+
+    const void *GetHeader() const
+    {
+        return static_cast<const void *>(pf_->GetHeader());
+    }
+
+    uint32_t GetFileSize() const
+    {
+        return pf_->GetHeader()->file_size;
     }
 
     bool PUBLIC_API IsModule(const CString &recordName = ENTRY_FUNCTION_NAME) const;

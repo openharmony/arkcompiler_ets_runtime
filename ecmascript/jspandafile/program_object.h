@@ -101,8 +101,7 @@ public:
     {
         JSPandaFile *jsPandaFile = GetJSPandaFile();
         panda_file::File::IndexHeader *indexHeader = GetIndexHeader();
-        auto pf = jsPandaFile->GetPandaFile();
-        Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
+        Span<const panda_file::File::EntityId> indexs = jsPandaFile->GetMethodIndex(indexHeader);
         return indexs[index];
     }
 
@@ -320,8 +319,7 @@ public:
 
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
             panda_file::File::EntityId id = taggedPool->GetEntityId(index);
-            auto pf = jsPandaFile->GetPandaFile();
-            auto foundStr = pf->GetStringData(id);
+            auto foundStr = jsPandaFile->GetStringData(id);
 
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();

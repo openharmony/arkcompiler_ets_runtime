@@ -242,7 +242,6 @@ public:
     }
 
     const JSPandaFile *PUBLIC_API GetJSPandaFile() const;
-    const panda_file::File *GetPandaFile() const;
     uint32_t GetCodeSize() const;
     MethodLiteral *GetMethodLiteral() const;
 
@@ -250,6 +249,8 @@ public:
     const char *PUBLIC_API GetMethodName(const JSPandaFile* file) const;
     std::string PUBLIC_API ParseFunctionName() const;
     const CString GetRecordName() const;
+
+    uint32_t FindCatchBlock(uint32_t pc) const;
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, PROFILE_TYPE_INFO_OFFSET)

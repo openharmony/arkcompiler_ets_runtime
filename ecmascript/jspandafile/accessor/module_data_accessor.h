@@ -21,20 +21,15 @@
 #include <variant>
 #include <vector>
 
-#include "libpandabase/macros.h"
-#include "libpandabase/utils/span.h"
-#include "libpandafile/file.h"
-#include "libpandafile/file_items.h"
-#include "libpandafile/helpers.h"
-
 #include "ecmascript/module/js_module_source_text.h"
 
-namespace panda::ecmascript {
-using StringData = panda_file::File::StringData;
+#include "libpandabase/macros.h"
+#include "libpandabase/utils/span.h"
 
+namespace panda::ecmascript {
 class ModuleDataAccessor {
 public:
-    ModuleDataAccessor(const panda_file::File &panda_file, panda_file::File::EntityId module_data_id);
+    ModuleDataAccessor(const JSPandaFile *pandaFile, panda_file::File::EntityId module_data_id);
     ~ModuleDataAccessor() = default;
     DEFAULT_MOVE_CTOR(ModuleDataAccessor)
     DEFAULT_COPY_CTOR(ModuleDataAccessor)
@@ -52,11 +47,6 @@ public:
     void EnumerateStarExportEntry(JSThread *thread, const JSHandle<TaggedArray> &requestModuleArray,
                                   JSHandle<SourceTextModule> &moduleRecord);
 
-    const panda_file::File &GetPandaFile() const
-    {
-        return pandaFile_;
-    }
-
     panda_file::File::EntityId GetModuleDataId() const
     {
         return moduleDataId_;
@@ -67,10 +57,8 @@ public:
         return moduleRequests_;
     }
 
-    using ModuleValue = std::variant<uint32_t, StringData>;
-
 private:
-    const panda_file::File &pandaFile_;
+    const JSPandaFile *pandaFile_;
     panda_file::File::EntityId moduleDataId_;
     uint32_t numModuleRequests_;
     std::vector<uint32_t> moduleRequests_;

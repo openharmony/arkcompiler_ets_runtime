@@ -20,7 +20,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/taskpool/runner.h"
-#include "os/mutex.h"
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 class Taskpool {

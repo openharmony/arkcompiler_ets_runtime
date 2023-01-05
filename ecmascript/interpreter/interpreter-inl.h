@@ -37,10 +37,6 @@
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/template_string.h"
-
-#include "libpandafile/code_data_accessor.h"
-#include "libpandafile/file.h"
-#include "libpandafile/method_data_accessor-inl.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -3639,21 +3635,21 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     NOPRINT_HANDLE_OPCODE(EXCEPTION) {
         FrameHandler frameHandler(thread);
-        uint32_t pcOffset = panda_file::INVALID_OFFSET;
+        uint32_t pcOffset = INVALID_INDEX;
         for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
             if (frameHandler.IsEntryFrame()) {
                 return;
             }
             auto method = frameHandler.GetMethod();
-            pcOffset = FindCatchBlock(method, frameHandler.GetBytecodeOffset());
-            if (pcOffset != panda_file::INVALID_OFFSET) {
+            pcOffset = method->FindCatchBlock(frameHandler.GetBytecodeOffset());
+            if (pcOffset != INVALID_INDEX) {
                 sp = frameHandler.GetSp();
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 pc = method->GetBytecodeArray() + pcOffset;
                 break;
             }
         }
-        if (pcOffset == panda_file::INVALID_OFFSET) {
+        if (pcOffset == INVALID_INDEX) {
             return;
         }
 
@@ -7086,25 +7082,6 @@ void EcmaInterpreter::InitStackFrame(JSThread *thread)
     state->profileTypeInfo = JSTaggedValue::Undefined();
     state->base.type = FrameType::INTERPRETER_FRAME;
     state->base.prev = nullptr;
-}
-
-uint32_t EcmaInterpreter::FindCatchBlock(Method *caller, uint32_t pc)
-{
-    auto *pandaFile = caller->GetPandaFile();
-    panda_file::MethodDataAccessor mda(*pandaFile, caller->GetMethodId());
-    panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());
-
-    uint32_t pcOffset = panda_file::INVALID_OFFSET;
-    cda.EnumerateTryBlocks([&pcOffset, pc](panda_file::CodeDataAccessor::TryBlock &try_block) {
-        if ((try_block.GetStartPc() <= pc) && ((try_block.GetStartPc() + try_block.GetLength()) > pc)) {
-            try_block.EnumerateCatchBlocks([&](panda_file::CodeDataAccessor::CatchBlock &catch_block) {
-                pcOffset = catch_block.GetHandlerPc();
-                return false;
-            });
-        }
-        return pcOffset == panda_file::INVALID_OFFSET;
-    });
-    return pcOffset;
 }
 
 JSTaggedValue EcmaInterpreter::GetFunction(JSTaggedType *sp)
