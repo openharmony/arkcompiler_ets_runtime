@@ -93,7 +93,7 @@ void Heap::Initialize()
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
 
-    LOG_GC(INFO) << "heap initialize: heap size = " << (maxHeapSize / 1_MB) << "MB"
+    LOG_GC(DEBUG) << "heap initialize: heap size = " << (maxHeapSize / 1_MB) << "MB"
                  << ", semispace capacity = " << (minSemiSpaceCapacity / 1_MB) << "MB"
                  << ", nonmovablespace capacity = " << (nonmovableSpaceCapacity / 1_MB) << "MB"
                  << ", snapshotspace capacity = " << (snapshotSpaceCapacity / 1_MB) << "MB"

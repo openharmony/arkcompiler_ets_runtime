@@ -447,10 +447,10 @@ size_t JSThread::GetAsmStackLimit()
     }
 
     uintptr_t threadStackStart = threadStackLimit + size;
-    LOG_INTERPRETER(INFO) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
-    LOG_INTERPRETER(INFO) << "Used stack before js stack start: "
+    LOG_INTERPRETER(DEBUG) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
+    LOG_INTERPRETER(DEBUG) << "Used stack before js stack start: "
                           << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
-    LOG_INTERPRETER(INFO) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
+    LOG_INTERPRETER(DEBUG) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
     ret = pthread_attr_destroy(&attr);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Destroy current thread attr failed";
