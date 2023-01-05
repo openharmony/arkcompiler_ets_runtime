@@ -155,7 +155,8 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
         LOG_ECMA(ERROR) << "sem_[1] wait failed";
         return profileInfo;
     }
-
+    generator_->FinetuneSampleData();
+    generator_->ClearNapiCall();
     profileInfo = generator_->GetProfileInfo();
     return profileInfo;
 }
@@ -197,6 +198,8 @@ void CpuProfiler::StopCpuProfilerForFile()
         LOG_ECMA(ERROR) << "sem_[1] wait failed";
         return;
     }
+    generator_->FinetuneSampleData();
+    generator_->ClearNapiCall();
     generator_->StringifySampleData();
     std::string fileData = generator_->GetSampleData();
     generator_->fileHandle_ << fileData;
@@ -537,7 +540,7 @@ void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
     }
 }
 
-void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread)
+void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread, const std::string &methodAddr)
 {
     generator_->SetBeforeGetCallNapiStackFlag(true);
     if (GetFrameStackCallNapi(thread)) {
@@ -550,6 +553,7 @@ void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread)
     } else {
         generator_->SetBeforeGetCallNapiStackFlag(false);
     }
+    RecordCallNapiInfo(methodAddr);
 }
 
 void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *siginfo, void *context)
@@ -752,5 +756,12 @@ void *CpuProfiler::GetMethodIdentifier(Method *method, const FrameIterator &it)
     }
     JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
     return reinterpret_cast<void *>(extraInfo->GetData());
+}
+
+void CpuProfiler::RecordCallNapiInfo(const std::string &methodAddr)
+{
+    uint64_t currentTime = SamplingProcessor::GetMicrosecondsTimeStamp();
+    generator_->RecordCallNapiTime(currentTime);
+    generator_->RecordCallNapiAddr(methodAddr);
 }
 } // namespace panda::ecmascript
