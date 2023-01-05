@@ -197,8 +197,8 @@ std::string ErrorHelper::DecodeFunctionName(const std::string &name)
 JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
-        if (!frameHandler.IsInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (!frameHandler.IsJSFrame()) {
             continue;
         }
 

@@ -792,7 +792,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     if (!thread_->IsAsmInterpreter()) {
         FrameHandler frameHandler(thread_);
         if (frameHandler.IsInterpretedEntryFrame()) {
-            thread_->SetCurrentSPFrame(frameHandler.GetPrevInterpretedFrame());
+            thread_->SetCurrentSPFrame(frameHandler.GetPrevJSFrame());
         }
     }
 

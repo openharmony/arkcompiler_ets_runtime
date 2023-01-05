@@ -68,8 +68,8 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
 {
     std::string data;
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
-        if (!frameHandler.IsInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (!frameHandler.IsJSFrame()) {
             continue;
         }
         auto method = frameHandler.CheckAndGetMethod();
@@ -101,8 +101,8 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
     FrameHandler frameHandler(thread);
     std::vector<struct JsFrameInfo> jsframe;
     uintptr_t *native = nullptr;
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
-        if (!frameHandler.IsInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (!frameHandler.IsJSFrame()) {
             continue;
         }
         auto method = frameHandler.CheckAndGetMethod();

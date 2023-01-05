@@ -7266,7 +7266,7 @@ void InterpreterAssembly::ExceptionHandler(
 {
     FrameHandler frameHandler(thread);
     uint32_t pcOffset = panda_file::INVALID_OFFSET;
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             thread->SetLastFp(frameHandler.GetFp());
             return;
