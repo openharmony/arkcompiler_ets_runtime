@@ -217,7 +217,7 @@ EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
     }
     auto config = ecmascript::EcmaParamConfiguration(options.IsWorker(),
         MemMapAllocator::GetInstance()->GetCapacity());
-    LOG_ECMA(INFO) << " [NAPI]: CreateEcmaVM, isWorker = " << options.IsWorker() << ", vmCount = " << vmCount_;
+    LOG_ECMA(DEBUG) << " [NAPI]: CreateEcmaVM, isWorker = " << options.IsWorker() << ", vmCount = " << vmCount_;
     MemMapAllocator::GetInstance()->IncreaseAndCheckReserved(config.GetMaxHeapSize());
     return EcmaVM::Create(options, config);
 }
