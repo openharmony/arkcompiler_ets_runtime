@@ -102,6 +102,7 @@ class JSThread;
     V(JSTaggedValue, AsyncFunctionPrototype, ASYNC_FUNCTION_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, JSGlobalObject, JS_GLOBAL_OBJECT_INDEX)                                        \
     V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX)                                   \
+    V(JSTaggedValue, HasInstanceFunction, HASINSTANCE_FUNCTION_INDEX)                               \
     V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX)                               \
     V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                   \
     V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                         \
@@ -228,6 +229,11 @@ public:
             reinterpret_cast<uintptr_t>(this) + HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();  \
         JSHandle<type> result(address);                                                                 \
         return result;                                                                                  \
+    }                                                                                                   \
+    inline JSTaggedValue GetTagged##name() const                                                        \
+    {                                                                                                   \
+        uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(this, offset));                           \
     }                                                                                                   \
     template<typename T>                                                                                \
     inline void Set##name(const JSThread *thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)  \
