@@ -139,7 +139,7 @@ void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
             JSHandle<TaggedArray> typeOfInstruction =
                 LiteralDataExtractor::GetTypeLiteral(vm_->GetJSThread(), jsPandaFile_, literalOffset);
             std::map<int32_t, uint32_t> offsetTypeMap;
-            for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {
+            for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // 2: Two parsing once
                 int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
                 uint32_t typeOffset = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
                 if (classDefBCIndexes_.find(bcOffset) != classDefBCIndexes_.end()) {

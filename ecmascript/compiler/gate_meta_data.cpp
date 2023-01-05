@@ -150,13 +150,15 @@ bool GateMetaData::IsTypedOperator() const
         (opcode_ == OpCode::TYPED_UNARY_OP);
 }
 
-bool GateMetaData::IsCheckWithTwoIns() const {
+bool GateMetaData::IsCheckWithTwoIns() const
+{
     return (opcode_ == OpCode::OBJECT_TYPE_CHECK) ||
            (opcode_ == OpCode::INDEX_CHECK) ||
            (opcode_ == OpCode::TYPED_CALL_CHECK);
 }
 
-bool GateMetaData::IsCheckWithOneIn() const {
+bool GateMetaData::IsCheckWithOneIn() const
+{
     return (opcode_ == OpCode::PRIMITIVE_TYPE_CHECK) ||
            (opcode_ == OpCode::INT32_OVERFLOW_CHECK) ||
            (opcode_ == OpCode::ARRAY_CHECK) ||

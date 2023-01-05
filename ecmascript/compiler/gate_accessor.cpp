@@ -383,8 +383,7 @@ bool GateAccessor::IsTypedOperator(GateRef gate) const
 bool GateAccessor::IsNotWrite(GateRef gate) const
 {
     auto op = GetOpCode(gate);
-    switch (op)
-    {
+    switch (op) {
         case OpCode::STATE_ENTRY:
         case OpCode::RETURN:
         case OpCode::RETURN_VOID:
@@ -415,8 +414,7 @@ bool GateAccessor::IsNotWrite(GateRef gate) const
     }
     if (op == OpCode::JS_BYTECODE) {
         auto ecmaOp = GetByteCodeOpcode(gate);
-        switch (ecmaOp)
-        {
+        switch (ecmaOp) {
             case EcmaOpcode::INC_IMM8:
             case EcmaOpcode::DEC_IMM8:
             case EcmaOpcode::GETPROPITERATOR:

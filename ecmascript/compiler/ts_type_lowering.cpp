@@ -1059,7 +1059,6 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
     builder_.Bind(&construct);
     builder_.DeoptCheck(*check, frameState);
 
-
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);
     GateRef envArg = builder_.Undefined();
