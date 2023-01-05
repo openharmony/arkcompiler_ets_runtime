@@ -55,6 +55,8 @@ static constexpr uint8_t UTF8_4B_FIRST = 0xf0;
 static constexpr uint8_t byteMask = 0xbf;
 static constexpr uint8_t byteMark = 0x80;
 
+static constexpr uint8_t latin1Limit = 0xFF;
+
 enum UtfLength : uint8_t { ONE = 1, TWO = 2, THREE = 3, FOUR = 4 };
 enum UtfOffset : uint8_t { SIX = 6, TEN = 10, TWELVE = 12, EIGHTEEN = 18 };
 
@@ -87,6 +89,8 @@ size_t Utf8ToUtf16Size(const uint8_t *utf8, size_t utf8Len);
 
 size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_t utf8Len, size_t utf16Len,
                                 size_t start);
+
+size_t ConvertRegionUtf16ToLatin1(const uint16_t *utf16In, uint8_t *latin1Out, size_t utf16Len, size_t latin1Len);
 
 static inline uint32_t CombineTwoU16(uint16_t d0, uint16_t d1)
 {

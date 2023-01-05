@@ -238,6 +238,35 @@ private:
         return CopyDataRegionUtf8(buf, 0, GetLength(), maxLength, true, isWriteBuffer) + 1;
     }
 
+    size_t WriteOneByte(uint8_t *buf, size_t maxLength) const
+    {
+        if (maxLength == 0) {
+            return 0;
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        buf[maxLength - 1] = '\0';
+        uint32_t length = GetLength();
+        if (!IsUtf16()) {
+            CVector<uint8_t> tmpBuf;
+            const uint8_t *data = GetUtf8DataFlat(this, tmpBuf);
+            if (length > maxLength) {
+                length = maxLength;
+            }
+            if (memcpy_s(buf, maxLength, data, length) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed when write one byte";
+                UNREACHABLE();
+            }
+            return length;
+        }
+        
+        CVector<uint16_t> tmpBuf;
+        const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
+        if (length > maxLength) {
+            return base::utf_helper::ConvertRegionUtf16ToLatin1(data, buf, maxLength, maxLength);
+        }
+        return base::utf_helper::ConvertRegionUtf16ToLatin1(data, buf, length, maxLength);
+    }
+
     size_t CopyDataRegionUtf8(uint8_t *buf, size_t start, size_t length, size_t maxLength,
                               bool modify = true, bool isWriteBuffer = false) const
     {
@@ -705,6 +734,11 @@ public:
     uint32_t WriteToFlatUtf8(uint8_t *buf, uint32_t maxLength, bool isWriteBuffer = false)
     {
         return string_->WriteUtf8(buf, maxLength, isWriteBuffer);
+    }
+
+    uint32_t WriteToOneByte(uint8_t *buf, uint32_t maxLength)
+    {
+        return string_->WriteOneByte(buf, maxLength);
     }
 
     // not change string data structure.

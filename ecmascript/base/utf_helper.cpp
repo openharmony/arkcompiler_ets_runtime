@@ -286,4 +286,22 @@ size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_
 {
     return utf::ConvertRegionMUtf8ToUtf16(utf8In, utf16Out, utf8Len, utf16Len, start);
 }
+
+size_t ConvertRegionUtf16ToLatin1(const uint16_t *utf16In, uint8_t *latin1Out, size_t utf16Len, size_t latin1Len)
+{
+    if (utf16In == nullptr || latin1Out == nullptr || latin1Len == 0) {
+        return 0;
+    }
+    size_t latin1Pos = 0;
+    size_t end = utf16Len;
+    for (size_t i = 0; i < end; ++i) {
+        if (latin1Pos == latin1Len) {
+            break;
+        }
+        uint32_t codepoint = DecodeUTF16(utf16In, end, &i);
+        uint8_t latin1Code = static_cast<uint8_t>(codepoint & latin1Limit);
+        latin1Out[latin1Pos++] = latin1Code;
+    }
+    return latin1Pos;
+}
 }  // namespace panda::ecmascript::base::utf_helper
