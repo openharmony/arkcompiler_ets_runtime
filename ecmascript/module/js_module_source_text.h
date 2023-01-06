@@ -62,6 +62,8 @@ public:
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
         CVector<JSHandle<SourceTextModule>> &stack, int index, const void *buffer = nullptr,
         size_t size = 0, bool excuteFromJob = false);
+    static int ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
+                                CVector<JSHandle<SourceTextModule>> &stack, int index);
 
     // 15.2.1.16.5.2 ModuleExecution ( module )
     static void ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -110,6 +112,7 @@ public:
     // 15.2.1.16.5 Evaluate()
     static int Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
                         const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
+    static int EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     // 15.2.1.16.4 Instantiate()
     static void CJSInstantiate(JSThread *thread, const JSHandle<SourceTextModule> &module,

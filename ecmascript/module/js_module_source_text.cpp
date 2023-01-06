@@ -653,6 +653,41 @@ int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule
     return SourceTextModule::UNDEFINED_INDEX;
 }
 
+int SourceTextModule::EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module)
+{
+    // 1. Let module be this Source Text Module Record.
+    // 2. Assert: module.[[Status]] is "instantiated" or "evaluated".
+    [[maybe_unused]] ModuleStatus status = module->GetStatus();
+    ASSERT((status == ModuleStatus::INSTANTIATED || status == ModuleStatus::EVALUATED));
+    // 3. Let stack be a new empty List.
+    CVector<JSHandle<SourceTextModule>> stack;
+    // 4. Let result be InnerModuleEvaluation(module, stack, 0)
+    JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
+    int result = SourceTextModule::ModuleEvaluation(thread, moduleRecord, stack, 0);
+    // 5. If result is an abrupt completion, then
+    if (thread->HasPendingException()) {
+        // a. For each module m in stack, do
+        for (auto mm : stack) {
+            // i. Assert: m.[[Status]] is "evaluating".
+            ASSERT(mm->GetStatus() == ModuleStatus::EVALUATING);
+            // ii. Set m.[[Status]] to "evaluated".
+            mm->SetStatus(ModuleStatus::EVALUATED);
+            // iii. Set m.[[EvaluationError]] to result.
+            mm->SetEvaluationError(result);
+        }
+        // b. Assert: module.[[EvaluationError]] is result.
+        ASSERT(module->GetEvaluationError() == result);
+        // c. return result
+        return result;
+    }
+    // 6. Assert: module.[[EvaluationError]] is undefined.
+    ASSERT(module->GetEvaluationError() == SourceTextModule::UNDEFINED_INDEX);
+    // 7. Assert: stack is empty.
+    ASSERT(stack.empty());
+    // 8. Return undefined.
+    return SourceTextModule::UNDEFINED_INDEX;
+}
+
 int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
                                             CVector<JSHandle<SourceTextModule>> &stack, int index,
                                             const void *buffer, size_t size, bool excuteFromJob)
@@ -763,6 +798,41 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
             // iv. If requiredModule and module are the same Module Record, set done to true.
             if (JSTaggedValue::SameValue(module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
                 done = true;
+            }
+        }
+    }
+    return index;
+}
+
+int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
+                                       CVector<JSHandle<SourceTextModule>> &stack, int index)
+{
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    if (!module->GetRequestedModules().IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+        size_t requestedModulesLen = requestedModules->GetLength();
+        JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
+        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            required.Update(requestedModules->Get(idx));
+            JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
+            JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+            if (moduleRecordName.IsUndefined()) {
+                requiredModule.Update(SourceTextModule::HostResolveImportedModule(thread, module, required));
+            } else {
+                ASSERT(moduleRecordName.IsString());
+                requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
+            }
+            JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
+            if (requiredModule->GetTypes() == ModuleTypes::JSONMODULE) {
+                requiredModule->SetStatus(ModuleStatus::EVALUATED);
+                continue;
+            }
+            index = SourceTextModule::InnerModuleEvaluation(thread, requiredModuleRecord, stack, index);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
+            [[maybe_unused]] ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
+            ASSERT(requiredModuleStatus == ModuleStatus::EVALUATED);
+            if ((requiredModule->GetTypes() == ModuleTypes::CJSMODULE)) {
+                CJSInstantiate(thread, module, requiredModule);
             }
         }
     }
