@@ -314,12 +314,11 @@ public:
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnOp(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
-    const std::string GetConstantString(GateRef gate) const;
+    const ChunkVector<char>& GetConstantString(GateRef gate) const;
     uint32_t GetBytecodeIndex(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     const std::map<std::pair<GateRef, uint32_t>, uint32_t> &GetRestoreRegsInfo(GateRef gate) const;
     void SetRestoreRegsInfo(GateRef gate, std::pair<GateRef, uint32_t> &info, uint32_t index) const;
-    size_t GetNumOfSaveRegs(GateRef gate) const;
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;
     GateId GetId(GateRef gate) const;
@@ -363,6 +362,7 @@ public:
     bool IsConstantValue(GateRef gate, uint64_t value) const;
     bool IsTypedOperator(GateRef gate) const;
     bool IsNotWrite(GateRef gate) const;
+    bool IsDead(GateRef gate) const;
     bool IsCheckWithOneIn(GateRef gate) const;
     bool IsCheckWithTwoIns(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
@@ -376,9 +376,11 @@ public:
     bool IsStateIn(const UseIterator &useIt) const;
     bool IsDependIn(const UseIterator &useIt) const;
     bool IsValueIn(const UseIterator &useIt) const;
+    bool IsFrameStateIn(const UseIterator &useIt) const;
     bool IsExceptionState(const UseIterator &useIt) const;
     bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
+    bool IsFrameStateIn(GateRef gate, size_t index) const;
     void GetStateUses(GateRef gate, std::vector<GateRef>& outStates);
     void DeleteStateSplitAndFrameState(GateRef gate);
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
@@ -408,6 +410,9 @@ public:
         return GetRoot(OpCode::RETURN_LIST);
     }
 
+    GateRef GetFrameState(GateRef gate) const;
+    void ReplaceFrameStateIn(GateRef gate, GateRef in);
+    bool HasFrameState(GateRef gate) const;
     const GateMetaData *GetMetaData(GateRef gate) const;
     void SetMetaData(GateRef gate, const GateMetaData* meta);
 

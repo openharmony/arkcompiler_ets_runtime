@@ -169,7 +169,7 @@ uint64_t GateAccessor::GetConstantValue(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
-const std::string GateAccessor::GetConstantString(GateRef gate) const
+const ChunkVector<char>& GateAccessor::GetConstantString(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::CONSTSTRING);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -202,13 +202,6 @@ void GateAccessor::SetRestoreRegsInfo(GateRef gate, std::pair<GateRef, uint32_t>
     ASSERT(GetOpCode(gate) == OpCode::RESTORE_REGISTER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     const_cast<RestoreRegsMetaData*>(gatePtr->GetRestoreRegsMetaData())->SetRestoreRegsInfo(info, index);
-}
-
-size_t GateAccessor::GetNumOfSaveRegs(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::SAVE_REGISTER);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return static_cast<size_t>(gatePtr->GetSaveRegsMetaData()->GetNumValue());
 }
 
 void GateAccessor::Print(GateRef gate) const
@@ -382,37 +375,7 @@ bool GateAccessor::IsTypedOperator(GateRef gate) const
 
 bool GateAccessor::IsNotWrite(GateRef gate) const
 {
-    auto op = GetOpCode(gate);
-    switch (op) {
-        case OpCode::STATE_ENTRY:
-        case OpCode::RETURN:
-        case OpCode::RETURN_VOID:
-        case OpCode::ORDINARY_BLOCK:
-        case OpCode::MERGE:
-        case OpCode::IF_BRANCH:
-        case OpCode::IF_TRUE:
-        case OpCode::IF_FALSE:
-        case OpCode::IF_SUCCESS:
-        case OpCode::IF_EXCEPTION:
-        case OpCode::TO_LENGTH:
-        case OpCode::ARRAY_CHECK:
-        case OpCode::STABLE_ARRAY_CHECK:
-        case OpCode::PRIMITIVE_TYPE_CHECK:
-        case OpCode::OBJECT_TYPE_CHECK:
-        case OpCode::TYPED_ARRAY_CHECK:
-        case OpCode::INDEX_CHECK:
-        case OpCode::INT32_OVERFLOW_CHECK:
-        case OpCode::TYPED_UNARY_OP:
-        case OpCode::TYPED_BINARY_OP:
-        case OpCode::TYPE_CONVERT:
-        case OpCode::LOAD_ELEMENT:
-        case OpCode::LOAD_PROPERTY:
-        case OpCode::LOAD_ARRAY_LENGTH:
-            return true;
-        default:
-            break;
-    }
-    return false;
+    return GetMetaData(gate)->IsNotWrite();
 }
 
 bool GateAccessor::IsCheckWithTwoIns(GateRef gate) const
@@ -622,6 +585,12 @@ bool GateAccessor::IsValueIn(const UseIterator &useIt) const
     return (index >= valueStartIndex && index < valueEndIndex);
 }
 
+bool GateAccessor::IsFrameStateIn(const UseIterator &useIt) const
+{
+    size_t index = useIt.GetIndex();
+    return IsFrameStateIn(*useIt, index);
+}
+
 bool GateAccessor::IsExceptionState(const UseIterator &useIt) const
 {
     auto op = GetOpCode(*useIt);
@@ -645,13 +614,21 @@ bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
     return (index >= valueStartIndex && index < valueEndIndex);
 }
 
+bool GateAccessor::IsFrameStateIn(GateRef gate, size_t index) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    size_t frameStateStartIndex = gatePtr->GetInFrameStateStarts();
+    size_t FrameStateEndIndex = frameStateStartIndex + gatePtr->GetInFrameStateCount();
+    return (index >= frameStateStartIndex && index < FrameStateEndIndex);
+}
+
 void GateAccessor::DeleteStateSplitAndFrameState(GateRef gate)
 {
     GateRef stateSplit = GetDep(gate);
     if (GetOpCode(stateSplit) == OpCode::STATE_SPLIT) {
         GateRef dep = GetDep(stateSplit);
         ReplaceDependIn(gate, dep);
-        GateRef frameState = GetValueIn(stateSplit, 0);
+        GateRef frameState = GetFrameState(stateSplit);
         DeleteGate(frameState);
         DeleteGate(stateSplit);
     }
@@ -673,6 +650,26 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
         }
     }
     DeleteGate(gate);
+}
+
+GateRef GateAccessor::GetFrameState(GateRef gate) const
+{
+    ASSERT(HasFrameState(gate));
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    size_t index = gatePtr->GetInFrameStateStarts();
+    return circuit_->GetIn(gate, index);
+}
+
+bool GateAccessor::HasFrameState(GateRef gate) const
+{
+    return GetMetaData(gate)->HasFrameState();
+}
+
+void GateAccessor::ReplaceFrameStateIn(GateRef gate, GateRef in)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    size_t index = gatePtr->GetInFrameStateStarts();
+    circuit_->ModifyIn(gate, index, in);
 }
 
 GateRef GateAccessor::GetRoot(OpCode opcode) const

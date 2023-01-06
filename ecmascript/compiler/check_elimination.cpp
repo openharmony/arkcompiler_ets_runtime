@@ -102,6 +102,8 @@ void CheckElimination::RemoveCheck(GateRef gate)
     for (auto i = uses.begin(); i != uses.end();) {
         if (acc_.IsStateIn(i)) {
             i = acc_.ReplaceIn(i, state);
+        } else if (acc_.IsDependIn(i)) {
+            i = acc_.ReplaceIn(i, depend);
         } else if (acc_.IsValueIn(i)) {
             i = acc_.ReplaceIn(i, depend);
         }

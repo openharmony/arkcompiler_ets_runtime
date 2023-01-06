@@ -60,14 +60,14 @@ static constexpr size_t FIVE_VALUE = 5;
     IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_CACHED_GATE_META)
 #undef DECLARE_CACHED_GATE_META
 
-#define DECLARE_CACHED_VALUE_META(VALUE)                                           \
-GateMetaData cachedMerge##VALUE##_ { OpCode::MERGE, false, VALUE, 0, 0 };          \
-GateMetaData cachedDependSelector##VALUE##_ { OpCode::DEPEND_SELECTOR, false, 1, VALUE, 0 };
+#define DECLARE_CACHED_VALUE_META(VALUE)                                                        \
+GateMetaData cachedMerge##VALUE##_ { OpCode::MERGE, GateFlags::CONTROL, VALUE, 0, 0 };          \
+GateMetaData cachedDependSelector##VALUE##_ { OpCode::DEPEND_SELECTOR, GateFlags::FIXED, 1, VALUE, 0 };
 CACHED_VALUE_LIST(DECLARE_CACHED_VALUE_META)
 #undef DECLARE_CACHED_VALUE_META
 
 #define DECLARE_CACHED_VALUE_META(VALUE)                               \
-OneParameterMetaData cachedArg##VALUE##_ { OpCode::ARG, true, 0, 0, 0, VALUE };
+OneParameterMetaData cachedArg##VALUE##_ { OpCode::ARG, GateFlags::HAS_ROOT, 0, 0, 0, VALUE };
 CACHED_ARG_LIST(DECLARE_CACHED_VALUE_META)
 #undef DECLARE_CACHED_VALUE_META
 
@@ -107,15 +107,10 @@ public:
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
-#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                        \
-    const GateMetaData* NAME(uint64_t value);
-    GATE_META_DATA_IN_SAVE_REGISTER(DECLARE_GATE_META)
-#undef DECLARE_GATE_META
-
     explicit GateMetaBuilder(Chunk* chunk);
-    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
+    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex, GateFlags flags)
     {
-        return new (chunk_) JSBytecodeMetaData(valuesIn, opcode, bcIndex);
+        return new (chunk_) JSBytecodeMetaData(valuesIn, opcode, bcIndex, flags);
     }
 
     const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp)
@@ -135,16 +130,19 @@ public:
 
     GateMetaData* NewGateMetaData(const GateMetaData* other)
     {
-        auto meta = new (chunk_) GateMetaData(other->opcode_, other->HasRoot(),
+        auto meta = new (chunk_) GateMetaData(other->opcode_, other->GetFlags(),
             other->statesIn_, other->dependsIn_, other->valuesIn_);
-        meta->SetKind(GateMetaData::MUTABLE_WITH_SIZE);
+        meta->SetKind(GateMetaData::Kind::MUTABLE_WITH_SIZE);
         return meta;
     }
 
-    const GateMetaData* ConstString(const std::string &str);
+    const GateMetaData* ConstString(const std::string &str)
+    {
+        return new (chunk_) StringMetaData(chunk_, str);
+    }
 private:
     const GateMetaDataChache cache_;
-    const GateMetaData cachedNop_ { OpCode::NOP, false, 0, 0, 0 };
+    const GateMetaData cachedNop_ { OpCode::NOP, GateFlags::NONE_FLAG, 0, 0, 0 };
     Chunk* chunk_;
 };
 } // namespace panda::ecmascript::kungfu

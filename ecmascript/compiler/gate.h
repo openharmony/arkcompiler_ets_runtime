@@ -171,8 +171,10 @@ public:
     [[nodiscard]] size_t GetStateCount() const;
     [[nodiscard]] size_t GetDependCount() const;
     [[nodiscard]] size_t GetInValueCount() const;
+    [[nodiscard]] size_t GetInFrameStateCount() const;
     [[nodiscard]] size_t GetInValueStarts() const;
     [[nodiscard]] size_t GetRootCount() const;
+    [[nodiscard]] size_t GetInFrameStateStarts() const;
     void AppendIn(const Gate *in);  // considered very slow
     void Print(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
     void ShortPrint(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
@@ -184,6 +186,7 @@ public:
     void CheckValueInput(bool isArch64) const;
     void CheckDependInput() const;
     void CheckRootInput() const;
+    void CheckFrameStateInput() const;
     void CheckStateOutput() const;
     void CheckBranchOutput() const;
     void CheckNOP() const;
@@ -239,10 +242,6 @@ public:
         return RestoreRegsMetaData::Cast(meta_);
     }
 
-    const SaveRegsMetaData* GetSaveRegsMetaData() const
-    {
-        return SaveRegsMetaData::Cast(meta_);
-    }
     std::string MachineTypeStr(MachineType machineType) const;
     std::string GateTypeStr(GateType gateType) const;
     ~Gate() = default;

@@ -819,7 +819,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
     auto hole = circuit_->GetConstantGate(MachineType::I64,
                                           JSTaggedValue::VALUE_HOLE,
                                           GateType::TaggedValue());
-    size_t numVreg = acc_.GetNumOfSaveRegs(saveRegister);
+    size_t numVreg = acc_.GetNumValueIn(saveRegister);
     for (size_t idx = 0; idx < numVreg; idx++) {
         GateRef tmpGate = acc_.GetValueIn(saveRegister, idx);
         if (tmpGate != hole) {

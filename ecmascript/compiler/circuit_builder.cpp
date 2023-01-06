@@ -143,10 +143,25 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef ind
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate, index}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef index,
+    GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -155,10 +170,12 @@ GateRef CircuitBuilder::ArrayCheck(GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->ArrayCheck(),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -167,10 +184,12 @@ GateRef CircuitBuilder::StableArrayCheck(GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->StableArrayCheck(),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -179,10 +198,12 @@ GateRef CircuitBuilder::TypedArrayCheck(GateType type, GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -191,10 +212,12 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate, index}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -203,10 +226,12 @@ GateRef CircuitBuilder::PrimitiveTypeCheck(GateType type, GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->PrimitiveTypeCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -215,10 +240,12 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef pa
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
-        MachineType::I1, { currentControl, currentDepend, function, id, param}, GateType::NJSValue());
+        MachineType::I1, { currentControl, currentDepend, function, id, param, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 

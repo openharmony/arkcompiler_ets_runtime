@@ -306,7 +306,7 @@ void Circuit::DecreaseIn(GateRef gate, size_t idx)
     DeleteIn(gate, numIns - 1);
     GateMetaData *meta = const_cast<GateMetaData *>(
             LoadGatePtr(gate)->GetMetaData());
-    if (meta->GetKind() == GateMetaData::MUTABLE_WITH_SIZE) {
+    if (meta->GetKind() == GateMetaData::Kind::MUTABLE_WITH_SIZE) {
         meta->DecreaseIn(idx);
     } else {
         meta = metaBuilder_.NewGateMetaData(meta);

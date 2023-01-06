@@ -106,15 +106,6 @@ void TypeLowering::LowerType(GateRef gate)
     }
 }
 
-GateRef TypeLowering::GetFrameState(GateRef gate)
-{
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    GateRef frameState = acc_.GetValueIn(stateSplit, 0);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
-    return frameState;
-}
-
 void TypeLowering::LowerPrimitiveTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
