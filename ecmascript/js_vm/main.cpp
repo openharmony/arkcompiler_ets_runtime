@@ -16,7 +16,6 @@
 #include <chrono>
 #include <iostream>
 #include <iterator>
-#include <limits>
 #include <ostream>
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>

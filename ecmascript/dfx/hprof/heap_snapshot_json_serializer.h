@@ -17,9 +17,8 @@
 #define ECMASCRIPT_HPROF_HEAP_SNAPSHOT_SERIALIZER_H
 
 #include <fstream>
-#include <sstream>
-
 #include <limits.h>
+#include <sstream>
 
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
