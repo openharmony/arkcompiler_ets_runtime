@@ -830,7 +830,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
             gateAcc_.ReplaceDependIn(gate, saveRegs);
         } else if (bytecodeInfo.GetOpcode() == EcmaOpcode::RESUMEGENERATOR) {
             GateRef restoreRegs =
-                circuit_->NewGate(circuit_->RestoreRegister(), { depend });
+                circuit_->NewGate(circuit_->RestoreRegister(), MachineType::I64, { depend }, GateType::TaggedValue());
             gateAcc_.ReplaceDependIn(gate, restoreRegs);
         } else {
             UNREACHABLE();
