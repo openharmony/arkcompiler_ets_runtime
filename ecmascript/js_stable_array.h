@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_JS_STABLE_ARRAY_H
 #define ECMASCRIPT_JS_STABLE_ARRAY_H
 
-#include <limits>
-
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_typed_array.h"

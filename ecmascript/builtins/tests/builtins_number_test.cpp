@@ -17,7 +17,6 @@
 
 #include <cmath>
 #include <iostream>
-#include <limits>
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"

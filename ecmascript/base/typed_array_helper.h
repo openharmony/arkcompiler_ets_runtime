@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_BASE_TYPED_ARRAY_HELPER_H
 #define ECMASCRIPT_BASE_TYPED_ARRAY_HELPER_H
 
-#include <limits>
 #include <string>
 
 #include "ecmascript/base/builtins_base.h"

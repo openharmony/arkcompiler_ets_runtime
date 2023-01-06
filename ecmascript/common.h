@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_COMMON_H
 #define ECMASCRIPT_COMMON_H
 
+#include <limits>
+
 #include "libpandabase/macros.h"
 
 namespace panda {
