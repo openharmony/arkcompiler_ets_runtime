@@ -89,7 +89,7 @@ private:
 class HeapSnapshotJSONSerializer {
 public:
     explicit HeapSnapshotJSONSerializer() = default;
-    ~HeapSnapshotJSONSerializer() = default;
+    ~HeapSnapshotJSONSerializer();
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);
     bool Serialize(HeapSnapshot *snapshot, Stream *stream);
