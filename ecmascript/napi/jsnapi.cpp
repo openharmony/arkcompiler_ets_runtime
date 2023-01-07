@@ -2098,11 +2098,20 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
 
     JsiRuntimeCallInfo jsiRuntimeCallInfo(ecmaRuntimeCallInfo, extraInfo->GetData());
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    std::stringstream stream;
     if (thread->GetCallNapiGetStack() && function->IsCallNative()) {
-        thread->GetEcmaVM()->GetProfiler()->GetStackBeforeCallNapi(thread);
+        auto cb = thread->GetEcmaVM()->GetNativePtrGetter();
+        auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
+        stream << addr;
+        thread->GetEcmaVM()->GetProfiler()->GetStackBeforeCallNapi(thread, stream.str());
     }
 #endif
     Local<JSValueRef> result = nativeFunc(&jsiRuntimeCallInfo);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (thread->GetCallNapiGetStack() && function->IsCallNative()) {
+        thread->GetEcmaVM()->GetProfiler()->RecordCallNapiInfo(stream.str());
+    }
+#endif
     return JSNApiHelper::ToJSHandle(result).GetTaggedValue();
 }
 

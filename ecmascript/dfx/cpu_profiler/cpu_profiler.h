@@ -74,7 +74,7 @@ public:
                         uint64_t tailSize) const;
     bool IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const;
     void IsNeedAndGetStack(JSThread *thread);
-    void GetStackBeforeCallNapi(JSThread *thread);
+    void GetStackBeforeCallNapi(JSThread *thread, const std::string &methodAddr);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
     void StartCpuProfilerForInfo();
@@ -83,6 +83,7 @@ public:
     void StopCpuProfilerForFile();
     void SetCpuSamplingInterval(int interval);
     void SetCallNapiGetStack(bool getStack);
+    void RecordCallNapiInfo(const std::string &methodAddr);
     explicit CpuProfiler(const EcmaVM *vm, const int interval = 500); // 500:Default Sampling interval 500 microseconds
     virtual ~CpuProfiler();
 
