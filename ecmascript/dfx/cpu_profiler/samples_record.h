@@ -29,6 +29,9 @@
 namespace panda::ecmascript {
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
 const int MAX_NODE_COUNT = 10000; // 10000:the maximum size of the array
+const int MIN_TIME_DELTA = 10; // 10: the minimum value of the time delta
+const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in while loop
+const size_t PRE_IDX_RANGE = 5; // 5: length of variable preIdx looping backward
 enum class RunningState : size_t {
     OTHER = 0,
     GC,
@@ -153,6 +156,13 @@ public:
     bool PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp);
     int GetNapiFrameStackLength();
     void ClearNapiStack();
+    void ClearNapiCall();
+    void RecordCallNapiTime(uint64_t currentTime);
+    void RecordCallNapiAddr(const std::string &methodAddrName);
+    void FinetuneSampleData();
+    void FindSampleAndFinetune(size_t findIdx, size_t napiCallIdx, size_t &sampleIdx,
+                               uint64_t startSampleTime, uint64_t &sampleTime);
+    void FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &sampleTime, bool isEndSample);
     std::ofstream fileHandle_;
 
 private:
@@ -190,6 +200,8 @@ private:
     // napi stack
     CVector<struct MethodKey> napiFrameStack_;
     CVector<FrameInfoTemp> napiFrameInfoTemps_;
+    CVector<uint64_t> napiCallTimeVec_;
+    CVector<std::string> napiCallAddrVec_;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_SAMPLES_RECORD_H
