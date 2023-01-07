@@ -224,7 +224,7 @@ private:
     void LowerDelObjProp(GateRef gate);
     void LowerExp(GateRef gate);
     void LowerIsIn(GateRef gate);
-    void LowerInstanceof(GateRef gate);
+    void LowerInstanceof(GateRef gate, GateRef jsFunc);
     void LowerFastStrictNotEqual(GateRef gate);
     void LowerFastStrictEqual(GateRef gate);
     void LowerCreateEmptyArray(GateRef gate);

@@ -134,11 +134,6 @@ DEF_CALL_SIGNATURE(Xor)
     BINARY_CALL_SIGNATURE(Xor)
 }
 
-DEF_CALL_SIGNATURE(Instanceof)
-{
-    BINARY_CALL_SIGNATURE(Instanceof)
-}
-
 #ifndef NDEBUG
 DEF_CALL_SIGNATURE(MulGCTest)
 {
@@ -325,6 +320,23 @@ DEF_CALL_SIGNATURE(GetPropertyByName)
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_ANY(),           // receiver
         VariableType::JS_POINTER(),       // key
+        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::INT32(),            // slot id
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(Instanceof)
+{
+    // 5 : 5 input parameters
+    CallSignature instanceof("Instanceof", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = instanceof;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_ANY(),           // object
+        VariableType::JS_ANY(),           // target
         VariableType::JS_POINTER(),       // profileTypeInfo
         VariableType::INT32(),            // slot id
     };

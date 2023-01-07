@@ -456,7 +456,9 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::INSTANCEOF_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t v0 = READ_INST_8_1();
+            info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }

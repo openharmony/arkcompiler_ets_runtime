@@ -885,7 +885,10 @@ DECLARE_ASM_HANDLER(HandleInstanceofImm8V8)
 {
     GateRef v0 = ReadInst8_1(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef result = InstanceOf(glue, obj, acc);
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+    GateRef target = acc;
+    AccessObjectStubBuilder builder(this);
+    GateRef result = InstanceOf(glue, obj, target, profileTypeInfo, slotId);
     CHECK_PENDING_EXCEPTION(result, INT_PTR(INSTANCEOF_IMM8_V8));
 }
 

@@ -192,9 +192,11 @@ void XorStubBuilder::GenerateCircuit()
 void InstanceofStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    GateRef x = TaggedArgument(1);
-    GateRef y = TaggedArgument(2); // 2: 3rd argument
-    Return(InstanceOf(glue, x, y));
+    GateRef object = TaggedArgument(1);
+    GateRef target = TaggedArgument(2); // 2: 3rd argument
+    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th pars
+    GateRef slotId = Int32Argument(4); // 4 : 5th pars
+    Return(InstanceOf(glue, object, target, profileTypeInfo, slotId));
 }
 
 void IncStubBuilder::GenerateCircuit()

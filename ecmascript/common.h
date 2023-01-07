@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMMON_H
 
 #include "libpandabase/macros.h"
+#include <limits>
 
 namespace panda {
 namespace ecmascript {
