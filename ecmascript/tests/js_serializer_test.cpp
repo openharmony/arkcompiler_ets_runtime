@@ -50,8 +50,7 @@ public:
     {
         JSRuntimeOptions options;
         options.SetEnableForceGC(true);
-        auto config = ecmascript::EcmaParamConfiguration(false, MemMapAllocator::GetInstance()->GetCapacity());
-        ecmaVm = EcmaVM::Create(options, config);
+        ecmaVm = JSNApi::CreateEcmaVM(options);
         ecmaVm->SetEnableForceGC(true);
         EXPECT_TRUE(ecmaVm != nullptr) << "Cannot create Runtime";
         thread = ecmaVm->GetJSThread();
@@ -63,8 +62,7 @@ public:
         scope = nullptr;
         ecmaVm->SetEnableForceGC(false);
         thread->ClearException();
-        [[maybe_unused]] bool success = EcmaVM::Destroy(ecmaVm);
-        EXPECT_TRUE(success) << "Cannot destroy Runtime";
+        JSNApi::DestroyJSVM(ecmaVm);
     }
     void JSSpecialValueTest(std::pair<uint8_t *, size_t> data)
     {
