@@ -63,12 +63,11 @@ JSPandaFile::~JSPandaFile()
         delete pf_;
         pf_ = nullptr;
     }
-    for (auto iter = jsRecordInfo_.begin(); iter != jsRecordInfo_.end(); iter++) {
-        auto recordInfo = iter->second;
-        recordInfo.constpoolMap.clear();
-    }
+
+    constpoolMap_.clear();
     jsRecordInfo_.clear();
     methodLiteralMap_.clear();
+
     if (methodLiterals_ != nullptr) {
         JSPandaFileManager::FreeBuffer(methodLiterals_);
         methodLiterals_ = nullptr;
@@ -112,7 +111,8 @@ void JSPandaFile::InitializeUnMergedPF()
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = GetStringData(fieldNameId);
-                if (std::strcmp(reinterpret_cast<const char *>(sd.data), desc_.c_str())) {
+                CString fieldName = utf::Mutf8AsCString(sd.data);
+                if (fieldName != desc_) {
                     info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
                     return;
                 }
@@ -137,7 +137,6 @@ void JSPandaFile::InitializeMergedPF()
         }
         panda_file::ClassDataAccessor cda(*pf_, classId);
         numMethods_ += cda.GetMethodsNumber();
-        CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
         // get record info
         JSRecordInfo info;
         bool hasCjsFiled = false;
@@ -165,6 +164,7 @@ void JSPandaFile::InitializeMergedPF()
             }
         });
         if (hasCjsFiled || hasJsonFiled) {
+            CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
             jsRecordInfo_.insert({ParseEntryPoint(desc), info});
         }
     }
@@ -220,19 +220,20 @@ bool JSPandaFile::IsJson(JSThread *thread, const CString &recordName) const
     THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), false);
 }
 
-const char *JSPandaFile::GetJsonStringId(JSThread *thread, const CString &recordName) const
+CString JSPandaFile::GetJsonStringId(JSThread *thread, const CString &recordName) const
 {
     if (IsBundlePack()) {
-        return reinterpret_cast<const char *>(pf_->GetStringData(
-            panda_file::File::EntityId(jsRecordInfo_.begin()->second.jsonStringId)).data);
+        StringData sd = GetStringData(EntityId(jsRecordInfo_.begin()->second.jsonStringId));
+        return utf::Mutf8AsCString(sd.data);
     }
+
     auto info = jsRecordInfo_.find(recordName);
     if (info != jsRecordInfo_.end()) {
-        return reinterpret_cast<const char *>(pf_->GetStringData(
-            panda_file::File::EntityId(info->second.jsonStringId)).data);
+        StringData sd = GetStringData(EntityId(info->second.jsonStringId));
+        return utf::Mutf8AsCString(sd.data);
     }
     CString message = "find jsonStringId failed: " + recordName;
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), nullptr);
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), "");
 }
 
 CString JSPandaFile::FindEntryPoint(const CString &recordName) const
@@ -249,7 +250,7 @@ CString JSPandaFile::FindEntryPoint(const CString &recordName) const
         }
         panda_file::ClassDataAccessor cda(*pf_, classId);
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (std::strcmp(recordName.c_str(), ParseEntryPoint(desc).c_str()) == 0) {
+        if (recordName == ParseEntryPoint(desc)) {
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = GetStringData(fieldNameId);

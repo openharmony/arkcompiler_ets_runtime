@@ -118,7 +118,7 @@ CString MethodLiteral::GetRecordName(const JSPandaFile *jsPandaFile, EntityId me
     panda_file::MethodDataAccessor mda(*pf, methodId);
     panda_file::ClassDataAccessor cda(*pf, mda.GetClassId());
     CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-    return jsPandaFile->ParseEntryPoint(desc);
+    return JSPandaFile::ParseEntryPoint(desc);
 }
 
 uint32_t MethodLiteral::GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId)

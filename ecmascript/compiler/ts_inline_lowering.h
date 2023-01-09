@@ -69,8 +69,6 @@ private:
     void TryInline(GateRef gate, bool isCallThis);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
     void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method);
-    CString GetRecordName(const JSPandaFile *jsPandaFile,
-        panda_file::File::EntityId methodIndex);
     void ReplaceCallInput(GateRef gate, bool isCallThis);
 
     void ReplaceEntryGate(GateRef callGate);

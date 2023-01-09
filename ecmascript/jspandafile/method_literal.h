@@ -27,6 +27,7 @@ static constexpr uint32_t CALL_TYPE_MASK = 0xF;  // 0xF: the last 4 bits are use
 namespace panda::ecmascript {
 class JSPandaFile;
 using EntityId = panda_file::File::EntityId;
+using StringData = panda_file::File::StringData;
 struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
                                                         base::AlignedUint64,
                                                         base::AlignedPointer,

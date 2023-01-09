@@ -57,7 +57,7 @@ void BytecodeInfoCollector::ProcessClasses()
             auto methodOffset = methodId.GetOffset();
             CString name = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(mda.GetNameId()).data);
             if (JSPandaFile::IsEntryOrPatch(name)) {
-                const CString recordName = jsPandaFile_->ParseEntryPoint(desc);
+                const CString recordName = JSPandaFile::ParseEntryPoint(desc);
                 jsPandaFile_->UpdateMainMethodIndex(methodOffset, recordName);
                 mainMethodIndexes.emplace_back(methodOffset);
                 recordNames.emplace_back(recordName);
