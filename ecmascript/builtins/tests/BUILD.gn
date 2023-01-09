@@ -33,6 +33,8 @@ host_unittest_action("BuiltinsInternational_001_Test") {
   ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
@@ -58,11 +60,11 @@ host_unittest_action("BuiltinsInternational_002_Test") {
   ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
-
-  ldflags = [ "-Wl,--lto-O0" ]
 }
 
 host_unittest_action("BuiltinsNaturalTest") {
@@ -103,11 +105,11 @@ host_unittest_action("BuiltinsNaturalTest") {
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
-
-  ldflags = [ "-Wl,--lto-O0" ]
 }
 
 group("unittest") {

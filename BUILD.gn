@@ -377,6 +377,9 @@ config("ecma_test_config") {
   }
 
   ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
+  if (!ark_standalone_build) {
+    ldflags += [ "-Wl,--lto-O0" ]
+  }
 }
 
 # ecmascript icu path for testcase config
