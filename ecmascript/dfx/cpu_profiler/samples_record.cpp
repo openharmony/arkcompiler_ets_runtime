@@ -392,7 +392,7 @@ std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningStat
         case RunningState::BUILTIN:
             return temp.append("(BUILTIN)");
         case RunningState::NAPI:
-            return temp.append("NAPI");
+            return temp.append("(NAPI)");
         case RunningState::ARKUI_ENGINE:
             return temp.append("(ARKUI_ENGINE)");
         case RunningState::RUNTIME:
@@ -642,12 +642,8 @@ void SamplesRecord::FrameInfoTempToMap()
         } else {
             frameInfo.scriptId = iter->second;
         }
-        if (i == 0 && frameInfoTemps_[0].methodKey.state != RunningState::OTHER) {
-            frameInfo.functionName = AddRunningStateToName(frameInfoTemps_[0].functionName,
-                                                           frameInfoTemps_[0].methodKey.state);
-        } else {
-            frameInfo.functionName = frameInfoTemps_[i].functionName;
-        }
+        frameInfo.functionName = AddRunningStateToName(frameInfoTemps_[i].functionName,
+                                                       frameInfoTemps_[i].methodKey.state);
         frameInfo.codeType = frameInfoTemps_[i].codeType;
         frameInfo.columnNumber = frameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = frameInfoTemps_[i].lineNumber;
@@ -672,12 +668,8 @@ void SamplesRecord::NapiFrameInfoTempToMap()
         } else {
             frameInfo.scriptId = iter->second;
         }
-        if (i == 0 && napiFrameInfoTemps_[0].methodKey.state == RunningState::NAPI) {
-            frameInfo.functionName = AddRunningStateToName(napiFrameInfoTemps_[0].functionName,
-                                                           napiFrameInfoTemps_[0].methodKey.state);
-        } else {
-            frameInfo.functionName = napiFrameInfoTemps_[i].functionName;
-        }
+        frameInfo.functionName = AddRunningStateToName(napiFrameInfoTemps_[i].functionName,
+                                                       napiFrameInfoTemps_[i].methodKey.state);
         frameInfo.codeType = napiFrameInfoTemps_[i].codeType;
         frameInfo.columnNumber = napiFrameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = napiFrameInfoTemps_[i].lineNumber;

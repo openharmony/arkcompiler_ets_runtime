@@ -257,10 +257,10 @@ void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProces
 }
 
 RunningState CpuProfiler::GetRunningState(const FrameIterator &it,
-                                          const JSPandaFile *jsPandaFile, bool isLeaveFrame) const
+                                          const JSPandaFile *jsPandaFile, bool topFrame) const
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
-    if (thread->GetGcState()) {
+    if (topFrame && thread->GetGcState()) {
         return RunningState::GC;
     }
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
@@ -275,13 +275,13 @@ RunningState CpuProfiler::GetRunningState(const FrameIterator &it,
         }
         return RunningState::BUILTIN;
     }
-    if (isLeaveFrame) {
+    if (it.IsLeaveFrame()) {
         return RunningState::RUNTIME;
     }
-    if (it.GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+    if (it.IsOptimizedJSFunctionFrame()) {
         return RunningState::AOT;
     }
-    if (thread->GetRuntimeState()) {
+    if (topFrame && thread->GetRuntimeState()) {
         return RunningState::RUNTIME;
     }
     if (thread->IsAsmInterpreter()) {
@@ -290,10 +290,10 @@ RunningState CpuProfiler::GetRunningState(const FrameIterator &it,
     return RunningState::CINT;
 }
 
-void CpuProfiler::GetFrameStack(FrameIterator &it, bool isLeaveFrame)
+void CpuProfiler::GetFrameStack(FrameIterator &it)
 {
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
-    bool firstFrame = true;
+    bool topFrame = true;
     for (; !it.Done(); it.Advance<>()) {
         auto method = it.CheckAndGetMethod();
         if (method == nullptr) {
@@ -301,13 +301,13 @@ void CpuProfiler::GetFrameStack(FrameIterator &it, bool isLeaveFrame)
         }
         const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
         struct MethodKey methodKey;
-        if (firstFrame) {
-            methodKey.state = GetRunningState(it, jsPandaFile, isLeaveFrame);
+        methodKey.state = GetRunningState(it, jsPandaFile, topFrame);
+        if (topFrame) {
             JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
             if (function->IsCallNative()) {
                 methodKey.napiCallCount = napiCallCount_;
             }
-            firstFrame = false;
+            topFrame = false;
         }
         methodKey.methodIdentifier = GetMethodIdentifier(method, it);
 
@@ -326,23 +326,27 @@ void CpuProfiler::GetFrameStack(FrameIterator &it, bool isLeaveFrame)
 
 bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
 {
-    FrameHandler frameHandler(thread);
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->ClearNapiStack();
-    bool firstFrame = true;
-    for (FrameIterator it(frameHandler.GetSp(), thread); !it.Done(); it.Advance<GCVisitedFlag::IGNORED>()) {
+    bool topFrame = true;
+    auto currentFrame = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::IGNORED>()) {
         auto method = it.CheckAndGetMethod();
         if (method == nullptr) {
             continue;
         }
 
         struct MethodKey methodKey;
-        if (firstFrame) {
+        if (topFrame) {
             methodKey.state = RunningState::NAPI;
+        } else {
+            methodKey.state = GetRunningState(it, method->GetJSPandaFile(), false);
+        }
+        if (topFrame) {
             napiCallCount_++;
             methodKey.napiCallCount = napiCallCount_;
-            firstFrame = false;
-            FrameIterator itNext(const_cast<JSTaggedType *>(thread->GetCurrentFrame()), thread);
+            topFrame = false;
+            FrameIterator itNext(it.GetSp(), thread);
             itNext.Advance<GCVisitedFlag::IGNORED>();
             auto nextMethod = itNext.CheckAndGetMethod();
             if (nextMethod == nullptr) {
@@ -526,20 +530,6 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
     CheckAndCopy(functionName + builtinBeginLength + methodNameStrLength + srcLength, size - builtinBeginLength - methodNameStrLength - srcLength, ")");
 }
 
-void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
-{
-    if (thread->GetStackSignal()) {
-        FrameHandler frameHandler(thread);
-        FrameIterator it(frameHandler.GetSp(), thread);
-        GetFrameStack(it, false);
-        if (generator_->SemPost(0) != 0) {
-            LOG_ECMA(ERROR) << "sem_[0] post failed";
-            return;
-        }
-        thread->SetGetStackSignal(false);
-    }
-}
-
 void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread, const std::string &methodAddr)
 {
     generator_->SetBeforeGetCallNapiStackFlag(true);
@@ -608,14 +598,14 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         }
         if (profiler->CheckFrameType(thread, reinterpret_cast<JSTaggedType *>(fp))) {
             FrameIterator it(reinterpret_cast<JSTaggedType *>(fp), thread);
-            profiler->GetFrameStack(it, false);
+            profiler->GetFrameStack(it);
         }
     } else if (thread->IsAsmInterpreter()) {
         if (thread->GetLastLeaveFrame() != nullptr) {
             JSTaggedType *leaveFrame = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
             if (profiler->CheckFrameType(thread, leaveFrame)) {
                 FrameIterator it(leaveFrame, thread);
-                profiler->GetFrameStack(it, true);
+                profiler->GetFrameStack(it);
             }
         }
     } else {
@@ -623,7 +613,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
             if (profiler->CheckFrameType(thread, const_cast<JSTaggedType *>(thread->GetCurrentFrame()))) {
                 FrameHandler frameHandler(thread);
                 FrameIterator it(frameHandler.GetSp(), thread);
-                profiler->GetFrameStack(it, false);
+                profiler->GetFrameStack(it);
             }
         }
     }

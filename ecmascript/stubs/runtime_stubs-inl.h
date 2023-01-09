@@ -2484,10 +2484,10 @@ JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16
 JSTaggedType *RuntimeStubs::GetActualArgv(JSThread *thread)
 {
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
-    ASSERT(FrameHandler::GetFrameType(current) == FrameType::LEAVE_FRAME);
     FrameIterator it(current, thread);
+    ASSERT(it.IsLeaveFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    ASSERT(it.IsOptimizedJSFunctionFrame());
     auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
     return optimizedJSFunctionFrame->GetArgv(it);
 }
@@ -2495,10 +2495,10 @@ JSTaggedType *RuntimeStubs::GetActualArgv(JSThread *thread)
 OptimizedJSFunctionFrame *RuntimeStubs::GetOptimizedJSFunctionFrame(JSThread *thread)
 {
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
-    ASSERT(FrameHandler::GetFrameType(current) == FrameType::LEAVE_FRAME);
     FrameIterator it(current, thread);
+    ASSERT(it.IsLeaveFrame());
     it.Advance();
-    ASSERT(it.GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    ASSERT(it.IsOptimizedJSFunctionFrame());
     return it.GetFrame<OptimizedJSFunctionFrame>();
 }
 

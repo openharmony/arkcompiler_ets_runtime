@@ -1700,6 +1700,9 @@ DEF_RUNTIME_STUBS(ThrowStackOverflowException)
 {
     RUNTIME_STUBS_HEADER(ThrowStackOverflowException);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
+    // Multi-thread could cause stack-overflow-check failed too,
+    // so check thread here to distinguish it with the actual stack overflow.
+    ecmaVm->CheckThread();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", false);
     if (LIKELY(!thread->HasPendingException())) {
