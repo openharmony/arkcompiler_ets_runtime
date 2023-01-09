@@ -142,7 +142,8 @@ void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
             for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // 2: Two parsing once
                 int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
                 uint32_t typeOffset = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
-                if (classDefBCIndexes_.find(bcOffset) != classDefBCIndexes_.end()) {
+                if (classDefBCIndexes_.find(bcOffset) != classDefBCIndexes_.end() ||
+                    classDefBCIndexes_.find(bcOffset - 1) != classDefBCIndexes_.end()) { // for getter setter
                     bytecodeInfo_.SetClassTypeOffsetAndDefMethod(typeOffset, defineMethodOffset);
                 }
                 if (bcOffset != TypeRecorder::METHOD_ANNOTATION_THIS_TYPE_OFFSET &&
