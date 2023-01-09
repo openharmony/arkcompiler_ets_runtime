@@ -35,8 +35,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     // Get base constpool.
     const auto &patchRecordInfos = patchFile->GetJSRecordInfo();
     ParseConstpoolWithMerge(thread, baseFile, patchRecordInfos);
-    auto baseConstpoolValues = vm->FindConstpools(baseFile);
-    if (!baseConstpoolValues.has_value()) {
+    if (!vm->HasCachedConstpool(baseFile)) {
         LOG_ECMA(ERROR) << "base constpool is empty";
         return PatchErrorCode::INTERNAL_ERROR;
     }
@@ -44,8 +43,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // Get patch constpool.
     ParseConstpoolWithMerge(thread, patchFile, patchRecordInfos);
-    auto patchConstpoolValues = vm->FindConstpools(patchFile);
-    if (!patchConstpoolValues.has_value()) {
+    if (!vm->HasCachedConstpool(patchFile)) {
         LOG_ECMA(ERROR) << "patch constpool is empty";
         return PatchErrorCode::INTERNAL_ERROR;
     }
@@ -113,7 +111,7 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
             continue;
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
-        CString entry = jsPandaFile->ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+        CString entry = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
         if (patchRecordInfos.find(entry) == patchRecordInfos.end()) {
             LOG_ECMA(DEBUG) << "skip record not in patch: " << entry;
             continue;

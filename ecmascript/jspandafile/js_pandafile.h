@@ -40,15 +40,6 @@ public:
         bool hasTSTypes {false};
         uint32_t typeSummaryOffset {0};
         CString npmPackageName;
-        bool HasTSTypes() const
-        {
-            return hasTSTypes;
-        }
-
-        uint32_t GetTypeSummaryOffset() const
-        {
-            return typeSummaryOffset;
-        }
 
         void SetParsedConstpoolVM(const EcmaVM *vm)
         {
@@ -245,7 +236,7 @@ public:
 
     bool IsJson(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
-    const char *GetJsonStringId(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    CString GetJsonStringId(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
     bool IsBundlePack() const
     {
@@ -269,11 +260,7 @@ public:
 
     bool HasRecord(const CString &recordName) const
     {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info != jsRecordInfo_.end()) {
-            return true;
-        }
-        return false;
+        return jsRecordInfo_.find(recordName) != jsRecordInfo_.end();
     }
 
     JSRecordInfo &FindRecordInfo(const CString &recordName)
@@ -298,9 +285,9 @@ public:
         return jsRecordInfo_;
     }
 
-    CString ParseEntryPoint(const CString &recordName) const
+    static CString ParseEntryPoint(const CString &desc)
     {
-        return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
+        return desc.substr(1, desc.size() - 2); // 2 : skip symbol "L" and ";"
     }
 
     void CheckIsBundlePack();
@@ -309,11 +296,6 @@ public:
 
     static CString ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName);
     static std::string ParseHapPath(const CString &fileName);
-
-    bool IsSystemLib() const
-    {
-        return false;
-    }
 
     uint32_t GetAOTFileInfoIndex() const
     {
@@ -334,7 +316,7 @@ public:
     {
         auto it = jsRecordInfo_.find(recordName);
         if (it != jsRecordInfo_.end()) {
-            return it->second.HasTSTypes();
+            return it->second.hasTSTypes;
         }
         return false;
     }
@@ -343,7 +325,7 @@ public:
     {
         auto it = jsRecordInfo_.find(recordName);
         if (it != jsRecordInfo_.end()) {
-            return it->second.GetTypeSummaryOffset();
+            return it->second.typeSummaryOffset;
         }
         return DEFAULT_TYPE_SUMMARY_OFFSET;
     }

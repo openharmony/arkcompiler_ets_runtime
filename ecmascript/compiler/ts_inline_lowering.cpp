@@ -137,22 +137,12 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
     return true;
 }
 
-CString TSInlineLowering::GetRecordName(const JSPandaFile *jsPandaFile,
-    panda_file::File::EntityId methodIndex)
-{
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
-    panda_file::MethodDataAccessor patchMda(*pf, methodIndex);
-    panda_file::ClassDataAccessor patchCda(*pf, patchMda.GetClassId());
-    CString desc = utf::Mutf8AsCString(patchCda.GetDescriptor());
-    return jsPandaFile->ParseEntryPoint(desc);
-}
-
 void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method)
 {
     const JSPandaFile *jsPandaFile = info_->GetJSPandaFile();
     TSManager *tsManager = info_->GetTSManager();
     CompilerLog *log = info_->GetCompilerLog();
-    CString recordName = GetRecordName(jsPandaFile, method->GetMethodId());
+    CString recordName = MethodLiteral::GetRecordName(jsPandaFile, method->GetMethodId());
     bool hasTyps = jsPandaFile->HasTSTypes(recordName);
     if (!hasTyps) {
         return;
