@@ -74,4 +74,15 @@ std::string JSFilePath::GetHapName(const JSPandaFile *jsPandaFile)
     return subPath.substr(0, endPos);
 }
 
+std::string JSFilePath::GetAotFullPathName(const JSPandaFile *jsPandaFile)
+{
+    std::string filePath = jsPandaFile->GetJSPandaFileDesc().c_str();
+    LOG_ECMA(INFO) << "fullPathName " << filePath.c_str();
+    auto beginPos = 0;
+    auto endPos = filePath.find_last_of('.');
+    if (endPos != std::string::npos) {
+        return filePath.substr(beginPos, endPos - beginPos);
+    }
+    return filePath.substr(beginPos);
+}
 }  // namespace panda::ecmascript
