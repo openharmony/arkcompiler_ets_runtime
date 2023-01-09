@@ -231,7 +231,7 @@ void SamplesRecord::FinetuneSampleData()
 
     while (sampleIdx < samplesCount && napiCallIdx < napiCallCount) {
         // accumulate timeDelta to get current timestamp until larger than napiCall start time
-        sampleTime += profileInfo_->timeDeltas[sampleIdx];
+        sampleTime += static_cast<uint64_t>(profileInfo_->timeDeltas[sampleIdx]);
         if (sampleTime < napiCallTimeVec_[napiCallIdx]) {
             sampleIdx++;
             continue;
@@ -243,7 +243,7 @@ void SamplesRecord::FinetuneSampleData()
         std::string napiFunctionAddr = napiCallAddrVec_[napiCallIdx];
         if (sampleIdx - 1 >= 0) {
             preIdx = sampleIdx - 1;
-            preSampleTime -= profileInfo_->timeDeltas[sampleIdx - 1];
+            preSampleTime -= static_cast<uint64_t>(profileInfo_->timeDeltas[sampleIdx - 1]);
         }
         // loop backward PRE_IDX_RANGE times from previous index, find same address napi
         for (size_t k = preIdx; k - preIdx < PRE_IDX_RANGE && k < samplesCount; k++) {
@@ -259,7 +259,7 @@ void SamplesRecord::FinetuneSampleData()
         if (findFlag) {
             FindSampleAndFinetune(findIdx, napiCallIdx, sampleIdx, preSampleTime, sampleTime);
         } else {
-            sampleTime -= profileInfo_->timeDeltas[sampleIdx];
+            sampleTime -= static_cast<uint64_t>(profileInfo_->timeDeltas[sampleIdx]);
         }
         napiCallIdx += NAPI_CALL_SETP;
     }
@@ -289,7 +289,7 @@ void SamplesRecord::FindSampleAndFinetune(size_t findIdx, size_t napiCallIdx, si
     uint64_t endNapiTime = napiCallTimeVec_[napiCallIdx + 1]; // call napi end timestamp
     // get a continuous sample, accumulate endSampleTime but lack last timeDeltas
     for (; endIdx < samplesCount && profileInfo_->samples[endIdx - 1] == profileInfo_->samples[endIdx]; endIdx++) {
-        endSampleTime += profileInfo_->timeDeltas[endIdx];
+        endSampleTime += static_cast<uint64_t>(profileInfo_->timeDeltas[endIdx]);
     }
     // finetune startIdx‘s timedelta
     FinetuneTimeDeltas(startIdx, startNapiTime, startSampleTime, false);
@@ -318,11 +318,11 @@ void SamplesRecord::FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &
     if (isEndSample) {
         // if is endIdx, sampleTime add endTimeDelta is real current timestamp
         int endTimeDelta = profileInfo_->timeDeltas[idx];
-        profileInfo_->timeDeltas[idx] -= (sampleTime + endTimeDelta - napiTime);
-        profileInfo_->timeDeltas[idx + 1] += (sampleTime + endTimeDelta - napiTime);
+        profileInfo_->timeDeltas[idx] -= static_cast<int>(sampleTime + endTimeDelta - napiTime);
+        profileInfo_->timeDeltas[idx + 1] += static_cast<int>(sampleTime + endTimeDelta - napiTime);
     } else {
-        profileInfo_->timeDeltas[idx] -= (sampleTime - napiTime);
-        profileInfo_->timeDeltas[idx + 1] += (sampleTime - napiTime);
+        profileInfo_->timeDeltas[idx] -= static_cast<int>(sampleTime - napiTime);
+        profileInfo_->timeDeltas[idx + 1] += static_cast<int>(sampleTime - napiTime);
     }
 
     // if timeDeltas[idx] < 0, timeDeltas[idx] = MIN_TIME_DELTA
@@ -333,14 +333,14 @@ void SamplesRecord::FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &
         if (idx - 1 >= 0 && profileInfo_->timeDeltas[idx - 1] > timeDelta) {
             profileInfo_->timeDeltas[idx - 1] -= timeDelta;
             if (isEndSample) {
-                sampleTime -= timeDelta;
+                sampleTime -= static_cast<uint64_t>(timeDelta);
             }
         // if timeDeltas[idx - 1] < timeDelta, timeDeltas[idx - 1] = MIN_TIME_DELTA
         } else if (idx - 1 >= 0) {
             // The remaining timeDeltas[idx + 1] to reduce
             profileInfo_->timeDeltas[idx + 1] -= timeDelta - profileInfo_->timeDeltas[idx - 1] + MIN_TIME_DELTA;
             if (isEndSample) {
-                sampleTime -= (profileInfo_->timeDeltas[idx - 1] - MIN_TIME_DELTA);
+                sampleTime -= static_cast<uint64_t>(profileInfo_->timeDeltas[idx - 1] - MIN_TIME_DELTA);
             }
             profileInfo_->timeDeltas[idx - 1] = MIN_TIME_DELTA;
         } else {
