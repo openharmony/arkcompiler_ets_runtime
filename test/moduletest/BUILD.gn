@@ -16,6 +16,7 @@ group("ark_js_moduletest") {
   deps = [
     "allocatearraybuffer:allocatearraybufferAction",
     "array:arrayAction",
+    "arrayforeach:arrayforeachAction",
     "arrayjoin:arrayjoinAction",
     "assignproxy:assignproxyAction",
     "async:asyncAction",
@@ -84,6 +85,7 @@ group("ark_asm_test") {
   deps = [
     "allocatearraybuffer:allocatearraybufferAsmAction",
     "array:arrayAsmAction",
+    "arrayforeach:arrayforeachAsmAction",
     "arrayjoin:arrayjoinAsmAction",
     "asmstackoverflow:asmstackoverflowAsmAction",
     "assignproxy:assignproxyAsmAction",
@@ -147,6 +149,7 @@ group("ark_asm_single_step_test") {
   testonly = true
   deps = [
     "allocatearraybuffer:allocatearraybufferAsmSingleStepAction",
+    "arrayforeach:arrayforeachAsmSingleStepAction",
     "arrayjoin:arrayjoinAsmSingleStepAction",
     "asmstackoverflow:asmstackoverflowAsmSingleStepAction",
     "assignproxy:assignproxyAsmSingleStepAction",
