@@ -245,11 +245,7 @@ public:
         LOG_GC(DEBUG) << "Ark DecreaseReserved reserved = " << reserved_ << ", capacity_ = " << capacity_;
     }
 
-    static MemMapAllocator *GetInstance()
-    {
-        static MemMapAllocator vmAllocator_;
-        return &vmAllocator_;
-    }
+    static MemMapAllocator *GetInstance();
 
     MemMap Allocate(size_t size, size_t alignment, bool regular, int prot);
 
