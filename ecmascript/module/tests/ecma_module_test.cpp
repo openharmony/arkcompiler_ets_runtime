@@ -223,7 +223,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
 
     // Test cross application
     moduleRecordName = "@bundle:com.bundleName1.test/moduleName/requestModuleName1";
-    CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/ets/modules.abc";
+    CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.abc";
     ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(baseFilename, newBaseFileName);
 }
