@@ -222,9 +222,6 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter()) {
         LoadStubFile();
     }
-    if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
-        LoadAOTFiles();
-    }
 
     optCodeProfiler_ = new OptCodeProfiler();
 
@@ -872,7 +869,7 @@ void EcmaVM::LoadAOTFiles()
     aotFileManager_->LoadAnFile(anFile);
 
     std::string aiFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AI;
-    aotFileManager_->LoadSnapshotFile(aiFile);
+    aotFileManager_->LoadAiFile(aiFile);
 }
 
 #if !WIN_OR_MAC_OR_IOS_PLATFORM

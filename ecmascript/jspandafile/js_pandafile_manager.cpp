@@ -17,6 +17,7 @@
 
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_file_path.h"
 
 namespace panda::ecmascript {
 static const size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory used by the VM declared in options
@@ -118,6 +119,7 @@ JSHandle<Program> JSPandaFileManager::GenerateProgram(
     EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
+    vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
     JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
     return program;
 }
@@ -272,7 +274,9 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
 {
     ASSERT(GetJSPandaFile(pf) == nullptr);
     JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc);
+
     auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
+    aotFM->LoadAnFile(newJsPandaFile);
     if (aotFM->IsLoad(newJsPandaFile)) {
         uint32_t index = aotFM->GetAnFileIndex(newJsPandaFile);
         newJsPandaFile->SetAOTFileInfoIndex(index);
