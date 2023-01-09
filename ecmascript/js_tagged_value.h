@@ -261,7 +261,7 @@ public:
     ARK_INLINE TaggedObject *GetRawHeapObject() const
     {
         ASSERT_PRINT(IsHeapObject(), "can not convert JSTaggedValue to HeapObject :" << std::hex << value_);
-        return reinterpret_cast<TaggedObject *>(value_);;
+        return reinterpret_cast<TaggedObject *>(value_);
     }
 
     ARK_INLINE TaggedObject *GetWeakReferent() const

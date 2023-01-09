@@ -127,8 +127,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     InitializeModule(thread, module, filename, dirname);
     PutIntoCache(thread, module, filename);
 
-    if (jsPandaFile->IsJson(thread, requestEntryPoint))
-    {
+    if (jsPandaFile->IsJson(thread, requestEntryPoint)) {
         JSTaggedValue result = ModuleManager::JsonParse(thread, jsPandaFile, requestEntryPoint);
         // Set module.exports ---> exports
         JSHandle<JSTaggedValue> exportsKey = thread->GlobalConstants()->GetHandledCjsExportsString();
