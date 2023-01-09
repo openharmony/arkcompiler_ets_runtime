@@ -19,6 +19,7 @@
 #include <limits>
 
 #include "libpandabase/macros.h"
+#include <limits>
 
 namespace panda {
 namespace ecmascript {

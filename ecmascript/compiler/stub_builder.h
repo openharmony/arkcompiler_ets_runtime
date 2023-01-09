@@ -338,7 +338,7 @@ public:
     GateRef HclassIsTransitionHandler(GateRef hClass);
     GateRef HclassIsPropertyBox(GateRef hClass);
     GateRef PropAttrGetOffset(GateRef attr);
-    GateRef InstanceOf(GateRef glue, GateRef object, GateRef target);
+    GateRef InstanceOf(GateRef glue, GateRef object, GateRef target, GateRef profileTypeInfo, GateRef slotId);
     GateRef OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj);
     GateRef SameValue(GateRef glue, GateRef left, GateRef right);
 
@@ -529,7 +529,7 @@ public:
     GateRef IsNativeMethod(GateRef method);
     GateRef HasAotCode(GateRef method);
     GateRef GetExpectedNumOfArgs(GateRef method);
-    GateRef GetMethod(GateRef glue, GateRef obj, GateRef key);
+    GateRef GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId);
     // proxy operator
     GateRef GetMethodFromJSProxy(GateRef proxy);
     GateRef GetHandlerFromJSProxy(GateRef proxy);

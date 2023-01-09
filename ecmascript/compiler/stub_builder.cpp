@@ -16,6 +16,8 @@
 #include "ecmascript/compiler/stub_builder-inl.h"
 
 #include "ecmascript/compiler/assembler_module.h"
+#include "ecmascript/compiler/access_object_stub_builder.h"
+#include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -2945,7 +2947,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
     return ret;
 }
 
-GateRef StubBuilder::InstanceOf(GateRef glue, GateRef object, GateRef target)
+GateRef StubBuilder::InstanceOf(GateRef glue, GateRef object, GateRef target, GateRef profileTypeInfo, GateRef slotId)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2974,7 +2976,7 @@ GateRef StubBuilder::InstanceOf(GateRef glue, GateRef object, GateRef target)
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
         GateRef hasInstanceSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                                       GlobalEnv::HASINSTANCE_SYMBOL_INDEX);
-        GateRef instof = GetMethod(glue, target, hasInstanceSymbol);
+        GateRef instof = GetMethod(glue, target, hasInstanceSymbol, profileTypeInfo, slotId);
 
         // 3.ReturnIfAbrupt(instOfHandler).
         Label isPendingException1(env);
@@ -3024,7 +3026,7 @@ GateRef StubBuilder::InstanceOf(GateRef glue, GateRef object, GateRef target)
     return ret;
 }
 
-GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key)
+GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3032,7 +3034,9 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key)
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label exit(env);
 
-    GateRef value = FastGetPropertyByName(glue, obj, key);
+    StringIdInfo info;
+    AccessObjectStubBuilder builder(this);
+    GateRef value = builder.LoadObjByName(glue, obj, key, info, profileTypeInfo, slotId);
 
     Label isPendingException2(env);
     Label noPendingException2(env);

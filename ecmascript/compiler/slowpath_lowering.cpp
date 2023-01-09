@@ -476,7 +476,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerIsIn(gate);
             break;
         case EcmaOpcode::INSTANCEOF_IMM8_V8:
-            LowerInstanceof(gate);
+            LowerInstanceof(gate, jsFunc);
             break;
         case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
             LowerFastStrictNotEqual(gate);
@@ -1574,14 +1574,28 @@ void SlowPathLowering::LowerIsIn(GateRef gate)
     ReplaceHirToCall(gate, newGate);
 }
 
-void SlowPathLowering::LowerInstanceof(GateRef gate)
+void SlowPathLowering::LowerInstanceof(GateRef gate, GateRef jsFunc)
 {
-    // 2: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 2);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
+    Label updateProfileTypeInfo(&builder_);
+    Label doInstanceofWithIC(&builder_);
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+
+    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
+    GateRef obj = acc_.GetValueIn(gate, 1);     // 1: the second parameter
+    GateRef target = acc_.GetValueIn(gate, 2);  // 2: the third parameter
+    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
+    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &doInstanceofWithIC);
+    builder_.Bind(&updateProfileTypeInfo);
+    {
+        profileTypeInfo = LowerCallRuntime(RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
+        builder_.Jump(&doInstanceofWithIC);
+    }
+    builder_.Bind(&doInstanceofWithIC);
     GateRef result = builder_.CallStub(glue_, CommonStubCSigns::Instanceof,
-        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1) });
+        { glue_, obj, target, *profileTypeInfo, slotId });
     builder_.Branch(builder_.HasPendingException(glue_), &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit);
     ReplaceHirToSubCfg(gate, result, successControl, failControl);
