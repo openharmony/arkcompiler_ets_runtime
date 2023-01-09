@@ -18,6 +18,12 @@
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
+MemMapAllocator *MemMapAllocator::GetInstance()
+{
+    static MemMapAllocator vmAllocator_;
+    return &vmAllocator_;
+}
+
 MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, int prot)
 {
     if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
