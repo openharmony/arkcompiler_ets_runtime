@@ -2683,6 +2683,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
     if (jsPandaFile == nullptr) {
         return false;
     }
+
     ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     ecmascript::CString recordName = method->GetRecordName();
 

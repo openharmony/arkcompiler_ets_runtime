@@ -332,8 +332,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleDeprecatedLdhomeobjectPrefNone)                               \
     T(HandleDeprecatedCreateobjecthavingmethodPrefImm16)                  \
     T(HandleDeprecatedDynamicimportPrefV8)                                \
-    T(HandleDeprecatedAsyncgeneratorrejectPrefV8V8)                       \
-    T(HandleDeprecatedStlexenvPrefNone)
+    T(HandleDeprecatedAsyncgeneratorrejectPrefV8V8)
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_WIDE_STUB_LIST(V, T, D)                           \

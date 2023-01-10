@@ -21,6 +21,8 @@
 namespace panda::ecmascript {
 enum class FunctionKind : uint8_t {
     NORMAL_FUNCTION = 0,
+    // Concurrent function is normal function with concurrent property
+    CONCURRENT_FUNCTION,
     // BEGIN accessors
     GETTER_FUNCTION,
     SETTER_FUNCTION,
@@ -49,7 +51,6 @@ enum class FunctionKind : uint8_t {
     // END generators
     // END constructable functions.
     ASYNC_GENERATOR_FUNCTION,
-    CONCURRENT_FUNCTION,
 
     LAST_FUNCTION_KIND,
 };
