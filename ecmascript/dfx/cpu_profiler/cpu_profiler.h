@@ -73,7 +73,6 @@ public:
     bool InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entryDuration, uint64_t headerSize,
                         uint64_t tailSize) const;
     bool IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const;
-    void IsNeedAndGetStack(JSThread *thread);
     void GetStackBeforeCallNapi(JSThread *thread, const std::string &methodAddr);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
@@ -91,7 +90,7 @@ public:
 private:
     static os::memory::Mutex synchronizationMutex_;
 
-    void GetFrameStack(FrameIterator &it, bool isLeaveFrame);
+    void GetFrameStack(FrameIterator &it);
     bool ParseMethodInfo(struct MethodKey &methodKey, const FrameIterator &it,
                          const JSPandaFile *jsPandaFile, bool isCallNapi);
     void GetNativeStack(const FrameIterator &it, char *functionName, size_t size);
@@ -104,7 +103,7 @@ private:
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
     bool GetFrameStackCallNapi(JSThread *thread);
     void *GetMethodIdentifier(Method *method, const FrameIterator &it);
-    RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool isLeaveFrame) const;
+    RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool topFrame) const;
     uint32_t napiCallCount_ = 0;
     bool isProfiling_ = false;
     bool outToFile_ = false;

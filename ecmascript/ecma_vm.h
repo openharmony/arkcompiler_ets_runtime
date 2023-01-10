@@ -211,19 +211,24 @@ public:
         return stringTable_;
     }
 
-    ARK_INLINE JSThread *GetJSThread() const
+    void CheckThread() const
     {
         // Exclude GC thread
+        if (thread_ == nullptr) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+        }
+        if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
+            thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
+                LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                                    << " thread:" << thread_->GetThreadId()
+                                    << " currentThread:" << JSThread::GetCurrentThreadId();
+        }
+    }
+
+    ARK_INLINE JSThread *GetJSThread() const
+    {
         if (options_.EnableThreadCheck()) {
-            if (thread_ == nullptr) {
-                LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
-            }
-            if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
-                thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
-                    LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
-                                        << " thread:" << thread_->GetThreadId()
-                                        << " currentThread:" << JSThread::GetCurrentThreadId();
-            }
+            CheckThread();
         }
         return thread_;
     }

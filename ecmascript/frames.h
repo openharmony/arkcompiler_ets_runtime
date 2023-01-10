@@ -1416,6 +1416,18 @@ public:
     Method *CheckAndGetMethod() const;
     JSTaggedValue GetFunction() const;
 
+    bool IsLeaveFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::LEAVE_FRAME) || (type == FrameType::LEAVE_FRAME_WITH_ARGV);
+    }
+
+    bool IsOptimizedJSFunctionFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    }
+
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
