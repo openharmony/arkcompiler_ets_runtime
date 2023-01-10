@@ -281,6 +281,10 @@ void RegExpParser::ParseAlternative(bool isBackward)
                         isAtom = true;
                         int atomValue = ParseAtomEscape(isBackward);
                         if (atomValue != -1) {
+                            PrevOpCode prevOp;
+                            if (isBackward) {
+                                prevOp.EmitOpCode(&buffer_, 0);
+                            }
                             if (IsIgnoreCase()) {
                                 if (!IsUtf16()) {
                                     atomValue = Canonicalize(atomValue, false);
@@ -306,6 +310,9 @@ void RegExpParser::ParseAlternative(bool isBackward)
                             } else {
                                 Char32OpCode charOp;
                                 charOp.EmitOpCode(&buffer_, atomValue);
+                            }
+                            if (isBackward) {
+                                prevOp.EmitOpCode(&buffer_, 0);
                             }
                         }
                         break;
