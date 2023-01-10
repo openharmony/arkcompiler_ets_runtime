@@ -52,6 +52,12 @@ void *mmap(size_t size, int fd, off_t offset)
 #endif
 
 namespace panda::ecmascript {
+MemMapAllocator *MemMapAllocator::GetInstance()
+{
+    static MemMapAllocator vmAllocator_;
+    return &vmAllocator_;
+}
+
 MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool isRegular, [[maybe_unused]] int prot)
 {
     MemMap pool = Allocate(size, alignment, isRegular);
