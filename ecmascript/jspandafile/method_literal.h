@@ -312,6 +312,7 @@ public:
     static const char * PUBLIC_API GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static uint32_t GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId);
+    static CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
 
     const uint8_t *GetBytecodeArray() const
     {
