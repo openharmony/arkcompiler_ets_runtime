@@ -66,7 +66,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         // note: TSManager need to set current constantpool before all pass
         tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
 
-        log_->SetMethodLog(fileName, methodName, logList_);
+        log_->SetMethodLog(fileName, recordName, methodName, logList_);
 
         std::string fullName = methodName + "@" + fileName;
         bool enableMethodLog = log_->GetEnableMethodLog();
