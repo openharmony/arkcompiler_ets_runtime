@@ -277,10 +277,6 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
 
     auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
     aotFM->LoadAnFile(newJsPandaFile);
-    if (aotFM->IsLoad(newJsPandaFile)) {
-        uint32_t index = aotFM->GetAnFileIndex(newJsPandaFile);
-        newJsPandaFile->SetAOTFileInfoIndex(index);
-    }
 
     CString methodName = entryPoint.data();
     if (newJsPandaFile->IsBundlePack()) {

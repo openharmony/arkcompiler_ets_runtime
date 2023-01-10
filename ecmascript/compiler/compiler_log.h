@@ -28,6 +28,8 @@
 #include "ecmascript/mem/clock_scope.h"
 
 namespace panda::ecmascript::kungfu {
+class AotMethodLogList;
+
 class CompilerLog {
 public:
     explicit CompilerLog(const std::string &logOpt, bool TraceBC = false);
@@ -97,6 +99,8 @@ public:
     {
         return GetEnableMethodLog() && OutputCIR();
     }
+
+    void SetMethodLog(const std::string &fileName, const std::string &methodName, AotMethodLogList *logList);
 
     void PrintPassTime() const;
     void PrintMethodTime() const;

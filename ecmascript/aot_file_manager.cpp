@@ -71,7 +71,7 @@ void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
     for (auto [key, val] : SecMap) {
         LOG_COMPILER(DEBUG) << key << " size is "
                             << std::fixed << std::setprecision(DECIMAL_LENS)
-                            << val / 1_KB << "KB "<< "percentage:"
+                            << (val / 1_KB) << "KB "<< "percentage:"
                             << std::fixed << std::setprecision(PERCENT_LENS)
                             << val / secSize * HUNDRED_TIME << "% ";
     }
@@ -348,7 +348,8 @@ bool AnFileInfo::AnVersionCheck(std::array<uint8_t, Size> anVersion)
             return ret;
         };
         LOG_COMPILER(ERROR) << "Load an file failed, an file version is incorrect, "
-                            << "expected version should be less or equal than " << convToStr(AOTFileManager::AOT_VERSION)
+                            << "expected version should be less or equal than "
+                            << convToStr(AOTFileManager::AOT_VERSION)
                             << ", but got " << convToStr(anVersion);
         return false;
     }
@@ -396,12 +397,17 @@ void AOTFileManager::LoadAnFile(const std::string &fileName)
     }
 }
 
-void AOTFileManager::LoadAnFile(const JSPandaFile *jsPandaFile)
+void AOTFileManager::LoadAnFile(JSPandaFile *jsPandaFile)
 {
     auto fileName = GetAotFileName(vm_, jsPandaFile, AOTFileManager::FILE_EXTENSION_AN);
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT, vm_)) {
         return;
+    }
+
+    if (IsLoad(jsPandaFile)) {
+        uint32_t index = GetAnFileIndex(jsPandaFile);
+        jsPandaFile->SetAOTFileInfoIndex(index);
     }
 }
 

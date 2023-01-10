@@ -507,7 +507,7 @@ public:
 
     void LoadStubFile(const std::string &fileName);
     void LoadAnFile(const std::string &fileName);
-    void LoadAnFile(const JSPandaFile *jsPandaFile);
+    void LoadAnFile(JSPandaFile *jsPandaFile);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool InsideStub(uintptr_t pc) const;
     bool InsideAOT(uintptr_t pc) const;
