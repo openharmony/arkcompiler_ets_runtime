@@ -340,6 +340,8 @@ public:
     GateRef PropAttrGetOffset(GateRef attr);
     GateRef InstanceOf(GateRef glue, GateRef object, GateRef target, GateRef profileTypeInfo, GateRef slotId);
     GateRef OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj);
+    void TryFastHasInstance(GateRef glue, GateRef instof, GateRef target, GateRef object, Label *fastPath,
+                            Label *exit, Variable *result);
     GateRef SameValue(GateRef glue, GateRef left, GateRef right);
 
     // SetDictionaryOrder func in property_attribute.h

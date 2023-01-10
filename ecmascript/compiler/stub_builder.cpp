@@ -2979,51 +2979,72 @@ GateRef StubBuilder::InstanceOf(GateRef glue, GateRef object, GateRef target, Ga
         GateRef instof = GetMethod(glue, target, hasInstanceSymbol, profileTypeInfo, slotId);
 
         // 3.ReturnIfAbrupt(instOfHandler).
-        Label isPendingException1(env);
-        Label noPendingException1(env);
-        Branch(HasPendingException(glue), &isPendingException1, &noPendingException1);
-        Bind(&isPendingException1);
+        Label isPendingException(env);
+        Label noPendingException(env);
+        Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+        Bind(&isPendingException);
         {
             result = Exception();
             Jump(&exit);
         }
-        Bind(&noPendingException1);
+        Bind(&noPendingException);
 
         // 4.If instOfHandler is not undefined, then
         Label instOfNotUndefined(env);
         Label instOfIsUndefined(env);
+        Label fastPath(env);
+        Label targetNotCallable(env);
         Branch(TaggedIsUndefined(instof), &instOfIsUndefined, &instOfNotUndefined);
         Bind(&instOfNotUndefined);
         {
-            GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, JSCallMode::CALL_SETTER, { target, object });
-            result = FastToBoolean(retValue);
-            Jump(&exit);
+            TryFastHasInstance(glue, instof, target, object, &fastPath, &exit, &result);
         }
         Bind(&instOfIsUndefined);
         {
             // 5.If IsCallable(target) is false, throw a TypeError exception.
-            Label targetIsCallable1(env);
-            Label targetNotCallable1(env);
-            Branch(IsCallable(target), &targetIsCallable1, &targetNotCallable1);
-            Bind(&targetNotCallable1);
+            Branch(IsCallable(target), &fastPath, &targetNotCallable);
+            Bind(&targetNotCallable);
             {
                 GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InstanceOfErrorTargetNotCallable));
                 CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
                 result = Exception();
                 Jump(&exit);
             }
-            Bind(&targetIsCallable1);
-            {
-                // 6.Return ? OrdinaryHasInstance(target, object).
-                result = OrdinaryHasInstance(glue, target, object);
-                Jump(&exit);
-            }
+        }
+        Bind(&fastPath);
+        {
+            // 6.Return ? OrdinaryHasInstance(target, object).
+            result = OrdinaryHasInstance(glue, target, object);
+            Jump(&exit);
         }
     }
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void StubBuilder::TryFastHasInstance(GateRef glue, GateRef instof, GateRef target, GateRef object, Label *fastPath,
+                                     Label *exit, Variable *result)
+{
+    auto env = GetEnvironment();
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef function = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::HASINSTANCE_FUNCTION_INDEX);
+
+    Label slowPath(env);
+    Label tryFastPath(env);
+    GateRef isEqual = IntPtrEqual(instof, function);
+    Branch(isEqual, &tryFastPath, &slowPath);
+    Bind(&tryFastPath);
+    Jump(fastPath);
+    Bind(&slowPath);
+    {
+        GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, JSCallMode::CALL_SETTER, { target, object });
+        result->WriteVariable(FastToBoolean(retValue));
+        Jump(exit);
+    }
 }
 
 GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId)
@@ -3038,15 +3059,15 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef p
     AccessObjectStubBuilder builder(this);
     GateRef value = builder.LoadObjByName(glue, obj, key, info, profileTypeInfo, slotId);
 
-    Label isPendingException2(env);
-    Label noPendingException2(env);
-    Branch(HasPendingException(glue), &isPendingException2, &noPendingException2);
-    Bind(&isPendingException2);
+    Label isPendingException(env);
+    Label noPendingException(env);
+    Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+    Bind(&isPendingException);
     {
         result = Exception();
         Jump(&exit);
     }
-    Bind(&noPendingException2);
+    Bind(&noPendingException);
     Label valueIsUndefinedOrNull(env);
     Label valueNotUndefinedOrNull(env);
     Branch(TaggedIsUndefinedOrNull(value), &valueIsUndefinedOrNull, &valueNotUndefinedOrNull);
@@ -3118,15 +3139,15 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
     DEFVARIABLE(object, VariableType::JS_ANY(), obj);
 
     // 1. If IsCallable(C) is false, return false.
-    Label targetIsCallable2(env);
-    Label targetNotCallable2(env);
-    Branch(IsCallable(target), &targetIsCallable2, &targetNotCallable2);
-    Bind(&targetNotCallable2);
+    Label targetIsCallable(env);
+    Label targetNotCallable(env);
+    Branch(IsCallable(target), &targetIsCallable, &targetNotCallable);
+    Bind(&targetNotCallable);
     {
         result = TaggedFalse();
         Jump(&exit);
     }
-    Bind(&targetIsCallable2);
+    Bind(&targetIsCallable);
     {
         // 2. If C has a [[BoundTargetFunction]] internal slot, then
         //    a. Let BC be the value of C's [[BoundTargetFunction]] internal slot.
@@ -3164,15 +3185,15 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
 
                 // 5. ReturnIfAbrupt(P).
                 // no throw exception, so needn't return
-                Label isPendingException3(env);
-                Label noPendingException3(env);
-                Branch(HasPendingException(glue), &isPendingException3, &noPendingException3);
-                Bind(&isPendingException3);
+                Label isPendingException(env);
+                Label noPendingException(env);
+                Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+                Bind(&isPendingException);
                 {
                     result = Exception();
                     Jump(&exit);
                 }
-                Bind(&noPendingException3);
+                Bind(&noPendingException);
 
                 // 6. If Type(P) is not Object, throw a TypeError exception.
                 Label constructorPrototypeIsHeapObject(env);
@@ -3299,14 +3320,14 @@ GateRef StubBuilder::SameValue(GateRef glue, GateRef left, GateRef right)
     Label exit(env);
     DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0.0));
     DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0.0));
-    Label strictEqual2(env);
+    Label strictEqual(env);
     Label stringEqualCheck(env);
     Label stringCompare(env);
     Label bigIntEqualCheck(env);
     Label numberEqualCheck1(env);
 
-    Branch(Equal(left, right), &strictEqual2, &numberEqualCheck1);
-    Bind(&strictEqual2);
+    Branch(Equal(left, right), &strictEqual, &numberEqualCheck1);
+    Bind(&strictEqual);
     {
         result = True();
         Jump(&exit);
