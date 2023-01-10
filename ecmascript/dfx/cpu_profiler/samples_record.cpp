@@ -239,7 +239,8 @@ void SamplesRecord::FinetuneSampleData()
         bool findFlag = false;
         size_t findIdx = sampleIdx;
         size_t preIdx = sampleIdx;
-        uint64_t preSampleTime = sampleTime - profileInfo_->timeDeltas[sampleIdx]; // preIdx's timestamp
+        uint64_t preSampleTime = static_cast<uint64_t>(sampleTime -
+            profileInfo_->timeDeltas[sampleIdx]); // preIdx's timestamp
         std::string napiFunctionAddr = napiCallAddrVec_[napiCallIdx];
         if (sampleIdx - 1 >= 0) {
             preIdx = sampleIdx - 1;
@@ -248,7 +249,7 @@ void SamplesRecord::FinetuneSampleData()
         // loop backward PRE_IDX_RANGE times from previous index, find same address napi
         for (size_t k = preIdx; k - preIdx < PRE_IDX_RANGE && k < samplesCount; k++) {
             std::string samplesFunctionName = profileInfo_->nodes[samples[k] - 1].codeEntry.functionName;
-            preSampleTime += profileInfo_->timeDeltas[k];
+            preSampleTime += static_cast<uint64_t>(profileInfo_->timeDeltas[k]);
             if (samplesFunctionName.find(napiFunctionAddr) != std::string::npos) {
                 findFlag = true;
                 findIdx = k;

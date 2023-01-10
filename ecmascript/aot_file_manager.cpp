@@ -71,9 +71,9 @@ void ModuleSectionDes::SaveSectionsInfo(std::ofstream &file)
     for (auto [key, val] : SecMap) {
         LOG_COMPILER(DEBUG) << key << " size is "
                             << std::fixed << std::setprecision(DECIMAL_LENS)
-                            << val / 1_KB << "KB "<< "percentage:"
+                            << (val / 1_KB) << "KB "<< "percentage:"
                             << std::fixed << std::setprecision(PERCENT_LENS)
-                            << val / secSize * HUNDRED_TIME << "% ";
+                            << (val / secSize * HUNDRED_TIME) << "% ";
     }
     LOG_COMPILER(DEBUG) << "elf secitions size = " << (secSize / 1_KB) << "KB"
                         << ", ark stack map size = " << (size / 1_KB) << "KB";
@@ -348,7 +348,8 @@ bool AnFileInfo::AnVersionCheck(std::array<uint8_t, Size> anVersion)
             return ret;
         };
         LOG_COMPILER(ERROR) << "Load an file failed, an file version is incorrect, "
-                            << "expected version should be less or equal than " << convToStr(AOTFileManager::AOT_VERSION)
+                            << "expected version should be less or equal than "
+                            << convToStr(AOTFileManager::AOT_VERSION)
                             << ", but got " << convToStr(anVersion);
         return false;
     }
