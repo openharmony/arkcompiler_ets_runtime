@@ -363,6 +363,7 @@ public:
     bool IsLoopHead() const;
     bool IsNop() const;
     bool IsConstant() const;
+    bool IsDependSelector() const;
     bool IsTypedOperator() const;
     bool IsCheckWithOneIn() const;
     bool IsCheckWithTwoIns() const;

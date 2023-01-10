@@ -96,7 +96,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
         PassData data(&builder, &circuit, &info, log_, fullName,
                       methodInfoIndex, hasTypes, recordName,
-                      methodLiteral, methodOffset);
+                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator());
         PassRunner<PassData> pipeline(&data);
         if (EnableTypeInfer()) {
             pipeline.RunPass<TypeInferPass>();
@@ -104,7 +104,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         if (EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>();
-            pipeline.RunPass<CheckEliminationPass>();
+            pipeline.RunPass<EarlyEliminationPass>();
             pipeline.RunPass<TypeLoweringPass>();
         }
         pipeline.RunPass<SlowPathLoweringPass>();
