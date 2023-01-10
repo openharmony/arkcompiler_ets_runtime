@@ -18,6 +18,7 @@
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
@@ -634,11 +635,17 @@ JSTaggedValue TaggedDoubleList::Set(JSThread *thread, const JSHandle<TaggedDoubl
 {
     int nodeLength = taggedList->NumberOfNodes();
     if (index < 0 || index >= nodeLength) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Set index out-of-bounds", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            containers::ContainerError::BusinessError(thread,
+                                                      containers::ErrorFlag::RANGE_ERROR, "Set index out-of-bounds");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     int dataIndex = taggedList->FindDataIndexByNodeIndex(index);
     if (dataIndex == -1) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Set index not exist", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            containers::ContainerError::BusinessError(thread,
+                                                      containers::ErrorFlag::RANGE_ERROR, "Set index not exist");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     taggedList->SetElement(thread, dataIndex, value.GetTaggedValue());
     return taggedList.GetTaggedValue();
@@ -691,7 +698,10 @@ JSTaggedValue TaggedDoubleList::RemoveFirstFound(JSThread *thread, const JSHandl
 {
     int prevDataIndex = taggedList->FindPrevNodeByValue(element);
     if (prevDataIndex == -1) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "this element is not exist in this container", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            containers::ContainerError::BusinessError(thread, containers::ErrorFlag::IS_NOT_EXIST_ERROR,
+                                                      "The element does not exist in this container");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     taggedList->RemoveNode(thread, prevDataIndex);
     return JSTaggedValue::True();
@@ -702,7 +712,10 @@ JSTaggedValue TaggedDoubleList::RemoveLastFound(JSThread *thread, const JSHandle
 {
     int prevDataIndex = taggedList->FindPrevNodeByValueAtLast(element);
     if (prevDataIndex == -1) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "this element is not exist in this container", JSTaggedValue::Exception());
+        JSTaggedValue error =
+            containers::ContainerError::BusinessError(thread, containers::ErrorFlag::IS_NOT_EXIST_ERROR,
+                                                      "The element does not exist in this container");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     taggedList->RemoveNode(thread, prevDataIndex);
     return JSTaggedValue::True();
