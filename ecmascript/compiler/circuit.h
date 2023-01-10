@@ -120,19 +120,16 @@ public:
         return metaBuilder_.Nop();
     }
 
-    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex)
+    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode,
+        uint32_t bcIndex, bool writable)
     {
-        return metaBuilder_.JSBytecode(valuesIn, opcode, bcIndex);
+        GateFlags flags = writable ? GateFlags::NONE_FLAG : GateFlags::NO_WRITE;
+        return metaBuilder_.JSBytecode(valuesIn, opcode, bcIndex, flags);
     }
 
     const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp)
     {
         return metaBuilder_.TypedBinaryOp(value, binOp);
-    }
-
-    const GateMetaData* SaveRegister(uint64_t value)
-    {
-        return metaBuilder_.SaveRegister(value);
     }
 
     const GateMetaData* RestoreRegister()

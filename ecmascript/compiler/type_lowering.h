@@ -238,7 +238,10 @@ private:
     GateType GetRightType(GateRef gate);
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
-    GateRef GetFrameState(GateRef gate);
+    GateRef GetFrameState(GateRef gate) const
+    {
+        return acc_.GetFrameState(gate);
+    }
 
     Circuit *circuit_;
     GateAccessor acc_;

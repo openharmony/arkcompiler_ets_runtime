@@ -1018,11 +1018,14 @@ GateRef CircuitBuilder::Int32OverflowCheck(GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
 
     uint64_t value = TypedUnaryAccessor::ToValue(GateType::Empty(), Op);
     GateRef ret = GetCircuit()->NewGate(circuit_->Int32OverflowCheck(value),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 } // namespace panda::ecmascript::kungfu

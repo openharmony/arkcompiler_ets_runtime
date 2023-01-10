@@ -201,6 +201,14 @@ void Gate::CheckRootInput() const
     }
 }
 
+void Gate::CheckFrameStateInput() const
+{
+    size_t frameStateStart = GetInFrameStateStarts();
+    if (meta_->HasFrameState()) {
+        CheckInputOpcode(frameStateStart, OpCode::FRAME_STATE);
+    }
+}
+
 void Gate::CheckStateOutput() const
 {
     if (GetMetaData()->IsState()) {
@@ -320,6 +328,7 @@ void Gate::Verify(bool isArch64) const
     CheckStateInput();
     CheckValueInput(isArch64);
     CheckDependInput();
+    CheckFrameStateInput();
     CheckRootInput();
     CheckStateOutput();
     CheckBranchOutput();
@@ -608,7 +617,12 @@ size_t Gate::GetNumIns() const
 
 size_t Gate::GetInValueStarts() const
 {
-    return GetStateCount() + GetDependCount();
+    return meta_->GetInValueStarts();
+}
+
+size_t Gate::GetInFrameStateStarts() const
+{
+    return meta_->GetInFrameStateStarts();
 }
 
 size_t Gate::GetStateCount() const
@@ -624,6 +638,11 @@ size_t Gate::GetDependCount() const
 size_t Gate::GetInValueCount() const
 {
     return meta_->GetInValueCount();
+}
+
+size_t Gate::GetInFrameStateCount() const
+{
+    return meta_->GetInFrameStateCount();
 }
 
 size_t Gate::GetRootCount() const
@@ -692,13 +711,23 @@ void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) 
         auto stateSize = GetStateCount();
         auto dependSize = GetDependCount();
         auto valueSize = GetInValueCount();
+        auto frameStateSize = GetInFrameStateCount();
         auto rootSize = GetRootCount();
-        idx = PrintInGate(stateSize, idx, 0, inListPreview, highlightIdx, log);
-        idx = PrintInGate(stateSize + dependSize, idx, stateSize, inListPreview, highlightIdx, log);
-        idx = PrintInGate(stateSize + dependSize + valueSize, idx, stateSize + dependSize,
-                          inListPreview, highlightIdx, log);
-        PrintInGate(stateSize + dependSize + valueSize + rootSize, idx, stateSize + dependSize + valueSize,
-                    inListPreview, highlightIdx, log, true);
+        size_t start = 0;
+        size_t end = stateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += dependSize;
+        start += stateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += valueSize;
+        start += dependSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += frameStateSize;
+        start += valueSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += rootSize;
+        start += frameStateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log, true);
 
         log += "], \"out\":[";
 
@@ -736,13 +765,23 @@ void Gate::ShortPrint(std::string bytecode, bool inListPreview, size_t highlight
         auto stateSize = GetStateCount();
         auto dependSize = GetDependCount();
         auto valueSize = GetInValueCount();
+        auto frameStateSize = GetInFrameStateCount();
         auto rootSize = GetRootCount();
-        idx = PrintInGate(stateSize, idx, 0, inListPreview, highlightIdx, log);
-        idx = PrintInGate(stateSize + dependSize, idx, stateSize, inListPreview, highlightIdx, log);
-        idx = PrintInGate(stateSize + dependSize + valueSize, idx, stateSize + dependSize,
-                          inListPreview, highlightIdx, log);
-        PrintInGate(stateSize + dependSize + valueSize + rootSize, idx, stateSize + dependSize + valueSize,
-                    inListPreview, highlightIdx, log, true);
+        size_t start = 0;
+        size_t end = stateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += dependSize;
+        start += stateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += valueSize;
+        start += dependSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += frameStateSize;
+        start += valueSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += rootSize;
+        start += frameStateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log, true);
 
         log += "], out=[";
 

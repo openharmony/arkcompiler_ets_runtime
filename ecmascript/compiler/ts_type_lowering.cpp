@@ -592,9 +592,7 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     builder_.PrimitiveTypeCheck(leftType, left);
     builder_.PrimitiveTypeCheck(rightType, right);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType);
 
     std::vector<GateRef> removedGate;
@@ -623,9 +621,7 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
         builder_.Int32OverflowCheck<Op>(value);
     }
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, gateType);
 
     std::vector<GateRef> removedGate;
@@ -651,9 +647,7 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     GateType srcType = acc_.GetGateType(src);
     builder_.PrimitiveTypeCheck(srcType, src);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
 
     std::vector<GateRef> removedGate;
@@ -707,9 +701,7 @@ void TSTypeLowering::LowerTypedLdArrayLength(GateRef gate)
     GateRef array = acc_.GetValueIn(gate, 2);
     builder_.ArrayCheck(array);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef loadLength = builder_.LoadArrayLength(array);
 
     std::vector<GateRef> removedGate;
@@ -757,9 +749,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     GateRef propertyOffsetGate = builder_.IntPtr(propertyOffset);
     builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.LoadProperty(receiver, propertyOffsetGate);
 
     std::vector<GateRef> removedGate;
@@ -808,9 +798,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     GateRef propertyOffsetGate = builder_.IntPtr(propertyOffset);
     builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     builder_.StoreProperty(receiver, propertyOffsetGate, value);
 
     std::vector<GateRef> removedGate;
@@ -841,9 +829,7 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
     GateRef index = acc_.GetValueIn(gate, 0);
     builder_.IndexCheck(receiverType, receiver, index);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = Circuit::NullGate();
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index);
@@ -882,9 +868,7 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     builder_.IndexCheck(receiverType, receiver, index);
     builder_.PrimitiveTypeCheck(valueType, value);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
     } else {
@@ -926,9 +910,7 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     builder_.IndexCheck(receiverType, receiver, index);
     builder_.PrimitiveTypeCheck(propKeyType, propKey);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, index);
 
     std::vector<GateRef> removedGate;
@@ -950,9 +932,7 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
 
     builder_.PrimitiveTypeCheck(valueType, value);
 
-    auto stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     auto toBool = builder_.TypedUnaryOp<TypedUnOp::TYPED_TOBOOL>(value, valueType, GateType::NJSValue());
     if (!flag) {
         toBool = builder_.BoolNot(toBool);
@@ -976,12 +956,8 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
     AddProfiling(gate);
 
     int hclassIndex = tsManager_->GetHClassIndexByClassGateType(ctorType);
-
     GateRef stateSplit = acc_.GetDep(gate);
     ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    auto currentLabel = builder_.GetCurrentEnvironment()->GetCurrentLabel();
-    auto currentDepend = acc_.GetDep(stateSplit);
-    currentLabel->SetDepend(currentDepend);
 
     DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     Label allocateThisObj(&builder_);
@@ -993,10 +969,8 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
     {
         // add typecheck to detect protoOrHclass is equal with ihclass,
         // if pass typecheck: 1.no need to check whether hclass is valid 2.no need to check return result
-        currentDepend = builder_.GetDepend();
-        builder_.SetDepend(stateSplit);
-        builder_.ObjectTypeCheck(ctorType, ctor, builder_.IntPtr(hclassIndex));
-        builder_.SetDepend(currentDepend);
+        auto frameState = acc_.GetFrameState(stateSplit);
+        builder_.ObjectTypeCheck(ctorType, ctor, builder_.IntPtr(hclassIndex), frameState);
 
         GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
                                               builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
@@ -1036,8 +1010,7 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
     // stateSplit maybe not a STATE_SPLIT
     GateRef stateSplit = acc_.GetDep(gate);
     ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    GateRef frameState = acc_.GetValueIn(stateSplit, 0);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    GateRef frameState = acc_.GetFrameState(stateSplit);
 
     DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.True());
@@ -1090,9 +1063,7 @@ void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID i
     GateRef a0 = acc_.GetValueIn(gate, 1);
     builder_.CallTargetCheck(function, builder_.IntPtr(static_cast<int64_t>(id)), a0);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedCallBuiltin(a0, id);
 
     std::vector<GateRef> removedGate;

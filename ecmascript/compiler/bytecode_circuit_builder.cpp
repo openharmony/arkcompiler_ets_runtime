@@ -786,8 +786,9 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     GateRef gate = 0;
+    bool writable = !bytecodeInfo.NoSideEffects();
     auto meta = circuit_->JSBytecode(numValueInputs,
-                                     bytecodeInfo.GetOpcode(), iterator.Index());
+                                     bytecodeInfo.GetOpcode(), iterator.Index(), writable);
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, meta);
     if (bytecodeInfo.IsDef()) {
         gate = circuit_->NewGate(meta, MachineType::I64, inList.size(),
@@ -861,8 +862,9 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     if (bytecodeInfo.IsCondJump()) {
+        ASSERT(!bytecodeInfo.Deopt());
         auto meta = circuit_->JSBytecode(numValueInputs,
-            bytecodeInfo.GetOpcode(), iterator.Index());
+            bytecodeInfo.GetOpcode(), iterator.Index(), false);
         auto numValues = meta->GetNumIns();
         GateRef gate = circuit_->NewGate(meta, std::vector<GateRef>(numValues, Circuit::NullGate()));
         gateAcc_.NewIn(gate, 0, state);
@@ -1085,7 +1087,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         // New SAVE_REGISTER HIR, used to save register content when processing suspend instruction.
         auto resumeGate = byteCodeToJSGate_.at(iterator.Index());
         ans = gateAcc_.GetDep(resumeGate);
-        auto regs = gateAcc_.GetRestoreRegsInfo(ans);
+        auto &regs = gateAcc_.GetRestoreRegsInfo(ans);
         auto it = regs.find(needReplaceInfo);
         if (it != regs.end()) {
             break;
