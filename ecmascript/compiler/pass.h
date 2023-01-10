@@ -18,7 +18,7 @@
 
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/check_elimination.h"
+#include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/llvm_codegen.h"
@@ -36,12 +36,12 @@ class PassInfo;
 class PassData {
 public:
     PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassInfo *info, CompilerLog *log,
-             std::string methodName, size_t methodInfoIndex = 0,
-             bool hasTypes = false, const CString &recordName = "",
-             MethodLiteral *methodLiteral = nullptr, uint32_t methodOffset = 0)
+             std::string methodName, size_t methodInfoIndex = 0, bool hasTypes = false,
+             const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
+             uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr)
         : builder_(builder), circuit_(circuit), info_(info), log_(log), methodName_(methodName),
           methodInfoIndex_(methodInfoIndex), hasTypes_(hasTypes), recordName_(recordName),
-          methodLiteral_(methodLiteral), methodOffset_(methodOffset)
+          methodLiteral_(methodLiteral), methodOffset_(methodOffset), allocator_(allocator)
     {
     }
 
@@ -127,6 +127,10 @@ public:
         return recordName_;
     }
 
+    NativeAreaAllocator* GetNativeAreaAllocator() const {
+        return allocator_;
+    }
+
 private:
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
@@ -139,6 +143,7 @@ private:
     const CString &recordName_;
     MethodLiteral *methodLiteral_ {nullptr};
     uint32_t methodOffset_;
+    NativeAreaAllocator *allocator_ {nullptr};
 };
 
 template<typename T1>
@@ -238,13 +243,13 @@ public:
     }
 };
 
-class CheckEliminationPass {
+class EarlyEliminationPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("CheckEliminationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("EarlyEliminationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        CheckElimination(data->GetCircuit(), data->GetCompilerConfig(), enableLog, data->GetMethodName()).Run();
+        EarlyElimination(data->GetCircuit(), enableLog, data->GetMethodName(), data->GetNativeAreaAllocator()).Run();
         return true;
     }
 };

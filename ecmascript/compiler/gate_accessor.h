@@ -359,6 +359,7 @@ public:
     bool IsLoopBack(GateRef gate) const;
     bool IsState(GateRef gate) const;
     bool IsConstant(GateRef gate) const;
+    bool IsDependSelector(GateRef gate) const;
     bool IsConstantValue(GateRef gate, uint64_t value) const;
     bool IsTypedOperator(GateRef gate) const;
     bool IsNotWrite(GateRef gate) const;
@@ -380,8 +381,9 @@ public:
     bool IsExceptionState(const UseIterator &useIt) const;
     bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
+    void GetStateUses(GateRef gate, std::vector<GateRef>& stateUses);
+    void GetDependUses(GateRef gate, std::vector<GateRef>& dependUses);
     bool IsFrameStateIn(GateRef gate, size_t index) const;
-    void GetStateUses(GateRef gate, std::vector<GateRef>& outStates);
     void DeleteStateSplitAndFrameState(GateRef gate);
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
@@ -482,7 +484,7 @@ private:
     friend class Circuit;
     friend class LLVMIRBuilder;
     friend class Scheduler;
-    friend class CheckElimination;
+    friend class EarlyElimination;
     friend class ArgumentAccessor;
     friend class BytecodeCircuitBuilder;
 };

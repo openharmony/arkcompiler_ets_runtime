@@ -142,6 +142,11 @@ bool GateMetaData::IsConstant() const
     return (opcode_ == OpCode::CONSTANT || opcode_ == OpCode::CONST_DATA);
 }
 
+bool GateMetaData::IsDependSelector() const
+{
+    return (opcode_ == OpCode::DEPEND_SELECTOR);
+}
+
 bool GateMetaData::IsTypedOperator() const
 {
     return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT) ||

@@ -905,13 +905,12 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
 
     AddProfiling(gate);
 
-    builder_.StableArrayCheck(receiver);
-    GateRef index = builder_.GetInt32OfTInt(propKey);
-    builder_.IndexCheck(receiverType, receiver, index);
     builder_.PrimitiveTypeCheck(propKeyType, propKey);
+    builder_.StableArrayCheck(receiver);
+    builder_.IndexCheck(receiverType, receiver, propKey);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
-    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, index);
+    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
 
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
