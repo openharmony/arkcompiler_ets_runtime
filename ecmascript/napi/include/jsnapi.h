@@ -1276,6 +1276,7 @@ public:
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static std::string GetAssetPath(EcmaVM *vm);
     static void SetLoop(EcmaVM *vm, void *loop);
+    static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
 
 private:
     static int vmCount_;

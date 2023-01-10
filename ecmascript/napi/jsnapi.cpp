@@ -2668,4 +2668,44 @@ void JSNApi::SetLoop(EcmaVM *vm, void *loop)
 {
     vm->SetLoop(loop);
 }
+
+bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
+{
+    [[maybe_unused]] LocalScope scope(vm);
+    JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(function);
+    JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
+    if (transFunc->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        return false;
+    }
+    ecmascript::JSThread *thread = vm->GetJSThread();
+    JSHandle<Method> method(thread, transFunc->GetMethod());
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+    if (jsPandaFile == nullptr) {
+        return false;
+    }
+    ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+    ecmascript::CString recordName = method->GetRecordName();
+
+    bool isModule = jsPandaFile->IsModule(recordName);
+    if (isModule) {
+        ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
+        JSHandle<ecmascript::SourceTextModule> moduleRecord;
+        if (jsPandaFile->IsBundlePack()) {
+            moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
+        } else {
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
+        }
+        ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
+        if (thread->HasPendingException()) {
+            auto exception = thread->GetException();
+            vm->HandleUncaughtException(exception.GetTaggedObject());
+            return false;
+        }
+        moduleRecord->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
+        ecmascript::SourceTextModule::EvaluateForConcurrent(thread, moduleRecord);
+        transFunc->SetModule(thread, moduleRecord);
+        return true;
+    }
+    return false;
+}
 }  // namespace panda
