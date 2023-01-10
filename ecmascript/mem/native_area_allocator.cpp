@@ -112,7 +112,14 @@ void *NativeAreaAllocator::AllocateBuffer(size_t size)
         UNREACHABLE();
     }
 #endif
-    IncreaseNativeMemoryUsage(size);
+
+#if defined(PANDA_TARGET_WINDOWS)
+    IncreaseNativeMemoryUsage(_msize(ptr));
+#elif defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
+    IncreaseNativeMemoryUsage(malloc_size(ptr));
+#else
+    IncreaseNativeMemoryUsage(malloc_usable_size(ptr));
+#endif
     return ptr;
 }
 
