@@ -507,6 +507,7 @@ public:
 
     void LoadStubFile(const std::string &fileName);
     void LoadAnFile(const std::string &fileName);
+    void LoadAnFile(const JSPandaFile *jsPandaFile);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool InsideStub(uintptr_t pc) const;
     bool InsideAOT(uintptr_t pc) const;
@@ -521,13 +522,15 @@ public:
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
                                    const AOTLiteralInfo *entryIndexes);
-    void LoadSnapshotFile([[maybe_unused]] const std::string& filename);
+    void LoadAiFile([[maybe_unused]] const std::string& filename);
+    void LoadAiFile(const JSPandaFile *jsPandaFile);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList);
     JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
+    std::string GetAotFileName(EcmaVM *vm, const JSPandaFile *jsPandaFile, const std::string &extensionName) const;
 
 private:
 
