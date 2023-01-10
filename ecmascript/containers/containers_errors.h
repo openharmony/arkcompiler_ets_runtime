@@ -26,6 +26,7 @@ enum ErrorFlag {
     IS_EMPTY_ERROR = 10200010,
     BIND_ERROR = 10200011,
     IS_NULL_ERROR = 10200012,
+    IS_NOT_EXIST_ERROR = 10200017,
 };
 class ContainerError {
 public:
