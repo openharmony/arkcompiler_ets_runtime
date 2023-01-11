@@ -57,6 +57,23 @@ void JSPandaFile::CheckIsBundlePack()
     }
 }
 
+void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
+{
+    CString bundleName = vm->GetBundleName();
+    if (bundleName.empty()) {
+        return;
+    }
+
+    CString recordName = jsRecordInfo_.begin()->first;
+    size_t bundleNameLen = bundleName.length();
+    // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
+    if (recordName.length() > bundleNameLen && (recordName.compare(0, bundleNameLen, bundleName) == 0)) {
+        isNewRecord_ = true;
+    } else {
+        isNewRecord_ = false;
+    }
+}
+
 JSPandaFile::~JSPandaFile()
 {
     if (pf_ != nullptr) {
@@ -308,6 +325,17 @@ std::string JSPandaFile::ParseHapPath(const CString &fileName)
         }
     }
     return "";
+}
+
+void JSPandaFile::CroppingRecord(CString &recordName)
+{
+    size_t pos = recordName.find('/');
+    if (pos != CString::npos) {
+        pos = recordName.find('/', pos + 1);
+        if (pos != CString::npos) {
+            recordName = recordName.substr(pos + 1);
+        }
+    }
 }
 
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)

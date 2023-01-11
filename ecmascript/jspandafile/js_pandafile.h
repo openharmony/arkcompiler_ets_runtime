@@ -243,6 +243,11 @@ public:
         return isBundlePack_;
     }
 
+    bool IsNewRecord() const
+    {
+        return isNewRecord_;
+    }
+
     bool IsLoadedAOT() const
     {
         return (anFileInfoIndex_ != INVALID_INDEX);
@@ -291,11 +296,13 @@ public:
     }
 
     void CheckIsBundlePack();
+    void CheckIsNewRecord(EcmaVM *vm);
 
     CString FindEntryPoint(const CString &record) const;
 
     static CString ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName);
     static std::string ParseHapPath(const CString &fileName);
+    static void CroppingRecord(CString &recordName);
 
     uint32_t GetAOTFileInfoIndex() const
     {
@@ -359,6 +366,7 @@ private:
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
+    bool isNewRecord_ {true};
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
 };
 }  // namespace ecmascript
