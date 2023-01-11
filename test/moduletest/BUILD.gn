@@ -45,6 +45,7 @@ group("ark_js_moduletest") {
     "loadicbyvalue:loadicbyvalueAction",
     "merge:mergeAction",
     "module:moduleAction",
+    "moduleImportJson:moduleImportJsonAction",
     "moduleUseCjs:moduleUseCjsAction",
     "multiargs:multiargsAction",
     "newobjdynrange:newobjdynrangeAction",
