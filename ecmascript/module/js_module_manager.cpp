@@ -624,15 +624,19 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         pos = moduleRequestName.find('/');
         CString bundleName = moduleRequestName.substr(0, pos);
         size_t bundleNameLen = bundleName.length();
-        bool isDifferentBundle = (moduleRecordName.length() > bundleNameLen) &&
-            (moduleRecordName.compare(0, bundleNameLen, bundleName) != 0);
-        pos = moduleRequestName.find('/', bundleNameLen + 1);
-        if (isDifferentBundle && CString::npos != pos) {
-            CString moduleName = moduleRequestName.substr(bundleNameLen + 1, pos - bundleNameLen - 1);
-            baseFilename = JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + '/' + moduleName +
-                           JSPandaFile::MERGE_ABC_ETS_MODULES;
-        }
         entryPoint = moduleRequestName;
+        if (jsPandaFile->IsNewRecord()) {
+            bool isDifferentBundle = (moduleRecordName.length() > bundleNameLen) &&
+            (moduleRecordName.compare(0, bundleNameLen, bundleName) != 0);
+            pos = moduleRequestName.find('/', bundleNameLen + 1);
+            if (isDifferentBundle && CString::npos != pos) {
+                CString moduleName = moduleRequestName.substr(bundleNameLen + 1, pos - bundleNameLen - 1);
+                baseFilename = JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + '/' + moduleName +
+                            JSPandaFile::MERGE_ABC_ETS_MODULES;
+            }
+        } else {
+            JSPandaFile::CroppingRecord(entryPoint);
+        }
     } else if (moduleRequestName.find("@module:") != CString::npos) {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
         moduleRequestName = moduleRequestName.substr(JSPandaFile::MODULE_OR_BUNDLE_PREFIX_LEN);
