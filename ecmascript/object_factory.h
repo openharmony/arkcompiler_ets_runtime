@@ -303,7 +303,9 @@ public:
     {
         MemSpaceType spaceType = numberOfNodes < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
         JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(numberOfNodes, spaceType);
-        dstElements->SetLength(numberOfNodes);
+        if (numberOfNodes == 0) {
+            return dstElements;
+        }
         int dataIndex = Derived::ELEMENTS_START_INDEX;
         for (uint32_t i = 0; i < numberOfNodes; i++) {
             dataIndex = list->GetElement(dataIndex + Derived::NEXT_PTR_OFFSET).GetInt();
