@@ -1761,14 +1761,6 @@ DEF_RUNTIME_STUBS(OptGetUnmapedArgs)
     return RuntimeOptGetUnmapedArgs(thread, actualNumArgs.GetInt()).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(OptNewLexicalEnv)
-{
-    RUNTIME_STUBS_HEADER(OptNewLexicalEnv);
-    JSTaggedValue numVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> currentLexEnv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeOptNewLexicalEnv(thread, static_cast<uint16_t>(numVars.GetInt()), currentLexEnv).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(OptNewLexicalEnvWithName)
 {
     RUNTIME_STUBS_HEADER(OptNewLexicalEnvWithName);
@@ -1779,15 +1771,6 @@ DEF_RUNTIME_STUBS(OptNewLexicalEnvWithName)
     uint16_t numVars = static_cast<uint16_t>(taggedNumVars.GetInt());
     uint16_t scopeId = static_cast<uint16_t>(taggedScopeId.GetInt());
     return RuntimeOptNewLexicalEnvWithName(thread, numVars, scopeId, currentLexEnv, func).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(OptPopLexicalEnv)
-{
-    RUNTIME_STUBS_HEADER(OptPopLexicalEnv);
-    JSTaggedValue currentLexenv = RuntimeOptGetLexEnv(thread);
-    JSTaggedValue parentLexenv = LexicalEnv::Cast(currentLexenv.GetTaggedObject())->GetParentEnv();
-    RuntimeOptSetLexEnv(thread, parentLexenv);
-    return JSTaggedValue::VALUE_HOLE;
 }
 
 DEF_RUNTIME_STUBS(OptCopyRestArgs)
@@ -1963,6 +1946,36 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
         cache->Set(cls, propKey, index);
     }
     return index;
+}
+
+JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
+    FrameIterator it(current, thread);
+    ASSERT(it.IsOptimizedFrame());
+    it.Advance<GCVisitedFlag::VISITED>();
+    ASSERT(it.IsOptimizedJSFunctionFrame());
+    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+    return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
+}
+
+void RuntimeStubs::OptSetLexicalEnv(uintptr_t argGlue, JSTaggedType lexicalEnv)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    RuntimeOptSetLexEnvNoGC(thread, JSTaggedValue(lexicalEnv));
+}
+
+void RuntimeStubs::OptPopLexicalEnv(uintptr_t argGlue)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
+    FrameIterator it(current, thread);
+    ASSERT(it.IsOptimizedJSFunctionFrame());
+    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+    JSTaggedValue currentLexenv = optimizedJSFunctionFrame->GetEnv();
+    JSTaggedValue parentLexenv = LexicalEnv::Cast(currentLexenv.GetTaggedObject())->GetParentEnv();
+    optimizedJSFunctionFrame->SetEnv(parentLexenv);
 }
 
 JSTaggedType RuntimeStubs::FloatMod(double x, double y)

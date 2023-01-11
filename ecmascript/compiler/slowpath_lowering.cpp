@@ -774,6 +774,19 @@ GateRef SlowPathLowering::LowerCallRuntime(int index, const std::vector<GateRef>
     }
 }
 
+GateRef SlowPathLowering::LowerCallNGCRuntime(int index, const std::vector<GateRef> &args, bool useLabel)
+{
+    if (useLabel) {
+        GateRef result = builder_.CallNGCRuntime(glue_, index, Gate::InvalidGateRef, args);
+        return result;
+    } else {
+        const CallSignature *cs = RuntimeStubCSigns::Get(index);
+        GateRef target = builder_.IntPtr(index);
+        GateRef result = builder_.Call(cs, glue_, target, dependEntry_, args);
+        return result;
+    }
+}
+
 void SlowPathLowering::LowerAdd2(GateRef gate)
 {
     // 2: number of value inputs
@@ -2088,14 +2101,51 @@ void SlowPathLowering::LowerIsTrueOrFalse(GateRef gate, bool flag)
 
 void SlowPathLowering::LowerNewObjRange(GateRef gate)
 {
-    const int id = RTSTUB_ID(OptNewObjRange);
-    size_t range = acc_.GetNumValueIn(gate);
-    std::vector<GateRef> args(range);
-    for (size_t i = 0; i < range; ++i) {
-        args[i] = acc_.GetValueIn(gate, i);
+    Label fastPath(&builder_);
+    Label slowPath(&builder_);
+    Label threadCheck(&builder_);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+    GateRef thisObj = builder_.CallStub(glue_, CommonStubCSigns::NewThisObjectChecked, { glue_, ctor });
+    builder_.Branch(builder_.TaggedIsHole(thisObj), &slowPath, &fastPath);
+    builder_.Bind(&fastPath);
+    {
+        const int extra = 5; // 5: add glue, lexEnv, argc, new-target and this
+        GateRef lexicalEnv = builder_.GetLexicalEnv(builder_.GetDepend());
+        GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
+        size_t range = acc_.GetNumValueIn(gate);
+        std::vector<GateRef> args(range + extra);
+        args[0] = glue_;
+        args[1] = lexicalEnv;
+        args[2] = actualArgc;  // 2: argc
+        args[3] = ctor;        // 3: call-target
+        args[4] = ctor;        // 4: new-target
+        args[5] = thisObj;     // 5: this
+        for (size_t i = 1; i < range; ++i) {
+            args[i + extra] = acc_.GetValueIn(gate, i);
+        }
+        result = LowerCallNGCRuntime(RTSTUB_ID(JSCallNew), args, true);
+        result = builder_.CallStub(glue_, CommonStubCSigns::ConstructorCheck, { glue_, ctor, *result, thisObj });
+        builder_.Jump(&threadCheck);
     }
-    GateRef newGate = LowerCallRuntime(id, args);
-    ReplaceHirToCall(gate, newGate);
+    builder_.Bind(&slowPath);
+    {
+        size_t range = acc_.GetNumValueIn(gate);
+        std::vector<GateRef> args(range);
+        for (size_t i = 0; i < range; ++i) {
+            args[i] = acc_.GetValueIn(gate, i);
+        }
+        result = LowerCallRuntime(RTSTUB_ID(OptNewObjRange), args, true);
+        builder_.Jump(&threadCheck);
+    }
+    builder_.Bind(&threadCheck);
+    builder_.Branch(builder_.HasPendingException(glue_), &exceptionExit, &successExit);
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit);
+    ReplaceHirToSubCfg(gate, *result, successControl, failControl);
 }
 
 void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
@@ -2340,8 +2390,8 @@ void SlowPathLowering::LowerNewLexicalEnv(GateRef gate)
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef lexEnv = builder_.GetLexicalEnv(builder_.GetDepend());
-    GateRef result = LowerCallRuntime(RTSTUB_ID(OptNewLexicalEnv),
-        {builder_.ToTaggedInt(acc_.GetValueIn(gate, 0)), lexEnv}, true);
+    GateRef result = builder_.CallStub(glue_, CommonStubCSigns::NewLexicalEnv,
+        { glue_, lexEnv, builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0)) });
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)
@@ -2370,7 +2420,7 @@ void SlowPathLowering::LowerPopLexicalEnv(GateRef gate)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    LowerCallRuntime(RTSTUB_ID(OptPopLexicalEnv), {}, true);
+    LowerCallNGCRuntime(RTSTUB_ID(OptPopLexicalEnv), { glue_ }, true);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
@@ -3324,9 +3374,8 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef jsFunc)
 
 void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate, GateRef actualArgc)
 {
-    GateRef taggedArgc = builder_.ToTaggedInt(actualArgc);
-    const int id = RTSTUB_ID(OptGetUnmapedArgs);
-    GateRef newGate = LowerCallRuntime(id, {taggedArgc});
+    GateRef newGate = builder_.CallStub(glue_, CommonStubCSigns::GetUnmapedArgs,
+        { glue_, builder_.TruncInt64ToInt32(actualArgc) });
     ReplaceHirToCall(gate, newGate);
 }
 

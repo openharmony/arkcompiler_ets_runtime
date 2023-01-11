@@ -1422,6 +1422,12 @@ public:
         return (type == FrameType::LEAVE_FRAME) || (type == FrameType::LEAVE_FRAME_WITH_ARGV);
     }
 
+    bool IsOptimizedFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::OPTIMIZED_FRAME);
+    }
+
     bool IsOptimizedJSFunctionFrame() const
     {
         FrameType type = GetFrameType();

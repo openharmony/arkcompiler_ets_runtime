@@ -600,6 +600,69 @@ DEF_CALL_SIGNATURE(SetValueWithBarrier)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(NewThisObjectChecked)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("NewThisObjectChecked", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // ctor
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(ConstructorCheck)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("ConstructorCheck", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // ctor
+        VariableType::JS_ANY(),          // result
+        VariableType::JS_ANY(),          // thisObj
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(NewLexicalEnv)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("NewLexicalEnv", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // parent
+        VariableType::INT32(),           // numArgs
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(GetUnmapedArgs)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("GetUnmapedArgs", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::INT32(),           // numArgs
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(GetTaggedArrayPtrTest)
 {
     // 2 : 2 input parameters
@@ -1227,6 +1290,45 @@ DEF_CALL_SIGNATURE(FatalPrint)
         VariableType::INT32(),
     };
     callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(OptSetLexicalEnv)
+{
+    // 2 : 2 input parameters
+    CallSignature index("OptSetLexicalEnv", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(OptPopLexicalEnv)
+{
+    CallSignature index("OptPopLexicalEnv", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(GetActualArgvNoGC)
+{
+    CallSignature index("GetActualArgvNoGC", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::NATIVE_POINTER());
+    *callSign = index;
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER(),
+    };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
