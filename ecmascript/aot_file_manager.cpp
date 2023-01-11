@@ -397,12 +397,17 @@ void AOTFileManager::LoadAnFile(const std::string &fileName)
     }
 }
 
-void AOTFileManager::LoadAnFile(const JSPandaFile *jsPandaFile)
+void AOTFileManager::LoadAnFile(JSPandaFile *jsPandaFile)
 {
     auto fileName = GetAotFileName(vm_, jsPandaFile, AOTFileManager::FILE_EXTENSION_AN);
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT, vm_)) {
         return;
+    }
+
+    if (IsLoad(jsPandaFile)) {
+        uint32_t index = GetAnFileIndex(jsPandaFile);
+        jsPandaFile->SetAOTFileInfoIndex(index);
     }
 }
 
