@@ -2112,7 +2112,9 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
-    dstElements->SetLength(newLength);
+    if (newLength == 0) {
+        return dstElements;
+    }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
     if (region->InYoungSpace() && !region->IsMarking()) {
         size_t size = oldLength * sizeof(JSTaggedType);
@@ -2154,6 +2156,7 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, 
             UNREACHABLE();
     }
     JSHandle<TaggedArray> array(thread_, header);
+    array->SetLength(length);
     return array;
 }
 

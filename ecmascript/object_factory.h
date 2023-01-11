@@ -305,7 +305,6 @@ public:
         if (numberOfNodes == 0) {
             return dstElements;
         }
-        dstElements->SetLength(numberOfNodes);
         int dataIndex = Derived::ELEMENTS_START_INDEX;
         for (uint32_t i = 0; i < numberOfNodes; i++) {
             dataIndex = list->GetElement(dataIndex + Derived::NEXT_PTR_OFFSET).GetInt();
