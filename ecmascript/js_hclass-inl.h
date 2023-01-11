@@ -172,6 +172,9 @@ inline bool JSHClass::HasReferenceField()
 
 inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
 {
+    // CAUTION! Never use T::Cast(header) in this function
+    // it would cause issue during GC because hclass may forward to a new addres
+    // and the casting method would still use the old address.
     auto type = GetObjectType();
     size_t size = 0;
     switch (type) {
@@ -185,8 +188,8 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
             break;
         case JSType::BYTE_ARRAY:
-            size = ByteArray::ComputeSize(ByteArray::Cast(header)->GetSize(),
-                                          ByteArray::Cast(header)->GetLength());
+            size = ByteArray::ComputeSize(reinterpret_cast<ByteArray *>(header)->GetSize(),
+                                          reinterpret_cast<ByteArray *>(header)->GetLength());
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::LINE_STRING:
