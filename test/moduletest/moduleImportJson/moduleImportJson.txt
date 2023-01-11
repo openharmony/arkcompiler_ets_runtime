@@ -1,0 +1,4 @@
+moduleImportJson.js;moduleImportJson;esm;moduleImportJson.js;xxmoduleImportJsonxx
+cjsImportJson.js;cjsImportJson;commonjs;cjsImportJson.js;xxcjsImportJsonxx
+1.json;1;esm;1.json;xx1xx
+2.json;2;esm;2.json;xx2xx
