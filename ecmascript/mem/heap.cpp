@@ -121,6 +121,8 @@ void Heap::Initialize()
     semiGCMarker_ = new SemiGCMarker(this);
     compressGCMarker_ = new CompressGCMarker(this);
     evacuator_ = new ParallelEvacuator(this);
+    idleData_ = new IdleData();
+    enableIdleGC_ = ecmaVm_->GetJSOptions().EnableIdleGC();
 }
 
 void Heap::Destroy()
@@ -223,6 +225,10 @@ void Heap::Destroy()
     if (evacuator_ != nullptr) {
         delete evacuator_;
         evacuator_ = nullptr;
+    }
+    if (idleData_ != nullptr) {
+        delete idleData_;
+        idleData_ = nullptr;
     }
 }
 
@@ -845,18 +851,57 @@ void Heap::ChangeGCParams(bool inBackground)
     }
 }
 
-void Heap::TriggerCompressCollection(int idleMicroSec)
+void Heap::TriggerIdleCollection(int idleMicroSec)
 {
-    if (!needIdleGC_) {
+    if (!enableIdleGC_) {
         return;
     }
-    int64_t curTime = static_cast<int64_t>(JSDate::Now().GetDouble());
-    if (curTime - idleTime_ > IDLE_TIME_INTERVAL && idleTime_ != 0 && idleMicroSec >= IDLE_TIME_LIMIT) {
-        LOG_ECMA(INFO) << "Start Idle GC";
-        CollectGarbage(TriggerGCType::FULL_GC);
-        needIdleGC_ = false;
+    int64_t curTime = 0;
+    if (waitForStartUp_) {
+        curTime = static_cast<int64_t>(JSDate::Now().GetDouble());
+        if (idleTime_ == 0) {
+            idleTime_ = curTime;
+        }
+        if (curTime - idleTime_ > WAIT_FOR_APP_START_UP) {
+            waitForStartUp_ = false;
+        }
+        return;
     }
-    idleTime_ = curTime;
+
+    if (idleMicroSec >= IDLE_TIME_REMARK && thread_->IsMarkFinished()) {
+        concurrentMarker_->HandleMarkingFinished();
+        return;
+    }
+
+    if (idleMicroSec >= IDLE_TIME_LIMIT) {
+        curTime = static_cast<int64_t>(JSDate::Now().GetDouble());
+        size_t oldCommitSize = oldSpace_->GetCommittedSize();
+        if (curTime - idleTime_ > MIN_OLD_GC_LIMIT) {
+            size_t heapObjectSize = GetHeapObjectSize();
+            idleData_->SetNextValue(heapObjectSize);
+            idleTime_ = curTime;
+            if (idleData_->CheckIsRest() && heapObjectSize > triggerRestIdleSize_) {
+                CollectGarbage(TriggerGCType::FULL_GC);
+                couldIdleGC_ = false;
+                triggerRestIdleSize_ = GetHeapObjectSize() + REST_HEAP_GROWTH_LIMIT;
+                return;
+            }
+            couldIdleGC_ = true;
+        }
+
+        if (couldIdleGC_ && oldCommitSize + nonMovableSpace_->GetCommittedSize() > idleOldSpace_) {
+            CollectGarbage(TriggerGCType::OLD_GC);
+            idleTime_ = curTime;
+            couldIdleGC_ = false;
+            idleOldSpace_ = oldSpace_->GetInitialCapacity();
+            return;
+        }
+
+        if (activeSemiSpace_->GetHeapObjectSize() > IDLE_GC_YOUNG_SPACE) {
+            CollectGarbage(TriggerGCType::YOUNG_GC);
+            return;
+        }
+    }
 }
 
 void Heap::NotifyMemoryPressure(bool inHighMemoryPressure)

@@ -73,6 +73,9 @@ static constexpr size_t MIN_CHUNK_AREA_SIZE = 4_KB;
 static constexpr size_t MAX_CACHED_CHUNK_AREA_SIZE = 16_KB;
 static constexpr size_t MAX_CHUNK_AREA_SIZE = 1_MB;
 
+// idle gc
+static constexpr size_t IDLE_GC_YOUNG_SPACE = 3_MB;
+
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);
 static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::MathHelper::GetIntLog2(TAGGED_TYPE_SIZE);
