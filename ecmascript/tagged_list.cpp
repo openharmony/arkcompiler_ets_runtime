@@ -636,15 +636,15 @@ JSTaggedValue TaggedDoubleList::Set(JSThread *thread, const JSHandle<TaggedDoubl
     int nodeLength = taggedList->NumberOfNodes();
     if (index < 0 || index >= nodeLength) {
         JSTaggedValue error =
-            containers::ContainerError::BusinessError(thread,
-                                                      containers::ErrorFlag::RANGE_ERROR, "Set index out-of-bounds");
+            containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
+                                                      "The value of index is out of range");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     int dataIndex = taggedList->FindDataIndexByNodeIndex(index);
     if (dataIndex == -1) {
         JSTaggedValue error =
-            containers::ContainerError::BusinessError(thread,
-                                                      containers::ErrorFlag::RANGE_ERROR, "Set index not exist");
+            containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
+                                                      "The value of index is out of range");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     taggedList->SetElement(thread, dataIndex, value.GetTaggedValue());
