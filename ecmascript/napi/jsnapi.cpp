@@ -631,11 +631,21 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
 Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
     ecmascript::CString entry = file.c_str();
+    JSThread *thread = vm->GetJSThread();
+    ecmascript::CString name = vm->GetAssetPath();
     if (!vm->IsBundlePack()) {
-        entry = ecmascript::JSPandaFile::ParseOhmUrl(entry);
+        entry = ecmascript::JSPandaFile::ParseOhmUrl(vm, entry, name);
+        const JSPandaFile *jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), false);
+        if (jsPandaFile == nullptr) {
+            JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());
+            return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+        }
+        if (!jsPandaFile->IsNewRecord()) {
+            JSPandaFile::CroppingRecord(entry);
+        }
     }
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
-    JSThread *thread = vm->GetJSThread();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry);
     if (ecmaModule->GetIsNewBcVersion()) {
         int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
@@ -2662,6 +2672,28 @@ void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 std::string JSNApi::GetAssetPath(EcmaVM *vm)
 {
     return vm->GetAssetPath().c_str();
+}
+
+void JSNApi::SetBundleName(EcmaVM *vm, std::string bundleName)
+{
+    ecmascript::CString name = bundleName.c_str();
+    vm->SetBundleName(name);
+}
+
+std::string JSNApi::GetBundleName(EcmaVM *vm)
+{
+    return vm->GetBundleName().c_str();
+}
+
+void JSNApi::SetModuleName(EcmaVM *vm, std::string moduleName)
+{
+    ecmascript::CString name = moduleName.c_str();
+    vm->SetModuleName(name);
+}
+
+std::string JSNApi::GetModuleName(EcmaVM *vm)
+{
+    return vm->GetModuleName().c_str();
 }
 
 void JSNApi::SetLoop(EcmaVM *vm, void *loop)

@@ -78,7 +78,7 @@ public:
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
-    static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
+    static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr char NODE_MODULES[] = "node_modules/";
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
@@ -86,8 +86,9 @@ public:
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
     static constexpr char PACKAGE_NAME[] = "pkgName@";
+    static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
     static constexpr int PACKAGE_NAME_LEN = 8;
-    static constexpr int MODULE_PREFIX_LENGTH = 8;
+    static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -215,6 +216,11 @@ public:
         return isBundlePack_;
     }
 
+    bool IsNewRecord() const
+    {
+        return isNewRecord_;
+    }
+
     void SetLoadedAOTStatus(bool status)
     {
         isLoadedAOT_ = status;
@@ -272,11 +278,12 @@ public:
     }
 
     void CheckIsBundlePack();
+    void CheckIsNewRecord(EcmaVM *vm);
 
     CString FindEntryPoint(const CString &record) const;
 
-    static CString ParseOhmUrl(const CString &fileName);
-
+    static CString ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName);
+    static void CroppingRecord(CString &recordName);
     bool IsSystemLib() const
     {
         return false;
@@ -346,6 +353,7 @@ private:
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
+    bool isNewRecord_ {true};
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
 };
 }  // namespace ecmascript

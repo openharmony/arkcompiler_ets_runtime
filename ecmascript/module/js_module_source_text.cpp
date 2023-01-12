@@ -91,6 +91,12 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
     CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
     CString entryPoint =
         ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
+    if (entryPoint == JSPandaFile::PREVIEW_OF_ACROSS_HAP_FLAG) {
+        JSHandle<SourceTextModule> throwValue(thread, JSTaggedValue::Undefined());
+        THROW_SYNTAX_ERROR_AND_RETURN(thread, "", throwValue);
+    }
+#endif
     return moduleManager->HostResolveImportedModuleWithMerge(baseFilename, entryPoint);
 }
 
@@ -364,6 +370,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
             } else {
                 ASSERT(moduleRecordName.IsString());
                 requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
                 requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleRecordName());
             }
 

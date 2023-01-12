@@ -603,17 +603,36 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
     size_t pos = 0;
     size_t typePos = CString::npos;
     if (moduleRequestName.find("@bundle:") != CString::npos) {
+        moduleRequestName = moduleRequestName.substr(JSPandaFile::MODULE_OR_BUNDLE_PREFIX_LEN);
         pos = moduleRequestName.find('/');
-        pos = moduleRequestName.find('/', pos + 1);
-        ASSERT(pos != CString::npos);
-        entryPoint = moduleRequestName.substr(pos + 1);
+        CString bundleName = moduleRequestName.substr(0, pos);
+        size_t bundleNameLen = bundleName.length();
+        entryPoint = moduleRequestName;
+        if (jsPandaFile->IsNewRecord()) {
+            bool isDifferentBundle = (moduleRecordName.length() > bundleNameLen) &&
+            (moduleRecordName.compare(0, bundleNameLen, bundleName) != 0);
+            pos = moduleRequestName.find('/', bundleNameLen + 1);
+            if (isDifferentBundle && CString::npos != pos) {
+                CString moduleName = moduleRequestName.substr(bundleNameLen + 1, pos - bundleNameLen - 1);
+                baseFilename = JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + '/' + moduleName +
+                            JSPandaFile::MERGE_ABC_ETS_MODULES;
+            }
+        } else {
+            JSPandaFile::CroppingRecord(entryPoint);
+        }
     } else if (moduleRequestName.find("@module:") != CString::npos) {
-        moduleRequestName = moduleRequestName.substr(JSPandaFile::MODULE_PREFIX_LENGTH);
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+        moduleRequestName = moduleRequestName.substr(JSPandaFile::MODULE_OR_BUNDLE_PREFIX_LEN);
         pos = moduleRequestName.find('/');
         ASSERT(pos != CString::npos);
         baseFilename =
             JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + JSPandaFile::MERGE_ABC_ETS_MODULES;
-        entryPoint = moduleRequestName.substr(pos + 1);
+        pos = moduleRecordName.find('/');
+        entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
+#else
+        entryPoint = JSPandaFile::PREVIEW_OF_ACROSS_HAP_FLAG;
+        LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
+#endif
     } else if (IsImportedPath(moduleRequestName, typePos)) {
         if (typePos != CString::npos) {
             moduleRequestName = moduleRequestName.substr(0, typePos);
@@ -632,7 +651,6 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
         if (!jsPandaFile->HasRecord(entryPoint)) {
             entryPoint += "/index";
         }
-
         if (!jsPandaFile->HasRecord(entryPoint)) {
             pos = baseFilename.rfind('/');
             if (pos != CString::npos) {
