@@ -50,6 +50,51 @@ enum class MemGrowingType : uint8_t {
     CONSERVATIVE,
     PRESSURE
 };
+
+enum class IdleHeapSizePtr : uint8_t {
+    IDLE_HEAP_SIZE_1 = 0,
+    IDLE_HEAP_SIZE_2,
+    IDLE_HEAP_SIZE_3
+};
+
+struct IdleData {
+    int64_t idleHeapObjectSize1 {0};
+    int64_t idleHeapObjectSize2 {0};
+    int64_t idleHeapObjectSize3 {0};
+    IdleHeapSizePtr curPtr_ {IdleHeapSizePtr::IDLE_HEAP_SIZE_1};
+
+    static constexpr int64_t REST_HEAP_GROWTH_LIMIT = 200_KB;
+    bool CheckIsRest()
+    {
+        if (abs(idleHeapObjectSize1 - idleHeapObjectSize2) < REST_HEAP_GROWTH_LIMIT &&
+            abs(idleHeapObjectSize2 - idleHeapObjectSize3) < REST_HEAP_GROWTH_LIMIT) {
+            return true;
+        }
+        return false;
+    }
+
+    void SetNextValue(int64_t idleHeapObjectSize)
+    {
+        switch (curPtr_) {
+            case IdleHeapSizePtr::IDLE_HEAP_SIZE_1:
+                idleHeapObjectSize1 = idleHeapObjectSize;
+                curPtr_ = IdleHeapSizePtr::IDLE_HEAP_SIZE_2;
+                break;
+            case IdleHeapSizePtr::IDLE_HEAP_SIZE_2:
+                idleHeapObjectSize2 = idleHeapObjectSize;
+                curPtr_ = IdleHeapSizePtr::IDLE_HEAP_SIZE_3;
+                break;
+            case IdleHeapSizePtr::IDLE_HEAP_SIZE_3:
+                idleHeapObjectSize3 = idleHeapObjectSize;
+                curPtr_ = IdleHeapSizePtr::IDLE_HEAP_SIZE_1;
+                break;
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+        }
+    }
+};
+
 class Heap {
 public:
     explicit Heap(EcmaVM *ecmaVm);
@@ -256,6 +301,7 @@ public:
         return parallelGC_;
     }
     void ChangeGCParams(bool inBackground);
+    void TriggerIdleCollection(int idleMicroSec);
     void NotifyMemoryPressure(bool inHighMemoryPressure);
     bool CheckCanDistributeTask();
 
@@ -444,6 +490,11 @@ public:
         return nonNewSpaceNativeBindingSize_;
     }
 private:
+    static constexpr int64_t WAIT_FOR_APP_START_UP = 200;
+    static constexpr int IDLE_TIME_REMARK = 10;
+    static constexpr int IDLE_TIME_LIMIT = 15;  // if idle time over 15ms we can do something
+    static constexpr int MIN_OLD_GC_LIMIT = 10000;  // 10s
+    static constexpr int REST_HEAP_GROWTH_LIMIT = 2_MB;
     void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
@@ -558,17 +609,24 @@ private:
     bool oldSpaceLimitAdjusted_ {false};
     bool shouldThrowOOMError_ {false};
     bool runningSecondPassCallbacks_ {false};
+    bool enableIdleGC_ {true};
+    bool waitForStartUp_ {true};
+    bool couldIdleGC_ {false};
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
     size_t nonNewSpaceNativeBindingSize_{0};
     size_t globalSpaceNativeLimit_ {0};
+    size_t idleHeapObjectSize_ {0};
+    size_t idleOldSpace_ {16_MB};
+    size_t triggerRestIdleSize_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
     bool clearTaskFinished_ {true};
     os::memory::Mutex waitClearTaskFinishedMutex_;
     os::memory::ConditionVariable waitClearTaskFinishedCV_;
+    int64_t idleTime_ {0};
     uint32_t runningTaskCount_ {0};
     // parallel marker task number.
     uint32_t maxMarkTaskCount_ {0};
@@ -589,6 +647,8 @@ private:
 
     // The tracker tracking heap object allocation and movement events.
     HeapTracker *tracker_ {nullptr};
+
+    IdleData *idleData_;
 
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool isVerifying_ {false};
