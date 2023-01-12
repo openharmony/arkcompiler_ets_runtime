@@ -128,12 +128,13 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     PutIntoCache(thread, module, filename);
 
     if (jsPandaFile->IsJson(thread, requestEntryPoint)) {
-        JSTaggedValue result = ModuleManager::JsonParse(thread, jsPandaFile, requestEntryPoint);
+        JSHandle<JSTaggedValue> result = JSHandle<JSTaggedValue>(thread,
+            ModuleManager::JsonParse(thread, jsPandaFile, requestEntryPoint));
         // Set module.exports ---> exports
         JSHandle<JSTaggedValue> exportsKey = thread->GlobalConstants()->GetHandledCjsExportsString();
         SlowRuntimeStub::StObjByName(thread, module.GetTaggedValue(), exportsKey.GetTaggedValue(),
-                                     result);
-        return JSHandle<JSTaggedValue>(thread, result);
+                                     result.GetTaggedValue());
+        return result;
     }
     // Execute required JSPandaFile
     RequireExecution(thread, mergedFilename, requestEntryPoint);
