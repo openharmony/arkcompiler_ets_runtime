@@ -64,13 +64,19 @@ void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
         return;
     }
 
-    CString recordName = jsRecordInfo_.begin()->first;
-    size_t bundleNameLen = bundleName.length();
-    // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
-    if (recordName.length() > bundleNameLen && (recordName.compare(0, bundleNameLen, bundleName) == 0)) {
-        isNewRecord_ = true;
-    } else {
-        isNewRecord_ = false;
+    for (auto info : jsRecordInfo_) {
+        if (info.first.find(NODE_MODULES) != CString::npos) {
+            continue;
+        }
+        CString recordName = info.first;
+        size_t bundleNameLen = bundleName.length();
+        // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
+        if (recordName.length() > bundleNameLen && (recordName.compare(0, bundleNameLen, bundleName) == 0)) {
+            isNewRecord_ = true;
+        } else {
+            isNewRecord_ = false;
+        }
+        return;
     }
 }
 
