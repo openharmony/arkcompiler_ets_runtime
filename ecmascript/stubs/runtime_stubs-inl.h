@@ -1176,7 +1176,7 @@ void RuntimeStubs::RuntimeThrowUndefinedIfHole(JSThread *thread, const JSHandle<
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> info = factory->NewFromASCII(" is not initialized");
 
-    JSHandle<EcmaString> msg = factory->ConcatFromString(info, obj);
+    JSHandle<EcmaString> msg = factory->ConcatFromString(obj, info);
     THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg).GetTaggedValue());
 }
 
