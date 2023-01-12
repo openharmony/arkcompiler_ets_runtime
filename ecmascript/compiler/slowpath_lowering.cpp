@@ -391,6 +391,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::GETITERATOR_IMM16:
             LowerGetIterator(gate);
             break;
+        case EcmaOpcode::GETASYNCITERATOR_IMM8:
+            LowerGetAsyncIterator(gate);
+            break;
         case EcmaOpcode::NEWOBJAPPLY_IMM8_V8:
         case EcmaOpcode::NEWOBJAPPLY_IMM16_V8:
             LowerNewObjApply(gate);
@@ -500,6 +503,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
             LowerStModuleVar(gate, jsFunc);
+            break;
+        case EcmaOpcode::SETGENERATORSTATE_IMM8:
+            LowerSetGeneratorState(gate, jsFunc);
             break;
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM16:
@@ -1005,6 +1011,12 @@ void SlowPathLowering::LowerToJSCall(GateRef gate, const std::vector<GateRef> &a
     GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));
     GateRef newGate = builder_.Call(cs, glue_, target, dependEntry_, args);
     ReplaceHirToJSCall(gate, newGate);
+}
+
+void SlowPathLowering::LowerGetAsyncIterator(GateRef gate)
+{
+    auto result = LowerCallRuntime(RTSTUB_ID(GetAsyncIterator), {acc_.GetValueIn(gate, 0)}, true);
+    ReplaceHirToCall(gate, result);
 }
 
 void SlowPathLowering::LowerCallArg0(GateRef gate)
@@ -1921,6 +1933,16 @@ void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef jsFunc)
     failControl.emplace_back(Circuit::NullGate());
     // StModuleVar will not be inValue to other hir gates, result will not be used to replace hirgate
     ReplaceHirToSubCfg(gate, Circuit::NullGate(), successControl, failControl, true);
+}
+
+void SlowPathLowering::LowerSetGeneratorState(GateRef gate, GateRef jsFunc)
+{
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    auto result = LowerCallRuntime(RTSTUB_ID(SetGeneratorState),
+        {index, acc_.GetValueIn(gate, 1), jsFunc}, true);
+    ReplaceHirToCall(gate, result, true);
 }
 
 void SlowPathLowering::LowerGetTemplateObject(GateRef gate)

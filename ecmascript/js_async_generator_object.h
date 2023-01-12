@@ -30,8 +30,8 @@ enum class JSAsyncGeneratorState : uint8_t {
     SUSPENDED_START,
     SUSPENDED_YIELD,
     EXECUTING,
-    AWAITING_RETURN,
     COMPLETED,
+    AWAITING_RETURN,
 };
 
 enum class AsyncGeneratorResumeMode : uint8_t {

@@ -124,6 +124,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
     // 2. Let state be generator.[[AsyncGeneratorState]].
     JSAsyncGeneratorState state = generator->GetAsyncGeneratorState();
     // 3. Assert: state is not executing.
+    ASSERT(state != JSAsyncGeneratorState::EXECUTING);
     // 4. If state is awaiting-return, return undefined.
     if (state == JSAsyncGeneratorState::AWAITING_RETURN) {
         return JSTaggedValue::Undefined();
@@ -203,8 +204,8 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
         }
     // 11. Else if state is completed, return ! AsyncGeneratorResolve(generator, undefined, true).
     } else if (state == JSAsyncGeneratorState::COMPLETED) {
-        JSHandle<JSTaggedValue> comVal(thread, completion->GetValue());
-        return AsyncGeneratorReject(thread, generator, comVal);
+        JSHandle<JSTaggedValue> comVal(thread, JSTaggedValue::Undefined());
+        return AsyncGeneratorResolve(thread, generator, comVal, true);
     }
     // 12. Assert: state is either suspendedStart or suspendedYield.
     ASSERT((state == JSAsyncGeneratorState::SUSPENDED_START) ||
@@ -249,6 +250,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
     AsyncGeneratorValidate(thread, gen, JSTaggedValue::Undefined());
     // 3. If check is an abrupt completion, then
     if (thread->HasPendingException()) {
+        thread->ClearException();
         // a. Let badGeneratorError be a newly created TypeError object.
         JSHandle<JSObject> resolutionError =
             factory->GetJSError(ErrorType::TYPE_ERROR, "Resolve: The promise and resolution cannot be the same.");
