@@ -4705,18 +4705,6 @@ void InterpreterAssembly::HandleDeprecatedPoplexenvPrefNone(
     DISPATCH(DEPRECATED_POPLEXENV_PREF_NONE);
 }
 
-void InterpreterAssembly::HandleDeprecatedStlexenvPrefNone(
-    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
-    JSTaggedValue acc, int16_t hotnessCounter)
-{
-    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
-    JSTaggedValue currentLexenv = state->env;
-    JSFunction *currentFunc =
-        JSFunction::Cast((state->function).GetTaggedObject());
-    currentFunc->SetLexicalEnv(thread, currentLexenv);
-    DISPATCH(DEPRECATED_STLEXENV_PREF_NONE);
-}
-
 void InterpreterAssembly::HandleDeprecatedLdlexenvPrefNone(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
