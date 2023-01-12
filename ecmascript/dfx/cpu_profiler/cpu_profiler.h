@@ -102,6 +102,7 @@ private:
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
     bool GetFrameStackCallNapi(JSThread *thread);
+    void GetRowAndColumnNumbers(FrameIterator &itNext);
     void *GetMethodIdentifier(Method *method, const FrameIterator &it);
     RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool topFrame) const;
     uint32_t napiCallCount_ = 0;
