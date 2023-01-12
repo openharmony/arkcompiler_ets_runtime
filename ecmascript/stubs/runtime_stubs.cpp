@@ -591,6 +591,15 @@ DEF_RUNTIME_STUBS(AsyncGeneratorReject)
     return RuntimeAsyncGeneratorReject(thread, asyncGenerator, value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetGeneratorState)
+{
+    RUNTIME_STUBS_HEADER(SetGeneratorState);
+    JSHandle<JSTaggedValue> asyncGenerator = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSTaggedValue index = GetArg(argv, argc, 1);
+    RuntimeSetGeneratorState(thread, asyncGenerator, index.GetInt());
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CopyDataProperties)
 {
     RUNTIME_STUBS_HEADER(CopyDataProperties);
@@ -1155,6 +1164,13 @@ DEF_RUNTIME_STUBS(GetIterator)
     RUNTIME_STUBS_HEADER(GetIterator);
     JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeGetIterator(thread, obj).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetAsyncIterator)
+{
+    RUNTIME_STUBS_HEADER(GetAsyncIterator);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return RuntimeGetAsyncIterator(thread, obj).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(Throw)

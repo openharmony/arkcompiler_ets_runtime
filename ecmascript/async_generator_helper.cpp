@@ -27,19 +27,9 @@ JSTaggedValue AsyncGeneratorHelper::Next(JSThread *thread, const JSHandle<Genera
 {
     JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
     genObject->SetResumeResult(thread, value);
-    genObject->SetAsyncGeneratorState(JSAsyncGeneratorState::EXECUTING);
     genObject->SetResumeMode(AsyncGeneratorResumeMode::NEXT);
 
     EcmaInterpreter::GeneratorReEnterInterpreter(thread, genContext);
-    if (genObject->IsSuspendYield()) {
-        return JSTaggedValue::Undefined();
-    }
-    genObject->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);
-    JSHandle<TaggedQueue> queue(thread, genObject->GetAsyncGeneratorQueue());
-    JSHandle<JSTaggedValue> next(thread, value);
-    if (!(queue->Empty())) {
-        JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, genObject, next, true);
-    }
     return JSTaggedValue::Undefined();
 }
 
@@ -48,50 +38,20 @@ JSTaggedValue AsyncGeneratorHelper::Throw(JSThread *thread, const JSHandle<Gener
 {
     JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
     genObject->SetResumeResult(thread, completionRecord->GetValue());
-    genObject->SetAsyncGeneratorState(JSAsyncGeneratorState::EXECUTING);
     genObject->SetResumeMode(AsyncGeneratorResumeMode::THROW);
 
     EcmaInterpreter::GeneratorReEnterInterpreter(thread, genContext);
-
-    genObject->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);
-
-    JSHandle<JSTaggedValue> val(thread, completionRecord->GetValue());
-    JSHandle<TaggedQueue> queue(thread, genObject->GetAsyncGeneratorQueue());
-    if (!(queue->Empty())) {
-        JSAsyncGeneratorObject::AsyncGeneratorReject(thread, genObject, val);
-    }
     return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue AsyncGeneratorHelper::Return(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
                                            const JSHandle<CompletionRecord> completionRecord)
 {
-    JSHandle<JSTaggedValue> val(thread, completionRecord->GetValue());
     JSHandle<JSAsyncGeneratorObject> genObject(thread, genContext->GetGeneratorObject());
+    genObject->SetResumeResult(thread, completionRecord->GetValue());
+    genObject->SetResumeMode(AsyncGeneratorResumeMode::RETURN);
 
-    genObject->SetResumeResult(thread, val);
-    if (genObject->IsSuspendYield() || genObject->IsExecuting()) {
-        genObject->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);
-    }
-    genObject->SetAsyncGeneratorState(JSAsyncGeneratorState::AWAITING_RETURN);
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSTaggedValue promise =
-        JSAsyncGeneratorObject::PromiseResolve(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()), val);
-    JSHandle<JSPromise> handPromise(thread, promise);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> onFulfilled =
-        factory->NewJSAsyGenResNextRetProRstFulfilledFtn();
-    onFulfilled->SetAsyncGeneratorObject(thread, genObject);
-
-    JSHandle<JSAsyncGeneratorResNextRetProRstFtn> onFulRejected =
-        factory->NewJSAsyGenResNextRetProRstRejectedFtn();
-    onFulRejected->SetAsyncGeneratorObject(thread, genObject);
-    JSHandle<PromiseCapability> tcap =
-        JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
-    [[maybe_unused]] JSTaggedValue pres = BuiltinsPromise::PerformPromiseThen(
-        thread, handPromise, JSHandle<JSTaggedValue>::Cast(onFulfilled),
-        JSHandle<JSTaggedValue>::Cast(onFulRejected), tcap);
-
+    EcmaInterpreter::GeneratorReEnterInterpreter(thread, genContext);
     return JSTaggedValue::Undefined();
 }
 }  // namespace panda::ecmascript

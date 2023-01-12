@@ -205,7 +205,7 @@ public:
     static constexpr uint32_t MIN_PREFIX_OPCODE_INDEX = CALLRUNTIME_PREFIX_OPCODE_INDEX;
 
     static constexpr uint32_t LAST_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::NOP);
+        static_cast<uint32_t>(EcmaOpcode::GETASYNCITERATOR_IMM8);
     static constexpr uint32_t LAST_DEPRECATED_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::DEPRECATED_DYNAMICIMPORT_PREF_V8);
     static constexpr uint32_t LAST_WIDE_OPCODE =

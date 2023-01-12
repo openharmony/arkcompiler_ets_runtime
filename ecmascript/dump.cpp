@@ -61,6 +61,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_bigint.h"
@@ -263,6 +264,12 @@ CString JSHClass::DumpJSType(JSType type)
             return "ResolvingFunctionsRecord";
         case JSType::ASYNC_GENERATOR_REQUEST:
             return "AsyncGeneratorRequest";
+        case JSType::ASYNC_ITERATOR_RECORD:
+            return "AsyncIteratorRecord";
+        case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
+            return "AsyncFromSyncIterator";
+        case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
+            return "AsyncFromSyncIterUnwarpFunction";
         case JSType::JS_PROMISE:
             return "Promise";
         case JSType::JS_PROMISE_REACTIONS_FUNCTION:
@@ -706,6 +713,15 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::ASYNC_GENERATOR_REQUEST:
             AsyncGeneratorRequest::Cast(obj)->Dump(os);
+            break;
+        case JSType::ASYNC_ITERATOR_RECORD:
+            AsyncIteratorRecord::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
+            JSAsyncFromSyncIterator::Cast(obj)->Dump(os);
+            break;
+        case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
+            JSAsyncFromSyncIterUnwarpFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSPromiseAllResolveElementFunction::Cast(obj)->Dump(os);
@@ -2458,6 +2474,29 @@ void AsyncGeneratorRequest::Dump(std::ostream &os) const
     GetCapability().Dump(os);
 }
 
+void AsyncIteratorRecord::Dump(std::ostream &os) const
+{
+    os << " - completion: ";
+    GetIterator().Dump(os);
+    os << " - nextmethod: ";
+    GetNextMethod().Dump(os);
+    os << " - done: " << GetDone();
+}
+
+void JSAsyncFromSyncIterator::Dump(std::ostream &os) const
+{
+    os << " - sync-iterator-record: ";
+    GetSyncIteratorRecord().Dump(os);
+    JSObject::Dump(os);
+}
+
+void JSAsyncFromSyncIterUnwarpFunction::Dump(std::ostream &os) const
+{
+    os << " - done: " ;
+    GetDone().Dump(os);
+    JSObject::Dump(os);
+}
+
 void JSPromise::Dump(std::ostream &os) const
 {
     os << " - promise-state: " << static_cast<int>(GetPromiseState());
@@ -3615,6 +3654,15 @@ static void DumpObject(TaggedObject *obj,
         case JSType::ASYNC_GENERATOR_REQUEST:
             AsyncGeneratorRequest::Cast(obj)->DumpForSnapshot(vec);
             return;
+        case JSType::ASYNC_ITERATOR_RECORD:
+            AsyncIteratorRecord::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
+            JSAsyncFromSyncIterator::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
+            JSAsyncFromSyncIterUnwarpFunction::Cast(obj)->DumpForSnapshot(vec);
+            return;
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             JSPromiseAllResolveElementFunction::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -4659,6 +4707,23 @@ void AsyncGeneratorRequest::DumpForSnapshot(std::vector<std::pair<CString, JSTag
 {
     vec.emplace_back("completion", GetCompletion());
     vec.emplace_back("capability", GetCapability());
+}
+
+void AsyncIteratorRecord::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.emplace_back("iterator", GetIterator());
+    vec.emplace_back("nextmethod", GetNextMethod());
+    vec.emplace_back("done", JSTaggedValue(GetDone()));
+}
+
+void JSAsyncFromSyncIterator::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.emplace_back("synciteratorrecord", GetSyncIteratorRecord());
+}
+
+void JSAsyncFromSyncIterUnwarpFunction::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.emplace_back("done", JSTaggedValue(GetDone()));
 }
 
 void JSPromise::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

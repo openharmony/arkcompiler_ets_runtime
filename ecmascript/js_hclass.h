@@ -71,6 +71,7 @@ class ProtoChangeDetails;
         JS_PROXY_REVOC_FUNCTION,       /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_REACTIONS_FUNCTION, /* /////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_EXECUTOR_FUNCTION,  /* /////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
         JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION,  /* //////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN, /* ///////////////////////////////////////-PADDING */ \
         JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION,  /* ///////////////////////////////////////////////////////-PADDING */ \
@@ -104,6 +105,7 @@ class ProtoChangeDetails;
         JS_DATE,     /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ITERATOR, /* ///////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNCITERATOR, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_ASYNC_FROM_SYNC_ITERATOR, /* ///////////////////////////////////////////////////////////////////-PADDING */ \
         JS_FORIN_ITERATOR,       /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_MAP_ITERATOR,         /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_SET_ITERATOR,         /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -216,6 +218,7 @@ class ProtoChangeDetails;
         RESOLVING_FUNCTIONS_RECORD, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         PROMISE_REACTIONS,          /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         ASYNC_GENERATOR_REQUEST, /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
+        ASYNC_ITERATOR_RECORD,   /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         PROMISE_ITERATOR_RECORD,    /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         MICRO_JOB_QUEUE, /* /////////////////////////////////////////////////////////////////////////////-PADDING */   \
         PENDING_JOB,     /* /////////////////////////////////////////////////////////////////////////////-PADDING */   \
@@ -651,6 +654,11 @@ public:
         return GetObjectType() == JSType::JS_PROMISE_EXECUTOR_FUNCTION;
     }
 
+    inline bool IsJSAsyncFromSyncIterUnwarpFunction() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION;
+    }
+
     inline bool IsJSPromiseAllResolveElementFunction() const
     {
         return GetObjectType() == JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION;
@@ -946,6 +954,11 @@ public:
         return GetObjectType() == JSType::JS_ASYNCITERATOR;
     }
 
+    inline bool IsAsyncFromSyncIterator() const
+    {
+        return GetObjectType() == JSType::JS_ASYNC_FROM_SYNC_ITERATOR;
+    }
+
     inline bool IsForinIterator() const
     {
         return GetObjectType() == JSType::JS_FORIN_ITERATOR;
@@ -1157,6 +1170,12 @@ public:
     {
         JSType jsType = GetObjectType();
         return jsType == JSType::ASYNC_GENERATOR_REQUEST;
+    }
+
+    inline bool IsAsyncIteratorRecord() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::ASYNC_ITERATOR_RECORD;
     }
 
     inline bool IsAsyncFuncObject() const

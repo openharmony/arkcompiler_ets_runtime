@@ -57,6 +57,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_bigint.h"
@@ -912,6 +913,24 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(Record::SIZE, AsyncGeneratorRequest::SIZE, 2U);
                 JSHandle<AsyncGeneratorRequest> asyncGeneratorRequest = factory->NewAsyncGeneratorRequest();
                 DUMP_FOR_HANDLE(asyncGeneratorRequest)
+                break;
+            }
+            case JSType::ASYNC_ITERATOR_RECORD: {
+                CHECK_DUMP_FIELDS(Record::SIZE, AsyncIteratorRecord::SIZE, 3U);
+                JSHandle<JSTaggedValue> emptyObj(thread, NewJSObject(thread, factory, globalEnv).GetTaggedValue());
+                JSHandle<JSTaggedValue> emptyMethod(thread, NewJSObject(thread, factory, globalEnv).GetTaggedValue());
+                JSHandle<AsyncIteratorRecord> asyncIteratorRecord =
+                    factory->NewAsyncIteratorRecord(emptyObj, emptyMethod, false);
+                DUMP_FOR_HANDLE(asyncIteratorRecord)
+                break;
+            }
+            case JSType::JS_ASYNC_FROM_SYNC_ITERATOR: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAsyncFromSyncIterator::SIZE, 1U);
+                NEW_OBJECT_AND_DUMP(JSAsyncFromSyncIterator, JS_ASYNC_FROM_SYNC_ITERATOR)
+                break;
+            }
+            case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION: {
+                CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncFromSyncIterUnwarpFunction::SIZE, 1U);
                 break;
             }
             case JSType::PROMISE_REACTIONS: {

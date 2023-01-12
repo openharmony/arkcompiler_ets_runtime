@@ -82,6 +82,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CREATEEMPTYOBJECT:
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+        case EcmaOpcode::SETGENERATORSTATE_IMM8:
             flags |= BytecodeFlags::NO_THROW;
         default:
             break;
@@ -792,6 +793,11 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(Immediate(index));
             break;
         }
+        case EcmaOpcode::SETGENERATORSTATE_IMM8: {
+            int32_t index = READ_INST_8_0();
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16: {
             int32_t index = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(index));
@@ -1332,6 +1338,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::NOP:
         case EcmaOpcode::GETITERATOR_IMM8:
         case EcmaOpcode::GETITERATOR_IMM16:
+        case EcmaOpcode::GETASYNCITERATOR_IMM8:
         case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
         case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
         case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:

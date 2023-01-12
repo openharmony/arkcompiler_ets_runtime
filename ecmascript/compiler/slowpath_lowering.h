@@ -166,6 +166,7 @@ private:
     void LowerStGlobalVar(GateRef gate, GateRef jsFunc);
     void LowerTryLdGlobalByName(GateRef gate, GateRef jsFunc);
     void LowerGetIterator(GateRef gate);
+    void LowerGetAsyncIterator(GateRef gate);
     void LowerToJSCall(GateRef gate, const std::vector<GateRef> &args);
     void LowerCallArg0(GateRef gate);
     void LowerCallArg1Imm8V8(GateRef gate);
@@ -285,6 +286,7 @@ private:
     void LowerCreateAsyncGeneratorObj(GateRef gate);
     void LowerAsyncGeneratorResolve(GateRef gate);
     void LowerAsyncGeneratorReject(GateRef gate);
+    void LowerSetGeneratorState(GateRef gate, GateRef jsFunc);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
     void AddProfiling(GateRef gate);
     GateRef FastStrictEqual(GateRef left, GateRef right);

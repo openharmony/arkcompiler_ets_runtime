@@ -571,6 +571,8 @@ public:
     bool IsGeneratorObject() const;
     bool IsGeneratorContext() const;
     bool IsAsyncGeneratorRequest() const;
+    bool IsAsyncIteratorRecord() const;
+    bool IsAsyncFromSyncIterator() const;
     bool IsAsyncGeneratorObject() const;
     bool IsAsyncFuncObject() const;
     bool IsJSPromise() const;
@@ -579,6 +581,7 @@ public:
     bool IsProgram() const;
     bool IsJSPromiseReactionFunction() const;
     bool IsJSPromiseExecutorFunction() const;
+    bool IsJSAsyncFromSyncIterUnwarpFunction() const;
     bool IsJSPromiseAllResolveElementFunction() const;
     bool IsJSAsyncGeneratorResNextRetProRstFtn() const;
     bool IsPromiseCapability() const;

@@ -122,11 +122,13 @@ class JSThread;
     V(JSTaggedValue, ForinIteratorPrototype, FORIN_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorClass, FOR_IN_ITERATOR_CLASS_INDEX)                               \
     V(JSTaggedValue, StringIterator, STRING_ITERATOR_INDEX)                                         \
+    V(JSTaggedValue, AsyncFromSyncIterator, ASYNC_FROM_SYNC_ITERATOR_INDEX)                         \
     V(JSTaggedValue, MapIteratorPrototype, MAP_ITERATOR_PROTOTYPE_INDEX)                            \
     V(JSTaggedValue, SetIteratorPrototype, SET_ITERATOR_PROTOTYPE_INDEX)                            \
     V(JSTaggedValue, RegExpIteratorPrototype, REGEXP_ITERATOR_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, ArrayIteratorPrototype, ARRAY_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, StringIteratorPrototype, STRING_ITERATOR_PROTOTYPE_INDEX)                      \
+    V(JSTaggedValue, AsyncFromSyncIteratorPrototype, ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_INDEX)      \
     /* SymbolTable *RegisterSymbols */                                                              \
     V(JSTaggedValue, RegisterSymbols, SYMBOLS_INDEX)                                                \
     V(JSTaggedValue, ThrowTypeError, THROW_TYPE_ERROR_INDEX)                                        \
@@ -154,6 +156,7 @@ class JSThread;
     V(JSTaggedValue, PromiseValueThunkOrThrowerFunctionClass, PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION_CLASS) \
     V(JSTaggedValue, AsyncGeneratorResNextRetProRstFtnClass,                                        \
       ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN_CLASS)                                   \
+    V(JSTaggedValue, AsyncFromSyncIterUnwarpClass, ASYNC_FROM_SYNC_ITER_UNWARP_CLASS)                   \
     V(JSTaggedValue, ProxyRevocFunctionClass, PROXY_REVOC_FUNCTION_CLASS)                           \
     V(JSTaggedValue, NativeErrorFunctionClass, NATIVE_ERROR_FUNCTION_CLASS)                         \
     V(JSTaggedValue, SpecificTypedArrayFunctionClass, SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \

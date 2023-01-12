@@ -426,6 +426,13 @@ DECLARE_ASM_HANDLER(HandleGetiteratorImm16)
     CHECK_PENDING_EXCEPTION(res, INT_PTR(GETITERATOR_IMM16));
 }
 
+DECLARE_ASM_HANDLER(HandleGetasynciteratorImm8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    GateRef res = CallRuntime(glue, RTSTUB_ID(GetAsyncIterator), { *varAcc });
+    CHECK_PENDING_EXCEPTION(res, INT_PTR(GETASYNCITERATOR_IMM8));
+}
+
 DECLARE_ASM_HANDLER(HandleThrowPatternnoncoerciblePrefNone)
 {
     CallRuntime(glue, RTSTUB_ID(ThrowPatternNonCoercible), {});
@@ -2790,11 +2797,25 @@ DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)
 
 DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
 {
-    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     auto env = GetEnvironment();
+    DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
+    DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
+    DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
+    DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
+    DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+
+    Label pcEqualNullptr(env);
+    Label pcNotEqualNullptr(env);
+    Label updateHotness(env);
+    Label tryContinue(env);
+    Label dispatch(env);
+    Label slowPath(env);
+    
     GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef flag = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
+    GateRef frame = GetFrame(*varSp);
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorResolve),
                               { asyncGenerator, value, flag });
     Label isException(env);
@@ -2805,9 +2826,45 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         DISPATCH_LAST();
     }
     Bind(&notException);
+    varAcc = res;
+    Branch(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &tryContinue);
+    Bind(&updateHotness);
     {
-        varAcc = res;
-        DISPATCH_WITH_ACC(ASYNCGENERATORRESOLVE_V8_V8_V8);
+        GateRef function = GetFunctionFromFrame(frame);
+        GateRef method = Load(VariableType::JS_ANY(), function,
+            IntPtr(JSFunctionBase::METHOD_OFFSET));
+        GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
+            IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
+        UPDATE_HOTNESS(*varSp);
+        SetHotnessCounter(glue, method, *varHotnessCounter);
+        Jump(&tryContinue);
+    }
+
+    Bind(&tryContinue);
+    GateRef currentSp = *varSp;
+    varSp = Load(VariableType::NATIVE_POINTER(), frame,
+        IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
+    GateRef prevState = GetFrame(*varSp);
+    varPc = GetPcFromFrame(prevState);
+    Branch(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
+    Bind(&pcEqualNullptr);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { *varAcc, *varSp, currentSp });
+        Return();
+    }
+    Bind(&pcNotEqualNullptr);
+    {
+        GateRef function = GetFunctionFromFrame(prevState);
+        GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        varConstpool = GetConstpoolFromMethod(method);
+        varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+        varHotnessCounter = GetHotnessCounterFromMethod(method);
+        GateRef jumpSize = GetCallSizeFromFrame(prevState);
+        CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
+                    { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+                      *varAcc, *varHotnessCounter, jumpSize });
+        Return();
     }
 }
 
@@ -2818,6 +2875,14 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorrejectV8)
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
                               { asyncGenerator, acc });
     CHECK_EXCEPTION_VARACC(res, INT_PTR(ASYNCGENERATORREJECT_V8));
+}
+
+DECLARE_ASM_HANDLER(HandleSetgeneratorstateImm8)
+{
+    GateRef index = ReadInst8_0(pc);
+    GateRef value = acc;
+    CallRuntime(glue, RTSTUB_ID(SetGeneratorState), { value, IntToTaggedInt(index) });
+    DISPATCH(SETGENERATORSTATE_IMM8);
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedAsyncgeneratorrejectPrefV8V8)

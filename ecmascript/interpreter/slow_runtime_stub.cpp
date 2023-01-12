@@ -454,6 +454,15 @@ JSTaggedValue SlowRuntimeStub::SuspendGenerator(JSThread *thread, JSTaggedValue 
     return RuntimeStubs::RuntimeSuspendGenerator(thread, genObjHandle, valueHandle);
 }
 
+void SlowRuntimeStub::SetGeneratorState(JSThread *thread, JSTaggedValue genObj, int32_t index)
+{
+    INTERPRETER_TRACE(thread, SetGeneratorState);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> genObjHandle(thread, genObj);
+    return RuntimeStubs::RuntimeSetGeneratorState(thread, genObjHandle, index);
+}
+
 JSTaggedValue SlowRuntimeStub::AsyncFunctionAwaitUncaught(JSThread *thread, JSTaggedValue asyncFuncObj,
                                                           JSTaggedValue value)
 {
@@ -766,6 +775,15 @@ JSTaggedValue SlowRuntimeStub::GetIterator(JSThread *thread, JSTaggedValue obj)
 
     JSHandle<JSTaggedValue> objHandle(thread, obj);
     return RuntimeStubs::RuntimeGetIterator(thread, objHandle);
+}
+
+JSTaggedValue SlowRuntimeStub::GetAsyncIterator(JSThread *thread, JSTaggedValue obj)
+{
+    INTERPRETER_TRACE(thread, GetAsyncIterator);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> objHandle(thread, obj);
+    return RuntimeStubs::RuntimeGetAsyncIterator(thread, objHandle);
 }
 
 JSTaggedValue SlowRuntimeStub::DefineGetterSetterByValue(JSThread *thread, JSTaggedValue obj, JSTaggedValue prop,

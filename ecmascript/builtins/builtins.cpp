@@ -20,6 +20,7 @@
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
+#include "ecmascript/builtins/builtins_async_from_sync_iterator.h"
 #include "ecmascript/builtins/builtins_async_function.h"
 #include "ecmascript/builtins/builtins_async_iterator.h"
 #include "ecmascript/builtins/builtins_async_generator.h"
@@ -97,6 +98,7 @@
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
+#include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/js_weak_container.h"
@@ -142,6 +144,7 @@ using ErrorType = base::ErrorType;
 using Global = builtins::BuiltinsGlobal;
 using BuiltinsString = builtins::BuiltinsString;
 using StringIterator = builtins::BuiltinsStringIterator;
+using BuiltinsAsyncFromSyncIterator = builtins::BuiltinsAsyncFromSyncIterator;
 using RegExp = builtins::BuiltinsRegExp;
 using Function = builtins::BuiltinsFunction;
 using Math = builtins::BuiltinsMath;
@@ -296,6 +299,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializeJson(env, objFuncPrototypeVal);
     InitializeIterator(env, objFuncClass);
     InitializeAsyncIterator(env, objFuncClass);
+    InitializeAsyncFromSyncIterator(env, objFuncClass);
     InitializeProxy(env);
     InitializeReflect(env, objFuncPrototypeVal);
     InitializeAsyncFunction(env, objFuncClass);
@@ -1658,6 +1662,33 @@ void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,
 
     env->SetStringIterator(thread_, strIterFunction);
     env->SetStringIteratorPrototype(thread_, strIterPrototype);
+}
+
+void Builtins::InitializeAsyncFromSyncIterator(const JSHandle<GlobalEnv> &env,
+                                               const JSHandle<JSHClass> &iteratorFuncClass) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+
+    JSHandle<JSObject> asyncItPrototype = factory_->NewJSObjectWithInit(iteratorFuncClass);
+    SetFunction(env, asyncItPrototype, "next", BuiltinsAsyncFromSyncIterator::Next, FunctionLength::ONE);
+    SetFunction(env, asyncItPrototype, "return", BuiltinsAsyncFromSyncIterator::Return, FunctionLength::ONE);
+    SetFunction(env, asyncItPrototype, "throw", BuiltinsAsyncFromSyncIterator::Throw, FunctionLength::ONE);
+    JSHandle<JSHClass> hclass = factory_->NewEcmaHClass(JSAsyncFromSyncIterator::SIZE,
+                                                        JSType::JS_ASYNC_FROM_SYNC_ITERATOR,
+                                                        JSHandle<JSTaggedValue>(asyncItPrototype));
+    JSHandle<JSFunction> iterFunction(
+        factory_->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR));
+    iterFunction->SetFunctionPrototype(thread_, hclass.GetTaggedValue());
+    env->SetAsyncFromSyncIterator(thread_, iterFunction);
+    env->SetAsyncFromSyncIteratorPrototype(thread_, asyncItPrototype);
+
+    JSHandle<JSHClass> asyncFromSyncIterUnwarpClass =
+        factory_->NewEcmaHClass(JSAsyncFromSyncIterUnwarpFunction::SIZE,
+                                JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION,
+                                env->GetFunctionPrototype());
+    asyncFromSyncIterUnwarpClass->SetCallable(true);
+    asyncFromSyncIterUnwarpClass->SetExtensible(true);
+    env->SetAsyncFromSyncIterUnwarpClass(thread_, asyncFromSyncIterUnwarpClass);
 }
 
 void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const

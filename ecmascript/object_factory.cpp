@@ -17,6 +17,7 @@
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
+#include "ecmascript/builtins/builtins_async_from_sync_iterator.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/ecma_macros.h"
@@ -97,6 +98,7 @@
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
+#include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
@@ -1083,6 +1085,11 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSStringIterator::Cast(*obj)->SetStringIteratorNextIndex(0);
             JSStringIterator::Cast(*obj)->SetIteratedString(thread_, JSTaggedValue::Undefined());
             break;
+        case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
+            JSAsyncFromSyncIterator::Cast(*obj)->SetSyncIteratorRecord(thread_, JSTaggedValue::Undefined());
+            break;
+        case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
+            JSAsyncFromSyncIterUnwarpFunction::Cast(*obj)->SetDone(thread_, JSTaggedValue::Undefined());
         case JSType::JS_ARRAY_BUFFER:
             JSArrayBuffer::Cast(*obj)->SetArrayBufferData(thread_, JSTaggedValue::Undefined());
             JSArrayBuffer::Cast(*obj)->SetArrayBufferByteLength(0);
@@ -2863,6 +2870,20 @@ JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextR
     return function;
 }
 
+JSHandle<JSAsyncFromSyncIterUnwarpFunction> ObjectFactory::NewJSAsyncFromSyncIterUnwarpFunction()
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFromSyncIterUnwarpClass());
+    JSHandle<JSAsyncFromSyncIterUnwarpFunction> function =
+        JSHandle<JSAsyncFromSyncIterUnwarpFunction>::Cast(NewJSObject(hclass));
+    JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
+    JSTaggedValue debugVaule =  vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_FROM_SYNC_ITERATOR_FUNCTION);
+    function->SetMethod(thread_, debugVaule);
+    function->SetDone(thread_, JSTaggedValue::Undefined());
+    JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
+    return function;
+}
+
 JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextRetProRstRejectedFtn()
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -3939,6 +3960,19 @@ JSHandle<AsyncGeneratorRequest> ObjectFactory::NewAsyncGeneratorRequest()
     JSHandle<AsyncGeneratorRequest> obj(thread_, header);
     obj->SetCompletion(thread_, JSTaggedValue::Undefined());
     obj->SetCapability(thread_, JSTaggedValue::Undefined());
+    return obj;
+}
+
+JSHandle<AsyncIteratorRecord> ObjectFactory::NewAsyncIteratorRecord(const JSHandle<JSTaggedValue> &itor,
+                                                                    const JSHandle<JSTaggedValue> &next, bool done)
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetAsyncIteratorRecordClass().GetTaggedObject()));
+    JSHandle<AsyncIteratorRecord> obj(thread_, header);
+    obj->SetIterator(thread_, itor.GetTaggedValue());
+    obj->SetNextMethod(thread_, next.GetTaggedValue());
+    obj->SetDone(done);
     return obj;
 }
 

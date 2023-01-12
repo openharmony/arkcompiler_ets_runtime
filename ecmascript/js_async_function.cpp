@@ -186,6 +186,14 @@ JSHandle<JSTaggedValue> JSAsyncAwaitStatusFunction::AsyncFunctionAwaitRejected(
     // 1.Let asyncContext be F.[[AsyncContext]].
     JSHandle<GeneratorContext> asyncCtxt(thread, func->GetAsyncContext());
 
+    JSHandle<JSTaggedValue> tagVal(thread, asyncCtxt->GetGeneratorObject());
+    if (tagVal->IsAsyncGeneratorObject()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<CompletionRecord> completionRecord =
+        factory->NewCompletionRecord(CompletionRecordType::THROW, reason);
+        AsyncGeneratorHelper::Throw(thread, asyncCtxt, completionRecord);
+        return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
+    } else {
     // 2.Let prevContext be the running execution context.
     // 3.Suspend prevContext.
     // 4.Push asyncContext onto the execution context stack; asyncContext is now the running execution context.
@@ -198,5 +206,6 @@ JSHandle<JSTaggedValue> JSAsyncAwaitStatusFunction::AsyncFunctionAwaitRejected(
 
     // 7.Return Completion(result).
     return JSHandle<JSTaggedValue>::Cast(result);
+    }
 }
 }  // namespace panda::ecmascript

@@ -75,6 +75,7 @@ public:
 
     static JSTaggedValue CreateGeneratorObj(JSThread *thread, JSTaggedValue genFunc);
     static JSTaggedValue SuspendGenerator(JSThread *thread, JSTaggedValue genObj, JSTaggedValue value);
+    static void SetGeneratorState(JSThread *thread, JSTaggedValue genObj, int32_t index);
     static JSTaggedValue AsyncFunctionAwaitUncaught(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value);
     static JSTaggedValue AsyncFunctionResolveOrReject(JSThread *thread, JSTaggedValue asyncFuncObj, JSTaggedValue value,
                                                       bool is_resolve);
@@ -109,6 +110,7 @@ public:
     static JSTaggedValue GetUnmapedArgs(JSThread *thread, JSTaggedType *sp, uint32_t actualNumArgs, uint32_t startIdx);
     static JSTaggedValue CopyRestArgs(JSThread *thread, JSTaggedType *sp, uint32_t restNumArgs, uint32_t startIdx);
     static JSTaggedValue GetIterator(JSThread *thread, JSTaggedValue obj);
+    static JSTaggedValue GetAsyncIterator(JSThread *thread, JSTaggedValue obj);
     static JSTaggedValue IterNext(JSThread *thread, JSTaggedValue iter);
     static JSTaggedValue CloseIterator(JSThread *thread, JSTaggedValue iter);
     static void StModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value);
