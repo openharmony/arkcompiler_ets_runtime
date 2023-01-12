@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/dfx/native_dfx/backtrace.h"
+#include "ecmascript/platform/backtrace.h"
 
 #include <dlfcn.h>
 #include <iomanip>
@@ -32,7 +32,7 @@ static const int ALIGN_WIDTH = 2;
 
 using UnwBackTraceFunc = int (*)(void**, int);
 
-void PrintBacktrace(uintptr_t value)
+void PrintBacktrace()
 {
     static UnwBackTraceFunc unwBackTrace = nullptr;
     if (!unwBackTrace) {
@@ -52,8 +52,9 @@ void PrintBacktrace(uintptr_t value)
     }
 
     void *buffer[MAX_STACK_SIZE] = { nullptr };
-    int level = unwBackTrace((void**)&buffer, MAX_STACK_SIZE);
+    int level = unwBackTrace(reinterpret_cast<void**>(&buffer), MAX_STACK_SIZE);
     std::ostringstream stack;
+    stack << "=====================Backtrace========================";
     for (int i = 1; i < level; i++) {
         const char *file = "";
         uintptr_t offset = 0;
@@ -65,11 +66,10 @@ void PrintBacktrace(uintptr_t value)
             if (info.dli_fbase) {
                 offset = ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase);
             }
+            stack << std::endl << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  "
+                  << file << "(" << "+" << std::hex << offset << ")";
         }
-        stack << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  "
-              << file << "(" << "+" << std::hex << offset << ")" << std::endl;
     }
-    LOG_ECMA(INFO) << "=====================Backtrace(" << std::hex << value <<")========================";
     LOG_ECMA(INFO) << stack.str();
     stack.clear();
 }
@@ -94,7 +94,7 @@ std::string PrintBacktraceReturnString()
     }
 
     void *buffer[MAX_STACK_SIZE] = { nullptr };
-    int level = unwBackTrace((void**)&buffer, MAX_STACK_SIZE);
+    int level = unwBackTrace(reinterpret_cast<void**>(&buffer), MAX_STACK_SIZE);
     std::ostringstream stack;
     for (int i = 1; i < level; i++) {
         const char *file = "";
@@ -107,9 +107,9 @@ std::string PrintBacktraceReturnString()
             if (info.dli_fbase) {
                 offset = ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase);
             }
+            stack << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  "
+                  << file << "(" << "+" << std::hex << offset << ")" << std::endl;
         }
-        stack << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  "
-              << file << "(" << "+" << std::hex << offset << ")" << std::endl;
     }
     stack.clear();
     return stack.str();
