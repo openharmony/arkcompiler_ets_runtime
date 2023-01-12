@@ -59,8 +59,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         entry = entryPoint.data();
     }
  
-    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(),
-                                                                                        needUpdate);
+    const JSPandaFile *jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), needUpdate);
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
@@ -83,11 +83,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
             if (!excuteFromJob) {
-                auto exception = thread->GetException();
-                vm->HandleUncaughtException(exception.GetTaggedObject());
+                vm->HandleUncaughtException(thread->GetException());
             }
             return JSTaggedValue::Undefined();
         }
+
         moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
         SourceTextModule::Evaluate(thread, moduleRecord, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
@@ -105,6 +105,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     if (jsPandaFile == nullptr) {
         return Unexpected(false);
     }
+
     CString entry = entryPoint.data();
     bool isModule = jsPandaFile->IsModule(entry);
     bool isBundle = jsPandaFile->IsBundlePack();
@@ -162,8 +163,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     }
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
-        auto exception = thread->GetException();
-        vm->HandleUncaughtException(exception.GetTaggedObject());
+        vm->HandleUncaughtException(thread->GetException());
         return JSTaggedValue::Undefined();
     }
     moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);

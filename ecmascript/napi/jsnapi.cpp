@@ -2730,8 +2730,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
         }
         ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
-            auto exception = thread->GetException();
-            vm->HandleUncaughtException(exception.GetTaggedObject());
+            vm->HandleUncaughtException(thread->GetException());
             return false;
         }
         moduleRecord->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);

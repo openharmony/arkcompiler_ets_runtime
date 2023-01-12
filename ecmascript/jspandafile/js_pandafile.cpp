@@ -201,11 +201,11 @@ MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
 bool JSPandaFile::IsModule(const CString &recordName) const
 {
     if (IsBundlePack()) {
-        return jsRecordInfo_.begin()->second.moduleRecordIdx == -1 ? false : true;
+        return jsRecordInfo_.begin()->second.moduleRecordIdx != -1;
     }
     auto info = jsRecordInfo_.find(recordName);
     if (info != jsRecordInfo_.end()) {
-        return info->second.moduleRecordIdx == -1 ? false : true;
+        return info->second.moduleRecordIdx != -1;
     }
     LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
     UNREACHABLE();

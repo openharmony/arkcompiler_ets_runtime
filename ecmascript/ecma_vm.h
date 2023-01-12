@@ -591,7 +591,7 @@ public:
 
 protected:
 
-    void HandleUncaughtException(TaggedObject *exception);
+    void HandleUncaughtException(JSTaggedValue exception);
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
 
@@ -655,11 +655,6 @@ private:
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
-    // For framewrok file snapshot.
-    CString snapshotFileName_;
-    CString frameworkAbcFileName_;
-    JSTaggedValue frameworkProgram_ {JSTaggedValue::Hole()};
-    const JSPandaFile *frameworkPandaFile_ {nullptr};
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
 
     // VM resources.
