@@ -657,7 +657,8 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
                 key = PackageName + "/" + JSPandaFile::NODE_MODULES + moduleRequestName;
                 AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
                 PackageName = PackageName.substr(0, pos > 0 ? pos - 1 : 0);
-                if(!entryPoint.empty()){
+                if (!entryPoint.empty())
+                {
                     break;
                 }
             }
