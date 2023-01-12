@@ -50,6 +50,12 @@ enum class MemGrowingType : uint8_t {
     CONSERVATIVE,
     PRESSURE
 };
+
+enum class HeapMode {
+    NORMAL,
+    SPAWN,
+    SHARE,
+};
 class Heap {
 public:
     explicit Heap(EcmaVM *ecmaVm);
@@ -423,9 +429,9 @@ public:
         shouldThrowOOMError_ = shouldThrow;
     }
 
-    void SetIsFork(bool isFork)
+    void SetHeapMode(HeapMode mode)
     {
-        isFork_ = isFork;
+        mode_ = mode;
     }
 
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
@@ -574,8 +580,8 @@ private:
     bool oldSpaceLimitAdjusted_ {false};
     bool shouldThrowOOMError_ {false};
     bool runningNativeFinalizeCallbacks_ {false};
-    bool isFork_ {false};
     bool needIdleGC_ {true};
+    HeapMode mode_ { HeapMode::NORMAL };
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};

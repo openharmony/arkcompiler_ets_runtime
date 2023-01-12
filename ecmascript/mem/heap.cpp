@@ -168,7 +168,7 @@ void Heap::Destroy()
         delete hugeObjectSpace_;
         hugeObjectSpace_ = nullptr;
     }
-    if (readOnlySpace_ != nullptr && !isFork_) {
+    if (readOnlySpace_ != nullptr && mode_ != HeapMode::SHARE) {
         readOnlySpace_->ClearReadOnly();
         readOnlySpace_->Destroy();
         delete readOnlySpace_;
@@ -241,7 +241,9 @@ void Heap::Resume(TriggerGCType gcType)
         compressSpace_ = oldSpace_;
         oldSpace_ = oldSpace;
     }
-    if (activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC())) {
+
+    if (mode_ != HeapMode::SPAWN &&
+        activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC())) {
         // if activeSpace capacity changes， oldSpace maximumCapacity should change, too.
         size_t multiple = 2;
         size_t oldSpaceMaxLimit = 0;
@@ -574,6 +576,10 @@ void Heap::AddToKeptObjects(JSHandle<JSTaggedValue> value) const
 
 void Heap::AdjustSpaceSizeForAppSpawn()
 {
+    SetHeapMode(HeapMode::SPAWN);
+    auto &config = ecmaVm_->GetEcmaParamConfiguration();
+    size_t minSemiSpaceCapacity = config.GetMinSemiSpaceSize();
+    activeSemiSpace_->SetInitialCapacity(minSemiSpaceCapacity);
     auto committedSize = appSpawnSpace_->GetCommittedSize();
     appSpawnSpace_->SetInitialCapacity(committedSize);
     appSpawnSpace_->SetMaximumCapacity(committedSize);
@@ -987,16 +993,19 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
     OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
                                 << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsFullMark() << ")";
-#if ECMASCRIPT_ENABLE_HEAP_DETAIL_STATISTICS
-    LOG_ECMA(INFO) << "ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()
+    OPTIONAL_LOG(ecmaVm_, INFO) << "ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()
                    << "/" << activeSemiSpace_->GetInitialCapacity() << "), NonMovable("
                    << nonMovableSpace_->GetHeapObjectSize() << "/" << nonMovableSpace_->GetCommittedSize()
                    << "/" << nonMovableSpace_->GetInitialCapacity() << "), Old("
                    << oldSpace_->GetHeapObjectSize() << "/" << oldSpace_->GetCommittedSize()
                    << "/" << oldSpace_->GetInitialCapacity() << "), HugeObject("
                    << hugeObjectSpace_->GetHeapObjectSize() << "/" << hugeObjectSpace_->GetCommittedSize()
-                   << "/" << hugeObjectSpace_->GetInitialCapacity() << "), GlobalLimitSize("
-                   << globalSpaceAllocLimit_ << ").";
+                   << "/" << hugeObjectSpace_->GetInitialCapacity() << "), ReadOnlySpace("
+                   << readOnlySpace_->GetCommittedSize() << "/" << readOnlySpace_->GetInitialCapacity()
+                   << "), AppspawnSpace(" << appSpawnSpace_->GetHeapObjectSize() << "/"
+                   << appSpawnSpace_->GetCommittedSize() << "/" << appSpawnSpace_->GetInitialCapacity()
+                   << "), GlobalLimitSize(" << globalSpaceAllocLimit_ << ").";
+#if ECMASCRIPT_ENABLE_HEAP_DETAIL_STATISTICS
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     static const int MIN_COUNT_THRESHOLD = 1000;
