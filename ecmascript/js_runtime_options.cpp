@@ -138,7 +138,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-type-lowering", required_argument, nullptr, OPTION_ENABLE_TYPE_LOWERING},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
-        {"framework-abc-file", required_argument, nullptr, OPTION_FRAMEWORK_ABC_FILE},
         {"gcThreadNum", required_argument, nullptr, OPTION_GC_THREADNUM},
         {"heap-size-limit", required_argument, nullptr, OPTION_HEAP_SIZE_LIMIT},
         {"help", no_argument, nullptr, OPTION_HELP},
@@ -160,7 +159,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"print-any-types", required_argument, nullptr, OPTION_PRINT_ANY_TYPES},
         {"reloc-mode", required_argument, nullptr, OPTION_RELOCATION_MODE},
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
-        {"snapshot-file", required_argument, nullptr, OPTION_SNAPSHOT_FILE},
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
         {"stub-file", required_argument, nullptr, OPTION_STUB_FILE},
         {"target-triple", required_argument, nullptr, OPTION_TARGET_TRIPLE},
@@ -333,9 +331,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_FRAMEWORK_ABC_FILE:
-                SetFrameworkAbcFile(optarg);
-                break;
             case OPTION_GC_THREADNUM:
                 ret = ParseUint32Param("gcThreadNum", &argUint32);
                 if (ret) {
@@ -478,9 +473,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
-                break;
-            case OPTION_SNAPSHOT_FILE:
-                SetSnapshotFile(optarg);
                 break;
             case OPTION_STARTUP_TIME:
                 ret = ParseBoolParam(&argBool);

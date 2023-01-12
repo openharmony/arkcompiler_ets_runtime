@@ -73,8 +73,6 @@ enum CommandValues {
     OPTION_SERIALIZER_BUFFER_SIZE_LIMIT,
     OPTION_HEAP_SIZE_LIMIT,
     OPTION_ENABLE_IC,
-    OPTION_SNAPSHOT_FILE,
-    OPTION_FRAMEWORK_ABC_FILE,
     OPTION_ICU_DATA_PATH,
     OPTION_STARTUP_TIME,
     OPTION_COMPILER_LOG_OPT,
@@ -508,36 +506,6 @@ public:
         return WasOptionSet(OPTION_ENABLE_IC);
     }
 
-    std::string GetSnapshotFile() const
-    {
-        return snapshotFile_;
-    }
-
-    void SetSnapshotFile(std::string value)
-    {
-        snapshotFile_ = std::move(value);
-    }
-
-    bool WasSetSnapshotFile() const
-    {
-        return WasOptionSet(OPTION_SNAPSHOT_FILE);
-    }
-
-    std::string GetFrameworkAbcFile() const
-    {
-        return frameworkAbcFile_;
-    }
-
-    void SetFrameworkAbcFile(std::string value)
-    {
-        frameworkAbcFile_ = std::move(value);
-    }
-
-    bool WasSetFrameworkAbcFile() const
-    {
-        return WasOptionSet(OPTION_FRAMEWORK_ABC_FILE);
-    }
-
     std::string GetIcuDataPath() const
     {
         return icuDataPath_;
@@ -879,8 +847,6 @@ private:
     uint64_t serializerBufferSizeLimit_ {2_GB};
     uint32_t heapSizeLimit_ {512_MB};
     bool enableIC_ {true};
-    std::string snapshotFile_ {"/system/etc/snapshot"};
-    std::string frameworkAbcFile_ {"strip.native.min.abc"};
     std::string icuDataPath_ {"default"};
     bool startupTime_ {false};
     std::string compilerLogOpt_ {"none"};

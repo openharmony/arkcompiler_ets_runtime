@@ -120,8 +120,7 @@ JSHandle<Program> JSPandaFileManager::GenerateProgram(
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
     vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
-    JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
-    return program;
+    return PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
 }
 
 const JSPandaFile *JSPandaFileManager::FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum)
