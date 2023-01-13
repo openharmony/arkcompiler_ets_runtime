@@ -213,6 +213,7 @@ void LLVMAssembler::Initialize(LOptions option)
 {
     std::string triple(LLVMGetTarget(module_));
     if (triple.compare("x86_64-unknown-linux-gnu") == 0) {
+#ifndef PANDA_TARGET_ARM64
         LLVMInitializeX86TargetInfo();
         LLVMInitializeX86TargetMC();
         LLVMInitializeX86Disassembler();
@@ -220,6 +221,7 @@ void LLVMAssembler::Initialize(LOptions option)
         LLVMInitializeX86AsmPrinter();
         LLVMInitializeX86AsmParser();
         LLVMInitializeX86Target();
+#endif
     } else if (triple.compare("aarch64-unknown-linux-gnu") == 0) {
         LLVMInitializeAArch64TargetInfo();
         LLVMInitializeAArch64TargetMC();
@@ -228,12 +230,14 @@ void LLVMAssembler::Initialize(LOptions option)
         LLVMInitializeAArch64AsmParser();
         LLVMInitializeAArch64Target();
     } else if (triple.compare("arm-unknown-linux-gnu") == 0) {
+#ifndef PANDA_TARGET_ARM64
         LLVMInitializeARMTargetInfo();
         LLVMInitializeARMTargetMC();
         LLVMInitializeARMDisassembler();
         LLVMInitializeARMAsmPrinter();
         LLVMInitializeARMAsmParser();
         LLVMInitializeARMTarget();
+#endif
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();

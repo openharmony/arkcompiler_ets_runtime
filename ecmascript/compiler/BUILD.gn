@@ -32,10 +32,17 @@ config("include_llvm") {
         "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/include",
       ]
     } else {
-      include_dirs = [
-        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
-        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
-      ]
+      if (current_cpu == "arm64") {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/include",
+        ]
+      } else {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
+        ]
+      }
     }
     cflags_cc = [ "-DARK_GC_SUPPORT" ]
   }
@@ -110,7 +117,6 @@ source_set("libark_jsoptimizer_set") {
   ]
 
   if (compile_llvm_online) {
-    assert(!is_mingw, "compiling llvm online on mingw is not supported!")
     lib_dirs = [ "//third_party/third_party_llvm-project/build/lib" ]
   } else {
     if (is_mingw) {
@@ -119,8 +125,13 @@ source_set("libark_jsoptimizer_set") {
         "//prebuilts/mingw-w64/ohos/linux-x86_64/clang-mingw/x86_64-w64-mingw32",
       ]
     } else {
-      lib_dirs =
-          [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/lib" ]
+      if (current_cpu == "arm64") {
+        lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/lib" ]
+      } else {
+        lib_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/lib",
+        ]
+      }
     }
   }
 
@@ -165,26 +176,33 @@ source_set("libark_jsoptimizer_set") {
     "LLVMCodeGen",
     "LLVMTransformUtils",
     "LLVMIRReader",
-    "LLVMARMUtils",
-    "LLVMARMCodeGen",
-    "LLVMARMDisassembler",
-    "LLVMARMDesc",
-    "LLVMARMInfo",
-    "LLVMARMAsmParser",
     "LLVMAArch64Utils",
     "LLVMAArch64CodeGen",
     "LLVMAArch64Info",
     "LLVMAArch64Desc",
     "LLVMAArch64Disassembler",
     "LLVMAArch64AsmParser",
-    "LLVMX86AsmParser",
-    "LLVMX86CodeGen",
-    "LLVMX86Desc",
-    "LLVMX86Disassembler",
-    "LLVMX86Info",
     "LLVMFrontendOpenMP",
     "LLVMBitWriter",
   ]
+
+  # Only support compiling aarch64 target at device-side(arm64 platform).
+  # So these os-related libs of arm and x86 are not needed on arm64 platform.
+  if (current_cpu != "arm64") {
+    libs += [
+      "LLVMARMUtils",
+      "LLVMARMCodeGen",
+      "LLVMARMDisassembler",
+      "LLVMARMDesc",
+      "LLVMARMInfo",
+      "LLVMARMAsmParser",
+      "LLVMX86AsmParser",
+      "LLVMX86CodeGen",
+      "LLVMX86Desc",
+      "LLVMX86Disassembler",
+      "LLVMX86Info",
+    ]
+  }
 
   if (is_mingw) {
     libs += [
@@ -356,6 +374,25 @@ ohos_executable("ark_aot_compiler") {
       "$ark_third_party_root/icu/icu4c:shared_icui18n",
       "$ark_third_party_root/icu/icu4c:shared_icuuc",
     ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    if (enable_dump_in_faultlog || enable_bytrace || enable_hitrace ||
+        enable_hilog) {
+      external_deps = []
+    }
+    if (enable_dump_in_faultlog) {
+      external_deps += [ "faultloggerd:libfaultloggerd" ]
+    }
+    if (enable_bytrace) {
+      external_deps += [ "hitrace_native:hitrace_meter" ]
+    }
+    if (enable_hitrace) {
+      external_deps += [ "hitrace_native:libhitracechain" ]
+    }
+    if (enable_hilog) {
+      external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
+    }
   }
 
   install_enable = false
