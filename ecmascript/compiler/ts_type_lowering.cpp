@@ -806,7 +806,6 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     DeleteGates(gate, removedGate);
 }
 
-
 void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
 {
     // 2: number of value inputs

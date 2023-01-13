@@ -637,6 +637,8 @@ public:
     bool HasOrdinaryGet() const;
     bool IsPrototypeHandler() const;
     bool IsTransitionHandler() const;
+    bool IsTransWithProtoHandler() const;
+    bool IsStoreTSHandler() const;
     bool IsPropertyBox() const;
     bool IsProtoChangeMarker() const;
     bool IsProtoChangeDetails() const;

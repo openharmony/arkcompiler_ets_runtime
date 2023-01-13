@@ -354,13 +354,26 @@ GateRef CircuitBuilder::TaggedIsWeak(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef x)
 {
-    return IsJsType(x, JSType::PROTOTYPE_HANDLER);
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::PROTOTYPE_HANDLER));
 }
 
 GateRef CircuitBuilder::TaggedIsTransitionHandler(GateRef x)
 {
     return LogicAnd(TaggedIsHeapObject(x),
         IsJsType(x, JSType::TRANSITION_HANDLER));
+}
+
+GateRef CircuitBuilder::TaggedIsStoreTSHandler(GateRef x)
+{
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::STORE_TS_HANDLER));
+}
+
+GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef x)
+{
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::TRANS_WITH_PROTO_HANDLER));
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)

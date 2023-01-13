@@ -151,6 +151,10 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, PrototypeHandler::SIZE, JSType::PROTOTYPE_HANDLER));
     SetConstant(ConstantIndex::TRANSITION_HANDLER_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TransitionHandler::SIZE, JSType::TRANSITION_HANDLER));
+    SetConstant(ConstantIndex::TRANS_WITH_PROTO_HANDLER_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, TransWithProtoHandler::SIZE, JSType::TRANS_WITH_PROTO_HANDLER));
+    SetConstant(ConstantIndex::STORE_TS_HANDLER_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, StoreTSHandler::SIZE, JSType::STORE_TS_HANDLER));
     SetConstant(ConstantIndex::PROPERTY_BOX_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, PropertyBox::SIZE, JSType::PROPERTY_BOX));
     SetConstant(ConstantIndex::PROGRAM_CLASS_INDEX,

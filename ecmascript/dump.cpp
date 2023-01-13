@@ -780,6 +780,12 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::TRANSITION_HANDLER:
             TransitionHandler::Cast(obj)->Dump(os);
             break;
+        case JSType::TRANS_WITH_PROTO_HANDLER:
+            TransWithProtoHandler::Cast(obj)->Dump(os);
+            break;
+        case JSType::STORE_TS_HANDLER:
+            StoreTSHandler::Cast(obj)->Dump(os);
+            break;
         case JSType::PROPERTY_BOX:
             PropertyBox::Cast(obj)->Dump(os);
             break;
@@ -2659,6 +2665,32 @@ void TransitionHandler::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void TransWithProtoHandler::Dump(std::ostream &os) const
+{
+    os << " - HandlerInfo: ";
+    GetHandlerInfo().Dump(os);
+    os << "\n";
+    os << " - TransitionHClass: ";
+    GetTransitionHClass().Dump(os);
+    os << "\n";
+    os << " - Holder: ";
+    GetHandlerInfo().Dump(os);
+    os << "\n";
+}
+
+void StoreTSHandler::Dump(std::ostream &os) const
+{
+    os << " - HandlerInfo: ";
+    GetHandlerInfo().Dump(os);
+    os << "\n";
+    os << " - ProtoCell: ";
+    GetHandlerInfo().Dump(os);
+    os << "\n";
+    os << " - Holder: ";
+    GetHandlerInfo().Dump(os);
+    os << "\n";
+}
+
 void JSRealm::Dump(std::ostream &os) const
 {
     os << " - Value: ";
@@ -3833,6 +3865,12 @@ static void DumpObject(TaggedObject *obj,
             case JSType::TRANSITION_HANDLER:
                 TransitionHandler::Cast(obj)->DumpForSnapshot(vec);
                 return;
+            case JSType::TRANS_WITH_PROTO_HANDLER:
+                TransWithProtoHandler::Cast(obj)->DumpForSnapshot(vec);
+                return;
+            case JSType::STORE_TS_HANDLER:
+                StoreTSHandler::Cast(obj)->DumpForSnapshot(vec);
+                return;
             case JSType::PROTOTYPE_HANDLER:
                 PrototypeHandler::Cast(obj)->DumpForSnapshot(vec);
                 return;
@@ -4763,6 +4801,20 @@ void TransitionHandler::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedV
 {
     vec.emplace_back("HandlerInfo", GetHandlerInfo());
     vec.emplace_back("TransitionHClass", GetTransitionHClass());
+}
+
+void TransWithProtoHandler::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.emplace_back("HandlerInfo", GetHandlerInfo());
+    vec.emplace_back("TransitionHClass", GetTransitionHClass());
+    vec.emplace_back("ProtoCell", GetProtoCell());
+}
+
+void StoreTSHandler::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.emplace_back("HandlerInfo", GetHandlerInfo());
+    vec.emplace_back("ProtoCell", GetProtoCell());
+    vec.emplace_back("Holder", GetHolder());
 }
 
 void JSRealm::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

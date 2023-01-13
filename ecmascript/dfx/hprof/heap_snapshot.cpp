@@ -523,6 +523,10 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
                 return GetString("ProtoTypeHandler");
             case JSType::TRANSITION_HANDLER:
                 return GetString("TransitionHandler");
+            case JSType::TRANS_WITH_PROTO_HANDLER:
+                return GetString("TransWithProtoHandler");
+            case JSType::STORE_TS_HANDLER:
+                return GetString("StoreTSHandler");
             case JSType::PROTO_CHANGE_MARKER:
                 return GetString("ProtoChangeMarker");
             case JSType::PROTOTYPE_INFO:

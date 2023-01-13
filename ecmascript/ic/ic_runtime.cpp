@@ -90,16 +90,25 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
     }
     JSHandle<JSTaggedValue> handlerValue;
     ASSERT(op.IsFound());
-    if (op.IsOnPrototype()) {
+
+    if (op.IsAOT()) {
+        JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
+        handlerValue = StoreTSHandler::StoreAOT(thread_, op, hclass);
+    } else if (op.IsTransition()) {
+        ASSERT(!op.IsElement());
+        if (op.IsOnPrototype()) {
+            JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
+            handlerValue = TransWithProtoHandler::StoreTransition(thread_, op, hclass);
+        } else {
+            handlerValue = TransitionHandler::StoreTransition(thread_, op);
+        }
+    } else if (op.IsOnPrototype()) {
         // do not support global prototype ic
         if (IsGlobalStoreIC(GetICKind())) {
             return;
         }
         JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
         handlerValue = PrototypeHandler::StorePrototype(thread_, op, hclass);
-    } else if (op.IsTransition()) {
-        ASSERT(!op.IsElement());
-        handlerValue = TransitionHandler::StoreTransition(thread_, op);
     } else {
         handlerValue = StoreHandler::StoreProperty(thread_, op);
     }

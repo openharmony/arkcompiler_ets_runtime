@@ -63,6 +63,8 @@ class JSThread;
     V(JSTaggedValue, ProtoChangeDetailsClass, PROTO_CHANGE_DETAILS_CLASS_INDEX, ecma_roots_class)                     \
     V(JSTaggedValue, PrototypeHandlerClass, PROTOTYPE_HANDLER_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, TransitionHandlerClass, TRANSITION_HANDLER_CLASS_INDEX, ecma_roots_class)                        \
+    V(JSTaggedValue, TransWithProtoHandlerClass, TRANS_WITH_PROTO_HANDLER_CLASS_INDEX, ecma_roots_class)              \
+    V(JSTaggedValue, StoreTSHandlerClass, STORE_TS_HANDLER_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, PropertyBoxClass, PROPERTY_BOX_CLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, ProgramClass, PROGRAM_CLASS_INDEX, ecma_roots_class)                                             \
     V(JSTaggedValue, ImportEntryClass, IMPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                                    \

@@ -435,7 +435,9 @@ JSTaggedValue FastRuntimeStub::GetPropertyByName(JSThread *thread, JSTaggedValue
                     return CallGetter(thread, receiver, holder, value);
                 }
                 ASSERT(!value.IsAccessor());
-                return value;
+                if (!value.IsHole()) {
+                    return value;
+                }
             }
         } else {
             TaggedArray *array = TaggedArray::Cast(JSObject::Cast(holder)->GetProperties().GetTaggedObject());
@@ -468,6 +470,7 @@ JSTaggedValue FastRuntimeStub::SetPropertyByName(JSThread *thread, JSTaggedValue
     INTERPRETER_TRACE(thread, SetPropertyByName);
     // property
     JSTaggedValue holder = receiver;
+    int receiverHoleEntry = -1;
     do {
         auto *hclass = holder.GetTaggedObject()->GetClass();
         JSType jsType = hclass->GetObjectType();
@@ -506,6 +509,19 @@ JSTaggedValue FastRuntimeStub::SetPropertyByName(JSThread *thread, JSTaggedValue
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
                 }
+                if (hclass->IsAOT()) {
+                    auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
+                    if (attrVal.IsHole()) {
+                        if (receiverHoleEntry == -1 && holder == receiver) {
+                            receiverHoleEntry = entry;
+                        }
+                        if (UseOwn) {
+                            break;
+                        }
+                        holder = hclass->GetPrototype();
+                        continue;
+                    }
+                }
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
@@ -541,6 +557,14 @@ JSTaggedValue FastRuntimeStub::SetPropertyByName(JSThread *thread, JSTaggedValue
         }
         holder = hclass->GetPrototype();
     } while (holder.IsHeapObject());
+
+    if (receiverHoleEntry != -1) {
+        auto *receiverHClass = receiver.GetTaggedObject()->GetClass();
+        LayoutInfo *receiverLayoutInfo = LayoutInfo::Cast(receiverHClass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr(receiverLayoutInfo->GetAttr(receiverHoleEntry));
+        JSObject::Cast(receiver)->SetProperty(thread, receiverHClass, attr, value);
+        return JSTaggedValue::Undefined();
+    }
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSObject> objHandle(thread, receiver);

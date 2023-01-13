@@ -2932,6 +2932,32 @@ JSHandle<PrototypeHandler> ObjectFactory::NewPrototypeHandler()
     return handler;
 }
 
+JSHandle<TransWithProtoHandler> ObjectFactory::NewTransWithProtoHandler()
+{
+    NewObjectHook();
+    TransWithProtoHandler *header =
+        TransWithProtoHandler::Cast(heap_->AllocateYoungOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetTransWithProtoHandlerClass().GetTaggedObject())));
+    JSHandle<TransWithProtoHandler> handler(thread_, header);
+    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
+    handler->SetTransitionHClass(thread_, JSTaggedValue::Undefined());
+    return handler;
+}
+
+JSHandle<StoreTSHandler> ObjectFactory::NewStoreTSHandler()
+{
+    NewObjectHook();
+    StoreTSHandler *header =
+        StoreTSHandler::Cast(heap_->AllocateYoungOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetStoreTSHandlerClass().GetTaggedObject())));
+    JSHandle<StoreTSHandler> handler(thread_, header);
+    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
+    handler->SetHolder(thread_, JSTaggedValue::Undefined());
+    return handler;
+}
+
 JSHandle<PromiseRecord> ObjectFactory::NewPromiseRecord()
 {
     NewObjectHook();
