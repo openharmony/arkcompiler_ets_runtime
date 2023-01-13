@@ -90,6 +90,9 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(PGOProfiler)                             \
     V(Comment)                                 \
     V(FatalPrint)                              \
+    V(OptSetLexicalEnv)                        \
+    V(OptPopLexicalEnv)                        \
+    V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(MarkingBarrier)                          \
     V(StoreBarrier)                            \
@@ -259,13 +262,11 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(OptGetUnmapedArgs)                  \
     V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
-    V(OptNewLexicalEnv)                   \
     V(OptNewLexicalEnvWithName)           \
     V(OptSuspendGenerator)                \
     V(OptNewObjRange)                     \
     V(GetTypeArrayPropertyByIndex)        \
     V(SetTypeArrayPropertyByIndex)        \
-    V(OptPopLexicalEnv)                   \
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
     V(ProfileOptimizedCode)               \
@@ -335,6 +336,9 @@ public:
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
+    static void OptSetLexicalEnv(uintptr_t argGlue, JSTaggedType lexicalEnv);
+    static void OptPopLexicalEnv(uintptr_t argGlue);
+    static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
     static JSTaggedType FloatMod(double x, double y);
@@ -603,8 +607,6 @@ private:
     static inline JSTaggedValue RuntimeOptGetUnmapedArgs(JSThread *thread, uint32_t actualNumArgs);
     static inline JSTaggedValue RuntimeGetUnmapedJSArgumentObj(JSThread *thread,
                                                                const JSHandle<TaggedArray> &argumentsList);
-    static inline JSTaggedValue RuntimeOptNewLexicalEnv(JSThread *thread, uint16_t numVars,
-                                                           JSHandle<JSTaggedValue> &currentLexEnv);
     static inline JSTaggedValue RuntimeOptNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId,
                                                                    JSHandle<JSTaggedValue> &currentLexEnv,
                                                                    JSHandle<JSTaggedValue> &func);
@@ -627,9 +629,13 @@ private:
                                                            JSHandle<JSTaggedValue> preArgs, JSHandle<TaggedArray> args);
     static inline JSTaggedValue RuntimeOptGetLexEnv(JSThread *thread);
     static inline void RuntimeOptSetLexEnv(JSThread *thread, JSTaggedValue lexEnv);
+    static inline JSTaggedValue RuntimeOptGetLexEnvNoGC(JSThread *thread);
+    static inline void RuntimeOptSetLexEnvNoGC(JSThread *thread, JSTaggedValue lexEnv);
     static inline JSTaggedValue RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func);
     static inline JSTaggedType *GetActualArgv(JSThread *thread);
+    static inline JSTaggedType *GetActualArgvFromStub(JSThread *thread);
     static inline OptimizedJSFunctionFrame *GetOptimizedJSFunctionFrame(JSThread *thread);
+    static inline OptimizedJSFunctionFrame *GetOptimizedJSFunctionFrameNoGC(JSThread *thread);
 
     static JSTaggedValue NewObject(EcmaRuntimeCallInfo *info);
     static void SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContext> context);
