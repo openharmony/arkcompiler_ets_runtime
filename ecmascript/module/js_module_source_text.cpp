@@ -242,8 +242,7 @@ void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTex
     JSHandle<JSTaggedValue> moduleEnvironment(thread, module->GetEnvironment());
     auto globalConstants = thread->GlobalConstants();
     if (moduleEnvironment->IsUndefined()) {
-        CString msg = "moduleEnvironment is Undefined";
-        THROW_ERROR(thread, ErrorType::RANGE_ERROR, msg.c_str());
+        return;
     }
     JSHandle<TaggedArray> environment = JSHandle<TaggedArray>::Cast(moduleEnvironment);
     size_t length = environment->GetLength();
