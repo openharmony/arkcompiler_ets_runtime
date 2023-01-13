@@ -1280,6 +1280,7 @@ public:
     static void SetModuleName(EcmaVM *vm, std::string moduleName);
     static std::string GetModuleName(EcmaVM *vm);
     static void SetLoop(EcmaVM *vm, void *loop);
+    static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
 
 private:
     static int vmCount_;

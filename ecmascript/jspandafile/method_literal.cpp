@@ -17,6 +17,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 
+#include "libpandafile/class_data_accessor.h"
 #include "libpandafile/code_data_accessor-inl.h"
 #include "libpandafile/method_data_accessor-inl.h"
 
@@ -101,6 +102,19 @@ panda_file::File::StringData MethodLiteral::GetName(const JSPandaFile *jsPandaFi
 {
     panda_file::MethodDataAccessor mda(*(jsPandaFile->GetPandaFile()), methodId);
     return jsPandaFile->GetPandaFile()->GetStringData(mda.GetNameId());
+}
+
+CString MethodLiteral::GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId)
+{
+    if (jsPandaFile == nullptr) {
+        return "";
+    }
+
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodId);
+    panda_file::ClassDataAccessor cda(*pf, mda.GetClassId());
+    CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
+    return jsPandaFile->ParseEntryPoint(desc);
 }
 
 uint32_t MethodLiteral::GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral)

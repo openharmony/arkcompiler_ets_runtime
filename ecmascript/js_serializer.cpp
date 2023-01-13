@@ -304,10 +304,119 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
             return WriteEcmaString(value);
         case JSType::JS_OBJECT:
             return WritePlainObject(value);
+        case JSType::JS_NATIVE_POINTER:
+            return WriteNativePointer(value);
+        case JSType::JS_FUNCTION:
+            return WriteJSFunction(value);
+        case JSType::METHOD:
+            return WriteMethod(value);
+        case JSType::CONSTANT_POOL:
+            return WriteConstantPool(value);
+        case JSType::TAGGED_ARRAY:
+            return WriteTaggedArray(value);
         default:
             break;
     }
     return false;
+}
+
+bool JSSerializer::WriteTaggedArray(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<TaggedArray> taggedArray = JSHandle<TaggedArray>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::TAGGED_ARRAY)) {
+        return false;
+    }
+    uint32_t len = taggedArray->GetLength();
+    if (!WriteInt(len)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < len; i++) {
+        val.Update(taggedArray->Get(i));
+        if (!SerializeJSTaggedValue(val)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool JSSerializer::WriteConstantPool(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<ConstantPool> constPool = JSHandle<ConstantPool>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::CONSTANT_POOL)) {
+        return false;
+    }
+    uint32_t len = constPool->GetLength();
+    if (!WriteInt(len)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+
+    const panda_file::File::IndexHeader *indexHeader = constPool->GetIndexHeader();
+    if (!WriteRawData(&indexHeader, sizeof(uintptr_t))) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    const JSPandaFile *jsPandaFile = constPool->GetJSPandaFile();
+    if (!jsPandaFile->IsNewVersion()) {
+        LOG_ECMA(ERROR) << "Serialize function only support panda file with new ISA";
+        return false;
+    }
+    if (!WriteRawData(&jsPandaFile, sizeof(uintptr_t))) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    return true;
+}
+
+bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<Method> method = JSHandle<Method>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (method->IsNativeWithCallField()) {
+        if (!WriteType(SerializationUID::NATIVE_METHOD)) {
+            return false;
+        }
+        const void *nativeFunc = method->GetNativePointer();
+        if (!WriteRawData(&nativeFunc, sizeof(uintptr_t))) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    } else {
+        if (!WriteType(SerializationUID::JS_METHOD)) {
+            return false;
+        }
+        const MethodLiteral *methodLiteral = method->GetMethodLiteral();
+        if (!WriteRawData(&methodLiteral, sizeof(uintptr_t))) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+        JSHandle<JSTaggedValue> constPool(thread_, method->GetConstantPool());
+        if (!SerializeJSTaggedValue(constPool)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
+{
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::JS_FUNCTION)) {
+        return false;
+    }
+    JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(value);
+    JSHandle<JSTaggedValue> method = JSHandle<JSTaggedValue>(thread_, func->GetMethod());
+    if (!SerializeJSTaggedValue(method)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    return true;
 }
 
 bool JSSerializer::WriteJSError(const JSHandle<JSTaggedValue> &value)
@@ -351,6 +460,7 @@ bool JSSerializer::WriteJSErrorHeader(JSType type)
         case JSType::JS_OOM_ERROR:
             return WriteType(SerializationUID::OOM_ERROR);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return false;
@@ -454,13 +564,15 @@ bool JSSerializer::WriteJSMap(const JSHandle<JSTaggedValue> &value)
         bufferSize_ = oldSize;
         return false;
     }
+    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (int i = 0; i < size; i++) {
-        JSHandle<JSTaggedValue> key(thread_, map->GetKey(i));
+        key.Update(map->GetKey(i));
         if (!SerializeJSTaggedValue(key)) {
             bufferSize_ = oldSize;
             return false;
         }
-        JSHandle<JSTaggedValue> val(thread_, map->GetValue(i));
+        val.Update(map->GetValue(i));
         if (!SerializeJSTaggedValue(val)) {
             bufferSize_ = oldSize;
             return false;
@@ -485,8 +597,9 @@ bool JSSerializer::WriteJSSet(const JSHandle<JSTaggedValue> &value)
         bufferSize_ = oldSize;
         return false;
     }
+    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (int i = 0; i < size; i++) {
-        JSHandle<JSTaggedValue> val(thread_, set->GetValue(i));
+        val.Update(set->GetValue(i));
         if (!SerializeJSTaggedValue(val)) {
             bufferSize_ = oldSize;
             return false;
@@ -584,10 +697,10 @@ bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, Seria
     return true;
 }
 
-bool JSSerializer::WriteNativeFunctionPointer(const JSHandle<JSTaggedValue> &value)
+bool JSSerializer::WriteNativePointer(const JSHandle<JSTaggedValue> &value)
 {
     size_t oldSize = bufferSize_;
-    if (!WriteType(SerializationUID::NATIVE_FUNCTION_POINTER)) {
+    if (!WriteType(SerializationUID::NATIVE_POINTER)) {
         return false;
     }
     JSTaggedValue pointer = value.GetTaggedValue();
@@ -664,14 +777,17 @@ bool JSSerializer::IsNativeBindingObject(std::vector<JSTaggedValue> keyVector)
     if (keyVector.size() < 2) { // 2:detachSymbol, attachSymbol
         return false;
     }
-    [[maybe_unused]] JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> detach = env->GetDetachSymbol();
+    JSHandle<JSTaggedValue> attach = env->GetAttachSymbol();
+    JSMutableHandle<JSTaggedValue> detachKey(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> attachKey(thread_, JSTaggedValue::Undefined());
     uint32_t keyLength = keyVector.size();
     for (uint32_t i = 0; i < keyLength - 1; i++) {
         if (keyVector[i].IsSymbol() && keyVector[i + 1].IsSymbol()) {
-            JSHandle<JSTaggedValue> detach = env->GetDetachSymbol();
-            JSHandle<JSTaggedValue> attach = env->GetAttachSymbol();
-            if (JSTaggedValue::Equal(thread_, detach, JSHandle<JSTaggedValue>(thread_, keyVector[i])) ||
-                JSTaggedValue::Equal(thread_, attach, JSHandle<JSTaggedValue>(thread_, keyVector[i + 1]))) {
+            detachKey.Update(keyVector[i]);
+            attachKey.Update(keyVector[i + 1]);
+            if (JSTaggedValue::Equal(thread_, detach, detachKey) || JSTaggedValue::Equal(thread_, attach, attachKey)) {
                 return true;
             }
         }
@@ -691,78 +807,6 @@ bool JSSerializer::IsTargetSymbol(JSTaggedValue symbolVal)
     return false;
 }
 
-bool JSSerializer::WriteAllKeys(const JSHandle<JSTaggedValue> &objValue)
-{
-    JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(objValue);
-    size_t oldSize = bufferSize_;
-    std::vector<JSTaggedValue> keyVector;
-    uint32_t elementsLength = obj->GetNumberOfElements();
-    if (!WriteInt(static_cast<int32_t>(elementsLength))) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-    JSObject::GetALLElementKeysIntoVector(thread_, obj, keyVector);
-    // Write elements' description attributes and value
-    if (keyVector.size() != elementsLength) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-    for (uint32_t i = 0; i < elementsLength; i++) {
-        JSHandle<JSTaggedValue> key(thread_, keyVector[i]);
-        if (!SerializeJSTaggedValue(key)) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-        PropertyDescriptor desc(thread_);
-        JSObject::OrdinaryGetOwnProperty(thread_, obj, key, desc);
-        if (!WriteDesc(desc)) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-        JSHandle<JSTaggedValue> value = desc.GetValue();
-        if (!SerializeJSTaggedValue(value)) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-    }
-
-    uint32_t propertiesLength = obj->GetNumberOfKeys();
-    keyVector.clear();
-    JSObject::GetAllKeys(obj, keyVector);
-    if (!WriteInt(static_cast<int32_t>(propertiesLength))) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-    if (keyVector.size() != propertiesLength) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-    // Write keys' description attributes and related values
-    for (uint32_t i = 0; i < propertiesLength; i++) {
-        if (keyVector.empty()) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-        JSHandle<JSTaggedValue> key(thread_, keyVector[i]);
-        if (!SerializeJSTaggedValue(key)) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-        PropertyDescriptor desc(thread_);
-        JSObject::OrdinaryGetOwnProperty(thread_, obj, key, desc);
-        if (!WriteDesc(desc)) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-        JSHandle<JSTaggedValue> value = desc.GetValue();
-        if (!SerializeJSTaggedValue(value)) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-    }
-    return true;
-}
-
 bool JSSerializer::WritePlainObject(const JSHandle<JSTaggedValue> &objValue)
 {
     JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(objValue);
@@ -776,10 +820,61 @@ bool JSSerializer::WritePlainObject(const JSHandle<JSTaggedValue> &objValue)
     if (IsNativeBindingObject(keyVector)) {
         return WriteNativeBindingObject(objValue);
     }
+
     if (!WriteType(SerializationUID::JS_PLAIN_OBJECT)) {
         return false;
     }
-    return WriteAllKeys(objValue);
+    size_t oldSize = bufferSize_;
+    if (!WriteInt(static_cast<int32_t>(propertiesLength))) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    JSMutableHandle<JSTaggedValue> propertyKey(thread_, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < propertiesLength; i++) {
+        if (keyVector.empty()) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+        propertyKey.Update(keyVector[i]);
+        if (!SerializeJSTaggedValue(propertyKey)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+        PropertyDescriptor desc(thread_);
+        JSObject::OrdinaryGetOwnProperty(thread_, obj, propertyKey, desc);
+        if (!WriteDesc(desc)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    }
+
+    uint32_t elementsLength = obj->GetNumberOfElements();
+    if (!WriteInt(static_cast<int32_t>(elementsLength))) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    keyVector.clear();
+    JSObject::GetALLElementKeysIntoVector(thread_, obj, keyVector);
+    // Write elements' description attributes and value
+    if (keyVector.size() != elementsLength) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    JSMutableHandle<JSTaggedValue> elementKey(thread_, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < elementsLength; i++) {
+        elementKey.Update(keyVector[i]);
+        if (!SerializeJSTaggedValue(elementKey)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+        PropertyDescriptor desc(thread_);
+        JSObject::OrdinaryGetOwnProperty(thread_, obj, elementKey, desc);
+        if (!WriteDesc(desc)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    }
+    return true;
 }
 
 bool JSSerializer::WriteNativeBindingObject(const JSHandle<JSTaggedValue> &objValue)
@@ -868,6 +963,11 @@ bool JSSerializer::WriteDesc(const PropertyDescriptor &desc)
         bufferSize_ = oldSize;
         return false;
     }
+    JSHandle<JSTaggedValue> value = desc.GetValue();
+    if (!SerializeJSTaggedValue(value)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
     return true;
 }
 
@@ -878,7 +978,7 @@ SerializationUID JSDeserializer::ReadType()
         return SerializationUID::UNKNOWN;
     }
     uid = static_cast<SerializationUID>(*position_);
-    if (uid < SerializationUID::JS_NULL || uid > SerializationUID::NATIVE_FUNCTION_POINTER) {
+    if (uid < SerializationUID::JS_NULL || uid > SerializationUID::NATIVE_POINTER) {
         return SerializationUID::UNKNOWN;
     }
     position_++;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -892,6 +992,7 @@ bool JSDeserializer::ReadInt(int32_t *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -905,6 +1006,7 @@ bool JSDeserializer::ReadObjectId(uint64_t *objectId)
         return false;
     }
     if (memcpy_s(objectId, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -918,6 +1020,7 @@ bool JSDeserializer::ReadDouble(double *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1010,16 +1113,109 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
             return ReadJSTypedArray(SerializationUID::JS_BIGINT64_ARRAY);
         case SerializationUID::JS_BIGUINT64_ARRAY:
             return ReadJSTypedArray(SerializationUID::JS_BIGUINT64_ARRAY);
-        case SerializationUID::NATIVE_FUNCTION_POINTER:
-            return ReadNativeFunctionPointer();
+        case SerializationUID::NATIVE_POINTER:
+            return ReadNativePointer();
         case SerializationUID::JS_SHARED_ARRAY_BUFFER:
         case SerializationUID::JS_ARRAY_BUFFER:
             return ReadJSArrayBuffer();
         case SerializationUID::TAGGED_OBJECT_REFERNCE:
             return ReadReference();
+        case SerializationUID::JS_FUNCTION:
+            return ReadJSFunction();
+        case SerializationUID::TAGGED_ARRAY:
+            return ReadTaggedArray();
+        case SerializationUID::JS_METHOD:
+            return ReadJSMethod();
+        case SerializationUID::NATIVE_METHOD:
+            return ReadNativeMethod();
+        case SerializationUID::CONSTANT_POOL:
+            return ReadConstantPool();
         default:
             return JSHandle<JSTaggedValue>();
     }
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadTaggedArray()
+{
+    int32_t len = 0;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&len)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<TaggedArray> taggedArray = factory_->NewTaggedArray(len);
+    JSHandle<JSTaggedValue> arrayTag(taggedArray);
+    referenceMap_.emplace(objectId_++, arrayTag);
+    for (int32_t i = 0; i < len; i++) {
+        JSHandle<JSTaggedValue> val = DeserializeJSTaggedValue();
+        taggedArray->Set(thread_, i, val.GetTaggedValue());
+    }
+    return arrayTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadConstantPool()
+{
+    int32_t len = 0;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&len)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    int32_t cacheLength = len - 2; // 2 : RESERVED_POOL_LENGTH
+    JSHandle<ConstantPool> constPool = factory_->NewConstantPool(cacheLength);
+    JSHandle<JSTaggedValue> constPoolTag(constPool);
+    referenceMap_.emplace(objectId_++, constPoolTag);
+
+    uintptr_t indexHeader;
+    if (!ReadNativePointer(&indexHeader)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    uintptr_t jsPandafile;
+    if (!ReadNativePointer(&jsPandafile)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSPandaFile *pf = reinterpret_cast<JSPandaFile *>(jsPandafile);
+    if (!pf->IsNewVersion()) {
+        LOG_ECMA(ERROR) << "Deserialize function only support panda file with new ISA";
+        return JSHandle<JSTaggedValue>();
+    }
+    constPool->SetJSPandaFile(pf);
+    constPool->SetIndexHeader(reinterpret_cast<panda_file::File::IndexHeader *>(indexHeader));
+    return constPoolTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadJSMethod()
+{
+    uintptr_t methodLiteral;
+    if (!ReadNativePointer(&methodLiteral)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<Method> method = factory_->NewMethod(reinterpret_cast<MethodLiteral *>(methodLiteral));
+    JSHandle<JSTaggedValue> methodTag(method);
+    referenceMap_.emplace(objectId_++, methodTag);
+    JSHandle<JSTaggedValue> constPool = DeserializeJSTaggedValue();
+    method->SetConstantPool(thread_, constPool.GetTaggedValue());
+    return methodTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadNativeMethod()
+{
+    uintptr_t nativeFunc;
+    if (!ReadNativePointer(&nativeFunc)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<Method> method = factory_->NewMethodForNativeFunction(reinterpret_cast<void *>(nativeFunc));
+    JSHandle<JSTaggedValue> methodTag(method);
+    referenceMap_.emplace(objectId_++, methodTag);
+    return methodTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadJSFunction()
+{
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func = factory_->NewJSFunction(env);
+    JSHandle<JSTaggedValue> funcTag(func);
+    referenceMap_.emplace(objectId_++, funcTag);
+    JSHandle<JSTaggedValue> methodVal = DeserializeJSTaggedValue();
+    JSHandle<Method> method = JSHandle<Method>::Cast(methodVal);
+    func->SetMethod(thread_, method);
+    return funcTag;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
@@ -1054,6 +1250,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
             errorType = base::ErrorType::OOM_ERROR;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     JSHandle<JSTaggedValue> msg = DeserializeJSTaggedValue();
@@ -1073,12 +1270,12 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSDate()
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(dateTag)) {
         return JSHandle<JSTaggedValue>();
     }
-    double timeValue;
+    double timeValue = 0.0;
     if (!JudgeType(SerializationUID::DOUBLE) || !ReadDouble(&timeValue)) {
         return JSHandle<JSTaggedValue>();
     }
     date->SetTimeValue(thread_, JSTaggedValue(timeValue));
-    double localOffset;
+    double localOffset = 0.0;
     if (!JudgeType(SerializationUID::DOUBLE) || !ReadDouble(&localOffset)) {
         return JSHandle<JSTaggedValue>();
     }
@@ -1319,6 +1516,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
             break;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     JSHandle<JSTypedArray> typedArray =
@@ -1368,7 +1566,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
     return objTag;
 }
 
-JSHandle<JSTaggedValue> JSDeserializer::ReadNativeFunctionPointer()
+JSHandle<JSTaggedValue> JSDeserializer::ReadNativePointer()
 {
     JSTaggedValue pointer;
     if (!ReadJSTaggedValue(&pointer)) {
@@ -1393,7 +1591,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
     JSHandle<JSTaggedValue> arrayBufferTag;
     if (shared) {
         uint64_t *bufferAddr = reinterpret_cast<uint64_t*>(GetBuffer(sizeof(uint64_t)));
-        void* bufferData = ToVoidPtr(*bufferAddr);
+        void *bufferData = ToVoidPtr(*bufferAddr);
         JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSSharedArrayBuffer(bufferData, arrayLength);
         arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
         referenceMap_.emplace(objectId_++, arrayBufferTag);
@@ -1408,6 +1606,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
         JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
         void *toBuffer = np->GetExternalPointer();
         if (memcpy_s(toBuffer, arrayLength, fromBuffer, arrayLength) != EOK) {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
@@ -1426,6 +1625,7 @@ bool JSDeserializer::ReadJSTaggedValue(JSTaggedValue *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1439,6 +1639,7 @@ bool JSDeserializer::ReadNativePointer(uintptr_t *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1480,29 +1681,6 @@ bool JSDeserializer::JudgeType(SerializationUID targetUid)
 
 bool JSDeserializer::DefinePropertiesAndElements(const JSHandle<JSTaggedValue> &obj)
 {
-    int32_t elementLength;
-    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&elementLength)) {
-        return false;
-    }
-    for (int32_t i = 0; i < elementLength; i++) {
-        JSHandle<JSTaggedValue> key = DeserializeJSTaggedValue();
-        if (key.IsEmpty()) {
-            return false;
-        }
-        PropertyDescriptor desc(thread_);
-        if (!ReadDesc(&desc)) {
-            return false;
-        }
-        JSHandle<JSTaggedValue> value = DeserializeJSTaggedValue();
-        if (value.IsEmpty()) {
-            return false;
-        }
-        desc.SetValue(value);
-        if (!JSTaggedValue::DefineOwnProperty(thread_, obj, key, desc)) {
-            return false;
-        }
-    }
-
     int32_t propertyLength;
     if (!JudgeType(SerializationUID::INT32) || !ReadInt(&propertyLength)) {
         return false;
@@ -1516,11 +1694,24 @@ bool JSDeserializer::DefinePropertiesAndElements(const JSHandle<JSTaggedValue> &
         if (!ReadDesc(&desc)) {
             return false;
         }
-        JSHandle<JSTaggedValue> value = DeserializeJSTaggedValue();
-        if (value.IsEmpty()) {
+        if (!JSTaggedValue::DefineOwnProperty(thread_, obj, key, desc)) {
             return false;
         }
-        desc.SetValue(value);
+    }
+
+    int32_t elementLength;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&elementLength)) {
+        return false;
+    }
+    for (int32_t i = 0; i < elementLength; i++) {
+        JSHandle<JSTaggedValue> key = DeserializeJSTaggedValue();
+        if (key.IsEmpty()) {
+            return false;
+        }
+        PropertyDescriptor desc(thread_);
+        if (!ReadDesc(&desc)) {
+            return false;
+        }
         if (!JSTaggedValue::DefineOwnProperty(thread_, obj, key, desc)) {
             return false;
         }
@@ -1554,6 +1745,11 @@ bool JSDeserializer::ReadDesc(PropertyDescriptor *desc)
     if (!ReadBoolean(&hasConfigurable)) {
         return false;
     }
+    JSHandle<JSTaggedValue> value = DeserializeJSTaggedValue();
+    if (value.IsEmpty()) {
+        return false;
+    }
+    desc->SetValue(value);
     if (hasWritable) {
         desc->SetWritable(isWritable);
     }
