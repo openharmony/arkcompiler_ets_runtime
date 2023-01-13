@@ -306,15 +306,6 @@ void TSTypeLowering::ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, G
                 unusedGate.emplace_back(*exceptionUseIt);
             }
             ++useIt;
-        } else if (op == OpCode::RETURN) {
-            // replace return valueIn and dependIn
-            if (acc_.IsValueIn(useIt)) {
-                useIt = acc_.ReplaceIn(useIt, outir);
-            } else if (acc_.IsDependIn(useIt)) {
-                useIt = acc_.ReplaceIn(useIt, depend);
-            } else {
-                ++useIt;
-            }
         } else if (op == OpCode::DEPEND_SELECTOR) {
             if (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION) {
                 ++useIt;
