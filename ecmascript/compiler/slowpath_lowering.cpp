@@ -93,6 +93,12 @@ UseIterator SlowPathLowering::ReplaceHirControlGate(const UseIterator &useIt, Ga
     return next;
 }
 
+void SlowPathLowering::ExceptionReturn(GateRef state, GateRef depend)
+{
+    auto constant = builder_.ExceptionConstant();
+    builder_.Return(state, depend, constant);
+}
+
 void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
                                           const std::vector<GateRef> &successControl,
                                           const std::vector<GateRef> &exceptionControl,
@@ -107,10 +113,17 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
     auto uses = acc_.Uses(hir);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         const OpCode op = acc_.GetOpCode(*useIt);
-        if (op == OpCode::IF_SUCCESS) {
-            useIt = ReplaceHirControlGate(useIt, successControl[0]);
-        } else if (op == OpCode::IF_EXCEPTION) {
-            useIt = ReplaceHirControlGate(useIt, exceptionControl[0], noThrow);
+        if (acc_.IsStateIn(useIt)) {
+            if (op == OpCode::IF_SUCCESS) {
+                useIt = ReplaceHirControlGate(useIt, successControl[0]);
+            } else if (op == OpCode::IF_EXCEPTION) {
+                useIt = ReplaceHirControlGate(useIt, exceptionControl[0], noThrow);
+            } else {
+                if (!noThrow) {
+                    ExceptionReturn(exceptionControl[0], exceptionControl[1]);
+                }
+                useIt = acc_.ReplaceIn(useIt, successControl[0]);
+            }
         } else if (acc_.IsValueIn(useIt)) {
             useIt = acc_.ReplaceIn(useIt, outir);
         } else if (acc_.IsDependIn(useIt)) {
@@ -130,6 +143,33 @@ void SlowPathLowering::ReplaceHirToSubCfg(GateRef hir, GateRef outir,
     acc_.DeleteGate(hir);
 }
 
+void SlowPathLowering::ReplaceHirWithIfBranch(GateRef hirGate, GateRef callGate, GateRef ifBranch)
+{
+    auto uses = acc_.Uses(hirGate);
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (acc_.IsStateIn(it)) {
+            const OpCode op = acc_.GetOpCode(*it);
+            if (op == OpCode::IF_SUCCESS) {
+                acc_.SetMetaData(*it, circuit_->IfFalse());
+                it = acc_.ReplaceIn(it, ifBranch);
+            } else if (op == OpCode::IF_EXCEPTION) {
+                acc_.SetMetaData(*it, circuit_->IfTrue());
+                it = acc_.ReplaceIn(it, ifBranch);
+            } else {
+                GateRef ifTrue = builder_.IfTrue(ifBranch);
+                GateRef ifFalse = builder_.IfFalse(ifBranch);
+                ExceptionReturn(ifTrue, callGate);
+                it = acc_.ReplaceIn(it, ifFalse);
+            }
+        } else {
+            it = acc_.ReplaceIn(it, callGate);
+        }
+    }
+
+    // delete old gate
+    acc_.DeleteGate(hirGate);
+}
+
 void SlowPathLowering::ReplaceHirToJSCall(GateRef hirGate, GateRef callGate)
 {
     GateRef stateInGate = acc_.GetState(hirGate);
@@ -142,24 +182,7 @@ void SlowPathLowering::ReplaceHirToJSCall(GateRef hirGate, GateRef callGate)
     acc_.SetDep(exception, callGate);
     GateRef equal = builder_.NotEqual(exception, builder_.HoleConstant());
     GateRef ifBranch = builder_.Branch(stateInGate, equal);
-
-    auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end();) {
-        if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
-            acc_.SetMetaData(*it, circuit_->IfFalse());
-            it = acc_.ReplaceIn(it, ifBranch);
-        } else {
-            if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
-                acc_.SetMetaData(*it, circuit_->IfTrue());
-                it = acc_.ReplaceIn(it, ifBranch);
-            } else {
-                it = acc_.ReplaceIn(it, callGate);
-            }
-        }
-    }
-
-    // delete old gate
-    acc_.DeleteGate(hirGate);
+    ReplaceHirWithIfBranch(hirGate, callGate, ifBranch);
 }
 
 /*
@@ -192,24 +215,7 @@ void SlowPathLowering::ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool 
     } else {
         ifBranch = builder_.Branch(stateInGate, builder_.Boolean(false));
     }
-
-    auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end();) {
-        if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
-            acc_.SetMetaData(*it, circuit_->IfFalse());
-            it = acc_.ReplaceIn(it, ifBranch);
-        } else {
-            if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
-                acc_.SetMetaData(*it, circuit_->IfTrue());
-                it = acc_.ReplaceIn(it, ifBranch);
-            } else {
-                it = acc_.ReplaceIn(it, callGate);
-            }
-        }
-    }
-
-    // delete old gate
-    acc_.DeleteGate(hirGate);
+    ReplaceHirWithIfBranch(hirGate, callGate, ifBranch);
 }
 
 /*
@@ -225,21 +231,7 @@ void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate)
     acc_.SetDep(callGate, dependInGate);
 
     GateRef ifBranch = builder_.Branch(stateInGate, builder_.Boolean(true));
-    auto uses = acc_.Uses(hirGate);
-    for (auto it = uses.begin(); it != uses.end();) {
-        if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
-            acc_.SetMetaData(*it, circuit_->IfFalse());
-            it = acc_.ReplaceIn(it, ifBranch);
-        } else {
-            if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
-                acc_.SetMetaData(*it, circuit_->IfTrue());
-                it = acc_.ReplaceIn(it, ifBranch);
-            } else {
-                it = acc_.ReplaceIn(it, callGate);
-            }
-        }
-    }
-    acc_.DeleteGate(hirGate);
+    ReplaceHirWithIfBranch(hirGate, callGate, ifBranch);
 }
 
 // labelmanager must be initialized
@@ -829,9 +821,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
     const int arrayId = RTSTUB_ID(NewTaggedArray);
     GateRef taggedArray = LowerCallRuntime(arrayId, {taggedLength});
     // setRegsArrays
-    auto hole = circuit_->GetConstantGate(MachineType::I64,
-                                          JSTaggedValue::VALUE_HOLE,
-                                          GateType::TaggedValue());
+    auto hole = builder_.HoleConstant();
     size_t numVreg = acc_.GetNumValueIn(saveRegister);
     for (size_t idx = 0; idx < numVreg; idx++) {
         GateRef tmpGate = acc_.GetValueIn(saveRegister, idx);
