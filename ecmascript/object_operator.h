@@ -120,6 +120,16 @@ public:
         IsTransitionField::Set(flag, &metaData_);
     }
 
+    inline bool IsAOT() const
+    {
+        return IsAOTField::Get(metaData_);
+    }
+
+    inline void SetIsAOT(bool flag)
+    {
+        IsAOTField::Set(flag, &metaData_);
+    }
+
     inline PropertyAttributes GetAttr() const
     {
         return attributes_;
@@ -271,8 +281,10 @@ private:
     using IsOnPrototypeField = IsFastModeField::NextFlag;  // 1: on prototype
     using HasReceiverField = IsOnPrototypeField::NextFlag;
     using IsTransitionField = HasReceiverField::NextFlag;
+    using IsAOTField = IsTransitionField::NextFlag;
 
     void UpdateHolder();
+    void UpdateIsAOT();
     void StartLookUp(OperatorType type);
     void StartGlobalLookUp(OperatorType type);
     void HandleKey(const JSHandle<JSTaggedValue> &key);
@@ -280,6 +292,7 @@ private:
     void SetFound(uint32_t index, JSTaggedValue value, uint32_t attr, bool mode, bool transition = false);
     void UpdateFound(uint32_t index, uint32_t attr, bool mode, bool transition);
     void ResetState();
+    void ResetStateForAddProperty();
     inline void LookupPropertyInHolder()
     {
         JSHandle<JSObject> obj(holder_);
@@ -308,6 +321,7 @@ private:
     uint32_t index_{NOT_FOUND_INDEX};
     PropertyAttributes attributes_;
     uint32_t metaData_{0};
+    int receiverHoleEntry_{-1};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_OBJECT_OPERATOR_H

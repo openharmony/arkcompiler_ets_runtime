@@ -36,6 +36,9 @@ public:
     static JSTaggedValue GetHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue RemoveAOTFlag(EcmaRuntimeCallInfo *info);
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     static JSTaggedValue StartCpuProfiler(EcmaRuntimeCallInfo *info);
 

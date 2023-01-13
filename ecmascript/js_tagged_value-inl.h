@@ -1021,6 +1021,16 @@ inline bool JSTaggedValue::IsTransitionHandler() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTransitionHandler();
 }
 
+inline bool JSTaggedValue::IsTransWithProtoHandler() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTransWithProtoHandler();
+}
+
+inline bool JSTaggedValue::IsStoreTSHandler() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStoreTSHandler();
+}
+
 inline bool JSTaggedValue::IsPropertyBox() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsPropertyBox();

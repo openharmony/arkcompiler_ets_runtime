@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "ecmascript/js_function.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/tagged_object-inl.h"
@@ -117,6 +118,21 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     ASSERT(info);
     const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->CollectGarbage(TriggerGCType::FULL_GC);
     return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(object);
+    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
+    method->SetAotCodeBit(false);
+
+    return JSTaggedValue::Undefined();
 }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

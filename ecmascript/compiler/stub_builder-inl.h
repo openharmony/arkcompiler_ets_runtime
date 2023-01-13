@@ -615,7 +615,17 @@ inline GateRef StubBuilder::TaggedIsWeak(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsPrototypeHandler(GateRef x)
 {
-    return HclassIsPrototypeHandler(LoadHClass(x));
+    return env_->GetBuilder()->TaggedIsPrototypeHandler(x);
+}
+
+inline GateRef StubBuilder::TaggedIsStoreTSHandler(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsStoreTSHandler(x);
+}
+
+inline GateRef StubBuilder::TaggedIsTransWithProtoHandler(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsTransWithProtoHandler(x);
 }
 
 inline GateRef StubBuilder::TaggedIsTransitionHandler(GateRef x)
@@ -1216,6 +1226,18 @@ inline GateRef StubBuilder::GetPrototypeHandlerHandlerInfo(GateRef object)
     return Load(VariableType::JS_ANY(), object, handlerInfoOffset);
 }
 
+inline GateRef StubBuilder::GetStoreTSHandlerHolder(GateRef object)
+{
+    GateRef holderOffset = IntPtr(StoreTSHandler::HOLDER_OFFSET);
+    return Load(VariableType::JS_ANY(), object, holderOffset);
+}
+
+inline GateRef StubBuilder::GetStoreTSHandlerHandlerInfo(GateRef object)
+{
+    GateRef handlerInfoOffset = IntPtr(StoreTSHandler::HANDLER_INFO_OFFSET);
+    return Load(VariableType::JS_ANY(), object, handlerInfoOffset);
+}
+
 inline GateRef StubBuilder::GetHasChanged(GateRef object)
 {
     GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);
@@ -1322,7 +1344,7 @@ inline void StubBuilder::SetValueToPropertyBox(GateRef glue, GateRef obj, GateRe
     Store(VariableType::JS_ANY(), glue, obj, valueOffset, value);
 }
 
-inline GateRef StubBuilder::GetTransitionFromHClass(GateRef obj)
+inline GateRef StubBuilder::GetTransitionHClass(GateRef obj)
 {
     GateRef transitionHClassOffset = IntPtr(TransitionHandler::TRANSITION_HCLASS_OFFSET);
     return Load(VariableType::JS_POINTER(), obj, transitionHClassOffset);
@@ -1331,6 +1353,18 @@ inline GateRef StubBuilder::GetTransitionFromHClass(GateRef obj)
 inline GateRef StubBuilder::GetTransitionHandlerInfo(GateRef obj)
 {
     GateRef handlerInfoOffset = IntPtr(TransitionHandler::HANDLER_INFO_OFFSET);
+    return Load(VariableType::JS_ANY(), obj, handlerInfoOffset);
+}
+
+inline GateRef StubBuilder::GetTransWithProtoHClass(GateRef obj)
+{
+    GateRef transitionHClassOffset = IntPtr(TransWithProtoHandler::TRANSITION_HCLASS_OFFSET);
+    return Load(VariableType::JS_POINTER(), obj, transitionHClassOffset);
+}
+
+inline GateRef StubBuilder::GetTransWithProtoHandlerInfo(GateRef obj)
+{
+    GateRef handlerInfoOffset = IntPtr(TransWithProtoHandler::HANDLER_INFO_OFFSET);
     return Load(VariableType::JS_ANY(), obj, handlerInfoOffset);
 }
 
@@ -1470,6 +1504,15 @@ inline GateRef StubBuilder::GetNumberOfPropsFromHClass(GateRef hClass)
     return Int32And(Int32LSR(bitfield,
         Int32(JSHClass::NumberOfPropsBits::START_BIT)),
         Int32((1LLU << JSHClass::NumberOfPropsBits::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::IsAOTHClass(GateRef hClass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    return Int32NotEqual(Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::IsAOTBit::START_BIT)),
+        Int32((1LU << JSHClass::IsAOTBit::SIZE) - 1)),
+        Int32(0));
 }
 
 inline void StubBuilder::SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value)

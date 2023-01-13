@@ -363,6 +363,8 @@ public:
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);
     inline GateRef TaggedIsTransitionHandler(GateRef x);
+    inline GateRef TaggedIsStoreTSHandler(GateRef x);
+    inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
     inline GateRef TaggedIsTrue(GateRef x);
     inline GateRef TaggedIsFalse(GateRef x);
