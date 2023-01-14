@@ -50,6 +50,7 @@ void SparseSpace::Reset()
 {
     allocator_->RebuildFreeList();
     ReclaimRegions();
+    liveObjectSize_ = 0;
 }
 
 uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
