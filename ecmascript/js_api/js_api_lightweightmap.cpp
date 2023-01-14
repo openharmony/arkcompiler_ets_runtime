@@ -294,12 +294,12 @@ JSTaggedValue JSAPILightWeightMap::IsEmpty()
 void JSAPILightWeightMap::Clear(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> hashArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH));
-    JSHandle<JSTaggedValue> keyArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH));
-    JSHandle<JSTaggedValue> valueArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH));
-    lightWeightMap->SetHashes(thread, hashArray);
-    lightWeightMap->SetKeys(thread, keyArray);
-    lightWeightMap->SetValues(thread, valueArray);
+    JSHandle<TaggedArray> hashArray = factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH);
+    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH);
+    JSHandle<TaggedArray> valueArray = factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH);
+    lightWeightMap->SetHashes(thread, hashArray.GetTaggedValue());
+    lightWeightMap->SetKeys(thread, keyArray.GetTaggedValue());
+    lightWeightMap->SetValues(thread, valueArray.GetTaggedValue());
     lightWeightMap->SetLength(0);
 }
 

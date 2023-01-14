@@ -987,7 +987,7 @@ int32_t TSManager::GetOldConstantPoolIDByMethodOffset(const JSPandaFile *jsPanda
 
 JSHandle<ConstantPool> TSManager::GetSnapshotConstantPool(uint32_t cpListIndex)
 {
-    JSHandle<TaggedArray> snapshotCPList = JSHandle<TaggedArray>(thread_, snapshotData_.GetSnapshotCPList());
+    JSHandle<TaggedArray> snapshotCPList(thread_, snapshotData_.GetSnapshotCPList());
     return JSHandle<ConstantPool>(thread_, snapshotCPList->Get(cpListIndex));
 }
 

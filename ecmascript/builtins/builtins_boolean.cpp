@@ -55,7 +55,7 @@ JSTaggedValue BuiltinsBoolean::ThisBooleanValue(JSThread *thread, JSTaggedValue 
     BUILTINS_API_TRACE(thread, Boolean, ThisBooleanValue);
     // 1. If Type(value) is Boolean, return value
     if (value.IsBoolean()) {
-        return value == JSTaggedValue::True() ? GetTaggedBoolean(true) : GetTaggedBoolean(false);
+        return value;
     }
     // 2. If Type(value) is Object and value has a [[BooleanData]] internal slot, then
     if (value.IsJSPrimitiveRef()) {
@@ -63,7 +63,7 @@ JSTaggedValue BuiltinsBoolean::ThisBooleanValue(JSThread *thread, JSTaggedValue 
         // a. Assert: value's [[BooleanData]] internal slot is a Boolean value.
         if (primitive.IsBoolean()) {
             // b. Return the value of value's [[BooleanData]] internal slot.
-            return primitive == JSTaggedValue::True() ? GetTaggedBoolean(true) : GetTaggedBoolean(false);
+            return primitive;
         }
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

@@ -337,7 +337,7 @@ void InterpreterAssembly::HandleJeqzImm8(
     int8_t offset = READ_INST_8_0();
     LOG_INST() << "jeqz ->\t"
                 << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-    if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+    if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -353,7 +353,7 @@ void InterpreterAssembly::HandleJeqzImm16(
     int16_t offset = static_cast<int16_t>(READ_INST_16_0());
     LOG_INST() << "jeqz ->\t"
                 << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-    if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+    if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -369,7 +369,7 @@ void InterpreterAssembly::HandleJeqzImm32(
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
     LOG_INST() << "jeqz ->\t"
                 << "cond jmpz " << std::hex << offset;
-    if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+    if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -385,7 +385,7 @@ void InterpreterAssembly::HandleJnezImm8(
     int8_t offset = READ_INST_8_0();
     LOG_INST() << "jnez ->\t"
                 << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-    if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+    if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -401,7 +401,7 @@ void InterpreterAssembly::HandleJnezImm16(
     int16_t offset = static_cast<int16_t>(READ_INST_16_0());
     LOG_INST() << "jnez ->\t"
                 << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-    if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+    if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -417,7 +417,7 @@ void InterpreterAssembly::HandleJnezImm32(
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
     LOG_INST() << "jnez ->\t"
                 << "cond jmpz " << std::hex << offset;
-    if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+    if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -7482,7 +7482,7 @@ inline JSTaggedValue InterpreterAssembly::UpdateHotnessCounter(JSThread* thread,
     JSFunction* function = JSFunction::Cast(state->function.GetTaggedObject());
     Method *method = function->GetCallTarget();
     JSTaggedValue profileTypeInfo = method->GetProfileTypeInfo();
-    if (profileTypeInfo == JSTaggedValue::Undefined()) {
+    if (profileTypeInfo.IsUndefined()) {
         return SlowRuntimeStub::NotifyInlineCache(thread, method);
     }
     return profileTypeInfo;

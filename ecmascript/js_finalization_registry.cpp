@@ -52,7 +52,7 @@ bool CellRecordVector::IsEmpty()
     }
     for (uint32_t i = 0; i < GetEnd(); i++) {
         JSTaggedValue value = Get(i);
-        if (value != JSTaggedValue::Hole()) {
+        if (!value.IsHole()) {
             return false;
         }
     }
@@ -63,7 +63,7 @@ uint32_t CellRecordVector::CheckHole(const JSHandle<CellRecordVector> &array)
 {
     for (uint32_t i = 0; i < array->GetEnd(); i++) {
         JSTaggedValue value = array->Get(i);
-        if (value == JSTaggedValue::Hole()) {
+        if (value.IsHole()) {
             return i;
         }
     }

@@ -693,7 +693,7 @@ bool FastRuntimeStub::FastSetPropertyByIndex(JSThread *thread, JSTaggedValue rec
     INTERPRETER_TRACE(thread, FastSetPropertyByIndex);
     JSTaggedValue result = FastRuntimeStub::SetPropertyByIndex(thread, receiver, index, value);
     if (!result.IsHole()) {
-        return result != JSTaggedValue::Exception();
+        return !result.IsException();
     }
     return JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver), index,
                                       JSHandle<JSTaggedValue>(thread, value), true);
@@ -705,7 +705,7 @@ bool FastRuntimeStub::FastSetPropertyByValue(JSThread *thread, JSTaggedValue rec
     INTERPRETER_TRACE(thread, FastSetPropertyByValue);
     JSTaggedValue result = FastRuntimeStub::SetPropertyByValue(thread, receiver, key, value);
     if (!result.IsHole()) {
-        return result != JSTaggedValue::Exception();
+        return !result.IsException();
     }
     return JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
                                       JSHandle<JSTaggedValue>(thread, key), JSHandle<JSTaggedValue>(thread, value),

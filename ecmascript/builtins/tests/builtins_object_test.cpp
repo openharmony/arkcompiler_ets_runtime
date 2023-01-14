@@ -669,7 +669,7 @@ HWTEST_F_L0(BuiltinsObjectTest, Values)
 // Object.preventExtensions(obj)
 HWTEST_F_L0(BuiltinsObjectTest, PreventExtensions)
 {
-    JSHandle<JSObject> obj = JSHandle<JSObject>(thread, CreateBuiltinJSObject(thread, "x"));
+    JSHandle<JSObject> obj(thread, CreateBuiltinJSObject(thread, "x"));
     obj->GetJSHClass()->SetExtensible(true);
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
