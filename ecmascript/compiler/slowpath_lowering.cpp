@@ -2142,7 +2142,7 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 {
     std::vector<GateRef> trueState;
     GateRef value = acc_.GetValueIn(gate, 0);
-    // GET_ACC() == JSTaggedValue::False()
+    // GET_ACC().IsFalse()
     GateRef condition = builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE);
     GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
     GateRef ifTrue = builder_.IfTrue(ifBranch);

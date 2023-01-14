@@ -33,7 +33,7 @@ public:
     bool IsDetach()
     {
         JSTaggedValue arrayBufferData = GetArrayBufferData();
-        return arrayBufferData == JSTaggedValue::Null();
+        return arrayBufferData.IsNull();
     }
 
     static constexpr size_t DATA_OFFSET = JSObject::SIZE;

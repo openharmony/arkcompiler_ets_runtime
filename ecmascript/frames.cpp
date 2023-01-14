@@ -532,7 +532,7 @@ ARK_INLINE void InterpretedFrame::GCIterate(const FrameIterator &it,
 {
     auto sp = it.GetSp();
     InterpretedFrame *frame = InterpretedFrame::GetFrameFromSp(sp);
-    if (frame->function == JSTaggedValue::Hole()) {
+    if (frame->function.IsHole()) {
         return;
     }
 

@@ -452,7 +452,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     // for debugger
     debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
-    JSHandle<JSFunction> func = JSHandle<JSFunction>(thread_, program->GetMainFunction());
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     if (jsPandaFile->IsModule(entryPoint.data())) {

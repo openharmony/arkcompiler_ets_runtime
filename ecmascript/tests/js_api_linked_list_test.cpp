@@ -300,7 +300,7 @@ HWTEST_F_L0(JSAPILinkedListTest, Clear)
     list->Clear(thread);
 
     EXPECT_EQ(list->Length(), 0);
-    EXPECT_TRUE(list->GetFirst() == JSTaggedValue::Undefined());
+    EXPECT_TRUE(list->GetFirst().IsUndefined());
 }
 
 HWTEST_F_L0(JSAPILinkedListTest, Set)

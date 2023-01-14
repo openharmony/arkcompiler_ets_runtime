@@ -226,7 +226,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
 
     JSTaggedValue data = array->GetArrayBufferData();
     size_t size = static_cast<size_t>(length) * sizeof(uint8_t);
-    if (data != JSTaggedValue::Undefined()) {
+    if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
         auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(size);
         if (memset_s(newData, length, 0, length) != EOK) {
@@ -363,7 +363,7 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
         UNREACHABLE();
     }
     JSTaggedValue data = regexp->GetByteCodeBuffer();
-    if (data != JSTaggedValue::Undefined()) {
+    if (!data.IsUndefined()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(newBuffer);
         return;

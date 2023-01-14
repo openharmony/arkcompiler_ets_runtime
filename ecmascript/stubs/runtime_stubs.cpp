@@ -905,7 +905,7 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     thread->CheckSafepoint();
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
-    if (profileTypeInfo == JSTaggedValue::Undefined()) {
+    if (profileTypeInfo.IsUndefined()) {
         if (thread->IsPGOProfilerEnable()) {
             thread->GetEcmaVM()->GetPGOProfiler()->Sample(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
         }

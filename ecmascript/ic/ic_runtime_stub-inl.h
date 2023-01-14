@@ -74,7 +74,7 @@ JSTaggedValue ICRuntimeStub::CheckPolyHClass(JSTaggedValue cachedValue, JSHClass
         uint32_t length = array->GetLength();
         for (uint32_t i = 0; i < length; i += 2) {  // 2 means one ic, two slot
             auto result = array->Get(i);
-            if (result != JSTaggedValue::Undefined() && result.GetWeakReferent() == hclass) {
+            if (!result.IsUndefined() && result.GetWeakReferent() == hclass) {
                 return array->Get(i + 1);
             }
         }

@@ -354,8 +354,7 @@ int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *ecmaVm, const FrameHan
         JSTaggedValue localExportEntries = SourceTextModule::Cast(
             currentModule.GetTaggedObject())->GetLocalExportEntries();
         ASSERT(localExportEntries.IsTaggedArray());
-        JSHandle<TaggedArray> localExportArray = JSHandle<TaggedArray>(
-            thread, TaggedArray::Cast(localExportEntries.GetTaggedObject()));
+        JSHandle<TaggedArray> localExportArray(thread, localExportEntries);
         uint32_t exportEntriesLen = localExportArray->GetLength();
         JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
         for (uint32_t idx = 0; idx < exportEntriesLen; idx++) {
@@ -466,10 +465,9 @@ void DebuggerApi::GetModuleVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
         JSTaggedValue localExportEntries = SourceTextModule::Cast(
             currentModule.GetTaggedObject())->GetLocalExportEntries();
         ASSERT(localExportEntries.IsTaggedArray());
-        JSHandle<TaggedArray> localExportArray = JSHandle<TaggedArray>(
-            thread, TaggedArray::Cast(localExportEntries.GetTaggedObject()));
+        JSHandle<TaggedArray> localExportArray(thread, localExportEntries);
         uint32_t exportEntriesLen = localExportArray->GetLength();
-        JSHandle<TaggedArray> dict = JSHandle<TaggedArray>(thread, TaggedArray::Cast(dictionary.GetTaggedObject()));
+        JSHandle<TaggedArray> dict(thread, dictionary);
         uint32_t valueLen = dict->GetLength();
         if (exportEntriesLen != valueLen) {
             LOG_FULL(FATAL) << "Key does not match value";

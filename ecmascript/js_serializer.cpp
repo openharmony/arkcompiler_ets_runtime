@@ -412,7 +412,7 @@ bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
         return false;
     }
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(value);
-    JSHandle<JSTaggedValue> method = JSHandle<JSTaggedValue>(thread_, func->GetMethod());
+    JSHandle<JSTaggedValue> method(thread_, func->GetMethod());
     if (!SerializeJSTaggedValue(method)) {
         bufferSize_ = oldSize;
         return false;

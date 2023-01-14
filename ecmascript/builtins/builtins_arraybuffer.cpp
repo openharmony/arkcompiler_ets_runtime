@@ -254,7 +254,7 @@ bool BuiltinsArrayBuffer::IsDetachedBuffer(JSTaggedValue arrayBuffer)
     JSTaggedValue dataSlot = buffer->GetArrayBufferData();
     // 2. If arrayBuffer’s [[ArrayBufferData]] internal slot is null, return true.
     // 3. Return false.
-    return dataSlot == JSTaggedValue::Null();
+    return dataSlot.IsNull();
 }
 
 // 24.1.1.4

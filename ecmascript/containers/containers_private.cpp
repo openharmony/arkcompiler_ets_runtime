@@ -158,7 +158,7 @@ JSTaggedValue ContainersPrivate::InitializeContainer(JSThread *thread, const JSH
     JSHandle<JSTaggedValue> key(factory->NewFromASCII(name));
     JSTaggedValue value =
         FastRuntimeStub::GetPropertyByName<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
-    if (value != JSTaggedValue::Undefined()) {
+    if (!value.IsUndefined()) {
         return value;
     }
     JSHandle<JSTaggedValue> map = func(thread);

@@ -479,7 +479,7 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
     JSThread *thread = vm_->GetJSThread();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
-    JSHandle<JSTaggedValue> func = JSHandle<JSTaggedValue>(thread, function);
+    JSHandle<JSTaggedValue> func(thread, function);
     JSHandle<JSTaggedValue> funcNameValue = JSObject::GetProperty(thread, func, nameKey).GetValue();
     std::string methodNameStr;
     if (funcNameValue->IsString()) {

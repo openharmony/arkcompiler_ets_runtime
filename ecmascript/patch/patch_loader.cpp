@@ -216,7 +216,7 @@ bool PatchLoader::ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFil
             constpoolVal = vm->FindConstpool(patchFile, 0);
         }
         ASSERT(!constpoolVal.IsHole());
-        JSHandle<ConstantPool> constpool = JSHandle<ConstantPool>(thread, constpoolVal);
+        JSHandle<ConstantPool> constpool(thread, constpoolVal);
         JSHandle<Program> program =
             PandaFileTranslator::GenerateProgramInternal(vm, patchFile, mainMethodIndex, constpool);
 
@@ -226,7 +226,7 @@ bool PatchLoader::ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFil
 
         // For add a new function, Call patch_main_0.
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-        JSHandle<JSFunction> func = JSHandle<JSFunction>(thread, program->GetMainFunction());
+        JSHandle<JSFunction> func(thread, program->GetMainFunction());
         JSHandle<SourceTextModule> module = vm->GetModuleManager()->HostGetImportedModule(recordName);
         func->SetModule(thread, module);
         EcmaRuntimeCallInfo *info =

@@ -54,7 +54,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
         return;
     }
     if (!profileData.IsWeak() && profileData.IsTaggedArray()) {  // POLY
-        ASSERT(profileTypeInfo_->Get(index + 1) == JSTaggedValue::Hole());
+        ASSERT(profileTypeInfo_->Get(index + 1).IsHole());
         JSHandle<TaggedArray> arr(thread_, profileData);
         const uint32_t step = 2;
         uint32_t newLen = arr->GetLength() + step;
@@ -100,7 +100,7 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
     if (profileData.IsUndefined()) {
-        ASSERT(profileTypeInfo_->Get(index + 1) == JSTaggedValue::Undefined());
+        ASSERT(profileTypeInfo_->Get(index + 1).IsUndefined());
         profileTypeInfo_->Set(thread_, index, key.GetTaggedValue());
         const int arrayLength = 2;
         JSHandle<TaggedArray> newArr = thread_->GetEcmaVM()->GetFactory()->NewTaggedArray(arrayLength);
