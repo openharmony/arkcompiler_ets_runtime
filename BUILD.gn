@@ -26,7 +26,10 @@ group("ark_js_packages") {
 group("ark_js_host_windows_tools_packages") {
   deps = []
   if (host_os != "mac" && target_os != "android") {
-    deps += [ "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)" ]
+    deps += [
+      "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mingw:mingw_x86_64)",
+      "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)",
+    ]
   }
 }
 
@@ -79,6 +82,7 @@ group("ark_js_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/stubs/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:unittest",
+      "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:unittest",
     ]
     if (is_ohos && is_standard_system) {
       deps += [ "//arkcompiler/ets_runtime/test/fuzztest:fuzztest" ]
@@ -114,6 +118,7 @@ group("ark_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/stubs/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/tests:host_unittest",
+      "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:host_unittest",
     ]
     if (is_standard_system && !run_with_asan) {
       deps += [
@@ -308,6 +313,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "NDEBUG" ]
   }
 
+  if (enable_asm_assert) {
+    defines += [ "ENABLE_ASM_ASSERT" ]
+  }
+
   if (run_with_asan) {
     defines += [ "RUN_WITH_ASAN" ]
   }
@@ -398,10 +407,8 @@ ecma_source = [
   "ecmascript/base/atomic_helper.cpp",
   "ecmascript/base/builtins_base.cpp",
   "ecmascript/base/error_helper.cpp",
-  "ecmascript/base/file_path_helper.cpp",
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
-  "ecmascript/base/mem_mmap.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
@@ -468,6 +475,7 @@ ecma_source = [
   "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
+  "ecmascript/dfx/vmstat/opt_code_profiler.cpp",
   "ecmascript/dfx/vmstat/runtime_stat.cpp",
   "ecmascript/dfx/vm_thread_control.cpp",
   "ecmascript/dump.cpp",
@@ -544,6 +552,7 @@ ecma_source = [
   "ecmascript/js_date.cpp",
   "ecmascript/js_for_in_iterator.cpp",
   "ecmascript/js_finalization_registry.cpp",
+  "ecmascript/js_file_path.cpp",
   "ecmascript/js_function.cpp",
   "ecmascript/js_generator_object.cpp",
   "ecmascript/js_async_generator_object.cpp",
@@ -672,11 +681,41 @@ if (!is_mingw && !is_mac && target_os != "ios") {
   ]
 }
 
+if (is_mingw) {
+  ecma_profiler_source += [
+    "ecmascript/snapshot/mem/snapshot.cpp",
+    "ecmascript/snapshot/mem/snapshot_env.cpp",
+    "ecmascript/snapshot/mem/snapshot_processor.cpp",
+  ]
+}
+
+ecma_platform_source = []
+if (is_mingw) {
+  ecma_platform_source += [
+    "ecmascript/platform/windows/map.cpp",
+    "ecmascript/platform/windows/file.cpp",
+    "ecmascript/platform/windows/os.cpp",
+    "ecmascript/platform/windows/time.cpp",
+  ]
+} else {
+  ecma_platform_source += [
+    "ecmascript/platform/unix/file.cpp",
+    "ecmascript/platform/unix/map.cpp",
+    "ecmascript/platform/unix/time.cpp",
+  ]
+  if (is_mac || target_os == "ios") {
+    ecma_platform_source += [ "ecmascript/platform/unix/mac/os.cpp" ]
+  } else {
+    ecma_platform_source += [ "ecmascript/platform/unix/linux/os.cpp" ]
+  }
+}
+
 source_set("libark_jsruntime_set") {
   sources = ecma_source
   sources += ecma_profiler_source
   sources += ecma_debugger_source
   sources += hitrace_scope_source
+  sources += ecma_platform_source
 
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -756,6 +795,7 @@ source_set("libark_jsruntime_test_set") {
   sources += intl_sources
   sources += ecma_profiler_source
   sources += ecma_debugger_source
+  sources += ecma_platform_source
 
   defines = [ "OHOS_UNIT_TEST" ]
   deps = [

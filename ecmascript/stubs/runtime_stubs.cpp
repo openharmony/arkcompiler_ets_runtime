@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
@@ -34,6 +35,7 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_proxy.h"
@@ -897,6 +899,9 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo == JSTaggedValue::Undefined()) {
+        if (thread->IsPGOProfilerEnable()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->Sample(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
+        }
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();
@@ -1817,6 +1822,16 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ProfileOptimizedCode)
+{
+    RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
+    EcmaOpcode ecmaOpcode = static_cast<EcmaOpcode>(GetArg(argv, argc, 0).GetInt());
+    OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 1).GetInt());
+    OptCodeProfiler *profiler = thread->GetEcmaVM()->GetOptCodeProfiler();
+    profiler->Update(ecmaOpcode, mode);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(JSObjectGetMethod)
 {
     RUNTIME_STUBS_HEADER(JSObjectGetMethod);
@@ -2024,6 +2039,21 @@ bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
 {
     return BigInt::Equal(JSTaggedValue(left), JSTaggedValue(right));
+}
+
+double RuntimeStubs::TimeClip(double time)
+{
+    return JSDate::TimeClip(time);
+}
+
+double RuntimeStubs::SetDateValues(double year, double month, double day)
+{
+    if (std::isnan(year) || !std::isfinite(year) || std::isnan(month) || !std::isfinite(month) || std::isnan(day) ||
+        !std::isfinite(day)) {
+        return base::NAN_VALUE;
+    }
+
+    return JSDate::SetDateValues(static_cast<int64_t>(year), static_cast<int64_t>(month), static_cast<int64_t>(day));
 }
 
 JSTaggedValue RuntimeStubs::NewObject(EcmaRuntimeCallInfo *info)

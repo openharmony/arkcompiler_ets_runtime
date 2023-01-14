@@ -255,7 +255,7 @@ class BytecodeCircuitBuilder {
 public:
     explicit BytecodeCircuitBuilder(const JSPandaFile *jsPandaFile,
                                     const MethodLiteral *methodLiteral,
-                                    MethodPcInfo &methodPCInfo,
+                                    const MethodPcInfo &methodPCInfo,
                                     TSManager *tsManager,
                                     Circuit *circuit,
                                     Bytecodes *bytecodes,
@@ -424,7 +424,7 @@ private:
     void NewMerge(GateRef &state, GateRef &depend, size_t numOfIns);
     void NewLoopBegin(BytecodeRegion &bb);
     void BuildBlockCircuitHead();
-    std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, BitField bitfield);
+    std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, const GateMetaData *meta);
     void SetBlockPred(BytecodeRegion &bbNext, const GateRef &state, const GateRef &depend, bool isLoopBack);
     GateRef NewConst(const BytecodeInfo &info);
     void NewJSGate(BytecodeRegion &bb, GateRef &state, GateRef &depend);
@@ -433,7 +433,8 @@ private:
     void NewByteCode(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     void BuildSubCircuit();
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
-    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
+    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc,
+                       std::pair<GateRef, uint32_t> &needReplaceInfo);
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);

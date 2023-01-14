@@ -89,6 +89,8 @@ enum CommandValues {
     OPTION_BUILTINS_DTS,
     OPTION_TRACE_BC,
     OPTION_TRACE_DEOPT,
+    OPTION_DEOPT_THRESHOLD,
+    OPTION_OPT_CODE_PROFILER,
     OPTION_LOG_LEVEL,
     OPTION_LOG_DEBUG,
     OPTION_LOG_INFO,
@@ -827,6 +829,26 @@ public:
     {
         return traceDeopt_;
     }
+
+    void SetDeoptThreshold(uint16_t value)
+    {
+        deoptThreshold_ = value;
+    }
+
+    uint32_t GetDeoptThreshold() const
+    {
+        return deoptThreshold_;
+    }
+
+    void SetOptCodeProfiler(bool value)
+    {
+        optCodeProfiler_ = value;
+    }
+
+    bool GetOptCodeProfiler() const
+    {
+        return optCodeProfiler_;
+    }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -852,7 +874,7 @@ private:
     int arkProperties_ = GetDefaultProperties();
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
-    std::string aotOutputFile_ {"aot_file"};
+    std::string aotOutputFile_ {""};
     std::string targetTriple_ {"x86_64-unknown-linux-gnu"};
     uint32_t asmOptLevel_ {3}; // 3: default opt level
     uint32_t relocationMode_ {2}; // 2: default relocation mode
@@ -894,7 +916,9 @@ private:
     bool enablePGOProfiler_ {false};
     uint32_t pgoHotnessThreshold_ {2};
     std::string pgoProfilerPath_ {""};
-    bool traceDeopt_{false};
+    bool traceDeopt_ {false};
+    uint32_t deoptThreshold_ {10};
+    bool optCodeProfiler_ {false};
 };
 }  // namespace panda::ecmascript
 

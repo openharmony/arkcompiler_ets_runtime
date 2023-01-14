@@ -342,12 +342,14 @@ void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver)
     auto env = GetEcmaVM()->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
+        SetStableArrayElementsGuardians(JSTaggedValue::False());
         stableArrayElementsGuardians_ = false;
     }
 }
 
 void JSThread::ResetGuardians()
 {
+    SetStableArrayElementsGuardians(JSTaggedValue::True());
     stableArrayElementsGuardians_ = true;
 }
 
@@ -472,5 +474,18 @@ bool JSThread::IsLegalAsmSp(uintptr_t sp) const
     uint64_t bottom = GetStackLimit() - EcmaParamConfiguration::GetDefaultReservedStackSize();
     uint64_t top = GetStackStart();
     return (bottom <= sp && sp <= top);
+}
+
+bool JSThread::IsLegalThreadSp(uintptr_t sp) const
+{
+    uintptr_t bottom = reinterpret_cast<uintptr_t>(glueData_.frameBase_);
+    size_t maxStackSize = vm_->GetEcmaParamConfiguration().GetMaxStackSize();
+    uintptr_t top = bottom + maxStackSize;
+    return (bottom <= sp && sp <= top);
+}
+
+bool JSThread::IsLegalSp(uintptr_t sp) const
+{
+    return IsLegalAsmSp(sp) || IsLegalThreadSp(sp);
 }
 }  // namespace panda::ecmascript

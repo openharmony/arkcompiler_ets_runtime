@@ -25,7 +25,7 @@ class Employee {
     }
 
     getName(): string {
-        AssertType(this, "class_instance");
+        AssertType(this, "Employee");
         AssertType(this.name, "string");
         return this.name;
     }
@@ -45,14 +45,14 @@ class Manager extends Employee {
     }
 
     static getRequiredLevelMin(): number {
-        AssertType(this, "class");
+        AssertType(this, "typeof Manager");
         AssertType(this.REQUIRED_LEVEL_MIN, "number");
         return this.REQUIRED_LEVEL_MIN;
     }
 }
 
 function olderThan(this: Employee, age: number): boolean {
-    AssertType(this, "class_instance");
+    AssertType(this, "Employee");
     AssertType(this.getAge(), "number");
     return this.getAge() > age;
 }

@@ -96,6 +96,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
         case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
+        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:

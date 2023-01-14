@@ -116,6 +116,7 @@ void StubFileGenerator::SaveStubFile(const std::string &filename)
 
 void AOTFileGenerator::SaveAOTFile(const std::string &filename)
 {
+    TimeScope timescope("LLVMCodeGenPass-AN", const_cast<CompilerLog *>(log_));
     RunLLVMAssembler();
     CollectCodeInfo();
     GenerateMethodToEntryIndexMap();
@@ -125,9 +126,10 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
 
 void AOTFileGenerator::SaveSnapshotFile()
 {
+    TimeScope timescope("LLVMCodeGenPass-AI", const_cast<CompilerLog *>(log_));
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
     vm_->GetTSManager()->ResolveSnapshotConstantPool(methodToEntryIndexMap_);
-    snapshot.Serialize(snapshotPath + ".ai");
+    snapshot.Serialize(snapshotPath + AOTFileManager::FILE_EXTENSION_AI);
 }
 }  // namespace panda::ecmascript::kungfu

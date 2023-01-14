@@ -313,6 +313,23 @@ private:
     V(Mod)                                  \
     V(TypeOf)                               \
     V(Equal)                                \
+    V(NotEqual)                             \
+    V(Less)                                 \
+    V(LessEq)                               \
+    V(Greater)                              \
+    V(GreaterEq)                            \
+    V(Shl)                                  \
+    V(Shr)                                  \
+    V(Ashr)                                 \
+    V(And)                                  \
+    V(Or)                                   \
+    V(Xor)                                  \
+    V(Instanceof)                           \
+    V(Inc)                                  \
+    V(Dec)                                  \
+    V(Neg)                                  \
+    V(Not)                                  \
+    V(ToBoolean)                            \
     V(SetPropertyByName)                    \
     V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \
@@ -402,6 +419,8 @@ private:
     V(DeoptHandlerAsm)                      \
     V(JSCallNew)                            \
     V(JSCallNewWithArgV)                    \
+    V(TimeClip)                             \
+    V(SetDateValues)                        \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

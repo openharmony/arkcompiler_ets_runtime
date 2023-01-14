@@ -39,7 +39,7 @@ public:
         Circuit *circuit, const MethodLiteral *methodLiteral = nullptr)
         : circuit_(circuit),
           method_(methodLiteral),
-          argRoot_(Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))),
+          argRoot_(circuit->GetArgRoot()),
           args_(0)
     {
         CollectArgs();

@@ -103,6 +103,9 @@ public:
     void PrintTime() const;
     void AddMethodTime(const std::string& name, uint32_t id, double time);
     void AddPassTime(const std::string& name, double time);
+    int GetIndex();
+
+    std::map<std::string, int> nameIndex_;
 
 private:
     static constexpr int PASS_LENS = 32;
@@ -113,6 +116,7 @@ private:
     static constexpr int MILLION_TIME = 1000;
     static constexpr int HUNDRED_TIME = 100;
 
+    int idx_ {0};
     bool allMethod_ {false};
     bool cerMethod_ {false};
     bool noneMethod_ {false};
@@ -158,6 +162,7 @@ private:
 class TimeScope : public ClockScope {
 public:
     TimeScope(std::string name, std::string methodName, uint32_t methodOffset, CompilerLog* log);
+    TimeScope(std::string name, CompilerLog* log);
     ~TimeScope();
    
 private:

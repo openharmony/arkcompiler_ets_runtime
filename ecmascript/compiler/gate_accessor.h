@@ -279,7 +279,7 @@ public:
         return { circuit_, gate };
     }
 
-    ConstUseWrapper ConstUses(GateRef gate)
+    ConstUseWrapper ConstUses(GateRef gate) const
     {
         return { circuit_, gate };
     }
@@ -303,11 +303,22 @@ public:
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
     bool IsGCRelated(GateRef gate) const;
-    void SetOpCode(GateRef gate, OpCode::Op opcode);
-    BitField GetBitField(GateRef gate) const;
+    uint64_t TryGetValue(GateRef gate) const;
+    ICmpCondition GetICmpCondition(GateRef gate) const;
+    FCmpCondition GetFCmpCondition(GateRef gate) const;
+    ConstDataId GetConstDataId(GateRef gate) const;
+    size_t GetVirtualRegisterIndex(GateRef gate) const;
+    TypedLoadOp GetTypedLoadOp(GateRef gate) const;
+    TypedStoreOp GetTypedStoreOp(GateRef gate) const;
+    TypedBinOp GetTypedBinaryOp(GateRef gate) const;
+    GateType GetParamGateType(GateRef gate) const;
+    TypedUnaryAccessor GetTypedUnOp(GateRef gate) const;
+    uint64_t GetConstantValue(GateRef gate) const;
     uint32_t GetBytecodeIndex(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
-    void SetBitField(GateRef gate, BitField bitField);
+    const std::map<std::pair<GateRef, uint32_t>, uint32_t> &GetRestoreRegsInfo(GateRef gate) const;
+    void SetRestoreRegsInfo(GateRef gate, std::pair<GateRef, uint32_t> &info, uint32_t index) const;
+    size_t GetNumOfSaveRegs(GateRef gate) const;
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;
     GateId GetId(GateRef gate) const;
@@ -350,6 +361,9 @@ public:
     bool IsConstant(GateRef gate) const;
     bool IsConstantValue(GateRef gate, uint64_t value) const;
     bool IsTypedOperator(GateRef gate) const;
+    bool IsNotWrite(GateRef gate) const;
+    bool IsCheckWithOneIn(GateRef gate) const;
+    bool IsCheckWithTwoIns(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark);
@@ -364,7 +378,8 @@ public:
     bool IsExceptionState(const UseIterator &useIt) const;
     bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
-    void DeleteGuardAndFrameState(GateRef gate);
+    void GetStateUses(GateRef gate, std::vector<GateRef>& outStates);
+    void DeleteStateSplitAndFrameState(GateRef gate);
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
@@ -372,7 +387,31 @@ public:
     void GetArgsOuts(std::vector<GateRef>& outs) const;
     void GetReturnOuts(std::vector<GateRef>& outs) const;
 
+    GateRef GetStateRoot() const
+    {
+        return GetRoot(OpCode::STATE_ENTRY);
+    }
+
+    GateRef GetDependRoot() const
+    {
+        return GetRoot(OpCode::DEPEND_ENTRY);
+    }
+
+    GateRef GetArgRoot() const
+    {
+        return GetRoot(OpCode::ARG_LIST);
+    }
+
+    GateRef GetReturnRoot() const
+    {
+        return GetRoot(OpCode::RETURN_LIST);
+    }
+
+    const GateMetaData *GetMetaData(GateRef gate) const;
+    void SetMetaData(GateRef gate, const GateMetaData* meta);
+
 private:
+    GateRef GetRoot(OpCode opcode) const;
     ConstUseIterator ConstUseBegin(GateRef gate) const
     {
         if (circuit_->LoadGatePtrConst(gate)->IsFirstOutNull()) {
@@ -434,9 +473,10 @@ private:
 
     Circuit *circuit_;
 
+    friend class Circuit;
     friend class LLVMIRBuilder;
     friend class Scheduler;
-    friend class GuardLowering;
+    friend class CheckElimination;
     friend class ArgumentAccessor;
     friend class BytecodeCircuitBuilder;
 };

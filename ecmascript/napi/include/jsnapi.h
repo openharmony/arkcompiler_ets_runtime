@@ -1208,6 +1208,9 @@ public:
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
 
+    // aot load
+    static void LoadAotFile(EcmaVM *vm, const std::string &hapPath);
+
     // JS code
     static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
@@ -1255,6 +1258,7 @@ public:
     static void InitializeIcuData(const ecmascript::JSRuntimeOptions &options);
     static void InitializeMemMapAllocator();
     static void InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options);
+    static void DestoryAnDataManager();
     static void DestroyMemMapAllocator();
     static void DestroyPGOProfiler();
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);

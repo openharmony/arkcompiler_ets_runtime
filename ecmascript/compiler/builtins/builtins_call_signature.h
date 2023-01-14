@@ -52,6 +52,8 @@ namespace panda::ecmascript::kungfu {
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
+    V(DateConstructor)                              \
+    V(ArrayConstructor)                             \
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(SQRT)                                         \
@@ -74,6 +76,7 @@ public:
         AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
+        INVALID = 0xFF,
     };
 
     static void Initialize();

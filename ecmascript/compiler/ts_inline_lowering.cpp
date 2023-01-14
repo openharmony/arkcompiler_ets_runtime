@@ -84,10 +84,9 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
             inlinedCall_ <= MAX_INLINE_CALL_ALLOWED) {
             auto success = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
             if (success) {
-                circuit_->PushFunctionCompilationDataList();
+                CircuitRootScope scope(circuit_);
                 InlineCall(methodInfo, methodPcInfo, inlinedMethod);
                 ReplaceCallInput(gate, isCallThis);
-                circuit_->PopFunctionCompilationDataList();
                 inlinedCall_++;
             }
         }
@@ -162,6 +161,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     std::string fileName = jsPandaFile->GetFileName();
     std::string fullName = methodName + "@" + fileName;
 
+    circuit_->InitRoot();
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
                                    info_->GetByteCodes(), true, IsLogEnabled(),
@@ -239,18 +239,16 @@ GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVecto
         acc_.DeleteGate(returnGate);
     }
 
-    state = circuit_->NewGate(OpCode(OpCode::MERGE), numOfIns,
-                              stateList, GateType::Empty());
-    depend = circuit_->NewGate(OpCode(OpCode::DEPEND_SELECTOR), numOfIns,
-                               dependList, GateType::Empty());
-    return circuit_->NewGate(OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, numOfIns,
-                             vaueList, GateType::AnyType());
+    state = circuit_->NewGate(circuit_->Merge(numOfIns), stateList);
+    depend = circuit_->NewGate(circuit_->DependSelector(numOfIns), dependList);
+    return circuit_->NewGate(circuit_->ValueSelector(numOfIns), MachineType::I64, numOfIns,
+                             vaueList.data(), GateType::AnyType());
 }
 
 void TSInlineLowering::ReplaceEntryGate(GateRef callGate)
 {
-    auto stateEntry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto dependEntry = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    auto stateEntry = acc_.GetStateRoot();
+    auto dependEntry = acc_.GetDependRoot();
 
     GateRef callState = acc_.GetState(callGate);
     GateRef callDepend = acc_.GetDep(callGate);

@@ -153,7 +153,7 @@ struct BCDebuggerStubEntries {
 };
 
 struct BuiltinStubEntries {
-    static constexpr size_t COUNT = kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS + 1;
+    static constexpr size_t COUNT = kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS;
     Address stubEntries_[COUNT];
 
     static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
@@ -338,6 +338,16 @@ public:
         glueData_.globalObject_ = globalObject;
     }
 
+    JSTaggedValue GetStableArrayElementsGuardians() const
+    {
+        return glueData_.stableArrayElementsGuardians_;
+    }
+
+    void SetStableArrayElementsGuardians(JSTaggedValue guardians)
+    {
+        glueData_.stableArrayElementsGuardians_ = guardians;
+    }
+
     const GlobalEnvConstants *GlobalConstants() const
     {
         return &glueData_.globalConst_;
@@ -460,6 +470,12 @@ public:
         PGOStatusBits::Set(status, &glueData_.threadStateBitField_);
     }
 
+    bool IsPGOProfilerEnable() const
+    {
+        auto status = PGOStatusBits::Decode(glueData_.threadStateBitField_);
+        return status == PGOProfilerStatus::PGO_PROFILER_ENABLE;
+    }
+
     bool CheckSafepoint() const;
 
     void SetGetStackSignal(bool isParseStack)
@@ -540,6 +556,10 @@ public:
 
     bool IsLegalAsmSp(uintptr_t sp) const;
 
+    bool IsLegalThreadSp(uintptr_t sp) const;
+
+    bool IsLegalSp(uintptr_t sp) const;
+
     bool IsPrintBCOffset() const
     {
         return enablePrintBCOffset_;
@@ -587,6 +607,7 @@ public:
                                                  BCStubEntries,
                                                  JSTaggedValue,
                                                  JSTaggedValue,
+                                                 JSTaggedValue,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -606,6 +627,7 @@ public:
             BCStubEntriesIndex = 0,
             ExceptionIndex,
             GlobalObjIndex,
+            StableArrayElementsGuardiansIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -633,6 +655,11 @@ public:
         static size_t GetGlobalObjOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::GlobalObjIndex)>(isArch32);
+        }
+
+        static size_t GetStableArrayElementsGuardiansOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::StableArrayElementsGuardiansIndex)>(isArch32);
         }
 
         static size_t GetGlobalConstOffset(bool isArch32)
@@ -718,6 +745,7 @@ public:
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
+        alignas(EAS) JSTaggedValue stableArrayElementsGuardians_ {JSTaggedValue::True()};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};

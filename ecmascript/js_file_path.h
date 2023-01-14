@@ -13,15 +13,20 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_BASE_FILE_PATH_HELPER_H
-#define ECMASCRIPT_BASE_FILE_PATH_HELPER_H
+#ifndef ECMASCRIPT_JSFILE_PATH_H
+#define ECMASCRIPT_JSFILE_PATH_H
 
 #include <string>
+#include "ecmascript/jspandafile/js_pandafile.h"
 
-namespace panda::ecmascript::base {
-class FilePathHelper {
+namespace panda::ecmascript {
+
+class JSFilePath {
 public:
-    static bool RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
+    static std::string GetBaseName(const std::string &filePath);
+    static std::string GetFileName(const std::string &filePath);
+    static std::string GetFileExtension(const std::string &filePath);
+    static std::string GetHapName(const JSPandaFile *jsPandaFile);
 };
-} // namespace panda::ecmascript::base
-#endif  // ECMASCRIPT_BASE_FILE_PATH_HELPER_H
+}
+#endif  // ECMASCRIPT_JSFILE_PATH_H

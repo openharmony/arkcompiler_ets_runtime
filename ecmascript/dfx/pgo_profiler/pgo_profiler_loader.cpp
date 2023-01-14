@@ -17,11 +17,12 @@
 
 #include <string>
 
-#include "ecmascript/base/file_path_helper.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/method.h"
+#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
 void PGOProfilerLoader::LoadProfiler(const std::string &inPath, uint32_t hotnessThreshold)
@@ -33,8 +34,7 @@ void PGOProfilerLoader::LoadProfiler(const std::string &inPath, uint32_t hotness
         return;
     }
     std::string realPath;
-    if (!base::FilePathHelper::RealPath(inPath, realPath)) {
-        LOG_ECMA(ERROR) << "The file path(" << inPath << ") real path failure!";
+    if (!RealPath(inPath, realPath)) {
         return;
     }
 
@@ -97,21 +97,35 @@ void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::u
 {
     std::vector<std::string> methodCountString = base::StringHelper::SplitString(methodInfo, "/");
     if (methodCountString.size() < METHOD_INFO_COUNT) {
-        LOG_ECMA(ERROR) << "method info format error" << methodInfo;
+        LOG_ECMA(ERROR) << "method info format error " << methodInfo;
         return;
     }
     char *endPtr = nullptr;
     static constexpr int NUMBER_BASE = 10;
-    uint32_t count = static_cast<uint32_t>(strtol(methodCountString[1].c_str(), &endPtr, NUMBER_BASE));
-    if (endPtr == methodCountString[1].c_str() || *endPtr != '\0') {
-        LOG_ECMA(ERROR) << "method count strtol error" << methodCountString[1];
+    SampleMode mode =
+        static_cast<SampleMode>(strtol(methodCountString[METHOD_MODE_INDEX].c_str(), &endPtr, NUMBER_BASE));
+    if (endPtr == methodCountString[METHOD_MODE_INDEX].c_str() || *endPtr != '\0') {
+        LOG_ECMA(ERROR) << "method mode strtol error " << methodCountString[METHOD_MODE_INDEX];
         return;
     }
-    if (count >= hotnessThreshold_) {
+    bool isHotness = true;
+    if (mode == SampleMode::CALL_MODE) {
+        uint32_t count =
+            static_cast<uint32_t>(strtol(methodCountString[METHOD_COUNT_INDEX].c_str(), &endPtr, NUMBER_BASE));
+        if (endPtr == methodCountString[METHOD_COUNT_INDEX].c_str() || *endPtr != '\0') {
+            LOG_ECMA(ERROR) << "method count strtol error " << methodCountString[METHOD_COUNT_INDEX];
+            return;
+        }
+        if (count < hotnessThreshold_) {
+            isHotness = false;
+        }
+    }
+    if (isHotness) {
         endPtr = nullptr;
-        uint32_t methodId = static_cast<uint32_t>(strtol(methodCountString[0].c_str(), &endPtr, NUMBER_BASE));
-        if (endPtr == methodCountString[0].c_str() || *endPtr != '\0') {
-            LOG_ECMA(ERROR) << "method id strtol error" << methodCountString[0];
+        uint32_t methodId =
+            static_cast<uint32_t>(strtol(methodCountString[METHOD_ID_INDEX].c_str(), &endPtr, NUMBER_BASE));
+        if (endPtr == methodCountString[METHOD_ID_INDEX].c_str() || *endPtr != '\0') {
+            LOG_ECMA(ERROR) << "method id strtol error " << methodCountString[METHOD_ID_INDEX];
             return;
         }
         methodIds.emplace(methodId);

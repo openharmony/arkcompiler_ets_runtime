@@ -80,6 +80,7 @@ class RequireManager;
 struct CJSInfo;
 class QuickFixManager;
 class ConstantPool;
+class OptCodeProfiler;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -402,8 +403,10 @@ public:
 
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
 
-    JSHandle<ConstantPool> FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
+                                                            panda_file::File::EntityId id);
 
+    std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(const JSPandaFile *jsPandaFile);
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {
         exceptionBCList_.emplace_back(std::pair<std::string, int32_t>(methodName, bcOffset));
@@ -573,6 +576,12 @@ public:
             iter++;
         }
     }
+
+    OptCodeProfiler *GetOptCodeProfiler() const
+    {
+        return optCodeProfiler_;
+    }
+
 protected:
 
     void HandleUncaughtException(TaggedObject *exception);
@@ -694,6 +703,9 @@ private:
 
     // PGO Profiler
     PGOProfiler *pgoProfiler_;
+
+    // opt code Profiler
+    OptCodeProfiler *optCodeProfiler_;
 
     // For icu objects cache
     struct IcuFormatter {

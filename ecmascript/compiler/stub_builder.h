@@ -26,18 +26,45 @@ using namespace panda::ecmascript;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
 
+#define SUBENTRY(messageId, condition)                                              \
+    GateRef glueArg = PtrArgument(0);                                               \
+    auto env = GetEnvironment();                                                    \
+    Label subEntry(env);                                                            \
+    env->SubCfgEntry(&subEntry);                                                    \
+    Label nextLabel(env);                                                           \
+    Assert(messageId, __LINE__, glueArg, condition, &nextLabel);                    \
+    Bind(&nextLabel)
+#define SUBENTRY_WITH_GLUE(messageId, condition, glueArg)                           \
+    auto env = GetEnvironment();                                                    \
+    Label subEntry(env);                                                            \
+    env->SubCfgEntry(&subEntry);                                                    \
+    Label nextLabel(env);                                                           \
+    Assert(messageId, __LINE__, glueArg, condition, &nextLabel);                    \
+    Bind(&nextLabel)
+
 #ifndef NDEBUG
-#define ASM_ASSERT(messageId, glue, condition, nextLabel)                           \
-    Label nextLabel(env);                                                           \
-    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
-    Bind(&nextLabel)
-#elif ECMASCRIPT_ENABLE_ASM_ASSERT
-#define ASM_ASSERT(messageId, glue, condition, nextLabel)                           \
-    Label nextLabel(env);                                                           \
-    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
-    Bind(&nextLabel)
+#define ASM_ASSERT(messageId, condition)                                            \
+    SUBENTRY(messageId, condition)
+#define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
+    SUBENTRY_WITH_GLUE(messageId, condition, glue)
+#elif defined(ENABLE_ASM_ASSERT)
+#define ASM_ASSERT(messageId, condition)                                            \
+    SUBENTRY(messageId, condition)
+#define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
+    SUBENTRY_WITH_GLUE(messageId, condition, glue)
 #else
 #define ASM_ASSERT(messageId, ...) ((void)0)
+#define ASM_ASSERT_WITH_GLUE(messageId, ...) ((void)0)
+#endif
+
+#ifndef NDEBUG
+#define EXITENTRY()                                                                 \
+    env->SubCfgExit()
+#elif defined(ENABLE_ASM_ASSERT)
+#define EXITENTRY()                                                                 \
+    env->SubCfgExit()
+#else
+#define EXITENTRY() ((void)0)
 #endif
 
 class StubBuilder {
@@ -105,6 +132,7 @@ public:
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
     GateRef CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
+    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
     void FatalPrint(GateRef thread, std::initializer_list<GateRef> args);
     // memory
@@ -196,6 +224,7 @@ public:
     GateRef Int16ToTaggedInt(GateRef x);
     GateRef IntToTaggedPtr(GateRef x);
     GateRef IntToTaggedInt(GateRef x);
+    GateRef Int64ToTaggedInt(GateRef x);
     GateRef DoubleToTaggedDoublePtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
     GateRef TaggedTrue();
@@ -395,6 +424,7 @@ public:
     GateRef GetInt64OfTInt(GateRef x);
     GateRef GetInt32OfTInt(GateRef x);
     GateRef GetDoubleOfTDouble(GateRef x);
+    GateRef GetDoubleOfTNumber(GateRef x);
     GateRef LoadObjectFromWeakRef(GateRef x);
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);
@@ -455,7 +485,7 @@ public:
     GateRef GetBoxFromGlobalDictionary(GateRef object, GateRef entry);
     GateRef GetValueFromGlobalDictionary(GateRef object, GateRef entry);
     GateRef GetPropertiesFromJSObject(GateRef object);
-    template<OpCode::Op Op, MachineType Type>
+    template<OpCode Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key);
 
@@ -464,6 +494,7 @@ public:
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
+    void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // fast path
     GateRef FastEqual(GateRef left, GateRef right);
@@ -527,7 +558,7 @@ public:
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef FastAddSubAndMul(GateRef left, GateRef right);
     GateRef FastBinaryOp(GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp);

@@ -40,6 +40,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/aot_file_manager.h"
@@ -131,6 +132,7 @@ void EcmaVM::PreFork()
 
 void EcmaVM::PostFork()
 {
+    heap_->SetIsFork(true);
     GetAssociatedJSThread()->SetThreadId();
     heap_->EnableParallelGC();
 }
@@ -223,6 +225,9 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
         LoadAOTFiles();
     }
+
+    optCodeProfiler_ = new OptCodeProfiler();
+
     initialized_ = true;
     return true;
 }
@@ -284,6 +289,11 @@ EcmaVM::~EcmaVM()
 
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
         runtimeStat_->Print();
+    }
+
+    if (optCodeProfiler_ != nullptr) {
+        delete optCodeProfiler_;
+        optCodeProfiler_ = nullptr;
     }
 
     // clear c_address: c++ pointer delete
@@ -419,14 +429,14 @@ bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                               const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
-    aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile, entryPoint);
+    aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
     Method *method = mainFunc->GetCallTarget();
     size_t actualNumArgs = method->GetNumArgs();
     size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
     std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
     args[0] = mainFunc.GetTaggedValue().GetRawData();
     args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
-    const JSTaggedType *prevFp = thread_->GetCurrentSPFrame();
+    const JSTaggedType *prevFp = thread_->GetLastLeaveFrame();
     JSTaggedValue res = ExecuteAot(actualNumArgs, args.data(), prevFp, OptimizedEntryFrame::CallType::CALL_FUNC);
     if (thread_->HasPendingException()) {
         return thread_->GetException();
@@ -437,6 +447,7 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
 JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                                  OptimizedEntryFrame::CallType callType)
 {
+    INTERPRETER_TRACE(thread_, ExecuteAot);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             actualNumArgs,
@@ -540,6 +551,16 @@ JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaF
     }
 
     return JSHandle<ConstantPool>(thread_, constpool);
+}
+
+std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> EcmaVM::FindConstpools(
+    const JSPandaFile *jsPandaFile)
+{
+    auto iter = cachedConstpools_.find(jsPandaFile);
+    if (iter == cachedConstpools_.end()) {
+        return std::nullopt;
+    }
+    return iter->second;
 }
 
 void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
@@ -817,8 +838,8 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&frameworkProgram_)));
-    rv(Root::ROOT_VM,
-        ObjectSlot(ToUintPtr(&internalNativeMethods_.front())), ObjectSlot(ToUintPtr(&internalNativeMethods_.back())));
+    rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
+        ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
     moduleManager_->Iterate(v);
     tsManager_->Iterate(v);
     aotFileManager_->Iterate(v);
@@ -846,15 +867,16 @@ void EcmaVM::SetupRegExpResultCache()
 
 void EcmaVM::LoadStubFile()
 {
-    aotFileManager_->LoadStubFile();
+    std::string stubFile = options_.GetStubFile();
+    aotFileManager_->LoadStubFile(stubFile);
 }
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string anFile = options_.GetAOTOutputFile() + ".an";
+    std::string anFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AN;
     aotFileManager_->LoadAnFile(anFile);
 
-    std::string aiFile = options_.GetAOTOutputFile() + ".ai";
+    std::string aiFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AI;
     aotFileManager_->LoadSnapshotFile(aiFile);
 }
 

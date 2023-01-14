@@ -48,7 +48,7 @@ private:
     void AllocateInYoung(Variable *result, Label *exit);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
-    GateRef glue_ {0};
+    GateRef glue_ {Circuit::NullGate()};
     GateRef size_ {0};
 };
 }  // namespace panda::ecmascript::kungfu

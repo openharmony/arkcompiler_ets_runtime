@@ -16,5 +16,5 @@
 declare function AssertType(value:any, type:string):void;
 {
     let arr:boolean[]= [];
-    AssertType(arr, "array");
+    AssertType(arr, "boolean[]");
 }

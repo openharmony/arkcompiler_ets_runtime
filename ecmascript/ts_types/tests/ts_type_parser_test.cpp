@@ -15,23 +15,22 @@
 
 #include <thread>
 
-#include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
 
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
-#include "ecmascript/ts_types/ts_obj_layout_info.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
-#include "ecmascript/ts_types/ts_type_table.h"
 
+namespace panda::test {
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
+using LiteralValueType = std::variant<uint8_t, uint32_t, std::string>;
 
-namespace panda::test {
+static constexpr uint16_t FIRST_USER_DEFINE_MODULE_ID = TSModuleTable::DEFAULT_NUMBER_OF_TABLES;
+static constexpr uint16_t FIRST_USER_DEFINE_LOCAL_ID = 1;
+
 class TSTypeParserTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -54,144 +53,470 @@ public:
         TestHelper::DestroyEcmaVMWithScope(ecmaVm, scope);
     }
 
-    EcmaVM *ecmaVm = nullptr;
+    void AddLiteral(pandasm::Program &program, const std::string &literalId,
+                    const std::vector<panda_file::LiteralTag> &tags,
+                    const std::vector<LiteralValueType> &values);
+    void AddTagValue(std::vector<LiteralArray::Literal> &literalArray,
+                     const panda_file::LiteralTag tag,
+                     const LiteralValueType &value);
+    void AddTypeSummary(pandasm::Program &program, const std::vector<std::string> &typeIds);
+    void AddSummaryLiteral(pandasm::Program &program, const std::string &typeSummaryId,
+                           const std::vector<std::string> &typeIds);
+    void AddCommonJsField(pandasm::Program &program);
+
+    EcmaVM *ecmaVm {nullptr};
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
-
-protected:
-    JSPandaFile *CreateJSPandaFile(const CString filename)
-    {
-        const char *source = R"(
-            .function void foo() {}
-        )";
-        Parser parser;
-        const std::string fn = "SRC.pa"; // test file name : "SRC.pa"
-        auto res = parser.Parse(source, fn);
-        EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
-
-        std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-        JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-        JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
-        return pf;
-    }
 };
 
-HWTEST_F_L0(TSTypeParserTest, ParseType)
+void TSTypeParserTest::AddLiteral(pandasm::Program &program, const std::string &literalId,
+                                  const std::vector<panda_file::LiteralTag> &tags,
+                                  const std::vector<LiteralValueType> &values)
 {
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    const CString fileName = "__TSTypeParserTest.pa";
-    JSPandaFile *pf = CreateJSPandaFile(fileName);
-    CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser tsTypeParser(vm, pf, recordImportModules);
-    JSHandle<TaggedArray> literal = factory->NewTaggedArray(8);
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::INTERFACE_KIND)));
-    literal->Set(thread, 1, JSTaggedValue(0));
-    literal->Set(thread, 2, JSTaggedValue(0));
-    literal->Set(thread, 3, JSTaggedValue(0));
-    literal->Set(thread, 4, JSTaggedValue(0));
-    literal->Set(thread, 5, JSTaggedValue(0));
-    literal->Set(thread, 6, JSTaggedValue(0));
-    literal->Set(thread, 7, JSTaggedValue(0));
+    EXPECT_EQ(tags.size(), values.size());
+    std::vector<pandasm::LiteralArray::Literal> literal {};
+    for (uint32_t i = 0; i < tags.size(); i++) {
+        AddTagValue(literal, tags[i], values[i]);
+    }
+    pandasm::LiteralArray literalArray(literal);
+    program.literalarray_table.emplace(literalId, literalArray);
+}
 
-    JSHandle<JSTaggedValue> type = tsTypeParser.ParseType(literal);
-    EXPECT_TRUE(type->IsTSInterfaceType());
+void TSTypeParserTest::AddTagValue(std::vector<LiteralArray::Literal> &literalArray,
+                                   const panda_file::LiteralTag tag,
+                                   const LiteralValueType &value)
+{
+    pandasm::LiteralArray::Literal literalTag;
+    literalTag.tag_ = panda_file::LiteralTag::TAGVALUE;
+    literalTag.value_ = static_cast<uint8_t>(tag);
+    literalArray.emplace_back(std::move(literalTag));
 
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::ARRAY)));
-    type = tsTypeParser.ParseType(literal);
-    EXPECT_TRUE(type->IsTSArrayType());
+    pandasm::LiteralArray::Literal literalValue;
+    literalValue.tag_ = tag;
 
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::CLASS)));
-    type = tsTypeParser.ParseType(literal);
+    if (tag == panda_file::LiteralTag::INTEGER) {
+        literalValue.value_ = std::get<uint32_t>(value);
+    } else if (tag == panda_file::LiteralTag::BUILTINTYPEINDEX) {
+        literalValue.value_ = std::get<uint8_t>(value);
+    } else if (tag == panda_file::LiteralTag::STRING) {
+        literalValue.value_ = std::get<std::string>(value);
+    } else if (tag == panda_file::LiteralTag::LITERALARRAY) {
+        literalValue.value_ = std::get<std::string>(value);
+    } else {
+        EXPECT_FALSE(true);
+    }
+
+    literalArray.emplace_back(std::move(literalValue));
+}
+
+void TSTypeParserTest::AddTypeSummary(pandasm::Program &program, const std::vector<std::string> &typeIds)
+{
+    const std::string typeSummaryId("test_0");
+    AddSummaryLiteral(program, typeSummaryId, typeIds);
+
+    const std::string testStr("test");
+    auto iter = program.record_table.find(testStr);
+    EXPECT_NE(iter, program.record_table.end());
+    if (iter != program.record_table.end()) {
+        auto &rec = iter->second;
+        auto typeSummaryIndexField = pandasm::Field(pandasm::extensions::Language::ECMASCRIPT);
+        typeSummaryIndexField.name = "typeSummaryOffset";
+        typeSummaryIndexField.type = pandasm::Type("u32", 0);
+        typeSummaryIndexField.metadata->SetValue(
+            pandasm::ScalarValue::Create<pandasm::Value::Type::LITERALARRAY>(typeSummaryId));
+        rec.field_list.emplace_back(std::move(typeSummaryIndexField));
+    }
+}
+
+void TSTypeParserTest::AddSummaryLiteral(pandasm::Program &program, const std::string &typeSummaryId,
+                                         const std::vector<std::string> &typeIds)
+{
+    uint32_t numOfTypes = typeIds.size();
+    std::vector<panda_file::LiteralTag> typeSummaryTags { panda_file::LiteralTag::INTEGER };
+    std::vector<LiteralValueType> typeSummaryValues { numOfTypes };
+    for (uint32_t i = 0; i < numOfTypes; i++) {
+        typeSummaryTags.emplace_back(panda_file::LiteralTag::LITERALARRAY);
+        typeSummaryValues.emplace_back(typeIds[i]);
+    }
+    typeSummaryTags.emplace_back(panda_file::LiteralTag::INTEGER);
+    typeSummaryValues.emplace_back(static_cast<uint32_t>(0U));
+    AddLiteral(program, typeSummaryId, typeSummaryTags, typeSummaryValues);
+}
+
+void TSTypeParserTest::AddCommonJsField(pandasm::Program &program)
+{
+    const std::string testStr("test");
+    auto iter = program.record_table.find(testStr);
+    EXPECT_NE(iter, program.record_table.end());
+    if (iter != program.record_table.end()) {
+        auto &rec = iter->second;
+        auto isCommonJsField = pandasm::Field(pandasm::extensions::Language::ECMASCRIPT);
+        isCommonJsField.name = "isCommonjs";
+        isCommonJsField.type = pandasm::Type("u8", 0);
+        isCommonJsField.metadata->SetValue(
+            pandasm::ScalarValue::Create<pandasm::Value::Type::U8>(static_cast<uint8_t>(false)));
+        rec.field_list.emplace_back(std::move(isCommonJsField));
+    }
+}
+
+HWTEST_F_L0(TSTypeParserTest, TestPrimetiveType)
+{
+    auto tsManager = ecmaVm->GetTSManager();
+    TSTypeParser tsTypeParser(tsManager);
+    JSPandaFile *jsPandaFile = nullptr;
+    const CString recordName("");
+    uint32_t primetiveTypeId = 0U;
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, primetiveTypeId);
+    EXPECT_EQ(resultGT, GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, primetiveTypeId));
+}
+
+HWTEST_F_L0(TSTypeParserTest, TestBuiltinType)
+{
+    auto tsManager = ecmaVm->GetTSManager();
+    TSTypeParser tsTypeParser(tsManager);
+    JSPandaFile *jsPandaFile = nullptr;
+    const CString recordName("");
+    uint32_t builtinTypeId = 50U;
+    GlobalTSTypeRef builtinGT = tsTypeParser.CreateGT(jsPandaFile, recordName, builtinTypeId);
+    EXPECT_EQ(builtinGT, GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, builtinTypeId));
+}
+
+HWTEST_F_L0(TSTypeParserTest, TestTSClassType)
+{
+    const char *source = R"(
+        .language ECMAScript
+        .record test {}
+        .function void foo() {}
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(source);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+    auto &program = res.Value();
+
+    const std::string classId("test_1");
+    const std::string valueStr("value");
+    std::vector<panda_file::LiteralTag> classTags { panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::BUILTINTYPEINDEX,
+                                                    panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::STRING,
+                                                    panda_file::LiteralTag::BUILTINTYPEINDEX,
+                                                    panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::INTEGER };
+    std::vector<LiteralValueType> classValues { static_cast<uint32_t>(1),
+                                                static_cast<uint32_t>(0),
+                                                static_cast<uint8_t>(0),
+                                                static_cast<uint32_t>(0),
+                                                static_cast<uint32_t>(0),
+                                                static_cast<uint32_t>(0),
+                                                static_cast<uint32_t>(1),
+                                                valueStr,
+                                                static_cast<uint8_t>(1),
+                                                static_cast<uint32_t>(0),
+                                                static_cast<uint32_t>(0),
+                                                static_cast<uint32_t>(0) };
+    AddLiteral(program, classId, classTags, classValues);
+
+    const std::string abcFileName("TSClassTypeTest.abc");
+    AddTypeSummary(program, { classId });
+    AddCommonJsField(program);
+    std::map<std::string, size_t> *statp = nullptr;
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
+    EXPECT_TRUE(pandasm::AsmEmitter::Emit(abcFileName, program, statp, mapsp, false));
+    std::unique_ptr<const panda_file::File> pfPtr = panda_file::File::Open(abcFileName);
+    EXPECT_NE(pfPtr.get(), nullptr);
+
+    Span<const uint32_t> literalArrays = pfPtr.get()->GetLiteralArrays();
+    EXPECT_TRUE(literalArrays.size() >= 2);
+    // typeIds in order from largest to smallest and the last one is typeSummary literal
+    uint32_t testTypeIndex = literalArrays.size() - 2;
+    uint32_t testTypeOffset = literalArrays[testTypeIndex];
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const CString fileName(abcFileName.c_str());
+    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    EXPECT_NE(jsPandaFile, nullptr);
+
+    auto tsManager = ecmaVm->GetTSManager();
+    TSTypeParser tsTypeParser(tsManager);
+    const CString recordName("test");
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
+    EXPECT_TRUE(tsManager->IsClassTypeKind(resultGT));
+    JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
     EXPECT_TRUE(type->IsTSClassType());
 
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::CLASS_INSTANCE)));
-    type = tsTypeParser.ParseType(literal);
-    EXPECT_TRUE(type->IsTSClassInstanceType());
+    JSHandle<TSClassType> classType(type);
+    EXPECT_EQ(resultGT, classType->GetGT());
+    auto factory = ecmaVm->GetFactory();
+    JSHandle<EcmaString> propertyName = factory->NewFromStdString(valueStr);
+    GlobalTSTypeRef propGT = TSClassType::GetPropTypeGT(thread, classType, propertyName);
+    EXPECT_EQ(propGT,
+              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
+}
 
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::FUNCTION)));
-    type = tsTypeParser.ParseType(literal);
+HWTEST_F_L0(TSTypeParserTest, TestTSFunctionType)
+{
+    const char *source = R"(
+        .language ECMAScript
+        .record test {}
+        .function void foo() {}
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(source);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+    auto &program = res.Value();
+
+    const std::string functionId("test_1");
+    const std::string functionName("foo");
+    const uint32_t numOfParas = 2;
+    std::vector<panda_file::LiteralTag> functionTags { panda_file::LiteralTag::INTEGER,
+                                                       panda_file::LiteralTag::INTEGER,
+                                                       panda_file::LiteralTag::STRING,
+                                                       panda_file::LiteralTag::INTEGER,
+                                                       panda_file::LiteralTag::INTEGER,
+                                                       panda_file::LiteralTag::BUILTINTYPEINDEX,
+                                                       panda_file::LiteralTag::BUILTINTYPEINDEX,
+                                                       panda_file::LiteralTag::BUILTINTYPEINDEX };
+    std::vector<LiteralValueType> functionValues { static_cast<uint32_t>(3),
+                                                   static_cast<uint32_t>(0),
+                                                   functionName,
+                                                   static_cast<uint32_t>(0),
+                                                   numOfParas,
+                                                   static_cast<uint8_t>(1),
+                                                   static_cast<uint8_t>(4),
+                                                   static_cast<uint8_t>(2) };
+    AddLiteral(program, functionId, functionTags, functionValues);
+
+    const std::string abcFileName("TSFunctionTypeTest.abc");
+    AddTypeSummary(program, { functionId });
+    AddCommonJsField(program);
+    std::map<std::string, size_t> *statp = nullptr;
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
+    EXPECT_TRUE(pandasm::AsmEmitter::Emit(abcFileName, program, statp, mapsp, false));
+    std::unique_ptr<const panda_file::File> pfPtr = panda_file::File::Open(abcFileName);
+    EXPECT_NE(pfPtr.get(), nullptr);
+
+    Span<const uint32_t> literalArrays = pfPtr.get()->GetLiteralArrays();
+    EXPECT_TRUE(literalArrays.size() >= 2);
+    // typeIds in order from largest to smallest and the last one is typeSummary literal
+    uint32_t testTypeIndex = literalArrays.size() - 2;
+    uint32_t testTypeOffset = literalArrays[testTypeIndex];
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const CString fileName(abcFileName.c_str());
+    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    EXPECT_NE(jsPandaFile, nullptr);
+
+    auto tsManager = ecmaVm->GetTSManager();
+    TSTypeParser tsTypeParser(tsManager);
+    const CString recordName("test");
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
+    EXPECT_TRUE(tsManager->IsFunctionTypeKind(resultGT));
+    JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
     EXPECT_TRUE(type->IsTSFunctionType());
 
-    CString importVarAndPath = "#TSTypeParserTest#Test";
-    JSHandle<EcmaString> importString = factory->NewFromUtf8(importVarAndPath);
-    JSHandle<JSTaggedValue> importStringVal = JSHandle<JSTaggedValue>::Cast(importString);
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::IMPORT)));
-    literal->Set(thread, 1, importStringVal.GetTaggedValue());
-    type = tsTypeParser.ParseType(literal);
-    EXPECT_TRUE(type->IsTSImportType());
+    JSHandle<TSFunctionType> functionType(type);
+    EXPECT_EQ(resultGT, functionType->GetGT());
+    EXPECT_EQ(functionType->GetLength(), numOfParas);
+    EXPECT_EQ(functionType->GetParameterTypeGT(0),
+              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
+    EXPECT_EQ(functionType->GetParameterTypeGT(1),
+              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::STRING)));
+    EXPECT_EQ(functionType->GetReturnGT(),
+              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::BOOLEAN)));
+}
 
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::OBJECT)));
-    literal->Set(thread, 1, JSTaggedValue(0));
-    type = tsTypeParser.ParseType(literal);
+HWTEST_F_L0(TSTypeParserTest, TestTSUnionType)
+{
+    const char *source = R"(
+        .language ECMAScript
+        .record test {}
+        .function void foo() {}
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(source);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+    auto &program = res.Value();
+
+    const std::string unionId("test_1");
+    const uint32_t numOfTypes = 2;
+    std::vector<panda_file::LiteralTag> unionTags { panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::BUILTINTYPEINDEX,
+                                                    panda_file::LiteralTag::BUILTINTYPEINDEX };
+    std::vector<LiteralValueType> unionValues { static_cast<uint32_t>(4),
+                                                numOfTypes,
+                                                static_cast<uint8_t>(1),
+                                                static_cast<uint8_t>(4) };
+    AddLiteral(program, unionId, unionTags, unionValues);
+
+    const std::string abcFileName("TSUnionTypeTest.abc");
+    AddTypeSummary(program, { unionId });
+    AddCommonJsField(program);
+    std::map<std::string, size_t> *statp = nullptr;
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
+    EXPECT_TRUE(pandasm::AsmEmitter::Emit(abcFileName, program, statp, mapsp, false));
+    std::unique_ptr<const panda_file::File> pfPtr = panda_file::File::Open(abcFileName);
+    EXPECT_NE(pfPtr.get(), nullptr);
+
+    Span<const uint32_t> literalArrays = pfPtr.get()->GetLiteralArrays();
+    EXPECT_TRUE(literalArrays.size() >= 2);
+    // typeIds in order from largest to smallest and the last one is typeSummary literal
+    uint32_t testTypeIndex = literalArrays.size() - 2;
+    uint32_t testTypeOffset = literalArrays[testTypeIndex];
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const CString fileName(abcFileName.c_str());
+    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    EXPECT_NE(jsPandaFile, nullptr);
+
+    auto tsManager = ecmaVm->GetTSManager();
+    TSTypeParser tsTypeParser(tsManager);
+    const CString recordName("test");
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
+    EXPECT_TRUE(tsManager->IsUnionTypeKind(resultGT));
+    JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
+    EXPECT_TRUE(type->IsTSUnionType());
+
+    JSHandle<TSUnionType> unionType(type);
+    EXPECT_EQ(resultGT, unionType->GetGT());
+    EXPECT_EQ(tsManager->GetUnionTypeLength(resultGT), numOfTypes);
+    EXPECT_EQ(tsManager->GetUnionTypeByIndex(resultGT, 0),
+              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
+    EXPECT_EQ(tsManager->GetUnionTypeByIndex(resultGT, 1),
+              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::STRING)));
+}
+
+HWTEST_F_L0(TSTypeParserTest, TestTSArrayType)
+{
+    const char *source = R"(
+        .language ECMAScript
+        .record test {}
+        .function void foo() {}
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(source);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+    auto &program = res.Value();
+
+    const std::string arrayId("test_1");
+    std::vector<panda_file::LiteralTag> arrayTags { panda_file::LiteralTag::INTEGER,
+                                                    panda_file::LiteralTag::BUILTINTYPEINDEX };
+    std::vector<LiteralValueType> arrayValues { static_cast<uint32_t>(5),
+                                                static_cast<uint8_t>(1) };
+    AddLiteral(program, arrayId, arrayTags, arrayValues);
+
+    const std::string abcFileName("TSArrayTypeTest.abc");
+    AddTypeSummary(program, { arrayId });
+    AddCommonJsField(program);
+    std::map<std::string, size_t> *statp = nullptr;
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
+    EXPECT_TRUE(pandasm::AsmEmitter::Emit(abcFileName, program, statp, mapsp, false));
+    std::unique_ptr<const panda_file::File> pfPtr = panda_file::File::Open(abcFileName);
+    EXPECT_NE(pfPtr.get(), nullptr);
+
+    Span<const uint32_t> literalArrays = pfPtr.get()->GetLiteralArrays();
+    EXPECT_TRUE(literalArrays.size() >= 2);
+    // typeIds in order from largest to smallest and the last one is typeSummary literal
+    uint32_t testTypeIndex = literalArrays.size() - 2;
+    uint32_t testTypeOffset = literalArrays[testTypeIndex];
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const CString fileName(abcFileName.c_str());
+    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    EXPECT_NE(jsPandaFile, nullptr);
+
+    auto tsManager = ecmaVm->GetTSManager();
+    TSTypeParser tsTypeParser(tsManager);
+    const CString recordName("test");
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
+    EXPECT_TRUE(tsManager->IsArrayTypeKind(resultGT));
+    JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
+    EXPECT_TRUE(type->IsTSArrayType());
+
+    JSHandle<TSArrayType> arrayType(type);
+    EXPECT_EQ(resultGT, arrayType->GetGT());
+    EXPECT_EQ(arrayType->GetElementGT(),
+              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
+}
+
+HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
+{
+    const char *source = R"(
+        .language ECMAScript
+        .record test {}
+        .function void foo() {}
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(source);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+    auto &program = res.Value();
+
+    const std::string objectId("test_1");
+    const std::string ageStr("age");
+    const std::string funStr("fun");
+    std::vector<panda_file::LiteralTag> objectTags { panda_file::LiteralTag::INTEGER,
+                                                     panda_file::LiteralTag::INTEGER,
+                                                     panda_file::LiteralTag::STRING,
+                                                     panda_file::LiteralTag::BUILTINTYPEINDEX,
+                                                     panda_file::LiteralTag::STRING,
+                                                     panda_file::LiteralTag::BUILTINTYPEINDEX };
+    std::vector<LiteralValueType> objectValues { static_cast<uint32_t>(6),
+                                                 static_cast<uint32_t>(2),
+                                                 ageStr,
+                                                 static_cast<uint8_t>(1),
+                                                 funStr,
+                                                 static_cast<uint8_t>(1) };
+    AddLiteral(program, objectId, objectTags, objectValues);
+
+    const std::string abcFileName("TSObjectTypeTest.abc");
+    AddTypeSummary(program, { objectId });
+    AddCommonJsField(program);
+    std::map<std::string, size_t> *statp = nullptr;
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
+    pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
+    EXPECT_TRUE(pandasm::AsmEmitter::Emit(abcFileName, program, statp, mapsp, false));
+    std::unique_ptr<const panda_file::File> pfPtr = panda_file::File::Open(abcFileName);
+    EXPECT_NE(pfPtr.get(), nullptr);
+
+    Span<const uint32_t> literalArrays = pfPtr.get()->GetLiteralArrays();
+    EXPECT_TRUE(literalArrays.size() >= 2);
+    // typeIds in order from largest to smallest and the last one is typeSummary literal
+    uint32_t testTypeIndex = literalArrays.size() - 2;
+    uint32_t testTypeOffset = literalArrays[testTypeIndex];
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const CString fileName(abcFileName.c_str());
+    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    EXPECT_NE(jsPandaFile, nullptr);
+
+    auto tsManager = ecmaVm->GetTSManager();
+    TSTypeParser tsTypeParser(tsManager);
+    const CString recordName("test");
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
+    EXPECT_TRUE(tsManager->IsObjectTypeKind(resultGT));
+    JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
     EXPECT_TRUE(type->IsTSObjectType());
 
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::UNION)));
-    literal->Set(thread, 1, JSTaggedValue(3)); // 3 : num of union members
-    type = tsTypeParser.ParseType(literal);
-    EXPECT_TRUE(type->IsTSUnionType());
-}
-
-HWTEST_F_L0(TSTypeParserTest, SetTypeGT)
-{
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    uint32_t moduleId = 0;
-    uint32_t localId = 0;
-    const CString fileName = "__TSTypeParserTest.pa";
-    JSPandaFile *pf = CreateJSPandaFile(fileName);
-    CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser tsTypeParser(vm, pf, recordImportModules);
-    JSHandle<TaggedArray> literal = factory->NewTaggedArray(3);
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::ARRAY)));
-    literal->Set(thread, 1, JSTaggedValue(0));
-    literal->Set(thread, 2, JSTaggedValue(0));
-    JSHandle<JSTaggedValue> type = tsTypeParser.ParseType(literal);
-    tsTypeParser.SetTypeGT(type, moduleId, localId);
-    GlobalTSTypeRef resultGt = JSHandle<TSType>(type)->GetGT();
-    GlobalTSTypeRef expectGt = GlobalTSTypeRef(moduleId, localId);
-    EXPECT_EQ(resultGt, expectGt);
-}
-
-HWTEST_F_L0(TSTypeParserTest, CreateGT)
-{
-    auto vm = thread->GetEcmaVM();
-    auto tsManager = vm->GetTSManager();
-    const CString fileName = "__TSTypeParserTest.pa";
-    JSPandaFile *pf = CreateJSPandaFile(fileName);
-    CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser tsTypeParser(vm, pf, recordImportModules);
-    uint32_t typeId = TSTypeParser::BUILDIN_TYPE_OFFSET;
-    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(typeId);
-    EXPECT_EQ(resultGT, GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, typeId));
-
-    typeId = TSTypeParser::USER_DEFINED_TYPE_OFFSET;
-    resultGT = tsTypeParser.CreateGT(typeId);
-    EXPECT_EQ(resultGT, GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, typeId - TSTypeParser::BUILDIN_TYPE_OFFSET));
-
-    GlobalTSTypeRef offsetGt(TSModuleTable::INFER_TABLE_ID, typeId - TSTypeParser::BUILDIN_TYPE_OFFSET + 1);
-    typeId = TSTypeParser::USER_DEFINED_TYPE_OFFSET + 1;
-    panda_file::File::EntityId offset(typeId);
-    tsManager->AddElementToLiteralOffsetGTMap(pf, offset, offsetGt);
-    resultGT = tsTypeParser.CreateGT(typeId);
-    EXPECT_EQ(resultGT, tsManager->GetGTFromOffset(pf, offset));
-}
-
-HWTEST_F_L0(TSTypeParserTest, GetImportModules)
-{
-    auto vm = thread->GetEcmaVM();
-    auto factory = vm->GetFactory();
-    const CString fileName = "__TSTypeParserTest.pa";
-    JSPandaFile *pf = CreateJSPandaFile(fileName);
-    CVector<JSHandle<EcmaString>> recordImportModules {};
-    TSTypeParser tsTypeParser(vm, pf, recordImportModules);
-    JSHandle<EcmaString> importString = factory->NewFromUtf8("#A#TSTypeParserTest");
-    JSHandle<TaggedArray> literal = factory->NewTaggedArray(2);
-    literal->Set(thread, 0, JSTaggedValue(static_cast<int>(TSTypeKind::IMPORT)));
-    literal->Set(thread, 1, importString);
-    tsTypeParser.ParseType(literal);
-    CVector<JSHandle<EcmaString>> result = tsTypeParser.GetImportModules();
-    CString importMdoule = ConvertToString(result.back().GetTaggedValue());
-    EXPECT_STREQ(importMdoule.c_str(), "TSTypeParserTest.abc");
+    JSHandle<TSObjectType> objectType(type);
+    EXPECT_EQ(resultGT, objectType->GetGT());
+    auto factory = ecmaVm->GetFactory();
+    JSHandle<EcmaString> propName = factory->NewFromStdString(ageStr);
+    GlobalTSTypeRef propGT = TSObjectType::GetPropTypeGT(objectType, propName);
+    EXPECT_EQ(propGT,
+              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
 }
 } // namespace panda::test

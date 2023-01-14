@@ -29,14 +29,14 @@ There are several nodes named **root nodes** in Circuit IR. They are not called 
 * `DEPEND_ENTRY`: The origin of dependency flows of the entire circuit.
 
 * `RETURN_LIST`: Registering all terminal states of the function. (for traversing reversely from ending to beginning)
-  
+
 * `CONSTANT_LIST` `ARG_LIST`: Registering all value origins such as constants and arguments. (they are special computation gates that do not depend on other values)
 
-The offsets of root nodes are fixed, so they can be accessed instantly via `GateRef Circuit::GetCircuitRoot(OpCode opcode)`.
+The offsets of root nodes are fixed, so they can be accessed instantly via `GateRef Circuit::GetRoot()`.
 
 ## Type system
 
-### Levels of types 
+### Levels of types
 
 There are two levels of types of values in Circuit IR:
 

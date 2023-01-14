@@ -44,6 +44,8 @@ group("ark_aot_test") {
     "callithisrange:callithisrangeAotAction",
     "calls:callsAotAction",
     "closeiterator:closeiteratorAotAction",
+
+    # "continue_from_finally:continue_from_finallyAotAction",
     "copyrestargs:copyrestargsAotAction",
     "createarraywithbuffer:createarraywithbufferAotAction",
     "createemptyarray:createemptyarrayAotAction",
@@ -70,8 +72,7 @@ group("ark_aot_test") {
     "exceptionhandler:exceptionhandlerAotAction",
     "exp:expAotAction",
     "forloop:forloopAotAction",
-
-    # "framestatesasync:framestatesasyncAotAction",
+    "framestatesasync:framestatesasyncAotAction",
     "framestatesphi:framestatesphiAotAction",
     "generatorcontinuefinally:generatorcontinuefinallyAotAction",
     "getiterator:getiteratorAotAction",
@@ -156,7 +157,12 @@ group("ark_aot_test") {
   if (is_debug) {
     deps += [
       # builtins_stub test only print log in debug mode
+      "builtins_array:builtins_arrayAotAction",
       "builtins_stub:builtins_stubAotAction",
     ]
+  }
+
+  if (!is_debug) {
+    deps += [ "aot_multi_constantpool_test:aot_multi_constantpool_test" ]
   }
 }

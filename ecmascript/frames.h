@@ -359,9 +359,9 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       lexEnv             |               |
+//               |       call-target        |               |
 //               |--------------------------|               |
-//               |       call-target        |               v
+//               |       lexEnv             |               v
 //               +--------------------------+ ---------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
@@ -374,14 +374,19 @@ struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::Tagg
 public:
     static constexpr size_t ENV_SLOT_DIFF = 2;
     enum class Index : size_t {
-        JSFuncIndex = 0,
-        EnvIndex,
+        EnvIndex = 0,
+        JSFuncIndex,
         TypeIndex,
         PrevFpIndex,
         ReturnAddrIndex,
         NumOfMembers
     };
     static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+
+    static constexpr size_t GetFunctionDeltaReturnAddr()
+    {
+        return static_cast<size_t>(Index::ReturnAddrIndex) - static_cast<size_t>(Index::JSFuncIndex);
+    }
 
     inline JSTaggedType* GetPrevFrameFp()
     {
@@ -466,8 +471,8 @@ private:
     }
 
     // dynamic callee saveregisters for x86-64
-    alignas(EAS) JSTaggedValue jsFunc {JSTaggedValue::Undefined()};
     alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};
+    alignas(EAS) JSTaggedValue jsFunc {JSTaggedValue::Undefined()};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
@@ -476,6 +481,8 @@ private:
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionFrame),
                       OptimizedJSFunctionFrame::SizeArch32,
                       OptimizedJSFunctionFrame::SizeArch64);
+// 2: return addr & prevFp, type and js function should be pairs to update type and js function at the same time.
+static_assert((OptimizedJSFunctionFrame::GetFunctionDeltaReturnAddr() % 2) == 1);
 
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
 //          +--------------------------+

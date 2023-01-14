@@ -13,39 +13,63 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/file_path_helper.h"
+#include "ecmascript/platform/file.h"
 
 #include <climits>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/platform/map.h"
 
-#ifdef PANDA_TARGET_WINDOWS
-#include "shlwapi.h"
-#endif
+namespace panda::ecmascript {
+std::string GetFileDelimiter()
+{
+    return ":";
+}
 
-namespace panda::ecmascript::base {
-
-bool FilePathHelper::RealPath(const std::string &path, std::string &realPath, [[maybe_unused]] bool readOnly)
+bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
 {
     if (path.empty() || path.size() > PATH_MAX) {
         LOG_ECMA(WARN) << "File path is illeage";
         return false;
     }
     char buffer[PATH_MAX] = { '\0' };
-#ifndef PANDA_TARGET_WINDOWS
     if (!realpath(path.c_str(), buffer)) {
         // Maybe file does not exist.
         if (readOnly || errno != ENOENT) {
-            LOG_ECMA(ERROR) << "File path realpath failure";
+            LOG_ECMA(ERROR) << "File path" << path << " realpath failure";
             return false;
         }
     }
-#else
-    if (!_fullpath(buffer, path.c_str(), sizeof(buffer) - 1)) {
-        return false;
-    }
-#endif
     realPath = std::string(buffer);
     return true;
 }
-}  // namespace panda::ecmascript::base
+
+fd_t Open(const char *file, int flag)
+{
+    return open(file, flag);
+}
+
+void Close(fd_t fd)
+{
+    close(fd);
+}
+
+int64_t GetFileSizeByFd(fd_t fd)
+{
+    return lseek(fd, 0, SEEK_END);
+}
+
+void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, [[maybe_unused]] fd_t *extra)
+{
+    void *addr = mmap(nullptr, size, PAGE_PROT_READWRITE, MAP_PRIVATE, fd, offset);
+    LOG_ECMA_IF(addr == nullptr, FATAL) << "mmap fail";
+    return addr;
+}
+
+int FileUnMap(void *addr, uint64_t size, [[maybe_unused]] fd_t *extra)
+{
+    return munmap(addr, size);
+}
+}  // namespace panda::ecmascript

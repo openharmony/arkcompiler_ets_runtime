@@ -31,9 +31,9 @@ class Student extends Base {
         this._array[0] = 0;
         this._stringArray[0] = "hello";
 
-        AssertType(this._array, "array");
+        AssertType(this._array, "number[]");
         AssertType(this._array[0], "number");
-        AssertType(this._stringArray, "array");
+        AssertType(this._stringArray, "string[]");
         AssertType(this._stringArray[0], "string");
         AssertType(this.test(), "string");
     }

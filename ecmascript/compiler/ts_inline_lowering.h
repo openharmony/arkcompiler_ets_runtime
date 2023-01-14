@@ -25,6 +25,23 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript::kungfu {
+class CircuitRootScope {
+public:
+    explicit CircuitRootScope(Circuit *circuit)
+        : circuit_(circuit), root_(circuit->GetRoot())
+    {
+    }
+
+    ~CircuitRootScope()
+    {
+        circuit_->SetRoot(root_);
+    }
+
+private:
+    Circuit *circuit_ {nullptr};
+    GateRef root_ { 0 };
+};
+
 class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_BYTECODE_COUNT = 10;

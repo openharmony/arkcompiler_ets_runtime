@@ -42,7 +42,8 @@ using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
 
 class SnapshotProcessor final {
 public:
-    explicit SnapshotProcessor(EcmaVM *vm) : vm_(vm), objXRay_(vm) {}
+    explicit SnapshotProcessor(EcmaVM *vm, const CString &fileName = "")
+        : vm_(vm), objXRay_(vm), fileName_(fileName) {}
     ~SnapshotProcessor();
 
     void Initialize();
@@ -138,6 +139,7 @@ private:
     std::unordered_map<size_t, Region *> regionIndexMap_;
     size_t regionIndex_ {0};
     bool isRootObjRelocate_ {false};
+    const CString &fileName_;
 
     NO_COPY_SEMANTIC(SnapshotProcessor);
     NO_MOVE_SEMANTIC(SnapshotProcessor);

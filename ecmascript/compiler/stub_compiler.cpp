@@ -99,10 +99,11 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
     CompilerLog *log = GetLog();
     auto logList = GetLogList();
     auto cconfig = module->GetCompilationConfig();
+    NativeAreaAllocator allocator;
 
     bool enableMethodLog = !log->NoneMethod();
     for (size_t i = 0; i < callSigns.size(); i++) {
-        Circuit circuit(cconfig->Is64Bit());
+        Circuit circuit(&allocator, cconfig->Is64Bit());
         Stub stub(callSigns[i], &circuit);
         ASSERT(callSigns[i]->HasConstructor());
         void* env = reinterpret_cast<void*>(stub.GetEnvironment());
