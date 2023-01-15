@@ -13,23 +13,70 @@
  * limitations under the License.
  */
 
-declare function print(arg:string, arg2:any):string;
+declare function print(arg:any):string;
 
 {
-    class C {
-        a:number;
-        constructor() {
-            print("get before set:", this.a);
-            this.a = 2;
+    class A {
+        x?: number;
+        x2?: number;
+        constructor(x: number) {
+            this.x = x;
+        }
+
+        foo() {
+            print("xxxx");
         }
     }
 
-    let c = new C();
-    print("get after set:", c.a);
-    c.a = 3;
-    print("get after change:", c.a);
+    class B extends A {
+        y?: number;
+        constructor(x: number, y: number) {
+            super(x);
+            this.y = y;
+        }
+    }
 
-    let del:boolean = Reflect.deleteProperty(c, "a");
-    print("delete property:", del);
-    print("get after delete:", c.a);
+    // instance define Property
+    let b1 = new B(1, 2);
+    print(b1.hasOwnProperty("x1"));
+    Object.defineProperty(b1, "x1", {value:1});
+    print(b1.hasOwnProperty("x1"));
+
+    // instance delete and change Property
+    let b2 = new B(1, 2);
+    print(b2.hasOwnProperty("y"));
+    print(b2.y);
+    b2.y = 3;
+    print(b2.y);
+    delete b2.y;
+    print(b2.hasOwnProperty("y"));
+
+    // prototype define Property
+    let p = A.prototype;
+    let b3 = new B(1, 2);
+    print(b3.x2);
+    print(Reflect.has(b3, "x2"));
+    Object.defineProperty(p, "x2", {value:1});
+    print(b3.x2);
+    print(Reflect.has(b3, "x2"));
+
+    // prototype delete and change Property
+    let p2 = A.prototype;
+    let b4 = new B(1, 2);
+    print(b4.x);
+    b4.x = 3;
+    print(b4.x);
+    print(b4.hasOwnProperty("x"));
+    delete p2.x;
+    print(b4.hasOwnProperty("x"));
+
+    // prototype change and call function
+    let b5 = new B(1, 2);
+    b5.foo();
+    Object.setPrototypeOf(b5, {})
+    try {
+        b5.foo();
+    } catch(e) {
+        print(e);
+    }
 }

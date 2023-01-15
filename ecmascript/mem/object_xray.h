@@ -362,6 +362,12 @@ public:
             case JSType::TRANSITION_HANDLER:
                 TransitionHandler::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::TRANS_WITH_PROTO_HANDLER:
+                TransWithProtoHandler::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::STORE_TS_HANDLER:
+                StoreTSHandler::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::PROPERTY_BOX:
                 PropertyBox::Cast(object)->VisitRangeSlot(visitor);
                 break;

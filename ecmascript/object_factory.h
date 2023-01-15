@@ -158,6 +158,8 @@ class PendingJob;
 }  // namespace job
 class TransitionHandler;
 class PrototypeHandler;
+class TransWithProtoHandler;
+class StoreTSHandler;
 class PropertyBox;
 class ProtoChangeMarker;
 class ProtoChangeDetails;
@@ -200,6 +202,10 @@ public:
     JSHandle<TransitionHandler> NewTransitionHandler();
 
     JSHandle<PrototypeHandler> NewPrototypeHandler();
+
+    JSHandle<TransWithProtoHandler> NewTransWithProtoHandler();
+
+    JSHandle<StoreTSHandler> NewStoreTSHandler();
 
     JSHandle<JSObject> NewEmptyJSObject();
 

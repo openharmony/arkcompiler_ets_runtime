@@ -849,6 +849,18 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(transitionHandler)
                 break;
             }
+            case JSType::TRANS_WITH_PROTO_HANDLER: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TransWithProtoHandler::SIZE, 3U);
+                JSHandle<TransWithProtoHandler> transWithProtoHandler = factory->NewTransWithProtoHandler();
+                DUMP_FOR_HANDLE(transWithProtoHandler)
+                break;
+            }
+            case JSType::STORE_TS_HANDLER: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), StoreTSHandler::SIZE, 3U);
+                JSHandle<StoreTSHandler> storeTSHandler = factory->NewStoreTSHandler();
+                DUMP_FOR_HANDLE(storeTSHandler)
+                break;
+            }
             case JSType::PROPERTY_BOX: {
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), PropertyBox::SIZE, 1U);
                 JSHandle<PropertyBox> PropertyBox = factory->NewPropertyBox(globalConst->GetHandledEmptyArray());

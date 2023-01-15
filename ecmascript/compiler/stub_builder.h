@@ -208,6 +208,8 @@ public:
     GateRef TaggedIsPropertyBox(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
     GateRef TaggedIsPrototypeHandler(GateRef x);
+    GateRef TaggedIsStoreTSHandler(GateRef x);
+    GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
@@ -327,12 +329,16 @@ public:
     GateRef IsInvalidPropertyBox(GateRef obj);
     GateRef GetValueFromPropertyBox(GateRef obj);
     void SetValueToPropertyBox(GateRef glue, GateRef obj, GateRef value);
-    GateRef GetTransitionFromHClass(GateRef obj);
+    GateRef GetTransitionHClass(GateRef obj);
     GateRef GetTransitionHandlerInfo(GateRef obj);
+    GateRef GetTransWithProtoHClass(GateRef obj);
+    GateRef GetTransWithProtoHandlerInfo(GateRef obj);
     GateRef IsInternalAccessor(GateRef attr);
     GateRef GetProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
+    GateRef GetStoreTSHandlerHolder(GateRef object);
+    GateRef GetStoreTSHandlerHandlerInfo(GateRef object);
     GateRef GetPrototype(GateRef glue, GateRef object);
     GateRef GetHasChanged(GateRef object);
     GateRef HclassIsPrototypeHandler(GateRef hClass);
@@ -371,6 +377,7 @@ public:
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
+    GateRef IsAOTHClass(GateRef hClass);
     void SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value);
     GateRef GetObjectSizeFromHClass(GateRef hClass);
     GateRef GetInlinedPropsStartFromHClass(GateRef hClass);
@@ -426,7 +433,8 @@ public:
     GateRef GetArrayLength(GateRef object);
     GateRef DoubleToInt(GateRef glue, GateRef x);
     void StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler);
-    void StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler);
+    void StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
+                             bool withPrototype = false);
     GateRef StoreGlobal(GateRef glue, GateRef value, GateRef cell);
     void JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
     void NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass);

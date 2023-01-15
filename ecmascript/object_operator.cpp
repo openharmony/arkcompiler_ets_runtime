@@ -18,8 +18,8 @@
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/global_dictionary.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
@@ -27,6 +27,7 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/layout_info.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_dictionary.h"
@@ -94,6 +95,18 @@ void ObjectOperator::UpdateHolder()
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_).GetTaggedValue());
     } else {
         holder_.Update(JSTaggedValue::ToPrototypeOrObj(thread_, holder_).GetTaggedValue());
+    }
+}
+
+void ObjectOperator::UpdateIsAOT()
+{
+    if (!holder_->IsECMAObject()) {
+        SetIsAOT(false);
+        return;
+    }
+    auto hclass = JSHandle<JSObject>::Cast(holder_)->GetClass();
+    if (hclass->IsAOT()) {
+        SetIsAOT(true);
     }
 }
 
@@ -252,6 +265,7 @@ void ObjectOperator::GlobalLookupProperty()
 void ObjectOperator::LookupProperty()
 {
     while (true) {
+        UpdateIsAOT();
         LookupPropertyInHolder();
         if (IsFound()) {
             return;
@@ -333,6 +347,12 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
         JSTaggedValue value;
         if (attr.IsInlinedProps()) {
             value = obj->GetPropertyInlinedProps(entry);
+            if (value.IsHole()) {
+                if (receiverHoleEntry_ == -1 && receiver_ == holder_) {
+                    receiverHoleEntry_ = entry;
+                }
+                return;
+            }
         } else {
             entry -= static_cast<int>(jshclass->GetInlinedProperties());
             value = array->Get(entry);
@@ -563,7 +583,7 @@ bool ObjectOperator::AddProperty(const JSHandle<JSObject> &receiver, const JSHan
         return ret;
     }
 
-    ResetState();
+    ResetStateForAddProperty();
     receiver_.Update(receiver.GetTaggedValue());
     SetAttr(attr.GetValue());
     AddPropertyInternal(value);
@@ -626,6 +646,14 @@ void ObjectOperator::ResetState()
     SetAttr(0);
     SetIsOnPrototype(false);
     SetHasReceiver(false);
+    SetIsAOT(false);
+}
+
+void ObjectOperator::ResetStateForAddProperty()
+{
+    bool isOnPrototype = IsOnPrototype();
+    ResetState();
+    SetIsOnPrototype(isOnPrototype);
 }
 
 void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
@@ -693,6 +721,17 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         obj->SetProperties(thread_, properties);
         // index and fastMode is not essential for global obj;
         SetFound(0, cellHandle.GetTaggedValue(), attr.GetValue(), true);
+        return;
+    }
+
+    if (receiverHoleEntry_ != -1) {
+        auto *hclass = receiver_->GetTaggedObject()->GetClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+        attr = layoutInfo->GetAttr(receiverHoleEntry_);
+        JSObject::Cast(receiver_.GetTaggedValue())->SetProperty(thread_, hclass, attr, value.GetTaggedValue());
+        uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
+                attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();
+        SetFound(index, value.GetTaggedValue(), attr.GetValue(), true);
         return;
     }
 
