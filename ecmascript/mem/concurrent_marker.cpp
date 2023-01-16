@@ -29,8 +29,6 @@
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/runtime_call_id.h"
 
-#include "libpandabase/os/mutex.h"
-
 namespace panda::ecmascript {
 size_t ConcurrentMarker::taskCounts_ = 0;
 os::memory::Mutex ConcurrentMarker::taskCountMutex_;

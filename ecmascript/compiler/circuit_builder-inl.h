@@ -47,11 +47,12 @@ GateRef CircuitBuilder::Equal(GateRef x, GateRef y)
         case I16:
         case I32:
         case I64:
-            return BinaryCmp(OpCode(OpCode::ICMP), x, y, static_cast<BitField>(ICmpCondition::EQ));
+            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::EQ)), x, y);
         case F32:
         case F64:
-            return BinaryCmp(OpCode(OpCode::FCMP), x, y, static_cast<BitField>(FCmpCondition::OEQ));
+            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::OEQ)), x, y);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -67,11 +68,12 @@ GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y)
         case I16:
         case I32:
         case I64:
-            return BinaryCmp(OpCode(OpCode::ICMP), x, y, static_cast<BitField>(ICmpCondition::NE));
+            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::NE)), x, y);
         case F32:
         case F64:
-            return BinaryCmp(OpCode(OpCode::FCMP), x, y, static_cast<BitField>(FCmpCondition::ONE));
+            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::ONE)), x, y);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -82,8 +84,8 @@ GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset)
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef val = PtrAdd(base, offset);
-    GateRef result = GetCircuit()->NewGate(OpCode(OpCode::LOAD), type.GetMachineType(),
-                                           0, { depend, val }, type.GetGateType());
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(), type.GetMachineType(),
+                                           { depend, val }, type.GetGateType());
     label->SetDepend(result);
     return result;
 }
@@ -114,24 +116,29 @@ GateRef CircuitBuilder::GetDoubleOfTDouble(GateRef x)
     return CastInt64ToFloat64(val);
 }
 
-GateRef CircuitBuilder::ChangeTaggedPointerToInt64(GateRef x)
+GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
 {
-    return UnaryArithmetic(OpCode(OpCode::TAGGED_TO_INT64), x);
-}
-
-GateRef CircuitBuilder::ChangeInt32ToFloat64(GateRef x)
-{
-    return UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F64, x);
-}
-
-GateRef CircuitBuilder::ChangeInt32ToFloat32(GateRef x)
-{
-    return UnaryArithmetic(OpCode(OpCode::SIGNED_INT_TO_FLOAT), MachineType::F32, x);
-}
-
-GateRef CircuitBuilder::ChangeUInt32ToFloat64(GateRef x)
-{
-    return UnaryArithmetic(OpCode(OpCode::UNSIGNED_INT_TO_FLOAT), MachineType::F64, x);
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label isInt(env_);
+    Label isDouble(env_);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::FLOAT64(), Double(0));
+    Branch(TaggedIsInt(x), &isInt, &isDouble);
+    Bind(&isInt);
+    {
+        result = ChangeInt32ToFloat64(GetInt32OfTInt(x));
+        Jump(&exit);
+    }
+    Bind(&isDouble);
+    {
+        result = GetDoubleOfTDouble(x);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    GateRef ret = *result;
+    SubCfgExit();
+    return ret;
 }
 
 GateRef CircuitBuilder::Int8Equal(GateRef x, GateRef y)
@@ -174,28 +181,36 @@ GateRef CircuitBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
     return env_->Is32Bit() ? Int32GreaterThan(x, y) : Int64GreaterThan(x, y);
 }
 
-template<OpCode::Op Op, MachineType Type>
+template<OpCode Op, MachineType Type>
 GateRef CircuitBuilder::BinaryOp(GateRef x, GateRef y)
 {
-    return BinaryArithmetic(OpCode(Op), Type, x, y);
+    if (Op == OpCode::ADD) {
+        return BinaryArithmetic(circuit_->Add(), Type, x, y);
+    } else if (Op == OpCode::SUB) {
+        return BinaryArithmetic(circuit_->Sub(), Type, x, y);
+    } else if (Op == OpCode::MUL) {
+        return BinaryArithmetic(circuit_->Mul(), Type, x, y);
+    }
+    UNREACHABLE();
+    return Circuit::NullGate();
 }
 
 GateRef CircuitBuilder::IntPtrLSR(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
-    return BinaryArithmetic(OpCode(OpCode::LSR), ptrSize, x, y);
+    return BinaryArithmetic(circuit_->Lsr(), ptrSize, x, y);
 }
 
 GateRef CircuitBuilder::IntPtrLSL(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
-    return BinaryArithmetic(OpCode(OpCode::LSL), ptrSize, x, y);
+    return BinaryArithmetic(circuit_->Lsl(), ptrSize, x, y);
 }
 
 GateRef CircuitBuilder::IntPtrOr(GateRef x, GateRef y)
 {
     auto ptrsize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
-    return BinaryArithmetic(OpCode(OpCode::OR), ptrsize, x, y);
+    return BinaryArithmetic(circuit_->Or(), ptrsize, x, y);
 }
 
 GateRef CircuitBuilder::IntPtrDiv(GateRef x, GateRef y)
@@ -203,29 +218,10 @@ GateRef CircuitBuilder::IntPtrDiv(GateRef x, GateRef y)
     return env_->Is32Bit() ? Int32Div(x, y) : Int64Div(x, y);
 }
 
-GateRef CircuitBuilder::ChangeFloat64ToInt32(GateRef x)
-{
-    return UnaryArithmetic(OpCode(OpCode::FLOAT_TO_SIGNED_INT), MachineType::I32, x);
-}
-
-GateRef CircuitBuilder::SExtInt16ToInt64(GateRef x)
-{
-    return UnaryArithmetic(OpCode(OpCode::SEXT), MachineType::I64, x);
-}
-
-GateRef CircuitBuilder::SExtInt16ToInt32(GateRef x)
-{
-    return UnaryArithmetic(OpCode(OpCode::SEXT), MachineType::I32, x);
-}
-
-GateRef CircuitBuilder::SExtInt8ToInt64(GateRef x)
-{
-    return UnaryArithmetic(OpCode(OpCode::SEXT), MachineType::I64, x);
-}
-
 GateRef CircuitBuilder::Int64ToTaggedPtr(GateRef x)
 {
-    return TaggedNumber(OpCode(OpCode::INT64_TO_TAGGED), x);
+    return GetCircuit()->NewGate(circuit_->Int64ToTagged(),
+        MachineType::I64, { x }, GateType::TaggedValue());
 }
 
 GateRef CircuitBuilder::Int32ToTaggedPtr(GateRef x)
@@ -271,6 +267,11 @@ GateRef CircuitBuilder::TaggedIsObject(GateRef x)
 GateRef CircuitBuilder::TaggedIsNumber(GateRef x)
 {
     return BoolNot(TaggedIsObject(x));
+}
+
+GateRef CircuitBuilder::TaggedIsNumeric(GateRef x)
+{
+    return BoolOr(TaggedIsNumber(x), TaggedIsBigInt(x));
 }
 
 GateRef CircuitBuilder::DoubleIsINF(GateRef x)
@@ -353,13 +354,26 @@ GateRef CircuitBuilder::TaggedIsWeak(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef x)
 {
-    return IsJsType(x, JSType::PROTOTYPE_HANDLER);
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::PROTOTYPE_HANDLER));
 }
 
 GateRef CircuitBuilder::TaggedIsTransitionHandler(GateRef x)
 {
     return LogicAnd(TaggedIsHeapObject(x),
         IsJsType(x, JSType::TRANSITION_HANDLER));
+}
+
+GateRef CircuitBuilder::TaggedIsStoreTSHandler(GateRef x)
+{
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::STORE_TS_HANDLER));
+}
+
+GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef x)
+{
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::TRANS_WITH_PROTO_HANDLER));
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
@@ -689,7 +703,7 @@ GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_ELEMENT), opIdx,
+    auto ret = GetCircuit()->NewGate(GetCircuit()->LoadElement(opIdx), MachineType::ANYVALUE,
                                      { currentControl, currentDepend, receiver, index }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -703,7 +717,7 @@ GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef va
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_ELEMENT), opIdx,
+    auto ret = GetCircuit()->NewGate(GetCircuit()->StoreElement(opIdx), MachineType::NOVALUE,
                                      { currentControl, currentDepend, receiver, index, value }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -891,7 +905,7 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef x, BuiltinsStubCSigns::I
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef idGate = Int8(static_cast<int8_t>(id));
-    auto numberMathOp = TypedCallOperator(MachineType::I64, currentControl, currentDepend, {x, idGate});
+    auto numberMathOp = TypedCallOperator(MachineType::I64, {currentControl, currentDepend, x, idGate});
     currentLabel->SetControl(numberMathOp);
     currentLabel->SetDepend(numberMathOp);
     return numberMathOp;
@@ -1008,6 +1022,24 @@ void Environment::SubCfgExit()
 GateRef Environment::GetInput(size_t index) const
 {
     return inputList_.at(index);
+}
+
+// only for int32
+template<TypedUnOp Op>
+GateRef CircuitBuilder::Int32OverflowCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+
+    uint64_t value = TypedUnaryAccessor::ToValue(GateType::Empty(), Op);
+    GateRef ret = GetCircuit()->NewGate(circuit_->Int32OverflowCheck(value),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
 }
 } // namespace panda::ecmascript::kungfu
 

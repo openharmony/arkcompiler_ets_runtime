@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_collator.h"
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/barriers-inl.h"
@@ -40,7 +41,8 @@ JSHandle<TaggedArray> JSCollator::GetAvailableLocales(JSThread *thread)
 {
     const char *key = nullptr;
     const char *path = JSCollator::uIcuDataColl.c_str();
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     return availableLocales;
 }
 
@@ -62,15 +64,17 @@ void JSCollator::SetIcuCollator(JSThread *thread, const JSHandle<JSCollator> &co
     collator->SetIcuField(thread, pointer.GetTaggedValue());
 }
 
-JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread, const JSHandle<JSCollator> &collator,
+JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
+                                                    const JSHandle<JSCollator> &collator,
                                                     const JSHandle<JSTaggedValue> &locales,
-                                                    const JSHandle<JSTaggedValue> &options)
+                                                    const JSHandle<JSTaggedValue> &options,
+                                                    bool forIcuCache)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 1. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
 
     // 2. If options is undefined, then
@@ -109,7 +113,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread, const JSHa
     std::string collationStr;
     if (!collation->IsUndefined()) {
         JSHandle<EcmaString> collationEcmaStr = JSHandle<EcmaString>::Cast(collation);
-        collationStr = JSLocale::ConvertToStdString(collationEcmaStr);
+        collationStr = base::LocaleHelper::ConvertToStdString(collationEcmaStr);
         if (!JSLocale::IsWellAlphaNumList(collationStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid collation", collator);
         }
@@ -144,7 +148,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread, const JSHa
     ResolvedLocale r =
         JSLocale::ResolveLocale(thread, availableLocales, requestedLocales, matcher, relevantExtensionKeys);
     icu::Locale icuLocale = r.localeData;
-    JSHandle<EcmaString> localeStr = JSLocale::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
     collator->SetLocale(thread, localeStr.GetTaggedValue());
     ASSERT_PRINT(!icuLocale.isBogus(), "icuLocale is bogus");
 
@@ -264,6 +268,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread, const JSHa
         case SensitivityOption::UNDEFINED:
             break;
         case SensitivityOption::EXCEPTION:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 
@@ -279,10 +284,28 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread, const JSHa
         ASSERT(U_SUCCESS(status));
     }
 
-    SetIcuCollator(thread, collator, icuCollator.release(), JSCollator::FreeIcuCollator);
+    if (forIcuCache) {
+        std::string cacheEntry =
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+        ecmaVm->SetIcuFormatterToCache(IcuFormatterType::Collator, cacheEntry, icuCollator.release(),
+                                       JSCollator::FreeIcuCollator);
+    } else {
+        SetIcuCollator(thread, collator, icuCollator.release(), JSCollator::FreeIcuCollator);
+    }
     collator->SetBoundCompare(thread, JSTaggedValue::Undefined());
     // 29. Return collator.
     return collator;
+}
+
+icu::Collator *JSCollator::GetCachedIcuCollator(JSThread *thread, const JSHandle<JSTaggedValue> &locales)
+{
+    std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    void *cachedCollator = ecmaVm->GetIcuFormatterFromCache(IcuFormatterType::Collator, cacheEntry);
+    if (cachedCollator != nullptr) {
+        return reinterpret_cast<icu::Collator*>(cachedCollator);
+    }
+    return nullptr;
 }
 
 UColAttributeValue JSCollator::OptionToUColAttribute(CaseFirstOption caseFirstOption)
@@ -291,6 +314,7 @@ UColAttributeValue JSCollator::OptionToUColAttribute(CaseFirstOption caseFirstOp
     if (iter != uColAttributeValueMap.end()) {
         return iter->second;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -306,6 +330,7 @@ JSHandle<JSTaggedValue> OptionsToEcmaString(JSThread *thread, UsageOption usage)
             result.Update(globalConst->GetSearchString());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -331,6 +356,7 @@ JSHandle<JSTaggedValue> OptionsToEcmaString(JSThread *thread, SensitivityOption 
         case SensitivityOption::UNDEFINED:
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -354,6 +380,7 @@ JSHandle<JSTaggedValue> OptionsToEcmaString(JSThread *thread, CaseFirstOption ca
             result.Update(globalConst->GetUpperString());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;

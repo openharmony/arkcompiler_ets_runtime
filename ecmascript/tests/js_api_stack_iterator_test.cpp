@@ -132,7 +132,7 @@ HWTEST_F_L0(JSAPIStackIteratorTest, SpecialReturnOfNext)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIStackIterator> stackIterator = factory->NewJSAPIStackIterator(jsStack);
     stackIterator->SetIteratedStack(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -225,7 +225,7 @@ HWTEST_F_L0(JSAPIStackIteratorTest, SetNextIndex)
     }
     JSHandle<JSAPIStackIterator> stackIterator = factory->NewJSAPIStackIterator(jsStack);
     EXPECT_EQ(stackIterator->GetNextIndex(), 0U);
-    
+
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         stackIterator->SetNextIndex(i);
         EXPECT_EQ(stackIterator->GetNextIndex(), i);

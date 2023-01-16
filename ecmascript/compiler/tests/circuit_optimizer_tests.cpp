@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/circuit_optimizer.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {
@@ -33,88 +34,58 @@ using ecmascript::kungfu::GateRef;
 HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     GateAccessor acc(&circuit);
-    auto n = circuit.NewGate(OpCode(OpCode::ARG),
-                             MachineType::I64,
-                             0,
-                             {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
-                             GateType::NJSValue());
-    auto constantA = circuit.NewGate(OpCode(OpCode::CONSTANT),
-                                     MachineType::I64,
-                                     1,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                     GateType::NJSValue());
-    auto constantB = circuit.NewGate(OpCode(OpCode::CONSTANT),
-                                     MachineType::I64,
-                                     2,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                     GateType::NJSValue());
-    auto constantC = circuit.NewGate(OpCode(OpCode::CONSTANT),
-                                     MachineType::I64,
-                                     1,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                     GateType::NJSValue());
-    auto constantD = circuit.NewGate(OpCode(OpCode::CONSTANT),
-                                     MachineType::I64,
-                                     0,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                     GateType::NJSValue());
-    auto loopBegin = circuit.NewGate(OpCode(OpCode::LOOP_BEGIN),
-                                     0,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY)), Circuit::NullGate()},
+    auto n = circuit.NewArg(MachineType::I64, 0, GateType::NJSValue(),
+                            acc.GetArgRoot());
+    auto constantA = circuit.GetConstantGate(MachineType::I64, 1, GateType::NJSValue());
+    auto constantB = circuit.GetConstantGate(MachineType::I64,
+        2, GateType::NJSValue()); // 2: idx 2
+    auto constantC = circuit.GetConstantGate(MachineType::I64, 1, GateType::NJSValue());
+    auto constantD = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
+    auto loopBegin = circuit.NewGate(circuit.LoopBegin(),
+                                     MachineType::NOVALUE,
+                                     { acc.GetStateRoot(), Circuit::NullGate() },
                                      GateType::Empty());
-    auto selectorA = circuit.NewGate(OpCode(OpCode::VALUE_SELECTOR),
+    auto selectorA = circuit.NewGate(circuit.ValueSelector(2), // 2: valuesIn
                                      MachineType::I64,
-                                     2,
-                                     {loopBegin, constantA, Circuit::NullGate()},
+                                     { loopBegin, constantA, Circuit::NullGate() },
                                      GateType::NJSValue());
-    auto selectorB = circuit.NewGate(OpCode(OpCode::VALUE_SELECTOR),
+    auto selectorB = circuit.NewGate(circuit.ValueSelector(2), // 2: valuesIn
                                      MachineType::I64,
-                                     2,
-                                     {loopBegin, n, Circuit::NullGate()},
+                                     { loopBegin, n, Circuit::NullGate() },
                                      GateType::NJSValue());
-    auto newX = circuit.NewGate(OpCode(OpCode::SUB),
+    auto newX = circuit.NewGate(circuit.Sub(),
                                 MachineType::I64,
-                                0,
                                 {constantB, selectorA},
                                 GateType::NJSValue());
     acc.NewIn(selectorA, 2, newX);
     acc.NewIn(selectorB,
               2,
-              circuit.NewGate(OpCode(OpCode::SUB),
+              circuit.NewGate(circuit.Sub(),
                               MachineType::I64,
-                              0,
                               {selectorB, constantC},
                               GateType::NJSValue()));
-    auto predicate = circuit.NewGate(OpCode(OpCode::ICMP),
-                                     static_cast<uint64_t>(ecmascript::kungfu::ICmpCondition::NE),
+    auto predicate = circuit.NewGate(circuit.Icmp(
+                                     static_cast<uint64_t>(ecmascript::kungfu::ICmpCondition::NE)),
+                                     MachineType::I1,
                                      {selectorB, constantD},
                                      GateType::NJSValue());
-    auto ifBranch = circuit.NewGate(OpCode(OpCode::IF_BRANCH),
-                                    0,
-                                    {loopBegin, predicate},
-                                    GateType::Empty());
-    auto ifTrue = circuit.NewGate(OpCode(OpCode::IF_TRUE),
-                                  0,
-                                  {ifBranch},
-                                  GateType::Empty());
-    auto ifFalse = circuit.NewGate(OpCode(OpCode::IF_FALSE),
-                                   0,
-                                   {ifBranch},
-                                   GateType::Empty());
-    auto loopBack = circuit.NewGate(OpCode(OpCode::LOOP_BACK),
-                                    0,
-                                    {ifTrue},
-                                    GateType::Empty());
+    auto ifBranch = circuit.NewGate(circuit.IfBranch(),
+                                    {loopBegin, predicate});
+    auto ifTrue = circuit.NewGate(circuit.IfTrue(),
+                                  {ifBranch});
+    auto ifFalse = circuit.NewGate(circuit.IfFalse(),
+                                   {ifBranch});
+    auto loopBack = circuit.NewGate(circuit.LoopBack(),
+                                    {ifTrue});
     acc.NewIn(loopBegin, 1, loopBack);
-    auto ret = circuit.NewGate(OpCode(OpCode::RETURN),
-                               0,
-                               {ifFalse,
-                                Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY)),
+    auto ret = circuit.NewGate(circuit.Return(),
+                               { ifFalse,
+                                acc.GetDependRoot(),
                                 newX,
-                                Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST))},
-                               GateType::Empty());
+                                acc.GetReturnRoot() });
     // verify the circuit
     {
         auto verifyResult = ecmascript::kungfu::Verifier::Run(&circuit);
@@ -132,7 +103,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
     }
     {
         // modify the initial value of x to 2
-        acc.SetBitField(constantA, 2);
+        acc.SetMetaData(constantA, circuit.Constant(2));
     }
     {
         ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
@@ -146,9 +117,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
     }
     {
         // set the initial value of n to fixed value 0 (instead of function argument)
-        acc.SetBitField(n, 0);
-        acc.SetOpCode(n, OpCode(OpCode::CONSTANT));
-        acc.ReplaceIn(n, 0, Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST)));
+        acc.SetMetaData(n, circuit.Constant(0));
     }
     {
         ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
@@ -164,7 +133,8 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeEquationsSystemSolverFramework)
 
 HWTEST_F_L0(CircuitOptimizerTests, TestSubgraphRewriteFramework)
 {
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     GateAccessor acc(&circuit);
     const uint64_t numOfConstants = 100;
     const uint64_t numOfUses = 10;
@@ -189,54 +159,45 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSubgraphRewriteFramework)
         constantsSet.erase(elementB);
         constantsSet.insert(
             std::make_pair(rng(),
-                           circuit.NewGate(OpCode(OpCode::ADD),
+                           circuit.NewGate(circuit.Add(),
                                            MachineType::I64,
-                                           0,
                                            {operandA,
                                             operandB},
                                            GateType::NJSValue())));
     }
-    auto ret = circuit.NewGate(OpCode(OpCode::RETURN),
-                               0,
-                               {Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY)),
-                                Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY)),
+    auto ret = circuit.NewGate(circuit.Return(),
+                               { acc.GetStateRoot(),
+                                acc.GetDependRoot(),
                                 constantsSet.begin()->second,
-                                Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST))},
-                               GateType::Empty());
+                                acc.GetReturnRoot() });
     ecmascript::kungfu::SubgraphRewriteRuleCP rule;
     ecmascript::kungfu::SubGraphRewriteFramework rewriter(&rule);
     rewriter.Run(&circuit);
     auto returnValue = acc.GetIn(ret, 2);
-    EXPECT_TRUE(acc.GetOpCode(returnValue) == OpCode(OpCode::CONSTANT));
-    EXPECT_TRUE(acc.GetBitField(returnValue) == (numOfUses) * (numOfConstants) * (numOfConstants - 1) / 2);
+    EXPECT_TRUE(acc.GetOpCode(returnValue) == OpCode::CONSTANT);
+    EXPECT_TRUE(acc.GetConstantValue(returnValue) == (numOfUses) * (numOfConstants) * (numOfConstants - 1) / 2);
 }
 
 HWTEST_F_L0(CircuitOptimizerTests, TestLatticeUpdateRuleSCCP)
 {
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     GateAccessor acc(&circuit);
-    auto constantA = circuit.NewGate(OpCode(OpCode::CONSTANT),
+    auto constantA = circuit.NewGate(circuit.Constant(-8848),
                                      MachineType::I32,
-                                     -8848,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                      GateType::NJSValue());
-    auto constantB = circuit.NewGate(OpCode(OpCode::CONSTANT),
+    auto constantB = circuit.NewGate(circuit.Constant(4),
                                      MachineType::I32,
-                                     4,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
                                      GateType::NJSValue());
-    auto newX = circuit.NewGate(OpCode(OpCode::SDIV),
+    auto newX = circuit.NewGate(circuit.Sdiv(),
                                 MachineType::I32,
-                                0,
                                 {constantA, constantB},
                                 GateType::NJSValue());
-    auto ret = circuit.NewGate(OpCode(OpCode::RETURN),
-                               0,
-                               {Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY)),
-                                Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY)),
+    auto ret = circuit.NewGate(circuit.Return(),
+                               { acc.GetStateRoot(),
+                                circuit.GetDependRoot(),
                                 newX,
-                                Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST))},
-                               GateType::Empty());
+                                acc.GetReturnRoot()});
     {
         int32_t x = -8848;
         int32_t y = 4;
@@ -251,7 +212,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeUpdateRuleSCCP)
                   ecmascript::base::bit_cast<uint32_t>(x / y));
     }
     {
-        acc.SetOpCode(newX, OpCode(OpCode::UDIV));
+        acc.SetMetaData(newX, circuit.Udiv());
         uint32_t x = -8848;
         uint32_t y = 4;
         ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
@@ -267,13 +228,13 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeUpdateRuleSCCP)
         // modify the initial type of constantA to int8_t
         acc.SetMachineType(constantA, MachineType::I8);
         // modify the initial value of constantA to 200
-        acc.SetBitField(constantA, 200);
+        acc.SetMetaData(constantA, circuit.Constant(200));
         // modify the initial type of constantB to int8_t
         acc.SetMachineType(constantB, MachineType::I8);
         // modify the initial value of constantB to 200
-        acc.SetBitField(constantB, 200);
+        acc.SetMetaData(constantB, circuit.Constant(200));
         acc.SetMachineType(newX, MachineType::I8);
-        acc.SetOpCode(newX, OpCode(OpCode::ADD));
+        acc.SetMetaData(newX, circuit.Add());
         ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
         ecmascript::kungfu::LatticeEquationsSystemSolverFramework solver(&rule);
         // optimize the circuit
@@ -289,13 +250,13 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeUpdateRuleSCCP)
         // modify the initial type of constantA to float
         acc.SetMachineType(constantA, MachineType::F32);
         // modify the initial value of constantA to 9.6
-        acc.SetBitField(constantA, ecmascript::base::bit_cast<uint32_t>(x));
+        acc.SetMetaData(constantA, circuit.Constant(ecmascript::base::bit_cast<uint32_t>(x)));
         // modify the initial type of constantB to float
         acc.SetMachineType(constantB, MachineType::F32);
         // modify the initial value of constantB to 6.9
-        acc.SetBitField(constantB, ecmascript::base::bit_cast<uint32_t>(y));
+        acc.SetMetaData(constantB, circuit.Constant(ecmascript::base::bit_cast<uint32_t>(y)));
         acc.SetMachineType(newX, MachineType::F32);
-        acc.SetOpCode(newX, OpCode(OpCode::FMOD));
+        acc.SetMetaData(newX, circuit.Fmod());
         ecmascript::kungfu::LatticeUpdateRuleSCCP rule;
         ecmascript::kungfu::LatticeEquationsSystemSolverFramework solver(&rule);
         // optimize the circuit
@@ -310,68 +271,54 @@ HWTEST_F_L0(CircuitOptimizerTests, TestLatticeUpdateRuleSCCP)
 
 HWTEST_F_L0(CircuitOptimizerTests, TestSmallSizeGlobalValueNumbering) {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     GateAccessor acc(&circuit);
-    auto constantA = circuit.NewGate(OpCode(OpCode::CONSTANT),
-                                     MachineType::I64,
-                                     1,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                     GateType::NJSValue());
-    auto constantB = circuit.NewGate(OpCode(OpCode::CONSTANT),
-                                     MachineType::I64,
-                                     1,
-                                     {Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))},
-                                     GateType::NJSValue());
-    auto argA = circuit.NewGate(OpCode(OpCode::ARG),
-                                MachineType::I64,
-                                1,
-                                {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
-                                GateType::NJSValue());
-    auto argB = circuit.NewGate(OpCode(OpCode::ARG),
-                                MachineType::I64,
-                                2,
-                                {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
-                                GateType::NJSValue());
+    auto constantA = circuit.NewGate(circuit.Constant(1),
+        MachineType::I64, GateType::NJSValue());
+    auto constantB = circuit.NewGate(circuit.Constant(1),
+        MachineType::I64, GateType::NJSValue());
+    auto argA = circuit.NewArg(MachineType::I64, 1,
+                               GateType::NJSValue(),
+                               acc.GetArgRoot());
+    auto argB = circuit.NewArg(MachineType::I64, 2,
+                               GateType::NJSValue(),
+                               acc.GetArgRoot());
 
-    auto add1 = circuit.NewGate(OpCode(OpCode::ADD),
+    auto add1 = circuit.NewGate(circuit.Add(),
                                MachineType::I64,
-                               0,
                                {constantA, argA},
                                GateType::NJSValue());
 
-    auto add2 = circuit.NewGate(OpCode(OpCode::ADD),
-                               MachineType::I64,
-                               0,
-                               {constantB, argA},
-                               GateType::NJSValue());
+    auto add2 = circuit.NewGate(circuit.Add(),
+                                MachineType::I64,
+                                { constantB, argA },
+                                GateType::NJSValue());
 
-    auto add3 = circuit.NewGate(OpCode(OpCode::ADD),
-                               MachineType::I64,
-                               0,
-                               {constantA, argB},
-                               GateType::NJSValue());
+    auto add3 = circuit.NewGate(circuit.Add(),
+                                MachineType::I64,
+                                { constantA, argB },
+                                GateType::NJSValue());
     ecmascript::kungfu::GlobalValueNumbering(&circuit, false).Run();
-    EXPECT_FALSE(acc.GetOpCode(add3).IsNop());
-    EXPECT_FALSE(acc.GetOpCode(argA).IsNop());
-    EXPECT_FALSE(acc.GetOpCode(argB).IsNop());
-    EXPECT_TRUE(acc.GetOpCode(constantA).IsNop() || acc.GetOpCode(constantB).IsNop());
-    EXPECT_FALSE(acc.GetOpCode(constantA).IsNop() && acc.GetOpCode(constantB).IsNop());
-    EXPECT_TRUE(acc.GetOpCode(add1).IsNop() || acc.GetOpCode(add2).IsNop());
-    EXPECT_FALSE(acc.GetOpCode(add1).IsNop() && acc.GetOpCode(add2).IsNop());
+    EXPECT_FALSE(acc.GetMetaData(add3)->IsNop());
+    EXPECT_FALSE(acc.GetMetaData(argA)->IsNop());
+    EXPECT_FALSE(acc.GetMetaData(argB)->IsNop());
+    EXPECT_TRUE(acc.GetMetaData(constantA)->IsNop() || acc.GetMetaData(constantB)->IsNop());
+    EXPECT_FALSE(acc.GetMetaData(constantA)->IsNop() && acc.GetMetaData(constantB)->IsNop());
+    EXPECT_TRUE(acc.GetMetaData(add1)->IsNop() || acc.GetMetaData(add2)->IsNop());
+    EXPECT_FALSE(acc.GetMetaData(add1)->IsNop() && acc.GetMetaData(add2)->IsNop());
 }
 
 HWTEST_F_L0(CircuitOptimizerTests, TestMultiLevelGlobalValueNumbering) {
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     GateAccessor acc(&circuit);
     std::random_device randomDevice;
     std::mt19937_64 rng(randomDevice());
     std::vector<GateRef> args;
     for (uint32_t i = 0; i < 5; ++i) {
-        args.push_back(circuit.NewGate(OpCode(OpCode::ARG),
-                                MachineType::I64,
-                                i,
-                                {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
-                                GateType::NJSValue()));
+        args.push_back(circuit.NewArg(MachineType::I64, i, GateType::NJSValue(),
+            acc.GetArgRoot()));
     }
     std::map<GateRef, std::vector<GateRef>> addToAdds;
     std::map<GateRef, GateRef> addToAdd;
@@ -379,11 +326,10 @@ HWTEST_F_L0(CircuitOptimizerTests, TestMultiLevelGlobalValueNumbering) {
     std::vector<GateRef> adds;
     for (uint32_t i = 0; i < 50; ++i) {
         std::pair<GateRef, GateRef> p(args[rng() % 5], args[rng() % 5]);
-        auto add = circuit.NewGate(OpCode(OpCode::ADD),
-                               MachineType::I64,
-                               0,
-                               {p.first, p.second},
-                               GateType::NJSValue());
+        auto add = circuit.NewGate(circuit.Add(),
+                                   MachineType::I64,
+                                   {p.first, p.second},
+                                   GateType::NJSValue());
         adds.push_back(add);
         if (pairToAdd.count(p) == 0) {
             pairToAdd[p] = add;
@@ -398,9 +344,8 @@ HWTEST_F_L0(CircuitOptimizerTests, TestMultiLevelGlobalValueNumbering) {
     std::vector<GateRef> subs;
     for (uint32_t i = 0; i < 50; ++i) {
         std::pair<GateRef, GateRef> p(adds[rng() % 5], adds[rng() % 5]);
-        auto sub = circuit.NewGate(OpCode(OpCode::SUB),
+        auto sub = circuit.NewGate(circuit.Sub(),
                                MachineType::I64,
-                               0,
                                {p.first, p.second},
                                GateType::NJSValue());
         subs.push_back(sub);
@@ -457,17 +402,15 @@ HWTEST_F_L0(CircuitOptimizerTests, TestMultiLevelGlobalValueNumbering) {
 }
 
 HWTEST_F_L0(CircuitOptimizerTests, TestSmallWorldGlobalValueNumbering) {
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     GateAccessor acc(&circuit);
     std::random_device randomDevice;
     std::mt19937_64 rng(randomDevice());
     std::vector<GateRef> args;
     for (uint32_t i = 0; i < 3; ++i) {
-        args.push_back(circuit.NewGate(OpCode(OpCode::ARG),
-                                MachineType::I64,
-                                i,
-                                {Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST))},
-                                GateType::NJSValue()));
+        args.push_back(circuit.NewArg(MachineType::I64, i,
+            GateType::NJSValue(), acc.GetArgRoot()));
     }
     std::map<GateRef, std::vector<GateRef>> addToAdds;
     std::map<GateRef, GateRef> addToAdd;
@@ -476,11 +419,10 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSmallWorldGlobalValueNumbering) {
     std::vector<GateRef> toBeSelect;
     for (uint32_t i = 0; i < 10; ++i) {
         std::pair<GateRef, GateRef> p(args[rng() % 3], args[rng() % 3]);
-        auto add = circuit.NewGate(OpCode(OpCode::ADD),
-                               MachineType::I64,
-                               0,
-                               {p.first, p.second},
-                               GateType::NJSValue());
+        auto add = circuit.NewGate(circuit.Add(),
+                                   MachineType::I64,
+                                   {p.first, p.second},
+                                   GateType::NJSValue());
         adds.emplace_back(add);
         toBeSelect.emplace_back(add);
         toBeSelect.emplace_back(add);
@@ -493,11 +435,9 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSmallWorldGlobalValueNumbering) {
     }
     for (uint32_t i = 0; i < 1000; ++i) {
         std::pair<GateRef, GateRef> p(toBeSelect[rng() % toBeSelect.size()], toBeSelect[rng() % toBeSelect.size()]);
-        auto add = circuit.NewGate(OpCode(OpCode::ADD),
-                               MachineType::I64,
-                               0,
-                               {p.first, p.second},
-                               GateType::NJSValue());
+        auto add = circuit.NewGate(circuit.Add(), MachineType::I64,
+                                   {p.first, p.second},
+                                   GateType::NJSValue());
         adds.emplace_back(add);
         toBeSelect.emplace_back(add);
         toBeSelect.emplace_back(add);

@@ -26,12 +26,13 @@
 #include <type_traits>
 #include <vector>
 
-#include "ecmascript/compiler/gate_bitfield_accessor.h"
+#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/compiler/type.h"
 
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
+using BitField = uint64_t;
 using GateRef = int32_t; // for external users
 using GateId = uint32_t;
 using GateOp = uint8_t;
@@ -39,264 +40,14 @@ using GateMark = uint8_t;
 using TimeStamp = uint8_t;
 using SecondaryOp = uint8_t;
 using OutIdx = uint32_t;
-using BinaryOp = uint8_t;
 class Gate;
-struct Properties;
 class BytecodeCircuitBuilder;
-
-enum MachineType : uint8_t { // Bit width
-    NOVALUE,
-    ANYVALUE,
-    ARCH,
-    FLEX,
-    I1,
-    I8,
-    I16,
-    I32,
-    I64,
-    F32,
-    F64,
-};
-
-std::string MachineTypeToStr(MachineType machineType);
-
-enum class TypedBinOp : BinaryOp {
-    TYPED_ADD,
-    TYPED_SUB,
-    TYPED_MUL,
-    TYPED_DIV,
-    TYPED_MOD,
-    TYPED_LESS,
-    TYPED_LESSEQ,
-    TYPED_GREATER,
-    TYPED_GREATEREQ,
-    TYPED_EQ,
-    TYPED_NOTEQ,
-    TYPED_SHL,
-    TYPED_SHR,
-    TYPED_ASHR,
-    TYPED_AND,
-    TYPED_OR,
-    TYPED_XOR,
-    TYPED_EXP,
-};
-
-enum class TypedUnOp : uint8_t {
-    TYPED_TONUMBER,
-    TYPED_NEG,
-    TYPED_NOT,
-    TYPED_INC,
-    TYPED_DEC,
-    TYPED_TOBOOL,
-};
-
-enum class ICmpCondition : uint8_t {
-    EQ = 1,
-    UGT,
-    UGE,
-    ULT,
-    ULE,
-    NE,
-    SGT,
-    SGE,
-    SLT,
-    SLE,
-};
-
-enum class FCmpCondition : uint8_t {
-    ALW_FALSE = 0,
-    OEQ,
-    OGT,
-    OGE,
-    OLT,
-    OLE,
-    ONE,
-    ORD,
-    UNO,
-    UEQ,
-    UGT,
-    UGE,
-    ULT,
-    ULE,
-    UNE,
-    ALW_TRUE,
-};
-
-enum class TypedStoreOp : uint8_t {
-    FLOAT32ARRAY_STORE_ELEMENT,
-};
-
-enum class TypedLoadOp : uint8_t {
-    FLOAT32ARRAY_LOAD_ELEMENT,
-};
-
-class OpCode {
-public:
-    enum Op : GateOp {
-        // SHARED
-        NOP = 0,
-        CIRCUIT_ROOT,
-        STATE_ENTRY,
-        DEPEND_ENTRY,
-        FRAMESTATE_ENTRY,
-        RETURN_LIST,
-        THROW_LIST,
-        CONSTANT_LIST,
-        ALLOCA_LIST,
-        ARG_LIST,
-        RETURN,
-        RETURN_VOID,
-        THROW,
-        ORDINARY_BLOCK,
-        IF_BRANCH,
-        SWITCH_BRANCH,
-        IF_TRUE,
-        IF_FALSE,
-        SWITCH_CASE,
-        DEFAULT_CASE,
-        MERGE,
-        LOOP_BEGIN,
-        LOOP_BACK,
-        VALUE_SELECTOR,
-        DEPEND_SELECTOR,
-        DEPEND_RELAY,
-        DEPEND_AND,
-        GUARD,
-        DEOPT,
-        FRAME_STATE,
-        // High Level IR
-        JS_BYTECODE,
-        IF_SUCCESS,
-        IF_EXCEPTION,
-        GET_EXCEPTION,
-        // Middle Level IR
-        RUNTIME_CALL,
-        RUNTIME_CALL_WITH_ARGV,
-        NOGC_RUNTIME_CALL,
-        CALL,
-        BYTECODE_CALL,
-        DEBUGGER_BYTECODE_CALL,
-        BUILTINS_CALL,
-        BUILTINS_CALL_WITH_ARGV,
-        ALLOCA,
-        ARG,
-        MUTABLE_DATA,
-        RELOCATABLE_DATA,
-        CONST_DATA,
-        CONSTANT,
-        ZEXT,
-        SEXT,
-        TRUNC,
-        FEXT,
-        FTRUNC,
-        REV,
-        TRUNC_FLOAT_TO_INT64,
-        ADD,
-        SUB,
-        MUL,
-        EXP,
-        SDIV,
-        SMOD,
-        UDIV,
-        UMOD,
-        FDIV,
-        FMOD,
-        AND,
-        XOR,
-        OR,
-        LSL,
-        LSR,
-        ASR,
-        ICMP,
-        FCMP,
-        LOAD,
-        STORE,
-        TAGGED_TO_INT64,
-        INT64_TO_TAGGED,
-        SIGNED_INT_TO_FLOAT,
-        UNSIGNED_INT_TO_FLOAT,
-        FLOAT_TO_SIGNED_INT,
-        UNSIGNED_FLOAT_TO_INT,
-        BITCAST,
-        RESTORE_REGISTER,
-        SAVE_REGISTER,
-        OBJECT_TYPE_CHECK,
-        TYPE_CHECK,
-        TYPED_CALL_CHECK,
-        TYPED_BINARY_OP,
-        TYPED_CALL,
-        TYPE_CONVERT,
-        TYPED_UNARY_OP,
-        TO_LENGTH,
-        GET_ENV,
-        HEAP_ALLOC,
-        LOAD_ELEMENT,
-        LOAD_PROPERTY,
-        STORE_ELEMENT,
-        STORE_PROPERTY,
-        CONSTRUCT,
-
-        COMMON_CIR_FIRST = NOP,
-        COMMON_CIR_LAST = FRAME_STATE,
-        HIGH_CIR_FIRST = JS_BYTECODE,
-        HIGH_CIR_LAST = GET_EXCEPTION,
-        MID_CIR_FIRST = RUNTIME_CALL,
-        MID_CIR_LAST = CONSTRUCT
-    };
-
-    OpCode() = default;
-    explicit constexpr OpCode(Op op) : op_(op) {}
-    operator Op() const
-    {
-        return op_;
-    }
-    explicit operator bool() const = delete;
-    [[nodiscard]] size_t GetStateCount(BitField bitfield) const;
-    [[nodiscard]] size_t GetDependCount(BitField bitfield) const;
-    [[nodiscard]] size_t GetInValueCount(BitField bitfield) const;
-    [[nodiscard]] size_t GetRootCount(BitField bitfield) const;
-    [[nodiscard]] size_t GetOpCodeNumIns(BitField bitfield) const;
-    [[nodiscard]] size_t GetInValueStarts(BitField bitfield) const;
-    [[nodiscard]] MachineType GetMachineType() const;
-    [[nodiscard]] MachineType GetInMachineType(BitField bitfield, size_t idx) const;
-    [[nodiscard]] OpCode GetInStateCode(size_t idx) const;
-    [[nodiscard]] std::string Str() const;
-    [[nodiscard]] bool IsRoot() const;
-    [[nodiscard]] bool IsProlog() const;
-    [[nodiscard]] bool IsFixed() const;
-    [[nodiscard]] bool IsSchedulable() const;
-    [[nodiscard]] bool IsState() const;  // note: IsState(STATE_ENTRY) == false
-    [[nodiscard]] bool IsGeneralState() const;
-    [[nodiscard]] bool IsTerminalState() const;
-    [[nodiscard]] bool IsCFGMerge() const;
-    [[nodiscard]] bool IsControlCase() const;
-    [[nodiscard]] bool IsLoopHead() const;
-    [[nodiscard]] bool IsNop() const;
-    [[nodiscard]] bool IsConstant() const;
-    [[nodiscard]] bool IsTypedOperator() const;
-    ~OpCode() = default;
-
-private:
-    friend class Gate;
-    [[nodiscard]] const Properties& GetProperties() const;
-    Op op_;
-};
-
-struct Properties {
-    MachineType returnValue;
-    std::optional<std::pair<std::vector<OpCode>, bool>> statesIn;
-    size_t dependsIn;
-    std::optional<std::pair<std::vector<MachineType>, bool>> valuesIn;
-    std::optional<OpCode> root;
-};
 
 enum MarkCode : GateMark {
     NO_MARK,
     VISITED,
     FINISHED,
 };
-
-MachineType JSMachineType();
 
 class Out {
 public:
@@ -319,9 +70,9 @@ public:
     ~Out() = default;
 
 private:
-    OutIdx idx_;
     GateRef nextOut_;
     GateRef prevOut_;
+    OutIdx idx_;
 };
 
 class In {
@@ -381,15 +132,17 @@ private:
 class Gate {
 public:
     // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    Gate(GateId id, OpCode opcode, MachineType bitValue, BitField bitfield, Gate *inList[], GateType type,
-         MarkCode mark);
-    Gate(GateId id, OpCode opcode, BitField bitfield, Gate *inList[], GateType type, MarkCode mark);
-    [[nodiscard]] static size_t GetGateSize(size_t numIns);
-    [[nodiscard]] size_t GetGateSize() const;
-    [[nodiscard]] static size_t GetOutListSize(size_t numIns);
-    [[nodiscard]] size_t GetOutListSize() const;
-    [[nodiscard]] static size_t GetInListSize(size_t numIns);
-    [[nodiscard]] size_t GetInListSize() const;
+    Gate(const GateMetaData* meta, GateId id, Gate *inList[], MachineType machineType, GateType type);
+    static size_t GetGateSize(size_t numIns)
+    {
+        numIns = (numIns == 0) ? 1 : numIns;
+        return numIns * (sizeof(In) + sizeof(Out)) + sizeof(Gate);
+    }
+    static size_t GetOutListSize(size_t numIns)
+    {
+        numIns = (numIns == 0) ? 1 : numIns;
+        return numIns * sizeof(Out);
+    }
     void NewIn(size_t idx, Gate *in);
     void ModifyIn(size_t idx, Gate *in);
     void DeleteIn(size_t idx);
@@ -413,61 +166,116 @@ public:
     // note: use IsInGateNull(idx) to check first if Ins[idx] may be deleted or not assigned
     [[nodiscard]] bool IsInGateNull(size_t idx) const;
     [[nodiscard]] OpCode GetOpCode() const;
-    void SetOpCode(OpCode opcode);
-    [[nodiscard]] GateType GetGateType() const;
-
-    inline void SetGateType(GateType type)
-    {
-        type_ = type;
-    }
-
     [[nodiscard]] GateId GetId() const;
     [[nodiscard]] size_t GetNumIns() const;
     [[nodiscard]] size_t GetStateCount() const;
     [[nodiscard]] size_t GetDependCount() const;
     [[nodiscard]] size_t GetInValueCount() const;
+    [[nodiscard]] size_t GetInFrameStateCount() const;
     [[nodiscard]] size_t GetInValueStarts() const;
     [[nodiscard]] size_t GetRootCount() const;
-    [[nodiscard]] BitField GetBitField() const;
-    void SetBitField(BitField bitfield);
+    [[nodiscard]] size_t GetInFrameStateStarts() const;
     void AppendIn(const Gate *in);  // considered very slow
     void Print(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
     void ShortPrint(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
     size_t PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPreview, size_t highlightIdx,
                        std::string &log, bool isEnd = false) const;
     void PrintByteCode(std::string bytecode) const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckNullInput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckStateInput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckValueInput(bool isArch64) const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckDependInput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckStateOutput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckBranchOutput() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckNOP() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckSelector() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> CheckRelay() const;
-    [[nodiscard]] std::optional<std::pair<std::string, size_t>> SpecialCheck() const;
-    [[nodiscard]] bool Verify(bool isArch64) const;
+    void CheckNullInput() const;
+    void CheckStateInput() const;
+    void CheckValueInput(bool isArch64) const;
+    void CheckDependInput() const;
+    void CheckRootInput() const;
+    void CheckFrameStateInput() const;
+    void CheckStateOutput() const;
+    void CheckBranchOutput() const;
+    void CheckNOP() const;
+    void CheckSelector() const;
+    void CheckRelay() const;
+    void Verify(bool isArch64) const;
     [[nodiscard]] MarkCode GetMark(TimeStamp stamp) const;
     void SetMark(MarkCode mark, TimeStamp stamp);
-    [[nodiscard]] MachineType GetMachineType() const;
-    void SetMachineType(MachineType MachineType);
+    MachineType GetMachineType() const
+    {
+        return machineType_;
+    }
+    void SetMachineType(MachineType machineType)
+    {
+        machineType_ = machineType;
+    }
+    GateType GetGateType() const
+    {
+        return type_;
+    }
+    void SetGateType(GateType type)
+    {
+        type_ = type;
+    }
+    const GateMetaData* GetMetaData() const
+    {
+        return meta_;
+    }
+
+    const OneParameterMetaData* GetOneParameterMetaData() const
+    {
+        return OneParameterMetaData::Cast(meta_);
+    }
+
+    const TypedBinaryMegaData* GetTypedBinaryMegaData() const
+    {
+        return TypedBinaryMegaData::Cast(meta_);
+    }
+
+    const StringMetaData* GetStringMetaData() const
+    {
+        ASSERT(meta_->IsStringType());
+        return static_cast<const StringMetaData*>(meta_);
+    }
+
+    const JSBytecodeMetaData* GetJSBytecodeMetaData() const
+    {
+        return JSBytecodeMetaData::Cast(meta_);
+    }
+
+    const RestoreRegsMetaData* GetRestoreRegsMetaData() const
+    {
+        return RestoreRegsMetaData::Cast(meta_);
+    }
+
     std::string MachineTypeStr(MachineType machineType) const;
     std::string GateTypeStr(GateType gateType) const;
     ~Gate() = default;
 
 private:
+    friend class Circuit;
+    friend class GateAccessor;
+    void CheckInputOpcode(size_t idx, OpCode expected) const;
+    void CheckInputMachineType(size_t idx, MachineType expected, bool isArch64) const;
+    void CheckGeneralState(size_t idx) const;
+    void CheckFailed(std::string errorString, size_t highlightIdx) const;
+    void SetMetaData(const GateMetaData* meta)
+    {
+        meta_ = meta;
+    }
+    uint64_t TryGetValue() const
+    {
+        if (meta_->IsOneParameterKind()) {
+            return GetOneParameterMetaData()->GetValue();
+        }
+        return 0;
+    }
     // ...
     // out(2)
     // out(1)
     // out(0)
-    GateId id_ {0}; // uint32_t
-    GateType type_; // uint32_t
-    OpCode opcode_; // uint8_t
-    MachineType bitValue_ = MachineType::NOVALUE; // uint8_t
-    TimeStamp stamp_; // uint8_t
-    MarkCode mark_; // uint8_t
-    BitField bitfield_; // uint64_t
-    GateRef firstOut_; // int32_t
+    const GateMetaData *meta_ { nullptr }; // uintptr_t
+    GateId id_ { 0 }; // uint32_t
+    GateType type_ { GateType::Empty() }; // uint32_t
+    MachineType machineType_ { MachineType::NOVALUE }; // uint8_t
+    TimeStamp stamp_ { 0 }; // uint8_t
+    MarkCode mark_ { MarkCode::NO_MARK }; // uint8_t
+    uint8_t bitField_ { 0 };
+    GateRef firstOut_ { 0 }; // int32_t
     // in(0)
     // in(1)
     // in(2)

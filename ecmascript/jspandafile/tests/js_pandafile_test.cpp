@@ -131,10 +131,10 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    EXPECT_TRUE(class_id.IsValid());
+    File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
 
-    ClassDataAccessor cda(*file, class_id);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     int count = 0;
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
@@ -143,12 +143,12 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
     });
     EXPECT_EQ(count, 3); // 3 : number of methods
 
-    MethodLiteral method1(pf, methodId[0]);
-    MethodLiteral method2(pf, methodId[1]);
-    MethodLiteral method3(pf, methodId[2]);
-    pf->SetMethodLiteralToMap(&method1);
-    pf->SetMethodLiteralToMap(&method2);
-    pf->SetMethodLiteralToMap(&method3);
+    MethodLiteral *method1 = new MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new MethodLiteral(methodId[1]);
+    MethodLiteral *method3 = new MethodLiteral(methodId[2]);
+    pf->SetMethodLiteralToMap(method1);
+    pf->SetMethodLiteralToMap(method2);
+    pf->SetMethodLiteralToMap(method3);
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[0]).c_str(), "foo1");
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[1]).c_str(), "foo2");
     EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[2]).c_str(), "foo3");
@@ -166,10 +166,10 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    EXPECT_TRUE(class_id.IsValid());
+    File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
 
-    ClassDataAccessor cda(*file, class_id);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     int count = 0;
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
@@ -217,10 +217,10 @@ HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    EXPECT_TRUE(class_id.IsValid());
+    File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
 
-    ClassDataAccessor cda(*file, class_id);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     int count = 0;
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
@@ -251,13 +251,13 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
     JSPandaFile *pf = CreateJSPandaFile(source, fileName);
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    EXPECT_TRUE(class_id.IsValid());
+    File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
 
     const File::Header *header = file->GetHeader();
     Span fileData(file->GetBase(), header->file_size);
-    Span class_idx_data = fileData.SubSpan(header->class_idx_off, header->num_classes * sizeof(uint32_t));
-    auto classesData = Span(reinterpret_cast<const uint32_t *>(class_idx_data.data()), header->num_classes);
+    Span classIdxData = fileData.SubSpan(header->class_idx_off, header->num_classes * sizeof(uint32_t));
+    auto classesData = Span(reinterpret_cast<const uint32_t *>(classIdxData.data()), header->num_classes);
 
     Span<const uint32_t> classes = pf->GetClasses();
     EXPECT_EQ(classes.Data(), classesData.Data());
@@ -286,7 +286,7 @@ HWTEST_F_L0(JSPandaFileTest, SetLoadedAOTStatus_IsLoadedAOT)
     bool isLoadedAOT = pf->IsLoadedAOT();
     EXPECT_EQ(isLoadedAOT, false);
 
-    pf->SetLoadedAOTStatus(true);
+    pf->SetAOTFileInfoIndex(0);
     isLoadedAOT = pf->IsLoadedAOT();
     EXPECT_EQ(isLoadedAOT, true);
     JSPandaFileManager::RemoveJSPandaFile(pf);

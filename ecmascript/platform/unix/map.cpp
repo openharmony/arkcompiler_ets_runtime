@@ -47,6 +47,19 @@ void PageUnmap(MemMap it)
     munmap(it.GetMem(), it.GetSize());
 }
 
+MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
+{
+    MemMap memMap = PageMap(size, prot, alignment);
+    PageTag(memMap.GetMem(), memMap.GetSize());
+    return memMap;
+}
+
+void MachineCodePageUnmap(MemMap it)
+{
+    PageTag(it.GetMem(), it.GetSize(), true);
+    PageUnmap(it);
+}
+
 void PageRelease(void *mem, size_t size)
 {
     madvise(mem, size, MADV_DONTNEED);

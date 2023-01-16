@@ -16,7 +16,6 @@
 #include <chrono>
 #include <iostream>
 #include <iterator>
-#include <limits>
 #include <ostream>
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>
@@ -31,6 +30,8 @@
 #include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
+using PatchErrorCode = panda::JSNApi::PatchErrorCode;
+
 const std::string TEST_ENTRY_POINT = "test";
 const std::string RETEST_ENTRY_POINT = "retest";
 
@@ -106,6 +107,7 @@ int Main(const int argc, const char **argv)
         uint32_t len = fileNames.size();
         if (len < 4) {  // 4: four abc file
             std::cout << "Must include base.abc, patch.abc, test.abc, retest.abc absolute path" << std::endl;
+            JSNApi::DestroyJSVM(vm);
             return -1;
         }
         std::string baseFileName = fileNames[0];
@@ -114,6 +116,7 @@ int Main(const int argc, const char **argv)
         auto res = JSNApi::Execute(vm, baseFileName, entry);
         if (!res) {
             std::cout << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;
+            JSNApi::DestroyJSVM(vm);
             return -1;
         }
         JSNApi::EnableUserUncaughtErrorHandler(vm);
@@ -123,10 +126,10 @@ int Main(const int argc, const char **argv)
         for (uint32_t i = 3; i < len; i++) { // 3: patch file, test unloadpatch abc file.
             std::string patchFileName = fileNames[i];
             std::cout << "QuickFix start load patch" << std::endl;
-            res = JSNApi::LoadPatch(vm, patchFileName, baseFileName);
-            if (!res) {
+            auto result = JSNApi::LoadPatch(vm, patchFileName, baseFileName);
+            if (result != PatchErrorCode::SUCCESS) {
                 std::cout << "LoadPatch failed"<< std::endl;
-                return -1;
+                break;
             }
             std::cout << "QuickFix load patch success" << std::endl;
 
@@ -134,7 +137,7 @@ int Main(const int argc, const char **argv)
             if (!res) {
                 std::cout << "Cannot execute panda file '" << testLoadFileName
                         << "' with entry '" << entry << "'" << std::endl;
-                return -1;
+                break;
             }
 
             std::cout << "QuickFix start check exception" << std::endl;
@@ -147,10 +150,10 @@ int Main(const int argc, const char **argv)
             }
 
             std::cout << "QuickFix start unload patch" << std::endl;
-            res = JSNApi::UnloadPatch(vm, patchFileName);
-            if (!res) {
+            result = JSNApi::UnloadPatch(vm, patchFileName);
+            if (result != PatchErrorCode::SUCCESS) {
                 std::cout << "UnloadPatch failed!" << std::endl;
-                return -1;
+                break;
             }
             std::cout << "QuickFix unload patch success" << std::endl;
 
@@ -158,7 +161,7 @@ int Main(const int argc, const char **argv)
             if (!res) {
                 std::cout << "Cannot execute panda file '" << testUnloadFileName
                         << "' with entry '" << entry << "'" << std::endl;
-                return -1;
+                break;
             }
         }
         std::cout << "QuickFix Execute end" << std::endl;

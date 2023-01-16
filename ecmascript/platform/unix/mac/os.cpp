@@ -47,7 +47,7 @@ size_t PhysicalSize()
     return static_cast<size_t>(size);
 }
 
-int PrctlSetVMA([[maybe_unused]] void *p, [[maybe_unused]] size_t size, [[maybe_unused]] const char *tag)
+int PrctlSetVMA([[maybe_unused]] const void *p, [[maybe_unused]] const size_t size, [[maybe_unused]] const char *tag)
 {
     return -1;
 }

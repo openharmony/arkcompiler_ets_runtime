@@ -22,6 +22,12 @@
 #include <type_traits>
 
 namespace panda::ecmascript::base {
+template <class S, class R>
+union Data {
+    S src;
+    R dst;
+};
+
 template <typename T>
 inline constexpr uint32_t CountLeadingZeros(T value)
 {
@@ -123,11 +129,10 @@ template <class To, class From>
 inline To bit_cast(const From &src) noexcept  // NOLINT(readability-identifier-naming)
 {
     static_assert(sizeof(To) == sizeof(From), "size of the types must be equal");
-    To dst;
-    // The use of security functions 'memccpy_s' here will have a greater impact on performance
-    // todo use union instance of memcpy
-    memcpy(&dst, &src, sizeof(To));
-    return dst;
+    // The use of security functions 'memcpy_s' here will have a greater impact on performance
+    Data<From, To> data;
+    data.src = src;
+    return data.dst;
 }
 
 template <typename T>

@@ -60,7 +60,7 @@ HWTEST_F_L0(GCRingBufferTest, Push)
     constexpr int LENGTH = 10;
     GCRingBuffer<int, LENGTH> gcBuffer;
     EXPECT_EQ(gcBuffer.Count(), 0);
-    for (int i = 0 ; i < 2 * LENGTH ; i++) {
+    for (int i = 0; i < 2 * LENGTH; i++) {
         gcBuffer.Push(i);
     }
     EXPECT_EQ(gcBuffer.Count(), LENGTH);
@@ -82,12 +82,12 @@ HWTEST_F_L0(GCRingBufferTest, Sum)
     constexpr int LENGTH = 10;
     GCRingBuffer<int, LENGTH> gcBuffer;
 
-    for (int i = 0 ; i < LENGTH ; i++) {
+    for (int i = 0; i < LENGTH; i++) {
         gcBuffer.Push(i);
     }
     EXPECT_EQ(gcBuffer.Sum(SumCallback, 0), 45);
 
-    for (int i = 0 ; i < LENGTH ; i++) {
+    for (int i = 0; i < LENGTH; i++) {
         gcBuffer.Push(1);
     }
     EXPECT_EQ(gcBuffer.Count(), LENGTH);
@@ -107,7 +107,7 @@ HWTEST_F_L0(GCRingBufferTest, Reset)
     constexpr int LENGTH = 10;
     GCRingBuffer<int, LENGTH> gcBuffer;
 
-    for (int i = 0 ; i < LENGTH ; i++) {
+    for (int i = 0; i < LENGTH; i++) {
         gcBuffer.Reset();
         gcBuffer.Push(i);
     }

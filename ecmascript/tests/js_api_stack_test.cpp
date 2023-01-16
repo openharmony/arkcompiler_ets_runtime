@@ -165,7 +165,7 @@ HWTEST_F_L0(JSAPIStackTest, Empty)
         EXPECT_EQ(toor->Empty(), false);
     }
 
-    int num = 8 ;
+    int num = 8;
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());

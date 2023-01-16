@@ -51,6 +51,12 @@ enum class MemGrowingType : uint8_t {
     PRESSURE
 };
 
+enum class HeapMode {
+    NORMAL,
+    SPAWN,
+    SHARE,
+};
+
 enum class IdleHeapSizePtr : uint8_t {
     IDLE_HEAP_SIZE_1 = 0,
     IDLE_HEAP_SIZE_2,
@@ -169,6 +175,7 @@ public:
             case MemSpaceType::MACHINE_CODE_SPACE:
                 return machineCodeSpace_;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
         }
@@ -444,9 +451,9 @@ public:
         return isVerifying_;
     }
 #endif
-    static bool ShouldMoveToRoSpace(JSTaggedValue value)
+    static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
     {
-        return value.IsString() && !Region::ObjectAddressToRange(value.GetTaggedObject())->InHugeObjectSpace();
+        return hclass->IsString() && !Region::ObjectAddressToRange(object)->InHugeObjectSpace();
     }
 
     bool IsFullMarkRequested() const
@@ -464,9 +471,9 @@ public:
         shouldThrowOOMError_ = shouldThrow;
     }
 
-    void SetIsFork(bool isFork)
+    void SetHeapMode(HeapMode mode)
     {
-        isFork_ = isFork;
+        mode_ = mode;
     }
 
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
@@ -482,6 +489,16 @@ public:
     size_t GetNativeBindingSize() const
     {
         return activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+    }
+
+    size_t GetGlobalNativeSize() const
+    {
+        return GetNativeBindingSize() + nativeAreaAllocator_->GetNativeMemoryUsage();
+    }
+
+    bool GlobalNativeSizeLargerThanLimit() const
+    {
+        return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
     }
 
     size_t GetNonNewSpaceNativeBindingSize() const
@@ -608,10 +625,10 @@ private:
     bool oldSpaceLimitAdjusted_ {false};
     bool shouldThrowOOMError_ {false};
     bool runningNativeFinalizeCallbacks_ {false};
-    bool isFork_ {false};
     bool enableIdleGC_ {true};
     bool waitForStartUp_ {true};
     bool couldIdleGC_ {false};
+    HeapMode mode_ { HeapMode::NORMAL };
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};

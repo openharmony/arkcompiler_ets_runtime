@@ -77,7 +77,7 @@ private:
 class VectorRegister {
 public:
     explicit VectorRegister(VectorRegisterId reg, Scale scale = D) : reg_(reg), scale_(scale) {};
-    
+
     inline VectorRegisterId GetId() const
     {
         return reg_;
@@ -106,6 +106,7 @@ public:
         } else if (scale_ == Q) {
             return 128;
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 private:

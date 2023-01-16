@@ -19,6 +19,7 @@
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/method.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/stackmap/llvm_stackmap_type.h"
 
@@ -269,7 +270,7 @@ private:
     {
         return callSiteSp;
     }
-    [[maybe_unused]] alignas(EAS) uintptr_t callSiteSp {0};
+    alignas(EAS) uintptr_t callSiteSp {0};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
@@ -358,9 +359,9 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       lexEnv             |               |
+//               |       call-target        |               |
 //               |--------------------------|               |
-//               |       call-target        |               v
+//               |       lexEnv             |               v
 //               +--------------------------+ ---------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
@@ -373,14 +374,19 @@ struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::Tagg
 public:
     static constexpr size_t ENV_SLOT_DIFF = 2;
     enum class Index : size_t {
-        JSFuncIndex = 0,
-        EnvIndex,
+        EnvIndex = 0,
+        JSFuncIndex,
         TypeIndex,
         PrevFpIndex,
         ReturnAddrIndex,
         NumOfMembers
     };
     static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+
+    static constexpr size_t GetFunctionDeltaReturnAddr()
+    {
+        return static_cast<size_t>(Index::ReturnAddrIndex) - static_cast<size_t>(Index::JSFuncIndex);
+    }
 
     inline JSTaggedType* GetPrevFrameFp()
     {
@@ -465,8 +471,8 @@ private:
     }
 
     // dynamic callee saveregisters for x86-64
-    alignas(EAS) JSTaggedValue jsFunc {JSTaggedValue::Undefined()};
     alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};
+    alignas(EAS) JSTaggedValue jsFunc {JSTaggedValue::Undefined()};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
@@ -475,6 +481,8 @@ private:
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionFrame),
                       OptimizedJSFunctionFrame::SizeArch32,
                       OptimizedJSFunctionFrame::SizeArch64);
+// 2: return addr & prevFp, type and js function should be pairs to update type and js function at the same time.
+static_assert((OptimizedJSFunctionFrame::GetFunctionDeltaReturnAddr() % 2) == 1);
 
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
 //          +--------------------------+
@@ -856,7 +864,7 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
         return env;
     }
 
-    const uint8_t *GetPc()
+    const uint8_t *GetPc() const
     {
         return pc;
     }
@@ -1150,6 +1158,10 @@ public:
     {
         return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, callsiteFp);
     }
+    const JSTaggedType* GetArgv() const
+    {
+        return reinterpret_cast<const JSTaggedType *>(&argc + 1);
+    }
 
 private:
     [[maybe_unused]] FrameType type;
@@ -1380,6 +1392,7 @@ public:
     int ComputeDelta() const;
     template <GCVisitedFlag GCVisit = GCVisitedFlag::IGNORED>
     void Advance();
+    uint32_t GetBytecodeOffset() const;
     uintptr_t GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc = 0) const;
     uintptr_t GetPrevFrame() const;
     uintptr_t GetCallSiteSp() const
@@ -1400,6 +1413,27 @@ public:
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;
 
+    Method *CheckAndGetMethod() const;
+    JSTaggedValue GetFunction() const;
+
+    bool IsLeaveFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::LEAVE_FRAME) || (type == FrameType::LEAVE_FRAME_WITH_ARGV);
+    }
+
+    bool IsOptimizedFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::OPTIMIZED_FRAME);
+    }
+
+    bool IsOptimizedJSFunctionFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    }
+
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
@@ -1413,4 +1447,6 @@ private:
 }  // namespace panda::ecmascript
 extern "C" int step_ark_managed_native_frame(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz);
+extern "C" int get_ark_js_heap_crash_info(
+    int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz);
 #endif // ECMASCRIPT_FRAMES_H

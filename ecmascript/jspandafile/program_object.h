@@ -78,7 +78,9 @@ public:
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         if (isLoadedAOT) {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-            constpool = RestoreConstantPool(vm, jsPandaFile);
+            panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+            int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+            constpool = GetDeserializedConstantPool(vm, jsPandaFile, index);
 #else
             LOG_FULL(FATAL) << "Aot don't support Windows and MacOS platform";
             UNREACHABLE();
@@ -99,14 +101,13 @@ public:
     {
         JSPandaFile *jsPandaFile = GetJSPandaFile();
         panda_file::File::IndexHeader *indexHeader = GetIndexHeader();
-        auto pf = jsPandaFile->GetPandaFile();
-        Span<const panda_file::File::EntityId> indexs = pf->GetMethodIndex(indexHeader);
+        Span<const panda_file::File::EntityId> indexs = jsPandaFile->GetMethodIndex(indexHeader);
         return indexs[index];
     }
 
-    inline void SetIndexHeader(const panda_file::File::IndexHeader *indexHeadre)
+    inline void SetIndexHeader(const panda_file::File::IndexHeader *indexHeader)
     {
-        Barriers::SetPrimitive(GetData(), GetIndexHeaderOffset(), indexHeadre);
+        Barriers::SetPrimitive(GetData(), GetIndexHeaderOffset(), indexHeader);
     }
 
     inline panda_file::File::IndexHeader *GetIndexHeader() const
@@ -160,7 +161,7 @@ public:
     static JSTaggedValue GetMethodFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
     {
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-        auto val = taggedPool->Get(index);
+        auto val = taggedPool->GetObjectFromCache(index);
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
 
         // For AOT
@@ -198,47 +199,6 @@ public:
         return val;
     }
 
-    static JSTaggedValue GetClassMethodFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
-                                                 uint32_t index)
-    {
-        auto val = constpool->Get(index);
-        JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
-
-        // For AOT
-        bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
-        bool hasEntryIndex = false;
-        uint32_t entryIndex = 0;
-        if (isLoadedAOT && val.IsInt()) {
-            entryIndex = static_cast<uint32_t>(val.GetInt());
-            hasEntryIndex = true;
-            val = JSTaggedValue::Hole();
-        }
-
-        if (val.IsHole()) {
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-            EcmaVM *vm = thread->GetEcmaVM();
-            ObjectFactory *factory = vm->GetFactory();
-
-            ASSERT(jsPandaFile->IsNewVersion());
-            panda_file::File::EntityId id = constpool->GetEntityId(index);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
-            ASSERT(methodLiteral != nullptr);
-            JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
-            JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(jsPandaFile, id);
-            method->SetConstantPool(thread, newConstpool);
-            if (isLoadedAOT && hasEntryIndex) {
-                vm->GetAOTFileManager()->SetAOTFuncEntry(jsPandaFile, *method, entryIndex);
-            }
-
-            val = method.GetTaggedValue();
-            constpool->SetObjectToCache(thread, index, val);
-            return val;
-        }
-
-        return val;
-    }
-
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
                                                   uint32_t literal, CString entry)
     {
@@ -266,7 +226,6 @@ public:
 
             val = literalArray.GetTaggedValue();
             constpool->SetObjectToCache(thread, literal, val);
-            return val;
         }
 
         return val;
@@ -360,8 +319,7 @@ public:
 
             JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
             panda_file::File::EntityId id = taggedPool->GetEntityId(index);
-            auto pf = jsPandaFile->GetPandaFile();
-            auto foundStr = pf->GetStringData(id);
+            auto foundStr = jsPandaFile->GetStringData(id);
 
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
@@ -388,6 +346,7 @@ private:
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - JS_PANDA_FILE_INDEX);
     }
+
     inline size_t GetIndexHeaderOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - INDEX_HEADER_INDEX);
@@ -398,7 +357,7 @@ private:
         return JSTaggedValue::TaggedTypeSize() * GetLength() + DATA_OFFSET;
     }
 
-    static JSHandle<ConstantPool> RestoreConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+    static JSHandle<ConstantPool> GetDeserializedConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, int32_t cpID);
 };
 }  // namespace ecmascript
 }  // namespace panda

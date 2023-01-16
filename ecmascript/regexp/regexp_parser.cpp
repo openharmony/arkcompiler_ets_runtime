@@ -281,6 +281,10 @@ void RegExpParser::ParseAlternative(bool isBackward)
                         isAtom = true;
                         int atomValue = ParseAtomEscape(isBackward);
                         if (atomValue != -1) {
+                            PrevOpCode prevOp;
+                            if (isBackward) {
+                                prevOp.EmitOpCode(&buffer_, 0);
+                            }
                             if (IsIgnoreCase()) {
                                 if (!IsUtf16()) {
                                     atomValue = Canonicalize(atomValue, false);
@@ -306,6 +310,9 @@ void RegExpParser::ParseAlternative(bool isBackward)
                             } else {
                                 Char32OpCode charOp;
                                 charOp.EmitOpCode(&buffer_, atomValue);
+                            }
+                            if (isBackward) {
+                                prevOp.EmitOpCode(&buffer_, 0);
                             }
                         }
                         break;
@@ -578,6 +585,9 @@ bool RegExpParser::ParseAssertionCapture(int *captureIndex, bool isBackward)
                     ParseError("? Syntax error.");
                     return false;
             }
+            if (isError_) {
+                return false;
+            }
         } else {
             groupNames_.EmitChar(0);
         parseCapture:
@@ -593,6 +603,9 @@ bool RegExpParser::ParseAssertionCapture(int *captureIndex, bool isBackward)
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
             PrintF("capture start %d \n", *captureIndex);
             ParseDisjunction(isBackward);
+            if (isError_) {
+                return false;
+            }
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
             PrintF("capture end %d \n", *captureIndex);
             if (isBackward) {

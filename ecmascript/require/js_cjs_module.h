@@ -35,8 +35,6 @@ public:
     ACCESSORS(Filename, EXPORTS_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_SIZE) // define BitField
     DEFINE_ALIGN_SIZE(LAST_SIZE);
-    // ACCESSORS(Loaded, FILENAME_OFFSET, LOADED_OFFSET)
-    // ACCESSORS(Children, LOADED_OFFSET, SIZE)
 
     static constexpr size_t STATUS_BITS = 2;
     FIRST_BIT_FIELD(BitField, Status, CjsModuleStatus, STATUS_BITS)
@@ -61,7 +59,7 @@ public:
     static JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
                                                           JSTaggedValue request);
 
-    static void RequireExecution(JSThread *thread, const JSHandle<EcmaString> &moduleFileName);
+    static void RequireExecution(JSThread *thread, CString mergedFilename, CString requestEntryPoint);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_REQUIRE_CJS_MODULE_H

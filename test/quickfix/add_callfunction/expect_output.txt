@@ -17,6 +17,7 @@ QuickFix load patch success
 patch A()
 patch B()
 patch C()
+patch D()
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch

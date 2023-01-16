@@ -1055,7 +1055,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 18. Let srcLength be ToLength(Get(src, "length")).
         JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
-        JSHandle<JSTaggedValue> lenResult = JSHandle<JSTaggedValue>(thread,
+        JSHandle<JSTaggedValue> lenResult(thread,
             FastRuntimeStub::FastGetPropertyByValue(thread,
                                                     JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(),
                                                     lengthKey.GetTaggedValue()));
@@ -1123,7 +1123,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     // 12. Let srcBuffer be the value of typedArray’s [[ViewedArrayBuffer]] internal slot.
     // 13. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
     JSTaggedValue srcBuffer = typedArray->GetViewedArrayBuffer();
-    JSHandle<JSTaggedValue> srcBufferHandle = JSHandle<JSTaggedValue>(thread, srcBuffer);
+    JSHandle<JSTaggedValue> srcBufferHandle(thread, srcBuffer);
     if (BuiltinsArrayBuffer::IsDetachedBuffer(srcBuffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ArrayBuffer of typedArray is detached buffer.",
                                     JSTaggedValue::Exception());

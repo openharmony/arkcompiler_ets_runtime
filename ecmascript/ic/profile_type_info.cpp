@@ -54,7 +54,7 @@ void ProfileTypeAccessor::AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, J
         return;
     }
     if (!profileData.IsWeak() && profileData.IsTaggedArray()) {  // POLY
-        ASSERT(profileTypeInfo_->Get(index + 1) == JSTaggedValue::Hole());
+        ASSERT(profileTypeInfo_->Get(index + 1).IsHole());
         JSHandle<TaggedArray> arr(thread_, profileData);
         const uint32_t step = 2;
         uint32_t newLen = arr->GetLength() + step;
@@ -100,7 +100,7 @@ void ProfileTypeAccessor::AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandl
     ASSERT(!profileData.IsHole());
     auto index = slotId_;
     if (profileData.IsUndefined()) {
-        ASSERT(profileTypeInfo_->Get(index + 1) == JSTaggedValue::Undefined());
+        ASSERT(profileTypeInfo_->Get(index + 1).IsUndefined());
         profileTypeInfo_->Set(thread_, index, key.GetTaggedValue());
         const int arrayLength = 2;
         JSHandle<TaggedArray> newArr = thread_->GetEcmaVM()->GetFactory()->NewTaggedArray(arrayLength);
@@ -217,6 +217,7 @@ std::string ICKindToString(ICKind kind)
         case ICKind::GlobalStoreIC:
             return "GlobalStoreIC";
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -234,6 +235,7 @@ std::string ProfileTypeAccessor::ICStateToString(ProfileTypeAccessor::ICState st
         case ICState::MEGA:
             return "mega";
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -284,6 +286,7 @@ ProfileTypeAccessor::ICState ProfileTypeAccessor::GetICState() const
             return array->GetLength() == MONO_CASE_NUM ? ICState::MONO : ICState::POLY; // 2 : test case
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }

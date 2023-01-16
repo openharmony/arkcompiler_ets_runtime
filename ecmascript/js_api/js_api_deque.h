@@ -40,13 +40,13 @@ public:
     }
 
     static void InsertFront(JSThread *thread, const JSHandle<JSAPIDeque> &deque, const JSHandle<JSTaggedValue> &value);
-    
+
     static void InsertEnd(JSThread *thread, const JSHandle<JSAPIDeque> &deque, const JSHandle<JSTaggedValue> &value);
 
     static JSTaggedValue ForEach(JSThread *thread, const JSHandle<JSAPIDeque> &deque);
 
     static JSTaggedValue GetIteratorObj(JSThread *thread, const JSHandle<JSAPIDeque> &deque);
-    
+
     static JSHandle<TaggedArray> OwnKeys(JSThread *thread, const JSHandle<JSAPIDeque> &deque);
 
     static JSHandle<TaggedArray> OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIDeque> &deque);
@@ -68,7 +68,7 @@ public:
     JSTaggedValue Get(const uint32_t index);
 
     JSTaggedValue Set(JSThread *thread, const uint32_t index, JSTaggedValue value);
-        
+
     uint32_t GetSize() const;
 
     bool Has(JSTaggedValue value) const;

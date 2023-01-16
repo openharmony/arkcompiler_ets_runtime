@@ -53,7 +53,7 @@ template<typename T>
 class JsonParser {
 public:
     using Text = const T *;
-    explicit JsonParser() = default;
+    JsonParser() = default;
     explicit JsonParser(JSThread *thread) : thread_(thread) {}
     ~JsonParser() = default;
     NO_COPY_SEMANTIC(JsonParser);
@@ -471,6 +471,7 @@ private:
                 case Tokens::LITERAL_NULL:
                     return JSTaggedValue::Null();
                 default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
             }
         }

@@ -1394,8 +1394,8 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
         }
         case SnapshotType::AI: {
             JSTaggedValue item = JSTaggedValue(rootObjectAddr);
-            if (!isRootObjRelocate_ && item.IsConstantPool()) {
-                vm_->GetAOTFileManager()->AddSnapshotConstantPool(item);
+            if (!isRootObjRelocate_ && item.IsTaggedArray()) {
+                vm_->GetAOTFileManager()->AddConstantPool(fileName_, item);
                 isRootObjRelocate_ = true;
             }
             break;
@@ -1671,7 +1671,7 @@ uintptr_t SnapshotProcessor::TaggedObjectEncodeBitToAddr(EncodeBit taggedBit)
         LOG_FULL(FATAL) << "Snapshot deserialize can not find region by index";
     }
     Region *region = regionIndexMap_.find(regionIndex)->second;
-    size_t objectOffset  = taggedBit.GetObjectOffsetInRegion();
+    size_t objectOffset = taggedBit.GetObjectOffsetInRegion();
     return ToUintPtr(region) + objectOffset;
 }
 

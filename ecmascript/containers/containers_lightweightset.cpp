@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/containers/containers_lightweightset.h"
 
 #include "ecmascript/containers/containers_errors.h"
@@ -42,7 +42,7 @@ JSTaggedValue ContainersLightWeightSet::LightWeightSetConstructor(EcmaRuntimeCal
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSAPILightWeightSet> lightweightSet = JSHandle<JSAPILightWeightSet>::Cast(obj);
-    
+
     JSHandle<TaggedArray> hashes =
         JSAPILightWeightSet::CreateSlot(thread, JSAPILightWeightSet::DEFAULT_CAPACITY_LENGTH);
     JSHandle<TaggedArray> values =
@@ -102,7 +102,7 @@ JSTaggedValue ContainersLightWeightSet::AddAll(EcmaRuntimeCallInfo *argv)
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
-    
+
     return JSTaggedValue(JSAPILightWeightSet::AddAll(thread, JSHandle<JSAPILightWeightSet>::Cast(self), value));
 }
 
@@ -138,7 +138,7 @@ JSTaggedValue ContainersLightWeightSet::GetValueAt(EcmaRuntimeCallInfo *argv)
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
-                                                                "The getValueAt method cannot be bound");;
+                                                                "The getValueAt method cannot be bound");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }

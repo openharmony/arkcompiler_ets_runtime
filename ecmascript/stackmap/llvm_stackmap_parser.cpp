@@ -65,7 +65,7 @@ void LLVMStackMapParser::CalcCallSite()
             struct LocationTy loc = llvmStackMap_.StkMapRecord[recordNum + recordId].Locations[j];
             uint32_t instructionOffset = recordHead.InstructionOffset;
             uintptr_t callsite = address + instructionOffset;
-            uint64_t  patchPointID = recordHead.PatchPointID;
+            uint64_t patchPointID = recordHead.PatchPointID;
             if (j == LocationTy::CONSTANT_DEOPT_CNT_INDEX) {
                 ASSERT(loc.location == LocationTy::Kind::CONSTANT);
                 lastDeoptIndex = loc.OffsetOrSmallConstant + LocationTy::CONSTANT_DEOPT_CNT_INDEX;
@@ -102,13 +102,14 @@ void LLVMStackMapParser::CalcCallSite()
                     deoptbundles[callsite].push_back(v);
                 }
             } else {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
             }
         }
     };
     for (size_t i = 0; i < llvmStackMap_.StkSizeRecords.size(); i++) {
         // relative offset
-        uintptr_t address =  llvmStackMap_.StkSizeRecords[i].functionAddress;
+        uintptr_t address = llvmStackMap_.StkSizeRecords[i].functionAddress;
         uint64_t recordCount = llvmStackMap_.StkSizeRecords[i].recordCount;
         fun2RecordNum_.emplace_back(std::make_pair(address, recordCount));
         for (uint64_t k = 0; k < recordCount; k++) {

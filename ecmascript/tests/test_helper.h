@@ -55,7 +55,7 @@ public:
         // It doesn't include new.target argument
         int32_t numActualArgs = argvLength / testDecodedSize + 1;
         JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-        
+
         size_t frameSize = 0;
         if (thread->IsAsmInterpreter()) {
             frameSize = InterpretedEntryFrame::NumOfMembers() + numActualArgs;

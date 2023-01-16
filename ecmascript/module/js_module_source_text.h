@@ -24,7 +24,7 @@
 
 namespace panda::ecmascript {
 enum class ModuleStatus : uint8_t { UNINSTANTIATED = 0x01, INSTANTIATING, INSTANTIATED, EVALUATING, EVALUATED };
-enum class ModuleTypes : uint8_t { ECMAMODULE = 0x01, CJSMODULE, UNKNOWN};
+enum class ModuleTypes : uint8_t { ECMAMODULE = 0x01, CJSMODULE, JSONMODULE, UNKNOWN};
 
 class SourceTextModule final : public ModuleRecord {
 public:
@@ -43,15 +43,13 @@ public:
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                  const JSHandle<TaggedArray> &exportStarSet);
 
-    // 15.2.1.16.3 ResolveExport(exportName, resolveSet)
+    // 15.2.1.16.3 ResolveExport(exportName, resolveVector)
     static JSHandle<JSTaggedValue> ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
         const JSHandle<JSTaggedValue> &exportName,
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet);
-    static JSHandle<JSTaggedValue> ResolveCjsExport(JSThread *thread,
-        const JSHandle<SourceTextModule> &module,
-        const JSHandle<JSTaggedValue> &cjsModule,
-        const JSHandle<JSTaggedValue> &exportName,
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet);
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector);
+    static JSHandle<JSTaggedValue> ResolveCjsExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                                    const JSHandle<JSTaggedValue> &cjsModule,
+                                                    const JSHandle<JSTaggedValue> &exportName);
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
                                         CVector<JSHandle<SourceTextModule>> &stack, int index);
@@ -64,6 +62,8 @@ public:
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
         CVector<JSHandle<SourceTextModule>> &stack, int index, const void *buffer = nullptr,
         size_t size = 0, bool excuteFromJob = false);
+    static int ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
+                                CVector<JSHandle<SourceTextModule>> &stack, int index);
 
     // 15.2.1.16.5.2 ModuleExecution ( module )
     static void ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -85,8 +85,7 @@ public:
     ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);
     ACCESSORS(EcmaModuleFilename, ECMA_MODULE_FILENAME, ECMA_MODULE_RECORDNAME);
     ACCESSORS(EcmaModuleRecordName, ECMA_MODULE_RECORDNAME, REQUESTED_MODULES_OFFSET);
-    ACCESSORS(NpmKey, REQUESTED_MODULES_OFFSET, NPM_KEY_OFFSET);
-    ACCESSORS(RequestedModules, NPM_KEY_OFFSET, IMPORT_ENTRIES_OFFSET);
+    ACCESSORS(RequestedModules, REQUESTED_MODULES_OFFSET, IMPORT_ENTRIES_OFFSET);
     ACCESSORS(ImportEntries, IMPORT_ENTRIES_OFFSET, LOCAL_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(LocalExportEntries, LOCAL_EXPORT_ENTTRIES_OFFSET, INDIRECT_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(IndirectExportEntries, INDIRECT_EXPORT_ENTTRIES_OFFSET, START_EXPORT_ENTTRIES_OFFSET);
@@ -101,7 +100,7 @@ public:
 
     // define BitField
     static constexpr size_t STATUS_BITS = 3;
-    static constexpr size_t MODULE_TYPE_BITS = 2;
+    static constexpr size_t MODULE_TYPE_BITS = 3;
     static constexpr size_t IS_NEW_BC_VERSION_BITS = 1;
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
     NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE_BITS, Status)
@@ -113,6 +112,7 @@ public:
     // 15.2.1.16.5 Evaluate()
     static int Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
                         const void *buffer = nullptr, size_t size = 0, bool excuteFromJob = false);
+    static int EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     // 15.2.1.16.4 Instantiate()
     static void CJSInstantiate(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -128,7 +128,7 @@ public:
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module,
                                                          CVector<std::pair<JSHandle<SourceTextModule>,
-                                                         JSHandle<JSTaggedValue>>> &resolveSet);
+                                                         JSHandle<JSTaggedValue>>> &resolveVector);
     static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
     static constexpr size_t DEFAULT_ARRAY_CAPACITY = 2;
 private:
@@ -140,19 +140,19 @@ private:
                                                      const JSHandle<SourceTextModule> &module,
                                                      JSMutableHandle<JSTaggedValue> &starResolution,
                                                      CVector<std::pair<JSHandle<SourceTextModule>,
-                                                     JSHandle<JSTaggedValue>>> &resolveSet);
+                                                     JSHandle<JSTaggedValue>>> &resolveVector);
     template <typename T>
     static void AddExportName(JSThread *thread, const JSTaggedValue &exportEntry, CVector<std::string> &exportedNames);
     static JSHandle<JSTaggedValue> ResolveLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
                                                       const JSHandle<JSTaggedValue> &exportName,
                                                       const JSHandle<SourceTextModule> &module);
     static JSHandle<JSTaggedValue> ResolveCjsLocalExport(JSThread *thread,
-                                                         LayoutInfo *layoutInfo,
+                                                         JSHandle<LayoutInfo> layoutInfo,
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module);
     static bool CheckCircularImport(const JSHandle<SourceTextModule> &module,
         const JSHandle<JSTaggedValue> &exportName,
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet);
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector);
     static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,

@@ -83,6 +83,32 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolNoParameterToString)
 
     auto symbolValue = ecmaVM->GetFactory()->NewFromASCII("Symbol()");
     ASSERT_EQ(EcmaStringAccessor::Compare(ecmaVM, symbolValue, resultHandle), 0);
+
+    // Undefined  not Object
+    ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    result = Symbol::ToString(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    thread->ClearException();
+
+    // No Symbol data
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
+    ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(array.GetTaggedValue());
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    result = Symbol::ToString(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    thread->ClearException();
 }
 
 // new Symbol("aaa").toString()
@@ -136,6 +162,32 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolNoParameterValueOf)
     TestHelper::TearDownFrame(thread, prev);
     EXPECT_TRUE(otherResult.IsSymbol());
     ASSERT_EQ(otherResult.GetRawData() == (JSTaggedValue(*symbol)).GetRawData(), true);
+
+    // Undefined not Object
+    ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    result = Symbol::ValueOf(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    thread->ClearException();
+
+    // No Symbol data
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
+    ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(array.GetTaggedValue());
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    result = Symbol::ValueOf(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    thread->ClearException();
 }
 
 // new Symbol("bbb").valueOf()
@@ -243,6 +295,19 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolKeyFor)
     JSHandle<SymbolTable> tableHandle(env->GetRegisterSymbols());
     JSTaggedValue stringValue(*string);
     ASSERT_EQ(tableHandle->ContainsKey(stringValue), true);
+
+    // not symbol
+    ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue::Undefined());
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    result = Symbol::KeyFor(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    thread->ClearException();
 }
 
 // Symbol.ToPrimitive()
@@ -313,6 +378,7 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolConstructor)
 HWTEST_F_L0(BuiltinsSymbolTest, SymbolGetter)
 {
     auto ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
 
     JSHandle<JSSymbol> symbol = ecmaVM->GetFactory()->NewPublicSymbolWithChar("");
     JSHandle<EcmaString> string = ecmaVM->GetFactory()->NewFromASCII("");
@@ -328,5 +394,33 @@ HWTEST_F_L0(BuiltinsSymbolTest, SymbolGetter)
     EcmaString *resString = reinterpret_cast<EcmaString *>(result.GetRawData());
     ASSERT_EQ(EcmaStringAccessor(resString).GetLength(), 0U);
     ASSERT_EQ(EcmaStringAccessor::StringsAreEqual(resString, *string), true);
+
+    // value is not symbol
+    JSHandle<JSFunction> symbolObject(env->GetSymbolFunction());
+    JSHandle<JSTaggedValue> symbolValue(symbol);
+    JSHandle<JSPrimitiveRef> symbolRef = ecmaVM->GetFactory()->NewJSPrimitiveRef(symbolObject, symbolValue);
+    ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(symbolRef.GetTaggedValue());
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    result = BuiltinsSymbol::DescriptionGetter(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_TRUE(result.IsString());
+    resString = reinterpret_cast<EcmaString *>(result.GetRawData());
+    ASSERT_EQ(EcmaStringAccessor(resString).GetLength(), 0U);
+    ASSERT_EQ(EcmaStringAccessor::StringsAreEqual(resString, *string), true);
+
+    // Undefined
+    ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    result = BuiltinsSymbol::DescriptionGetter(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(result, JSTaggedValue::Exception());
+    thread->ClearException();
 }
 }  // namespace panda::test

@@ -15,6 +15,8 @@
 
 #include "ecmascript/builtins/builtins_date_time_format.h"
 
+#include <ctime>
+#include <algorithm>
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_date.h"
@@ -128,7 +130,7 @@ static JSTaggedValue JSDateTimeFormatCreateWithLocaleTest(JSThread *thread, JSHa
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> newTarget(env->GetDateTimeFormatFunction());
-    JSHandle<JSObject> optionsObj = JSHandle<JSObject>(thread, BuiltinsDateTimeOptionsSet(thread));
+    JSHandle<JSObject> optionsObj(thread, BuiltinsDateTimeOptionsSet(thread));
 
     JSHandle<JSTaggedValue> localesString = locale;
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
@@ -415,5 +417,234 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, SupportedLocalesOf_002)
 
     JSHandle<EcmaString> resultStr(thread, elements->Get(0));
     EXPECT_STREQ("id-u-co-pinyin-de", EcmaStringAccessor(resultStr).ToCString().c_str());
+}
+
+static JSTaggedValue JSDateTime(JSThread *thread, JSTaggedValue &formatResult)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    double days = 1665187200000;
+    // jsDate supports zero to eleven, the month should be added with one
+    JSHandle<JSFunction> jsFunction(thread, formatResult);
+    JSArray *jsArray =
+        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    JSHandle<JSObject> jsObject(thread, jsArray);
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
+    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
+    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
+    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
+    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
+
+    [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
+    TestHelper::TearDownFrame(thread, prev2);
+    return result2;
+}
+
+static JSTaggedValue JSDateTimeFormatConstructor(JSThread *thread, JSHandle<JSObject> &optionsObj,
+    JSHandle<JSTaggedValue> &localesString)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> newTarget(env->GetDateTimeFormatFunction());
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);
+    ecmaRuntimeCallInfo->SetFunction(newTarget.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, localesString.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, optionsObj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsDateTimeFormat::DateTimeFormatConstructor(ecmaRuntimeCallInfo);
+    EXPECT_TRUE(result.IsJSDateTimeFormat());
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
+static JSTaggedValue JSDateTimeFormatForObject(JSThread *thread, JSTaggedValue &constructorResult)
+{
+    JSHandle<JSDateTimeFormat> jsDateTimeFormat = JSHandle<JSDateTimeFormat>(thread, constructorResult);
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(jsDateTimeFormat.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue::Undefined());
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = BuiltinsDateTimeFormat::Format(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev1);
+    return result1;
+}
+
+static JSTaggedValue JSDateTimeFormatForObj_001(JSThread *thread)
+{
+    auto globalConst = thread->GlobalConstants();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+
+    JSHandle<JSTaggedValue> timeZoneName = globalConst->GetHandledTimeZoneNameString();
+    JSHandle<JSTaggedValue> localesString(factory->NewFromASCII("en-US"));
+    JSHandle<JSTaggedValue> digitValue(factory->NewFromASCII("2-digit"));
+    JSHandle<JSTaggedValue> timeZoneNameValue(factory->NewFromASCII("short"));
+
+    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(6); // 6 : 6 length
+    keyArray->Set(thread, 0, globalConst->GetHandledYearString()); // 0 : 0 first position
+    keyArray->Set(thread, 1, globalConst->GetHandledMonthString()); // 1 : 1 second position
+    keyArray->Set(thread, 2, globalConst->GetHandledDayString()); // 2 : 2 third position
+    keyArray->Set(thread, 3, globalConst->GetHandledHourString()); // 3 : 3 fourth position
+    keyArray->Set(thread, 4, globalConst->GetHandledMinuteString()); // 4 : 4 fifth position
+    keyArray->Set(thread, 5, globalConst->GetHandledSecondString()); // 5 : 5 sixth position
+    uint32_t arrayLen = keyArray->GetLength();
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < arrayLen; i++) {
+        key.Update(keyArray->Get(thread, i));
+        JSObject::SetProperty(thread, optionsObj, key, digitValue);
+    }
+    JSObject::SetProperty(thread, optionsObj, timeZoneName, timeZoneNameValue);
+    return optionsObj.GetTaggedValue();
+}
+
+static int TimeOffset()
+{
+    // Get Sys time
+    time_t rt = time(nullptr);
+    // Convert Sys time to GMT time
+    tm gtm = *gmtime(&rt);
+    // Convert GMT time to Sys time
+    time_t gt = mktime(&gtm);
+    tm gtm2 = *localtime(&gt);
+    // Calculate time difference
+    int offset = ((rt - gt) + (gtm2.tm_isdst ? 3600 : 0)) / 60;
+    return offset;
+}
+
+// DateTimeFormat_001
+HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_001)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> localesString(factory->NewFromASCII("en-US"));
+    auto jsObj = JSHandle<JSObject>(thread, JSDateTimeFormatForObj_001(thread));
+    auto constructorResult = JSDateTimeFormatConstructor(thread, jsObj, localesString);
+    auto formatResult = JSDateTimeFormatForObject(thread, constructorResult);
+    auto dtResult = JSDateTime(thread, formatResult);
+    JSHandle<EcmaString> resultStr(thread, dtResult);
+
+    constexpr int shanghai = 480;
+    constexpr int americaRegina = -360;
+    constexpr int americaNewYork = -300;
+    constexpr int sysDefaultTimezone = -180; // america_argentina_Buenos_Aires
+    constexpr int utc = 0;
+    auto cstr = EcmaStringAccessor(resultStr).ToCString();
+    if (TimeOffset() == utc) {
+        if (cstr.find("GMT") != std::string::npos) {
+            EXPECT_STREQ("10/08/22, 12:00:00 AM GMT", cstr.c_str());
+        }
+        if (cstr.find("UTC") != std::string::npos) {
+            EXPECT_STREQ("10/08/22, 12:00:00 AM UTC", cstr.c_str());
+        }
+    }
+    if (TimeOffset() == shanghai) {
+        if (cstr.find("CST") != std::string::npos) {
+            EXPECT_STREQ("10/08/22, 08:00:00 AM CST", cstr.c_str());
+        }
+        if (cstr.find("GMT+8") != std::string::npos) {
+            EXPECT_STREQ("10/08/22, 08:00:00 AM GMT+8", cstr.c_str());
+        }
+    }
+    if (TimeOffset() == americaRegina) {
+        if (cstr.find("CST") != std::string::npos) {
+            EXPECT_STREQ("10/07/22, 06:00:00 PM CST", cstr.c_str());
+        }
+    }
+    if (TimeOffset() == americaNewYork) {
+        if (cstr.find("EST") != std::string::npos) {
+            EXPECT_STREQ("10/07/22, 06:00:00 PM EST", cstr.c_str());
+        }
+    }
+    if (TimeOffset() == sysDefaultTimezone) {
+        if (cstr.find("GMT-3") != std::string::npos) {
+            EXPECT_STREQ("10/07/22, 09:00:00 PM GMT-3", cstr.c_str());
+        }
+    }
+}
+
+static JSTaggedValue JSDateTimeFormatForObj_002(JSThread *thread)
+{
+    auto globalConst = thread->GlobalConstants();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+
+    JSHandle<JSTaggedValue> timeZoneName = globalConst->GetHandledTimeZoneNameString();
+    JSHandle<JSTaggedValue> timeZone = globalConst->GetHandledTimeZoneString();
+    JSHandle<JSTaggedValue> numicValue(factory->NewFromASCII("numeric"));
+    JSHandle<JSTaggedValue> digitValue(factory->NewFromASCII("2-digit"));
+    JSHandle<JSTaggedValue> longValue(factory->NewFromASCII("long"));
+    JSHandle<JSTaggedValue> timeZoneNameValue(factory->NewFromASCII("short"));
+    JSHandle<JSTaggedValue> timeZoneValue(factory->NewFromASCII("UTC"));
+
+    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(6); // 6 : 6 length
+    keyArray->Set(thread, 0, globalConst->GetHandledYearString()); // 0 : 0 first position
+    keyArray->Set(thread, 1, globalConst->GetHandledMonthString()); // 1 : 1 second position
+    keyArray->Set(thread, 2, globalConst->GetHandledDayString()); // 2 : 2 third position
+    keyArray->Set(thread, 3, globalConst->GetHandledHourString()); // 3 : 3 fourth position
+    keyArray->Set(thread, 4, globalConst->GetHandledMinuteString()); // 4 : 4 fifth position
+    keyArray->Set(thread, 5, globalConst->GetHandledSecondString()); // 5 : 5 sixth position
+    uint32_t arrayLen = keyArray->GetLength();
+    uint32_t arrIndex[] = {0, 2};
+    uint32_t arrIndex2 = 1;
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < arrayLen; i++) {
+        key.Update(keyArray->Get(thread, i));
+        bool exists = std::count(std::begin(arrIndex), std::end(arrIndex), i) > 0;
+        if (exists) {
+            JSObject::SetProperty(thread, optionsObj, key, numicValue);
+        } else if (i == arrIndex2) {
+            JSObject::SetProperty(thread, optionsObj, key, longValue);
+        } else {
+            JSObject::SetProperty(thread, optionsObj, key, digitValue);
+        }
+    }
+    JSObject::SetProperty(thread, optionsObj, timeZoneName, timeZoneNameValue);
+    JSObject::SetProperty(thread, optionsObj, timeZone, timeZoneValue);
+    return optionsObj.GetTaggedValue();
+}
+
+// DateTimeFormat_002
+HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_002)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> localesString(factory->NewFromASCII("zh-CN"));
+    auto jsObj = JSHandle<JSObject>(thread, JSDateTimeFormatForObj_002(thread));
+    auto constructorResult = JSDateTimeFormatConstructor(thread, jsObj, localesString);
+    auto formatResult = JSDateTimeFormatForObject(thread, constructorResult);
+    auto dtResult = JSDateTime(thread, formatResult);
+    JSHandle<EcmaString> resultStr(thread, dtResult);
+    EXPECT_STREQ("2022年10月8日 UTC 上午12:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
+}
+
+// DateTimeFormat_003
+HWTEST_F_L0(BuiltinsDateTimeFormatTest, DateTimeFormat_003)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> localesString(factory->NewFromASCII("zh-CN"));
+
+    auto jsObj = JSHandle<JSObject>(thread, JSDateTimeFormatForObj_002(thread));
+    auto constructorResult = JSDateTimeFormatConstructor(thread, jsObj, localesString);
+    JSHandle<JSDateTimeFormat> jsDateTimeFormat = JSHandle<JSDateTimeFormat>(thread, constructorResult);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(jsDateTimeFormat.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue::Undefined());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsDateTimeFormat::FormatToParts(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    JSHandle<JSArray> resultHandle(thread, result);
+    JSHandle<TaggedArray> elements(thread, resultHandle->GetElements());
+    EXPECT_EQ(elements->GetLength(), 16U);
 }
 }  // namespace panda::test

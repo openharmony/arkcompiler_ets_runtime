@@ -66,7 +66,7 @@ HWTEST_F_L0(TemplateMapTest, CreateTemplateMap)
 
     JSHandle<TemplateMap> templateMap = TemplateMap::Create(thread, numElementsTempMap);
     JSHandle<TaggedArray> handleTagArr(templateMap);
-    
+
     EXPECT_EQ(handleTagArr->GetLength(), tagArrExpectLength);
     EXPECT_EQ(templateMap->EntriesCount(), 0);
     EXPECT_EQ(templateMap->HoleEntriesCount(), 0);

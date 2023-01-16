@@ -81,6 +81,7 @@ class RequireManager;
 struct CJSInfo;
 class QuickFixManager;
 class ConstantPool;
+class OptCodeProfiler;
 
 enum class MethodIndex : uint8_t {
     BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION = 0,
@@ -111,7 +112,9 @@ enum class MethodIndex : uint8_t {
 enum class IcuFormatterType {
     SimpleDateFormatDefault,
     SimpleDateFormatDate,
-    SimpleDateFormatTime
+    SimpleDateFormatTime,
+    NumberFormatter,
+    Collator
 };
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
@@ -123,7 +126,8 @@ using PromiseRejectCallback = void (*)(void* info);
 using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
-using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath, std::string requestPath)>;
+using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath)>;
+using IcuDeleteEntry = void(*)(void *pointer, void *data);
 
 class EcmaVM {
 public:
@@ -131,7 +135,7 @@ public:
 
     static bool Destroy(EcmaVM *vm);
 
-    explicit EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config);
+    EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config);
 
     EcmaVM();
 
@@ -207,19 +211,24 @@ public:
         return stringTable_;
     }
 
-    JSThread *GetJSThread() const
+    void CheckThread() const
     {
         // Exclude GC thread
+        if (thread_ == nullptr) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+        }
+        if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
+            thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
+                LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                                    << " thread:" << thread_->GetThreadId()
+                                    << " currentThread:" << JSThread::GetCurrentThreadId();
+        }
+    }
+
+    ARK_INLINE JSThread *GetJSThread() const
+    {
         if (options_.EnableThreadCheck()) {
-            if (thread_ == nullptr) {
-                LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
-            }
-            if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
-                thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
-                    LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
-                                        << " thread:" << thread_->GetThreadId()
-                                        << " currentThread:" << JSThread::GetCurrentThreadId();
-            }
+            CheckThread();
         }
         return thread_;
     }
@@ -396,11 +405,16 @@ public:
 
     void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
 
+    bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
+
     JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+    // For new version instruction.
+    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
         const JSPandaFile *jsPandaFile);
 
-    JSHandle<ConstantPool> FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
+                                                            panda_file::File::EntityId id);
 
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {
@@ -424,7 +438,7 @@ public:
         if (thread != nullptr && hostVm != nullptr) {
             auto tid = thread->GetThreadId();
             if (tid != 0) {
-                WorkerList_.emplace(tid, workerVm);
+                workerList_.emplace(tid, workerVm);
             }
         }
     }
@@ -432,9 +446,9 @@ public:
     EcmaVM *GetWorkerVm(uint32_t tid) const
     {
         EcmaVM *workerVm = nullptr;
-        if (!WorkerList_.empty()) {
-            auto iter = WorkerList_.find(tid);
-            if (iter != WorkerList_.end()) {
+        if (!workerList_.empty()) {
+            auto iter = workerList_.find(tid);
+            if (iter != workerList_.end()) {
                 workerVm = iter->second;
             }
         }
@@ -450,9 +464,9 @@ public:
             if (tid == 0) {
                 return false;
             }
-            auto iter = WorkerList_.find(tid);
-            if (iter != WorkerList_.end()) {
-                WorkerList_.erase(iter);
+            auto iter = workerList_.find(tid);
+            if (iter != workerList_.end()) {
+                workerList_.erase(iter);
                 return true;
             }
             return false;
@@ -485,6 +499,26 @@ public:
         return assetPath_;
     }
 
+    void SetBundleName(const CString &bundleName)
+    {
+        bundleName_ = bundleName;
+    }
+
+    CString GetBundleName() const
+    {
+        return bundleName_;
+    }
+
+    void SetModuleName(const CString &moduleName)
+    {
+        moduleName_ = moduleName;
+    }
+
+    CString GetModuleName() const
+    {
+        return moduleName_;
+    }
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
@@ -502,8 +536,6 @@ public:
         return pgoProfiler_;
     }
 
-    bool FindCatchBlock(Method *method, uint32_t pc) const;
-
     void PreFork();
     void PostFork();
 
@@ -519,20 +551,20 @@ public:
                              OptimizedEntryFrame::CallType callType);
 
     // For icu objects cache
-    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, std::shared_ptr<icu::UMemory> icuObj)
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
+                                IcuDeleteEntry deleteEntry = nullptr)
     {
-        EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj);
-        icuObjCache_.insert({type, std::move(icuFormatter)});
+        EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
+        icuObjCache_.insert_or_assign(type, std::move(icuFormatter));
     }
 
-    icu::UMemory *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
+    void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
     {
         auto iter = icuObjCache_.find(type);
-        EcmaVM::IcuFormatter icuFormatter;
         if (iter != icuObjCache_.end()) {
-            icuFormatter = iter->second;
+            EcmaVM::IcuFormatter icuFormatter = iter->second;
             if (icuFormatter.locale == locale) {
-                return icuFormatter.icuObj.get();
+                return icuFormatter.icuObj;
             }
         }
         return nullptr;
@@ -540,11 +572,26 @@ public:
 
     void ClearIcuCache()
     {
-        icuObjCache_.clear();
+        auto iter = icuObjCache_.begin();
+        while (iter != icuObjCache_.end()) {
+            EcmaVM::IcuFormatter icuFormatter = iter->second;
+            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
+            if (deleteEntry != nullptr) {
+                deleteEntry(icuFormatter.icuObj, this);
+            }
+            iter->second = EcmaVM::IcuFormatter{};
+            iter++;
+        }
     }
+
+    OptCodeProfiler *GetOptCodeProfiler() const
+    {
+        return optCodeProfiler_;
+    }
+
 protected:
 
-    void HandleUncaughtException(TaggedObject *exception);
+    void HandleUncaughtException(JSTaggedValue exception);
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
 
@@ -569,7 +616,8 @@ private:
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                           const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
-    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile);
+    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                      const JSPandaFile *jsPandaFile);
 
     void InitializeEcmaScriptRunStat();
 
@@ -607,11 +655,6 @@ private:
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
-    // For framewrok file snapshot.
-    CString snapshotFileName_;
-    CString frameworkAbcFileName_;
-    JSTaggedValue frameworkProgram_ {JSTaggedValue::Hole()};
-    const JSPandaFile *frameworkPandaFile_ {nullptr};
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
 
     // VM resources.
@@ -629,7 +672,8 @@ private:
     HeapProfilerInterface *heapProfile_ {nullptr};
 #endif
     CString assetPath_;
-
+    CString bundleName_;
+    CString moduleName_;
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
@@ -662,14 +706,18 @@ private:
     // PGO Profiler
     PGOProfiler *pgoProfiler_;
 
+    // opt code Profiler
+    OptCodeProfiler *optCodeProfiler_;
+
     // For icu objects cache
     struct IcuFormatter {
         std::string locale;
-        std::shared_ptr<icu::UMemory> icuObj;
+        void *icuObj {nullptr};
+        IcuDeleteEntry deleteEntry {nullptr};
 
         IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, std::shared_ptr<icu::UMemory> icuObj)
-            : locale(locale), icuObj(std::move(icuObj)) {}
+        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
+            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
     std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
 
@@ -679,7 +727,7 @@ private:
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
-    CMap<uint32_t, EcmaVM *> WorkerList_ {};
+    CMap<uint32_t, EcmaVM *> workerList_ {};
     os::memory::Mutex mutex_;
     void *loop_ {nullptr};
 };

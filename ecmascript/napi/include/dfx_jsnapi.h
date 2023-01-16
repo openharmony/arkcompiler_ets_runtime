@@ -72,9 +72,11 @@ public:
 
     // profile generator
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    static void StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName);
+    static void StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName,
+                                        const int interval = 500); // 500:Default Sampling interval 500 microseconds
     static void StopCpuProfilerForFile(const EcmaVM *vm);
-    static void StartCpuProfilerForInfo(const EcmaVM *vm);
+    static void StartCpuProfilerForInfo(const EcmaVM *vm,
+                                        const int interval = 500); // 500:Default Sampling interval 500 microseconds
     static std::unique_ptr<ProfileInfo> StopCpuProfilerForInfo(const EcmaVM *vm);
     static void SetCpuSamplingInterval(const EcmaVM *vm, int interval);
 #endif

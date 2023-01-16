@@ -25,7 +25,7 @@ using EntityId = panda_file::File::EntityId;
 
 class ModuleDataExtractor {
 public:
-    explicit ModuleDataExtractor() = default;
+    ModuleDataExtractor() = default;
     virtual ~ModuleDataExtractor() = default;
 
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(ModuleDataExtractor);
@@ -37,6 +37,8 @@ public:
     static JSHandle<JSTaggedValue> ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                const CString &descriptor, const CString &moduleFilename);
     static JSHandle<JSTaggedValue> ParseCjsModule(JSThread *thread, const JSPandaFile *jsPandaFile);
+    static JSHandle<JSTaggedValue> ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
+        const CString &moduleFilename, const CString &recordName = nullptr);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_MODULE_DATA_EXTRACTOR_H

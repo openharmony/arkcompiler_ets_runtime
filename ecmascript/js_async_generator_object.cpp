@@ -139,9 +139,9 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
     // 8. Assert: next is an AsyncGeneratorRequest record.
     ASSERT(next->GetClass()->IsAsyncGeneratorRequest());
     // 9. Let completion be next.[[Completion]].
-    [[maybe_unused]] JSTaggedValue rcd = next->GetCompletion();
+    JSTaggedValue rcd = next->GetCompletion();
     JSHandle<CompletionRecord> completion(thread, rcd);
-    [[maybe_unused]] CompletionRecordType type = completion->GetType();
+    CompletionRecordType type = completion->GetType();
     // 10. If completion is an abrupt completion, then
     if (thread->HasPendingException() || type != CompletionRecordType::NORMAL) {
         // a. If state is suspendedStart, then
@@ -210,7 +210,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
     ASSERT((state == JSAsyncGeneratorState::SUSPENDED_START) ||
            (state == JSAsyncGeneratorState::SUSPENDED_YIELD));
     // 13. Let genContext be generator.[[AsyncGeneratorContext]].
-    [[maybe_unused]] JSTaggedValue val = generator->GetGeneratorContext();
+    JSTaggedValue val = generator->GetGeneratorContext();
 
     JSHandle<GeneratorContext> genContext(thread, val);
     // 14. Let callerContext be the running execution context.
@@ -274,7 +274,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
     // 5. Let request be AsyncGeneratorRequest { [[Completion]]: completion, [[Capability]]: promiseCapability }.
     ObjectFactory *fty = thread->GetEcmaVM()->GetFactory();
     JSHandle<AsyncGeneratorRequest> asyncGeneratorRst = fty->NewAsyncGeneratorRequest();
-    
+
     asyncGeneratorRst->SetCompletion(thread, completionRecord);
     asyncGeneratorRst->SetCapability(thread, pcap);
     // 6. Append request to the end of queue.
@@ -329,7 +329,7 @@ JSTaggedValue JSAsyncGeneratorObject::ProcessorFulfilledFunc(EcmaRuntimeCallInfo
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> asyncResNextRtnPro =
         JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(base::BuiltinsBase::GetConstructor(argv));
     JSHandle<JSAsyncGeneratorObject> asyncGen(thread, asyncResNextRtnPro->GetAsyncGeneratorObject());
-    
+
     // 2. Set F.[[Generator]].[[AsyncGeneratorState]] to completed.
     asyncGen->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);
 

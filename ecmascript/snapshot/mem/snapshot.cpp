@@ -16,8 +16,6 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 
 #include <cerrno>
-#include <fcntl.h>
-#include <unistd.h>
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -38,11 +36,11 @@ namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)
 {
     TSManager *tsManager = vm_->GetTSManager();
-    JSHandle<ConstantPool> root(tsManager->GetSnapshotConstantPool());
-    Serialize(root.GetTaggedValue().GetTaggedObject(), nullptr, fileName);
+    JSTaggedValue root = tsManager->GetSnapshotCPList();
+    Serialize(root.GetTaggedObject(), nullptr, fileName);
 }
 
-void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf, const CString &fileName)
+void Snapshot::Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaFile, const CString &fileName)
 {
     std::string realPath;
     if (!RealPath(std::string(fileName), realPath, false)) {
@@ -67,7 +65,7 @@ void Snapshot::Serialize(TaggedObject *objectHeader, const panda_file::File *pf,
     processor.EncodeTaggedObject(objectHeader, &objectQueue, &data);
     size_t rootObjSize = objectQueue.size();
     processor.ProcessObjectQueue(&objectQueue, &data);
-    WriteToFile(writer, pf, rootObjSize, processor);
+    WriteToFile(writer, jsPandaFile, rootObjSize, processor);
 }
 
 void Snapshot::Serialize(uintptr_t startAddr, size_t size, const CString &fileName)
@@ -124,7 +122,7 @@ void Snapshot::SerializeBuiltins(const CString &fileName)
 
     auto globalEnvHandle = vm_->GetGlobalEnv();
     auto constant = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    constant->VisitRangeSlot([&objectQueue, &data, &processor]([[maybe_unused]]Root type,
+    constant->VisitRangeSlot([&objectQueue, &data, &processor]([[maybe_unused]] Root type,
                                                                ObjectSlot start, ObjectSlot end) {
         processor.EncodeTaggedObjectRange(start, end, &objectQueue, &data);
     });
@@ -141,22 +139,31 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
         LOG_FULL(FATAL) << "snapshot file path error";
         UNREACHABLE();
     }
-    int fd = open(realPath.c_str(), O_CLOEXEC);  // NOLINT(cppcoreguidelines-pro-type-vararg)
-    if (UNLIKELY(fd == -1)) {
+    fd_t fd = Open(realPath.c_str(), FILE_RDONLY);  // NOLINT(cppcoreguidelines-pro-type-vararg)
+    if (UNLIKELY(fd == INVALID_FD)) {
         LOG_FULL(FATAL) << "open file failed";
         UNREACHABLE();
     }
-    int32_t file_size = lseek(fd, 0, SEEK_END);
-    if (file_size == -1) {
-        LOG_FULL(FATAL) << "lseek failed";
+    int64_t fileSize = GetFileSizeByFd(fd);
+    if (fileSize == -1) {
+        Close(fd);
+        LOG_FULL(FATAL) << "GetFileSize failed";
         UNREACHABLE();
     }
 
-    SnapshotProcessor processor(vm_);
+    SnapshotProcessor processor(vm_, snapshotFile);
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
     }
-    auto readFile = ToUintPtr(mmap(nullptr, file_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
+
+    fd_t extra = INVALID_FD;
+    void *addr = FileMmap(fd, fileSize, 0, &extra);
+    if (addr == nullptr) {
+        Close(fd);
+        LOG_FULL(FATAL) << "file mmap failed";
+        UNREACHABLE();
+    }
+    auto readFile = ToUintPtr(addr);
     auto hdr = *ToNativePtr<const Header>(readFile);
     uintptr_t oldSpaceBegin = readFile + sizeof(Header);
     processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
@@ -166,15 +173,15 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     uintptr_t stringEnd = stringBegin + hdr.stringSize;
     processor.DeserializeString(stringBegin, stringEnd);
 
-    munmap(ToNativePtr<void>(readFile), hdr.pandaFileBegin);
+    FileUnMap(addr, hdr.pandaFileBegin, &extra);
     const JSPandaFile *jsPandaFile = nullptr;
-    if (static_cast<uint32_t>(file_size) > hdr.pandaFileBegin) {
-        uintptr_t panda_file_mem = readFile + hdr.pandaFileBegin;
-        auto pf = panda_file::File::OpenFromMemory(os::mem::ConstBytePtr(ToNativePtr<std::byte>(panda_file_mem),
-            static_cast<uint32_t>(file_size) - hdr.pandaFileBegin, os::mem::MmapDeleter));
+    if (static_cast<uint32_t>(fileSize) > hdr.pandaFileBegin) {
+        uintptr_t pandaFileMem = readFile + hdr.pandaFileBegin;
+        auto pf = panda_file::File::OpenFromMemory(os::mem::ConstBytePtr(ToNativePtr<std::byte>(pandaFileMem),
+            static_cast<uint32_t>(fileSize) - hdr.pandaFileBegin, os::mem::MmapDeleter));
         jsPandaFile = JSPandaFileManager::GetInstance()->NewJSPandaFile(pf.release(), "");
     }
-    close(fd);
+    Close(fd);
     // relocate object field
     processor.Relocate(type, jsPandaFile, hdr.rootObjectSize);
     return jsPandaFile;
@@ -188,7 +195,8 @@ size_t Snapshot::AlignUpPageSize(size_t spaceSize)
     return Constants::PAGE_SIZE_ALIGN_UP * (spaceSize / Constants::PAGE_SIZE_ALIGN_UP + 1);
 }
 
-void Snapshot::WriteToFile(std::fstream &writer, const panda_file::File *pf, size_t size, SnapshotProcessor &processor)
+void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
+                           size_t size, SnapshotProcessor &processor)
 {
     uint32_t totalStringSize = 0U;
     CVector<uintptr_t> stringVector = processor.GetStringVector();
@@ -219,9 +227,9 @@ void Snapshot::WriteToFile(std::fstream &writer, const panda_file::File *pf, siz
         writer.flush();
     }
     ASSERT(static_cast<size_t>(writer.tellp()) == totalObjSize + sizeof(Header));
-    if (pf) {
+    if (jsPandaFile) {
         writer.seekp(pandaFileBegin);
-        writer.write(reinterpret_cast<const char *>(pf->GetBase()), pf->GetHeader()->file_size);
+        writer.write(static_cast<const char *>(jsPandaFile->GetHeader()), jsPandaFile->GetFileSize());
     }
     writer.close();
 }

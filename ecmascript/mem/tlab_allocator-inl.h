@@ -57,6 +57,7 @@ uintptr_t TlabAllocator::Allocate(size_t size, MemSpaceType space)
             result = AllocateInCompressSpace(size);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;

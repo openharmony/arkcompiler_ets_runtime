@@ -214,6 +214,14 @@ Region *SparseSpace::GetSweptRegionSafe()
     return region;
 }
 
+void SparseSpace::FreeRegionFromSpace(Region *region)
+{
+    region->ResetSwept();
+    region->MergeRSetForConcurrentSweeping();
+    RemoveRegion(region);
+    DecreaseLiveObjectSize(region->AliveObject());
+}
+
 Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
 {
     if (sweepState_ != SweepState::SWEEPING) {
@@ -226,10 +234,7 @@ Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
     for (auto iter = sweptList_.begin(); iter != sweptList_.end(); iter++) {
         if (allocator_->MatchFreeObjectSet(*iter, size)) {
             Region *region = *iter;
-            region->ResetSwept();
-            region->MergeRSetForConcurrentSweeping();
-            RemoveRegion(region);
-            DecreaseLiveObjectSize(region->AliveObject());
+            FreeRegionFromSpace(region);
             sweptList_.erase(iter);
             return region;
         }
@@ -331,6 +336,28 @@ void SparseSpace::DetachFreeObjectSet(Region *region)
 OldSpace::OldSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, OLD_SPACE, initialCapacity, maximumCapacity) {}
 
+Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
+{
+    // Try Sweeping region to get space for allocation
+    // since sweepingList_ is ordered, we just need to check once
+    Region *availableRegion = GetSweepingRegionSafe();
+    if (availableRegion != nullptr) {
+        FreeRegion(availableRegion, false);
+        // if region has free enough space for the size,
+        // free the region from current space
+        // and return for local space to use
+        // otherwise, we add region to sweptList_.
+        if (allocator_->MatchFreeObjectSet(availableRegion, size)) {
+            FreeRegionFromSpace(availableRegion);
+            return availableRegion;
+        } else {
+            AddSweptRegionSafe(availableRegion);
+            availableRegion->SetSwept();
+        }
+    }
+    return nullptr;
+}
+
 Region *OldSpace::TryToGetExclusiveRegion(size_t size)
 {
     os::memory::LockHolder lock(lock_);
@@ -344,7 +371,12 @@ Region *OldSpace::TryToGetExclusiveRegion(size_t size)
         return region;
     }
     if (sweepState_ == SweepState::SWEEPING) {
-        return TryToGetSuitableSweptRegion(size);
+        Region *availableRegion = nullptr;
+        availableRegion = TryToGetSuitableSweptRegion(size);
+        if (availableRegion != nullptr) {
+            return availableRegion;
+        }
+        return TrySweepToGetSuitableRegion(size);
     }
     return nullptr;
 }

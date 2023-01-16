@@ -24,10 +24,9 @@
 #include "ecmascript/dfx/hprof/file_stream.h"
 
 namespace panda::ecmascript {
-HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm)
+HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), chunk_(vm->GetNativeAreaAllocator())
 {
-    jsonSerializer_ =
-        const_cast<NativeAreaAllocator *>(vm->GetNativeAreaAllocator())->New<HeapSnapshotJSONSerializer>();
+    jsonSerializer_ = GetChunk()->New<HeapSnapshotJSONSerializer>();
     if (UNLIKELY(jsonSerializer_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc snapshot json serializer failed";
         UNREACHABLE();
@@ -36,8 +35,15 @@ HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm)
 HeapProfiler::~HeapProfiler()
 {
     ClearSnapshot();
-    const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(jsonSerializer_);
+    GetChunk()->Delete(jsonSerializer_);
     jsonSerializer_ = nullptr;
+}
+
+void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
+{
+    vm_->CollectGarbage(TriggerGCType::OLD_GC);
+    vm_->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
+    snapshot->UpdateNodes();
 }
 
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
@@ -72,6 +78,7 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
         return false;
     }
 
+    UpdateHeapObjects(snapshot);
     heapTracker_ = std::make_unique<HeapTracker>(snapshot, timeInterval, stream);
     const_cast<EcmaVM *>(vm_)->StartHeapTracking(heapTracker_.get());
 
@@ -89,10 +96,9 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
         return false;
     }
 
-    vm_->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
-    snapshot->UpdateNode();
-
     snapshot->RecordSampleTime();
+    UpdateHeapObjects(snapshot);
+
     if (stream != nullptr) {
         snapshot->PushHeapStat(stream);
     }
@@ -145,7 +151,7 @@ std::string HeapProfiler::GenDumpFileName(DumpFormat dumpFormat)
             break;
     }
     filename.append(".heapsnapshot");
-    return CstringConvertToStdString(filename);
+    return ConvertToStdString(filename);
 }
 
 CString HeapProfiler::GetTimeStamp()
@@ -185,13 +191,12 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
 
 HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate, bool traceAllocation)
 {
-    LOG_ECMA(ERROR) << "HeapProfiler::MakeHeapSnapshot";
+    LOG_ECMA(INFO) << "HeapProfiler::MakeHeapSnapshot";
     DISALLOW_GARBAGE_COLLECTION;
     const_cast<Heap *>(vm_->GetHeap())->Prepare();
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
-            auto *snapshot = const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())
-                                ->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation);
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -201,8 +206,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMod
             return snapshot;
         }
         case SampleType::REAL_TIME: {
-            auto *snapshot = const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())
-                                ->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation);
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -228,7 +232,7 @@ void HeapProfiler::AddSnapshot(HeapSnapshot *snapshot)
 void HeapProfiler::ClearSnapshot()
 {
     for (auto *snapshot : hprofs_) {
-        const_cast<NativeAreaAllocator *>(vm_->GetNativeAreaAllocator())->Delete(snapshot);
+        GetChunk()->Delete(snapshot);
     }
     hprofs_.clear();
 }

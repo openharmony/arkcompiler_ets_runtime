@@ -59,7 +59,7 @@ JSTaggedValue BuiltinsCjsModule::ResolveFilename(EcmaRuntimeCallInfo *argv)
     RequireManager::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
 
     if (length != 1) {  // strange arg's number
-        LOG_ECMA(ERROR) << "BuiltinsCjsModule::Load : can only accept one argument";
+        LOG_ECMA(FATAL) << "BuiltinsCjsModule::Load : can only accept one argument";
         UNREACHABLE();
     }
     JSHandle<EcmaString> requestName = JSHandle<EcmaString>::Cast(GetCallArg(argv, 0));
@@ -76,7 +76,7 @@ JSTaggedValue BuiltinsCjsModule::Require(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue::Hole();
 }
-    
+
 JSTaggedValue BuiltinsCjsModule::GetExportsForCircularRequire(EcmaRuntimeCallInfo *msg)
 {
     ASSERT(msg);

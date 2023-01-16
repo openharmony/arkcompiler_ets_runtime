@@ -27,6 +27,7 @@ static constexpr uint32_t CALL_TYPE_MASK = 0xF;  // 0xF: the last 4 bits are use
 namespace panda::ecmascript {
 class JSPandaFile;
 using EntityId = panda_file::File::EntityId;
+using StringData = panda_file::File::StringData;
 struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
                                                         base::AlignedUint64,
                                                         base::AlignedPointer,
@@ -36,13 +37,12 @@ public:
     static constexpr uint8_t INVALID_IC_SLOT = 0xFFU;
     static constexpr uint16_t MAX_SLOT_SIZE = 0xFFFFU;
 
-    MethodLiteral(const JSPandaFile *jsPandaFile, EntityId methodId);
+    explicit MethodLiteral(EntityId methodId);
     MethodLiteral() = delete;
     ~MethodLiteral() = default;
-    MethodLiteral(const MethodLiteral &) = delete;
-    MethodLiteral(MethodLiteral &&) = delete;
-    MethodLiteral &operator=(const MethodLiteral &) = delete;
-    MethodLiteral &operator=(MethodLiteral &&) = delete;
+
+    NO_COPY_SEMANTIC(MethodLiteral);
+    NO_MOVE_SEMANTIC(MethodLiteral);
 
     static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455
     using HaveThisBit = BitField<bool, 0, 1>;  // offset 0
@@ -71,7 +71,7 @@ public:
         callField_ = IsAotCodeBit::Update(callField_, isCompiled);
     }
 
-    void Initialize(const JSPandaFile *jsPandaFile, uint32_t numVregs, uint32_t numArgs);
+    void Initialize(const JSPandaFile *jsPandaFile);
 
     bool HaveThisWithCallField() const
     {
@@ -213,8 +213,10 @@ public:
 
     static constexpr size_t BUILTINID_NUM_BITS = 8;
     static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
+    static constexpr size_t DEOPT_THRESHOLD_BITS = 16;
     using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
     using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
+    using DeoptCountBits = FunctionKindBits::NextField<uint16_t, DEOPT_THRESHOLD_BITS>; // offset 12-28
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
@@ -226,21 +228,10 @@ public:
         return EntityId(MethodIdBits::Decode(literalInfo_));
     }
 
-    void SetMethodId(EntityId methodId)
-    {
-        literalInfo_ = MethodIdBits::Update(literalInfo_, methodId.GetOffset());
-    }
-
     uint32_t GetSlotSize() const
     {
         auto size = SlotSizeBits::Decode(literalInfo_);
         return size == MAX_SLOT_SIZE ? MAX_SLOT_SIZE + 2 : size;  // 2: last maybe two slot
-    }
-
-    void SetSlotSize(uint32_t size)
-    {
-        size = size > MAX_SLOT_SIZE ? MAX_SLOT_SIZE : size;
-        literalInfo_ = SlotSizeBits::Update(literalInfo_, size);
     }
 
     uint8_t UpdateSlotSizeWith8Bit(uint16_t size)
@@ -308,10 +299,20 @@ public:
         return BuiltinIdBits::Update(literalInfo, id);
     }
 
-    static uint32_t PUBLIC_API GetNumVregs(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral);
-    static const char * PUBLIC_API GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);
+    static uint64_t SetDeoptThreshold(uint64_t literalInfo, uint16_t count)
+    {
+        return DeoptCountBits::Update(literalInfo, count);
+    }
+
+    static uint16_t GetDeoptThreshold(uint64_t literalInfo)
+    {
+        return DeoptCountBits::Decode(literalInfo);
+    }
+
+    static const char PUBLIC_API *GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);
     static uint32_t GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId);
+    static CString GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId);
 
     const uint8_t *GetBytecodeArray() const
     {
@@ -343,7 +344,16 @@ private:
     };
     static_assert(static_cast<size_t>(Index::NUM_OF_MEMBERS) == NumOfTypes);
 
-    static panda_file::File::StringData GetName(const JSPandaFile *jsPandaFile, EntityId methodId);
+    void SetMethodId(EntityId methodId)
+    {
+        literalInfo_ = MethodIdBits::Update(literalInfo_, methodId.GetOffset());
+    }
+
+    void SetSlotSize(uint32_t size)
+    {
+        size = size > MAX_SLOT_SIZE ? MAX_SLOT_SIZE : size;
+        literalInfo_ = SlotSizeBits::Update(literalInfo_, size);
+    }
 
     alignas(EAS) uint64_t callField_ {0ULL};
     // Native method decides this filed is NativePointer or BytecodeArray pointer.

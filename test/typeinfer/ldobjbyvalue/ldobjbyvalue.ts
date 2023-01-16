@@ -39,7 +39,7 @@ declare function AssertType(value:any, type:string):void;
     AssertType(arr1[t], "string");
     AssertType(arr2[t], "number");
     AssertType(arr3[t], "boolean");
-    AssertType(arr4[t], "class_instance");
+    AssertType(arr4[t], "A");
     AssertType(a3, "number");
     AssertType(a4, "number");
 }

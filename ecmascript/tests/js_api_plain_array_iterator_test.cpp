@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string.h"
@@ -103,7 +103,7 @@ HWTEST_F_L0(JSAPIPlainArrayIteratorTest, SpecailReturnOfNextCreatePlainArrayIter
     JSHandle<JSAPIPlainArrayIterator> plainArrayIterator = factory->NewJSAPIPlainArrayIterator(
         jsPlainArray, IterationKind::KEY);
     plainArrayIterator->SetIteratedPlainArray(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

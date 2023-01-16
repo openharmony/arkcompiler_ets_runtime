@@ -849,6 +849,18 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(transitionHandler)
                 break;
             }
+            case JSType::TRANS_WITH_PROTO_HANDLER: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TransWithProtoHandler::SIZE, 3U);
+                JSHandle<TransWithProtoHandler> transWithProtoHandler = factory->NewTransWithProtoHandler();
+                DUMP_FOR_HANDLE(transWithProtoHandler)
+                break;
+            }
+            case JSType::STORE_TS_HANDLER: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), StoreTSHandler::SIZE, 3U);
+                JSHandle<StoreTSHandler> storeTSHandler = factory->NewStoreTSHandler();
+                DUMP_FOR_HANDLE(storeTSHandler)
+                break;
+            }
             case JSType::PROPERTY_BOX: {
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), PropertyBox::SIZE, 1U);
                 JSHandle<PropertyBox> PropertyBox = factory->NewPropertyBox(globalConst->GetHandledEmptyArray());
@@ -962,7 +974,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::TS_CLASS_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassType::SIZE, 5U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassType::SIZE, 6U);
                 JSHandle<TSClassType> classType = factory->NewTSClassType();
                 DUMP_FOR_HANDLE(classType)
                 break;
@@ -1023,7 +1035,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::RB_TREENODE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), RBTreeNode::SIZE, 7U);;
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), RBTreeNode::SIZE, 7U);
                 break;
             }
             case JSType::JS_API_HASH_MAP: {
@@ -1219,7 +1231,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 13U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 12U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;
@@ -1297,7 +1309,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             default:
-                LOG_ECMA_MEM(ERROR) << "JSType " << static_cast<int>(type) << " cannot be dumped.";
+                LOG_ECMA_MEM(FATAL) << "JSType " << static_cast<int>(type) << " cannot be dumped.";
                 UNREACHABLE();
                 break;
         }

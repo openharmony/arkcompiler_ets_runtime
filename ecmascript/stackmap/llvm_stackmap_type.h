@@ -86,7 +86,7 @@ struct StkMapRecordHeadTy {
     }
 };
 
-struct  LocationTy {
+struct LocationTy {
     enum class Kind: uint8_t {
         REGISTER = 1,
         DIRECT = 2,

@@ -17,6 +17,7 @@
 
 #include <cstring>
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
 
@@ -60,7 +61,6 @@ void JSDisplayNames::FreeIcuLocaleDisplayNames(void *pointer, [[maybe_unused]] v
     delete icuLocaleDisplayNames;
 }
 
-
 void JSDisplayNames::SetIcuLocaleDisplayNames(JSThread *thread, const JSHandle<JSDisplayNames> &displayNames,
                                               icu::LocaleDisplayNames* iculocaledisplaynames,
                                               const DeleteEntryPoint &callback)
@@ -83,7 +83,8 @@ JSHandle<TaggedArray> JSDisplayNames::GetAvailableLocales(JSThread *thread)
 {
     const char *key = "calendar";
     const char *path = nullptr;
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     return availableLocales;
 }
 
@@ -116,7 +117,7 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     ObjectFactory *factory = ecmaVm->GetFactory();
     auto globalConst = thread->GlobalConstants();
     // 3. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
 
     // 4. If options is undefined, throw a TypeError exception.
@@ -191,7 +192,7 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     displayNames->SetFallback(fallback);
 
     // 18. Set displayNames.[[Locale]] to the value of r.[[Locale]].
-    JSHandle<EcmaString> localeStr = JSLocale::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
     displayNames->SetLocale(thread, localeStr.GetTaggedValue());
     // 19. Let dataLocale be r.[[dataLocale]].
     // 20. Let dataLocaleData be localeData.[[<dataLocale>]].
@@ -217,10 +218,11 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
             uStyle = UDISPCTX_LENGTH_SHORT;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    UDisplayContext display_context[] = {uStyle};
-    icu::LocaleDisplayNames *icudisplaynames(icu::LocaleDisplayNames::createInstance(icuLocale, display_context, 1));
+    UDisplayContext displayContext[] = {uStyle};
+    icu::LocaleDisplayNames *icudisplaynames(icu::LocaleDisplayNames::createInstance(icuLocale, displayContext, 1));
     SetIcuLocaleDisplayNames(thread, displayNames, icudisplaynames, JSDisplayNames::FreeIcuLocaleDisplayNames);
     return displayNames;
 }
@@ -234,7 +236,7 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
     if (typeOpt == TypednsOption::LANGUAGE) {
         // a. If code does not match the unicode_language_id production, throw a RangeError exception.
         UErrorCode status = U_ZERO_ERROR;
-        std::string codeSt = JSLocale::ConvertToStdString(code);
+        std::string codeSt = base::LocaleHelper::ConvertToStdString(code);
         icu::Locale loc = icu::Locale(icu::Locale::forLanguageTag(codeSt, status).getBaseName());
         std::string checked = loc.toLanguageTag<std::string>(status);
         if (checked.size() == 0) {
@@ -246,19 +248,19 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
         // b. If IsStructurallyValidLanguageTag(code) is false, throw a RangeError exception.
         // c. Set code to CanonicalizeUnicodeLocaleId(code).
         // d. Return code.
-        if (!JSLocale::IsStructurallyValidLanguageTag(code)) {
+        if (!base::LocaleHelper::IsStructurallyValidLanguageTag(code)) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "not a structurally valid", code);
         }
-        JSHandle<EcmaString> codeStr = JSLocale::CanonicalizeUnicodeLocaleId(thread, code);
+        JSHandle<EcmaString> codeStr = base::LocaleHelper::CanonicalizeUnicodeLocaleId(thread, code);
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::UnicodeString result;
-        std::string codeString = JSLocale::ConvertToStdString(codeStr);
+        std::string codeString = base::LocaleHelper::ConvertToStdString(codeStr);
         icuLocaldisplaynames->languageDisplayName(codeString.c_str(), result);
-        JSHandle<EcmaString> codeResult = JSLocale::IcuToString(thread, result);
+        JSHandle<EcmaString> codeResult = base::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     } else if (typeOpt == TypednsOption::REGION) {
         // a. If code does not match the unicode_region_subtag production, throw a RangeError exception.
-        std::string regionCode = JSLocale::ConvertToStdString(code);
+        std::string regionCode = base::LocaleHelper::ConvertToStdString(code);
         if (!IsUnicodeRegionSubtag(regionCode)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid region", code);
         }
@@ -267,30 +269,30 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::UnicodeString result;
         icuLocaldisplaynames->regionDisplayName(regionCode.c_str(), result);
-        JSHandle<EcmaString> codeResult = JSLocale::IcuToString(thread, result);
+        JSHandle<EcmaString> codeResult = base::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     } else if (typeOpt == TypednsOption::SCRIPT) {
-        std::string scriptCode = JSLocale::ConvertToStdString(code);
+        std::string scriptCode = base::LocaleHelper::ConvertToStdString(code);
         if (!IsUnicodeScriptSubtag(scriptCode)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid script", code);
         }
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::UnicodeString result;
         icuLocaldisplaynames->scriptDisplayName(scriptCode.c_str(), result);
-        JSHandle<EcmaString> codeResult = JSLocale::IcuToString(thread, result);
+        JSHandle<EcmaString> codeResult = base::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     }
     // 4. 4. Assert: type is "currency".
     // 5. If ! IsWellFormedCurrencyCode(code) is false, throw a RangeError exception.
     ASSERT(typeOpt == TypednsOption::CURRENCY);
-    std::string cCode = JSLocale::ConvertToStdString(code);
+    std::string cCode = base::LocaleHelper::ConvertToStdString(code);
     if (!JSLocale::IsWellFormedCurrencyCode(cCode)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "not a wellformed currency code", code);
     }
     icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
     icu::UnicodeString result;
     icuLocaldisplaynames->keyValueDisplayName("currency", cCode.c_str(), result);
-    JSHandle<EcmaString> codeResult = JSLocale::IcuToString(thread, result);
+    JSHandle<EcmaString> codeResult = base::LocaleHelper::UStringToString(thread, result);
     return codeResult;
 }
 
@@ -309,6 +311,7 @@ JSHandle<JSTaggedValue> StyOptionToEcmaString(JSThread *thread, StyOption style)
             result.Update(globalConst->GetHandledNarrowString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -338,6 +341,7 @@ JSHandle<JSTaggedValue> TypeOptionToEcmaString(JSThread *thread, TypednsOption t
             result.Update(globalConst->GetHandledScriptString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -355,6 +359,7 @@ JSHandle<JSTaggedValue> FallbackOptionToEcmaString(JSThread *thread, FallbackOpt
             result.Update(globalConst->GetHandledNoneString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;

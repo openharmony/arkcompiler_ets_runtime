@@ -76,7 +76,7 @@ JSTaggedValue ContainersVector::Insert(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, Vector, Insert);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
- 
+
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIVector()) {
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIVector()) {
@@ -194,7 +194,7 @@ JSTaggedValue ContainersVector::Get(EcmaRuntimeCallInfo *argv)
     int32_t indexInt = JSTaggedValue::ToInt32(thread, index);
     JSTaggedValue value = JSAPIVector::Get(thread, JSHandle<JSAPIVector>::Cast(self), indexInt);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    
+
     return value;
 }
 
@@ -674,13 +674,13 @@ JSTaggedValue ContainersVector::CopyToArray(EcmaRuntimeCallInfo *argv)
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(arg0);
     JSHandle<TaggedArray> arrayElements(thread, array->GetElements());
     uint32_t arrayLength = array->GetArrayLength();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (vectorLength <= arrayLength) {
-        factory->CopyTaggedArrayElement(vectorElements, arrayElements, vectorLength);
+        TaggedArray::CopyTaggedArrayElement(thread, vectorElements, arrayElements, vectorLength);
         for (uint32_t i = vectorLength; i < arrayLength; i++) {
             arrayElements->Set(thread, i, JSTaggedValue::Undefined());
         }
     } else {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<TaggedArray> newArrayElement = factory->NewAndCopyTaggedArray(vectorElements,
                                                                                vectorLength, vectorLength);
         array->SetElements(thread, newArrayElement);

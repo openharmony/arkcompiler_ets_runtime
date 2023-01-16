@@ -34,7 +34,7 @@ namespace panda {
 namespace ecmascript {
 class STWYoungGC : public GarbageCollector {
 public:
-    explicit STWYoungGC(Heap *heap, bool parallelGC);
+    STWYoungGC(Heap *heap, bool parallelGC);
     ~STWYoungGC() override = default;
     NO_COPY_SEMANTIC(STWYoungGC);
     NO_MOVE_SEMANTIC(STWYoungGC);

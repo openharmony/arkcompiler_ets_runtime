@@ -36,6 +36,12 @@ const char *Method::GetMethodName(const JSPandaFile* file) const
     return MethodLiteral::GetMethodName(file, GetMethodId());
 }
 
+const CString Method::GetRecordName() const
+{
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    return MethodLiteral::GetRecordName(jsPandaFile, GetMethodId());
+}
+
 uint32_t Method::GetCodeSize() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();
@@ -53,15 +59,6 @@ const JSPandaFile *Method::GetJSPandaFile() const
     return taggedPool->GetJSPandaFile();
 }
 
-const panda_file::File *Method::GetPandaFile() const
-{
-    const JSPandaFile *jsPandaFile = GetJSPandaFile();
-    if (jsPandaFile == nullptr) {
-        return nullptr;
-    }
-    return jsPandaFile->GetPandaFile();
-}
-
 MethodLiteral *Method::GetMethodLiteral() const
 {
     if (IsAotWithCallField()) {
@@ -70,5 +67,25 @@ MethodLiteral *Method::GetMethodLiteral() const
         return jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
     }
     return reinterpret_cast<MethodLiteral *>(GetCodeEntryOrLiteral());
+}
+
+uint32_t Method::FindCatchBlock(uint32_t pc) const
+{
+    ASSERT(!IsNativeWithCallField());
+    auto *pandaFile = GetJSPandaFile()->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
+    panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());
+
+    uint32_t pcOffset = INVALID_INDEX;
+    cda.EnumerateTryBlocks([&pcOffset, pc](panda_file::CodeDataAccessor::TryBlock &tryBlock) {
+        if ((tryBlock.GetStartPc() <= pc) && ((tryBlock.GetStartPc() + tryBlock.GetLength()) > pc)) {
+            tryBlock.EnumerateCatchBlocks([&](panda_file::CodeDataAccessor::CatchBlock &catchBlock) {
+                pcOffset = catchBlock.GetHandlerPc();
+                return false;
+            });
+        }
+        return pcOffset == INVALID_INDEX;
+    });
+    return pcOffset;
 }
 } // namespace panda::ecmascript

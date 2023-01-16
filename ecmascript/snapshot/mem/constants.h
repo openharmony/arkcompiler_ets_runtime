@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 class Constants final {
 public:
-    explicit Constants() = default;
+    Constants() = default;
     ~Constants() = default;
     NO_COPY_SEMANTIC(Constants);
     NO_MOVE_SEMANTIC(Constants);

@@ -216,7 +216,7 @@ JSTaggedValue CompareOp::NotEqualWithIC(JSThread *thread, JSTaggedValue left,
 {
     INTERPRETER_TRACE(thread, NotEqualWithIC);
     JSTaggedValue res = EqualWithIC(thread, left, right, operationType);
-    return res == JSTaggedValue::True() ? JSTaggedValue::False() : JSTaggedValue::True();
+    return res.IsTrue() ? JSTaggedValue::False() : JSTaggedValue::True();
 }
 
 ComparisonResult CompareOp::Compare(JSThread *thread, JSTaggedValue left,
@@ -273,9 +273,9 @@ ComparisonResult CompareOp::Compare(JSThread *thread, JSTaggedValue left,
             JSHandle<EcmaString> yHandle(thread, right);
             int result = EcmaStringAccessor::Compare(thread->GetEcmaVM(), xHandle, yHandle);
             if (result < 0) {
-                ret =  ComparisonResult::LESS;
+                ret = ComparisonResult::LESS;
             } else if (result == 0) {
-                ret =  ComparisonResult::EQUAL;
+                ret = ComparisonResult::EQUAL;
             } else {
                 ret = ComparisonResult::GREAT;
             }

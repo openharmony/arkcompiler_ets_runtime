@@ -24,18 +24,17 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/dfx/vm_thread_control.h"
-#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
-
-#include "libpandabase/os/thread.h"
 
 namespace panda::ecmascript {
 class EcmaHandleScope;
 class EcmaVM;
 class HeapRegionAllocator;
 class PropertiesCache;
+class EcmaGlobalStorage;
+using WeakClearCallback = void (*)(void *);
 
 enum class MarkStatus : uint8_t {
     READY_TO_MARK,
@@ -152,7 +151,7 @@ struct BCDebuggerStubEntries {
 };
 
 struct BuiltinStubEntries {
-    static constexpr size_t COUNT = kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS + 1;
+    static constexpr size_t COUNT = kungfu::BuiltinsStubCSigns::NUM_OF_BUILTINS_STUBS;
     Address stubEntries_[COUNT];
 
     static constexpr size_t SizeArch32 = sizeof(uint32_t) * COUNT;
@@ -261,6 +260,7 @@ public:
     uintptr_t* PUBLIC_API ExpandHandleStorage();
     void PUBLIC_API ShrinkHandleStorage(int prevIndex);
     void PUBLIC_API CheckJSTaggedType(JSTaggedType value) const;
+    bool PUBLIC_API CpuProfilerCheckJSTaggedType(JSTaggedType value) const;
 
     JSTaggedType *GetHandleScopeStorageNext() const
     {
@@ -277,7 +277,7 @@ public:
         return handleScopeStorageEnd_;
     }
 
-    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> *GetWeakNodeNativeFinalizeCallbacks()
+    std::vector<std::pair<WeakClearCallback, void *>> *GetWeakNodeNativeFinalizeCallbacks()
     {
         return &weakNodeNativeFinalizeCallbacks_;
     }
@@ -287,7 +287,7 @@ public:
         handleScopeStorageEnd_ = value;
     }
 
-    int GetCurrentHandleStorageIndex()
+    int GetCurrentHandleStorageIndex() const
     {
         return currentHandleStorageIndex_;
     }
@@ -307,7 +307,7 @@ public:
         lastHandleScope_ = scope;
     }
 
-    EcmaHandleScope *GetLastHandleScope()
+    EcmaHandleScope *GetLastHandleScope() const
     {
         return lastHandleScope_;
     }
@@ -334,6 +334,16 @@ public:
     void SetGlobalObject(JSTaggedValue globalObject)
     {
         glueData_.globalObject_ = globalObject;
+    }
+
+    JSTaggedValue GetStableArrayElementsGuardians() const
+    {
+        return glueData_.stableArrayElementsGuardians_;
+    }
+
+    void SetStableArrayElementsGuardians(JSTaggedValue guardians)
+    {
+        glueData_.stableArrayElementsGuardians_ = guardians;
     }
 
     const GlobalEnvConstants *GlobalConstants() const
@@ -458,6 +468,12 @@ public:
         PGOStatusBits::Set(status, &glueData_.threadStateBitField_);
     }
 
+    bool IsPGOProfilerEnable() const
+    {
+        auto status = PGOStatusBits::Decode(glueData_.threadStateBitField_);
+        return status == PGOProfilerStatus::PGO_PROFILER_ENABLE;
+    }
+
     bool CheckSafepoint() const;
 
     void SetGetStackSignal(bool isParseStack)
@@ -488,6 +504,16 @@ public:
     bool GetGcState() const
     {
         return gcState_;
+    }
+
+    void SetRuntimeState(bool runtimeState)
+    {
+        runtimeState_ = runtimeState;
+    }
+
+    bool GetRuntimeState() const
+    {
+        return runtimeState_;
     }
 
     void EnableAsmInterpreter()
@@ -527,6 +553,10 @@ public:
     }
 
     bool IsLegalAsmSp(uintptr_t sp) const;
+
+    bool IsLegalThreadSp(uintptr_t sp) const;
+
+    bool IsLegalSp(uintptr_t sp) const;
 
     bool IsPrintBCOffset() const
     {
@@ -575,6 +605,7 @@ public:
                                                  BCStubEntries,
                                                  JSTaggedValue,
                                                  JSTaggedValue,
+                                                 JSTaggedValue,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -594,6 +625,7 @@ public:
             BCStubEntriesIndex = 0,
             ExceptionIndex,
             GlobalObjIndex,
+            StableArrayElementsGuardiansIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -621,6 +653,11 @@ public:
         static size_t GetGlobalObjOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::GlobalObjIndex)>(isArch32);
+        }
+
+        static size_t GetStableArrayElementsGuardiansOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::StableArrayElementsGuardiansIndex)>(isArch32);
         }
 
         static size_t GetGlobalConstOffset(bool isArch32)
@@ -706,6 +743,7 @@ public:
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
+        alignas(EAS) JSTaggedValue stableArrayElementsGuardians_ {JSTaggedValue::True()};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
@@ -749,7 +787,7 @@ private:
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
     EcmaHandleScope *lastHandleScope_ {nullptr};
-    std::vector<std::pair<EcmaGlobalStorage::WeakClearCallback, void *>> weakNodeNativeFinalizeCallbacks_ {};
+    std::vector<std::pair<WeakClearCallback, void *>> weakNodeNativeFinalizeCallbacks_ {};
 
     PropertiesCache *propertiesCache_ {nullptr};
     EcmaGlobalStorage *globalStorage_ {nullptr};
@@ -758,6 +796,7 @@ private:
     bool getStackSignal_ {false};
     bool callNapiGetStack_ {false};
     bool gcState_ {false};
+    bool runtimeState_ {false};
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enablePrintBCOffset_ {false};

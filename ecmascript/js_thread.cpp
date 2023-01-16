@@ -18,13 +18,13 @@
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/dfx/native_dfx/backtrace.h"
 #endif
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_param_configuration.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
-
 
 namespace panda::ecmascript {
 using CommonStubCSigns = panda::ecmascript::kungfu::CommonStubCSigns;
@@ -209,10 +209,13 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
             // There are some reasonable framework-level global objects in the initial phase.
             // The value can be adjusted as required.
             static const int MIN_NUMBER_COUNT = 110000;
+            static const int GLOBAL_NUMBER_COUNT = 10000;
             static const int MARK_INTERVAL_TIMES = 10;
             // Print global information about possible memory leaks.
             // You can print the global new stack within the range of the leaked global number.
-            if (node->GetGlobalNumber() > MIN_NUMBER_COUNT && ((node->GetMarkCount() % MARK_INTERVAL_TIMES) == 0)) {
+            if (node->GetGlobalNumber() > MIN_NUMBER_COUNT &&
+                node->GetGlobalNumber() < MIN_NUMBER_COUNT + GLOBAL_NUMBER_COUNT &&
+                ((node->GetMarkCount() % MARK_INTERVAL_TIMES) == 0)) {
                 LOG_ECMA(INFO) << "Global maybe leak object address:" << std::hex << object
                                << ", type:" << JSHClass::DumpJSType(JSType(object->GetClass()->GetObjectType()))
                                << ", node address:" << node
@@ -339,12 +342,14 @@ void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver)
     auto env = GetEcmaVM()->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
+        SetStableArrayElementsGuardians(JSTaggedValue::False());
         stableArrayElementsGuardians_ = false;
     }
 }
 
 void JSThread::ResetGuardians()
 {
+    SetStableArrayElementsGuardians(JSTaggedValue::True());
     stableArrayElementsGuardians_ = true;
 }
 
@@ -397,6 +402,15 @@ void JSThread::CheckJSTaggedType(JSTaggedType value) const
     }
 }
 
+bool JSThread::CpuProfilerCheckJSTaggedType(JSTaggedType value) const
+{
+    if (JSTaggedValue(value).IsHeapObject() &&
+        !GetEcmaVM()->GetHeap()->IsAlive(reinterpret_cast<TaggedObject *>(value))) {
+        return false;
+    }
+    return true;
+}
+
 void JSThread::CollectBCOffsetInfo()
 {
     FrameBcCollector collector(this);
@@ -433,10 +447,10 @@ size_t JSThread::GetAsmStackLimit()
     }
 
     uintptr_t threadStackStart = threadStackLimit + size;
-    LOG_INTERPRETER(INFO) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
-    LOG_INTERPRETER(INFO) << "Used stack before js stack start: "
+    LOG_INTERPRETER(DEBUG) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
+    LOG_INTERPRETER(DEBUG) << "Used stack before js stack start: "
                           << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
-    LOG_INTERPRETER(INFO) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
+    LOG_INTERPRETER(DEBUG) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
     ret = pthread_attr_destroy(&attr);
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Destroy current thread attr failed";
@@ -459,6 +473,19 @@ bool JSThread::IsLegalAsmSp(uintptr_t sp) const
 {
     uint64_t bottom = GetStackLimit() - EcmaParamConfiguration::GetDefaultReservedStackSize();
     uint64_t top = GetStackStart();
-    return (sp <= top || sp >= bottom);
+    return (bottom <= sp && sp <= top);
+}
+
+bool JSThread::IsLegalThreadSp(uintptr_t sp) const
+{
+    uintptr_t bottom = reinterpret_cast<uintptr_t>(glueData_.frameBase_);
+    size_t maxStackSize = vm_->GetEcmaParamConfiguration().GetMaxStackSize();
+    uintptr_t top = bottom + maxStackSize;
+    return (bottom <= sp && sp <= top);
+}
+
+bool JSThread::IsLegalSp(uintptr_t sp) const
+{
+    return IsLegalAsmSp(sp) || IsLegalThreadSp(sp);
 }
 }  // namespace panda::ecmascript

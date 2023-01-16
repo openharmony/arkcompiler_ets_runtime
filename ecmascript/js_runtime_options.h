@@ -74,8 +74,6 @@ enum CommandValues {
     OPTION_SERIALIZER_BUFFER_SIZE_LIMIT,
     OPTION_HEAP_SIZE_LIMIT,
     OPTION_ENABLE_IC,
-    OPTION_SNAPSHOT_FILE,
-    OPTION_FRAMEWORK_ABC_FILE,
     OPTION_ICU_DATA_PATH,
     OPTION_STARTUP_TIME,
     OPTION_COMPILER_LOG_OPT,
@@ -89,6 +87,8 @@ enum CommandValues {
     OPTION_BUILTINS_DTS,
     OPTION_TRACE_BC,
     OPTION_TRACE_DEOPT,
+    OPTION_DEOPT_THRESHOLD,
+    OPTION_OPT_CODE_PROFILER,
     OPTION_LOG_LEVEL,
     OPTION_LOG_DEBUG,
     OPTION_LOG_INFO,
@@ -110,7 +110,7 @@ enum CommandValues {
 
 class PUBLIC_API JSRuntimeOptions {
 public:
-    explicit JSRuntimeOptions() {}
+    JSRuntimeOptions() {}
     ~JSRuntimeOptions() = default;
     DEFAULT_COPY_SEMANTIC(JSRuntimeOptions);
     DEFAULT_MOVE_SEMANTIC(JSRuntimeOptions);
@@ -383,7 +383,7 @@ public:
         if (pos != std::string::npos) {
             std::string strStart = strAsmOpcodeDisableRange.substr(0, pos);
             std::string strEnd = strAsmOpcodeDisableRange.substr(pos + 1);
-            int start =  strStart.empty() ? 0 : std::stoi(strStart);
+            int start = strStart.empty() ? 0 : std::stoi(strStart);
             int end = strEnd.empty() ? kungfu::BYTECODE_STUB_END_ID : std::stoi(strEnd);
             if (start >= 0 && start < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS &&
                 end >= 0 && end < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS &&
@@ -510,36 +510,6 @@ public:
     bool WasSetEnableIC() const
     {
         return WasOptionSet(OPTION_ENABLE_IC);
-    }
-
-    std::string GetSnapshotFile() const
-    {
-        return snapshotFile_;
-    }
-
-    void SetSnapshotFile(std::string value)
-    {
-        snapshotFile_ = std::move(value);
-    }
-
-    bool WasSetSnapshotFile() const
-    {
-        return WasOptionSet(OPTION_SNAPSHOT_FILE);
-    }
-
-    std::string GetFrameworkAbcFile() const
-    {
-        return frameworkAbcFile_;
-    }
-
-    void SetFrameworkAbcFile(std::string value)
-    {
-        frameworkAbcFile_ = std::move(value);
-    }
-
-    bool WasSetFrameworkAbcFile() const
-    {
-        return WasOptionSet(OPTION_FRAMEWORK_ABC_FILE);
     }
 
     std::string GetIcuDataPath() const
@@ -827,6 +797,26 @@ public:
     {
         return traceDeopt_;
     }
+
+    void SetDeoptThreshold(uint16_t value)
+    {
+        deoptThreshold_ = value;
+    }
+
+    uint32_t GetDeoptThreshold() const
+    {
+        return deoptThreshold_;
+    }
+
+    void SetOptCodeProfiler(bool value)
+    {
+        optCodeProfiler_ = value;
+    }
+
+    bool GetOptCodeProfiler() const
+    {
+        return optCodeProfiler_;
+    }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -852,7 +842,7 @@ private:
     int arkProperties_ = GetDefaultProperties();
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
-    std::string aotOutputFile_ {"aot_file"};
+    std::string aotOutputFile_ {""};
     std::string targetTriple_ {"x86_64-unknown-linux-gnu"};
     uint32_t asmOptLevel_ {3}; // 3: default opt level
     uint32_t relocationMode_ {2}; // 2: default relocation mode
@@ -863,8 +853,6 @@ private:
     uint64_t serializerBufferSizeLimit_ {2_GB};
     uint32_t heapSizeLimit_ {512_MB};
     bool enableIC_ {true};
-    std::string snapshotFile_ {"/system/etc/snapshot"};
-    std::string frameworkAbcFile_ {"strip.native.min.abc"};
     std::string icuDataPath_ {"default"};
     bool startupTime_ {false};
     std::string compilerLogOpt_ {"none"};
@@ -894,7 +882,9 @@ private:
     bool enablePGOProfiler_ {false};
     uint32_t pgoHotnessThreshold_ {2};
     std::string pgoProfilerPath_ {""};
-    bool traceDeopt_{false};
+    bool traceDeopt_ {false};
+    uint32_t deoptThreshold_ {10};
+    bool optCodeProfiler_ {false};
 };
 }  // namespace panda::ecmascript
 

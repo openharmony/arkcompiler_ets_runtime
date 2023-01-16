@@ -93,7 +93,7 @@ bool Relocator::RelocateBySymbolId(Elf64_Word symbolId, uintptr_t patchAddr)
     bool ret = false;
     ASSERT(relocateTextInfo_.relaTextSize_ % sizeof(Elf64_Rela) == 0);
     ASSERT(relocateTextInfo_.relaTextAddr_ > 0 && relocateTextInfo_.relaTextSize_ > 0);
-    size_t n  = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
+    size_t n = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
     Elf64_Rela *ptr = reinterpret_cast<Elf64_Rela *>(relocateTextInfo_.relaTextAddr_);
     for (size_t i = 0; i < n; i++) {
         Elf64_Rela *cur = ptr + i;
@@ -128,7 +128,7 @@ void Relocator::DumpRelocateText()
     }
     ASSERT(relocateTextInfo_.relaTextSize_ % sizeof(Elf64_Rela) == 0);
     ASSERT(relocateTextInfo_.relaTextAddr_ > 0 && relocateTextInfo_.relaTextSize_ > 0);
-    size_t n  = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
+    size_t n = relocateTextInfo_.relaTextSize_ / sizeof(Elf64_Rela);
     Elf64_Rela *ptr = reinterpret_cast<Elf64_Rela *>(relocateTextInfo_.relaTextAddr_);
     static constexpr int leftAdjustment = 12;
     LOG_COMPILER(DEBUG) << std::left << std::setw(leftAdjustment) << "symbolId "

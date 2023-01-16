@@ -73,15 +73,16 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    ClassDataAccessor cda(*file, class_id);
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method(pf, methodId[0]);
-    pf->SetMethodLiteralToMap(&method);
+    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    method->Initialize(pf);
+    pf->SetMethodLiteralToMap(method);
     pfManager->InsertJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::Execute(thread, pf, JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
@@ -107,15 +108,16 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    ClassDataAccessor cda(*file, class_id);
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method(pf, methodId[0]);
-    pf->SetMethodLiteralToMap(&method);
+    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    method->Initialize(pf);
+    pf->SetMethodLiteralToMap(method);
     pfManager->InsertJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::ExecuteFromFile(thread, CString(fileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
@@ -144,15 +146,16 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    ClassDataAccessor cda(*file, class_id);
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method(pf, methodId[0]);
-    pf->SetMethodLiteralToMap(&method);
+    MethodLiteral *method = new MethodLiteral(methodId[0]);
+    method->Initialize(pf);
+    pf->SetMethodLiteralToMap(method);
     pfManager->InsertJSPandaFile(pf);
     Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::ExecuteFromBuffer(
         thread, (void *)data, sizeof(data), JSPandaFile::ENTRY_MAIN_FUNCTION, CString(fileName));
@@ -162,5 +165,30 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     pfManager->RemoveJSPandaFile((void *)pf);
     const JSPandaFile *foundPf = pfManager->FindJSPandaFile(fileName);
     pfManager->RemoveJSPandaFile((void *)foundPf);
+}
+
+HWTEST_F_L0(JSPandaFileExecutorTest, NormalizePath)
+{
+    CString res1 = "node_modules/0/moduleTest/index";
+    CString moduleRecordName1 = "node_modules///0//moduleTest/index";
+
+    CString res2 = "./node_modules/0/moduleTest/index";
+    CString moduleRecordName2 = "./node_modules///0//moduleTest/index";
+
+    CString res3 = "../node_modules/0/moduleTest/index";
+    CString moduleRecordName3 = "../node_modules/0/moduleTest///index";
+
+    CString res4 = "./moduleTest/index";
+    CString moduleRecordName4 = "./node_modules/..//moduleTest////index";
+
+    CString normalName1 = JSPandaFileExecutor::NormalizePath(moduleRecordName1);
+    CString normalName2 = JSPandaFileExecutor::NormalizePath(moduleRecordName2);
+    CString normalName3 = JSPandaFileExecutor::NormalizePath(moduleRecordName3);
+    CString normalName4 = JSPandaFileExecutor::NormalizePath(moduleRecordName4);
+
+    EXPECT_EQ(res1, normalName1);
+    EXPECT_EQ(res2, normalName2);
+    EXPECT_EQ(res3, normalName3);
+    EXPECT_EQ(res4, normalName4);
 }
 }  // namespace panda::test

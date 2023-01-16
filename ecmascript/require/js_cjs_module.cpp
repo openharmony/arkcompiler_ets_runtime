@@ -16,6 +16,7 @@
 #include "ecmascript/require/js_cjs_module.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
@@ -25,6 +26,8 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
+using BuiltinsJson = builtins::BuiltinsJson;
+
 void CjsModule::InitializeModule(JSThread *thread, JSHandle<CjsModule> &module,
                                  JSHandle<JSTaggedValue> &filename, JSHandle<JSTaggedValue> &dirname)
 {
@@ -61,9 +64,9 @@ JSHandle<JSTaggedValue> CjsModule::SearchFromModuleCache(JSThread *thread, JSHan
                                                                    exportsName.GetTaggedValue(),
                                                                    false,
                                                                    JSTaggedValue::Undefined());
+
         return JSHandle<JSTaggedValue>(thread, cachedExports);
     }
-
     return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Hole());
 }
 
@@ -88,19 +91,28 @@ void CjsModule::PutIntoCache(JSThread *thread, JSHandle<CjsModule> &module, JSHa
 
 JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &request)
 {
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
     // Get local jsPandaFile's dirPath
     JSMutableHandle<JSTaggedValue> parent(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread, JSTaggedValue::Undefined());
     const JSPandaFile *jsPandaFile = EcmaInterpreter::GetNativeCallPandafile(thread);
-    RequireManager::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
-    // Get filename from Callback
-    JSHandle<EcmaString> filenameStr = ResolveFilename(thread, dirname.GetTaggedValue(),
-                                                        request.GetTaggedValue());
+    JSHandle<JSTaggedValue> entrypointVal(thread, EcmaInterpreter::GetCurrentEntryPoint(thread));
+    CString mergedFilename = jsPandaFile->GetJSPandaFileDesc();
+    CString requestEntryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
 
-    JSHandle<JSTaggedValue> filename = JSHandle<JSTaggedValue>::Cast(filenameStr);
+    JSMutableHandle<JSTaggedValue> filename(thread, JSTaggedValue::Undefined());
+    if (jsPandaFile->IsBundlePack()) {
+        RequireManager::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
+        filename.Update(ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
+                                                  request.GetTaggedValue()));
+        mergedFilename = ConvertToString(filename.GetTaggedValue());
+    } else {
+        CString currentEntryPoint = ConvertToString(entrypointVal.GetTaggedValue());
+        CString requestStr = ConvertToString(request.GetTaggedValue());
+        requestEntryPoint = ModuleManager::ConcatFileNameWithMerge(jsPandaFile, mergedFilename,
+                                                                   currentEntryPoint, requestStr);
+        filename.Update(factory->NewFromUtf8(requestEntryPoint));
+    }
 
     // Search from Module.cache
     JSHandle<JSTaggedValue> maybeCachedExports = SearchFromModuleCache(thread, filename);
@@ -111,31 +123,41 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     // Don't get required exports from cache, execute required JSPandaFile.
     // module = new Module(), which belongs to required JSPandaFile.
     JSHandle<CjsModule> module = factory->NewCjsModule();
+    RequireManager::ResolveDirPath(thread, dirname, filename);
     InitializeModule(thread, module, filename, dirname);
     PutIntoCache(thread, module, filename);
 
+    if (jsPandaFile->IsJson(thread, requestEntryPoint)) {
+        JSHandle<JSTaggedValue> result = JSHandle<JSTaggedValue>(thread,
+            ModuleManager::JsonParse(thread, jsPandaFile, requestEntryPoint));
+        // Set module.exports ---> exports
+        JSHandle<JSTaggedValue> exportsKey = thread->GlobalConstants()->GetHandledCjsExportsString();
+        SlowRuntimeStub::StObjByName(thread, module.GetTaggedValue(), exportsKey.GetTaggedValue(),
+                                     result.GetTaggedValue());
+        return result;
+    }
     // Execute required JSPandaFile
-    RequireExecution(thread, JSHandle<EcmaString>::Cast(filename));
+    RequireExecution(thread, mergedFilename, requestEntryPoint);
 
     // Search from Module.cache after execution.
     JSHandle<JSTaggedValue> cachedExports = SearchFromModuleCache(thread, filename);
     if (cachedExports->IsHole()) {
-        LOG_ECMA(ERROR) << "CJS REQUIRE FAIL : Can not obtain module, after executing required jsPandaFile";
+        LOG_ECMA(FATAL) << "CJS REQUIRE FAIL : Can not obtain module, after executing required jsPandaFile";
         UNREACHABLE();
     }
     return cachedExports;
 }
 
-void CjsModule::RequireExecution(JSThread *thread, const JSHandle<EcmaString> &moduleFileName)
+void CjsModule::RequireExecution(JSThread *thread, CString mergedFilename, CString requestEntryPoint)
 {
-    CString moduleFilenameStr = ConvertToString(moduleFileName.GetTaggedValue());
     const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr, JSPandaFile::ENTRY_MAIN_FUNCTION);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, mergedFilename, requestEntryPoint);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "open jsPandaFile " << moduleFilenameStr << " error";
+        LOG_ECMA(FATAL) << "open jsPandaFile : " << mergedFilename <<
+        " , record name : " << requestEntryPoint << " error";
         UNREACHABLE();
     }
-    JSPandaFileExecutor::Execute(thread, jsPandaFile, JSPandaFile::ENTRY_FUNCTION_NAME);
+    JSPandaFileExecutor::Execute(thread, jsPandaFile, requestEntryPoint);
 }
 
 JSHandle<EcmaString> CjsModule::ResolveFilename(JSThread *thread, JSTaggedValue dirname, JSTaggedValue request)
@@ -187,8 +209,8 @@ JSHandle<EcmaString> CjsModule::ResolveFilenameFromNative(JSThread *thread, JSTa
 }
 
 JSTaggedValue CjsModule::Require(JSThread *thread, JSHandle<EcmaString> &request,
-                                 [[maybe_unused]]JSHandle<CjsModule> &parent,
-                                 [[maybe_unused]]bool isMain)
+                                 [[maybe_unused]] JSHandle<CjsModule> &parent,
+                                 [[maybe_unused]] bool isMain)
 {
     Load(thread, request);
     return JSTaggedValue::Undefined();

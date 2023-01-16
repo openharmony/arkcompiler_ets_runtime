@@ -95,7 +95,7 @@ HWTEST_F_L0(ProtoChangeDetailsTest, SetChangeListener)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(1));
-    
+
     uint32_t weakVectorCapacity = 100;
     JSHandle<WeakVector> weakVector = WeakVector::Create(thread, weakVectorCapacity);
     JSHandle<ChangeListener> handleChangeListener = JSHandle<ChangeListener>::Cast(weakVector);

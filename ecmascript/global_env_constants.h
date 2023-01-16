@@ -63,6 +63,8 @@ class JSThread;
     V(JSTaggedValue, ProtoChangeDetailsClass, PROTO_CHANGE_DETAILS_CLASS_INDEX, ecma_roots_class)                     \
     V(JSTaggedValue, PrototypeHandlerClass, PROTOTYPE_HANDLER_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, TransitionHandlerClass, TRANSITION_HANDLER_CLASS_INDEX, ecma_roots_class)                        \
+    V(JSTaggedValue, TransWithProtoHandlerClass, TRANS_WITH_PROTO_HANDLER_CLASS_INDEX, ecma_roots_class)              \
+    V(JSTaggedValue, StoreTSHandlerClass, STORE_TS_HANDLER_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, PropertyBoxClass, PROPERTY_BOX_CLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, ProgramClass, PROGRAM_CLASS_INDEX, ecma_roots_class)                                             \
     V(JSTaggedValue, ImportEntryClass, IMPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                                    \
@@ -411,7 +413,8 @@ class JSThread;
     V(JSTaggedValue, SpaceString, SPACE_INDEX, space)                                                                 \
     V(JSTaggedValue, NanCapitalString, NAN_INDEX, nan)                                                                \
     V(JSTaggedValue, CjsExportsString, CJS_EXPORTS_INDEX, exportsStr)                                                 \
-    V(JSTaggedValue, CjsCacheString, CJS_CACHE_INDEX, cacheStr)
+    V(JSTaggedValue, CjsCacheString, CJS_CACHE_INDEX, cacheStr)                                                       \
+    V(JSTaggedValue, NapiWrapperString, NAPI_WRAPPER_INDEX, napiwrapper)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                           \
@@ -443,12 +446,11 @@ enum class ConstantIndex : size_t {
 
 class GlobalEnvConstants {
 public:
-    explicit GlobalEnvConstants() = default;
+    GlobalEnvConstants() = default;
+    ~GlobalEnvConstants() = default;
 
     DEFAULT_MOVE_SEMANTIC(GlobalEnvConstants);
     DEFAULT_COPY_SEMANTIC(GlobalEnvConstants);
-
-    ~GlobalEnvConstants() = default;
 
     const JSTaggedValue *BeginSlot() const;
 
@@ -515,7 +517,7 @@ public:
         size_t specialEnd = static_cast<size_t>(ConstantIndex::NULL_INDEX);
         size_t undefinedBegin = GetJSAPIContainersBegin();
         size_t undefinedEnd = GetJSAPIContainersEnd();
-        return (index >= specialBegin  && index <= specialEnd) || (index >= undefinedBegin  && index <= undefinedEnd);
+        return (index >= specialBegin && index <= specialEnd) || (index >= undefinedBegin && index <= undefinedEnd);
     }
 
     static constexpr size_t SizeArch32 =

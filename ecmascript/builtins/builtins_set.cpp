@@ -178,7 +178,7 @@ JSTaggedValue BuiltinsSet::Has(EcmaRuntimeCallInfo *argv)
     return GetTaggedBoolean(flag);
 }
 
-JSTaggedValue BuiltinsSet::ForEach([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsSet::ForEach(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, Set, ForEach);
@@ -232,7 +232,7 @@ JSTaggedValue BuiltinsSet::ForEach([[maybe_unused]] EcmaRuntimeCallInfo *argv)
     return JSTaggedValue::Undefined();
 }
 
-JSTaggedValue BuiltinsSet::Species([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsSet::Species(EcmaRuntimeCallInfo *argv)
 {
     return GetThis(argv).GetTaggedValue();
 }

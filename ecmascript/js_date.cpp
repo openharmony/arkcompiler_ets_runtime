@@ -20,6 +20,7 @@
 #include <sys/time.h>
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/platform/time.h"
 
 namespace panda::ecmascript {
@@ -107,6 +108,7 @@ void DateUtils::GetYearFromDays(std::array<int64_t, DATE_LENGTH> *date)
     int64_t month = mp + (mp < MONTH_TRANSFORM[1] ?
                 MONTH_TRANSFORM[0] : MONTH_TRANSFORM[2]);                         // transform month to civil system
     int64_t year = y + (month <= MONTH_COEFFICIENT);
+    month -= 1;
     realDay = doy - (COEFFICIENT_TO_CIVIL[1] * mp + 2) / COEFFICIENT_TO_CIVIL[0] + 1;   // shift from 03-01 to 01-01
     (*date)[YEAR] = year;
     (*date)[MONTH] = month;
@@ -478,6 +480,16 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    JSHandle<JSTaggedValue> msg = base::BuiltinsBase::GetCallArg(argv, 0);
+    JSHandle<EcmaString> ecmaStr = JSTaggedValue::ToString(thread, msg);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+    JSTaggedValue res = FastRuntimeStub::FastParseDate(*ecmaStr);
+    if (!res.IsHole()) {
+        return res;
+    }
+    JSHandle<JSTaggedValue> str = JSHandle<JSTaggedValue>::Cast(ecmaStr);
+    CString date = ConvertToString(EcmaString::Cast(str->GetTaggedObject()));
+
     const CString isoPriStr = "(^|(\\+|-)(\\d{2}))";
     const CString isoDateStr =
         "(((\\d{4})-(0?[1-9]|1[0-2])-(0?[1-9]|1[0-9]|2[0-9]|3[0-1]))"
@@ -503,10 +515,7 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
     std::regex isoReg(isoRegStr);
     std::regex utcReg(utcRegStr);
     std::regex localReg(localRegStr);
-    JSHandle<JSTaggedValue> msg = base::BuiltinsBase::GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> str = JSHandle<JSTaggedValue>::Cast(JSTaggedValue::ToString(thread, msg));
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    CString date = ConvertToString(EcmaString::Cast(str->GetTaggedObject()));
+    
     if (std::regex_match(date, isoReg)) {
         return IsoParseStringToMs(date);
     }
@@ -921,6 +930,26 @@ double JSDate::SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool 
         }
         result -= offset;
     }
+    return TimeClip(result);
+}
+
+double JSDate::SetDateValues(int64_t year, int64_t month, int64_t day)
+{
+    if (year >= 0 && year < HUNDRED) {
+        year += NINETEEN_HUNDRED_YEAR;
+    }
+    int64_t m = DateUtils::Mod(month, MONTH_PER_YEAR);
+    int64_t y = year + (month - m) / MONTH_PER_YEAR;
+    int64_t d = DateUtils::GetDaysFromYear(y);
+    int index = DateUtils::IsLeap(y) ? 1 : 0;
+    d += DAYS_FROM_MONTH[index][m] + day - 1;
+    int64_t result = d * MS_PER_DAY;
+
+    int64_t offset = GetLocalOffsetFromOS(result, true) * SEC_PER_MINUTE * MS_PER_SECOND;
+    if (result < CHINA_1901_MS && (offset / MS_PER_MINUTE) == CHINA_AFTER_1901_MIN) {
+        offset += CHINA_BEFORE_1901_ADDMS;
+    }
+    result -= offset;
     return TimeClip(result);
 }
 }  // namespace panda::ecmascript

@@ -13,27 +13,26 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_BUILTIN_LOWERING_LOWERING_H
-#define ECMASCRIPT_COMPILER_BUILTIN_LOWERING_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_BUILTIN_LOWERING_H
+#define ECMASCRIPT_COMPILER_BUILTIN_LOWERING_H
 
 #include <string>
-#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/argument_accessor.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
 class BuiltinLowering {
 public:
-    explicit BuiltinLowering(Circuit *circuit): circuit_(circuit), builder_(circuit),
-                                       acc_(circuit) {}
+    explicit BuiltinLowering(Circuit *circuit): circuit_(circuit), builder_(circuit), acc_(circuit) {}
     ~BuiltinLowering() = default;
     void LowerTypedCallBuitin(GateRef gate);
-    void LowerCallTargetCheck(GateRef gate);
+    GateRef LowerCallTargetCheck(Environment *env, GateRef gate);
     static BuiltinsStubCSigns::ID GetBuiltinId(std::string idStr);
-    GateRef CheckPara(GateRef gate, BuiltinsStubCSigns::ID id);
+    GateRef CheckPara(GateRef gate);
 private:
     void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
-    GateRef TypeTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
+    GateRef TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef IntToTaggedIntPtr(GateRef x);
     void LowerTypedSqrt(GateRef gate);
     GateRef TypedSqrt(GateRef gate);
@@ -45,4 +44,4 @@ private:
     GateAccessor acc_;
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_BUILTIN_LOWERING_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_BUILTIN_LOWERING_H

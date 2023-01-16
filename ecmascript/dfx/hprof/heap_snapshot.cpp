@@ -50,10 +50,10 @@ CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
     return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
 }
 
-Node *Node::NewNode(const EcmaVM *vm, size_t id, size_t index, const CString *name, NodeType type, size_t size,
+Node *Node::NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, NodeType type, size_t size,
                     TaggedObject *entry, bool isLive)
 {
-    auto node = vm->GetChunk()->New<Node>(id, index, name, type, size, 0, NewAddress<TaggedObject>(entry), isLive);
+    auto node = chunk->New<Node>(id, index, name, type, size, 0, NewAddress<TaggedObject>(entry), isLive);
     if (UNLIKELY(node == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -61,9 +61,9 @@ Node *Node::NewNode(const EcmaVM *vm, size_t id, size_t index, const CString *na
     return node;
 }
 
-Edge *Edge::NewEdge(const EcmaVM *vm, uint64_t id, EdgeType type, Node *from, Node *to, CString *name)
+Edge *Edge::NewEdge(Chunk *chunk, uint64_t id, EdgeType type, Node *from, Node *to, CString *name)
 {
-    auto edge = vm->GetChunk()->New<Edge>(id, type, from, to, name);
+    auto edge = chunk->New<Edge>(id, type, from, to, name);
     if (UNLIKELY(edge == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -74,10 +74,10 @@ Edge *Edge::NewEdge(const EcmaVM *vm, uint64_t id, EdgeType type, Node *from, No
 HeapSnapshot::~HeapSnapshot()
 {
     for (Node *node : nodes_) {
-        vm_->GetChunk()->Delete(node);
+        chunk_->Delete(node);
     }
     for (Edge *edge : edges_) {
-        vm_->GetChunk()->Delete(edge);
+        chunk_->Delete(edge);
     }
     nodes_.clear();
     edges_.clear();
@@ -86,6 +86,7 @@ HeapSnapshot::~HeapSnapshot()
     scriptIdMap_.clear();
     methodToTraceNodeId_.clear();
     traceNodeIndex_.clear();
+    chunk_ = nullptr;
 }
 
 bool HeapSnapshot::BuildUp()
@@ -110,7 +111,7 @@ void HeapSnapshot::PrepareSnapshot()
     }
 }
 
-void HeapSnapshot::UpdateNode(bool isInFinish)
+void HeapSnapshot::UpdateNodes(bool isInFinish)
 {
     for (Node *node : nodes_) {
         node->SetLive(false);
@@ -118,7 +119,12 @@ void HeapSnapshot::UpdateNode(bool isInFinish)
     FillNodes(isInFinish);
     for (auto iter = nodes_.begin(); iter != nodes_.end();) {
         if (!(*iter)->IsLive()) {
-            entryMap_.FindAndEraseNode((*iter)->GetAddress());
+            Node *node = entryMap_.FindAndEraseNode((*iter)->GetAddress());
+            ASSERT(*iter == node);
+            if (node != nullptr) {
+                DecreaseNodeSize(node->GetSelfSize());
+                chunk_->Delete(node);
+            }
             iter = nodes_.erase(iter);
             nodeCount_--;
         } else {
@@ -129,7 +135,7 @@ void HeapSnapshot::UpdateNode(bool isInFinish)
 
 bool HeapSnapshot::FinishSnapshot()
 {
-    UpdateNode(true);
+    UpdateNodes(true);
     FillEdges();
     AddSyntheticRoot();
     return Verify();
@@ -177,24 +183,42 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
     stream->UpdateLastSeenObjectId(sequenceId);
 }
 
-Node *HeapSnapshot::AddNode(TaggedObject* address, size_t size)
+Node *HeapSnapshot::AddNode(TaggedObject *address, size_t size)
 {
     return GenerateNode(JSTaggedValue(address), size);
 }
 
-void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject* forwardAddress, size_t size)
+void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, size_t size)
 {
-    int sequenceId = -1;
-    uint64_t traceNodeId = 0;
-    Node *node = entryMap_.FindEntry(address);
+    if (address == reinterpret_cast<uintptr_t>(forwardAddress)) {
+        return;
+    }
+
+    Node *node = entryMap_.FindAndEraseNode(address);
     if (node != nullptr) {
         ASSERT(node->GetId() <= static_cast<uint64_t>(INT_MAX));
-        sequenceId = static_cast<int>(node->GetId());
-        traceNodeId = node->GetStackTraceId();
-    }
-    node = GenerateNode(JSTaggedValue(forwardAddress), size, sequenceId);
-    if (node != nullptr) {
-        node->SetTraceId(traceNodeId);
+
+        Node *oldNode = entryMap_.FindAndEraseNode(Node::NewAddress(forwardAddress));
+        if (oldNode != nullptr) {
+            EraseNodeUnique(oldNode);
+        }
+
+        // Size and name may change during its life for some types(such as string, array and etc).
+        if (forwardAddress->GetClass() != nullptr) {
+            node->SetName(GenerateNodeName(forwardAddress));
+        }
+        if (JSTaggedValue(forwardAddress).IsString()) {
+            node->SetSelfSize(EcmaStringAccessor(forwardAddress).GetFlatStringSize());
+        } else {
+            node->SetSelfSize(size);
+        }
+        node->SetAddress(Node::NewAddress(forwardAddress));
+
+        entryMap_.InsertEntry(node);
+    } else {
+        LOG_DEBUGGER(WARN) << "Untracked object moves from " << address << " to " << forwardAddress;
+        int32_t sequenceId = -1;
+        GenerateNode(JSTaggedValue(forwardAddress), size, sequenceId);
     }
 }
 
@@ -499,6 +523,10 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
                 return GetString("ProtoTypeHandler");
             case JSType::TRANSITION_HANDLER:
                 return GetString("TransitionHandler");
+            case JSType::TRANS_WITH_PROTO_HANDLER:
+                return GetString("TransWithProtoHandler");
+            case JSType::STORE_TS_HANDLER:
+                return GetString("StoreTSHandler");
             case JSType::PROTO_CHANGE_MARKER:
                 return GetString("ProtoChangeMarker");
             case JSType::PROTOTYPE_INFO:
@@ -553,7 +581,7 @@ void HeapSnapshot::FillNodes(bool isInFinish)
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
-        heap->IterateOverObjects([this, &isInFinish](TaggedObject *obj) {
+        heap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
             GenerateNode(JSTaggedValue(obj), 0, -1, isInFinish);
         });
     }
@@ -587,7 +615,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceI
             Node *existNode = entryMap_.FindEntry(addr);  // Fast Index
             if (existNode == nullptr) {
                 size_t selfSize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
-                node = Node::NewNode(vm_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
+                node = Node::NewNode(chunk_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
                     selfSize, obj);
                 if (sequenceId == sequenceId_ + SEQ_STEP) {
                     sequenceId_ = sequenceId;  // Odd Digit
@@ -597,13 +625,11 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceI
                 ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
             } else {
                 existNode->SetLive(true);
-                return nullptr;
+                return existNode;
             }
         }
     } else {
         CString primitiveName;
-        // A primitive value with tag will be regarded as a pointer
-        auto *obj = reinterpret_cast<TaggedObject *>(entry.GetRawData());
         if (entry.IsInt()) {
             primitiveName.append("Int:");
             if (!isPrivate_) {
@@ -630,7 +656,15 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceI
             primitiveName.append("Illegal_Primitive");
         }
 
-        node = Node::NewNode(vm_, sequenceId, nodeCount_, GetString(primitiveName), NodeType::JS_PRIMITIVE_REF, 0,
+        // A primitive value with tag will be regarded as a pointer
+        auto *obj = reinterpret_cast<TaggedObject *>(entry.GetRawData());
+        Node *existNode = entryMap_.FindEntry(reinterpret_cast<Address>(obj));
+        if (existNode != nullptr) {
+            existNode->SetLive(true);
+            return existNode;
+        }
+
+        node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(primitiveName), NodeType::JS_PRIMITIVE_REF, 0,
                              obj);
         entryMap_.InsertEntry(node);  // Fast Index
         if (sequenceId == sequenceId_ + SEQ_STEP) {
@@ -808,7 +842,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, int seq
             existNode->SetName(GetString(EntryVisitor::ConvertKey(entry)));
         }
         existNode->SetLive(true);
-        return nullptr;
+        return existNode;
     }
     // Allocation Event will generate string node for "".
     // When we need to serialize and isFinish is true, the nodeName will be given the actual string content.
@@ -818,7 +852,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, int seq
     if (isInFinish) {
         nodeName = GetString(EntryVisitor::ConvertKey(entry));
     }
-    Node *node = Node::NewNode(vm_, sequenceId, nodeCount_, nodeName, NodeType::PRIM_STRING, selfsize,
+    Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, nodeName, NodeType::PRIM_STRING, selfsize,
                                entry.GetTaggedObject());
     if (sequenceId == sequenceId_ + SEQ_STEP) {
         sequenceId_ = sequenceId;  // Odd Digit
@@ -839,7 +873,7 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size, int sequenceId)
     size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).GetFlatStringSize();
     CString strContent;
     strContent.append(EntryVisitor::ConvertKey(stringValue));
-    node = Node::NewNode(vm_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,
+    node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,
                          stringValue.GetTaggedObject());
     Node *existNode = entryMap_.FindOrInsertNode(node);  // Fast Index
     if (existNode == node) {
@@ -884,10 +918,10 @@ void HeapSnapshot::FillEdges()
                 entryTo = entryMap_.FindEntry(Node::NewAddress(to));
             }
             if (entryTo == nullptr) {
-                entryTo = GenerateNode(toValue);
+                entryTo = GenerateNode(toValue, 0, -1, true);
             }
             if (entryTo != nullptr) {
-                Edge *edge = Edge::NewEdge(vm_, edgeCount_, EdgeType::DEFAULT, *iter, entryTo, GetString(it.first));
+                Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT, *iter, entryTo, GetString(it.first));
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
             }
@@ -908,7 +942,7 @@ void HeapSnapshot::FillEdges()
             } else {
                 valueName.append("NaN");
             }
-            Edge *edge = Edge::NewEdge(vm_, edgeCount_, EdgeType::DEFAULT, (*iter), (*iter), GetString(valueName));
+            Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT, (*iter), (*iter), GetString(valueName));
             InsertEdgeUnique(edge);
             (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
         }
@@ -949,6 +983,7 @@ void HeapSnapshot::EraseNodeUnique(Node *node)
     auto iter = std::find(nodes_.begin(), nodes_.end(), node);
     if (iter != nodes_.end()) {
         DecreaseNodeSize(node->GetSelfSize());
+        chunk_->Delete(node);
         nodes_.erase(iter);
         nodeCount_--;
     }
@@ -963,7 +998,7 @@ Edge *HeapSnapshot::InsertEdgeUnique(Edge *edge)
 
 void HeapSnapshot::AddSyntheticRoot()
 {
-    Node *syntheticRoot = Node::NewNode(vm_, 1, nodeCount_, GetString("SyntheticRoot"),
+    Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                         NodeType::SYNTHETIC, 0, nullptr);
     InsertNodeAt(0, syntheticRoot);
 
@@ -976,7 +1011,7 @@ void HeapSnapshot::AddSyntheticRoot()
             TaggedObject *root = value.GetTaggedObject();                                             \
             Node *rootNode = entryMap_.FindEntry(Node::NewAddress(root));                             \
             if (rootNode != nullptr) {                                                                \
-                Edge *edge = Edge::NewEdge(vm_,                                                     \
+                Edge *edge = Edge::NewEdge(chunk_,                                                    \
                     edgeCount_, EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-")); \
                 InsertEdgeAt(edgeOffset, edge);                                                       \
                 edgeOffset++;                                                                         \
@@ -989,8 +1024,8 @@ void HeapSnapshot::AddSyntheticRoot()
         ROOT_EDGE_BUILDER_CORE(type, slot);
     };
     RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
-        ([[maybe_unused]] Root type, [[maybe_unused]]ObjectSlot base, [[maybe_unused]]ObjectSlot derived,
-         [[maybe_unused]]uintptr_t baseOldObject) {
+        ([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
+         [[maybe_unused]] uintptr_t baseOldObject) {
     };
 
     RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset]([[maybe_unused]] Root type,

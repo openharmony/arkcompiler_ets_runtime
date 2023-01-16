@@ -20,14 +20,18 @@
 #include <cstdint>
 #include <iostream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <iomanip>
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/clock_scope.h"
+#include "ecmascript/mem/c_string.h"
 
 namespace panda::ecmascript::kungfu {
+class AotMethodLogList;
+
 class CompilerLog {
 public:
     explicit CompilerLog(const std::string &logOpt, bool TraceBC = false);
@@ -98,13 +102,17 @@ public:
         return GetEnableMethodLog() && OutputCIR();
     }
 
-    void PrintPassTime() const;
-    void PrintMethodTime() const;
-    void PrintTime() const;
+    void SetMethodLog(const std::string &fileName, const CString& recordName,
+                      const std::string &methodName, AotMethodLogList *logList);
+    void Print() const;
     void AddMethodTime(const std::string& name, uint32_t id, double time);
     void AddPassTime(const std::string& name, double time);
+    int GetIndex();
+
+    std::map<std::string, int> nameIndex_;
 
 private:
+    static constexpr int RECORD_LENS = 64;
     static constexpr int PASS_LENS = 32;
     static constexpr int METHOD_LENS = 16;
     static constexpr int OFFSET_LENS = 8;
@@ -113,6 +121,13 @@ private:
     static constexpr int MILLION_TIME = 1000;
     static constexpr int HUNDRED_TIME = 100;
 
+    void PrintPassTime() const;
+    void PrintMethodTime() const;
+    void PrintTime() const;
+    void PrintCompiledMethod() const;
+    void AddCompiledMethod(const std::string& name, const CString& recordName);
+
+    int idx_ {0};
     bool allMethod_ {false};
     bool cerMethod_ {false};
     bool noneMethod_ {false};
@@ -125,6 +140,7 @@ private:
     bool enableMethodLog_ {false};
     std::map<std::string, double> timePassMap_ {};
     std::map<std::pair<uint32_t, std::string>, double> timeMethodMap_ {};
+    std::set<std::pair<std::string, CString>> compiledMethodSet_ {};
 };
 
 class MethodLogList {
@@ -158,6 +174,7 @@ private:
 class TimeScope : public ClockScope {
 public:
     TimeScope(std::string name, std::string methodName, uint32_t methodOffset, CompilerLog* log);
+    TimeScope(std::string name, CompilerLog* log);
     ~TimeScope();
    
 private:

@@ -42,7 +42,6 @@ void ParallelEvacuator::Finalize()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuatorFinalize);
     delete allocator_;
-    heap_->Resume(OLD_GC);
 }
 
 void ParallelEvacuator::Evacuate()
@@ -127,6 +126,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region)
             if (address == 0) {
                 address = allocator->Allocate(size, OLD_SPACE);
                 actualPromoted = true;
+                promotedSize += size;
             }
         }
         LOG_ECMA_IF(address == 0, FATAL) << "Evacuate object failed:" << size;
@@ -161,7 +161,7 @@ void ParallelEvacuator::VerifyHeapObject(TaggedObject *object)
                     if (!heap_->IsFullMark() && !objectRegion->InYoungSpace()) {
                         continue;
                     }
-                    if (!objectRegion->Test(value.GetTaggedObject())) {
+                    if (!objectRegion->Test(value.GetTaggedObject()) && !objectRegion->InAppSpawnSpace()) {
                         LOG_GC(FATAL) << "Miss mark value: " << value.GetTaggedObject()
                                             << ", body address:" << slot.SlotAddress()
                                             << ", header address:" << object;
@@ -229,7 +229,7 @@ void ParallelEvacuator::UpdateRoot()
         }
     };
     RootBaseAndDerivedVisitor gcUpdateDerived =
-        []([[maybe_unused]]Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
+        []([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
         if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
             derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
         }

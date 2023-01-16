@@ -18,15 +18,16 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/quick_fix_manager.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
 
 namespace panda::test {
+using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 class QuickFixTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -66,15 +67,15 @@ HWTEST_F_L0(QuickFixTest, HotReload_SingleFile)
     bool result = JSNApi::Execute(instance, baseFileName, "index");
     EXPECT_TRUE(result);
 
-    result = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
-    EXPECT_TRUE(result);
+    auto res = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
 
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(instance);
     result = JSNApi::IsQuickFixCausedException(instance, exception, patchFileName);
     EXPECT_FALSE(result);
 
-    result = JSNApi::UnloadPatch(instance, patchFileName);
-    EXPECT_TRUE(result);
+    res = JSNApi::UnloadPatch(instance, patchFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
 }
 
 HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
@@ -89,15 +90,15 @@ HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
     bool result = JSNApi::Execute(instance, baseFileName, "index");
     EXPECT_TRUE(result);
 
-    result = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
-    EXPECT_TRUE(result);
+    auto res = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
 
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(instance);
     result = JSNApi::IsQuickFixCausedException(instance, exception, patchFileName);
     EXPECT_FALSE(result);
 
-    result = JSNApi::UnloadPatch(instance, patchFileName);
-    EXPECT_TRUE(result);
+    res = JSNApi::UnloadPatch(instance, patchFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
 }
 
 HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
@@ -118,8 +119,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
     pfManager->InsertJSPandaFile(baseFile);
     pfManager->InsertJSPandaFile(patchFile);
 
-    bool result = JSNApi::LoadPatch(instance, patchFileName, (void *)data, sizeof(data), baseFileName);
-    EXPECT_FALSE(result);
+    auto result = JSNApi::LoadPatch(instance, patchFileName, (void *)data, sizeof(data), baseFileName);
+    EXPECT_FALSE(result == PatchErrorCode::SUCCESS);
 
     pfManager->RemoveJSPandaFile((void *)baseFile);
     pfManager->RemoveJSPandaFile((void *)patchFile);

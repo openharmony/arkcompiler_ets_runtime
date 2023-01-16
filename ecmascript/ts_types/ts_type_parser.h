@@ -29,22 +29,23 @@ public:
 
     GlobalTSTypeRef PUBLIC_API CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
 
+    static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
+
 private:
     static constexpr size_t TYPE_KIND_INDEX_IN_LITERAL = 0;
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
-    static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
     static constexpr size_t IMPORT_PATH_OFFSET_IN_LITERAL = 1;
 
     static constexpr const char* DECLARED_SYMBOL_TYPES = "declaredSymbolTypes";
     static constexpr const char* EXPORTED_SYMBOL_TYPES = "exportedSymbolTypes";
 
     inline GlobalTSTypeRef GetGT(const JSPandaFile *jsPandaFile, JSHandle<TSTypeTable> table,
-                                 uint32_t moduleId, uint32_t typeId)
+                                 uint32_t moduleId, uint32_t typeId, const CString &recordName)
     {
         auto localId = table->GetNumberOfTypes() + 1;
         table->SetNumberOfTypes(thread_, localId);
         GlobalTSTypeRef gt = GlobalTSTypeRef(moduleId, localId);
-        tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, gt);
+        tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, recordName, gt);
         return gt;
     }
 
@@ -64,10 +65,10 @@ private:
                                       JSHandle<TaggedArray> literal, uint32_t typeId);
 
     JSHandle<JSTaggedValue> ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                               JSHandle<TaggedArray> literal, TSTypeKind kind);
+                                               JSHandle<TaggedArray> literal, TSTypeKind kind, uint32_t typeId);
 
     JSHandle<TSClassType> ParseClassType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                         const JSHandle<TaggedArray> &literal);
+                                         const JSHandle<TaggedArray> &literal, uint32_t typeId);
 
     JSHandle<TSClassInstanceType> ParseClassInstanceType(const JSPandaFile *jsPandaFile, const CString &recordName,
                                                          const JSHandle<TaggedArray> &literal);
@@ -101,7 +102,7 @@ private:
                                   uint32_t startIndex, uint32_t lastIndex,
                                   uint32_t &index);
 
-    void GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> type);
+    void GenerateStaticHClass(JSHandle<JSTaggedValue> type);
 
     JSHandle<TaggedArray> GetExportDataFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
 

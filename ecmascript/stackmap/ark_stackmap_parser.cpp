@@ -26,7 +26,7 @@ int ArkStackMapParser::BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsi
     int slow = 0;
     int high = static_cast<int>(callsiteNum) - 1;
     int mid = 0;
-    uint32_t v;
+    uint32_t v = 0;
     while (slow <= high) {
         mid = (slow + high) >> 1;
         v = callsiteHead[mid].calliteOffset;
@@ -99,6 +99,7 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(const DwarfRegAndOffsetType inf
     } else if (info.first == GCStackMapRegisters::FP) {
         address = callsiteFp + info.second;
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return address;

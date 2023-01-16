@@ -26,25 +26,52 @@ using namespace panda::ecmascript;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
 
+#define SUBENTRY(messageId, condition)                                              \
+    GateRef glueArg = PtrArgument(0);                                               \
+    auto env = GetEnvironment();                                                    \
+    Label subEntry(env);                                                            \
+    env->SubCfgEntry(&subEntry);                                                    \
+    Label nextLabel(env);                                                           \
+    Assert(messageId, __LINE__, glueArg, condition, &nextLabel);                    \
+    Bind(&nextLabel)
+#define SUBENTRY_WITH_GLUE(messageId, condition, glueArg)                           \
+    auto env = GetEnvironment();                                                    \
+    Label subEntry(env);                                                            \
+    env->SubCfgEntry(&subEntry);                                                    \
+    Label nextLabel(env);                                                           \
+    Assert(messageId, __LINE__, glueArg, condition, &nextLabel);                    \
+    Bind(&nextLabel)
+
 #ifndef NDEBUG
-#define ASM_ASSERT(messageId, glue, condition, nextLabel)                           \
-    Label nextLabel(env);                                                           \
-    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
-    Bind(&nextLabel)
-#elif ECMASCRIPT_ENABLE_ASM_ASSERT
-#define ASM_ASSERT(messageId, glue, condition, nextLabel)                           \
-    Label nextLabel(env);                                                           \
-    Assert(messageId, __LINE__, glue, condition, &nextLabel);                       \
-    Bind(&nextLabel)
+#define ASM_ASSERT(messageId, condition)                                            \
+    SUBENTRY(messageId, condition)
+#define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
+    SUBENTRY_WITH_GLUE(messageId, condition, glue)
+#elif defined(ENABLE_ASM_ASSERT)
+#define ASM_ASSERT(messageId, condition)                                            \
+    SUBENTRY(messageId, condition)
+#define ASM_ASSERT_WITH_GLUE(messageId, condition, glue)                            \
+    SUBENTRY_WITH_GLUE(messageId, condition, glue)
 #else
 #define ASM_ASSERT(messageId, ...) ((void)0)
+#define ASM_ASSERT_WITH_GLUE(messageId, ...) ((void)0)
+#endif
+
+#ifndef NDEBUG
+#define EXITENTRY()                                                                 \
+    env->SubCfgExit()
+#elif defined(ENABLE_ASM_ASSERT)
+#define EXITENTRY()                                                                 \
+    env->SubCfgExit()
+#else
+#define EXITENTRY() ((void)0)
 #endif
 
 class StubBuilder {
 public:
     explicit StubBuilder(StubBuilder *parent)
         : callSignature_(parent->GetCallSignature()), env_(parent->GetEnvironment()) {}
-    explicit StubBuilder(CallSignature *callSignature, Environment *env)
+    StubBuilder(CallSignature *callSignature, Environment *env)
         : callSignature_(callSignature), env_(env) {}
     explicit StubBuilder(Environment *env)
         : env_(env) {}
@@ -69,6 +96,7 @@ public:
     GateRef Int16(int16_t value);
     GateRef Int32(int32_t value);
     GateRef Int64(int64_t value);
+    GateRef StringPtr(const std::string &str);
     GateRef IntPtr(int64_t value);
     GateRef IntPtrSize();
     GateRef RelocatableData(uint64_t value);
@@ -105,6 +133,7 @@ public:
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
     GateRef CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
+    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
     void FatalPrint(GateRef thread, std::initializer_list<GateRef> args);
     // memory
@@ -179,6 +208,8 @@ public:
     GateRef TaggedIsPropertyBox(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
     GateRef TaggedIsPrototypeHandler(GateRef x);
+    GateRef TaggedIsStoreTSHandler(GateRef x);
+    GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
@@ -196,6 +227,7 @@ public:
     GateRef Int16ToTaggedInt(GateRef x);
     GateRef IntToTaggedPtr(GateRef x);
     GateRef IntToTaggedInt(GateRef x);
+    GateRef Int64ToTaggedInt(GateRef x);
     GateRef DoubleToTaggedDoublePtr(GateRef x);
     GateRef CastDoubleToInt64(GateRef x);
     GateRef TaggedTrue();
@@ -267,6 +299,7 @@ public:
     GateRef IsConstructor(GateRef object);
     GateRef IsBase(GateRef func);
     GateRef IsJsArray(GateRef obj);
+    GateRef IsByteArray(GateRef obj);
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsCOWArray(GateRef obj);
     GateRef IsJSObject(GateRef obj);
@@ -296,20 +329,26 @@ public:
     GateRef IsInvalidPropertyBox(GateRef obj);
     GateRef GetValueFromPropertyBox(GateRef obj);
     void SetValueToPropertyBox(GateRef glue, GateRef obj, GateRef value);
-    GateRef GetTransitionFromHClass(GateRef obj);
+    GateRef GetTransitionHClass(GateRef obj);
     GateRef GetTransitionHandlerInfo(GateRef obj);
+    GateRef GetTransWithProtoHClass(GateRef obj);
+    GateRef GetTransWithProtoHandlerInfo(GateRef obj);
     GateRef IsInternalAccessor(GateRef attr);
     GateRef GetProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
+    GateRef GetStoreTSHandlerHolder(GateRef object);
+    GateRef GetStoreTSHandlerHandlerInfo(GateRef object);
     GateRef GetPrototype(GateRef glue, GateRef object);
     GateRef GetHasChanged(GateRef object);
     GateRef HclassIsPrototypeHandler(GateRef hClass);
     GateRef HclassIsTransitionHandler(GateRef hClass);
     GateRef HclassIsPropertyBox(GateRef hClass);
     GateRef PropAttrGetOffset(GateRef attr);
-    GateRef InstanceOf(GateRef glue, GateRef object, GateRef target);
+    GateRef InstanceOf(GateRef glue, GateRef object, GateRef target, GateRef profileTypeInfo, GateRef slotId);
     GateRef OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj);
+    void TryFastHasInstance(GateRef glue, GateRef instof, GateRef target, GateRef object, Label *fastPath,
+                            Label *exit, Variable *result);
     GateRef SameValue(GateRef glue, GateRef left, GateRef right);
 
     // SetDictionaryOrder func in property_attribute.h
@@ -338,6 +377,7 @@ public:
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
+    GateRef IsAOTHClass(GateRef hClass);
     void SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value);
     GateRef GetObjectSizeFromHClass(GateRef hClass);
     GateRef GetInlinedPropsStartFromHClass(GateRef hClass);
@@ -393,24 +433,31 @@ public:
     GateRef GetArrayLength(GateRef object);
     GateRef DoubleToInt(GateRef glue, GateRef x);
     void StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler);
-    void StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler);
+    void StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
+                             bool withPrototype = false);
     GateRef StoreGlobal(GateRef glue, GateRef value, GateRef cell);
     void JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
     void NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass);
     GateRef GetInt64OfTInt(GateRef x);
     GateRef GetInt32OfTInt(GateRef x);
     GateRef GetDoubleOfTDouble(GateRef x);
+    GateRef GetDoubleOfTNumber(GateRef x);
     GateRef LoadObjectFromWeakRef(GateRef x);
+    GateRef ExtFloat32ToDouble(GateRef x);
+    GateRef ChangeInt32ToFloat32(GateRef x);
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
     GateRef Int64ToTaggedPtr(GateRef x);
     GateRef TruncInt16ToInt8(GateRef x);
+    GateRef CastInt32ToFloat32(GateRef x);
     GateRef CastInt64ToFloat64(GateRef x);
     GateRef SExtInt32ToInt64(GateRef x);
     GateRef SExtInt16ToInt64(GateRef x);
+    GateRef SExtInt16ToInt32(GateRef x);
     GateRef SExtInt8ToInt64(GateRef x);
+    GateRef SExtInt8ToInt32(GateRef x);
     GateRef SExtInt1ToInt64(GateRef x);
     GateRef SExtInt1ToInt32(GateRef x);
     GateRef ZExtInt8ToInt16(GateRef x);
@@ -460,7 +507,7 @@ public:
     GateRef GetBoxFromGlobalDictionary(GateRef object, GateRef entry);
     GateRef GetValueFromGlobalDictionary(GateRef object, GateRef entry);
     GateRef GetPropertiesFromJSObject(GateRef object);
-    template<OpCode::Op Op, MachineType Type>
+    template<OpCode Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key);
 
@@ -469,6 +516,7 @@ public:
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
+    void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // fast path
     GateRef FastEqual(GateRef left, GateRef right);
@@ -497,7 +545,7 @@ public:
     GateRef IsNativeMethod(GateRef method);
     GateRef HasAotCode(GateRef method);
     GateRef GetExpectedNumOfArgs(GateRef method);
-    GateRef GetMethod(GateRef glue, GateRef obj, GateRef key);
+    GateRef GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId);
     // proxy operator
     GateRef GetMethodFromJSProxy(GateRef proxy);
     GateRef GetHandlerFromJSProxy(GateRef proxy);
@@ -532,9 +580,10 @@ public:
     void PGOProfiler(GateRef glue, GateRef func);
 
     GateRef FlattenString(GateRef glue, GateRef str);
+    void Comment(GateRef glue, const std::string &str);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef FastAddSubAndMul(GateRef left, GateRef right);
     GateRef FastBinaryOp(GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp);

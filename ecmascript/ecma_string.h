@@ -238,6 +238,35 @@ private:
         return CopyDataRegionUtf8(buf, 0, GetLength(), maxLength, true, isWriteBuffer) + 1;
     }
 
+    size_t WriteOneByte(uint8_t *buf, size_t maxLength) const
+    {
+        if (maxLength == 0) {
+            return 0;
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        buf[maxLength - 1] = '\0';
+        uint32_t length = GetLength();
+        if (!IsUtf16()) {
+            CVector<uint8_t> tmpBuf;
+            const uint8_t *data = GetUtf8DataFlat(this, tmpBuf);
+            if (length > maxLength) {
+                length = maxLength;
+            }
+            if (memcpy_s(buf, maxLength, data, length) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed when write one byte";
+                UNREACHABLE();
+            }
+            return length;
+        }
+        
+        CVector<uint16_t> tmpBuf;
+        const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
+        if (length > maxLength) {
+            return base::utf_helper::ConvertRegionUtf16ToLatin1(data, buf, maxLength, maxLength);
+        }
+        return base::utf_helper::ConvertRegionUtf16ToLatin1(data, buf, length, maxLength);
+    }
+
     size_t CopyDataRegionUtf8(uint8_t *buf, size_t start, size_t length, size_t maxLength,
                               bool modify = true, bool isWriteBuffer = false) const
     {
@@ -364,7 +393,14 @@ private:
 
     // single char copy for loop
     template<typename DstType, typename SrcType>
-    static void CopyChars(DstType *dst, SrcType *src, uint32_t count);
+    static void CopyChars(DstType *dst, SrcType *src, uint32_t count)
+    {
+        Span<SrcType> srcSp(src, count);
+        Span<DstType> dstSp(dst, count);
+        for (uint32_t i = 0; i < count; i++) {
+            dstSp[i] = srcSp[i];
+        }
+    }
 
     // memory block copy
     template<typename T>
@@ -422,6 +458,11 @@ private:
     static EcmaString *ToLocaleLower(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
 
     static EcmaString *ToLocaleUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale);
+
+    static EcmaString *TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src);
+
+    static EcmaString *ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHandle<EcmaString> &srcFlat,
+                                                 bool toLower, uint32_t startIndex = 0);
 };
 
 // The LineEcmaString abstract class captures sequential string values, only LineEcmaString can store chars data
@@ -465,7 +506,21 @@ public:
     }
 
     template<bool verify = true>
-    uint16_t Get(int32_t index) const;
+    uint16_t Get(int32_t index) const
+    {
+        int32_t length = static_cast<int32_t>(GetLength());
+        if (verify) {
+            if ((index < 0) || (index >= length)) {
+                return 0;
+            }
+        }
+        if (!IsUtf16()) {
+            Span<const uint8_t> sp(GetDataUtf8(), length);
+            return sp[index];
+        }
+        Span<const uint16_t> sp(GetDataUtf16(), length);
+        return sp[index];
+    }
 
     void Set(uint32_t index, uint16_t src)
     {
@@ -511,7 +566,35 @@ public:
     }
 
     template<bool verify = true>
-    uint16_t Get(int32_t index) const;
+    uint16_t Get(int32_t index) const
+    {
+        int32_t length = static_cast<int32_t>(GetLength());
+        if (verify) {
+            if ((index < 0) || (index >= length)) {
+                return 0;
+            }
+        }
+
+        if (IsFlat()) {
+            EcmaString *first = EcmaString::Cast(GetFirst());
+            return first->At<verify>(index);
+        }
+        EcmaString *string = const_cast<TreeEcmaString *>(this);
+        while (true) {
+            if (string->IsTreeString()) {
+                EcmaString *first = EcmaString::Cast(TreeEcmaString::Cast(string)->GetFirst());
+                if (static_cast<int32_t>(first->GetLength()) > index) {
+                    string = first;
+                } else {
+                    index -= static_cast<int32_t>(first->GetLength());
+                    string = EcmaString::Cast(TreeEcmaString::Cast(string)->GetSecond());
+                }
+            } else {
+                return string->At<verify>(index);
+            }
+        }
+        UNREACHABLE();
+        }
 };
 
 // if you want to use functions of EcmaString, please not use directly,
@@ -651,6 +734,11 @@ public:
     uint32_t WriteToFlatUtf8(uint8_t *buf, uint32_t maxLength, bool isWriteBuffer = false)
     {
         return string_->WriteUtf8(buf, maxLength, isWriteBuffer);
+    }
+
+    uint32_t WriteToOneByte(uint8_t *buf, uint32_t maxLength)
+    {
+        return string_->WriteOneByte(buf, maxLength);
     }
 
     // not change string data structure.
@@ -799,6 +887,11 @@ public:
     static EcmaString *ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src)
     {
         return EcmaString::ToLower(vm, src);
+    }
+
+    static EcmaString *TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src)
+    {
+        return EcmaString::TryToLower(vm, src);
     }
 
     static EcmaString *ToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src)

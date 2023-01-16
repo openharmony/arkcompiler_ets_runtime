@@ -16,9 +16,11 @@
 #include "ecmascript/frames.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
@@ -43,6 +45,68 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
     return delta;
 }
 
+Method *FrameIterator::CheckAndGetMethod() const
+{
+    auto function = GetFunction();
+    if (function.IsJSFunctionBase() || function.IsJSProxy()) {
+        return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
+    }
+    return nullptr;
+}
+
+JSTaggedValue FrameIterator::GetFunction() const
+{
+    FrameType type = GetFrameType();
+    switch (type) {
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+            auto frame = GetFrame<OptimizedJSFunctionFrame>();
+            return frame->GetFunction();
+        }
+        case FrameType::ASM_INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
+            auto frame = GetFrame<AsmInterpretedFrame>();
+            return frame->function;
+        }
+        case FrameType::INTERPRETER_FRAME:
+        case FrameType::INTERPRETER_FAST_NEW_FRAME: {
+            auto frame = GetFrame<InterpretedFrame>();
+            return frame->function;
+        }
+        case FrameType::INTERPRETER_BUILTIN_FRAME: {
+            auto frame = GetFrame<InterpretedBuiltinFrame>();
+            return frame->function;
+        }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV: {
+            auto *frame = BuiltinWithArgvFrame::GetFrameFromSp(GetSp());
+            return frame->GetFunction();
+        }
+        case FrameType::BUILTIN_ENTRY_FRAME:
+        case FrameType::BUILTIN_FRAME: {
+            auto *frame = BuiltinFrame::GetFrameFromSp(GetSp());
+            return frame->GetFunction();
+        }
+        case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
+            auto *frame = OptimizedBuiltinLeaveFrame::GetFrameFromSp(GetSp());
+            return JSTaggedValue(*(frame->GetArgv()));
+        }
+        case FrameType::OPTIMIZED_FRAME:
+        case FrameType::OPTIMIZED_ENTRY_FRAME:
+        case FrameType::LEAVE_FRAME:
+        case FrameType::LEAVE_FRAME_WITH_ARGV:
+        case FrameType::INTERPRETER_ENTRY_FRAME:
+        case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
+        case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
+            return JSTaggedValue::Undefined();
+        }
+        default: {
+            LOG_FULL(FATAL) << "frame type error!";
+            UNREACHABLE();
+        }
+    }
+}
+
 AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
     auto loader = thread_->GetEcmaVM()->GetAOTFileManager();
@@ -54,7 +118,7 @@ void FrameIterator::Advance()
 {
     ASSERT(!Done());
     FrameType t = GetFrameType();
-    [[maybe_unused]] bool needCalCallSiteInfo = false;
+    bool needCalCallSiteInfo = false;
     switch (t) {
         case FrameType::OPTIMIZED_FRAME : {
             auto frame = GetFrame<OptimizedFrame>();
@@ -214,6 +278,7 @@ void FrameIterator::Advance()
             break;
         }
         default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
@@ -296,6 +361,23 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc
     }
 }
 
+uint32_t FrameIterator::GetBytecodeOffset() const
+{
+    FrameType type = this->GetFrameType();
+    if (type == FrameType::ASM_INTERPRETER_FRAME ||
+            type == FrameType::INTERPRETER_CONSTRUCTOR_FRAME) {
+        auto *frame = this->GetFrame<AsmInterpretedFrame>();
+        Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+        auto offset = frame->GetPc() - method->GetBytecodeArray();
+        return static_cast<uint32_t>(offset);
+    } else {
+        auto *frame = this->GetFrame<InterpretedFrame>();
+        Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+        auto offset = frame->GetPc() - method->GetBytecodeArray();
+        return static_cast<uint32_t>(offset);
+    }
+}
+
 uintptr_t FrameIterator::GetPrevFrame() const
 {
     FrameType type = GetFrameType();
@@ -336,7 +418,7 @@ bool FrameIterator::IteratorStackMap(const RootVisitor &visitor, const RootBaseA
 }
 
 ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
-    [[maybe_unused]] const RootVisitor &visitor,
+    const RootVisitor &visitor,
     [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
     const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
@@ -450,7 +532,7 @@ ARK_INLINE void InterpretedFrame::GCIterate(const FrameIterator &it,
 {
     auto sp = it.GetSp();
     InterpretedFrame *frame = InterpretedFrame::GetFrameFromSp(sp);
-    if (frame->function == JSTaggedValue::Hole()) {
+    if (frame->function.IsHole()) {
         return;
     }
 
@@ -706,7 +788,7 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
             LOG_ECMA(ERROR) << "FrameType ERROR, addr: " << currentPtr << ", frameType: " << frameType;
             return false;
         }
-        if (frameType == (uintptr_t)(FrameType::ASM_INTERPRETER_ENTRY_FRAME)) {
+        if (static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME) {
             break;
         }
         currentPtr -= typeOffset;
@@ -725,12 +807,115 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
     *sp = currentPtr;
     return true;
 }
+
+void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t &strIdx, char *outStr, size_t strLen)
+{
+    // note: big endian
+    for (size_t i = 0; prefix[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
+        outStr[strIdx++] = prefix[i];
+    }
+    size_t start = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleLdundefined));
+    size_t bytecode = fullBytecode & 0xff;  // 0xff: last byte
+    const char *bytecodeName = MessageString::GetMessageString(start + bytecode).c_str();
+    for (size_t i = 0; bytecodeName[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
+        outStr[strIdx++] = bytecodeName[i];
+    }
+    if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecated)) ||
+        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleWide)) ||
+        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow))) {
+        size_t startSecond = start;
+        if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecated))) {
+            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecatedLdlexenvPrefNone));
+        } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleWide))) {
+            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(
+                HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8));
+        } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow))) {
+            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrowPrefNone));
+        }
+        size_t bytecodeSecond = (fullBytecode >> 8) & 0xff;  // 8, 0xff: second last byte
+        const char *bytecodeNameSecond = MessageString::GetMessageString(startSecond + bytecodeSecond).c_str();
+        if (strIdx < strLen - 1) {  // 1: last '\0'
+            outStr[strIdx++] = '/';
+        }
+        for (size_t i = 0; bytecodeNameSecond[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
+            outStr[strIdx++] = bytecodeNameSecond[i];
+        }
+    }
+    outStr[strIdx] = '\0';
+}
+
+bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool outJSInfo, char *outStr, size_t strLen)
+{
+    // bytecodePc: X20 in ARM
+    // fp: X29 in ARM
+    // outJSInfo: not async-safe, more info
+    uintptr_t currentPtr = *fp;
+    currentPtr -= sizeof(FrameType);
+    uintptr_t frameType = 0;
+    if (!ReadUintptrFromAddr(pid, currentPtr, frameType)) {
+        return false;
+    }
+    if (static_cast<FrameType>(frameType) != FrameType::ASM_INTERPRETER_FRAME) {
+        return false;
+    }
+    size_t strIndex = 0;
+    uintptr_t registerBytecode = 0;
+    if (!ReadUintptrFromAddr(pid, *bytecodePc, registerBytecode)) {
+        return false;
+    }
+    CopyBytecodeInfoToBuffer("RegisterBytecode:", registerBytecode, strIndex, outStr, strLen);
+    uintptr_t typeOffset = MEMBER_OFFSET(AsmInterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+    uintptr_t pcOffset = MEMBER_OFFSET(AsmInterpretedFrame, pc);
+    currentPtr -= typeOffset;
+    currentPtr += pcOffset;
+    uintptr_t framePc = 0;
+    uintptr_t frameBytecode = 0;
+    if (!ReadUintptrFromAddr(pid, currentPtr, framePc)) {
+        return false;
+    }
+    if (!ReadUintptrFromAddr(pid, framePc, frameBytecode)) {
+        return false;
+    }
+    CopyBytecodeInfoToBuffer(" FrameBytecode:", frameBytecode, strIndex, outStr, strLen);
+    if (outJSInfo) {
+        uintptr_t functionOffset = MEMBER_OFFSET(AsmInterpretedFrame, function);
+        currentPtr -= pcOffset;
+        currentPtr += functionOffset;
+        uintptr_t functionAddress = 0;
+        if (!ReadUintptrFromAddr(pid, currentPtr, functionAddress)) {
+            return false;
+        }
+        JSTaggedValue functionValue(static_cast<JSTaggedType>(functionAddress));
+        Method *method = ECMAObject::Cast(functionValue.GetTaggedObject())->GetCallTarget();
+        auto bytecodeOffset = static_cast<uint32_t>(reinterpret_cast<uint8_t *>(*bytecodePc) -
+                                                    method->GetBytecodeArray());
+        std::string info = JsStackInfo::BuildMethodTrace(method, bytecodeOffset);
+        const char *infoChar = info.c_str();
+        if (strIndex < strLen - 1) {  // 1: last '\0'
+            outStr[strIndex++] = ' ';
+        }
+        for (size_t i = 0; infoChar[i] != '\0' && strIndex < strLen - 1; i++) {  // 1: last '\0'
+            outStr[strIndex++] = infoChar[i];
+        }
+        outStr[strIndex] = '\0';
+    }
+    return true;
+}
 }  // namespace panda::ecmascript
 
 __attribute__((visibility("default"))) int step_ark_managed_native_frame(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz)
 {
     if (panda::ecmascript::StepArkManagedNativeFrame(pid, pc, fp, sp, buf, buf_sz)) {
+        return 1;
+    }
+    return -1;
+}
+
+__attribute__((visibility("default"))) int get_ark_js_heap_crash_info(
+    int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz)
+{
+    if (panda::ecmascript::GetArkJSHeapCrashInfo(pid, x20, fp, out_js_info != 0, buf, buf_sz)) {
         return 1;
     }
     return -1;

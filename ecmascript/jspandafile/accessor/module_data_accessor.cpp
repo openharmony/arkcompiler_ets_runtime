@@ -17,10 +17,11 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
-ModuleDataAccessor::ModuleDataAccessor(const panda_file::File &pandaFile, panda_file::File::EntityId moduleDataId)
+ModuleDataAccessor::ModuleDataAccessor(const JSPandaFile *pandaFile, panda_file::File::EntityId moduleDataId)
     : pandaFile_(pandaFile), moduleDataId_(moduleDataId)
 {
-    auto sp = pandaFile_.GetSpanFromId(moduleDataId);
+    auto &pf = *pandaFile_->GetPandaFile();
+    auto sp = pf.GetSpanFromId(moduleDataId);
 
     auto moduleSp = sp.SubSpan(panda_file::ID_SIZE); // skip literalnum
 
@@ -53,10 +54,10 @@ void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
         auto localNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto importNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto moduleRequestIdx = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint16_t)>(&sp));
-        StringData sd = pandaFile_.GetStringData(panda_file::File::EntityId(localNameOffset));
+        auto sd = pandaFile_->GetStringData(panda_file::File::EntityId(localNameOffset));
         localName.Update(JSTaggedValue(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii)));
 
-        sd = pandaFile_.GetStringData(panda_file::File::EntityId(importNameOffset));
+        sd = pandaFile_->GetStringData(panda_file::File::EntityId(importNameOffset));
         importName.Update(JSTaggedValue(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii)));
 
         if (requestArraySize != 0) {
@@ -77,7 +78,7 @@ void ModuleDataAccessor::EnumerateImportEntry(JSThread *thread,
     for (size_t idx = regularImportNum; idx < totalSize; idx++) {
         auto localNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto moduleRequestIdx = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint16_t)>(&sp));
-        StringData sd = pandaFile_.GetStringData(panda_file::File::EntityId(localNameOffset));
+        auto sd = pandaFile_->GetStringData(panda_file::File::EntityId(localNameOffset));
         localName.Update(JSTaggedValue(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii)));
 
         if (requestArraySize != 0) {
@@ -105,11 +106,11 @@ void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<So
     for (size_t idx = 0; idx < localExportNum; idx++) {
         auto localNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto exportNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
-        StringData sd = pandaFile_.GetStringData(panda_file::File::EntityId(localNameOffset));
+        auto sd = pandaFile_->GetStringData(panda_file::File::EntityId(localNameOffset));
         JSHandle<JSTaggedValue> localName(thread,
             factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
 
-        sd = pandaFile_.GetStringData(panda_file::File::EntityId(exportNameOffset));
+        sd = pandaFile_->GetStringData(panda_file::File::EntityId(exportNameOffset));
         JSHandle<JSTaggedValue> exportName(thread,
             factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
 
@@ -140,11 +141,11 @@ void ModuleDataAccessor::EnumerateIndirectExportEntry(JSThread *thread, const JS
         auto exportNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto importNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto moduleRequestIdx = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint16_t)>(&sp));
-        StringData sd = pandaFile_.GetStringData(panda_file::File::EntityId(exportNameOffset));
+        auto sd = pandaFile_->GetStringData(panda_file::File::EntityId(exportNameOffset));
         JSHandle<JSTaggedValue> exportName(thread,
             factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
 
-        sd = pandaFile_.GetStringData(panda_file::File::EntityId(importNameOffset));
+        sd = pandaFile_->GetStringData(panda_file::File::EntityId(importNameOffset));
         JSHandle<JSTaggedValue> importName(thread,
             factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
 

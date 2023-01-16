@@ -31,7 +31,7 @@ void JSAPIQueue::Add(JSThread *thread, const JSHandle<JSAPIQueue> &queue, const 
 
     ASSERT(!elements->IsDictionaryMode());
     uint32_t tail = queue->GetTail();
-    
+
     elements->Set(thread, tail, value);
     queue->SetLength(thread, JSTaggedValue(++length));
 
@@ -157,7 +157,7 @@ bool JSAPIQueue::Has(JSTaggedValue value) const
 JSHandle<TaggedArray> JSAPIQueue::OwnKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj)
 {
     uint32_t length = obj->GetLength().GetArrayLength();
-    
+
     JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldCapacity = oldElements->GetLength();
@@ -176,7 +176,7 @@ JSHandle<TaggedArray> JSAPIQueue::OwnKeys(JSThread *thread, const JSHandle<JSAPI
 JSHandle<TaggedArray> JSAPIQueue::OwnEnumKeys(JSThread *thread, const JSHandle<JSAPIQueue> &obj)
 {
     uint32_t length = obj->GetLength().GetArrayLength();
-    
+
     JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
     ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldCapacity = oldElements->GetLength();
@@ -233,7 +233,7 @@ OperationResult JSAPIQueue::GetProperty(JSThread *thread, const JSHandle<JSAPIQu
                                                                         JSTaggedValue::Exception(),
                                                                         PropertyMetaData(false)));
     }
-    
+
     return OperationResult(thread, obj->Get(thread, index), PropertyMetaData(false));
 }
 

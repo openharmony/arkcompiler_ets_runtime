@@ -81,7 +81,7 @@ inline bool JSTaggedValue::ToBoolean() const
         }
         return true;
     }
-
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -520,6 +520,11 @@ inline bool JSTaggedValue::IsNativePointer() const
 inline bool JSTaggedValue::IsJSNativePointer() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSNativePointer();
+}
+
+inline bool JSTaggedValue::CheckIsJSNativePointer() const
+{
+    return IsHeapObject() && GetTaggedObject() != nullptr && GetTaggedObject()->GetClass()->IsJSNativePointer();
 }
 
 inline bool JSTaggedValue::IsSymbol() const
@@ -1026,6 +1031,16 @@ inline bool JSTaggedValue::IsTransitionHandler() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTransitionHandler();
 }
 
+inline bool JSTaggedValue::IsTransWithProtoHandler() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTransWithProtoHandler();
+}
+
+inline bool JSTaggedValue::IsStoreTSHandler() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStoreTSHandler();
+}
+
 inline bool JSTaggedValue::IsPropertyBox() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsPropertyBox();
@@ -1358,6 +1373,7 @@ inline uint32_t JSTaggedValue::GetArrayLength() const
         ASSERT(GetDouble() <= TaggedArray::MAX_ARRAY_INDEX);
         return static_cast<uint32_t>(GetDouble());
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 

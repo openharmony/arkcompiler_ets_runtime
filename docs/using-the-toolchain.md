@@ -9,7 +9,7 @@ Front-end tools, converting JS source code into ARK bytecode, can be built by sp
 Build tools:
 
 ```
-$ ./build.sh --product-name hispark_taurus_standard --build-target ark_ts2abc
+$ ./build.sh --product-name hispark_taurus_standard --build-target ark_ts2abc_build
 ```
 
 Install `node` and `npm`, then use tools:

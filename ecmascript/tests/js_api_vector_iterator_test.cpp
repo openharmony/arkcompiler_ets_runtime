@@ -126,7 +126,7 @@ HWTEST_F_L0(JSAPIVectorIteratorTest, SetNextIndex)
     EXPECT_TRUE(*jsVector != nullptr);
     JSHandle<JSAPIVectorIterator> vectorIterator = factory->NewJSAPIVectorIterator(jsVector);
     EXPECT_EQ(vectorIterator->GetNextIndex(), 0U);
-    
+
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         vectorIterator->SetNextIndex(i);
         EXPECT_EQ(vectorIterator->GetNextIndex(), i);
@@ -190,7 +190,7 @@ HWTEST_F_L0(JSAPIVectorIteratorTest, SpecialReturnOfNext)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIVectorIterator> vectorIterator = factory->NewJSAPIVectorIterator(jsVector);
     vectorIterator->SetIteratedVector(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

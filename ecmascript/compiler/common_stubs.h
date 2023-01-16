@@ -27,7 +27,24 @@ namespace panda::ecmascript::kungfu {
     V(Div)                            \
     V(Mod)                            \
     V(Equal)                          \
+    V(NotEqual)                       \
+    V(Less)                           \
+    V(LessEq)                         \
+    V(Greater)                        \
+    V(GreaterEq)                      \
+    V(Shl)                            \
+    V(Shr)                            \
+    V(Ashr)                           \
+    V(And)                            \
+    V(Or)                             \
+    V(Xor)                            \
+    V(Instanceof)                     \
     V(TypeOf)                         \
+    V(Inc)                            \
+    V(Dec)                            \
+    V(Neg)                            \
+    V(Not)                            \
+    V(ToBoolean)                      \
     V(GetPropertyByName)              \
     V(DeprecatedGetPropertyByName)    \
     V(SetPropertyByName)              \
@@ -50,6 +67,10 @@ namespace panda::ecmascript::kungfu {
     V(TryStoreICByName)               \
     V(TryStoreICByValue)              \
     V(SetValueWithBarrier)            \
+    V(NewLexicalEnv)                  \
+    V(GetUnmapedArgs)                 \
+    V(NewThisObjectChecked)           \
+    V(ConstructorCheck)               \
     V(JsProxyCallInternal)
 
 #define COMMON_STUB_ID_LIST(V)          \

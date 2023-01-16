@@ -388,6 +388,19 @@ JSTaggedValue SlowRuntimeStub::Instanceof(JSThread *thread, JSTaggedValue obj, J
     return RuntimeStubs::RuntimeInstanceof(thread, objHandle, targetHandle);
 }
 
+JSTaggedValue SlowRuntimeStub::InstanceofByHandler(JSThread *thread, JSTaggedValue target, JSTaggedValue object,
+                                                   JSTaggedValue instOfHandler)
+{
+    INTERPRETER_TRACE(thread, InstanceofByHandler);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> objectHandle(thread, object);
+    JSHandle<JSTaggedValue> targetHandle(thread, target);
+    JSHandle<JSTaggedValue> instOfHandle(thread, instOfHandler);
+
+    return RuntimeStubs::RuntimeInstanceofByHandler(thread, targetHandle, objectHandle, instOfHandle);
+}
+
 JSTaggedValue SlowRuntimeStub::NewLexicalEnv(JSThread *thread, uint16_t numVars)
 {
     INTERPRETER_TRACE(thread, Newlexenv);

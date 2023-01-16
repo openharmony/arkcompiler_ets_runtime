@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JS_NUMBER_FORMAT_H
 #define ECMASCRIPT_JS_NUMBER_FORMAT_H
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_hclass.h"
@@ -105,19 +106,28 @@ public:
         auto icuNumberformat = reinterpret_cast<icu::number::LocalizedNumberFormatter *>(pointer);
         icuNumberformat->~LocalizedNumberFormatter();
         if (data != nullptr) {
-            reinterpret_cast<EcmaVM *>(data)->GetNativeAreaAllocator()->FreeBuffer(pointer);
+            reinterpret_cast<EcmaVM *>(data)->GetNativeAreaAllocator()->FreeBuffer(icuNumberformat);
         }
     }
 
     // 12.1.2 InitializeNumberFormat ( numberFormat, locales, options )
-    static void InitializeNumberFormat(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
-                                       const JSHandle<JSTaggedValue> &locales, const JSHandle<JSTaggedValue> &options);
+    static void InitializeNumberFormat(JSThread *thread,
+                                       const JSHandle<JSNumberFormat> &numberFormat,
+                                       const JSHandle<JSTaggedValue> &locales,
+                                       const JSHandle<JSTaggedValue> &options,
+                                       bool forIcuCache = false);
 
     // 12.1.3 CurrencyDigits ( currency )
     static int32_t CurrencyDigits(const icu::UnicodeString &currency);
 
+    static icu::number::LocalizedNumberFormatter *GetCachedIcuNumberFormatter(JSThread *thread,
+                                                                              const JSHandle<JSTaggedValue> &locales);
+
     // 12.1.8 FormatNumeric( numberFormat, x )
     static JSHandle<JSTaggedValue> FormatNumeric(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
+                                                 JSTaggedValue x);
+    static JSHandle<JSTaggedValue> FormatNumeric(JSThread *thread,
+                                                 const icu::number::LocalizedNumberFormatter *icuNumberFormat,
                                                  JSTaggedValue x);
 
     // 12.1.9 FormatNumericToParts( numberFormat, x )

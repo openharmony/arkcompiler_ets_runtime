@@ -319,6 +319,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializeCjsModule(env);
     InitializeCjsExports(env);
     InitializeCjsRequire(env);
+    InitializeDefaultExportOfScript(env);
     JSHandle<JSHClass> generatorFuncClass =
         factory_->CreateFunctionClass(FunctionKind::GENERATOR_FUNCTION, JSFunction::SIZE, JSType::JS_GENERATOR_FUNCTION,
                                       env->GetGeneratorFunctionPrototype());
@@ -824,7 +825,8 @@ void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, const JSHandle<JSH
 
     // Date = new Function()
     JSHandle<JSObject> dateFunction(
-        NewBuiltinConstructor(env, dateFuncPrototype, Date::DateConstructor, "Date", FunctionLength::ONE));
+        NewBuiltinConstructor(env, dateFuncPrototype, Date::DateConstructor, "Date", FunctionLength::ONE,
+                              BUILTINS_STUB_ID(DateConstructor)));
     JSHandle<JSFunction>(dateFunction)->SetFunctionPrototype(thread_, dateFuncInstanceHClass.GetTaggedValue());
 
     // Date.prototype method
@@ -905,7 +907,7 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
 
     // new Boolean Function()
     JSHandle<JSFunction> booleanFunction = NewBuiltinConstructor(env, booleanFuncPrototype, Boolean::BooleanConstructor,
-        "Boolean", FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(BooleanConstructor)));
+        "Boolean", FunctionLength::ONE, BUILTINS_STUB_ID(BooleanConstructor));
     booleanFunction->SetFunctionPrototype(thread_, booleanFuncInstanceHClass.GetTaggedValue());
 
     // Boolean.prototype method
@@ -950,11 +952,11 @@ void Builtins::InitializeAsyncFunction(const JSHandle<GlobalEnv> &env, const JSH
     // AsyncFunction.prototype
     JSHandle<JSObject> asyncFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
     JSObject::SetPrototype(thread_, asyncFuncPrototype, env->GetFunctionPrototype());
-    JSHandle<JSTaggedValue> async_func_prototype_value(asyncFuncPrototype);
+    JSHandle<JSTaggedValue> asyncFuncPrototypeValue(asyncFuncPrototype);
 
     // AsyncFunction.prototype_or_hclass
     JSHandle<JSHClass> asyncFuncInstanceHClass =
-        factory_->NewEcmaHClass(JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, async_func_prototype_value);
+        factory_->NewEcmaHClass(JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION, asyncFuncPrototypeValue);
 
     // AsyncFunction = new Function()
     JSHandle<JSFunction> asyncFunction = NewBuiltinConstructor(
@@ -1494,25 +1496,22 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathClass);
-    SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(ABS)));
-    SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE,
-                static_cast<uint8_t>(BUILTINS_STUB_ID(ACOS)));
+    SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE, BUILTINS_STUB_ID(ABS));
+    SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE, BUILTINS_STUB_ID(ACOS));
     SetFunction(env, mathObject, "acosh", Math::Acosh, FunctionLength::ONE);
     SetFunction(env, mathObject, "asin", Math::Asin, FunctionLength::ONE);
     SetFunction(env, mathObject, "asinh", Math::Asinh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "atan", Math::Atan, FunctionLength::ONE,
-                static_cast<uint8_t>(BUILTINS_STUB_ID(ATAN)));
+    SetFunction(env, mathObject, "atan", Math::Atan, FunctionLength::ONE, BUILTINS_STUB_ID(ATAN));
     SetFunction(env, mathObject, "atanh", Math::Atanh, FunctionLength::ONE);
     SetFunction(env, mathObject, "atan2", Math::Atan2, FunctionLength::TWO);
     SetFunction(env, mathObject, "cbrt", Math::Cbrt, FunctionLength::ONE);
     SetFunction(env, mathObject, "ceil", Math::Ceil, FunctionLength::ONE);
     SetFunction(env, mathObject, "clz32", Math::Clz32, FunctionLength::ONE);
-    SetFunction(env, mathObject, "cos", Math::Cos, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(COS)));
+    SetFunction(env, mathObject, "cos", Math::Cos, FunctionLength::ONE, BUILTINS_STUB_ID(COS));
     SetFunction(env, mathObject, "cosh", Math::Cosh, FunctionLength::ONE);
     SetFunction(env, mathObject, "exp", Math::Exp, FunctionLength::ONE);
     SetFunction(env, mathObject, "expm1", Math::Expm1, FunctionLength::ONE);
-    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE,
-                static_cast<uint8_t>(BUILTINS_STUB_ID(FLOOR)));
+    SetFunction(env, mathObject, "floor", Math::Floor, FunctionLength::ONE, BUILTINS_STUB_ID(FLOOR));
     SetFunction(env, mathObject, "fround", Math::Fround, FunctionLength::ONE);
     SetFunction(env, mathObject, "hypot", Math::Hypot, FunctionLength::TWO);
     SetFunction(env, mathObject, "imul", Math::Imul, FunctionLength::TWO);
@@ -1526,10 +1525,9 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     SetFunction(env, mathObject, "random", Math::Random, FunctionLength::ZERO);
     SetFunction(env, mathObject, "round", Math::Round, FunctionLength::ONE);
     SetFunction(env, mathObject, "sign", Math::Sign, FunctionLength::ONE);
-    SetFunction(env, mathObject, "sin", Math::Sin, FunctionLength::ONE, static_cast<uint8_t>(BUILTINS_STUB_ID(SIN)));
+    SetFunction(env, mathObject, "sin", Math::Sin, FunctionLength::ONE, BUILTINS_STUB_ID(SIN));
     SetFunction(env, mathObject, "sinh", Math::Sinh, FunctionLength::ONE);
-    SetFunction(env, mathObject, "sqrt", Math::Sqrt, FunctionLength::ONE,
-                static_cast<uint8_t>(BUILTINS_STUB_ID(SQRT)));
+    SetFunction(env, mathObject, "sqrt", Math::Sqrt, FunctionLength::ONE, BUILTINS_STUB_ID(SQRT));
     SetFunction(env, mathObject, "tan", Math::Tan, FunctionLength::ONE);
     SetFunction(env, mathObject, "tanh", Math::Tanh, FunctionLength::ONE);
     SetFunction(env, mathObject, "trunc", Math::Trunc, FunctionLength::ONE);
@@ -1886,7 +1884,8 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     // Array = new Function()
     JSHandle<JSObject> arrayFunction(
-        NewBuiltinConstructor(env, arrFuncPrototype, BuiltinsArray::ArrayConstructor, "Array", FunctionLength::ONE));
+        NewBuiltinConstructor(env, arrFuncPrototype, BuiltinsArray::ArrayConstructor, "Array", FunctionLength::ONE,
+                              BUILTINS_STUB_ID(ArrayConstructor)));
     JSHandle<JSFunction> arrayFuncFunction(arrayFunction);
 
     // Set the [[Realm]] internal slot of F to the running execution context's Realm
@@ -1951,10 +1950,10 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     SetGetter(JSHandle<JSObject>(arrayFunction), speciesSymbol, speciesGetter);
 
     constexpr int arrProtoLen = 0;
-    JSHandle<JSTaggedValue> key_string = thread_->GlobalConstants()->GetHandledLengthString();
+    JSHandle<JSTaggedValue> keyString = thread_->GlobalConstants()->GetHandledLengthString();
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(arrProtoLen)), true, false,
                                   false);
-    JSObject::DefineOwnProperty(thread_, arrFuncPrototype, key_string, descriptor);
+    JSObject::DefineOwnProperty(thread_, arrFuncPrototype, keyString, descriptor);
 
     JSHandle<JSTaggedValue> valuesKey(factory_->NewFromASCII("values"));
     PropertyDescriptor desc(thread_);
@@ -2643,7 +2642,8 @@ void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle
 
 JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &env,
                                                      const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
-                                                     const char *name, int length, uint8_t builtinId) const
+                                                     const char *name, int length,
+                                                     kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSFunction> ctor =
         factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
@@ -2671,7 +2671,8 @@ JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
 }
 
 JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
-                                           EcmaEntrypoint func, int length, uint8_t builtinId) const
+                                           EcmaEntrypoint func, int length,
+                                           kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
         FunctionKind::NORMAL_FUNCTION, builtinId);
@@ -2683,7 +2684,7 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
 }
 
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
-                           EcmaEntrypoint func, int length, uint8_t builtinId) const
+                           EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
     SetFunction(env, obj, keyString, func, length, builtinId);
@@ -2691,7 +2692,7 @@ void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObje
 
 void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                            const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
-                           uint8_t builtinId) const
+                           kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSFunction> function(NewFunction(env, key, func, length, builtinId));
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(function), true, false, true);
@@ -2728,6 +2729,7 @@ void Builtins::SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandl
         // { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }.
         PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), false, false, false);
         JSObject::DefineOwnProperty(thread_, obj, symbol, descriptor);
+        env->SetHasInstanceFunction(thread_, function);
         return;
     }
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), true, false, true);
@@ -3401,10 +3403,11 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
     SetFunction(env, tools, "isTSHClass", builtins::BuiltinsArkTools::IsTSHClass, FunctionLength::ONE);
     SetFunction(env, tools, "getHClass", builtins::BuiltinsArkTools::GetHClass, FunctionLength::ONE);
     SetFunction(env, tools, "forceFullGC", builtins::BuiltinsArkTools::ForceFullGC, FunctionLength::ZERO);
-    #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    SetFunction(env, tools, "startCpuProfiler", builtins::BuiltinsArkTools::StartCpuProFiler, FunctionLength::ZERO);
-    SetFunction(env, tools, "stopCpuProfiler", builtins::BuiltinsArkTools::StopCpuProFiler, FunctionLength::ZERO);
-    #endif
+    SetFunction(env, tools, "removeAOTFlag", builtins::BuiltinsArkTools::RemoveAOTFlag, FunctionLength::ONE);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    SetFunction(env, tools, "startCpuProf", builtins::BuiltinsArkTools::StartCpuProfiler, FunctionLength::ZERO);
+    SetFunction(env, tools, "stopCpuProf", builtins::BuiltinsArkTools::StopCpuProfiler, FunctionLength::ZERO);
+#endif
     return tools;
 }
 
@@ -3550,5 +3553,21 @@ void Builtins::InitializeCjsRequire(const JSHandle<GlobalEnv> &env) const
     SetFunction(env, cjsRequirePrototype, "Main", BuiltinsCjsRequire::Main, FunctionLength::ONE);
 
     env->SetCjsRequireFunction(thread_, cjsRequireFunction);
+}
+
+void Builtins::InitializeDefaultExportOfScript(const JSHandle<GlobalEnv> &env) const
+{
+    JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
+    JSHandle<JSTaggedValue> emptyObj(factory_->NewJSObjectByConstructor(builtinObj));
+    JSHandle<JSTaggedValue> defaultKey(factory_->NewFromUtf8("default"));
+
+    JSHandle<TaggedArray> props(factory_->NewTaggedArray(2)); // 2 : two propertise
+    props->Set(thread_, 0, defaultKey);
+    props->Set(thread_, 1, emptyObj);
+    JSHandle<JSHClass> hclass = factory_->CreateObjectClass(props, 1);
+    JSHandle<JSObject> obj = factory_->NewJSObject(hclass);
+    obj->SetPropertyInlinedProps(thread_, 0, props->Get(1));
+    env->SetExportOfScript(thread_, obj);
+    return;
 }
 }  // namespace panda::ecmascript

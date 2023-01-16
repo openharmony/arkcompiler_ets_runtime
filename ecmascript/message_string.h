@@ -39,8 +39,17 @@ namespace panda::ecmascript {
     V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
-    V(IsBoundFunction)                                                                       \
-    V(IsCallable)
+    V(IsCallable)                                                                            \
+    V(LoadHClass)                                                                            \
+    V(IsDictionaryMode)                                                                      \
+    V(IsClassConstructor)                                                                    \
+    V(IsClassPrototype)                                                                      \
+    V(IsExtensible)                                                                          \
+    V(IsEcmaObject)                                                                          \
+    V(IsJSObject)                                                                            \
+    V(IsString)                                                                              \
+    V(IsJSHClass)                                                                            \
+    V(IsNotDictionaryMode)
 
 class MessageString {
 public:
@@ -60,7 +69,7 @@ public:
         MAX_MESSAGE_COUNT,
         ASM_INTERPRETER_START = Message_INT32_VALUE + 1,
         BUILTINS_STUB_START = Message_CharCodeAt,
-        BUILTINS_STUB_LAST = Message_BooleanConstructor,
+        BUILTINS_STUB_LAST = Message_ArrayConstructor,
     };
     static const std::string& GetMessageString(int id);
 

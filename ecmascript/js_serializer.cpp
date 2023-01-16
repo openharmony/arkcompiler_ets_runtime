@@ -356,23 +356,18 @@ bool JSSerializer::WriteConstantPool(const JSHandle<JSTaggedValue> &value)
         bufferSize_ = oldSize;
         return false;
     }
-    uint32_t cacheLen = constPool->GetCacheLength();
-    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
-    for (uint32_t i = 0; i < cacheLen; i++) {
-        val.Update(constPool->Get(i));
-        if (!SerializeJSTaggedValue(val)) {
-            bufferSize_ = oldSize;
-            return false;
-        }
-    }
 
-    const JSPandaFile *jsPandaFile = constPool->GetJSPandaFile();
-    if (!WriteRawData(&jsPandaFile, sizeof(uintptr_t))) {
+    const panda_file::File::IndexHeader *indexHeader = constPool->GetIndexHeader();
+    if (!WriteRawData(&indexHeader, sizeof(uintptr_t))) {
         bufferSize_ = oldSize;
         return false;
     }
-    const panda_file::File::IndexHeader *indexHeader = constPool->GetIndexHeader();
-    if (!WriteRawData(&indexHeader, sizeof(uintptr_t))) {
+    const JSPandaFile *jsPandaFile = constPool->GetJSPandaFile();
+    if (!jsPandaFile->IsNewVersion()) {
+        LOG_ECMA(ERROR) << "Serialize function only support panda file with new ISA";
+        return false;
+    }
+    if (!WriteRawData(&jsPandaFile, sizeof(uintptr_t))) {
         bufferSize_ = oldSize;
         return false;
     }
@@ -383,18 +378,29 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<Method> method = JSHandle<Method>::Cast(value);
     size_t oldSize = bufferSize_;
-    if (!WriteType(SerializationUID::METHOD)) {
-        return false;
-    }
-    JSHandle<JSTaggedValue> constPool(thread_, method->GetConstantPool());
-    const MethodLiteral *methodLiteral = method->GetMethodLiteral();
-    if (!WriteRawData(&methodLiteral, sizeof(uintptr_t))) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-    if (!SerializeJSTaggedValue(constPool)) {
-        bufferSize_ = oldSize;
-        return false;
+    if (method->IsNativeWithCallField()) {
+        if (!WriteType(SerializationUID::NATIVE_METHOD)) {
+            return false;
+        }
+        const void *nativeFunc = method->GetNativePointer();
+        if (!WriteRawData(&nativeFunc, sizeof(uintptr_t))) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    } else {
+        if (!WriteType(SerializationUID::JS_METHOD)) {
+            return false;
+        }
+        const MethodLiteral *methodLiteral = method->GetMethodLiteral();
+        if (!WriteRawData(&methodLiteral, sizeof(uintptr_t))) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+        JSHandle<JSTaggedValue> constPool(thread_, method->GetConstantPool());
+        if (!SerializeJSTaggedValue(constPool)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
     }
     return true;
 }
@@ -406,7 +412,7 @@ bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
         return false;
     }
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(value);
-    JSHandle<JSTaggedValue> method = JSHandle<JSTaggedValue>(thread_, func->GetMethod());
+    JSHandle<JSTaggedValue> method(thread_, func->GetMethod());
     if (!SerializeJSTaggedValue(method)) {
         bufferSize_ = oldSize;
         return false;
@@ -455,6 +461,7 @@ bool JSSerializer::WriteJSErrorHeader(JSType type)
         case JSType::JS_OOM_ERROR:
             return WriteType(SerializationUID::OOM_ERROR);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return false;
@@ -988,6 +995,7 @@ bool JSDeserializer::ReadInt(int32_t *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1001,6 +1009,7 @@ bool JSDeserializer::ReadObjectId(uint64_t *objectId)
         return false;
     }
     if (memcpy_s(objectId, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1014,6 +1023,7 @@ bool JSDeserializer::ReadDouble(double *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1025,6 +1035,18 @@ JSDeserializer::~JSDeserializer()
     referenceMap_.clear();
     free(begin_);
     begin_ = nullptr;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
+{
+    size_t maxSerializerSize = thread_->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
+    uint8_t dataSize = end_ - begin_;
+    if (dataSize > maxSerializerSize) {
+        LOG_ECMA(ERROR) << "The Serialization data size exceed limit Size";
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<JSTaggedValue> res = DeserializeJSTaggedValue();
+    return res;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
@@ -1117,8 +1139,10 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
             return ReadJSFunction();
         case SerializationUID::TAGGED_ARRAY:
             return ReadTaggedArray();
-        case SerializationUID::METHOD:
-            return ReadMethod();
+        case SerializationUID::JS_METHOD:
+            return ReadJSMethod();
+        case SerializationUID::NATIVE_METHOD:
+            return ReadNativeMethod();
         case SerializationUID::CONSTANT_POOL:
             return ReadConstantPool();
         default:
@@ -1148,29 +1172,30 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadConstantPool()
     if (!JudgeType(SerializationUID::INT32) || !ReadInt(&len)) {
         return JSHandle<JSTaggedValue>();
     }
-    JSHandle<ConstantPool> constPool = factory_->NewConstantPool(len);
+    int32_t cacheLength = len - 2; // 2 : RESERVED_POOL_LENGTH
+    JSHandle<ConstantPool> constPool = factory_->NewConstantPool(cacheLength);
     JSHandle<JSTaggedValue> constPoolTag(constPool);
     referenceMap_.emplace(objectId_++, constPoolTag);
-    for (int32_t i = 0; i < len - 2; i++) { // 2 : RESERVED_POOL_LENGTH
-        JSHandle<JSTaggedValue> val = DeserializeJSTaggedValue();
-        constPool->Set(thread_, i, val.GetTaggedValue());
+
+    uintptr_t indexHeader;
+    if (!ReadNativePointer(&indexHeader)) {
+        return JSHandle<JSTaggedValue>();
     }
     uintptr_t jsPandafile;
     if (!ReadNativePointer(&jsPandafile)) {
         return JSHandle<JSTaggedValue>();
     }
-    uintptr_t indexHeader;
-    if (!ReadNativePointer(&indexHeader)) {
+    JSPandaFile *pf = reinterpret_cast<JSPandaFile *>(jsPandafile);
+    if (!pf->IsNewVersion()) {
+        LOG_ECMA(ERROR) << "Deserialize function only support panda file with new ISA";
         return JSHandle<JSTaggedValue>();
     }
-    if (indexHeader != 0) {
-        constPool->SetIndexHeader(reinterpret_cast<panda_file::File::IndexHeader *>(indexHeader));
-    }
-    constPool->SetJSPandaFile(reinterpret_cast<void *>(jsPandafile));
+    constPool->SetJSPandaFile(pf);
+    constPool->SetIndexHeader(reinterpret_cast<panda_file::File::IndexHeader *>(indexHeader));
     return constPoolTag;
 }
 
-JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
+JSHandle<JSTaggedValue> JSDeserializer::ReadJSMethod()
 {
     uintptr_t methodLiteral;
     if (!ReadNativePointer(&methodLiteral)) {
@@ -1181,6 +1206,18 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
     referenceMap_.emplace(objectId_++, methodTag);
     JSHandle<JSTaggedValue> constPool = DeserializeJSTaggedValue();
     method->SetConstantPool(thread_, constPool.GetTaggedValue());
+    return methodTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadNativeMethod()
+{
+    uintptr_t nativeFunc;
+    if (!ReadNativePointer(&nativeFunc)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<Method> method = factory_->NewMethodForNativeFunction(reinterpret_cast<void *>(nativeFunc));
+    JSHandle<JSTaggedValue> methodTag(method);
+    referenceMap_.emplace(objectId_++, methodTag);
     return methodTag;
 }
 
@@ -1228,6 +1265,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSError(SerializationUID uid)
             errorType = base::ErrorType::OOM_ERROR;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     JSHandle<JSTaggedValue> msg = DeserializeJSTaggedValue();
@@ -1493,6 +1531,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
             break;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     JSHandle<JSTypedArray> typedArray =
@@ -1582,6 +1621,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
         JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
         void *toBuffer = np->GetExternalPointer();
         if (memcpy_s(toBuffer, arrayLength, fromBuffer, arrayLength) != EOK) {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
@@ -1600,6 +1640,7 @@ bool JSDeserializer::ReadJSTaggedValue(JSTaggedValue *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1613,6 +1654,7 @@ bool JSDeserializer::ReadNativePointer(uintptr_t *value)
         return false;
     }
     if (memcpy_s(value, len, position_, len) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     position_ += len;
@@ -1811,6 +1853,6 @@ bool Serializer::FinalizeTransfer(JSThread *thread, const JSHandle<JSTaggedValue
 
 JSHandle<JSTaggedValue> Deserializer::ReadValue()
 {
-    return valueDeserializer_.DeserializeJSTaggedValue();
+    return valueDeserializer_.Deserialize();
 }
 }  // namespace panda::ecmascript

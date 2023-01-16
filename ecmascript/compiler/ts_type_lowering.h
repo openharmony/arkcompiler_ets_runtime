@@ -28,10 +28,11 @@ public:
     TSTypeLowering(Circuit *circuit, PassInfo *info,
                    bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, info->GetCompilerConfig()),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
+          dependEntry_(circuit->GetDependRoot()),
           tsManager_(info->GetTSManager()),
           enableLog_(enableLog),
-          methodName_(name) {}
+          profiling_(info->GetCompilerConfig()->IsProfiling()),
+          methodName_(name), glue_(acc_.GetGlueFromArgList()) {}
 
     ~TSTypeLowering() = default;
 
@@ -41,6 +42,11 @@ private:
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    bool IsProfiling() const
+    {
+        return profiling_;
     }
 
     const std::string& GetMethodName() const
@@ -78,19 +84,23 @@ private:
     void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
     void LowerTypedLdObjByName(GateRef gate);
+    void LowerTypedLdArrayLength(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
+    void LowerTypedLdObjByValue(GateRef gate, bool isThis);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
-    void LowerTypedNewObjRange(GateRef gate, GateRef glue);
-    void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget, GateRef glue);
+    void LowerTypedNewObjRange(GateRef gate);
+    void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget);
 
     GateRef GetSuperConstructor(GateRef ctor);
     void LowerCallThis1Imm8V8V8(GateRef gate);
     bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
 
-    // TypeTrusted means the type of gate is already typecheck-passed, or the gate is constant and no need to check.
+    // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
+    // or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
+    bool NeedInt32OverflowCheck(TypedUnOp op) const;
 
     template<TypedBinOp Op>
     void SpeculateNumbers(GateRef gate);
@@ -99,15 +109,17 @@ private:
     void SpeculateConditionJump(GateRef gate);
     void SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID Op);
     BuiltinsStubCSigns::ID GetBuiltinId(GateRef func, GateRef receiver);
-    template<TypedUnOp Op>
-    GateRef AppendOverflowCheck(GateRef typeCheck, GateRef intVal);
+
+    void AddProfiling(GateRef gate);
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
     GateRef dependEntry_ {Gate::InvalidGateRef};
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
+    bool profiling_ {false};
     std::string methodName_;
+    GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H

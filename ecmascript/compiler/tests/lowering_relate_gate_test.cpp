@@ -12,10 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/compiler/type_lowering.h"
+#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {
@@ -25,6 +26,7 @@ using ecmascript::GlobalEnvConstants;
 using ecmascript::ConstantIndex;
 using ecmascript::RegionSpaceFlag;
 using ecmascript::kungfu::Circuit;
+using ecmascript::kungfu::GateAccessor;
 using ecmascript::kungfu::OpCode;
 using ecmascript::kungfu::GateType;
 using ecmascript::kungfu::MachineType;
@@ -42,14 +44,21 @@ using ecmascript::kungfu::CompilationConfig;
 HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    GateAccessor acc(&circuit);
+    Environment env(1, &builder);
+    builder.SetEnvironment(&env);
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
-    auto check = builder.TypeCheck(GateType::NumberType(), arg0);
-    builder.Return(entry, depend, check);
-    EXPECT_TRUE(Verifier::Run(&circuit));
+    auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
+    auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
+    auto stateSplit = circuit.NewGate(circuit.StateSplit(), {depend, frameState});
+    builder.SetDepend(stateSplit);
+    auto check = builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
+    builder.ReturnVoid(check, depend);
+
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
     TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeCheckFramework");
     typeLowering.RunTypeLowering();
@@ -59,10 +68,12 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
 HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    GateAccessor acc(&circuit);
+    auto entry = acc.GetStateRoot();
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
     auto nadd = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
@@ -79,10 +90,12 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
 HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    GateAccessor acc(&circuit);
+    auto entry = acc.GetStateRoot();
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
     auto nless = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
@@ -99,10 +112,12 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
 HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
-    auto entry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto depend = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    GateAccessor acc(&circuit);
+    auto entry = acc.GetStateRoot();
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto convert = builder.TypeConvert(MachineType::I64, GateType::NJSValue(), GateType::NumberType(),
                                        {entry, depend, arg0});
@@ -117,31 +132,26 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
 HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
+    GateAccessor acc(&circuit);
     Environment env(2, &builder);
     builder.SetEnvironment(&env);
-    Label isNumber(&builder);
-    Label notNumber(&builder);
-    Label exit(&builder);
     VariableType arg1Type(MachineType::I64, GateType::BooleanType());
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
     TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeOpCodeFramework");
-
+    auto depend = acc.GetDependRoot();
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
-
-    DEFVAlUE(result, (&builder), VariableType::JS_ANY(), builder.Int32ToTaggedPtr(builder.Int32(1)));
-    builder.Branch(builder.TypeCheck(GateType::NumberType(), arg0), &isNumber, &notNumber);
-    builder.Bind(&isNumber);
+    auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
+    auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
+    auto stateSplit = circuit.NewGate(circuit.StateSplit(), {depend, frameState});
+    builder.SetDepend(stateSplit);
+    builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
     auto convert = builder.PrimitiveToNumber(arg1, arg1Type);
-    result = builder.NumberBinaryOp<TypedBinOp::TYPED_ADD>(arg0, convert);
-    builder.Jump(&exit);
-    builder.Bind(&notNumber);
-    builder.Jump(&exit);
-    builder.Bind(&exit);
-    builder.Return(*result);
-    EXPECT_TRUE(Verifier::Run(&circuit));
+    auto result = builder.NumberBinaryOp<TypedBinOp::TYPED_ADD>(arg0, convert);
+    builder.Return(result);
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
@@ -149,7 +159,8 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
 HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
 {
     // construct a circuit
-    Circuit circuit;
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
     CircuitBuilder builder(&circuit);
     Environment env(0, &builder);
     builder.SetEnvironment(&env);

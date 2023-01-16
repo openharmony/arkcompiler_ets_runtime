@@ -17,6 +17,7 @@
 
 #include <algorithm>
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
@@ -31,7 +32,6 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_locale.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_regexp.h"
@@ -242,8 +242,7 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> thisFlat = JSHandle<EcmaString>(thread,
-        EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
+    JSHandle<EcmaString> thisFlat(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
     int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisFlat).GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t pos = 0;
@@ -273,8 +272,7 @@ JSTaggedValue BuiltinsString::CharCodeAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> thisFlat = JSHandle<EcmaString>(thread,
-        EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
+    JSHandle<EcmaString> thisFlat(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
     int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisFlat).GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t pos = 0;
@@ -304,8 +302,7 @@ JSTaggedValue BuiltinsString::CodePointAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> thisFlat = JSHandle<EcmaString>(thread,
-        EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
+    JSHandle<EcmaString> thisFlat(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
 
     JSTaggedNumber posVal = JSTaggedValue::ToNumber(thread, posTag);
@@ -519,36 +516,40 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), String, LocaleCompare);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> that_tag = BuiltinsString::GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> thatTag = BuiltinsString::GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, that_tag);
+    JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, thatTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t argLength = argv->GetArgsNumber();
-    uint32_t localeIndex = 1;
-    uint32_t optionsIndex = 2;
-    // referenceStr.localeCompare(compareString[, locales[, options]])
-    if (argLength > localeIndex) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSTaggedValue> ctor = env->GetCollatorFunction();
-        JSHandle<JSCollator> collator =
-            JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
-        JSHandle<JSTaggedValue> localeHandle = BuiltinsString::GetCallArg(argv, localeIndex);
-        JSMutableHandle<JSTaggedValue> optionsHandle(thread, JSTaggedValue::Undefined());
-        if (argLength > optionsIndex) {
-            optionsHandle.Update(BuiltinsString::GetCallArg(argv, optionsIndex));
+
+    JSHandle<JSTaggedValue> locales = GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: the second argument
+    bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    if (cacheable) {
+        auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
+        if (collator != nullptr) {
+            JSTaggedValue result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
+            return result;
         }
-        JSHandle<JSCollator> initCollator =
-            JSCollator::InitializeCollator(thread, collator, localeHandle, optionsHandle);
-        icu::Collator *icuCollator = initCollator->GetIcuCollator();
-        icuCollator->setStrength(icu::Collator::PRIMARY);
-        JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
-        return result;
     }
-    int32_t res = EcmaStringAccessor::Compare(thread->GetEcmaVM(), thisHandle, thatHandle);
-    return GetTaggedInt(res);
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSTaggedValue> ctor = ecmaVm->GetGlobalEnv()->GetCollatorFunction();
+    JSHandle<JSCollator> collator =
+        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
+    JSHandle<JSCollator> initCollator =
+        JSCollator::InitializeCollator(thread, collator, locales, options, cacheable);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    icu::Collator *icuCollator = nullptr;
+    if (cacheable) {
+        icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
+        ASSERT(icuCollator != nullptr);
+    } else {
+        icuCollator = initCollator->GetIcuCollator();
+    }
+    JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
+    return result;
 }
 
 // 21.1.3.11
@@ -570,7 +571,7 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, thisTag,
                                                                  RegExpExecResultCache::MATCH_TYPE, regexp);
-        if (cacheResult != JSTaggedValue::Undefined()) {
+        if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }
     }
@@ -640,7 +641,7 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
                                             JSTaggedValue::Exception());
             }
         }
-        
+
         if (regexp->IsECMAObject()) {
             // c. c. Let matcher be ? GetMethod(regexp, @@matchAll).
             // d. d. If matcher is not undefined, then
@@ -718,7 +719,7 @@ JSTaggedValue BuiltinsString::Normalize(EcmaRuntimeCallInfo *argv)
     int32_t option = 0;
 
     icu::Normalizer::normalize(src, uForm, option, res, errorCode);
-    JSHandle<EcmaString> str = JSLocale::IcuToString(thread, res);
+    JSHandle<EcmaString> str = base::LocaleHelper::UStringToString(thread, res);
     return JSTaggedValue(*str);
 }
 
@@ -805,7 +806,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, thisTag,
                                                                  RegExpExecResultCache::REPLACE_TYPE, searchTag,
                                                                  replaceTag.GetTaggedValue());
-        if (cacheResult != JSTaggedValue::Undefined()) {
+        if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }
     }
@@ -960,11 +961,11 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         replaceTag = JSHandle<JSTaggedValue>(JSTaggedValue::ToString(thread, replaceTag));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    
+
     // 7. Let searchLength be the length of searchString.
     // 8. Let advanceBy be max(1, searchLength).
     int32_t searchLength = static_cast<int32_t>(EcmaStringAccessor(searchString).GetLength());
-    int32_t advanceBy =  std::max(1, searchLength);
+    int32_t advanceBy = std::max(1, searchLength);
     // 9. Let matchPositions be a new empty List.
     std::u16string stringBuilder;
     std::u16string stringPrefixString;
@@ -1017,7 +1018,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         endOfLastMatch = pos + searchLength;
         pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, searchString, pos + advanceBy);
     }
-    
+
     if (endOfLastMatch < static_cast<int32_t>(EcmaStringAccessor(thisString).GetLength())) {
         auto thisLen = EcmaStringAccessor(thisString).GetLength();
         JSHandle<EcmaString> suffixString(thread,
@@ -1046,8 +1047,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
     auto ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<EcmaString> dollarString = JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledDollarString());
-    JSHandle<EcmaString> replacementFlat = JSHandle<EcmaString>(
-        thread, EcmaStringAccessor::Flatten(ecmaVm, replacement));
+    JSHandle<EcmaString> replacementFlat(thread, EcmaStringAccessor::Flatten(ecmaVm, replacement));
     int32_t replaceLength = static_cast<int32_t>(EcmaStringAccessor(replacementFlat).GetLength());
     int32_t tailPos = position + static_cast<int32_t>(EcmaStringAccessor(matched).GetLength());
 
@@ -1217,6 +1217,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
             }
         }
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -1499,29 +1500,34 @@ JSTaggedValue BuiltinsString::ToLocaleLowerCase(EcmaRuntimeCallInfo *argv)
 
     // Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    // Fast path
+    if (locales->IsUndefined() && EcmaStringAccessor(string).IsUtf8()) {
+        EcmaString *result = EcmaStringAccessor::TryToLower(ecmaVm, string);
+        return JSTaggedValue(result);
+    }
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If requestedLocales is not an empty List, then Let requestedLocale be requestedLocales[0].
     // Else, Let requestedLocale be DefaultLocale().
-    JSHandle<EcmaString> requestedLocale = JSLocale::DefaultLocale(thread);
+    JSHandle<EcmaString> requestedLocale = base::LocaleHelper::DefaultLocale(thread);
     if (requestedLocales->GetLength() != 0) {
         requestedLocale = JSHandle<EcmaString>(thread, requestedLocales->Get(0));
     }
 
     // Let noExtensionsLocale be the String value that is requestedLocale with all Unicode locale extension sequences
     // removed.
-    JSLocale::ParsedLocale noExtensionsLocale = JSLocale::HandleLocale(requestedLocale);
+    base::LocaleHelper::ParsedLocale noExtensionsLocale = base::LocaleHelper::HandleLocale(requestedLocale);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let availableLocales be a List with language tags that includes the languages for which the Unicode Character
     // Database contains language sensitive case mappings. Implementations may add additional language tags
     // if they support case mapping for additional locales.
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, nullptr, nullptr);
+    std::vector<std::string> availableLocales = base::LocaleHelper::GetAvailableLocales(thread, nullptr, nullptr);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let locale be BestAvailableLocale(availableLocales, noExtensionsLocale).
-    std::string locale = JSLocale::BestAvailableLocale(thread, availableLocales, noExtensionsLocale.base);
+    std::string locale = base::LocaleHelper::BestAvailableLocale(availableLocales, noExtensionsLocale.base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If locale is undefined, let locale be "und".
@@ -1555,29 +1561,29 @@ JSTaggedValue BuiltinsString::ToLocaleUpperCase(EcmaRuntimeCallInfo *argv)
 
     // Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If requestedLocales is not an empty List, then Let requestedLocale be requestedLocales[0].
     // Else, Let requestedLocale be DefaultLocale().
-    JSHandle<EcmaString> requestedLocale = JSLocale::DefaultLocale(thread);
+    JSHandle<EcmaString> requestedLocale = base::LocaleHelper::DefaultLocale(thread);
     if (requestedLocales->GetLength() != 0) {
         requestedLocale = JSHandle<EcmaString>(thread, requestedLocales->Get(0));
     }
 
     // Let noExtensionsLocale be the String value that is requestedLocale with all Unicode locale extension sequences
     // removed.
-    JSLocale::ParsedLocale noExtensionsLocale = JSLocale::HandleLocale(requestedLocale);
+    base::LocaleHelper::ParsedLocale noExtensionsLocale = base::LocaleHelper::HandleLocale(requestedLocale);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let availableLocales be a List with language tags that includes the languages for which the Unicode Character
     // Database contains language sensitive case mappings. Implementations may add additional language tags
     // if they support case mapping for additional locales.
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, nullptr, nullptr);
+    std::vector<std::string> availableLocales = base::LocaleHelper::GetAvailableLocales(thread, nullptr, nullptr);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Let locale be BestAvailableLocale(availableLocales, noExtensionsLocale).
-    std::string locale = JSLocale::BestAvailableLocale(thread, availableLocales, noExtensionsLocale.base);
+    std::string locale = base::LocaleHelper::BestAvailableLocale(availableLocales, noExtensionsLocale.base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If locale is undefined, let locale be "und".

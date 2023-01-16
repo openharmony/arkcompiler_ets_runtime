@@ -95,7 +95,8 @@ enum class SerializationUID : uint8_t {
     ERROR_MESSAGE_END,
     // Function begin
     JS_FUNCTION,
-    METHOD,
+    JS_METHOD,
+    NATIVE_METHOD,
     CONSTANT_POOL,
     TAGGED_ARRAY,
     // Function end
@@ -168,7 +169,7 @@ public:
     {
     }
     ~JSDeserializer();
-    JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
+    JSHandle<JSTaggedValue> Deserialize();
 
 private:
     bool ReadInt(int32_t *value);
@@ -178,7 +179,8 @@ private:
     JSHandle<JSTaggedValue> ReadJSFunctionBase();
     JSHandle<JSTaggedValue> ReadJSFunction();
     JSHandle<JSTaggedValue> ReadTaggedArray();
-    JSHandle<JSTaggedValue> ReadMethod();
+    JSHandle<JSTaggedValue> ReadJSMethod();
+    JSHandle<JSTaggedValue> ReadNativeMethod();
     JSHandle<JSTaggedValue> ReadConstantPool();
     JSHandle<JSTaggedValue> ReadJSError(SerializationUID uid);
     JSHandle<JSTaggedValue> ReadJSDate();
@@ -193,6 +195,7 @@ private:
     JSHandle<JSTaggedValue> ReadJSArrayBuffer();
     JSHandle<JSTaggedValue> ReadReference();
     JSHandle<JSTaggedValue> ReadNativeBindingObject();
+    JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
     bool JudgeType(SerializationUID targetUid);
     void *GetBuffer(uint32_t bufferSize);
     bool ReadJSTaggedValue(JSTaggedValue *originalFlags);
@@ -208,7 +211,7 @@ private:
     ObjectFactory *factory_ = nullptr;
     uint8_t *begin_ = nullptr;
     const uint8_t *position_ = nullptr;
-    const uint8_t * const end_ = nullptr;
+    const uint8_t *end_ = nullptr;
     uint64_t objectId_ = 0;
     std::map<uint64_t, JSHandle<JSTaggedValue>> referenceMap_;
     void *engine_ = nullptr;
@@ -267,7 +270,7 @@ private:
 
 class Deserializer {
 public:
-    explicit Deserializer(JSThread *thread, SerializationData *data, void *hint)
+    Deserializer(JSThread *thread, SerializationData *data, void *hint)
         : valueDeserializer_(thread, data->GetData(), data->GetSize(), hint) {}
     ~Deserializer() = default;
 

@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 class LinearSpace : public Space {
 public:
-    explicit LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
+    LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     NO_COPY_SEMANTIC(LinearSpace);
     NO_MOVE_SEMANTIC(LinearSpace);
     uintptr_t Allocate(size_t size, bool isPromoted = false);
@@ -41,6 +41,23 @@ public:
     {
         return allocator_.GetEndAddress();
     }
+    void ResetNativeBindingSize()
+    {
+        newSpaceNativeBindingSize_ = 0;
+    }
+    void IncreaseNativeBindingSize(size_t size)
+    {
+        newSpaceNativeBindingSize_ += size;
+    }
+    size_t GetNativeBindingSize()
+    {
+        return newSpaceNativeBindingSize_;
+    }
+
+    bool NativeBindingSizeLargerThanLimit()
+    {
+        return newSpaceNativeBindingSize_ > newSpaceNativeLimit_;
+    }
 protected:
     Heap *heap_ {nullptr};
 
@@ -49,11 +66,13 @@ protected:
     size_t allocateAfterLastGC_ {0};
     size_t survivalObjectSize_ {0};
     uintptr_t waterLine_ {0};
+    size_t newSpaceNativeLimit_;
+    size_t newSpaceNativeBindingSize_ {0};
 };
 
 class SemiSpace : public LinearSpace {
 public:
-    explicit SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SemiSpace() override = default;
     NO_COPY_SEMANTIC(SemiSpace);
     NO_MOVE_SEMANTIC(SemiSpace);
@@ -82,34 +101,15 @@ public:
 
     bool SwapRegion(Region *region, SemiSpace *fromSpace);
 
-    void ResetNativeBindingSize()
-    {
-        newSpaceNativeBindingSize_ = 0;
-    }
-    void IncreaseNativeBindingSize(size_t size)
-    {
-        newSpaceNativeBindingSize_ += size;
-    }
-    size_t GetNativeBindingSize()
-    {
-        return newSpaceNativeBindingSize_;
-    }
-
-    bool NativeBindingSizeLargerThanLimit()
-    {
-        return newSpaceNativeBindingSize_ > newSpaceNativeLimit_;
-    }
 private:
     static constexpr int GROWING_FACTOR = 2;
     os::memory::Mutex lock_;
     size_t minimumCapacity_;
-    size_t newSpaceNativeLimit_;
-    size_t newSpaceNativeBindingSize_ {0};
 };
 
 class SnapshotSpace : public LinearSpace {
 public:
-    explicit SnapshotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    SnapshotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SnapshotSpace() override = default;
     NO_COPY_SEMANTIC(SnapshotSpace);
     NO_MOVE_SEMANTIC(SnapshotSpace);
@@ -130,7 +130,7 @@ private:
 
 class ReadOnlySpace : public LinearSpace {
 public:
-    explicit ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    ReadOnlySpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~ReadOnlySpace() override = default;
     void SetReadOnly()
     {

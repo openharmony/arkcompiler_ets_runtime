@@ -149,6 +149,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ALLOCA, &LLVMIRBuilder::HandleAlloca},
         {OpCode::ARG, &LLVMIRBuilder::HandleParameter},
         {OpCode::CONSTANT, &LLVMIRBuilder::HandleConstant},
+        {OpCode::CONSTSTRING, &LLVMIRBuilder::HandleConstString},
         {OpCode::RELOCATABLE_DATA, &LLVMIRBuilder::HandleRelocatableData},
         {OpCode::ZEXT, &LLVMIRBuilder::HandleZExtInt},
         {OpCode::SEXT, &LLVMIRBuilder::HandleSExtInt},
@@ -186,10 +187,10 @@ void LLVMIRBuilder::InitializeHandlers()
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
-        OpCode::FRAMESTATE_ENTRY, OpCode::RETURN_LIST, OpCode::THROW_LIST,
-        OpCode::CONSTANT_LIST, OpCode::ARG_LIST, OpCode::THROW,
+        OpCode::RETURN_LIST,
+        OpCode::ARG_LIST, OpCode::THROW,
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY, OpCode::DEPEND_AND,
-        OpCode::FRAME_STATE, OpCode::GUARD
+        OpCode::FRAME_STATE, OpCode::STATE_SPLIT
     };
 }
 
@@ -217,7 +218,7 @@ void LLVMIRBuilder::Build()
         auto ins = acc_.Ins(bb[0]);
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef r = *i;
-            if (!acc_.GetOpCode(r).IsState()) {
+            if (!acc_.GetMetaData(r)->IsState()) {
                 continue;
             }
             predecessors.insert(instID2bbID_[acc_.GetId(r)]);
@@ -232,7 +233,7 @@ void LLVMIRBuilder::Build()
                 continue;
             }
             if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
-                LOG_COMPILER(ERROR) << "The gate below need to be translated ";
+                LOG_COMPILER(FATAL) << "The gate below need to be translated ";
                 acc_.Print(gate);
                 UNREACHABLE();
             }
@@ -333,13 +334,13 @@ void LLVMIRBuilder::GenPrologue()
                                            std::to_string(reservedSlotsSize).c_str());
         SaveFrameTypeOnFrame(frameType);
     } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-        reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+        reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedEnvOffset(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
-        auto ArgList = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+        auto ArgList = circuit_->GetArgRoot();
         auto uses = acc_.Uses(ArgList);
         for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
-            int argth = static_cast<int>(acc_.GetBitField(*useIt));
+            int argth = static_cast<int>(acc_.TryGetValue(*useIt));
             LLVMValueRef value = LLVMGetParam(function_, argth);
             if (argth == static_cast<int>(CommonArgIdx::LEXENV)) {
                 SaveLexicalEnvOnOptJSFuncFrame(value);
@@ -450,6 +451,7 @@ LLVMTypeRef LLVMIRBuilder::GetMachineRepType(MachineRep rep) const
             dstType = LLVMMetadataTypeInContext(context_);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -465,6 +467,7 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
         callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV) {
         VisitCall(gate, ins, callOp);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -499,7 +502,7 @@ LLVMValueRef LLVMIRBuilder::GetFunction(LLVMValueRef glue, const CallSignature *
     return callee;
 }
 
-LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]]LLVMValueRef glue,
+LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]] LLVMValueRef glue,
     const CallSignature *signature, LLVMValueRef reloc) const
 {
     LLVMTypeRef rtfuncType = llvmModule_->GetFuncType(signature);
@@ -531,7 +534,7 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
 
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
-    const int index = static_cast<int>(acc_.GetBitField(inList[static_cast<int>(CallInputs::TARGET)]));
+    const int index = static_cast<int>(acc_.GetConstantValue(inList[static_cast<int>(CallInputs::TARGET)]));
     params.push_back(LLVMConstInt(LLVMInt64Type(), index, 0)); // target
     params.push_back(LLVMConstInt(LLVMInt64Type(),
         inList.size() - static_cast<size_t>(CallInputs::FIRST_PARAMETER), 0)); // argc
@@ -572,7 +575,7 @@ void LLVMIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<Gat
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
 
-    BitField index = acc_.GetBitField(inList[static_cast<size_t>(CallInputs::TARGET)]);
+    uint64_t index = acc_.GetConstantValue(inList[static_cast<size_t>(CallInputs::TARGET)]);
     auto targetId = LLVMConstInt(LLVMInt64Type(), index, 0);
     params.push_back(targetId); // target
     for (size_t paraIdx = static_cast<size_t>(CallInputs::FIRST_PARAMETER); paraIdx < inList.size(); ++paraIdx) {
@@ -716,7 +719,6 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
 {
     size_t targetIndex = static_cast<size_t>(CallInputs::TARGET);
     static_assert(static_cast<size_t>(CallInputs::FIRST_PARAMETER) == 3);
-    const size_t index = acc_.GetBitField(inList[targetIndex]);
     const CallSignature *calleeDescriptor = nullptr;
     LLVMValueRef glue = GetGlue(inList);
     LLVMValueRef rtoffset;
@@ -724,12 +726,14 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef callee;
     CallExceptionKind kind = CallExceptionKind::NO_BC_OFFSET;
     if (op == OpCode::CALL) {
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = CommonStubCSigns::Get(index);
         rtoffset = GetCoStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
         UpdateLeaveFrame(glue);
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
         rtoffset = GetRTStubOffset(glue, index);
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
@@ -840,6 +844,7 @@ LLVMValueRef LLVMIRBuilder::GetBaseOffset(GateRef gate, LLVMValueRef glue)
         case OpCode::DEBUGGER_BYTECODE_CALL:
             return GetBCDebugStubOffset(glue);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -851,7 +856,7 @@ void LLVMIRBuilder::HandleAlloca(GateRef gate)
 
 void LLVMIRBuilder::VisitAlloca(GateRef gate)
 {
-    uint64_t machineRep = acc_.GetBitField(gate);
+    uint64_t machineRep = acc_.TryGetValue(gate);
     LLVMTypeRef dataType = GetMachineRepType(static_cast<MachineRep>(machineRep));
     gate2LValue_[gate] = LLVMBuildPtrToInt(builder_, LLVMBuildAlloca(builder_, dataType, ""),
                                               ConvertLLVMTypeFromGate(gate), "");
@@ -1002,7 +1007,7 @@ void LLVMIRBuilder::VisitGoto(int block, int bbOut)
 
 void LLVMIRBuilder::HandleConstant(GateRef gate)
 {
-    std::bitset<64> value = acc_.GetBitField(gate); // 64: bit width
+    std::bitset<64> value = acc_.GetConstantValue(gate); // 64: bit width
     VisitConstant(gate, value);
 }
 
@@ -1033,10 +1038,11 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
         } else if (LLVMGetTypeKind(type) == LLVMIntegerTypeKind) {
             // do nothing
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else if (machineType == MachineType::F64) {
-        auto doubleValue = bit_cast<double>(value.to_ullong()); // actual double value
+        auto doubleValue = base::bit_cast<double>(value.to_ullong()); // actual double value
         llvmValue = LLVMConstReal(LLVMDoubleType(), doubleValue);
     } else if (machineType == MachineType::I8) {
         llvmValue = LLVMConstInt(LLVMInt8Type(), value.to_ulong(), 0);
@@ -1045,14 +1051,30 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
     } else if (machineType == MachineType::I1) {
         llvmValue = LLVMConstInt(LLVMInt1Type(), value.to_ulong(), 0);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = llvmValue;
 }
 
+void LLVMIRBuilder::HandleConstString(GateRef gate)
+{
+    const ChunkVector<char> &str = acc_.GetConstantString(gate); // 64: bit width
+    VisitConstString(gate, str);
+}
+
+void LLVMIRBuilder::VisitConstString(GateRef gate, const ChunkVector<char> &str) // 64: bit width
+{
+    ASSERT(acc_.GetMachineType(gate) == MachineType::ARCH);
+    LLVMValueRef llvmValue1 = LLVMConstString(str.data(), str.size(), 0);
+    LLVMValueRef addr = LLVMBuildAlloca(builder_, LLVMTypeOf(llvmValue1), "");
+    LLVMBuildStore(builder_, llvmValue1, addr);
+    gate2LValue_[gate] = addr;
+}
+
 void LLVMIRBuilder::HandleRelocatableData(GateRef gate)
 {
-    uint64_t value = acc_.GetBitField(gate);
+    uint64_t value = acc_.TryGetValue(gate);
     VisitRelocatableData(gate, value);
 }
 
@@ -1084,7 +1106,7 @@ void LLVMIRBuilder::HandleParameter(GateRef gate)
 
 void LLVMIRBuilder::VisitParameter(GateRef gate)
 {
-    int argth = static_cast<int>(acc_.GetBitField(gate));
+    int argth = static_cast<int>(acc_.TryGetValue(gate));
     LLVMValueRef value = LLVMGetParam(function_, argth);
     ASSERT(LLVMTypeOf(value) == ConvertLLVMTypeFromGate(gate));
     gate2LValue_[gate] = value;
@@ -1153,6 +1175,7 @@ void LLVMIRBuilder::VisitMod(GateRef gate, GateRef e1, GateRef e2)
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFRem(builder_, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1208,7 +1231,7 @@ void LLVMIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector<G
         }
         curOutBB = EnsureBB(instID2bbID_[acc_.GetId(outList[i])]);
         llvmCurOutBB = curOutBB->GetImpl<BasicBlockImpl>()->lBB_;
-        LLVMAddCase(result, LLVMConstInt(ConvertLLVMTypeFromGate(input), acc_.GetBitField(outList[i]), 0),
+        LLVMAddCase(result, LLVMConstInt(ConvertLLVMTypeFromGate(input), acc_.TryGetValue(outList[i]), 0),
                     llvmCurOutBB);
     }
     EndCurrentBlock();
@@ -1254,7 +1277,7 @@ LLVMValueRef LLVMIRBuilder::CanonicalizeToInt(LLVMValueRef value)
     } else if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMIntegerTypeKind) {
         return value;
     } else {
-        LOG_COMPILER(ERROR) << "can't Canonicalize to Int64: ";
+        LOG_COMPILER(FATAL) << "can't Canonicalize to Int64: ";
         UNREACHABLE();
     }
 }
@@ -1271,7 +1294,7 @@ LLVMValueRef LLVMIRBuilder::CanonicalizeToPtr(LLVMValueRef value)
         LLVMValueRef tmp = LLVMBuildIntToPtr(builder_, value, LLVMPointerType(LLVMInt64Type(), 0), "");
         return LLVMBuildPointerCast(builder_, tmp, LLVMPointerType(LLVMInt8Type(), 0), "");
     } else {
-        LOG_COMPILER(ERROR) << "can't Canonicalize to Ptr: ";
+        LOG_COMPILER(FATAL) << "can't Canonicalize to Ptr: ";
         UNREACHABLE();
     }
 }
@@ -1292,6 +1315,7 @@ void LLVMIRBuilder::VisitIntRev(GateRef gate, GateRef e1)
     if (machineType <= MachineType::I64 && machineType >= MachineType::I1) {
         result = LLVMBuildNot(builder_, e1Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1348,6 +1372,7 @@ LLVMTypeRef LLVMIRBuilder::ConvertLLVMTypeFromGate(GateRef gate) const
             }
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -1375,8 +1400,10 @@ int64_t LLVMIRBuilder::GetBitWidthFromMachineType(MachineType machineType) const
             return 64; // 64: bit width
         case FLEX:
         case ANYVALUE:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -1402,6 +1429,7 @@ void LLVMIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
     if (machineType <= MachineType::F64 && machineType >= MachineType::F32) {
         result = LLVMBuildFPToSI(builder_, e1Value, ConvertLLVMTypeFromGate(gate), "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1472,6 +1500,7 @@ void LLVMIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFAdd(builder_, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1496,6 +1525,7 @@ void LLVMIRBuilder::VisitSub(GateRef gate, GateRef e1, GateRef e2)
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFSub(builder_, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1531,6 +1561,7 @@ void LLVMIRBuilder::VisitMul(GateRef gate, GateRef e1, GateRef e2)
     } else if (machineType == MachineType::F64) {
         result = LLVMBuildFMul(builder_, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
@@ -1616,7 +1647,7 @@ LLVMIntPredicate LLVMIRBuilder::ConvertLLVMPredicateFromICMP(ICmpCondition cond)
         case ICmpCondition::EQ:
             return LLVMIntEQ;
         default:
-            LOG_COMPILER(ERROR) << "unexpected cond!";
+            LOG_COMPILER(FATAL) << "unexpected cond!";
             UNREACHABLE();
     }
     return LLVMIntEQ;
@@ -1638,7 +1669,7 @@ LLVMRealPredicate LLVMIRBuilder::ConvertLLVMPredicateFromFCMP(FCmpCondition cond
         case FCmpCondition::OEQ:
             return LLVMRealOEQ;
         default:
-            LOG_COMPILER(ERROR) << "unexpected cond!";
+            LOG_COMPILER(FATAL) << "unexpected cond!";
             UNREACHABLE();
     }
     return LLVMRealOEQ;
@@ -1649,8 +1680,8 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
     LLVMValueRef e1Value = gate2LValue_[e1];
     LLVMValueRef e2Value = gate2LValue_[e2];
     LLVMValueRef result = nullptr;
-    [[maybe_unused]]auto e1ValCode = acc_.GetMachineType(e1);
-    [[maybe_unused]]auto e2ValCode = acc_.GetMachineType(e2);
+    [[maybe_unused]] auto e1ValCode = acc_.GetMachineType(e1);
+    [[maybe_unused]] auto e2ValCode = acc_.GetMachineType(e2);
     ASSERT((e1ValCode == e2ValCode) ||
         (compCfg_->Is32Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I32)) ||
         (compCfg_->Is64Bit() && (e1ValCode == MachineType::ARCH) && (e2ValCode == MachineType::I64)) ||
@@ -1660,14 +1691,15 @@ void LLVMIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
     LLVMRealPredicate realOpcode = LLVMRealPredicateFalse;
     auto op = acc_.GetOpCode(gate);
     if (op == OpCode::ICMP) {
-        auto cond = static_cast<ICmpCondition>(acc_.GetBitField(gate));
+        auto cond = acc_.GetICmpCondition(gate);
         intOpcode = ConvertLLVMPredicateFromICMP(cond);
         result = LLVMBuildICmp(builder_, intOpcode, e1Value, e2Value, "");
     } else if (op == OpCode::FCMP) {
-        auto cond = static_cast<FCmpCondition>(acc_.GetBitField(gate));
+        auto cond = acc_.GetFCmpCondition(gate);
         realOpcode = ConvertLLVMPredicateFromFCMP(cond);
         result = LLVMBuildFCmp(builder_, realOpcode, e1Value, e2Value, "");
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 
@@ -1949,7 +1981,7 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     LLVMValueRef callee = GetExperimentalDeopt(module_);
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 
-    const size_t numValueIn = acc_.GetBitField(frameState);
+    const size_t numValueIn = acc_.GetNumValueIn(frameState);
     const size_t accIndex = numValueIn - 2; // 2: acc valueIn index
     const size_t pcIndex = numValueIn - 1;
     GateRef acc = acc_.GetValueIn(frameState, accIndex);

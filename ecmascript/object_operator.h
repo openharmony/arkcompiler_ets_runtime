@@ -32,29 +32,29 @@ enum class OperatorType : uint8_t {
 
 class ObjectOperator final {
 public:
-    explicit ObjectOperator() = default;
+    ObjectOperator() = default;
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &key,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSObject> &holder, const JSHandle<JSTaggedValue> &key,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSObject> &holder, const JSHandle<JSTaggedValue> &key,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder, const JSHandle<JSTaggedValue> &key,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder, const JSHandle<JSTaggedValue> &key,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder,
-                            const JSHandle<JSTaggedValue> &receiver, const JSHandle<JSTaggedValue> &key,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder,
+                   const JSHandle<JSTaggedValue> &receiver, const JSHandle<JSTaggedValue> &key,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
-    explicit ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder, uint32_t index,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &holder, uint32_t index,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
     // op for fast path, name can only string and symbol, and can't be number.
-    explicit ObjectOperator(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
-                            OperatorType type = OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
+                   OperatorType type = OperatorType::PROTOTYPE_CHAIN);
     // op for fast add
-    explicit ObjectOperator(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
-                            const PropertyAttributes &attr);
+    ObjectOperator(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
+                   const PropertyAttributes &attr);
 
     static void FastAdd(JSThread *thread, const JSTaggedValue &receiver, const JSTaggedValue &name,
                         const JSHandle<JSTaggedValue> &value, const PropertyAttributes &attr);
@@ -120,6 +120,16 @@ public:
         IsTransitionField::Set(flag, &metaData_);
     }
 
+    inline bool IsAOT() const
+    {
+        return IsAOTField::Get(metaData_);
+    }
+
+    inline void SetIsAOT(bool flag)
+    {
+        IsAOTField::Set(flag, &metaData_);
+    }
+
     inline PropertyAttributes GetAttr() const
     {
         return attributes_;
@@ -163,6 +173,11 @@ public:
     inline bool IsInlinedProps() const
     {
         return GetAttr().IsInlinedProps();
+    }
+
+    inline void SetIsInlinedProps(bool flag)
+    {
+        attributes_.SetIsInlinedProps(flag);
     }
 
     inline JSTaggedValue GetValue() const
@@ -266,8 +281,10 @@ private:
     using IsOnPrototypeField = IsFastModeField::NextFlag;  // 1: on prototype
     using HasReceiverField = IsOnPrototypeField::NextFlag;
     using IsTransitionField = HasReceiverField::NextFlag;
+    using IsAOTField = IsTransitionField::NextFlag;
 
     void UpdateHolder();
+    void UpdateIsAOT();
     void StartLookUp(OperatorType type);
     void StartGlobalLookUp(OperatorType type);
     void HandleKey(const JSHandle<JSTaggedValue> &key);
@@ -275,6 +292,7 @@ private:
     void SetFound(uint32_t index, JSTaggedValue value, uint32_t attr, bool mode, bool transition = false);
     void UpdateFound(uint32_t index, uint32_t attr, bool mode, bool transition);
     void ResetState();
+    void ResetStateForAddProperty();
     inline void LookupPropertyInHolder()
     {
         JSHandle<JSObject> obj(holder_);
@@ -303,6 +321,7 @@ private:
     uint32_t index_{NOT_FOUND_INDEX};
     PropertyAttributes attributes_;
     uint32_t metaData_{0};
+    int receiverHoleEntry_{-1};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_OBJECT_OPERATOR_H

@@ -24,6 +24,7 @@
 
 #include "libpandafile/file.h"
 #include "libpandafile/file_items.h"
+
 namespace panda {
 namespace ecmascript {
 class JSPandaFile {
@@ -31,21 +32,14 @@ public:
     struct JSRecordInfo {
         uint32_t mainMethodIndex {0};
         bool isCjs {false};
+        bool isJson {false};
+        int jsonStringId {-1};
         CUnorderedSet<const EcmaVM *> vmListOfParsedConstPool;
         int moduleRecordIdx {-1};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
         bool hasTSTypes {false};
         uint32_t typeSummaryOffset {0};
-
-        bool HasTSTypes() const
-        {
-            return hasTSTypes;
-        }
-
-        uint32_t GetTypeSummaryOffset() const
-        {
-            return typeSummaryOffset;
-        }
+        CString npmPackageName;
 
         void SetParsedConstpoolVM(const EcmaVM *vm)
         {
@@ -73,13 +67,21 @@ public:
     static constexpr char TYPE_SUMMARY_OFFSET[] = "typeSummaryOffset";
 
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
+    static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
-    static constexpr char MODULE_DEFAULE_ETS[] = "ets/";
+    static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
-    static constexpr char NODE_MODULES[] = "node_modules";
+    static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
+    static constexpr char NODE_MODULES[] = "node_modules/";
     static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
     static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
+    static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
+    static constexpr char PACKAGE_NAME[] = "pkgName@";
+    static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
+    static constexpr int PACKAGE_NAME_LEN = 8;
+    static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
+    static constexpr int DEFAULT_TYPE_SUMMARY_OFFSET = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -87,6 +89,11 @@ public:
     const CString &GetJSPandaFileDesc() const
     {
         return desc_;
+    }
+
+    uint32_t GetChecksum() const
+    {
+        return checksum_;
     }
 
     const panda_file::File *GetPandaFile() const
@@ -106,9 +113,8 @@ public:
 
     void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
-        if (methodLiteral != nullptr) {
-            methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
-        }
+        ASSERT(methodLiteral != nullptr);
+        methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
     }
 
     const CUnorderedMap<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
@@ -189,23 +195,62 @@ public:
         return pf_->GetClasses();
     }
 
+    inline bool IsExternal(panda_file::File::EntityId id) const
+    {
+        return pf_->IsExternal(id);
+    }
+
+    inline panda_file::File::StringData GetStringData(panda_file::File::EntityId id) const
+    {
+        return pf_->GetStringData(id);
+    }
+
+    panda_file::File::EntityId ResolveMethodIndex(panda_file::File::EntityId id, uint16_t idx) const
+    {
+        return pf_->ResolveMethodIndex(id, idx);
+    }
+
+    panda_file::File::EntityId GetLiteralArraysId() const
+    {
+        return pf_->GetLiteralArraysId();
+    }
+
+    Span<const panda_file::File::EntityId> GetMethodIndex(const panda_file::File::IndexHeader *indexHeader) const
+    {
+        return pf_->GetMethodIndex(indexHeader);
+    }
+
+    const void *GetHeader() const
+    {
+        return static_cast<const void *>(pf_->GetHeader());
+    }
+
+    uint32_t GetFileSize() const
+    {
+        return pf_->GetHeader()->file_size;
+    }
+
     bool PUBLIC_API IsModule(const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
     bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
+
+    bool IsJson(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+
+    CString GetJsonStringId(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
     bool IsBundlePack() const
     {
         return isBundlePack_;
     }
 
-    void SetLoadedAOTStatus(bool status)
+    bool IsNewRecord() const
     {
-        isLoadedAOT_ = status;
+        return isNewRecord_;
     }
 
     bool IsLoadedAOT() const
     {
-        return isLoadedAOT_;
+        return (anFileInfoIndex_ != INVALID_INDEX);
     }
 
     uint32_t GetFileUniqId() const
@@ -220,11 +265,7 @@ public:
 
     bool HasRecord(const CString &recordName) const
     {
-        auto info = jsRecordInfo_.find(recordName);
-        if (info != jsRecordInfo_.end()) {
-            return true;
-        }
-        return false;
+        return jsRecordInfo_.find(recordName) != jsRecordInfo_.end();
     }
 
     JSRecordInfo &FindRecordInfo(const CString &recordName)
@@ -249,37 +290,28 @@ public:
         return jsRecordInfo_;
     }
 
-    CString ParseEntryPoint(const CString &recordName) const
+    static CString ParseEntryPoint(const CString &desc)
     {
-        return recordName.substr(1, recordName.size() - 2); // 2 : skip symbol "L" and ";"
+        return desc.substr(1, desc.size() - 2); // 2 : skip symbol "L" and ";"
     }
 
     void CheckIsBundlePack();
+    void CheckIsNewRecord(EcmaVM *vm);
 
     CString FindEntryPoint(const CString &record) const;
 
-    static CString ParseOhmUrl(const CString &fileName);
-
-    bool IsSystemLib() const
-    {
-        return false;
-    }
+    static CString ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName);
+    static std::string ParseHapPath(const CString &fileName);
+    static void CroppingRecord(CString &recordName);
 
     uint32_t GetAOTFileInfoIndex() const
     {
         return anFileInfoIndex_;
     }
 
-    // If the system library is loaded, aotFileInfos has two elements
-    // 0: system library, 1: application
-    // Note: There is no system library currently, so the anFileInfoIndex_ is 0
-    void SetAOTFileInfoIndex()
+    void SetAOTFileInfoIndex(uint32_t index)
     {
-        if (IsSystemLib()) {
-            anFileInfoIndex_ = 0;
-        } else {
-            anFileInfoIndex_ = 1;
-        }
+        anFileInfoIndex_ = index;
     }
 
     static bool IsEntryOrPatch(const CString &name)
@@ -289,14 +321,20 @@ public:
 
     bool HasTSTypes(const CString &recordName) const
     {
-        JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
-        return recordInfo.HasTSTypes();
+        auto it = jsRecordInfo_.find(recordName);
+        if (it != jsRecordInfo_.end()) {
+            return it->second.hasTSTypes;
+        }
+        return false;
     }
 
     uint32_t GetTypeSummaryOffset(const CString &recordName) const
     {
-        JSRecordInfo recordInfo = jsRecordInfo_.at(recordName);
-        return recordInfo.GetTypeSummaryOffset();
+        auto it = jsRecordInfo_.find(recordName);
+        if (it != jsRecordInfo_.end()) {
+            return it->second.typeSummaryOffset;
+        }
+        return DEFAULT_TYPE_SUMMARY_OFFSET;
     }
 
     void DeleteParsedConstpoolVM(const EcmaVM *vm)
@@ -316,18 +354,19 @@ private:
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
 
     uint32_t constpoolIndex_ {0};
+    uint32_t checksum_ {0};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     MethodLiteral *methodLiterals_ {nullptr};
     const panda_file::File *pf_ {nullptr};
     CString desc_;
-    bool isLoadedAOT_ {false};
-    uint32_t anFileInfoIndex_ {0};
+    uint32_t anFileInfoIndex_ {INVALID_INDEX};
     bool isNewVersion_ {false};
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
+    bool isNewRecord_ {true};
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
 };
 }  // namespace ecmascript

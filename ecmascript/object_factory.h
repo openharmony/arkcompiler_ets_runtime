@@ -158,6 +158,8 @@ class PendingJob;
 }  // namespace job
 class TransitionHandler;
 class PrototypeHandler;
+class TransWithProtoHandler;
+class StoreTSHandler;
 class PropertyBox;
 class ProtoChangeMarker;
 class ProtoChangeDetails;
@@ -178,14 +180,13 @@ using DeleteEntryPoint = void (*)(void *, void *);
 enum class RemoveSlots { YES, NO };
 enum class GrowMode { KEEP, GROW };
 
-constexpr uint8_t INVALID_BUILTINS_ID = 0xFF;
-
 class ObjectFactory {
 public:
     ObjectFactory(JSThread *thread, Heap *heap);
     ~ObjectFactory() = default;
     JSHandle<Method> NewMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-                                                uint8_t builtinId = INVALID_BUILTINS_ID);
+                                                kungfu::BuiltinsStubCSigns::ID builtinId =
+                                                kungfu::BuiltinsStubCSigns::INVALID);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
@@ -202,13 +203,17 @@ public:
 
     JSHandle<PrototypeHandler> NewPrototypeHandler();
 
+    JSHandle<TransWithProtoHandler> NewTransWithProtoHandler();
+
+    JSHandle<StoreTSHandler> NewStoreTSHandler();
+
     JSHandle<JSObject> NewEmptyJSObject();
 
     // use for others create, prototype is Function.prototype
     // use for native function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-                                       uint8_t builtinId = INVALID_BUILTINS_ID);
+                                       kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 
@@ -296,14 +301,16 @@ public:
     JSHandle<JSArguments> NewJSArguments();
 
     JSHandle<JSPrimitiveRef> NewJSString(const JSHandle<JSTaggedValue> &str);
-    
+
     template <typename Derived>
     JSHandle<TaggedArray> ConvertListToArray(const JSThread *thread, const JSHandle<Derived> &list,
                                              uint32_t numberOfNodes)
     {
         MemSpaceType spaceType = numberOfNodes < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
         JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(numberOfNodes, spaceType);
-        dstElements->SetLength(numberOfNodes);
+        if (numberOfNodes == 0) {
+            return dstElements;
+        }
         int dataIndex = Derived::ELEMENTS_START_INDEX;
         for (uint32_t i = 0; i < numberOfNodes; i++) {
             dataIndex = list->GetElement(dataIndex + Derived::NEXT_PTR_OFFSET).GetInt();
@@ -312,11 +319,6 @@ public:
         return dstElements;
     }
 
-    void RemoveElementByIndex(JSHandle<TaggedArray> &srcArray, uint32_t index, uint32_t effectiveLength);
-    JSHandle<TaggedArray> InsertElementByIndex(JSHandle<TaggedArray> &srcArray, const JSHandle<JSTaggedValue> &value,
-                                               uint32_t index, uint32_t effectiveLength);
-    void CopyTaggedArrayElement(JSHandle<TaggedArray> &srcElements, JSHandle<TaggedArray> &dstElements,
-                                uint32_t effectiveLength);
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                 uint32_t oldLength);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
@@ -366,9 +368,9 @@ public:
 
     TaggedObject *NewObject(const JSHandle<JSHClass> &hclass);
 
-    TaggedObject *NewNonMovableObject(const JSHandle<JSHClass> &hclass, int inobjPropCount = 0);
+    TaggedObject *NewNonMovableObject(const JSHandle<JSHClass> &hclass, uint32_t inobjPropCount = 0);
 
-    void InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, int inobjPropCount);
+    void InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, uint32_t inobjPropCount);
 
     JSHandle<TaggedQueue> NewTaggedQueue(uint32_t length);
 
@@ -469,7 +471,6 @@ public:
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const uint8_t *data);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
-    JSHandle<JSObject> NewDefaultExportOfScript();
 
     // ----------------------------------- new TSType ----------------------------------------
     JSHandle<TSObjLayoutInfo> CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal = JSTaggedValue::Hole());

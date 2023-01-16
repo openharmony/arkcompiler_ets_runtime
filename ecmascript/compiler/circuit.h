@@ -23,6 +23,8 @@
 #include <vector>
 
 #include "ecmascript/compiler/gate.h"
+#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/gate_meta_data_builder.h"
 #include "ecmascript/frames.h"
 
 #include "libpandabase/macros.h"
@@ -31,31 +33,28 @@
 namespace panda::ecmascript::kungfu {
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
-    explicit Circuit(bool isArch64 = true);
+    explicit Circuit(NativeAreaAllocator* allocator, bool isArch64 = true);
     ~Circuit();
-    Circuit(Circuit const &circuit) = default;
-    Circuit &operator=(Circuit const &circuit) = default;
-    Circuit(Circuit &&circuit) = default;
-    Circuit &operator=(Circuit &&circuit) = default;
-    // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    GateRef NewGate(OpCode op, MachineType bitValue, BitField bitfield, size_t numIns, const GateRef inList[],
-                    GateType type, MarkCode mark = MarkCode::NO_MARK);
-    GateRef NewGate(OpCode op, MachineType bitValue, BitField bitfield, const std::vector<GateRef> &inList,
-                    GateType type, MarkCode mark = MarkCode::NO_MARK);
-    GateRef NewGate(OpCode op, BitField bitfield, size_t numIns, const GateRef inList[], GateType type,
-                    MarkCode mark = MarkCode::NO_MARK);
-    GateRef NewGate(OpCode op, BitField bitfield, const std::vector<GateRef> &inList, GateType type,
-                    MarkCode mark = MarkCode::NO_MARK);
+    NO_COPY_SEMANTIC(Circuit);
+    NO_MOVE_SEMANTIC(Circuit);
+
+    GateRef NewGate(const GateMetaData *meta, const std::vector<GateRef> &inList);
+    GateRef NewGate(const GateMetaData *meta, MachineType machineType, GateType type);
+    GateRef NewGate(const GateMetaData *meta, MachineType machineType,
+        const std::initializer_list<GateRef>& args, GateType type);
+    GateRef NewGate(const GateMetaData *meta, MachineType machineType,
+        size_t numIns, const GateRef inList[], GateType type);
     void PrintAllGates() const;
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
-    static GateRef GetCircuitRoot(OpCode opcode);
     static GateRef NullGate();
-    bool Verify(GateRef gate) const;
+    void Verify(GateRef gate) const;
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
-    GateRef GetConstantGate(MachineType bitValue, BitField bitfield, GateType type);
-    GateRef GetConstantDataGate(BitField index, GateType type);
+    GateRef GetConstantGate(MachineType machineType, uint64_t value, GateType type);
+    GateRef GetConstantStringGate(MachineType machineType, const std::string &str, GateType type);
+    GateRef NewArg(MachineType machineType, size_t index, GateType type, GateRef argRoot);
+    GateRef GetConstantDataGate(uint64_t value, GateType type);
     size_t GetGateCount() const;
     TimeStamp GetTime() const;
     void AdvanceTime() const;
@@ -67,8 +66,81 @@ public:
     {
         return isArch64_;
     }
-    void PushFunctionCompilationDataList();
-    void PopFunctionCompilationDataList();
+    void InitRoot();
+    GateRef GetRoot() const
+    {
+        return root_;
+    }
+    void SetRoot(GateRef root)
+    {
+        root_ = root;
+    }
+
+    Chunk* chunk()
+    {
+        return &chunk_;
+    }
+
+    GateMetaBuilder *GetMetaBuilder()
+    {
+        return &metaBuilder_;
+    }
+
+    GateRef GetStateRoot() const;
+    GateRef GetDependRoot() const;
+    GateRef GetArgRoot() const;
+    GateRef GetReturnRoot() const;
+
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
+    const GateMetaData* NAME()                  \
+    {                                           \
+        return metaBuilder_.NAME();             \
+    }
+    IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
+
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
+    const GateMetaData* NAME(size_t value)      \
+    {                                           \
+        return metaBuilder_.NAME(value);        \
+    }
+    GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
+
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
+    const GateMetaData* NAME(uint64_t value)    \
+    {                                           \
+        return metaBuilder_.NAME(value);        \
+    }
+    GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
+
+    const GateMetaData* Nop()
+    {
+        return metaBuilder_.Nop();
+    }
+
+    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode,
+        uint32_t bcIndex, bool writable)
+    {
+        GateFlags flags = writable ? GateFlags::NONE_FLAG : GateFlags::NO_WRITE;
+        return metaBuilder_.JSBytecode(valuesIn, opcode, bcIndex, flags);
+    }
+
+    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp)
+    {
+        return metaBuilder_.TypedBinaryOp(value, binOp);
+    }
+
+    const GateMetaData* RestoreRegister()
+    {
+        return metaBuilder_.RestoreRegister();
+    }
+
+    const GateMetaData *GetMetaData(GateRef gate) const
+    {
+        return LoadGatePtrConst(gate)->GetMetaData();
+    }
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
@@ -81,14 +153,11 @@ private:
     OpCode GetOpCode(GateRef gate) const;
     void SetMachineType(GateRef gate, MachineType machineType);
     void SetGateType(GateRef gate, GateType type);
-    void SetOpCode(GateRef gate, OpCode opcode);
     GateId GetId(GateRef gate) const;
-    void SetBitField(GateRef gate, BitField bitfield);
     void DeleteGate(GateRef gate);
     void DecreaseIn(GateRef gate, size_t idx);
 
     MarkCode GetMark(GateRef gate) const;
-    BitField GetBitField(GateRef gate) const;
     void DeleteIn(GateRef gate, size_t idx);
     void ModifyIn(GateRef gate, size_t idx, GateRef in);
     void NewIn(GateRef gate, size_t idx, GateRef in);
@@ -109,27 +178,23 @@ private:
     uint8_t *GetDataPtr(size_t offset);
     Gate *LoadGatePtr(GateRef shift);
     const Gate *LoadGatePtrConst(GateRef shift) const;
-    const Out *InnerMethodArgFirstOut() const
-    {
-        return innerMethodArgFirstOut_;
-    }
-    const Out *InnerMethodReturnFirstOut() const
-    {
-        return innerMethodReturnFirstOut_;
-    }
 
 private:
     void* space_ {nullptr};
     size_t circuitSize_ {0};
     size_t gateCount_ {0};
     TimeStamp time_;
-    std::vector<uint8_t> dataSection_ {};
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
     std::map<BitField, GateRef> constantDataCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
-    bool isArch64_ {false};
-    const Out *innerMethodArgFirstOut_ { nullptr };
-    const Out *innerMethodReturnFirstOut_ { nullptr };
+    bool isArch64_ { false };
+
+    Chunk chunk_;
+    GateRef root_ { 0 };
+    GateMetaBuilder metaBuilder_;
+#ifndef NDEBUG
+    ChunkVector<GateRef> allGates_;
+#endif
 
     friend class GateAccessor;
     friend class ConstGateAccessor;

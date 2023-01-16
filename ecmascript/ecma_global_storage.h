@@ -29,7 +29,7 @@ public:
     static const int32_t GLOBAL_BLOCK_SIZE = 256;
     using WeakClearCallback = void (*)(void *);
 
-    explicit EcmaGlobalStorage(JSThread *thread, NativeAreaAllocator *allocator)
+    EcmaGlobalStorage(JSThread *thread, NativeAreaAllocator *allocator)
         : thread_(thread), allocator_(allocator)
     {
         topGlobalNodes_ = lastGlobalNodes_ = allocator_->New<NodeList<Node>>();
@@ -97,7 +97,7 @@ public:
             prev_ = node;
         }
 
-        int32_t GetIndex()
+        int32_t GetIndex() const
         {
             return index_;
         }
@@ -246,7 +246,7 @@ public:
     template<typename T>
     class NodeList {
     public:
-        explicit NodeList()
+        NodeList()
         {
             bool isWeak = std::is_same<T, EcmaGlobalStorage::WeakNode>::value;
             for (int i = 0; i < GLOBAL_BLOCK_SIZE; i++) {

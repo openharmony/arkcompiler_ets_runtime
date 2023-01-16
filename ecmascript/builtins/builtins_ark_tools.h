@@ -36,10 +36,15 @@ public:
     static JSTaggedValue GetHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    static JSTaggedValue StartCpuProFiler(EcmaRuntimeCallInfo *info);
 
-    static JSTaggedValue StopCpuProFiler(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue RemoveAOTFlag(EcmaRuntimeCallInfo *info);
+
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    static JSTaggedValue StartCpuProfiler(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StopCpuProfiler(EcmaRuntimeCallInfo *info);
+
+    static std::string GetProfileName();
 
     static bool CreateFile(std::string &fileName);
 #endif

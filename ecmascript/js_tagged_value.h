@@ -17,6 +17,7 @@
 #define ECMASCRIPT_JS_TAGGED_VALUE_H
 
 #include "ecmascript/base/bit_helper.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/mem_common.h"
 
@@ -139,13 +140,13 @@ public:
 
     explicit JSTaggedValue(void *) = delete;
 
-    constexpr JSTaggedValue() : value_(JSTaggedValue::NULL_POINTER) {}
+    ARK_INLINE constexpr JSTaggedValue() : value_(JSTaggedValue::NULL_POINTER) {}
 
-    constexpr explicit JSTaggedValue(JSTaggedType v) : value_(v) {}
+    ARK_INLINE constexpr explicit JSTaggedValue(JSTaggedType v) : value_(v) {}
 
-    constexpr explicit JSTaggedValue(int v) : value_(static_cast<JSTaggedType>(v) | TAG_INT) {}
+    ARK_INLINE constexpr explicit JSTaggedValue(int v) : value_(static_cast<JSTaggedType>(v) | TAG_INT) {}
 
-    explicit JSTaggedValue(unsigned int v)
+    ARK_INLINE explicit JSTaggedValue(unsigned int v)
     {
         if (static_cast<int32_t>(v) < 0) {
             value_ = JSTaggedValue(static_cast<double>(v)).GetRawData();
@@ -154,19 +155,19 @@ public:
         value_ = JSTaggedValue(static_cast<int32_t>(v)).GetRawData();
     }
 
-    constexpr explicit JSTaggedValue(bool v)
+    ARK_INLINE constexpr explicit JSTaggedValue(bool v)
         : value_(static_cast<JSTaggedType>(v) | TAG_BOOLEAN_MASK) {}
 
-    explicit JSTaggedValue(double v)
+    ARK_INLINE explicit JSTaggedValue(double v)
     {
         ASSERT_PRINT(!IsImpureNaN(v), "pureNaN will break the encoding of tagged double: "
                                           << std::hex << CastDoubleToTagged(v));
         value_ = CastDoubleToTagged(v) + DOUBLE_ENCODE_OFFSET;
     }
 
-    explicit JSTaggedValue(const TaggedObject *v) : value_(static_cast<JSTaggedType>(ToUintPtr(v))) {}
+    ARK_INLINE explicit JSTaggedValue(const TaggedObject *v) : value_(static_cast<JSTaggedType>(ToUintPtr(v))) {}
 
-    explicit JSTaggedValue(int64_t v)
+    ARK_INLINE explicit JSTaggedValue(int64_t v)
     {
         if (UNLIKELY(static_cast<int32_t>(v) != v)) {
             value_ = JSTaggedValue(static_cast<double>(v)).GetRawData();
@@ -199,181 +200,181 @@ public:
         return JSTaggedValue(value_ | TAG_WEAK);
     }
 
-    inline bool IsWeak() const
+    ARK_INLINE bool IsWeak() const
     {
         return ((value_ & TAG_WEAK_MASK) == TAG_WEAK);
     }
 
-    inline bool IsDouble() const
+    ARK_INLINE bool IsDouble() const
     {
         return !IsInt() && !IsObject();
     }
 
-    inline bool IsInt() const
+    ARK_INLINE bool IsInt() const
     {
         return (value_ & TAG_MARK) == TAG_INT;
     }
 
-    inline bool IsSpecial() const
+    ARK_INLINE bool IsSpecial() const
     {
         return ((value_ & TAG_SPECIAL_MASK) == TAG_SPECIAL) || IsHole();
     }
 
-    inline bool IsObject() const
+    ARK_INLINE bool IsObject() const
     {
         return ((value_ & TAG_MARK) == TAG_OBJECT);
     }
 
-    inline TaggedObject *GetWeakReferentUnChecked() const
+    ARK_INLINE TaggedObject *GetWeakReferentUnChecked() const
     {
         return reinterpret_cast<TaggedObject *>(value_ & (~TAG_WEAK));
     }
 
-    inline bool IsHeapObject() const
+    ARK_INLINE bool IsHeapObject() const
     {
         return ((value_ & TAG_HEAPOBJECT_MASK) == 0U);
     }
 
-    inline bool IsInvalidValue() const
+    ARK_INLINE bool IsInvalidValue() const
     {
         return value_ <= INVALID_VALUE_LIMIT;
     }
 
-    inline double GetDouble() const
+    ARK_INLINE double GetDouble() const
     {
         ASSERT_PRINT(IsDouble(), "can not convert JSTaggedValue to Double : " << std::hex << value_);
         return CastTaggedToDouble(value_ - DOUBLE_ENCODE_OFFSET);
     }
 
-    inline int GetInt() const
+    ARK_INLINE int GetInt() const
     {
         ASSERT_PRINT(IsInt(), "can not convert JSTaggedValue to Int :" << std::hex << value_);
         return static_cast<int>(value_ & (~TAG_MARK));
     }
 
-    inline JSTaggedType GetRawData() const
+    ARK_INLINE JSTaggedType GetRawData() const
     {
         return value_;
     }
 
     //  This function returns the heap object pointer which may have the weak tag.
-    inline TaggedObject *GetRawHeapObject() const
+    ARK_INLINE TaggedObject *GetRawHeapObject() const
     {
         ASSERT_PRINT(IsHeapObject(), "can not convert JSTaggedValue to HeapObject :" << std::hex << value_);
         return reinterpret_cast<TaggedObject *>(value_);
     }
 
-    inline TaggedObject *GetWeakReferent() const
+    ARK_INLINE TaggedObject *GetWeakReferent() const
     {
         ASSERT_PRINT(IsWeak(), "can not convert JSTaggedValue to WeakRef HeapObject :" << std::hex << value_);
         return reinterpret_cast<TaggedObject *>(value_ & (~TAG_WEAK));
     }
 
-    static inline JSTaggedType Cast(void *ptr)
+    static ARK_INLINE JSTaggedType Cast(void *ptr)
     {
         ASSERT_PRINT(sizeof(void *) == TaggedTypeSize(), "32bit platform is not support yet");
         return static_cast<JSTaggedType>(ToUintPtr(ptr));
     }
 
-    inline bool IsFalse() const
+    ARK_INLINE bool IsFalse() const
     {
         return value_ == VALUE_FALSE;
     }
 
-    inline bool IsTrue() const
+    ARK_INLINE bool IsTrue() const
     {
         return value_ == VALUE_TRUE;
     }
 
-    inline bool IsUndefined() const
+    ARK_INLINE bool IsUndefined() const
     {
         return value_ == VALUE_UNDEFINED;
     }
 
-    inline bool IsNull() const
+    ARK_INLINE bool IsNull() const
     {
         return value_ == VALUE_NULL;
     }
 
-    inline bool IsUndefinedOrNull() const
+    ARK_INLINE bool IsUndefinedOrNull() const
     {
         return ((value_ & TAG_HEAPOBJECT_MASK) == TAG_SPECIAL);
     }
 
-    inline bool IsHole() const
+    ARK_INLINE bool IsHole() const
     {
         return value_ == VALUE_HOLE || value_ == 0U;
     }
 
-    inline bool IsException() const
+    ARK_INLINE bool IsException() const
     {
         return value_ == VALUE_EXCEPTION;
     }
 
-    static inline bool IsImpureNaN(double value)
+    static ARK_INLINE bool IsImpureNaN(double value)
     {
         // Tests if the double value would break tagged double encoding.
         return base::bit_cast<JSTaggedType>(value) >= (TAG_INT - DOUBLE_ENCODE_OFFSET);
     }
 
-    inline bool operator==(const JSTaggedValue &other) const
+    ARK_INLINE bool operator==(const JSTaggedValue &other) const
     {
         return value_ == other.value_;
     }
 
-    inline bool operator!=(const JSTaggedValue &other) const
+    ARK_INLINE bool operator!=(const JSTaggedValue &other) const
     {
         return value_ != other.value_;
     }
 
-    inline bool IsWeakForHeapObject() const
+    ARK_INLINE bool IsWeakForHeapObject() const
     {
         return (value_ & TAG_WEAK) == 1U;
     }
 
-    static inline constexpr JSTaggedValue False()
+    static ARK_INLINE constexpr JSTaggedValue False()
     {
         return JSTaggedValue(VALUE_FALSE);
     }
 
-    static inline constexpr JSTaggedValue True()
+    static ARK_INLINE constexpr JSTaggedValue True()
     {
         return JSTaggedValue(VALUE_TRUE);
     }
 
-    static inline constexpr JSTaggedValue Undefined()
+    static ARK_INLINE constexpr JSTaggedValue Undefined()
     {
         return JSTaggedValue(VALUE_UNDEFINED);
     }
 
-    static inline constexpr JSTaggedValue Null()
+    static ARK_INLINE constexpr JSTaggedValue Null()
     {
         return JSTaggedValue(VALUE_NULL);
     }
 
-    static inline constexpr JSTaggedValue Hole()
+    static ARK_INLINE constexpr JSTaggedValue Hole()
     {
         return JSTaggedValue(VALUE_HOLE);
     }
 
-    static inline constexpr JSTaggedValue Exception()
+    static ARK_INLINE constexpr JSTaggedValue Exception()
     {
         return JSTaggedValue(VALUE_EXCEPTION);
     }
 
-    inline double GetNumber() const
+    ARK_INLINE double GetNumber() const
     {
         return IsInt() ? GetInt() : GetDouble();
     }
 
-    inline TaggedObject *GetTaggedObject() const
+    ARK_INLINE TaggedObject *GetTaggedObject() const
     {
         ASSERT_PRINT(IsHeapObject() && ((value_ & TAG_WEAK) == 0U),
                      "can not convert JSTaggedValue to HeapObject :" << std::hex << value_);
         return reinterpret_cast<TaggedObject *>(value_);
     }
 
-    inline TaggedObject *GetHeapObject() const
+    ARK_INLINE TaggedObject *GetHeapObject() const
     {
         if (IsWeakForHeapObject()) {
             return GetTaggedWeakRef();
@@ -381,12 +382,12 @@ public:
         return GetTaggedObject();
     }
 
-    inline TaggedObject *GetRawTaggedObject() const
+    ARK_INLINE TaggedObject *GetRawTaggedObject() const
     {
         return reinterpret_cast<TaggedObject *>(GetRawHeapObject());
     }
 
-    inline TaggedObject *GetTaggedWeakRef() const
+    ARK_INLINE TaggedObject *GetTaggedWeakRef() const
     {
         return reinterpret_cast<TaggedObject *>(GetWeakReferent());
     }
@@ -507,6 +508,7 @@ public:
     bool IsRBTreeNode() const;
     bool IsNativePointer() const;
     bool IsJSNativePointer() const;
+    bool CheckIsJSNativePointer() const;
     bool IsBoolean() const;
     bool IsSymbol() const;
     bool IsJSObject() const;
@@ -635,6 +637,8 @@ public:
     bool HasOrdinaryGet() const;
     bool IsPrototypeHandler() const;
     bool IsTransitionHandler() const;
+    bool IsTransWithProtoHandler() const;
+    bool IsStoreTSHandler() const;
     bool IsPropertyBox() const;
     bool IsProtoChangeMarker() const;
     bool IsProtoChangeDetails() const;

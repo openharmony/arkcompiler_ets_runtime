@@ -48,7 +48,7 @@ enum PropertyKind { KEY = 0, VALUE, KEY_VALUE };
 // ecma6.0 6.2.4 The Property Descriptor Specification Type
 class PropertyDescriptor final {
 public:
-    explicit PropertyDescriptor() = delete;
+    PropertyDescriptor() = delete;
 
     ~PropertyDescriptor() = default;
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(PropertyDescriptor);
@@ -56,9 +56,9 @@ public:
 
     explicit PropertyDescriptor(const JSThread *thread) : thread_(thread) {}
 
-    explicit PropertyDescriptor(const JSThread *thread, JSHandle<JSTaggedValue> v) : thread_(thread), value_(v) {}
+    PropertyDescriptor(const JSThread *thread, JSHandle<JSTaggedValue> v) : thread_(thread), value_(v) {}
 
-    explicit PropertyDescriptor(const JSThread *thread, JSHandle<JSTaggedValue> v, bool w, bool e, bool c)
+    PropertyDescriptor(const JSThread *thread, JSHandle<JSTaggedValue> v, bool w, bool e, bool c)
         : thread_(thread),
           writable_(w),
           enumerable_(e),
@@ -70,7 +70,7 @@ public:
     {
     }
 
-    explicit PropertyDescriptor(const JSThread *thread, bool w, bool e, bool c)
+    PropertyDescriptor(const JSThread *thread, bool w, bool e, bool c)
         : PropertyDescriptor(thread, JSHandle<JSTaggedValue>(), w, e, c)
     {
     }
@@ -284,7 +284,7 @@ private:
 
 class OperationResult {
 public:
-    explicit OperationResult(const JSThread *thread, JSTaggedValue value, PropertyMetaData metaData)
+    OperationResult(const JSThread *thread, JSTaggedValue value, PropertyMetaData metaData)
         : metaData_(metaData)
     {
         thread_ = thread;
@@ -317,7 +317,7 @@ public:
 private:
     const JSThread *thread_ {nullptr};
     JSHandle<JSTaggedValue> value_ {};
-    PropertyMetaData metaData_{0U};
+    PropertyMetaData metaData_ {0U};
 };
 
 class ECMAObject : public TaggedObject {

@@ -18,7 +18,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "ecmascript/js_function.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/tagged_object-inl.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
@@ -118,23 +120,56 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::True();
 }
 
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-JSTaggedValue BuiltinsArkTools::StartCpuProFiler(EcmaRuntimeCallInfo *info)
+JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    auto vm = thread->GetEcmaVM();
-    JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
-    std::string fileName = EcmaStringAccessor(str).ToStdString() + ".json";
-    if (!CreateFile(fileName)) {
-        LOG_ECMA(ERROR) << "CreateFile failed " << fileName;
-    }
-    DFXJSNApi::StartCpuProfilerForFile(vm, fileName);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(object);
+    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
+    method->SetAotCodeBit(false);
+
     return JSTaggedValue::Undefined();
 }
 
-JSTaggedValue BuiltinsArkTools::StopCpuProFiler(EcmaRuntimeCallInfo *info)
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+JSTaggedValue BuiltinsArkTools::StartCpuProfiler(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    auto vm = thread->GetEcmaVM();
+
+    // get file name
+    JSHandle<JSTaggedValue> fileNameValue = GetCallArg(info, 0);
+    std::string fileName = "";
+    if (fileNameValue->IsString()) {
+        JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, fileNameValue);
+        fileName = EcmaStringAccessor(str).ToStdString() + ".cpuprofile";
+    } else {
+        fileName = GetProfileName();
+    }
+
+    if (!CreateFile(fileName)) {
+        LOG_ECMA(ERROR) << "CreateFile failed " << fileName;
+    }
+
+    // get sampling interval
+    JSHandle<JSTaggedValue> samplingIntervalValue = GetCallArg(info, 1);
+    uint32_t interval = 500; // 500:Default Sampling interval 500 microseconds
+    if (samplingIntervalValue->IsNumber()) {
+        interval = JSTaggedValue::ToUint32(thread, samplingIntervalValue);
+    }
+
+    DFXJSNApi::StartCpuProfilerForFile(vm, fileName, interval);
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::StopCpuProfiler(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -142,6 +177,32 @@ JSTaggedValue BuiltinsArkTools::StopCpuProFiler(EcmaRuntimeCallInfo *info)
     DFXJSNApi::StopCpuProfilerForFile(vm);
 
     return JSTaggedValue::Undefined();
+}
+
+std::string BuiltinsArkTools::GetProfileName()
+{
+    char time1[16] = {0}; // 16:Time format length
+    char time2[16] = {0}; // 16:Time format length
+    time_t timep = std::time(nullptr);
+    struct tm nowTime1;
+    localtime_r(&timep, &nowTime1);
+    size_t result = 0;
+    result = strftime(time1, sizeof(time1), "%Y%m%d", &nowTime1);
+    if (result == 0) {
+        LOG_ECMA(ERROR) << "get time failed";
+        return "";
+    }
+    result = strftime(time2, sizeof(time2), "%H%M%S", &nowTime1);
+    if (result == 0) {
+        LOG_ECMA(ERROR) << "get time failed";
+        return "";
+    }
+    std::string profileName = "cpuprofile-";
+    profileName += time1;
+    profileName += "TO";
+    profileName += time2;
+    profileName += ".cpuprofile";
+    return profileName;
 }
 
 bool BuiltinsArkTools::CreateFile(std::string &fileName)

@@ -202,6 +202,8 @@ class ProtoChangeDetails;
         JS_GENERATOR_CONTEXT, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROTOTYPE_HANDLER,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         TRANSITION_HANDLER,   /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
+        TRANS_WITH_PROTO_HANDLER,    /* ///////////////////////////////////////////////////////////////////-PADDING */ \
+        STORE_TS_HANDLER,       /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROPERTY_BOX, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */  \
         PROTO_CHANGE_MARKER, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROTOTYPE_INFO,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -331,7 +333,7 @@ public:
     static JSHandle<JSHClass> TransitionProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                               const JSHandle<JSTaggedValue> &proto);
     static JSHandle<JSHClass> TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                              const JSHandle<JSTaggedValue> &proto);
+                                                      const JSHandle<JSTaggedValue> &proto);
     static void TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
 
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -692,7 +694,7 @@ public:
     inline bool IsJsPrimitiveRef() const
     {
         return GetObjectType() == JSType::JS_PRIMITIVE_REF;
-    };
+    }
 
     bool IsJSSet() const
     {
@@ -1022,6 +1024,16 @@ public:
     inline bool IsTransitionHandler() const
     {
         return GetObjectType() == JSType::TRANSITION_HANDLER;
+    }
+
+    inline bool IsTransWithProtoHandler() const
+    {
+        return GetObjectType() == JSType::TRANS_WITH_PROTO_HANDLER;
+    }
+
+    inline bool IsStoreTSHandler() const
+    {
+        return GetObjectType() == JSType::STORE_TS_HANDLER;
     }
 
     inline bool IsPropertyBox() const

@@ -68,6 +68,13 @@ public:
     static JSHandle<TaggedArray> SetCapacityInOldSpace(const JSThread *thread, const JSHandle<TaggedArray> &array,
                                                        uint32_t capa);
 
+    static inline void RemoveElementByIndex(const JSThread *thread, JSHandle<TaggedArray> &srcArray,
+                                            uint32_t index, uint32_t effectiveLength);
+    static inline void InsertElementByIndex(const JSThread *thread, JSHandle<TaggedArray> &srcArray,
+        const JSHandle<JSTaggedValue> &value, uint32_t index, uint32_t effectiveLength);
+    static inline void CopyTaggedArrayElement(const JSThread *thread, JSHandle<TaggedArray> &srcElements,
+                                              JSHandle<TaggedArray> &dstElements, uint32_t effectiveLength);
+
     inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length, uint32_t extraLength = 0);
 
     static inline bool ShouldTrim(uint32_t oldLength, uint32_t newLength)

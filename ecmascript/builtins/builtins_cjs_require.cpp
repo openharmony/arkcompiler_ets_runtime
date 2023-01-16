@@ -37,7 +37,7 @@ JSTaggedValue BuiltinsCjsRequire::CjsRequireConstructor(EcmaRuntimeCallInfo *arg
     uint32_t length = argv->GetArgsNumber();
     JSHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
     if (length != 1) {  // strange arg's number
-        LOG_ECMA(ERROR) << "BuiltinsCjsRequire::CjsRequireConstructor : can only accept one argument";
+        LOG_ECMA(FATAL) << "BuiltinsCjsRequire::CjsRequireConstructor : can only accept one argument";
         UNREACHABLE();
     }
     JSHandle<EcmaString> requestName = JSHandle<EcmaString>::Cast(GetCallArg(argv, 0));

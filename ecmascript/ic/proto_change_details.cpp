@@ -30,6 +30,7 @@ JSHandle<ChangeListener> ChangeListener::Add(const JSThread *thread, const JSHan
             }
             return array;
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     // if exist hole, use it.
@@ -57,7 +58,7 @@ uint32_t ChangeListener::CheckHole(const JSHandle<ChangeListener> &array)
 {
     for (uint32_t i = 0; i < array->GetEnd(); i++) {
         JSTaggedValue value = array->Get(i);
-        if (value == JSTaggedValue::Hole() || value == JSTaggedValue::Undefined()) {
+        if (value.IsHole() || value.IsUndefined()) {
             return i;
         }
     }

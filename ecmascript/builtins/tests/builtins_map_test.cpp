@@ -117,10 +117,10 @@ HWTEST_F_L0(BuiltinsMapTest, CreateAndGetSize)
     }
     JSHandle<TaggedArray> array(factory->NewTaggedArray(5));
     for (int i = 0; i < 5; i++) {
-        JSHandle<TaggedArray> internal_array(factory->NewTaggedArray(2));
-        internal_array->Set(thread, 0, JSTaggedValue(i));
-        internal_array->Set(thread, 1, JSTaggedValue(i));
-        auto arr = JSArray::CreateArrayFromList(thread, internal_array);
+        JSHandle<TaggedArray> internalArray(factory->NewTaggedArray(2));
+        internalArray->Set(thread, 0, JSTaggedValue(i));
+        internalArray->Set(thread, 1, JSTaggedValue(i));
+        auto arr = JSArray::CreateArrayFromList(thread, internalArray);
         array->Set(thread, i, arr);
     }
     JSHandle<JSArray> values = JSArray::CreateArrayFromList(thread, array);

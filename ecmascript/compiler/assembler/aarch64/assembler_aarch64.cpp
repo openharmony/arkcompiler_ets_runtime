@@ -101,6 +101,7 @@ void AssemblerAarch64::Ldp(const Register &rt, const Register &rt2, const Memory
                 op = LoadStorePairOpCode::LDP_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         bool sf = !rt.IsW();
@@ -115,6 +116,7 @@ void AssemblerAarch64::Ldp(const Register &rt, const Register &rt2, const Memory
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -133,6 +135,7 @@ void AssemblerAarch64::Stp(const Register &rt, const Register &rt2, const Memory
                 op = LoadStorePairOpCode::STP_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         bool sf = !rt.IsW();
@@ -147,6 +150,7 @@ void AssemblerAarch64::Stp(const Register &rt, const Register &rt2, const Memory
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -165,6 +169,7 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
                 op = LoadStorePairOpCode::LDP_V_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
@@ -182,6 +187,7 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
                 imm >>= 4;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         uint32_t opc = GetOpcFromScale(vt.GetScale(), true);
@@ -190,6 +196,7 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -208,6 +215,7 @@ void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, 
                 op = LoadStorePairOpCode::STP_V_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
@@ -225,6 +233,7 @@ void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, 
                 imm >>= 4;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         uint32_t opc = GetOpcFromScale(vt.GetScale(), true);
@@ -233,6 +242,7 @@ void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, 
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -256,6 +266,7 @@ uint32_t AssemblerAarch64::GetOpcFromScale(Scale scale, bool ispair)
             opc = ispair ? 1 : 3;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 
@@ -329,6 +340,7 @@ void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
                 op = LoadStoreOpCode::STR_Post;
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         // 30: 30bit indicate the size of LDR Reg
@@ -337,6 +349,7 @@ void AssemblerAarch64::Str(const Register &rt, const MemoryOperand &operand)
         EmitU32(instructionCode);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -421,7 +434,7 @@ void AssemblerAarch64::Mov(const Register &rd, const Immediate &imm)
         } else {
             Orr(rd, Register(Zero), replicateImm);
         }
-        const uint64_t movkImm = (realImm  & shiftedMask) >> shift;
+        const uint64_t movkImm = (realImm & shiftedMask) >> shift;
         Movk(rd, movkImm, shift);
         return;
     }
@@ -620,7 +633,7 @@ void AssemblerAarch64::EmitMovInstruct(const Register &rd, uint64_t imm,
         // 63 : 63  means the topmost bits of RegXSize
         lastshift = ((63 - lz) / 16) * 16;   // 16 : 16  means the operand of MOVK/N/Z is 16 bits Immediate
     }
-    uint64_t imm16 =  (imm >> firstshift) & HWORD_MASK;
+    uint64_t imm16 = (imm >> firstshift) & HWORD_MASK;
     if (isNeg) {
         Movn(rd, imm16, firstshift);
         imm = ~imm;
@@ -755,7 +768,7 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shif
 void AssemblerAarch64::Lsl(const Register &rd, const Register &rn, unsigned shift)
 {
     unsigned immr = 0;
-    [[maybe_unused]] unsigned imms = 0;
+    unsigned imms = 0;
     if (rd.IsW()) {
         // 32 : 32-bit variant Applies when sf == 0 && N == 0 && imms != 011111
         // LSL <Wd>, <Wn>, #<shift> is equivalent to UBFM <Wd>, <Wn>, #(-<shift> MOD 32), #(31-<shift>)
@@ -993,7 +1006,7 @@ void AssemblerAarch64::Tbz(const Register &rt, int32_t bitPos, Label *label)
 
 void AssemblerAarch64::Tbz(const Register &rt, int32_t bitPos, int32_t imm)
 {
-    uint32_t b5 = (bitPos << (BRANCH_B5_LOWBITS - 5)) &  BRANCH_B5_MASK;
+    uint32_t b5 = (bitPos << (BRANCH_B5_LOWBITS - 5)) & BRANCH_B5_MASK;
     uint32_t b40 = (bitPos << BRANCH_B40_LOWBITS) & BRANCH_B40_MASK;
     uint32_t imm14 = (imm << BRANCH_Imm14_LOWBITS) & BRANCH_Imm14_MASK;
     uint32_t code = b5 | BranchOpCode::TBZ | b40 | imm14 | rt.GetId();
@@ -1010,7 +1023,7 @@ void AssemblerAarch64::Tbnz(const Register &rt, int32_t bitPos, Label *label)
 
 void AssemblerAarch64::Tbnz(const Register &rt, int32_t bitPos, int32_t imm)
 {
-    uint32_t b5 = (bitPos << (BRANCH_B5_LOWBITS - 5)) &  BRANCH_B5_MASK;
+    uint32_t b5 = (bitPos << (BRANCH_B5_LOWBITS - 5)) & BRANCH_B5_MASK;
     uint32_t b40 = (bitPos << BRANCH_B40_LOWBITS) & BRANCH_B40_MASK;
     uint32_t imm14 = (imm <<BRANCH_Imm14_LOWBITS) & BRANCH_Imm14_MASK;
     uint32_t code = b5 | BranchOpCode::TBNZ | b40 | imm14 | rt.GetId();
@@ -1075,19 +1088,19 @@ int32_t AssemblerAarch64::ImmBranch(uint32_t branchCode)
             immOffset |= ((1 << (31 - BRANCH_Imm26_WIDTH)) - 1) << BRANCH_Imm26_WIDTH;
         }
     } else if ((branchCode & BranchCondFMask) == BranchOpCode::BranchCond) {
-        immOffset =  (branchCode & BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
+        immOffset = (branchCode & BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
         if (immOffset & (1 << (BRANCH_Imm19_WIDTH - 1))) {
             // 31 : 31 means topmost bits of instruction "uint32_t"
             immOffset |= ((1 << (31 - BRANCH_Imm19_WIDTH)) - 1) << BRANCH_Imm19_WIDTH;
         }
     } else if ((branchCode & BranchCompareFMask) == BranchOpCode::CBZ) {
-        immOffset =  (branchCode &  BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
+        immOffset = (branchCode & BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
         if (immOffset & (1 << (BRANCH_Imm19_WIDTH - 1))) {
             // 31 : 31 means topmost bits of instruction "uint32_t"
             immOffset |= ((1 << (31 - BRANCH_Imm19_WIDTH)) - 1) << BRANCH_Imm19_WIDTH;
         }
     } else if ((branchCode & BranchTestFMask) == BranchOpCode::TBZ) {
-        immOffset = (branchCode &  BRANCH_Imm14_MASK) >> BRANCH_Imm14_LOWBITS;
+        immOffset = (branchCode & BRANCH_Imm14_MASK) >> BRANCH_Imm14_LOWBITS;
         if (immOffset & (1 << (BRANCH_Imm14_WIDTH - 1))) {
             // 31 : 31 means topmost bits of instruction "uint32_t"
             immOffset |= ((1 << (31 - BRANCH_Imm14_WIDTH)) - 1) << BRANCH_Imm14_WIDTH;
@@ -1170,6 +1183,7 @@ uint64_t AssemblerAarch64::GetOpcodeOfLdr(const MemoryOperand &operand, Scale sc
                 } else if (scale == Scale::Q) {
                     op = LoadStoreOpCode::LDR_Offset;
                 } else {
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
                 }
                 break;
@@ -1182,6 +1196,7 @@ uint64_t AssemblerAarch64::GetOpcodeOfLdr(const MemoryOperand &operand, Scale sc
                 } else if (scale == Scale::Q) {
                     op = LoadStoreOpCode::LDR_Pre;
                 } else {
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
                 }
                 break;
@@ -1194,11 +1209,13 @@ uint64_t AssemblerAarch64::GetOpcodeOfLdr(const MemoryOperand &operand, Scale sc
                 } else if (scale == Scale::Q) {
                     op = LoadStoreOpCode::LDR_Post;
                 } else {
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
                 }
                 break;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     } else {
@@ -1209,6 +1226,7 @@ uint64_t AssemblerAarch64::GetOpcodeOfLdr(const MemoryOperand &operand, Scale sc
         } else if (scale == Scale::Q) {
             op = LoadStoreOpCode::LDR_Register;
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

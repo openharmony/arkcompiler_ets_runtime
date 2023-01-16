@@ -42,6 +42,7 @@ using TypedArrayHelper = base::TypedArrayHelper;
 // 22.1.1
 JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_ENTRY_DEBUG_LOG();
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Array, Constructor);
     JSThread *thread = argv->GetThread();
@@ -387,7 +388,7 @@ JSTaggedValue BuiltinsArray::Of(EcmaRuntimeCallInfo *argv)
 }
 
 // 22.1.2.5 get Array [ @@species ]
-JSTaggedValue BuiltinsArray::Species([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsArray::Species(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     // 1. Return the this value.

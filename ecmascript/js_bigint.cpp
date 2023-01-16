@@ -134,7 +134,7 @@ JSHandle<BigInt> BigIntHelper::SetBigInt(JSThread *thread, const CString &numStr
 
 JSHandle<BigInt> BigIntHelper::RightTruncate(JSThread *thread, JSHandle<BigInt> x)
 {
-    int len  = static_cast<int>(x->GetLength());
+    int len = static_cast<int>(x->GetLength());
     ASSERT(len != 0);
     if (len == 1 && x->GetDigit(0) == 0) {
         x->SetSign(false);
@@ -1453,7 +1453,7 @@ JSTaggedValue BigInt::AsintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<Bi
     JSHandle<BigInt> exponent = Int32ToBigInt(thread, bit - 1);
     JSHandle<BigInt> base = Int32ToBigInt(thread, 2); // 2 : base value
     JSHandle<BigInt> tValue = Exponentiate(thread, base, exp);
-    JSHandle<BigInt> modValue =  FloorMod(thread, bigint, tValue);
+    JSHandle<BigInt> modValue = FloorMod(thread, bigint, tValue);
     JSHandle<BigInt> resValue = Exponentiate(thread, base, exponent);
     // If mod ≥ 2bits - 1, return ℤ(mod - 2bits); otherwise, return (mod).
     if (Compare(*resValue, *modValue) != ComparisonResult::GREAT) {
@@ -1615,7 +1615,7 @@ ComparisonResult BigInt::CompareWithNumber(JSHandle<BigInt> bigint, JSHandle<JST
 
     // Compare the significant bits of bigint with the significant integer bits of double
     int leadingZeros = 0;
-    int res =  CompareToBitsLen(bigint, integerDigits + 1, leadingZeros);
+    int res = CompareToBitsLen(bigint, integerDigits + 1, leadingZeros);
     if (res == 0) {
         return ComparisonResult::LESS;
     } else if (res == 1) {

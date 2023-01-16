@@ -120,6 +120,7 @@ TaggedObject *ObjectFactory::AllocObjectWithSpaceType(size_t size, JSHClass *cls
         case MemSpaceType::NON_MOVABLE:
             return heap_->AllocateNonMovableOrHugeObject(cls, size);
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }

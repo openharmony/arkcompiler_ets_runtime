@@ -17,13 +17,14 @@
 #define ECMASCRIPT_HPROF_HEAP_SNAPSHOT_SERIALIZER_H
 
 #include <fstream>
+#include <limits.h>
 #include <sstream>
 
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/mem/c_containers.h"
 
-#include "os/mem.h"
+#include "securec.h"
 
 namespace panda::ecmascript {
 using fstream = std::fstream;
@@ -89,7 +90,7 @@ private:
 class HeapSnapshotJSONSerializer {
 public:
     explicit HeapSnapshotJSONSerializer() = default;
-    ~HeapSnapshotJSONSerializer() = default;
+    ~HeapSnapshotJSONSerializer();
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);
     bool Serialize(HeapSnapshot *snapshot, Stream *stream);

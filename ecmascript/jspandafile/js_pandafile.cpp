@@ -17,7 +17,6 @@
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
-
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
@@ -31,6 +30,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     } else {
         InitializeMergedPF();
     }
+    checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
 }
 
@@ -45,7 +45,7 @@ void JSPandaFile::CheckIsBundlePack()
         panda_file::ClassDataAccessor cda(*pf_, classId);
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-            panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
+            panda_file::File::StringData sd = GetStringData(fieldNameId);
             const char *fieldName = utf::Mutf8AsCString(sd.data);
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0 || std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
                 isBundlePack_ = false;
@@ -57,18 +57,40 @@ void JSPandaFile::CheckIsBundlePack()
     }
 }
 
+void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
+{
+    CString bundleName = vm->GetBundleName();
+    if (bundleName.empty()) {
+        return;
+    }
+
+    for (auto info : jsRecordInfo_) {
+        if (info.first.find(NODE_MODULES) != CString::npos) {
+            continue;
+        }
+        CString recordName = info.first;
+        size_t bundleNameLen = bundleName.length();
+        // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
+        if (recordName.length() > bundleNameLen && (recordName.compare(0, bundleNameLen, bundleName) == 0)) {
+            isNewRecord_ = true;
+        } else {
+            isNewRecord_ = false;
+        }
+        return;
+    }
+}
+
 JSPandaFile::~JSPandaFile()
 {
     if (pf_ != nullptr) {
         delete pf_;
         pf_ = nullptr;
     }
-    for (auto iter = jsRecordInfo_.begin(); iter != jsRecordInfo_.end(); iter++) {
-        auto recordInfo = iter->second;
-        recordInfo.constpoolMap.clear();
-    }
+
+    constpoolMap_.clear();
     jsRecordInfo_.clear();
     methodLiteralMap_.clear();
+
     if (methodLiterals_ != nullptr) {
         JSPandaFileManager::FreeBuffer(methodLiterals_);
         methodLiterals_ = nullptr;
@@ -109,11 +131,12 @@ void JSPandaFile::InitializeUnMergedPF()
         numMethods_ += cda.GetMethodsNumber();
         const char *desc = utf::Mutf8AsCString(cda.GetDescriptor());
         if (info.moduleRecordIdx == -1 && std::strcmp(MODULE_CLASS, desc) == 0) {
-            cda.EnumerateFields([&](panda_file::FieldDataAccessor &field_accessor) -> void {
-                panda_file::File::EntityId field_name_id = field_accessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(field_name_id);
-                if (std::strcmp(reinterpret_cast<const char *>(sd.data), desc_.c_str())) {
-                    info.moduleRecordIdx = field_accessor.GetValue<int32_t>().value();
+            cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
+                panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
+                panda_file::File::StringData sd = GetStringData(fieldNameId);
+                CString fieldName = utf::Mutf8AsCString(sd.data);
+                if (fieldName != desc_) {
+                    info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
                     return;
                 }
             });
@@ -137,26 +160,34 @@ void JSPandaFile::InitializeMergedPF()
         }
         panda_file::ClassDataAccessor cda(*pf_, classId);
         numMethods_ += cda.GetMethodsNumber();
-        CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
         // get record info
         JSRecordInfo info;
         bool hasCjsFiled = false;
+        bool hasJsonFiled = false;
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-            panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
+            panda_file::File::StringData sd = GetStringData(fieldNameId);
             const char *fieldName = utf::Mutf8AsCString(sd.data);
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0) {
                 hasCjsFiled = true;
                 info.isCjs = fieldAccessor.GetValue<bool>().value();
+            } else if (std::strcmp(IS_JSON_CONTENT, fieldName) == 0) {
+                hasJsonFiled = true;
+                info.isJson = true;
+                info.jsonStringId = fieldAccessor.GetValue<uint32_t>().value();
             } else if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
                 info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
             } else if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
                 info.hasTSTypes = fieldAccessor.GetValue<uint8_t>().value() != 0;
             } else if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
                 info.typeSummaryOffset = fieldAccessor.GetValue<uint32_t>().value();
+            } else if (std::strlen(fieldName) > PACKAGE_NAME_LEN &&
+                       std::strncmp(fieldName, PACKAGE_NAME, PACKAGE_NAME_LEN) == 0) {
+                info.npmPackageName = fieldName + PACKAGE_NAME_LEN;
             }
         });
-        if (hasCjsFiled) {
+        if (hasCjsFiled || hasJsonFiled) {
+            CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
             jsRecordInfo_.insert({ParseEntryPoint(desc), info});
         }
     }
@@ -176,11 +207,11 @@ MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
 bool JSPandaFile::IsModule(const CString &recordName) const
 {
     if (IsBundlePack()) {
-        return jsRecordInfo_.begin()->second.moduleRecordIdx == -1 ? false : true;
+        return jsRecordInfo_.begin()->second.moduleRecordIdx != -1;
     }
     auto info = jsRecordInfo_.find(recordName);
     if (info != jsRecordInfo_.end()) {
-        return info->second.moduleRecordIdx == -1 ? false : true;
+        return info->second.moduleRecordIdx != -1;
     }
     LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
     UNREACHABLE();
@@ -199,8 +230,40 @@ bool JSPandaFile::IsCjs(const CString &recordName) const
     UNREACHABLE();
 }
 
+bool JSPandaFile::IsJson(JSThread *thread, const CString &recordName) const
+{
+    if (IsBundlePack()) {
+        return jsRecordInfo_.begin()->second.isJson;
+    }
+    auto info = jsRecordInfo_.find(recordName);
+    if (info != jsRecordInfo_.end()) {
+        return info->second.isJson;
+    }
+    CString message = "find entryPoint failed: " + recordName;
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), false);
+}
+
+CString JSPandaFile::GetJsonStringId(JSThread *thread, const CString &recordName) const
+{
+    if (IsBundlePack()) {
+        StringData sd = GetStringData(EntityId(jsRecordInfo_.begin()->second.jsonStringId));
+        return utf::Mutf8AsCString(sd.data);
+    }
+
+    auto info = jsRecordInfo_.find(recordName);
+    if (info != jsRecordInfo_.end()) {
+        StringData sd = GetStringData(EntityId(info->second.jsonStringId));
+        return utf::Mutf8AsCString(sd.data);
+    }
+    CString message = "find jsonStringId failed: " + recordName;
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), "");
+}
+
 CString JSPandaFile::FindEntryPoint(const CString &recordName) const
 {
+    if (HasRecord(recordName)) {
+        return recordName;
+    }
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     CString entryPoint;
     for (const uint32_t index : classIndexes) {
@@ -210,10 +273,10 @@ CString JSPandaFile::FindEntryPoint(const CString &recordName) const
         }
         panda_file::ClassDataAccessor cda(*pf_, classId);
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (std::strcmp(recordName.c_str(), ParseEntryPoint(desc).c_str()) == 0) {
+        if (recordName == ParseEntryPoint(desc)) {
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
-                panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
+                panda_file::File::StringData sd = GetStringData(fieldNameId);
                 CString fieldName = utf::Mutf8AsCString(sd.data);
                 if (HasRecord(fieldName)) {
                     entryPoint = fieldName;
@@ -227,32 +290,58 @@ CString JSPandaFile::FindEntryPoint(const CString &recordName) const
     return entryPoint;
 }
 
-CString JSPandaFile::ParseOhmUrl(const CString &fileName)
+CString JSPandaFile::ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName)
 {
     CString bundleInstallName(BUNDLE_INSTALL_PATH);
     size_t startStrLen = bundleInstallName.length();
     size_t pos = CString::npos;
 
-    if (fileName.length() > startStrLen && fileName.compare(0, startStrLen, bundleInstallName) == 0) {
+    if (inputFileName.length() > startStrLen && inputFileName.compare(0, startStrLen, bundleInstallName) == 0) {
         pos = startStrLen;
     }
-    CString result = fileName;
+    CString entryPoint;
     if (pos != CString::npos) {
-        result = fileName.substr(pos);
-        pos = result.find('/');
-        if (pos != CString::npos) {
-            result = result.substr(pos + 1);
+        pos = inputFileName.find('/', startStrLen);
+        ASSERT(pos != CString::npos);
+        CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
+        if (moduleName != vm->GetModuleName()) {
+            outFileName = CString(BUNDLE_INSTALL_PATH) + moduleName + CString(MERGE_ABC_ETS_MODULES);
         }
+        entryPoint = vm->GetBundleName() + "/" + inputFileName.substr(startStrLen);
     } else {
         // Temporarily handle the relative path sent by arkui
-        result = MODULE_DEFAULE_ETS + result;
+        entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
     }
-    pos = result.find_last_of(".");
+    pos = entryPoint.rfind(".abc");
     if (pos != CString::npos) {
-        result = result.substr(0, pos);
+        entryPoint = entryPoint.substr(0, pos);
     }
+    return entryPoint;
+}
 
-    return result;
+std::string JSPandaFile::ParseHapPath(const CString &fileName)
+{
+    CString bundleSubInstallName(BUNDLE_SUB_INSTALL_PATH);
+    size_t startStrLen = bundleSubInstallName.length();
+    if (fileName.length() > startStrLen && fileName.compare(0, startStrLen, bundleSubInstallName) == 0) {
+        CString hapPath = fileName.substr(startStrLen);
+        size_t pos = hapPath.find(MERGE_ABC_ETS_MODULES);
+        if (pos != CString::npos) {
+            return hapPath.substr(0, pos).c_str();
+        }
+    }
+    return "";
+}
+
+void JSPandaFile::CroppingRecord(CString &recordName)
+{
+    size_t pos = recordName.find('/');
+    if (pos != CString::npos) {
+        pos = recordName.find('/', pos + 1);
+        if (pos != CString::npos) {
+            recordName = recordName.substr(pos + 1);
+        }
+    }
 }
 
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
@@ -278,7 +367,11 @@ FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
         case panda_file::FunctionKind::ASYNC_NC_FUNCTION:
             kind = FunctionKind::ASYNC_ARROW_FUNCTION;
             break;
+        case panda_file::FunctionKind::CONCURRENT_FUNCTION:
+            kind = FunctionKind::CONCURRENT_FUNCTION;
+            break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return kind;
@@ -310,6 +403,7 @@ FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
             kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return kind;

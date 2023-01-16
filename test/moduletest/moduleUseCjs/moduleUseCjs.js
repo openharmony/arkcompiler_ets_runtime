@@ -22,8 +22,10 @@
 import cjs from "./Cjs"
 import * as ns from "./someArgsCjs"
 import {json, fun} from "./someArgsCjs"
+import "./cjsWithoutExports.js"
 
 print(JSON.stringify(cjs));
 print(JSON.stringify(json));
 fun();
 print(ns.tag);
+ns.con();

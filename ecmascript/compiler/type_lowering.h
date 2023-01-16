@@ -100,7 +100,7 @@ public:
     TypeLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
                  bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))), tsManager_(tsManager),
+          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager),
           enableLog_(enableLog), methodName_(name) {}
 
     ~TypeLowering() = default;
@@ -120,7 +120,7 @@ private:
 
     void Lower(GateRef gate);
     void LowerType(GateRef gate);
-    void LowerTypeCheck(GateRef gate);
+    void LowerPrimitiveTypeCheck(GateRef gate);
     void LowerTypedBinaryOp(GateRef gate);
     void LowerTypeConvert(GateRef gate);
     void LowerTypedUnaryOp(GateRef gate);
@@ -141,11 +141,11 @@ private:
     void LowerTypedAnd(GateRef gate);
     void LowerTypedOr(GateRef gate);
     void LowerTypedXor(GateRef gate);
-    void LowerTypedInc(GateRef gate);
-    void LowerTypedDec(GateRef gate);
-    void LowerTypedNeg(GateRef gate);
-    void LowerTypedNot(GateRef gate);
-    void LowerTypedToBool(GateRef gate);
+    void LowerTypedInc(GateRef gate, GateType value);
+    void LowerTypedDec(GateRef gate, GateType value);
+    void LowerTypedNeg(GateRef gate, GateType value);
+    void LowerTypedNot(GateRef gate, GateType value);
+    void LowerTypedToBool(GateRef gate, GateType value);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
@@ -168,20 +168,32 @@ private:
     void LowerNumberAnd(GateRef gate);
     void LowerNumberOr(GateRef gate);
     void LowerNumberXor(GateRef gate);
-    void LowerNumberInc(GateRef gate);
-    void LowerNumberDec(GateRef gate);
-    void LowerNumberNeg(GateRef gate);
-    void LowerNumberNot(GateRef gate);
-    void LowerNumberToBool(GateRef gate);
+    void LowerNumberInc(GateRef gate, GateType valueType);
+    void LowerNumberDec(GateRef gate, GateType valueType);
+    void LowerNumberNeg(GateRef gate, GateType valueType);
+    void LowerNumberNot(GateRef gate, GateType valueType);
+    void LowerNumberToBool(GateRef gate, GateType valueType);
     void LowerBooleanToBool(GateRef gate);
-    void LowerObjectTypeCheck(GateRef gate, GateRef glue);
-    void LowerClassInstanceCheck(GateRef gate, GateRef glue);
+    void LowerIndexCheck(GateRef gate);
+    void LowerOverflowCheck(GateRef gate);
+    void LowerTypedIncOverflowCheck(GateRef gate);
+    void LowerTypedDecOverflowCheck(GateRef gate);
+    void LowerTypedNegOverflowCheck(GateRef gate);
+    void LowerObjectTypeCheck(GateRef gate);
+    void LowerClassInstanceCheck(GateRef gate);
     void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
+    void LowerArrayCheck(GateRef gate, GateRef glue);
+    void LowerStableArrayCheck(GateRef gate, GateRef glue);
+    void LowerTypedArrayCheck(GateRef gate, GateRef glue);
+    void LowerFloat32ArrayIndexCheck(GateRef gate);
+    void LowerArrayIndexCheck(GateRef gate);
     void LowerNewObjTypeCheck(GateRef gate);
     void LowerLoadProperty(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate, GateRef glue);
+    void LowerLoadArrayLength(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
     void LowerLoadElement(GateRef gate);
+    void LowerArrayLoadElement(GateRef gate);
     void LowerFloat32ArrayLoadElement(GateRef gate);
     void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
     void LowerHeapAllocate(GateRef gate, GateRef glue);
@@ -194,13 +206,11 @@ private:
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 
-    template<OpCode::Op Op>
-    GateRef FastAddOrSubOrMul(GateRef left, GateRef right);
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef ShiftNumber(GateRef left, GateRef right, GateType leftType, GateType rightType);
-    template<OpCode::Op Op>
+    template<OpCode Op>
     GateRef LogicalNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     template<TypedBinOp Op>
     GateRef CompareNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
@@ -210,7 +220,7 @@ private:
     GateRef CompareDouble(GateRef left, GateRef right);
     template<TypedUnOp Op>
     GateRef MonocularNumber(GateRef value, GateType valueType);
-    template<OpCode::Op Op, MachineType Type>
+    template<OpCode Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);
@@ -228,6 +238,10 @@ private:
     GateType GetRightType(GateRef gate);
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef GetFrameState(GateRef gate) const
+    {
+        return acc_.GetFrameState(gate);
+    }
 
     Circuit *circuit_;
     GateAccessor acc_;

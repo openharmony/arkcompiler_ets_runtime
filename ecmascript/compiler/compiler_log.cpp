@@ -34,6 +34,17 @@ CompilerLog::CompilerLog(const std::string &logOpt, bool TraceBC)
     traceBc_ = TraceBC;
 }
 
+void CompilerLog::SetMethodLog(const std::string &fileName, const CString& recordName,
+                               const std::string &methodName, AotMethodLogList *logList)
+{
+    bool enableMethodLog = !NoneMethod();
+    if (CertainMethod()) {
+        enableMethodLog = logList->IncludesMethod(fileName, methodName);
+    }
+    SetEnableMethodLog(enableMethodLog);
+    AddCompiledMethod(methodName, recordName);
+}
+
 bool MethodLogList::IncludesMethod(const std::string &methodName) const
 {
     bool empty = methodName.empty();
@@ -77,6 +88,20 @@ TimeScope::TimeScope(std::string name, std::string methodName, uint32_t methodOf
     : ClockScope(), name_(std::move(name)), methodName_(std::move(methodName)), methodOffset_(methodOffset), log_(log)
 {
     if (log_->GetEnableCompilerLogTime()) {
+        if (log_->nameIndex_.find(name_) == log_->nameIndex_.end()) {
+            log_->nameIndex_[name_] = log_->GetIndex();
+        }
+        startTime_ = ClockScope().GetCurTime();
+    }
+}
+
+TimeScope::TimeScope(std::string name, CompilerLog* log)
+    : ClockScope(), name_(std::move(name)), log_(log)
+{
+    if (log_->GetEnableCompilerLogTime()) {
+        if (log_->nameIndex_.find(name_) == log_->nameIndex_.end()) {
+            log_->nameIndex_[name_] = log_->GetIndex();
+        }
         startTime_ = ClockScope().GetCurTime();
     }
 }
@@ -108,23 +133,29 @@ const std::string TimeScope::GetShortName(const std::string& methodName)
     }
 }
 
+void CompilerLog::Print() const
+{
+    if (compilerLogTime_) {
+        PrintTime();
+    }
+    PrintCompiledMethod();
+}
+
 void CompilerLog::PrintPassTime() const
 {
     double allPassTimeforAllMethods = 0;
     auto myMap = timePassMap_;
-    std::multimap<double, std::string> PassTimeMap;
-    std::map<std::string, double>::iterator it;
-    for (it = myMap.begin(); it != myMap.end(); it++) {
-        PassTimeMap.insert(make_pair(it->second, it->first));
-    }
-    for (auto [key, val] : PassTimeMap) {
-        allPassTimeforAllMethods += key;
+    auto myIndexMap = nameIndex_;
+    std::multimap<int, std::string> PassTimeMap;
+    for (auto it = myMap.begin(); it != myMap.end(); it++) {
+        PassTimeMap.insert(make_pair(myIndexMap[it->first], it->first));
+        allPassTimeforAllMethods += it->second;
     }
     for (auto [key, val] : PassTimeMap) {
         LOG_COMPILER(INFO) << std::setw(PASS_LENS) << val << " Total cost time is "<< std::setw(TIME_LENS)
-                           << key / MILLION_TIME << "ms " << "percentage:"
+                           << myMap[val] / MILLION_TIME << "ms " << "percentage:"
                            << std::fixed << std::setprecision(PERCENT_LENS)
-                           << key / allPassTimeforAllMethods * HUNDRED_TIME << "% ";
+                           << myMap[val] / allPassTimeforAllMethods * HUNDRED_TIME << "% ";
     }
 }
 
@@ -157,6 +188,17 @@ void CompilerLog::PrintTime() const
     PrintMethodTime();
 }
 
+void CompilerLog::PrintCompiledMethod() const
+{
+    LOG_COMPILER(INFO) << " ";
+    LOG_COMPILER(INFO) << " Total number of full compiled methods is: " << compiledMethodSet_.size();
+    for (auto it = compiledMethodSet_.begin(); it != compiledMethodSet_.end(); it++) {
+        LOG_COMPILER(INFO) << " method: " << std::setw(METHOD_LENS) << it->first
+                           << " in record: " << std::setw(RECORD_LENS) << it->second
+                           << " has been full compiled ";
+    }
+}
+
 void CompilerLog::AddMethodTime(const std::string& name, uint32_t id, double time)
 {
     auto methodInfo = std::make_pair(id, name);
@@ -166,6 +208,17 @@ void CompilerLog::AddMethodTime(const std::string& name, uint32_t id, double tim
 void CompilerLog::AddPassTime(const std::string& name, double time)
 {
     timePassMap_[name] += time;
+}
+
+void CompilerLog::AddCompiledMethod(const std::string& name, const CString& recordName)
+{
+    auto info = std::make_pair(name, recordName);
+    compiledMethodSet_.insert(info);
+}
+
+int CompilerLog::GetIndex()
+{
+    return (idx_++);
 }
 // namespace panda::ecmascript::kungfu
 }

@@ -29,6 +29,7 @@ public:
     {
     #if ECMASCRIPT_ENABLE_CAST_CHECK
         if (!(JSTaggedValue(object).IsTypedArray() || JSTaggedValue(object).IsJSTypedArray())) {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     #else

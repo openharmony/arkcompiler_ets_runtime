@@ -71,7 +71,7 @@ JSTaggedValue JSStableArray::Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo
         elements->Set(thread, index, JSTaggedValue::Hole());
     }
     receiver->SetArrayLength(thread, index);
-    return result;
+    return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
 JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
@@ -192,7 +192,7 @@ JSTaggedValue JSStableArray::Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallIn
         elements->Set(thread, index, JSTaggedValue::Hole());
     }
     receiver->SetArrayLength(thread, index);
-    return result;
+    return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
 JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
@@ -372,6 +372,9 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
     uint64_t len = static_cast<uint64_t>(base::ArrayHelper::GetArrayLength(thread, thisObjVal));
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
+    if (array->GetLength() <= k) {
+        return base::BuiltinsBase::GetTaggedBoolean(false);
+    }
     while (k < len) {
         // Elements of thisObjHandle may change.
         array.Update(thisObjHandle->GetElements());

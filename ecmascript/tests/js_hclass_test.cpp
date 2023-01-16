@@ -99,7 +99,7 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     objectClass = factory->NewEcmaHClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
     objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 56U);
-    
+
     objectClass = factory->NewEcmaHClass(JSObject::SIZE + 1, JSType::JS_OBJECT, nullHandle);
     objectSize = objectClass->SizeFromJSHClass(*objectClass);
     EXPECT_EQ(objectSize, 64U);
@@ -131,7 +131,7 @@ HWTEST_F_L0(JSHClassTest, Clone)
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
-  
+
     JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
     // withoutInlinedProperties is false
     JSHandle<JSHClass> cloneClass = JSHClass::Clone(thread, objectClass, false);
@@ -425,7 +425,7 @@ HWTEST_F_L0(JSHClassTest, SetPrototype)
     JSHandle<GlobalEnv> env =vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
     JSHandle<JSTaggedValue> objectFuncPrototype = env->GetObjectFunctionPrototype();
-  
+
     JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
     EXPECT_EQ(objectClass->GetPrototype(), nullHandle.GetTaggedValue());
     objectClass->SetPrototype(thread, objectFuncPrototype);

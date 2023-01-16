@@ -745,13 +745,13 @@ JSHandle<TaggedArray> JSProxy::OwnPropertyKeys(JSThread *thread, const JSHandle<
     info->SetCallArg(targetHandle.GetTaggedValue());
     JSTaggedValue res = JSFunction::Call(info);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-    JSHandle<JSTaggedValue> trap_res_arr(thread, res);
+    JSHandle<JSTaggedValue> trapResArr(thread, res);
 
     // 9.Let trapResult be CreateListFromArrayLike(trapResultArray, «String, Symbol»).
     // 10.ReturnIfAbrupt(trapResult)
     // If trapResult contains any duplicate entries, throw a TypeError exception.
     JSHandle<TaggedArray> trapRes(
-        JSObject::CreateListFromArrayLike<ElementTypes::STRING_AND_SYMBOL>(thread, trap_res_arr));
+        JSObject::CreateListFromArrayLike<ElementTypes::STRING_AND_SYMBOL>(thread, trapResArr));
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
 
     if (trapRes->HasDuplicateEntry()) {

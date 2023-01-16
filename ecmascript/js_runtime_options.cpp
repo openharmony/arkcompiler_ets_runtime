@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_runtime_options.h"
+
 #include <cerrno>
 #include <cstdlib>
 #include <iostream>
 #include <getopt.h>
 
 #include "ecmascript/mem/mem_common.h"
-#include "js_runtime_options.h"
 
 namespace panda::ecmascript {
 const std::string PUBLIC_API COMMON_HELP_HEAD_MSG =
@@ -58,6 +59,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-ark-tools: Enable ark tools to debug. Default: false\n"
     "--trace-bc: enable tracing bytecode for aot runtime. Default: false\n"
     "--trace-deopt: enable tracing deopt for aot runtime. Default: false\n"
+    "--deopt-threshold: set max count which aot function can occur deoptimization. Default: 10\n"
+    "--opt-code-profiler: enable opt code Bytecode Statistics for aot runtime. Default: false\n"
     "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
     "--enable-force-gc: enable force gc when allocating object. Default: true\n"
     "--enable-ic: switch of inline cache. Default: true\n"
@@ -126,6 +129,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"trace-bc", required_argument, nullptr, OPTION_TRACE_BC},
         {"trace-deopt", required_argument, nullptr, OPTION_TRACE_DEOPT},
+        {"deopt-threshold", required_argument, nullptr, OPTION_DEOPT_THRESHOLD},
+        {"opt-code-profiler", required_argument, nullptr, OPTION_OPT_CODE_PROFILER},
         {"enable-cpuprofiler", required_argument, nullptr, OPTION_ENABLE_CPUPROFILER},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
@@ -133,7 +138,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-type-lowering", required_argument, nullptr, OPTION_ENABLE_TYPE_LOWERING},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
-        {"framework-abc-file", required_argument, nullptr, OPTION_FRAMEWORK_ABC_FILE},
         {"gcThreadNum", required_argument, nullptr, OPTION_GC_THREADNUM},
         {"heap-size-limit", required_argument, nullptr, OPTION_HEAP_SIZE_LIMIT},
         {"help", no_argument, nullptr, OPTION_HELP},
@@ -155,7 +159,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"print-any-types", required_argument, nullptr, OPTION_PRINT_ANY_TYPES},
         {"reloc-mode", required_argument, nullptr, OPTION_RELOCATION_MODE},
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
-        {"snapshot-file", required_argument, nullptr, OPTION_SNAPSHOT_FILE},
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
         {"stub-file", required_argument, nullptr, OPTION_STUB_FILE},
         {"target-triple", required_argument, nullptr, OPTION_TARGET_TRIPLE},
@@ -280,6 +283,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_OPT_CODE_PROFILER:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetOptCodeProfiler(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_ENABLE_CPUPROFILER:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -319,9 +330,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
-                break;
-            case OPTION_FRAMEWORK_ABC_FILE:
-                SetFrameworkAbcFile(optarg);
                 break;
             case OPTION_GC_THREADNUM:
                 ret = ParseUint32Param("gcThreadNum", &argUint32);
@@ -465,9 +473,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
-                break;
-            case OPTION_SNAPSHOT_FILE:
-                SetSnapshotFile(optarg);
                 break;
             case OPTION_STARTUP_TIME:
                 ret = ParseBoolParam(&argBool);

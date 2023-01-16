@@ -270,7 +270,7 @@ OperationResult JSAPILinkedList::GetProperty(JSThread *thread, const JSHandle<JS
                                                                         JSTaggedValue::Exception(),
                                                                         PropertyMetaData(false)));
     }
-    
+
     return OperationResult(thread, doubleList->Get(index), PropertyMetaData(false));
 }
 

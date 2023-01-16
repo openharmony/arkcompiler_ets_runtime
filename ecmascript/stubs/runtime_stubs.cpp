@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/frames.h"
@@ -34,6 +35,7 @@
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_proxy.h"
@@ -359,10 +361,16 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_end(args);
 }
 
-void RuntimeStubs::DebugPrintInstruction([[maybe_unused]]uintptr_t argGlue, const uint8_t *pc)
+void RuntimeStubs::DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc)
 {
     BytecodeInstruction inst(pc);
     LOG_INTERPRETER(DEBUG) << inst;
+}
+
+void RuntimeStubs::Comment(uintptr_t argStr)
+{
+    std::string str(reinterpret_cast<char *>(argStr));
+    LOG_ECMA(DEBUG) << str;
 }
 
 void RuntimeStubs::PGOProfiler(uintptr_t argGlue, uintptr_t func)
@@ -379,6 +387,7 @@ void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
     LOG_FULL(FATAL) << result;
     va_end(args);
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -429,7 +438,7 @@ DEF_RUNTIME_STUBS(Exp)
             return JSTaggedValue(base::NAN_VALUE).GetRawData();
         }
         if ((doubleBase == 0 &&
-            ((bit_cast<uint64_t>(doubleBase)) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK) &&
+            ((base::bit_cast<uint64_t>(doubleBase)) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK) &&
             std::isfinite(doubleExponent) && base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent &&
             base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF ==  // 2 : half
             (doubleExponent / 2)) {  // 2 : half
@@ -561,8 +570,8 @@ DEF_RUNTIME_STUBS(AsyncFunctionResolveOrReject)
     RUNTIME_STUBS_HEADER(AsyncFunctionResolveOrReject);
     JSHandle<JSTaggedValue> asyncFuncObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSTaggedValue is_resolve = GetArg(argv, argc, 2);  // 2: means the second parameter
-    return RuntimeAsyncFunctionResolveOrReject(thread, asyncFuncObj, value, is_resolve.IsTrue()).GetRawData();
+    JSTaggedValue isResolve = GetArg(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeAsyncFunctionResolveOrReject(thread, asyncFuncObj, value, isResolve.IsTrue()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(AsyncGeneratorResolve)
@@ -858,7 +867,7 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
-    JSHandle<JSTaggedValue> module =  GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
     return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
                                         static_cast<uint16_t>(methodId.GetInt()),
                                         static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
@@ -896,7 +905,10 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     thread->CheckSafepoint();
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
-    if (profileTypeInfo == JSTaggedValue::Undefined()) {
+    if (profileTypeInfo.IsUndefined()) {
+        if (thread->IsPGOProfilerEnable()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->Sample(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
+        }
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();
@@ -1017,7 +1029,7 @@ DEF_RUNTIME_STUBS(UpFrame)
 {
     RUNTIME_STUBS_HEADER(UpFrame);
     FrameHandler frameHandler(thread);
-    uint32_t pcOffset = panda_file::INVALID_OFFSET;
+    uint32_t pcOffset = INVALID_INDEX;
     for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             thread->SetCurrentFrame(frameHandler.GetSp());
@@ -1025,8 +1037,8 @@ DEF_RUNTIME_STUBS(UpFrame)
             return JSTaggedValue(static_cast<uint64_t>(0)).GetRawData();
         }
         auto method = frameHandler.GetMethod();
-        pcOffset = InterpreterAssembly::FindCatchBlock(method, frameHandler.GetBytecodeOffset());
-        if (pcOffset != panda_file::INVALID_OFFSET) {
+        pcOffset = method->FindCatchBlock(frameHandler.GetBytecodeOffset());
+        if (pcOffset != INVALID_INDEX) {
             thread->SetCurrentFrame(frameHandler.GetSp());
             thread->SetLastFp(frameHandler.GetFp());
             uintptr_t pc = reinterpret_cast<uintptr_t>(method->GetBytecodeArray() + pcOffset);
@@ -1688,6 +1700,9 @@ DEF_RUNTIME_STUBS(ThrowStackOverflowException)
 {
     RUNTIME_STUBS_HEADER(ThrowStackOverflowException);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
+    // Multi-thread could cause stack-overflow-check failed too,
+    // so check thread here to distinguish it with the actual stack overflow.
+    ecmaVm->CheckThread();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", false);
     if (LIKELY(!thread->HasPendingException())) {
@@ -1746,14 +1761,6 @@ DEF_RUNTIME_STUBS(OptGetUnmapedArgs)
     return RuntimeOptGetUnmapedArgs(thread, actualNumArgs.GetInt()).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(OptNewLexicalEnv)
-{
-    RUNTIME_STUBS_HEADER(OptNewLexicalEnv);
-    JSTaggedValue numVars = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> currentLexEnv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    return RuntimeOptNewLexicalEnv(thread, static_cast<uint16_t>(numVars.GetInt()), currentLexEnv).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(OptNewLexicalEnvWithName)
 {
     RUNTIME_STUBS_HEADER(OptNewLexicalEnvWithName);
@@ -1764,15 +1771,6 @@ DEF_RUNTIME_STUBS(OptNewLexicalEnvWithName)
     uint16_t numVars = static_cast<uint16_t>(taggedNumVars.GetInt());
     uint16_t scopeId = static_cast<uint16_t>(taggedScopeId.GetInt());
     return RuntimeOptNewLexicalEnvWithName(thread, numVars, scopeId, currentLexEnv, func).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(OptPopLexicalEnv)
-{
-    RUNTIME_STUBS_HEADER(OptPopLexicalEnv);
-    JSTaggedValue currentLexenv = RuntimeOptGetLexEnv(thread);
-    JSTaggedValue parentLexenv = LexicalEnv::Cast(currentLexenv.GetTaggedObject())->GetParentEnv();
-    RuntimeOptSetLexEnv(thread, parentLexenv);
-    return JSTaggedValue::VALUE_HOLE;
 }
 
 DEF_RUNTIME_STUBS(OptCopyRestArgs)
@@ -1814,6 +1812,16 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     auto ecmaOpcode = GetArg(argv, argc, 0).GetInt();
     std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
     LOG_ECMA(INFO) << "aot slowpath " << result;
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ProfileOptimizedCode)
+{
+    RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
+    EcmaOpcode ecmaOpcode = static_cast<EcmaOpcode>(GetArg(argv, argc, 0).GetInt());
+    OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 1).GetInt());
+    OptCodeProfiler *profiler = thread->GetEcmaVM()->GetOptCodeProfiler();
+    profiler->Update(ecmaOpcode, mode);
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -1911,7 +1919,8 @@ DEF_RUNTIME_STUBS(SlowFlattenString)
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
 }
 
-JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]]uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr)
+JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,
+                                               JSTaggedValue *argvPtr)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1927,7 +1936,7 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
                                            JSTaggedType key, int32_t num)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    auto cls  = reinterpret_cast<JSHClass *>(hclass);
+    auto cls = reinterpret_cast<JSHClass *>(hclass);
     JSTaggedValue propKey = JSTaggedValue(key);
     auto layoutInfo = LayoutInfo::Cast(cls->GetLayout().GetTaggedObject());
     PropertiesCache *cache = thread->GetPropertiesCache();
@@ -1937,6 +1946,36 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
         cache->Set(cls, propKey, index);
     }
     return index;
+}
+
+JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
+    FrameIterator it(current, thread);
+    ASSERT(it.IsOptimizedFrame());
+    it.Advance<GCVisitedFlag::VISITED>();
+    ASSERT(it.IsOptimizedJSFunctionFrame());
+    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+    return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
+}
+
+void RuntimeStubs::OptSetLexicalEnv(uintptr_t argGlue, JSTaggedType lexicalEnv)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    RuntimeOptSetLexEnvNoGC(thread, JSTaggedValue(lexicalEnv));
+}
+
+void RuntimeStubs::OptPopLexicalEnv(uintptr_t argGlue)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
+    FrameIterator it(current, thread);
+    ASSERT(it.IsOptimizedJSFunctionFrame());
+    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+    JSTaggedValue currentLexenv = optimizedJSFunctionFrame->GetEnv();
+    JSTaggedValue parentLexenv = LexicalEnv::Cast(currentLexenv.GetTaggedObject())->GetParentEnv();
+    optimizedJSFunctionFrame->SetEnv(parentLexenv);
 }
 
 JSTaggedType RuntimeStubs::FloatMod(double x, double y)
@@ -1987,7 +2026,7 @@ int32_t RuntimeStubs::DoubleToInt(double x)
     return base::NumberHelper::DoubleToInt(x, base::INT32_BITS);
 }
 
-void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue,
+void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset)
 {
     Region *region = Region::ObjectAddressToRange(object);
@@ -1995,7 +2034,7 @@ void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]]uintptr_t argGlue,
     return region->InsertOldToNewRSet(slotAddr);
 }
 
-void RuntimeStubs::MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
+void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset, TaggedObject *value)
 {
     uintptr_t slotAddr = object + offset;
@@ -2007,7 +2046,7 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]]uintptr_t argGlue,
     Barriers::Update(slotAddr, objectRegion, value, valueRegion);
 }
 
-void RuntimeStubs::StoreBarrier([[maybe_unused]]uintptr_t argGlue,
+void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset, TaggedObject *value)
 {
     uintptr_t slotAddr = object + offset;
@@ -2032,6 +2071,21 @@ bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
 {
     return BigInt::Equal(JSTaggedValue(left), JSTaggedValue(right));
+}
+
+double RuntimeStubs::TimeClip(double time)
+{
+    return JSDate::TimeClip(time);
+}
+
+double RuntimeStubs::SetDateValues(double year, double month, double day)
+{
+    if (std::isnan(year) || !std::isfinite(year) || std::isnan(month) || !std::isfinite(month) || std::isnan(day) ||
+        !std::isfinite(day)) {
+        return base::NAN_VALUE;
+    }
+
+    return JSDate::SetDateValues(static_cast<int64_t>(year), static_cast<int64_t>(month), static_cast<int64_t>(day));
 }
 
 JSTaggedValue RuntimeStubs::NewObject(EcmaRuntimeCallInfo *info)

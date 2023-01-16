@@ -60,6 +60,11 @@ inline GateRef StubBuilder::Int64(int64_t value)
     return env_->GetBuilder()->Int64(value);
 }
 
+inline GateRef StubBuilder::StringPtr(const std::string &str)
+{
+    return env_->GetBuilder()->StringPtr(str);
+}
+
 inline GateRef StubBuilder::IntPtr(int64_t value)
 {
     return env_->Is32Bit() ? Int32(value) : Int64(value);
@@ -209,6 +214,12 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
 {
     SavePcIfNeeded(glue);
     GateRef result = env_->GetBuilder()->CallStub(glue, index, args);
+    return result;
+}
+
+inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew)
+{
+    GateRef result = env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew);
     return result;
 }
 
@@ -489,7 +500,7 @@ inline GateRef StubBuilder::IntPtrLSR(GateRef x, GateRef y)
     return env_->GetBuilder()->IntPtrLSR(x, y);
 }
 
-template<OpCode::Op Op, MachineType Type>
+template<OpCode Op, MachineType Type>
 inline GateRef StubBuilder::BinaryOp(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->BinaryOp<Op, Type>(x, y);
@@ -589,7 +600,17 @@ inline GateRef StubBuilder::TaggedIsWeak(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsPrototypeHandler(GateRef x)
 {
-    return HclassIsPrototypeHandler(LoadHClass(x));
+    return env_->GetBuilder()->TaggedIsPrototypeHandler(x);
+}
+
+inline GateRef StubBuilder::TaggedIsStoreTSHandler(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsStoreTSHandler(x);
+}
+
+inline GateRef StubBuilder::TaggedIsTransWithProtoHandler(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsTransWithProtoHandler(x);
 }
 
 inline GateRef StubBuilder::TaggedIsTransitionHandler(GateRef x)
@@ -666,6 +687,11 @@ inline GateRef StubBuilder::IntToTaggedInt(GateRef x)
 {
     GateRef val = SExtInt32ToInt64(x);
     return env_->GetBuilder()->ToTaggedInt(val);
+}
+
+inline GateRef StubBuilder::Int64ToTaggedInt(GateRef x)
+{
+    return env_->GetBuilder()->ToTaggedInt(x);
 }
 
 inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
@@ -888,13 +914,19 @@ inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
 
 inline GateRef StubBuilder::IsJSHClass(GateRef obj)
 {
-    return env_->GetBuilder()->IsJSHClass(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSHClass), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->IsJSHClass(obj);
+    EXITENTRY();
+    return res;
 }
 
 // object operation
 inline GateRef StubBuilder::LoadHClass(GateRef object)
 {
-    return env_->GetBuilder()->LoadHClass(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(LoadHClass), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->LoadHClass(object);
+    EXITENTRY();
+    return res;
 }
 
 inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
@@ -909,7 +941,10 @@ inline GateRef StubBuilder::GetObjectType(GateRef hClass)
 
 inline GateRef StubBuilder::IsDictionaryMode(GateRef object)
 {
-    return env_->GetBuilder()->IsDictionaryMode(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsDictionaryMode), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->IsDictionaryMode(object);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsDictionaryModeByHClass(GateRef hClass)
@@ -933,22 +968,34 @@ inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
 
 inline GateRef StubBuilder::IsClassConstructor(GateRef object)
 {
-    return env_->GetBuilder()->IsClassConstructor(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsClassConstructor), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->IsClassConstructor(object);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsClassPrototype(GateRef object)
 {
-    return env_->GetBuilder()->IsClassPrototype(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsClassPrototype), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->IsClassPrototype(object);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsExtensible(GateRef object)
 {
-    return env_->GetBuilder()->IsExtensible(object);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsExtensible), TaggedIsHeapObject(object));
+    GateRef res = env_->GetBuilder()->IsExtensible(object);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
-    return env_->GetBuilder()->TaggedObjectIsEcmaObject(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsEcmaObject), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->TaggedObjectIsEcmaObject(obj);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
@@ -959,7 +1006,10 @@ inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
 
 inline GateRef StubBuilder::IsJSObject(GateRef obj)
 {
-    return env_->GetBuilder()->IsJSObject(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSObject), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->IsJSObject(obj);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsJSFunctionBase(GateRef obj)
@@ -997,7 +1047,10 @@ inline GateRef StubBuilder::IsSymbol(GateRef obj)
 
 inline GateRef StubBuilder::IsString(GateRef obj)
 {
-    return env_->GetBuilder()->TaggedObjectIsString(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsJSObject), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->TaggedObjectIsString(obj);
+    EXITENTRY();
+    return res;
 }
 
 inline GateRef StubBuilder::IsLineString(GateRef obj)
@@ -1035,6 +1088,12 @@ inline GateRef StubBuilder::IsJsArray(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+}
+
+inline GateRef StubBuilder::IsByteArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::BYTE_ARRAY)));
 }
 
 inline GateRef StubBuilder::IsJSAPIVector(GateRef obj)
@@ -1179,6 +1238,18 @@ inline GateRef StubBuilder::GetPrototypeHandlerHandlerInfo(GateRef object)
     return Load(VariableType::JS_ANY(), object, handlerInfoOffset);
 }
 
+inline GateRef StubBuilder::GetStoreTSHandlerHolder(GateRef object)
+{
+    GateRef holderOffset = IntPtr(StoreTSHandler::HOLDER_OFFSET);
+    return Load(VariableType::JS_ANY(), object, holderOffset);
+}
+
+inline GateRef StubBuilder::GetStoreTSHandlerHandlerInfo(GateRef object)
+{
+    GateRef handlerInfoOffset = IntPtr(StoreTSHandler::HANDLER_INFO_OFFSET);
+    return Load(VariableType::JS_ANY(), object, handlerInfoOffset);
+}
+
 inline GateRef StubBuilder::GetHasChanged(GateRef object)
 {
     GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);
@@ -1285,7 +1356,7 @@ inline void StubBuilder::SetValueToPropertyBox(GateRef glue, GateRef obj, GateRe
     Store(VariableType::JS_ANY(), glue, obj, valueOffset, value);
 }
 
-inline GateRef StubBuilder::GetTransitionFromHClass(GateRef obj)
+inline GateRef StubBuilder::GetTransitionHClass(GateRef obj)
 {
     GateRef transitionHClassOffset = IntPtr(TransitionHandler::TRANSITION_HCLASS_OFFSET);
     return Load(VariableType::JS_POINTER(), obj, transitionHClassOffset);
@@ -1294,6 +1365,18 @@ inline GateRef StubBuilder::GetTransitionFromHClass(GateRef obj)
 inline GateRef StubBuilder::GetTransitionHandlerInfo(GateRef obj)
 {
     GateRef handlerInfoOffset = IntPtr(TransitionHandler::HANDLER_INFO_OFFSET);
+    return Load(VariableType::JS_ANY(), obj, handlerInfoOffset);
+}
+
+inline GateRef StubBuilder::GetTransWithProtoHClass(GateRef obj)
+{
+    GateRef transitionHClassOffset = IntPtr(TransWithProtoHandler::TRANSITION_HCLASS_OFFSET);
+    return Load(VariableType::JS_POINTER(), obj, transitionHClassOffset);
+}
+
+inline GateRef StubBuilder::GetTransWithProtoHandlerInfo(GateRef obj)
+{
+    GateRef handlerInfoOffset = IntPtr(TransWithProtoHandler::HANDLER_INFO_OFFSET);
     return Load(VariableType::JS_ANY(), obj, handlerInfoOffset);
 }
 
@@ -1410,6 +1493,7 @@ inline GateRef StubBuilder::IsProtoTypeHClass(GateRef hClass)
 inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
     GateRef value, GateRef attrOffset, VariableType type)
 {
+    ASM_ASSERT_WITH_GLUE(GET_MESSAGE_STRING_ID(IsNotDictionaryMode), BoolNot(IsDictionaryModeByHClass(hClass)), glue);
     GateRef bitfield = Load(VariableType::INT32(), hClass,
                             IntPtr(JSHClass::BIT_FIELD1_OFFSET));
     GateRef inlinedPropsStart = Int32And(Int32LSR(bitfield,
@@ -1420,6 +1504,7 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
 
     // NOTE: need to translate MarkingBarrier
     Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
+    EXITENTRY();
 }
 
 inline GateRef StubBuilder::GetPropertyInlinedProps(GateRef obj, GateRef hClass,
@@ -1443,6 +1528,15 @@ inline GateRef StubBuilder::GetNumberOfPropsFromHClass(GateRef hClass)
     return Int32And(Int32LSR(bitfield,
         Int32(JSHClass::NumberOfPropsBits::START_BIT)),
         Int32((1LLU << JSHClass::NumberOfPropsBits::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::IsAOTHClass(GateRef hClass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    return Int32NotEqual(Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::IsAOTBit::START_BIT)),
+        Int32((1LU << JSHClass::IsAOTBit::SIZE) - 1)),
+        Int32(0));
 }
 
 inline void StubBuilder::SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value)
@@ -1566,9 +1660,24 @@ inline GateRef StubBuilder::GetDoubleOfTDouble(GateRef x)
     return env_->GetBuilder()->GetDoubleOfTDouble(x);
 }
 
+inline GateRef StubBuilder::GetDoubleOfTNumber(GateRef x)
+{
+    return env_->GetBuilder()->GetDoubleOfTNumber(x);
+}
+
 inline GateRef StubBuilder::LoadObjectFromWeakRef(GateRef x)
 {
     return env_->GetBuilder()->PtrAdd(x, IntPtr(-JSTaggedValue::TAG_WEAK));
+}
+
+inline GateRef StubBuilder::ExtFloat32ToDouble(GateRef x)
+{
+    return env_->GetBuilder()->ExtFloat32ToDouble(x);
+}
+
+inline GateRef StubBuilder::ChangeInt32ToFloat32(GateRef x)
+{
+    return env_->GetBuilder()->ChangeInt32ToFloat32(x);
 }
 
 inline GateRef StubBuilder::ChangeInt32ToFloat64(GateRef x)
@@ -1596,6 +1705,11 @@ inline GateRef StubBuilder::Int64ToTaggedPtr(GateRef x)
     return env_->GetBuilder()->Int64ToTaggedPtr(x);
 }
 
+inline GateRef StubBuilder::CastInt32ToFloat32(GateRef x)
+{
+    return env_->GetBuilder()->CastInt32ToFloat32(x);
+}
+
 inline GateRef StubBuilder::CastInt64ToFloat64(GateRef x)
 {
     return env_->GetBuilder()->CastInt64ToFloat64(x);
@@ -1614,6 +1728,16 @@ inline GateRef StubBuilder::SExtInt16ToInt64(GateRef x)
 inline GateRef StubBuilder::SExtInt8ToInt64(GateRef x)
 {
     return env_->GetBuilder()->SExtInt8ToInt64(x);
+}
+
+inline GateRef StubBuilder::SExtInt8ToInt32(GateRef x)
+{
+    return env_->GetBuilder()->SExtInt8ToInt32(x);
+}
+
+inline GateRef StubBuilder::SExtInt16ToInt32(GateRef x)
+{
+    return env_->GetBuilder()->SExtInt16ToInt32(x);
 }
 
 inline GateRef StubBuilder::SExtInt1ToInt64(GateRef x)
@@ -1730,7 +1854,10 @@ inline GateRef StubBuilder::IsCallableFromBitField(GateRef bitfield)
 
 inline GateRef StubBuilder::IsCallable(GateRef obj)
 {
-    return env_->GetBuilder()->IsCallable(obj);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), TaggedIsHeapObject(obj));
+    GateRef res = env_->GetBuilder()->IsCallable(obj);
+    EXITENTRY();
+    return res;
 }
 
 // GetOffset func in property_attribute.h
@@ -2055,6 +2182,23 @@ inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHa
 inline GateRef StubBuilder::TryGetHashcodeFromString(GateRef string)
 {
     return env_->GetBuilder()->TryGetHashcodeFromString(string);
+}
+
+inline void StubBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible)
+{
+    GateRef jsHclass = LoadHClass(obj);
+    GateRef bitfield = Load(VariableType::INT32(), jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef boolVal = Boolean(isExtensible);
+    GateRef boolToInt32 = ZExtInt1ToInt32(boolVal);
+    GateRef encodeValue = Int32LSL(boolToInt32, Int32(JSHClass::ExtensibleBit::START_BIT));
+    GateRef mask = Int32(((1LU << JSHClass::ExtensibleBit::SIZE) - 1) << JSHClass::ExtensibleBit::START_BIT);
+    bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
+    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
+}
+
+inline void StubBuilder::Comment(GateRef glue, const std::string &str)
+{
+    CallNGCRuntime(glue, RTSTUB_ID(Comment), { StringPtr(str) });
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_JSMAP_H
 #define ECMASCRIPT_JSMAP_H
 
-#include <limits>
-
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value-inl.h"
 

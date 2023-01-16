@@ -26,7 +26,6 @@
 #include "ecmascript/platform/map.h"
 
 #include "libpandabase/os/mutex.h"
-#include "libpandabase/utils/aligned_storage.h"
 
 #include "securec.h"
 
@@ -261,7 +260,7 @@ public:
 
     bool InNonMovableSpace() const
     {
-        return packedData_.flags_.spaceFlag_  == RegionSpaceFlag::IN_NON_MOVABLE_SPACE;
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_NON_MOVABLE_SPACE;
     }
 
     bool InSnapshotSpace() const
@@ -272,6 +271,11 @@ public:
     bool InReadOnlySpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
+    }
+
+    bool InAppSpawnSpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_APPSPAWN_SPACE;
     }
 
     bool InHeapSpace() const
@@ -545,8 +549,8 @@ private:
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingRSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
-    uint64_t wasted_;
-    os::memory::Mutex lock_;
+    alignas(16) os::memory::Mutex lock_;  // 16: 16 bytes align to ensure Mutex occupies 16 bytes
+    alignas(16) uint64_t wasted_;         // 16: 16 bytes align to ensure Mutex occupies 16 bytes
 
     friend class Snapshot;
     friend class SnapshotProcessor;

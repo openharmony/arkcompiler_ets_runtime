@@ -17,8 +17,6 @@
 
 #include "ecmascript/base/number_helper.h"
 
-#include "libpandabase/os/time.h"
-
 namespace panda::ecmascript {
 // --------------------------WaiterList------------------------------
 void WaiterList::AddNode(WaiterListNode *node)
@@ -40,7 +38,7 @@ void WaiterList::DeleteNode(WaiterListNode *node)
     auto iter = locationListMap_.find(node->waitPointer_);
     ASSERT(iter != locationListMap_.end());
     WaiterListNode *temp = iter->second.pHead;
-    [[maybe_unused]] bool flag = false;
+    bool flag = false;
     while (temp != nullptr) {
         if (temp == node) {
             flag = true;

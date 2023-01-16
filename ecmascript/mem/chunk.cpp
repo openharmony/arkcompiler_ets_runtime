@@ -24,7 +24,7 @@ Area *Chunk::NewArea(size_t size)
 {
     auto area = allocator_->AllocateArea(size);
     if (area == nullptr) {
-        LOG_ECMA_MEM(FATAL) << "OOM Chunk::NewArea area is nullptr";
+        LOG_ECMA_MEM(FATAL) << "OOM Chunk : NewArea area is nullptr";
         UNREACHABLE();
     }
     areaList_.AddNode(area);
@@ -53,13 +53,13 @@ uintptr_t Chunk::Expand(size_t size)
     }
 
     if (newSize > static_cast<size_t>(std::numeric_limits<int>::max())) {
-        LOG_ECMA_MEM(FATAL) << "OOM chunk";
+        LOG_ECMA_MEM(FATAL) << "OOM chunk : newSize is "<< newSize << ", size is " << size;
         UNREACHABLE();
     }
 
     Area *area = NewArea(newSize);
     if (area == nullptr) {
-        LOG_ECMA_MEM(FATAL) << "OOM chunk";
+        LOG_ECMA_MEM(FATAL) << "OOM chunk : NewArea area is nullptr";
         UNREACHABLE();
     }
     uintptr_t result = AlignUp(area->GetBegin(), MEM_ALIGN);

@@ -19,6 +19,8 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_array.h"
@@ -31,37 +33,37 @@ using namespace panda::ecmascript;
 void AddStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    Return(FastAdd(x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Add(glue, x, y));
 }
 
 void SubStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    Return(FastSub(x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Sub(glue, x, y));
 }
 
 void MulStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    Return(FastMul(x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Mul(glue, x, y));
 }
 
 void DivStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    (void)glue;
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2);
-    Return(FastDiv(x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Div(glue, x, y));
 }
 
 void ModStubBuilder::GenerateCircuit()
@@ -69,7 +71,8 @@ void ModStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef x = TaggedArgument(1);
     GateRef y = TaggedArgument(2); // 2: 3rd argument
-    Return(FastMod(glue, x, y));
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Mod(glue, x, y));
 }
 
 void TypeOfStubBuilder::GenerateCircuit()
@@ -82,10 +85,203 @@ void TypeOfStubBuilder::GenerateCircuit()
 void EqualStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Equal(glue, x, y));
+}
+
+void NotEqualStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.NotEqual(glue, x, y));
+}
+
+void LessStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Less(glue, x, y));
+}
+
+void LessEqStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.LessEq(glue, x, y));
+}
+
+void GreaterStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Greater(glue, x, y));
+}
+
+void GreaterEqStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.GreaterEq(glue, x, y));
+}
+
+void ShlStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Shl(glue, x, y));
+}
+
+void ShrStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Shr(glue, x, y));
+}
+
+void AshrStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Ashr(glue, x, y));
+}
+
+void AndStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.And(glue, x, y));
+}
+
+void OrStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Or(glue, x, y));
+}
+
+void XorStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Xor(glue, x, y));
+}
+
+void InstanceofStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef object = TaggedArgument(1);
+    GateRef target = TaggedArgument(2); // 2: 3rd argument
+    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th pars
+    GateRef slotId = Int32Argument(4); // 4 : 5th pars
+    Return(InstanceOf(glue, object, target, profileTypeInfo, slotId));
+}
+
+void IncStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Inc(glue, x));
+}
+
+void DecStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Dec(glue, x));
+}
+
+void NegStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Neg(glue, x));
+}
+
+void NotStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.Not(glue, x));
+}
+
+void ToBooleanStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
-    GateRef y = TaggedArgument(2);
-    Return(FastEqual(x, y));
+    Return(FastToBoolean(x));
+}
+
+void NewLexicalEnvStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    GateRef glue = PtrArgument(0);
+    GateRef parent = TaggedArgument(1);
+    GateRef numVars = Int32Argument(2); /* 2 : 3rd parameter is index */
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    Label afterNew(env);
+    newBuilder.NewLexicalEnv(&result, &afterNew, numVars, parent);
+    Bind(&afterNew);
+    CallNGCRuntime(glue, RTSTUB_ID(OptSetLexicalEnv), {glue, *result});
+    Return(*result);
+}
+
+void GetUnmapedArgsStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    GateRef glue = PtrArgument(0);
+    GateRef numArgs = Int32Argument(1);
+
+    DEFVARIABLE(argumentsList, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(argumentsObj, VariableType::JS_ANY(), Hole());
+    Label afterArgumentsList(env);
+    Label newArgumentsObj(env);
+    Label exit(env);
+
+    GateRef argv = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
+    GateRef args = PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
+    GateRef actualArgc = Int32Sub(numArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
+    GateRef startIdx = Int32(0);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    newBuilder.NewArgumentsList(&argumentsList, &afterArgumentsList, args, startIdx, actualArgc);
+    Bind(&afterArgumentsList);
+    Branch(TaggedIsException(*argumentsList), &exit, &newArgumentsObj);
+    Bind(&newArgumentsObj);
+    newBuilder.NewArgumentsObj(&argumentsObj, &exit, *argumentsList, actualArgc);
+    Bind(&exit);
+    Return(*argumentsObj);
 }
 
 void GetPropertyByIndexStubBuilder::GenerateCircuit()
@@ -427,6 +623,23 @@ void SetValueWithBarrierStubBuilder::GenerateCircuit()
     GateRef value = TaggedArgument(3); // 3 : 4th para
     SetValueWithBarrier(glue, obj, offset, value);
     Return();
+}
+
+void NewThisObjectCheckedStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef ctor = TaggedArgument(1);
+    NewObjectStubBuilder newBuilder(this);
+    Return(newBuilder.NewThisObjectChecked(glue, ctor));
+}
+
+void ConstructorCheckStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef ctor = TaggedArgument(1);
+    GateRef value = TaggedArgument(2); // 2 : 3rd para
+    GateRef thisObj = TaggedArgument(3); // 3 : 4th para
+    Return(ConstructorCheck(glue, ctor, value, thisObj));
 }
 
 void JsProxyCallInternalStubBuilder::GenerateCircuit()

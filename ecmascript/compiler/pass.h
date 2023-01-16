@@ -18,9 +18,9 @@
 
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
+#include "ecmascript/compiler/check_elimination.h"
 #include "ecmascript/compiler/common_stubs.h"
-#include "ecmascript/compiler/guard_eliminating.h"
-#include "ecmascript/compiler/guard_lowering.h"
+#include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
@@ -29,17 +29,16 @@
 #include "ecmascript/compiler/type_inference/type_infer.h"
 #include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/compiler/compiler_log.h"
 
 namespace panda::ecmascript::kungfu {
 class PassInfo;
 
 class PassData {
 public:
-    explicit PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassInfo *info, CompilerLog *log,
-                      std::string methodName, size_t methodInfoIndex = 0,
-                      bool hasTypes = false, const CString &recordName = "",
-                      MethodLiteral *methodLiteral = nullptr, uint32_t methodOffset = 0)
+    PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassInfo *info, CompilerLog *log,
+             std::string methodName, size_t methodInfoIndex = 0,
+             bool hasTypes = false, const CString &recordName = "",
+             MethodLiteral *methodLiteral = nullptr, uint32_t methodOffset = 0)
         : builder_(builder), circuit_(circuit), info_(info), log_(log), methodName_(methodName),
           methodInfoIndex_(methodInfoIndex), hasTypes_(hasTypes), recordName_(recordName),
           methodLiteral_(methodLiteral), methodOffset_(methodOffset)
@@ -239,13 +238,13 @@ public:
     }
 };
 
-class GuardEliminatingPass {
+class CheckEliminationPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("GuardEliminatingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("CheckEliminationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        GuardEliminating(data->GetCircuit(), data->GetCompilerConfig(), enableLog, data->GetMethodName()).Run();
+        CheckElimination(data->GetCircuit(), data->GetCompilerConfig(), enableLog, data->GetMethodName()).Run();
         return true;
     }
 };
@@ -295,17 +294,6 @@ public:
         if (lowering.IsAsyncRelated()) {
             lowering.ProcessAll();
         }
-        return true;
-    }
-};
-
-class GuardLoweringPass {
-public:
-    bool Run(PassData* data)
-    {
-        TimeScope timescope("GuardLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        GuardLowering(data->GetCompilerConfig(), data->GetCircuit(), data->GetMethodName(), enableLog).Run();
         return true;
     }
 };

@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_JS_WEAK_CONTAINER_H
 #define ECMASCRIPT_JS_WEAK_CONTAINER_H
 
-#include <limits>
-
 #include "ecmascript/js_object.h"
 
 namespace panda::ecmascript {

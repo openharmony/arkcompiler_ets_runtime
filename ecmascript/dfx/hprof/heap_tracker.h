@@ -30,7 +30,7 @@ class HeapSnapshot;
 
 class HeapTrackerSample {
 public:
-    explicit HeapTrackerSample(HeapSnapshot *snapshot, double timeInterval, Stream *stream)
+    HeapTrackerSample(HeapSnapshot *snapshot, double timeInterval, Stream *stream)
         : timeInterval_(timeInterval), snapshot_(snapshot), stream_(stream)
     {
     }

@@ -1162,7 +1162,6 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
 // 9.1.12 [[OwnPropertyKeys]] ( )
 JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)
 {
-    [[maybe_unused]] uint32_t elementIndex = 0;
     uint32_t numOfElements = obj->GetNumberOfElements();
     uint32_t keyLen = numOfElements + obj->GetNumberOfKeys();
 
@@ -1177,7 +1176,6 @@ JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHan
 
 JSHandle<TaggedArray> JSObject::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)
 {
-    [[maybe_unused]] uint32_t elementIndex = 0;
     uint32_t numOfElements = obj->GetNumberOfElements();
     uint32_t keyLen = numOfElements + obj->GetNumberOfKeys();
 
@@ -1208,7 +1206,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
     auto result = FastRuntimeStub::SetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
                                                             value.GetTaggedValue());
     if (!result.IsHole()) {
-        return result != JSTaggedValue::Exception();
+        return !result.IsException();
     }
     PropertyDescriptor desc(thread, value, true, true, true);
     return JSTaggedValue::DefineOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), key, desc);
@@ -1221,7 +1219,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
     auto result =
         FastRuntimeStub::SetPropertyByIndex<true>(thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
     if (!result.IsHole()) {
-        return result != JSTaggedValue::Exception();
+        return !result.IsException();
     }
     PropertyDescriptor desc(thread, value, true, true, true);
     return DefineOwnProperty(thread, obj, index, desc);
@@ -1931,6 +1929,7 @@ void JSObject::DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject
         AddElementInternal(thread, obj, index, value, attr);
         return;
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -2037,6 +2036,7 @@ void ECMAObject::SetHash(int32_t hash)
             newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
             Barriers::SetObject<true>(thread, this, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {
@@ -2152,6 +2152,7 @@ void ECMAObject::SetNativePointerFieldCount(int32_t count)
             newArray->Set(thread, count + FUNCTION_EXTRA_INDEX, value);
             Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     } else {

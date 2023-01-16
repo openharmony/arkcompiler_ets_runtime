@@ -109,7 +109,7 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapSetAndGet)
     key.Update(JSTaggedValue::Hole());
     JSAPIHashMap::Set(thread, hashMap, key, value);
     EXPECT_EXCEPTION();
-    
+
     std::string myKey("mykey");
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
@@ -120,7 +120,7 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapSetAndGet)
         JSAPIHashMap::Set(thread, hashMap, key, value);
     }
     EXPECT_EQ(hashMap->GetSize(), NODE_NUMBERS);
-    
+
     // test isEmpty
     EXPECT_EQ(hashMap->IsEmpty(), JSTaggedValue::False());
 
@@ -355,7 +355,7 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIteratorRBTreeTest)
         value.Update(JSTaggedValue(hashCollisionVector[i]));
         JSAPIHashMap::Set(thread, hashMap, key, value);
     }
-    
+
     JSHandle<JSAPIHashMapIterator> hashmapIterator = factory->NewJSAPIHashMapIterator(hashMap, IterationKind::VALUE);
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -386,7 +386,7 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapRBTreeHasValueReplaceGet)
         value.Update(JSTaggedValue(hashCollisionVector[i]));
         JSAPIHashMap::Set(thread, hashMap, key, value);
     }
-    
+
     // test RBTree HasValue
     for (uint32_t i = 0; i < NODE_NUMBERS - 1; i++) {
         value.Update(JSTaggedValue(hashCollisionVector[i]));
@@ -428,7 +428,7 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapRBTreeSetAllRemove)
         JSAPIHashMap::Set(thread, dstHashMap, key, dstValue);
         JSAPIHashMap::Set(thread, srcHashMap, key, srcValue);
     }
-    
+
     // test SetAll and Get
     JSAPIHashMap::SetAll(thread, dstHashMap, srcHashMap);
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {

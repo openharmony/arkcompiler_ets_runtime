@@ -42,7 +42,7 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
     }
 
     bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
-    
+
     // if the result string is small, make a LineString
     if (newLength < TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH) {
         ASSERT(strLeft->IsLineString());
@@ -705,7 +705,7 @@ bool EcmaString::ToTypedArrayIndex(uint32_t *index)
     CVector<uint8_t> buf;
     const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
     uint32_t c = data[0];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    uint64_t n  = 0;
+    uint64_t n = 0;
     if (c == '0') {
         *index = 0;
         return len == 1;
@@ -766,20 +766,55 @@ EcmaString *EcmaString::ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &sr
         std::string res = base::StringHelper::ToLower(u16str);
         return *(factory->NewFromStdString(res));
     } else {
-        const char start = 'A';
-        const char end = 'Z';
-        auto newString = CreateLineString(vm, srcLength, true);
-        Span<uint8_t> data(srcFlat->GetDataUtf8Writable(), srcLength);
-        auto newStringPtr = newString->GetDataUtf8Writable();
-        for (uint32_t index = 0; index < srcLength; ++index) {
-            if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
-                *(newStringPtr + index) = data[index] ^ (1 << 5);   // 1 and 5 means lower to upper or upper to lower
-            } else {
-                *(newStringPtr + index) = data[index];
-            }
-        }
-        return newString;
+        return ConvertUtf8ToLowerOrUpper(vm, srcFlat, true);
     }
+}
+
+/* static */
+EcmaString *EcmaString::TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src)
+{
+    auto srcFlat = JSHandle<EcmaString>(vm->GetJSThread(), Flatten(vm, src));
+    uint32_t srcLength = srcFlat->GetLength();
+    const char start = 'A';
+    const char end = 'Z';
+    uint32_t upperIndex = srcLength;
+    Span<uint8_t> data(srcFlat->GetDataUtf8Writable(), srcLength);
+    for (uint32_t index = 0; index < srcLength; ++index) {
+        if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
+            upperIndex = index;
+            break;
+        }
+    }
+    if (upperIndex == srcLength) {
+        return *src;
+    }
+    return ConvertUtf8ToLowerOrUpper(vm, srcFlat, true, upperIndex);
+}
+
+/* static */
+EcmaString *EcmaString::ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHandle<EcmaString> &srcFlat,
+                                                  bool toLower, uint32_t startIndex)
+{
+    const char start = toLower ? 'A' : 'a';
+    const char end = toLower ? 'Z' : 'z';
+    uint32_t srcLength = srcFlat->GetLength();
+    auto newString = CreateLineString(vm, srcLength, true);
+    Span<uint8_t> data(srcFlat->GetDataUtf8Writable(), srcLength);
+    auto newStringPtr = newString->GetDataUtf8Writable();
+    if (startIndex > 0) {
+        if (memcpy_s(newStringPtr, startIndex * sizeof(uint8_t), data.data(), startIndex * sizeof(uint8_t)) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+    }
+    for (uint32_t index = startIndex; index < srcLength; ++index) {
+        if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
+            *(newStringPtr + index) = data[index] ^ (1 << 5);   // 1 and 5 means lower to upper or upper to lower
+        } else {
+            *(newStringPtr + index) = data[index];
+        }
+    }
+    return newString;
 }
 
 /* static */
@@ -793,19 +828,7 @@ EcmaString *EcmaString::ToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &sr
         std::string res = base::StringHelper::ToUpper(u16str);
         return *(factory->NewFromStdString(res));
     } else {
-        const char start = 'a';
-        const char end = 'z';
-        auto newString = CreateLineString(vm, srcLength, true);
-        Span<uint8_t> data(srcFlat->GetDataUtf8Writable(), srcLength);
-        auto newStringPtr = newString->GetDataUtf8Writable();
-        for (uint32_t index = 0; index < srcLength; ++index) {
-            if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
-                *(newStringPtr + index) = data[index] ^ (1 << 5);   // 1 and 5 means lower to upper or upper to lower
-            } else {
-                *(newStringPtr + index) = data[index];
-            }
-        }
-        return newString;
+        return ConvertUtf8ToLowerOrUpper(vm, srcFlat, false);
     }
 }
 

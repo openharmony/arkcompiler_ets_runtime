@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/js_displaynames.h"
+
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
@@ -73,7 +75,7 @@ HWTEST_F_L0(JSDisplayNamesTest, GetIcuLocaleDisplayNames)
     JSHandle<JSTaggedValue> ctor = env->GetDisplayNamesFunction();
     JSHandle<JSDisplayNames> displayNames =
         JSHandle<JSDisplayNames>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    
+
     icu::Locale icuLocale("en");
     UDisplayContext display_context[] = {UDISPCTX_LENGTH_SHORT};
     icu::LocaleDisplayNames* iculocaledisplaynames =
@@ -83,7 +85,8 @@ HWTEST_F_L0(JSDisplayNamesTest, GetIcuLocaleDisplayNames)
         thread, displayNames, iculocaledisplaynames, JSDisplayNames::FreeIcuLocaleDisplayNames);
     icu::LocaleDisplayNames *resultIculocaledisplaynames = displayNames->GetIcuLocaleDisplayNames();
     EXPECT_TRUE(iculocaledisplaynames == resultIculocaledisplaynames);
-    JSHandle<EcmaString> localeStr = JSLocale::ToLanguageTag(thread, resultIculocaledisplaynames->getLocale());
+    JSHandle<EcmaString> localeStr =
+        base::LocaleHelper::ToLanguageTag(thread, resultIculocaledisplaynames->getLocale());
     EXPECT_STREQ(EcmaStringAccessor(localeStr).ToCString().c_str(), "en");
 }
 
@@ -235,7 +238,7 @@ HWTEST_F_L0(JSDisplayNamesTest, ResolvedOptions)
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
     JSHandle<JSObject> displayOptions = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
     JSHandle<JSTaggedValue> locale(factory->NewFromASCII("zh-Hant"));
-    
+
     std::map<std::string, std::string> displayOptionsProperty {
         { "style", "short" },
         { "type", "region" },
@@ -247,7 +250,7 @@ HWTEST_F_L0(JSDisplayNamesTest, ResolvedOptions)
     SetOptionProperties(thread, displayOptions, displayOptionsProperty);
     JSHandle<JSDisplayNames> initDisplayNames =
         JSDisplayNames::InitializeDisplayNames(thread, displayNames, locale, JSHandle<JSTaggedValue>(displayOptions));
-    
+
     JSDisplayNames::ResolvedOptions(thread, initDisplayNames, displayOptions);
     EXPECT_EQ(JSTaggedValue::SameValue(
         JSObject::GetProperty(thread, displayOptions, styleKey).GetValue(), styleValue), true);

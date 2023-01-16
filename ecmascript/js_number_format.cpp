@@ -37,6 +37,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, StyleOption style)
             result.Update(globalConst->GetHandledUnitString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -60,6 +61,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, CurrencyDisplayOpti
             result.Update(globalConst->GetHandledNameString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -77,6 +79,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, CurrencySignOption 
             result.Update(globalConst->GetHandledAccountingString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -97,6 +100,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, UnitDisplayOption u
             result.Update(globalConst->GetHandledLongString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -120,6 +124,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, NotationOption nota
             result.Update(globalConst->GetHandledCompactString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -137,6 +142,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, CompactDisplayOptio
             result.Update(globalConst->GetHandledLongString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -160,6 +166,7 @@ JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, SignDisplayOption s
             result.Update(globalConst->GetHandledExceptZeroString().GetTaggedValue());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return result;
@@ -281,7 +288,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
         if (EcmaStringAccessor(currencyStr).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "not a utf-8", fractionDigitsOption);
         }
-        std::string currencyCStr = JSLocale::ConvertToStdString(currencyStr);
+        std::string currencyCStr = base::LocaleHelper::ConvertToStdString(currencyStr);
         if (!JSLocale::IsWellFormedCurrencyCode(currencyCStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "not a wellformed code", fractionDigitsOption);
         }
@@ -327,7 +334,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
         if (EcmaStringAccessor(unitStr).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "Unit input is illegal", fractionDigitsOption);
         }
-        std::string str = JSLocale::ConvertToStdString(unitStr);
+        std::string str = base::LocaleHelper::ConvertToStdString(unitStr);
         if (!IsWellFormedUnitIdentifier(str, icuUnit, icuPerUnit)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "Unit input is illegal", fractionDigitsOption);
         }
@@ -355,7 +362,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
     UErrorCode status = U_ZERO_ERROR;
     if (style == StyleOption::CURRENCY) {
         JSHandle<EcmaString> currencyStr = JSHandle<EcmaString>::Cast(currency);
-        std::string currencyCStr = JSLocale::ConvertToStdString(currencyStr);
+        std::string currencyCStr = base::LocaleHelper::ConvertToStdString(currencyStr);
         std::transform(currencyCStr.begin(), currencyCStr.end(), currencyCStr.begin(), toupper);
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSTaggedValue> currencyValue = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(currencyCStr));
@@ -380,6 +387,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
                     uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_FULL_NAME;
                     break;
                 default:
+                    LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
             }
             *icuNumberFormatter = icuNumberFormatter->unitWidth(uNumberUnitWidth);
@@ -428,11 +436,13 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
 // NOLINTNEXTLINE(readability-function-size)
 void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
                                             const JSHandle<JSTaggedValue> &locales,
-                                            const JSHandle<JSTaggedValue> &options)
+                                            const JSHandle<JSTaggedValue> &options,
+                                            bool forIcuCache)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
     // 1. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
 
     // 2. If options is undefined, then
     //      a. Let options be ObjectCreate(null).
@@ -471,7 +481,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
         if (EcmaStringAccessor(numberingSystemEcmaString).IsUtf16()) {
             THROW_ERROR(thread, ErrorType::RANGE_ERROR, "invalid numberingSystem");
         }
-        numberingSystemStr = JSLocale::ConvertToStdString(numberingSystemEcmaString);
+        numberingSystemStr = base::LocaleHelper::ConvertToStdString(numberingSystemEcmaString);
         if (!JSLocale::IsNormativeNumberingSystem(numberingSystemStr)) {
             THROW_ERROR(thread, ErrorType::RANGE_ERROR, "invalid numberingSystem");
         }
@@ -493,7 +503,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
 
     // 12. Set numberFormat.[[Locale]] to r.[[locale]].
     icu::Locale icuLocale = r.localeData;
-    JSHandle<EcmaString> localeStr = JSLocale::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
     numberFormat->SetLocale(thread, localeStr.GetTaggedValue());
 
     // Set numberingSystemStr to UnicodeKeyWord "nu"
@@ -531,6 +541,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
             uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_FULL_NAME;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     icuNumberFormatter = icuNumberFormatter.unitWidth(uNumberUnitWidth);
@@ -653,8 +664,16 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
             break;
     }
 
-    // Set numberFormat.[[IcuNumberForma]] to handleNumberFormatter
-    factory->NewJSIntlIcuData(numberFormat, icuNumberFormatter, JSNumberFormat::FreeIcuNumberformat);
+    if (forIcuCache) {
+        std::string cacheEntry =
+            locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+        auto formatterPointer = new icu::number::LocalizedNumberFormatter(icuNumberFormatter);
+        ecmaVm->SetIcuFormatterToCache(IcuFormatterType::NumberFormatter, cacheEntry, formatterPointer,
+                                       JSNumberFormat::FreeIcuNumberformat);
+    } else {
+        // Set numberFormat.[[IcuNumberForma]] to handleNumberFormatter
+        factory->NewJSIntlIcuData(numberFormat, icuNumberFormatter, JSNumberFormat::FreeIcuNumberformat);
+    }
     // Set numberFormat.[[BoundFormat]] to undefinedValue
     numberFormat->SetBoundFormat(thread, undefinedValue);
 }
@@ -673,13 +692,32 @@ int32_t JSNumberFormat::CurrencyDigits(const icu::UnicodeString &currency)
     return DEFAULT_FRACTION_DIGITS;
 }
 
+icu::number::LocalizedNumberFormatter *JSNumberFormat::GetCachedIcuNumberFormatter(JSThread *thread,
+    const JSHandle<JSTaggedValue> &locales)
+{
+    std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    void *cachedNumberFormatter = ecmaVm->GetIcuFormatterFromCache(IcuFormatterType::NumberFormatter, cacheEntry);
+    if (cachedNumberFormatter) {
+        return reinterpret_cast<icu::number::LocalizedNumberFormatter*>(cachedNumberFormatter);
+    }
+    return nullptr;
+}
+
 // 12.1.8 FormatNumeric( numberFormat, x )
 JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread, const JSHandle<JSNumberFormat> &numberFormat,
                                                       JSTaggedValue x)
 {
     icu::number::LocalizedNumberFormatter *icuNumberFormat = numberFormat->GetIcuCallTarget();
     ASSERT(icuNumberFormat != nullptr);
+    JSHandle<JSTaggedValue> res = FormatNumeric(thread, icuNumberFormat, x);
+    return res;
+}
 
+JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread,
+                                                      const icu::number::LocalizedNumberFormatter *icuNumberFormat,
+                                                      JSTaggedValue x)
+{
     UErrorCode status = U_ZERO_ERROR;
     icu::number::FormattedNumber formattedNumber;
     if (x.IsBigInt()) {
@@ -700,7 +738,7 @@ JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread, const JS
         JSHandle<JSTaggedValue> errorResult(thread, JSTaggedValue::Exception());
         THROW_RANGE_ERROR_AND_RETURN(thread, "formatted number toString failed", errorResult);
     }
-    JSHandle<EcmaString> stringValue = JSLocale::IcuToString(thread, result);
+    JSHandle<EcmaString> stringValue = base::LocaleHelper::UStringToString(thread, result);
     return JSHandle<JSTaggedValue>::Cast(stringValue);
 }
 
@@ -751,14 +789,15 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
         // so add a literal type with value of formattedText.sub(0, start)
         // Special case when fieldId is UNUM_GROUPING_SEPARATOR_FIELD
         if (static_cast<UNumberFormatFields>(fieldId) == UNUM_GROUPING_SEPARATOR_FIELD) {
-            JSHandle<EcmaString> substring = JSLocale::IcuToString(thread, formattedText, previousLimit, start);
+            JSHandle<EcmaString> substring =
+                base::LocaleHelper::UStringToString(thread, formattedText, previousLimit, start);
             typeString.Update(globalConst->GetIntegerString());
             JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
             RETURN_IF_ABRUPT_COMPLETION(thread);
             index++;
             {
                 typeString.Update(JSLocale::GetNumberFieldType(thread, x, fieldId).GetTaggedValue());
-                substring = JSLocale::IcuToString(thread, formattedText, start, limit);
+                substring = base::LocaleHelper::UStringToString(thread, formattedText, start, limit);
                 JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 index++;
@@ -768,7 +807,8 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
             previousLimit = limit;
             continue;
         } else if (start > previousLimit) {
-            JSHandle<EcmaString> substring = JSLocale::IcuToString(thread, formattedText, previousLimit, start);
+            JSHandle<EcmaString> substring =
+                base::LocaleHelper::UStringToString(thread, formattedText, previousLimit, start);
             JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
             RETURN_IF_ABRUPT_COMPLETION(thread);
             index++;
@@ -783,7 +823,7 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
         } else {
             typeString.Update(JSLocale::GetNumberFieldType(thread, x, fieldId).GetTaggedValue());
         }
-        JSHandle<EcmaString> substring = JSLocale::IcuToString(thread, formattedText, start, limit);
+        JSHandle<EcmaString> substring = base::LocaleHelper::UStringToString(thread, formattedText, start, limit);
         JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
         RETURN_IF_ABRUPT_COMPLETION(thread);
         index++;
@@ -794,7 +834,7 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
     if (formattedText.length() > previousLimit) {
         typeString.Update(globalConst->GetLiteralString());
         JSHandle<EcmaString> substring =
-            JSLocale::IcuToString(thread, formattedText, previousLimit, formattedText.length());
+            base::LocaleHelper::UStringToString(thread, formattedText, previousLimit, formattedText.length());
         JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
     }
 }
@@ -862,7 +902,8 @@ JSHandle<TaggedArray> JSNumberFormat::GetAvailableLocales(JSThread *thread)
     }
     const char *key = "NumberElements";
     const char *path = nullptr;
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     env->SetNumberFormatLocales(thread, availableLocales);
     return availableLocales;
 }

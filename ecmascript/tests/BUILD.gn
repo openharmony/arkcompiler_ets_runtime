@@ -33,6 +33,7 @@ host_unittest_action("EcmaVm_001_Test") {
     "ecma_string_accessor_test.cpp",
     "ecma_string_table_test.cpp",
     "ecma_vm_test.cpp",
+    "frame_test.cpp",
     "gc_test.cpp",
     "global_dictionary_test.cpp",
     "glue_regs_test.cpp",
@@ -83,11 +84,11 @@ host_unittest_action("EcmaVm_001_Test") {
   ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
-
-  ldflags = [ "-Wl,--lto-O0" ]
 }
 
 host_unittest_action("EcmaVm_002_Test") {
@@ -120,6 +121,7 @@ host_unittest_action("EcmaVm_002_Test") {
     "js_proxy_test.cpp",
     "js_regexp_iterator_test.cpp",
     "js_relative_time_format_test.cpp",
+    "locale_helper_test.cpp",
   ]
 
   configs = [
@@ -133,8 +135,6 @@ host_unittest_action("EcmaVm_002_Test") {
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
-
-  ldflags = [ "-Wl,--lto-O0" ]
 }
 
 host_unittest_action("EcmaVm_003_Test") {
@@ -156,6 +156,7 @@ host_unittest_action("EcmaVm_003_Test") {
     "linked_hash_table_test.cpp",
     "linked_node_test.cpp",
     "mem_controller_test.cpp",
+    "mem_map_allocator_test.cpp",
     "native_pointer_test.cpp",
     "object_factory_test.cpp",
     "object_operator_test.cpp",
@@ -184,12 +185,12 @@ host_unittest_action("EcmaVm_003_Test") {
   ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     "//arkcompiler/runtime_core/assembler:libarkassembler_static",
     sdk_libc_secshared_dep,
   ]
-
-  ldflags = [ "-Wl,--lto-O0" ]
 }
 
 group("unittest") {

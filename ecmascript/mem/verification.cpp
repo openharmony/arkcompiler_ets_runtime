@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "verification.h"
+#include "ecmascript/mem/verification.h"
 
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/slots.h"

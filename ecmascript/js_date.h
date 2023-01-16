@@ -57,7 +57,7 @@ static constexpr int DAYS_MAR_TO_DEC = 306;
 static constexpr int DAYS_JAN_AND_FEB = 59;
 static constexpr int MONTH_COEFFICIENT = 2;
 static constexpr std::array<int, 2> COEFFICIENT_TO_CIVIL = {5, 153};
-static constexpr std::array<int, 3> MONTH_TRANSFORM = {2, 10, -10};
+static constexpr std::array<int, 3> MONTH_TRANSFORM = {3, 10, -9};
 static constexpr int DAYS_FEBRUARY = 28;
 
 class DateUtils {
@@ -149,7 +149,12 @@ public:
     static constexpr uint16_t NINETEEN_HUNDRED_YEAR = 1900;
     static constexpr uint16_t HUNDRED = 100;
     static constexpr uint16_t THOUSAND = 1000;
+    static constexpr int TEN = 10;
+    static constexpr int NUM_NINE = 9;
+    static constexpr int MONTH_PER_YEAR = 12;
+    static constexpr int MAX_DAYS_MONTH = 31;
     static double SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
+    static double SetDateValues(int64_t year, int64_t month, int64_t day);
     static void GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
     static CString StrToTargetLength(const CString &str, int length);
     DECL_DUMP()
@@ -170,7 +175,6 @@ private:
     };
     static constexpr int STR_LENGTH_YEAR = 4;
     static constexpr int STR_LENGTH_OTHERS = 2;
-    static constexpr int MONTH_PER_YEAR = 12;
     static constexpr int YEAR_DELTA = 399999;
     static constexpr int LINE_YEAR = 1970;
     static constexpr int CENTURY = 100;
@@ -182,7 +186,6 @@ private:
     static constexpr int LENGTH_MONTH_NAME = 3;
     static constexpr int MS_PER_MINUTE = 60000;
     static constexpr int64_t MAX_TIME_IN_MS = static_cast<int64_t>(864000000) * 10000000;
-    static constexpr int TEN = 10;
     static constexpr char FLAG_TIME = 'T';
     static constexpr char FLAG_UTC = 'Z';
     static constexpr char VIRGULE = '/';
@@ -190,9 +193,7 @@ private:
     static constexpr int LENGTH_PER_TIME = 3;
     static constexpr int MIN_LENGTH = 10;
     static constexpr int INDEX_PLUS_NEG = 6;
-    static constexpr int NUM_NINE = 9;
     static constexpr int ORIGIN_YEAR = 1901;
-
     static constexpr uint32_t CODE_FLAG = 0x0FULL;
     static constexpr size_t CODE_4_BIT = 4;
 };

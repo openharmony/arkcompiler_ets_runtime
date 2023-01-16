@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string.h"
@@ -109,19 +109,19 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_AddAndGetKeyAtAndClear)
     for (uint32_t i = 0; i < NODE_NUMBERS; i = i + 2) {
         uint32_t ikey = 100 + i;
         std::string ivalue = myValue + std::to_string(i);
-     
+
         key.Update(JSTaggedValue(ikey));
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-       
+
         JSAPIPlainArray::Add(thread, array, key, value);
     }
     for (uint32_t i = 1; i < NODE_NUMBERS; i = i + 2) {
         uint32_t ikey = 100 + i;
         std::string ivalue = myValue + std::to_string(i);
-     
+
         key.Update(JSTaggedValue(ikey));
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-       
+
         JSAPIPlainArray::Add(thread, array, key, value);
     }
     EXPECT_EQ(array->GetSize(), static_cast<int>(NODE_NUMBERS));
@@ -219,7 +219,7 @@ HWTEST_F_L0(JSAPIPlainArrayTest, PA_GetIndexOfKeyAndGeIndexOfValueAndIsEmptyAndR
     value3 = array->RemoveRangeFrom(thread, lvalue, batchSize);
     EXPECT_EQ(value3.GetNumber(), 3); // 3 means the value
     EXPECT_EQ(array->GetSize(), static_cast<int>(NODE_NUMBERS - 3));
-    
+
     // test RemoveRangeFrom exception
     array->RemoveRangeFrom(thread, lvalue, -1);
 }

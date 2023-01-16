@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "deoptimizer.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
+
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/frames.h"
@@ -244,6 +245,13 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     auto method = GetMethod(callTarget);
     Dump(method);
     ASSERT(thread_ != nullptr);
+    uint16_t deoptThreshold = method->GetDeoptThreshold();
+    if (deoptThreshold > 0) {
+        method->SetDeoptThreshold(--deoptThreshold);
+    } else {
+        method->SetAotCodeBit(false);
+        method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
+    }
 
     FrameWriter frameWriter(this);
     // Push asm interpreter frame

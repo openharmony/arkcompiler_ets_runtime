@@ -16,28 +16,34 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
+#include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript::kungfu {
-Circuit::Circuit(bool isArch64) : space_(nullptr), circuitSize_(0), gateCount_(0), time_(1),
-                                  dataSection_(), isArch64_(isArch64)
+Circuit::Circuit(NativeAreaAllocator* allocator, bool isArch64)
+    : circuitSize_(0), gateCount_(0), time_(1),
+      isArch64_(isArch64), chunk_(allocator),
+      root_(Circuit::NullGate()), metaBuilder_(chunk())
+#ifndef NDEBUG
+      , allGates_(chunk())
+#endif
 {
     space_ = panda::ecmascript::PageMap(CIRCUIT_SPACE, PAGE_PROT_READWRITE).GetMem();
-    NewGate(OpCode(OpCode::CIRCUIT_ROOT), 0, {}, GateType::Empty());  // circuit root
-    auto circuitRoot = Circuit::GetCircuitRoot(OpCode(OpCode::CIRCUIT_ROOT));
-    NewGate(OpCode(OpCode::STATE_ENTRY), 0, {circuitRoot}, GateType::Empty());
-    NewGate(OpCode(OpCode::DEPEND_ENTRY), 0, {circuitRoot}, GateType::Empty());
-    NewGate(OpCode(OpCode::FRAMESTATE_ENTRY), 0, {circuitRoot}, GateType::Empty());
-    NewGate(OpCode(OpCode::RETURN_LIST), 0, {circuitRoot}, GateType::Empty());
-    NewGate(OpCode(OpCode::THROW_LIST), 0, {circuitRoot}, GateType::Empty());
-    NewGate(OpCode(OpCode::CONSTANT_LIST), 0, {circuitRoot}, GateType::Empty());
-    NewGate(OpCode(OpCode::ALLOCA_LIST), 0, {circuitRoot}, GateType::Empty());
-    NewGate(OpCode(OpCode::ARG_LIST), 0, {circuitRoot}, GateType::Empty());
+    InitRoot();
 }
 
 Circuit::~Circuit()
 {
     panda::ecmascript::PageUnmap(MemMap(space_, CIRCUIT_SPACE));
+}
+
+void Circuit::InitRoot()
+{
+    root_ = NewGate(metaBuilder_.CircuitRoot(), MachineType::NOVALUE, {}, GateType::Empty());
+    NewGate(metaBuilder_.StateEntry(), MachineType::NOVALUE, { root_ }, GateType::Empty());
+    NewGate(metaBuilder_.DependEntry(), MachineType::NOVALUE, { root_ }, GateType::Empty());
+    NewGate(metaBuilder_.ReturnList(), MachineType::NOVALUE, { root_ }, GateType::Empty());
+    NewGate(metaBuilder_.ArgList(), MachineType::NOVALUE, { root_ }, GateType::Empty());
 }
 
 uint8_t *Circuit::AllocateSpace(size_t gateSize)
@@ -57,14 +63,14 @@ Gate *Circuit::AllocateGateSpace(size_t numIns)
 }
 
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-GateRef Circuit::NewGate(OpCode opcode, MachineType bitValue, BitField bitfield, size_t numIns, const GateRef inList[],
-                         GateType type, MarkCode mark)
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
+    size_t numIns, const GateRef inList[], GateType type)
 {
 #ifndef NDEBUG
-    if (numIns != opcode.GetOpCodeNumIns(bitfield)) {
-        LOG_COMPILER(ERROR) << "Invalid input list!"
-                            << " op=" << opcode.Str() << " bitfield=" << bitfield
-                            << " expected_num_in=" << opcode.GetOpCodeNumIns(bitfield) << " actual_num_in=" << numIns;
+    if (numIns != meta->GetNumIns()) {
+        LOG_COMPILER(FATAL) << "Invalid input list!"
+                            << " op=" << meta->GetOpCode()
+                            << " expected_num_in=" << meta->GetNumIns() << " actual_num_in=" << numIns;
         UNREACHABLE();
     }
 #endif
@@ -74,47 +80,27 @@ GateRef Circuit::NewGate(OpCode opcode, MachineType bitValue, BitField bitfield,
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         inPtrList[idx] = (inList[idx] == Circuit::NullGate()) ? nullptr : LoadGatePtr(inList[idx]);
     }
-    ASSERT(opcode.GetMachineType() == MachineType::FLEX);
-    auto newGate = new (gateSpace) Gate(gateCount_, opcode, bitValue, bitfield, inPtrList.data(), type, mark);
-    gateCount_++;
-    return GetGateRef(newGate);
-}
-
-GateRef Circuit::NewGate(OpCode opcode, MachineType bitValue, BitField bitfield, const std::vector<GateRef> &inList,
-                         GateType type, MarkCode mark)
-{
-    return NewGate(opcode, bitValue, bitfield, inList.size(), inList.data(), type, mark);
-}
-
-// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-GateRef Circuit::NewGate(OpCode opcode, BitField bitfield, size_t numIns, const GateRef inList[], GateType type,
-                         MarkCode mark)
-{
+    auto newGate = new (gateSpace) Gate(meta, gateCount_++, inPtrList.data(), machineType, type);
 #ifndef NDEBUG
-    if (numIns != opcode.GetOpCodeNumIns(bitfield)) {
-        LOG_COMPILER(ERROR) << "Invalid input list!"
-                            << " op=" << opcode.Str() << " bitfield=" << bitfield
-                            << " expected_num_in=" << opcode.GetOpCodeNumIns(bitfield) << " actual_num_in=" << numIns;
-        UNREACHABLE();
-    }
+    allGates_.push_back(GetGateRef(newGate));
 #endif
-    std::vector<Gate *> inPtrList(numIns);
-    auto gateSpace = AllocateGateSpace(numIns);
-    for (size_t idx = 0; idx < numIns; idx++) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        inPtrList[idx] = (inList[idx] == Circuit::NullGate()) ? nullptr : LoadGatePtr(inList[idx]);
-    }
-    ASSERT(opcode.GetMachineType() != MachineType::FLEX);
-    auto newGate = new (gateSpace) Gate(gateCount_, opcode, opcode.GetMachineType(), bitfield, inPtrList.data(), type,
-                                        mark);
-    gateCount_++;
     return GetGateRef(newGate);
 }
 
-GateRef Circuit::NewGate(OpCode opcode, BitField bitfield, const std::vector<GateRef> &inList, GateType type,
-                         MarkCode mark)
+GateRef Circuit::NewGate(const GateMetaData *meta, const std::vector<GateRef> &inList)
 {
-    return NewGate(opcode, bitfield, inList.size(), inList.data(), type, mark);
+    return NewGate(meta, MachineType::NOVALUE, inList.size(), inList.data(), GateType::Empty());
+}
+
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
+    const std::initializer_list<GateRef>& args, GateType type)
+{
+    return NewGate(meta, machineType, args.size(), args.begin(), type);
+}
+
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, GateType type)
+{
+    return NewGate(meta, machineType, {}, type);
 }
 
 void Circuit::PrintAllGates() const
@@ -132,8 +118,8 @@ void Circuit::PrintAllGatesWithBytecode() const
     GetAllGates(gateList);
     for (const auto &gate : gateList) {
         if (GetOpCode(gate) == OpCode::JS_BYTECODE) {
-            BitField bitField = GetBitField(gate);
-            auto opcode = GateBitFieldAccessor::GetByteCodeOpcode(bitField);
+            const Gate *gatePtr = LoadGatePtrConst(gate);
+            auto opcode = gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
             std::string bytecodeStr = GetEcmaOpcodeStr(opcode);
             LoadGatePtrConst(gate)->PrintByteCode(bytecodeStr);
         } else {
@@ -145,13 +131,10 @@ void Circuit::PrintAllGatesWithBytecode() const
 void Circuit::GetAllGates(std::vector<GateRef>& gateList) const
 {
     gateList.clear();
-    gateList.push_back(0);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    for (size_t out = sizeof(Gate); out < circuitSize_;
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    for (size_t out = 0; out < circuitSize_;
         out += Gate::GetGateSize(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetIndex() + 1)) {
         auto gatePtr = reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(out)))->GetGateConst();
-        if (!gatePtr->GetOpCode().IsNop()) {
+        if (!gatePtr->GetMetaData()->IsNop()) {
             gateList.push_back(GetGateRef(gatePtr));
         }
     }
@@ -173,32 +156,6 @@ const Gate *Circuit::LoadGatePtrConst(GateRef shift) const
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     return reinterpret_cast<const Gate *>(GetDataPtrConst(shift));
-}
-
-GateRef Circuit::GetCircuitRoot(OpCode opcode)
-{
-    switch (opcode) {
-        case OpCode::CIRCUIT_ROOT:
-            return sizeof(In) * 0 + sizeof(Out) * 0 + sizeof(Gate) * 0;  // 0 0 0: offset of circuit root
-        case OpCode::STATE_ENTRY:
-            return sizeof(In) * 0 + sizeof(Out) * 1 + sizeof(Gate) * 1;  // 0 1 1: offset of state entry
-        case OpCode::DEPEND_ENTRY:
-            return sizeof(In) * 1 + sizeof(Out) * 2 + sizeof(Gate) * 2;  // 1 2 2: offset of depend entry
-        case OpCode::FRAMESTATE_ENTRY:
-            return sizeof(In) * 2 + sizeof(Out) * 3 + sizeof(Gate) * 3;  // 2 3 3: offset of framestate entry
-        case OpCode::RETURN_LIST:
-            return sizeof(In) * 3 + sizeof(Out) * 4 + sizeof(Gate) * 4;  // 3 4 4: offset of return list
-        case OpCode::THROW_LIST:
-            return sizeof(In) * 4 + sizeof(Out) * 5 + sizeof(Gate) * 5;  // 4 5 5: offset of throw list
-        case OpCode::CONSTANT_LIST:
-            return sizeof(In) * 5 + sizeof(Out) * 6 + sizeof(Gate) * 6;  // 5 6 6: offset of constant list
-        case OpCode::ALLOCA_LIST:
-            return sizeof(In) * 6 + sizeof(Out) * 7 + sizeof(Gate) * 7;  // 6 7 7: offset of alloca list
-        case OpCode::ARG_LIST:
-            return sizeof(In) * 7 + sizeof(Out) * 8 + sizeof(Gate) * 8;  // 7 8 8: offset of arg list
-        default:
-            UNREACHABLE();
-    }
 }
 
 void Circuit::AdvanceTime() const
@@ -235,9 +192,9 @@ void Circuit::SetMark(GateRef gate, MarkCode mark) const
     const_cast<Gate *>(LoadGatePtrConst(gate))->SetMark(mark, GetTime());
 }
 
-bool Circuit::Verify(GateRef gate) const
+void Circuit::Verify(GateRef gate) const
 {
-    return LoadGatePtrConst(gate)->Verify(IsArch64());
+    LoadGatePtrConst(gate)->Verify(IsArch64());
 }
 
 GateRef Circuit::NullGate()
@@ -249,7 +206,7 @@ bool Circuit::IsLoopHead(GateRef gate) const
 {
     if (gate != NullGate()) {
         const Gate *curGate = LoadGatePtrConst(gate);
-        return curGate->GetOpCode().IsLoopHead();
+        return curGate->GetMetaData()->IsLoopHead();
     }
     return false;
 }
@@ -258,7 +215,7 @@ bool Circuit::IsControlCase(GateRef gate) const
 {
     if (gate != NullGate()) {
         const Gate *curGate = LoadGatePtrConst(gate);
-        return curGate->GetOpCode().IsControlCase();
+        return curGate->GetMetaData()->IsControlCase();
     }
     return false;
 }
@@ -322,7 +279,7 @@ void Circuit::ModifyIn(GateRef gate, size_t idx, GateRef in)
 {
 #ifndef NDEBUG
     ASSERT(idx < LoadGatePtrConst(gate)->GetNumIns());
-    ASSERT(!Circuit::IsInGateNull(gate, idx));
+    ASSERT(!Circuit::IsInGateNull(gate, idx) || (GetOpCode(gate) == OpCode::SAVE_REGISTER));
 #endif
     LoadGatePtr(gate)->ModifyIn(idx, LoadGatePtr(in));
 }
@@ -337,6 +294,7 @@ void Circuit::DeleteIn(GateRef gate, size_t idx)
 void Circuit::DeleteGate(GateRef gate)
 {
     LoadGatePtr(gate)->DeleteGate();
+    LoadGatePtr(gate)->SetMetaData(Nop());
 }
 
 void Circuit::DecreaseIn(GateRef gate, size_t idx)
@@ -346,12 +304,15 @@ void Circuit::DecreaseIn(GateRef gate, size_t idx)
         ModifyIn(gate, i, GetIn(gate, i + 1));
     }
     DeleteIn(gate, numIns - 1);
-    SetBitField(gate, GetBitField(gate) - 1);
-}
-
-void Circuit::SetOpCode(GateRef gate, OpCode opcode)
-{
-    LoadGatePtr(gate)->SetOpCode(opcode);
+    GateMetaData *meta = const_cast<GateMetaData *>(
+            LoadGatePtr(gate)->GetMetaData());
+    if (meta->GetKind() == GateMetaData::Kind::MUTABLE_WITH_SIZE) {
+        meta->DecreaseIn(idx);
+    } else {
+        meta = metaBuilder_.NewGateMetaData(meta);
+        meta->DecreaseIn(idx);
+        LoadGatePtr(gate)->SetMetaData(meta);
+    }
 }
 
 void Circuit::SetGateType(GateRef gate, GateType type)
@@ -382,16 +343,6 @@ OpCode Circuit::GetOpCode(GateRef gate) const
 GateId Circuit::GetId(GateRef gate) const
 {
     return LoadGatePtrConst(gate)->GetId();
-}
-
-BitField Circuit::GetBitField(GateRef gate) const
-{
-    return LoadGatePtrConst(gate)->GetBitField();
-}
-
-void Circuit::SetBitField(GateRef gate, BitField bitfield)
-{
-    LoadGatePtr(gate)->SetBitField(bitfield);
 }
 
 void Circuit::Print(GateRef gate) const
@@ -438,28 +389,39 @@ void Circuit::SetFrameType(panda::ecmascript::FrameType type)
     frameType_ = type;
 }
 
-GateRef Circuit::GetConstantGate(MachineType bitValue, BitField bitfield,
+GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
                                  GateType type)
 {
-    auto search = constantCache_.find({bitValue, bitfield, type});
+    auto search = constantCache_.find({machineType, value, type});
     if (search != constantCache_.end()) {
-        return constantCache_.at({bitValue, bitfield, type});
+        return constantCache_.at({machineType, value, type});
     }
-    auto gate = NewGate(OpCode(OpCode::CONSTANT), bitValue, bitfield,
-                        {GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))}, type);
-    constantCache_[{bitValue, bitfield, type}] = gate;
+    auto gate = NewGate(metaBuilder_.Constant(value), machineType, type);
+    constantCache_[{machineType, value, type}] = gate;
     return gate;
 }
 
-GateRef Circuit::GetConstantDataGate(BitField bitfield, GateType type)
+GateRef Circuit::GetConstantStringGate(MachineType machineType, const std::string &str,
+                                       GateType type)
 {
-    auto search = constantDataCache_.find(bitfield);
+    auto gate = NewGate(metaBuilder_.ConstString(str), machineType, type);
+    return gate;
+}
+
+GateRef Circuit::NewArg(MachineType machineType, size_t index,
+                        GateType type, GateRef argRoot)
+{
+    return NewGate(metaBuilder_.Arg(index), machineType, { argRoot }, type);
+}
+
+GateRef Circuit::GetConstantDataGate(uint64_t value, GateType type)
+{
+    auto search = constantDataCache_.find(value);
     if (search != constantDataCache_.end()) {
-        return constantDataCache_.at(bitfield);
+        return constantDataCache_.at(value);
     }
-    auto gate = NewGate(OpCode(OpCode::CONST_DATA), bitfield,
-                        {GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST))}, type);
-    constantDataCache_[bitfield] = gate;
+    auto gate = NewGate(metaBuilder_.ConstData(value), MachineType::ARCH, type);
+    constantDataCache_[value] = gate;
     return gate;
 }
 
@@ -468,21 +430,27 @@ size_t Circuit::GetGateCount() const
     return gateCount_;
 }
 
-void Circuit::PushFunctionCompilationDataList()
+GateRef Circuit::GetStateRoot() const
 {
-    auto returnList = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
-    auto argList = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
-
-    const Gate *returnListGate = LoadGatePtrConst(returnList);
-    const Gate *argListGate = LoadGatePtrConst(argList);
-
-    innerMethodReturnFirstOut_ = returnListGate->GetFirstOutConst();
-    innerMethodArgFirstOut_ = argListGate->GetFirstOutConst();
+    const GateAccessor acc(const_cast<Circuit*>(this));
+    return acc.GetStateRoot();
 }
 
-void Circuit::PopFunctionCompilationDataList()
+GateRef Circuit::GetDependRoot() const
 {
-    innerMethodReturnFirstOut_ = nullptr;
-    innerMethodArgFirstOut_ = nullptr;
+    const GateAccessor acc(const_cast<Circuit*>(this));
+    return acc.GetDependRoot();
+}
+
+GateRef Circuit::GetArgRoot() const
+{
+    const GateAccessor acc(const_cast<Circuit*>(this));
+    return acc.GetArgRoot();
+}
+
+GateRef Circuit::GetReturnRoot() const
+{
+    const GateAccessor acc(const_cast<Circuit*>(this));
+    return acc.GetReturnRoot();
 }
 }  // namespace panda::ecmascript::kungfu

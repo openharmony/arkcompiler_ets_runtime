@@ -16,9 +16,42 @@
 #ifndef ECMASCRIPT_PLATFORM_FILE_H
 #define ECMASCRIPT_PLATFORM_FILE_H
 
+#ifdef PANDA_TARGET_WINDOWS
+#include <windef.h>
+#include <winbase.h>
+#include <winnt.h>
+#else
+#include <fcntl.h>
+#endif
+
 #include <string>
 
 namespace panda::ecmascript {
+#ifdef PANDA_TARGET_WINDOWS
+using fd_t = HANDLE;
+#define INVALID_FD INVALID_HANDLE_VALUE
+
+#define FILE_RDONLY GENERIC_READ
+#define FILE_WRONLY GENERIC_WRITE
+#define FILE_RDWR (GENERIC_READ | GENERIC_WRITE)
+#else
+using fd_t = int;
+#define INVALID_FD (-1)
+
+#define FILE_RDONLY O_RDONLY
+#define FILE_WRONLY O_WRONLY
+#define FILE_RDWR O_RDWR
+#endif
+
+#define FILE_SUCCESS 1
+#define FILE_FAILED 0
+
+std::string GetFileDelimiter();
 bool RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
+int64_t GetFileSizeByFd(fd_t fd);
+fd_t Open(const char *file, int flag);
+void Close(fd_t fd);
+void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, fd_t *extra);
+int FileUnMap(void *addr, uint64_t size, fd_t *extra);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H

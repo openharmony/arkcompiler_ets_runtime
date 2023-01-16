@@ -129,7 +129,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), PromiseJob, DynamicImportJob);
     JSThread *thread = argv->GetThread();
     EcmaVM *vm = thread->GetEcmaVM();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSPromiseReactionsFunction> resolve(GetCallArg(argv, 0));
@@ -153,23 +152,22 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
                                                           specifierString.GetTaggedValue());
         fileNameStr = ConvertToString(moduleName.GetTaggedValue());
     } else {
-        bool npm;
-        CString npmKey = "";
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifierString.GetTaggedValue());
-        const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename,
-                                                                                            recordNameStr.c_str());
-        std::tie(entryPoint, npm) = ModuleManager::ConcatFileNameWithMerge(
-            jsPandaFile, baseFilename, recordNameStr, requestModule, npmKey);
+        const JSPandaFile *jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
+        entryPoint =
+            ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
+
         fileNameStr = baseFilename;
-        moduleName = factory->NewFromUtf8(entryPoint);
+        moduleName = vm->GetFactory()->NewFromUtf8(entryPoint);
     }
     const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr,
                                                                                         entryPoint);
     bool isModule = jsPandaFile->IsModule(entryPoint);
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
-        if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), true)) {
+        if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
             LOG_FULL(FATAL) << "Cannot execute dynamic-imported panda file : "<< fileNameStr.c_str()
                             << entryPoint.c_str();
         }
@@ -178,7 +176,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         return CatchException(thread, reject);
     }
     if (!isModule) {
-        moduleNamespace.Update(factory->NewDefaultExportOfScript());
+        moduleNamespace.Update(vm->GetGlobalEnv()->GetExportOfScript());
     } else {
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
         JSHandle<SourceTextModule> moduleRecord =

@@ -67,24 +67,141 @@ OpCode GateAccessor::GetOpCode(GateRef gate) const
     return gatePtr->GetOpCode();
 }
 
-BitField GateAccessor::GetBitField(GateRef gate) const
+BitField GateAccessor::TryGetValue(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetBitField();
+    return gatePtr->TryGetValue();
+}
+
+ICmpCondition GateAccessor::GetICmpCondition(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::ICMP);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return static_cast<ICmpCondition>(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+FCmpCondition GateAccessor::GetFCmpCondition(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::FCMP);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return static_cast<FCmpCondition>(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+ConstDataId GateAccessor::GetConstDataId(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONST_DATA);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return ConstDataId(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+TypedUnaryAccessor GateAccessor::GetTypedUnOp(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_UNARY_OP);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return TypedUnaryAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+TypedLoadOp GateAccessor::GetTypedLoadOp(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::LOAD_ELEMENT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return static_cast<TypedLoadOp>(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+TypedStoreOp GateAccessor::GetTypedStoreOp(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::STORE_ELEMENT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return static_cast<TypedStoreOp>(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+TypedBinOp GateAccessor::GetTypedBinaryOp(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetTypedBinaryMegaData()->GetTypedBinaryOp();
+}
+
+GateType GateAccessor::GetParamGateType(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::STABLE_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::INDEX_CHECK);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetGateType();
+}
+
+GateType GateAccessor::GetLeftType(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_UNARY_OP ||
+           GetOpCode(gate) == OpCode::TYPED_BINARY_OP ||
+           GetOpCode(gate) == OpCode::TYPE_CONVERT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    GatePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetLeftType();
+}
+
+GateType GateAccessor::GetRightType(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP ||
+           GetOpCode(gate) == OpCode::TYPE_CONVERT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    GatePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetRightType();
+}
+
+size_t GateAccessor::GetVirtualRegisterIndex(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::SAVE_REGISTER ||
+           GetOpCode(gate) == OpCode::RESTORE_REGISTER);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return static_cast<size_t>(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+uint64_t GateAccessor::GetConstantValue(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONSTANT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetOneParameterMetaData()->GetValue();
+}
+
+const ChunkVector<char>& GateAccessor::GetConstantString(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONSTSTRING);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetStringMetaData()->GetString();
 }
 
 uint32_t GateAccessor::GetBytecodeIndex(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JS_BYTECODE);
-    BitField bitField = GetBitField(gate);
-    return GateBitFieldAccessor::GetBytecodeIndex(bitField);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetJSBytecodeMetaData()->GetBytecodeIndex();
 }
 
 EcmaOpcode GateAccessor::GetByteCodeOpcode(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JS_BYTECODE);
-    BitField bitField = GetBitField(gate);
-    return GateBitFieldAccessor::GetByteCodeOpcode(bitField);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
+}
+
+const std::map<std::pair<GateRef, uint32_t>, uint32_t> &GateAccessor::GetRestoreRegsInfo(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::RESTORE_REGISTER);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetRestoreRegsMetaData()->GetRestoreRegsInfo();
+}
+
+void GateAccessor::SetRestoreRegsInfo(GateRef gate, std::pair<GateRef, uint32_t> &info, uint32_t index) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::RESTORE_REGISTER);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    const_cast<RestoreRegsMetaData*>(gatePtr->GetRestoreRegsMetaData())->SetRestoreRegsInfo(info, index);
 }
 
 void GateAccessor::Print(GateRef gate) const
@@ -103,18 +220,6 @@ GateId GateAccessor::GetId(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetId();
-}
-
-void GateAccessor::SetOpCode(GateRef gate, OpCode::Op opcode)
-{
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    gatePtr->SetOpCode(OpCode(opcode));
-}
-
-void GateAccessor::SetBitField(GateRef gate, BitField bitField)
-{
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    gatePtr->SetBitField(bitField);
 }
 
 size_t GateAccessor::GetInValueStarts(GateRef gate) const
@@ -190,15 +295,25 @@ void GateAccessor::GetOutStates(GateRef gate, std::vector<GateRef>& outStates) c
     if (!curGate->IsFirstOutNull()) {
         const Out *curOut = curGate->GetFirstOutConst();
         GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
-        if (circuit_->GetOpCode(ref).IsState()) {
+        if (GetMetaData(ref)->IsState()) {
             outStates.push_back(ref);
         }
         while (!curOut->IsNextOutNull()) {
             curOut = curOut->GetNextOutConst();
             ref = circuit_->GetGateRef(curOut->GetGateConst());
-            if (circuit_->GetOpCode(ref).IsState()) {
+            if (GetMetaData(ref)->IsState()) {
                 outStates.push_back(ref);
             }
+        }
+    }
+}
+
+void GateAccessor::GetStateUses(GateRef gate, std::vector<GateRef>& outStates)
+{
+    auto uses = Uses(gate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (IsStateIn(it)) {
+            outStates.emplace_back(*it);
         }
     }
 }
@@ -235,32 +350,47 @@ bool GateAccessor::IsLoopBack(GateRef gate) const
 
 bool GateAccessor::IsState(GateRef gate) const
 {
-    return GetOpCode(gate).IsState();
+    return GetMetaData(gate)->IsState();
 }
 
 bool GateAccessor::IsConstant(GateRef gate) const
 {
-    return GetOpCode(gate).IsConstant();
+    return GetMetaData(gate)->IsConstant();
 }
 
 bool GateAccessor::IsConstantValue(GateRef gate, uint64_t value) const
 {
     auto isConstant = IsConstant(gate);
     if (isConstant) {
-        BitField bitField = GetBitField(gate);
-        return GateBitFieldAccessor::GetConstantValue(bitField) == value;
+        uint64_t bitField = GetConstantValue(gate);
+        return bitField == value;
     }
     return false;
 }
 
 bool GateAccessor::IsTypedOperator(GateRef gate) const
 {
-    return GetOpCode(gate).IsTypedOperator();
+    return GetMetaData(gate)->IsTypedOperator();
+}
+
+bool GateAccessor::IsNotWrite(GateRef gate) const
+{
+    return GetMetaData(gate)->IsNotWrite();
+}
+
+bool GateAccessor::IsCheckWithTwoIns(GateRef gate) const
+{
+    return GetMetaData(gate)->IsCheckWithTwoIns();
+}
+
+bool GateAccessor::IsCheckWithOneIn(GateRef gate) const
+{
+    return GetMetaData(gate)->IsCheckWithOneIn();
 }
 
 bool GateAccessor::IsSchedulable(GateRef gate) const
 {
-    return GetOpCode(gate).IsSchedulable();
+    return GetMetaData(gate)->IsSchedulable();
 }
 
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
@@ -277,7 +407,7 @@ size_t GateAccessor::GetImmediateId(GateRef gate) const
     ASSERT(gatePtr->GetGateType() == GateType::NJSValue());
     ASSERT(gatePtr->GetOpCode() == OpCode::CONSTANT);
     ASSERT(gatePtr->GetMachineType() == MachineType::I64);
-    size_t imm = gatePtr->GetBitField();
+    size_t imm = gatePtr->GetOneParameterMetaData()->GetValue();
     return imm;
 }
 
@@ -455,6 +585,12 @@ bool GateAccessor::IsValueIn(const UseIterator &useIt) const
     return (index >= valueStartIndex && index < valueEndIndex);
 }
 
+bool GateAccessor::IsFrameStateIn(const UseIterator &useIt) const
+{
+    size_t index = useIt.GetIndex();
+    return IsFrameStateIn(*useIt, index);
+}
+
 bool GateAccessor::IsExceptionState(const UseIterator &useIt) const
 {
     auto op = GetOpCode(*useIt);
@@ -478,15 +614,23 @@ bool GateAccessor::IsValueIn(GateRef gate, size_t index) const
     return (index >= valueStartIndex && index < valueEndIndex);
 }
 
-void GateAccessor::DeleteGuardAndFrameState(GateRef gate)
+bool GateAccessor::IsFrameStateIn(GateRef gate, size_t index) const
 {
-    GateRef guard = GetDep(gate);
-    if (GetOpCode(guard) == OpCode::GUARD) {
-        GateRef dep = GetDep(guard);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    size_t frameStateStartIndex = gatePtr->GetInFrameStateStarts();
+    size_t FrameStateEndIndex = frameStateStartIndex + gatePtr->GetInFrameStateCount();
+    return (index >= frameStateStartIndex && index < FrameStateEndIndex);
+}
+
+void GateAccessor::DeleteStateSplitAndFrameState(GateRef gate)
+{
+    GateRef stateSplit = GetDep(gate);
+    if (GetOpCode(stateSplit) == OpCode::STATE_SPLIT) {
+        GateRef dep = GetDep(stateSplit);
         ReplaceDependIn(gate, dep);
-        GateRef frameState = GetValueIn(guard, 1);
+        GateRef frameState = GetFrameState(stateSplit);
         DeleteGate(frameState);
-        DeleteGate(guard);
+        DeleteGate(stateSplit);
     }
 }
 
@@ -501,29 +645,52 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
         } else if (IsValueIn(useIt)) {
             useIt = ReplaceIn(useIt, value);
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
     DeleteGate(gate);
 }
 
-GateType GateAccessor::GetLeftType(GateRef gate) const
+GateRef GateAccessor::GetFrameState(GateRef gate) const
 {
-    auto operandTypes = GetBitField(gate);
-    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
-    return GateType(static_cast<uint32_t>(temp));
+    ASSERT(HasFrameState(gate));
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    size_t index = gatePtr->GetInFrameStateStarts();
+    return circuit_->GetIn(gate, index);
 }
 
-GateType GateAccessor::GetRightType(GateRef gate) const
+bool GateAccessor::HasFrameState(GateRef gate) const
 {
-    auto operandTypes = GetBitField(gate);
-    auto temp = operandTypes >> CircuitBuilder::OPRAND_TYPE_BITS;
-    return GateType(static_cast<uint32_t>(operandTypes ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS)));
+    return GetMetaData(gate)->HasFrameState();
+}
+
+void GateAccessor::ReplaceFrameStateIn(GateRef gate, GateRef in)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    size_t index = gatePtr->GetInFrameStateStarts();
+    circuit_->ModifyIn(gate, index, in);
+}
+
+GateRef GateAccessor::GetRoot(OpCode opcode) const
+{
+    GateRef root = circuit_->GetRoot();
+    if (opcode == OpCode::CIRCUIT_ROOT) {
+        return root;
+    }
+
+    auto uses = ConstUses(root);
+    for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+        if (GetOpCode(*useIt) == opcode) {
+            return *useIt;
+        }
+    }
+    return Circuit::NullGate();
 }
 
 GateRef GateAccessor::GetGlueFromArgList() const
 {
-    auto argRoot = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
+    auto argRoot = GetArgRoot();
     ASSERT(static_cast<size_t>(CommonArgIdx::GLUE) == 0);
     const Gate *curGate = circuit_->LoadGatePtrConst(argRoot);
 
@@ -537,39 +704,23 @@ GateRef GateAccessor::GetGlueFromArgList() const
 
 void GateAccessor::GetArgsOuts(std::vector<GateRef>& outs) const
 {
-    auto argRoot = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
-    auto firstOut = circuit_->InnerMethodArgFirstOut();
-    if (firstOut != nullptr) {
-        const Gate *curGate = circuit_->LoadGatePtrConst(argRoot);
-        ASSERT(!curGate->IsFirstOutNull());
-        const Out *curOut = curGate->GetFirstOutConst();
-        while (curOut != firstOut) {
-            GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
-            outs.push_back(ref);
-            curOut = curOut->GetNextOutConst();
-            ASSERT(!curOut->IsNextOutNull());
-        }
-    } else {
-        GetOuts(argRoot, outs);
-    }
+    auto argRoot = GetArgRoot();
+    GetOuts(argRoot, outs);
 }
 
 void GateAccessor::GetReturnOuts(std::vector<GateRef>& outs) const
 {
-    auto returnRoot = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
-    auto firstOut = circuit_->InnerMethodReturnFirstOut();
-    if (firstOut != nullptr) {
-        const Gate *curGate = circuit_->LoadGatePtrConst(returnRoot);
-        ASSERT(!curGate->IsFirstOutNull());
-        const Out *curOut = curGate->GetFirstOutConst();
-        while (curOut != firstOut) {
-            GateRef ref = circuit_->GetGateRef(curOut->GetGateConst());
-            outs.push_back(ref);
-            curOut = curOut->GetNextOutConst();
-            ASSERT(!curOut->IsNextOutNull());
-        }
-    } else {
-        GetOuts(returnRoot, outs);
-    }
+    auto returnRoot = GetReturnRoot();
+    GetOuts(returnRoot, outs);
+}
+
+const GateMetaData *GateAccessor::GetMetaData(GateRef gate) const
+{
+    return circuit_->LoadGatePtrConst(gate)->GetMetaData();
+}
+
+void GateAccessor::SetMetaData(GateRef gate, const GateMetaData* meta)
+{
+    return circuit_->LoadGatePtr(gate)->SetMetaData(meta);
 }
 }  // namespace panda::ecmascript::kungfu

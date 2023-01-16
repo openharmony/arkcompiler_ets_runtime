@@ -15,6 +15,8 @@
 
 #include "ecmascript/builtins/builtins_relative_time_format.h"
 
+#include "ecmascript/base/locale_helper.h"
+
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsRelativeTimeFormat::RelativeTimeFormatConstructor(EcmaRuntimeCallInfo *argv)
 {
@@ -66,11 +68,13 @@ JSTaggedValue BuiltinsRelativeTimeFormat::SupportedLocalesOf(EcmaRuntimeCallInfo
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let availableLocales be %RelativeTimeFormat%.[[AvailableLocales]].
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, "calendar", nullptr);
+    std::vector<std::string> availableStringLocales =
+        base::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
+    JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
 
     // 2. Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
-    JSHandle<TaggedArray> requestedLocales = JSLocale::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Return ? SupportedLocales(availableLocales, requestedLocales, options).

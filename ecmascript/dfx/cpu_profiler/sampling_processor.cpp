@@ -32,7 +32,7 @@ const int NSEC_PER_USEC = 1000;
 SamplingProcessor::SamplingProcessor(int32_t id, SamplesRecord *generator, int interval) : Task(id)
 {
     generator_ = generator;
-    interval_ = interval;
+    interval_ = static_cast<uint32_t>(interval);
     pid_ = pthread_self();
 }
 SamplingProcessor::~SamplingProcessor() {}
@@ -45,27 +45,6 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
     uint64_t endTime = startTime;
     generator_->SetThreadStartTime(startTime);
     while (generator_->GetIsStart()) {
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-        JSThread *thread = generator_->GetAssociatedJSThread();
-        SamplesRecord::staticGcState_ = thread->GetGcState();
-        if (!SamplesRecord::staticGcState_) {
-            thread->SetGetStackSignal(true);
-            if (generator_->SemWait(0) != 0) {
-                LOG_ECMA(ERROR) << "sem_[0] wait failed";
-            }
-        }
-        startTime = GetMicrosecondsTimeStamp();
-        int64_t ts = interval_ - static_cast<int64_t>(startTime - endTime);
-        endTime = startTime;
-        if (ts > 0) {
-            usleep(ts);
-            endTime = GetMicrosecondsTimeStamp();
-        }
-        if (generator_->GetMethodNodeCount() + generator_->GetframeStackLength() >= MAX_NODE_COUNT) {
-            break;
-        }
-        generator_->AddSample(endTime, outToFile_);
-#else
         if (generator_->GetBeforeGetCallNapiStackFlag()) {
             generator_->SetBeforeGetCallNapiStackFlag(false);
             while (!generator_->GetAfterGetCallNapiStackFlag()) {
@@ -83,7 +62,7 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
                 return false;
             }
             startTime = GetMicrosecondsTimeStamp();
-            int64_t ts = interval_ - static_cast<int64_t>(startTime - endTime);
+            int64_t ts = static_cast<int64_t>(interval_) - static_cast<int64_t>(startTime - endTime);
             endTime = startTime;
             if (ts > 0 && !generator_->GetBeforeGetCallNapiStackFlag() && !generator_->GetCallNapiFlag()) {
                 usleep(ts);
@@ -104,17 +83,6 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
                 return false;
             }
         }
-#endif
-        if (generator_->GetOutToFile()) {
-            if (generator_->GetMethodNodeCount() >= 10 || // 10:Number of nodes currently stored
-                generator_->GetSamples().size() == 100) { // 100:Number of Samples currently stored
-                generator_->WriteMethodsAndSampleInfo(false);
-            }
-            if (collectCount_ % 50 == 0) { // 50:The sampling times reached 50 times.
-                WriteSampleDataToFile();
-            }
-            collectCount_++;
-        }
         generator_->SetIsBreakSampleFlag(false);
     }
     uint64_t stopTime = GetMicrosecondsTimeStamp();
@@ -132,22 +100,5 @@ uint64_t SamplingProcessor::GetMicrosecondsTimeStamp()
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
     return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
-}
-
-void SamplingProcessor::WriteSampleDataToFile()
-{
-    if (!generator_->fileHandle_.is_open() || generator_->GetSampleData().size() < 1_MB) { // 1M
-        return;
-    }
-    if (firstWrite_) {
-        generator_->fileHandle_ << generator_->GetSampleData();
-        generator_->ClearSampleData();
-        generator_->fileHandle_.close();
-        generator_->fileHandle_.open(generator_->GetFileName().c_str(), std::ios::app);
-        firstWrite_ = false;
-        return;
-    }
-    generator_->fileHandle_ << generator_->GetSampleData();
-    generator_->ClearSampleData();
 }
 } // namespace panda::ecmascript

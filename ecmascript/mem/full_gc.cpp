@@ -149,6 +149,7 @@ void FullGC::Sweep()
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
 
     heap_->GetSweeper()->Sweep(true);
+    heap_->GetSweeper()->PostTask(true);
 }
 
 void FullGC::Finish()

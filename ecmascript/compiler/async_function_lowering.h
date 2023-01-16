@@ -27,8 +27,8 @@ public:
     AsyncFunctionLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
                           bool enableLog, const std::string& name)
         : bcBuilder_(bcBuilder), circuit_(circuit), builder_(circuit, cmpCfg), enableLog_(enableLog),
-          stateEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY))),
-          dependEntry_(Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY))),
+          stateEntry_(circuit->GetStateRoot()),
+          dependEntry_(circuit->GetDependRoot()),
           accessor_(circuit), argAccessor_(circuit), methodName_(name)
     {
     }
@@ -57,12 +57,10 @@ private:
 
     void UpdateValueSelector(GateRef prevLoopBeginGate, GateRef controlStateGate, GateRef prevBcOffsetPhiGate);
 
-    GateRef GetFirstRestoreRegister(GateRef gate) const;
-
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
     CircuitBuilder builder_;
-    [[maybe_unused]] bool enableLog_ {false};
+    bool enableLog_ {false};
     GateRef stateEntry_ {Circuit::NullGate()};
     GateRef dependEntry_ {Circuit::NullGate()};
     GateAccessor accessor_;

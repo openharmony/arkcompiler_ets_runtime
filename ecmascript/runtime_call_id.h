@@ -84,6 +84,7 @@ namespace panda::ecmascript {
     V(Ldnewobjrange)             \
     V(IsIn)                      \
     V(Instanceof)                \
+    V(InstanceofByHandler)       \
     V(NewObjApply)               \
     V(CallArg0)                  \
     V(CallArg1)                  \
@@ -138,6 +139,8 @@ namespace panda::ecmascript {
     V(StoreICWithHandler)           \
     V(StorePrototype)               \
     V(StoreWithTransition)          \
+    V(StoreTransWithProto)          \
+    V(StoreWithAOT)                 \
     V(StoreField)                   \
     V(StoreGlobal)                  \
     V(LoadPrototype)                \
@@ -157,10 +160,11 @@ namespace panda::ecmascript {
     V(FastGetPropertyByName)        \
     V(FastGetPropertyByValue)       \
     V(FastGetPropertyByIndex)       \
-    V(NewLexicalEnv)             \
+    V(NewLexicalEnv)                \
     V(ExecuteNative)                \
     V(Execute)                      \
     V(AsmExecute)                   \
+    V(ExecuteAot)                   \
     V(ToJSTaggedValueWithInt32)     \
     V(ToJSTaggedValueWithUint32)    \
     V(ThrowIfSuperNotCorrectCall)   \
@@ -209,11 +213,11 @@ namespace panda::ecmascript {
     V(EqualWithIC)                  \
     V(NotEqualWithIC)               \
     V(Compare)                      \
-    V(LessWithIC)                \
-    V(LessEqWithIC)              \
-    V(GreaterWithIC)             \
+    V(LessWithIC)                   \
+    V(LessEqWithIC)                 \
+    V(GreaterWithIC)                \
     V(SetPropertyByName)            \
-    V(GreaterEqWithIC)           \
+    V(GreaterEqWithIC)              \
     V(LdBigInt)                     \
     V(Tonumeric)                    \
     V(CreateAsyncGeneratorObj)      \
@@ -892,7 +896,14 @@ enum EcmaRuntimeCallerId {
     RuntimeTimerScope interpret_##name##_scope_(RUNTIME_CALLER_ID(name) _run_stat_)
 #else
 #define INTERPRETER_TRACE(thread, name) static_cast<void>(0) // NOLINT(cppcoreguidelines-macro-usage)
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define RUNTIME_TRACE(thread, name)                                                            \
+    [[maybe_unused]] JSThread *_js_thread_ = thread;                                           \
+    [[maybe_unused]] RuntimeStateScope _runtime_state_##name##_scope_(_js_thread_)
+#else
 #define RUNTIME_TRACE(thread, name) static_cast<void>(0) // NOLINT(cppcoreguidelines-macro-usage)
+#endif // defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #endif // ECMASCRIPT_ENABLE_INTERPRETER_RUNTIME_STAT
 
 #if ECMASCRIPT_ENABLE_BUILTINS_RUNTIME_STAT

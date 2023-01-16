@@ -68,11 +68,11 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     JSHandle<TSTypeTable> table;
     uint32_t moduleId = 0;
     std::tie(table, moduleId) = tsManager_->GenerateTSTypeTable(jsPandaFile, recordName);
-    GlobalTSTypeRef gt = GetGT(jsPandaFile, table, moduleId, typeId);
-    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind);
+    GlobalTSTypeRef gt = GetGT(jsPandaFile, table, moduleId, typeId, recordName);
+    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind, typeId);
     SetTSType(table, type, gt);
 
-    GenerateStaticHClass(jsPandaFile, type);
+    GenerateStaticHClass(type);
     return gt;
 }
 
@@ -82,30 +82,25 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     JSHandle<EcmaString> importVarNamePath(thread_, literal->Get(IMPORT_PATH_OFFSET_IN_LITERAL)); // #A#./A
     JSHandle<EcmaString> relativePath = GenerateImportRelativePath(importVarNamePath);
     CString cstringRelativePath = ConvertToString(*relativePath);
-    CString entryPoint = "";
-    CString npmKeyStr = "";
-    bool npm = false;
-    CString name = recordName;
     CString baseFileName = jsPandaFile->GetJSPandaFileDesc();
-    std::tie(entryPoint, npm) =
+    CString entryPoint =
         ModuleManager::ConcatFileNameWithMerge(jsPandaFile,
                                                baseFileName,
-                                               name,
-                                               cstringRelativePath,
-                                               npmKeyStr);
+                                               recordName,
+                                               cstringRelativePath);
     JSHandle<EcmaString> targetVarName = GenerateImportVar(importVarNamePath);
     JSHandle<TaggedArray> arrayWithGT = GenerateExportTableFromRecord(jsPandaFile, entryPoint);
     GlobalTSTypeRef importedGT = GetExportGTByName(targetVarName, arrayWithGT);
-    tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, importedGT);
+    tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, recordName, importedGT, true);
     return importedGT;
 }
 
 JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                         JSHandle<TaggedArray> literal, TSTypeKind kind)
+    JSHandle<TaggedArray> literal, TSTypeKind kind, uint32_t typeId)
 {
     switch (kind) {
         case TSTypeKind::CLASS: {
-            JSHandle<TSClassType> classType = ParseClassType(jsPandaFile, recordName, literal);
+            JSHandle<TSClassType> classType = ParseClassType(jsPandaFile, recordName, literal, typeId);
             return JSHandle<JSTaggedValue>(classType);
         }
         case TSTypeKind::CLASS_INSTANCE: {
@@ -133,14 +128,20 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
             return JSHandle<JSTaggedValue>(objectType);
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
 
 JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                   const JSHandle<TaggedArray> &literal)
+                                                   const JSHandle<TaggedArray> &literal, uint32_t typeId)
 {
     JSHandle<TSClassType> classType = factory_->NewTSClassType();
+
+    std::string className = tsManager_->GetClassNameByOffset(jsPandaFile, typeId);
+    JSHandle<EcmaString> classEcmaString = factory_->NewFromStdString(className);
+    classType->SetName(thread_, classEcmaString.GetTaggedValue());
+
     uint32_t index = 0;
     ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::CLASS);
 
@@ -201,7 +202,7 @@ JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSPanda
     ASSERT(static_cast<TSTypeKind>(literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt()) ==
                                    TSTypeKind::CLASS_INSTANCE);
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
-    int32_t classTypeId = literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt();
+    uint32_t classTypeId = static_cast<uint32_t>(literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt());
     auto classGT = CreateGT(jsPandaFile, recordName, classTypeId);
     classInstanceType->SetClassGT(classGT);
     return classInstanceType;
@@ -383,7 +384,7 @@ void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile, cons
     }
 }
 
-void TSTypeParser::GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle<JSTaggedValue> type)
+void TSTypeParser::GenerateStaticHClass(JSHandle<JSTaggedValue> type)
 {
     if (type->IsTSClassType()) {
         JSHandle<TSClassType> classType(type);
@@ -392,7 +393,7 @@ void TSTypeParser::GenerateStaticHClass(const JSPandaFile *jsPandaFile, JSHandle
         }
         auto gt = classType->GetGT();
         if (tsManager_->IsUserDefinedClassTypeKind(gt)) {
-            tsManager_->GenerateStaticHClass(jsPandaFile, classType);
+            tsManager_->GenerateStaticHClass(classType);
         }
     }
 }
@@ -413,9 +414,9 @@ JSHandle<TaggedArray> TSTypeParser::GetExportDataFromRecord(const JSPandaFile *j
     }
 
     JSHandle<TaggedArray> typeOfExportedSymbols(thread_, thread_->GlobalConstants()->GetEmptyArray());
-    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
-        panda_file::AnnotationDataAccessor ada(pf, annotation_id);
-        auto *annotationName = reinterpret_cast<const char *>(pf.GetStringData(ada.GetClassId()).data);
+    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotationId) {
+        panda_file::AnnotationDataAccessor ada(pf, annotationId);
+        auto *annotationName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(ada.GetClassId()).data);
         ASSERT(annotationName != nullptr);
         if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {
             return;
@@ -423,7 +424,7 @@ JSHandle<TaggedArray> TSTypeParser::GetExportDataFromRecord(const JSPandaFile *j
         uint32_t length = ada.GetCount();
         for (uint32_t i = 0; i < length; i++) {
             panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-            auto *elemName = reinterpret_cast<const char *>(pf.GetStringData(adae.GetNameId()).data);
+            auto *elemName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(adae.GetNameId()).data);
             ASSERT(elemName != nullptr);
 
             if (::strcmp(symbolTypes, elemName) != 0) {

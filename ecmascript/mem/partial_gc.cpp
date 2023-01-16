@@ -35,7 +35,7 @@ PartialGC::PartialGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManage
 
 void PartialGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsFullMark()));
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
     ClockScope clockScope;
 
@@ -46,6 +46,9 @@ void PartialGC::RunPhases()
     Mark();
     Sweep();
     Evacuate();
+    if (heap_->IsFullMark()) {
+        heap_->GetSweeper()->PostTask();
+    }
     Finish();
     heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticPartialGC(markingInProgress_, clockScope.GetPauseTime(), freeSize_);
     LOG_GC(DEBUG) << "PartialGC::RunPhases " << clockScope.TotalSpentTime();
@@ -79,6 +82,7 @@ void PartialGC::Initialize()
 void PartialGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Finish");
+    heap_->Resume(OLD_GC);
     if (markingInProgress_) {
         auto marker = heap_->GetConcurrentMarker();
         marker->Reset(false);

@@ -92,6 +92,7 @@ RegionSpaceFlag Space::GetRegionFlag() const
             flags = RegionSpaceFlag::IN_APPSPAWN_SPACE;
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }

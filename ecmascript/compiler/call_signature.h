@@ -67,8 +67,8 @@ public:
     using TailCallBit = VariadicArgsBit::NextField<bool, 1>;
     using GCLeafFunctionBit = TailCallBit::NextField<bool, 1>;
 
-    explicit CallSignature(std::string name, int flags, size_t paramCounter, ArgumentsOrder order,
-                           VariableType returnType)
+    CallSignature(std::string name, int flags, size_t paramCounter, ArgumentsOrder order,
+                  VariableType returnType)
         : name_(name), paramCounter_(paramCounter), order_(order), returnType_(returnType)
     {
         SetTargetKind(TargetKind::COMMON_STUB);
@@ -313,6 +313,23 @@ private:
     V(Mod)                                  \
     V(TypeOf)                               \
     V(Equal)                                \
+    V(NotEqual)                             \
+    V(Less)                                 \
+    V(LessEq)                               \
+    V(Greater)                              \
+    V(GreaterEq)                            \
+    V(Shl)                                  \
+    V(Shr)                                  \
+    V(Ashr)                                 \
+    V(And)                                  \
+    V(Or)                                   \
+    V(Xor)                                  \
+    V(Instanceof)                           \
+    V(Inc)                                  \
+    V(Dec)                                  \
+    V(Neg)                                  \
+    V(Not)                                  \
+    V(ToBoolean)                            \
     V(SetPropertyByName)                    \
     V(DeprecatedSetPropertyByName)          \
     V(SetPropertyByNameWithOwn)             \
@@ -335,6 +352,10 @@ private:
     V(TryStoreICByName)                     \
     V(TryStoreICByValue)                    \
     V(SetValueWithBarrier)                  \
+    V(NewLexicalEnv)                        \
+    V(GetUnmapedArgs)                       \
+    V(NewThisObjectChecked)                 \
+    V(ConstructorCheck)                     \
     V(GetTaggedArrayPtrTest)                \
     V(BytecodeHandler)                      \
     V(Builtins)                             \
@@ -372,8 +393,12 @@ private:
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
     V(DebugPrintInstruction)                \
+    V(Comment)                              \
     V(PGOProfiler)                          \
     V(FatalPrint)                           \
+    V(OptSetLexicalEnv)                     \
+    V(OptPopLexicalEnv)                     \
+    V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
     V(FloatMod)                             \
@@ -402,6 +427,8 @@ private:
     V(DeoptHandlerAsm)                      \
     V(JSCallNew)                            \
     V(JSCallNewWithArgV)                    \
+    V(TimeClip)                             \
+    V(SetDateValues)                        \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

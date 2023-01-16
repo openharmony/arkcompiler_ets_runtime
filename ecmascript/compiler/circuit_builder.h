@@ -39,92 +39,100 @@ class Label;
 class Variable;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                            \
-    V(Int16Add, OpCode::ADD, MachineType::I16)                                    \
-    V(Int32Add, OpCode::ADD, MachineType::I32)                                    \
-    V(Int64Add, OpCode::ADD, MachineType::I64)                                    \
-    V(DoubleAdd, OpCode::ADD, MachineType::F64)                                   \
-    V(PtrAdd, OpCode::ADD, MachineType::ARCH)                                     \
-    V(Int16Sub, OpCode::SUB, MachineType::I16)                                    \
-    V(Int32Sub, OpCode::SUB, MachineType::I32)                                    \
-    V(Int64Sub, OpCode::SUB, MachineType::I64)                                    \
-    V(DoubleSub, OpCode::SUB, MachineType::F64)                                   \
-    V(PtrSub, OpCode::SUB, MachineType::ARCH)                                     \
-    V(Int32Mul, OpCode::MUL, MachineType::I32)                                    \
-    V(Int64Mul, OpCode::MUL, MachineType::I64)                                    \
-    V(DoubleMul, OpCode::MUL, MachineType::F64)                                   \
-    V(PtrMul, OpCode::MUL, MachineType::ARCH)                                     \
-    V(Int32Div, OpCode::SDIV, MachineType::I32)                                   \
-    V(Int64Div, OpCode::SDIV, MachineType::I64)                                   \
-    V(DoubleDiv, OpCode::FDIV, MachineType::F64)                                  \
-    V(Int32Mod, OpCode::SMOD, MachineType::I32)                                   \
-    V(DoubleMod, OpCode::SMOD, MachineType::F64)                                  \
-    V(BoolAnd, OpCode::AND, MachineType::I1)                                      \
-    V(Int8And, OpCode::AND, MachineType::I8)                                      \
-    V(Int32And, OpCode::AND, MachineType::I32)                                    \
-    V(Int64And, OpCode::AND, MachineType::I64)                                    \
-    V(BoolOr, OpCode::OR, MachineType::I1)                                        \
-    V(Int32Or, OpCode::OR, MachineType::I32)                                      \
-    V(Int64Or, OpCode::OR, MachineType::I64)                                      \
-    V(Int32Xor, OpCode::XOR, MachineType::I32)                                    \
-    V(Int64Xor, OpCode::XOR, MachineType::I64)                                    \
-    V(Int16LSL, OpCode::LSL, MachineType::I16)                                    \
-    V(Int32LSL, OpCode::LSL, MachineType::I32)                                    \
-    V(Int64LSL, OpCode::LSL, MachineType::I64)                                    \
-    V(Int8LSR, OpCode::LSR, MachineType::I8)                                      \
-    V(Int32LSR, OpCode::LSR, MachineType::I32)                                    \
-    V(Int64LSR, OpCode::LSR, MachineType::I64)                                    \
-    V(Int32ASR, OpCode::ASR, MachineType::I32)
+    V(Int16Add, Add, MachineType::I16)                                    \
+    V(Int32Add, Add, MachineType::I32)                                    \
+    V(Int64Add, Add, MachineType::I64)                                    \
+    V(DoubleAdd, Add, MachineType::F64)                                   \
+    V(PtrAdd, Add, MachineType::ARCH)                                     \
+    V(Int16Sub, Sub, MachineType::I16)                                    \
+    V(Int32Sub, Sub, MachineType::I32)                                    \
+    V(Int64Sub, Sub, MachineType::I64)                                    \
+    V(DoubleSub, Sub, MachineType::F64)                                   \
+    V(PtrSub, Sub, MachineType::ARCH)                                     \
+    V(Int32Mul, Mul, MachineType::I32)                                    \
+    V(Int64Mul, Mul, MachineType::I64)                                    \
+    V(DoubleMul, Mul, MachineType::F64)                                   \
+    V(PtrMul, Mul, MachineType::ARCH)                                     \
+    V(Int32Div, Sdiv, MachineType::I32)                                   \
+    V(Int64Div, Sdiv, MachineType::I64)                                   \
+    V(DoubleDiv, Fdiv, MachineType::F64)                                  \
+    V(Int32Mod, Smod, MachineType::I32)                                   \
+    V(DoubleMod, Smod, MachineType::F64)                                  \
+    V(BoolAnd, And, MachineType::I1)                                      \
+    V(Int8And, And, MachineType::I8)                                      \
+    V(Int32And, And, MachineType::I32)                                    \
+    V(Int64And, And, MachineType::I64)                                    \
+    V(BoolOr, Or, MachineType::I1)                                        \
+    V(Int32Or, Or, MachineType::I32)                                      \
+    V(Int64Or, Or, MachineType::I64)                                      \
+    V(Int32Xor, Xor, MachineType::I32)                                    \
+    V(Int64Xor, Xor, MachineType::I64)                                    \
+    V(Int16LSL, Lsl, MachineType::I16)                                    \
+    V(Int32LSL, Lsl, MachineType::I32)                                    \
+    V(Int64LSL, Lsl, MachineType::I64)                                    \
+    V(Int8LSR, Lsr, MachineType::I8)                                      \
+    V(Int32LSR, Lsr, MachineType::I32)                                    \
+    V(Int64LSR, Lsr, MachineType::I64)                                    \
+    V(Int32ASR, Asr, MachineType::I32)
 
-#define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                          \
-    V(BoolNot, OpCode::REV, MachineType::I1)                                   \
-    V(Int32Not, OpCode::REV, MachineType::I32)                                 \
-    V(Int64Not, OpCode::REV, MachineType::I64)                                 \
-    V(CastDoubleToInt64, OpCode::BITCAST, MachineType::I64)                    \
-    V(CastInt64ToFloat64, OpCode::BITCAST, MachineType::F64)                   \
-    V(SExtInt32ToInt64, OpCode::SEXT, MachineType::I64)                        \
-    V(SExtInt1ToInt64, OpCode::SEXT, MachineType::I64)                         \
-    V(SExtInt1ToInt32, OpCode::SEXT, MachineType::I32)                         \
-    V(ZExtInt8ToInt16, OpCode::ZEXT, MachineType::I16)                         \
-    V(ZExtInt32ToInt64, OpCode::ZEXT, MachineType::I64)                        \
-    V(ZExtInt1ToInt64, OpCode::ZEXT, MachineType::I64)                         \
-    V(ZExtInt1ToInt32, OpCode::ZEXT, MachineType::I32)                         \
-    V(ZExtInt8ToInt32, OpCode::ZEXT, MachineType::I32)                         \
-    V(ZExtInt8ToInt64, OpCode::ZEXT, MachineType::I64)                         \
-    V(ZExtInt8ToPtr, OpCode::ZEXT, MachineType::ARCH)                          \
-    V(ZExtInt16ToPtr, OpCode::ZEXT, MachineType::ARCH)                         \
-    V(ZExtInt32ToPtr, OpCode::ZEXT, MachineType::ARCH)                         \
-    V(SExtInt32ToPtr, OpCode::SEXT, MachineType::ARCH)                         \
-    V(ZExtInt16ToInt32, OpCode::ZEXT, MachineType::I32)                        \
-    V(ZExtInt16ToInt64, OpCode::ZEXT, MachineType::I64)                        \
-    V(TruncInt16ToInt8, OpCode::TRUNC, MachineType::I8)                        \
-    V(TruncInt64ToInt32, OpCode::TRUNC, MachineType::I32)                      \
-    V(TruncPtrToInt32, OpCode::TRUNC, MachineType::I32)                        \
-    V(TruncInt64ToInt1, OpCode::TRUNC, MachineType::I1)                        \
-    V(TruncInt64ToInt16, OpCode::TRUNC, MachineType::I16)                      \
-    V(TruncInt32ToInt1, OpCode::TRUNC, MachineType::I1)
-
-#define UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(V)                       \
-    V(TruncFloatToInt64, OpCode::TRUNC_FLOAT_TO_INT64)                         \
-    V(ExtFloat32ToDouble, OpCode::FEXT)                                        \
-    V(TruncDoubleToFloat32, OpCode::FTRUNC)
+#define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                  \
+    V(BoolNot, Rev, MachineType::I1)                                   \
+    V(Int32Not, Rev, MachineType::I32)                                 \
+    V(Int64Not, Rev, MachineType::I64)                                 \
+    V(CastDoubleToInt64, Bitcast, MachineType::I64)                    \
+    V(CastInt64ToFloat64, Bitcast, MachineType::F64)                   \
+    V(CastInt32ToFloat32, Bitcast, MachineType::F32)                   \
+    V(SExtInt32ToInt64, Sext, MachineType::I64)                        \
+    V(SExtInt1ToInt64, Sext, MachineType::I64)                         \
+    V(SExtInt1ToInt32, Sext, MachineType::I32)                         \
+    V(ZExtInt8ToInt16, Zext, MachineType::I16)                         \
+    V(ZExtInt32ToInt64, Zext, MachineType::I64)                        \
+    V(ZExtInt1ToInt64, Zext, MachineType::I64)                         \
+    V(ZExtInt1ToInt32, Zext, MachineType::I32)                         \
+    V(ZExtInt8ToInt32, Zext, MachineType::I32)                         \
+    V(ZExtInt8ToInt64, Zext, MachineType::I64)                         \
+    V(ZExtInt8ToPtr, Zext, MachineType::ARCH)                          \
+    V(ZExtInt16ToPtr, Zext, MachineType::ARCH)                         \
+    V(ZExtInt32ToPtr, Zext, MachineType::ARCH)                         \
+    V(SExtInt32ToPtr, Sext, MachineType::ARCH)                         \
+    V(ZExtInt16ToInt32, Zext, MachineType::I32)                        \
+    V(ZExtInt16ToInt64, Zext, MachineType::I64)                        \
+    V(TruncInt16ToInt8, Trunc, MachineType::I8)                        \
+    V(TruncInt64ToInt32, Trunc, MachineType::I32)                      \
+    V(TruncPtrToInt32, Trunc, MachineType::I32)                        \
+    V(TruncInt64ToInt1, Trunc, MachineType::I1)                        \
+    V(TruncInt64ToInt16, Trunc, MachineType::I16)                      \
+    V(TruncInt32ToInt1, Trunc, MachineType::I1)                        \
+    V(TruncFloatToInt64, TruncFloatToInt64, MachineType::I64)          \
+    V(ExtFloat32ToDouble, Fext, MachineType::F64)                      \
+    V(TruncDoubleToFloat32, Ftrunc, MachineType::F32)                  \
+    V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)     \
+    V(ChangeInt32ToFloat64, SignedIntToFloat, MachineType::F64)        \
+    V(ChangeInt32ToFloat32, SignedIntToFloat, MachineType::F32)        \
+    V(ChangeUInt32ToFloat64, UnsignedIntToFloat, MachineType::F64)     \
+    V(ChangeFloat64ToInt32, FloatToSignedInt, MachineType::I32)        \
+    V(SExtInt16ToInt64, Sext, MachineType::I64)                        \
+    V(SExtInt16ToInt32, Sext, MachineType::I32)                        \
+    V(SExtInt8ToInt32, Sext, MachineType::I32)                         \
+    V(SExtInt8ToInt64, Sext, MachineType::I64)                         \
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                              \
-    V(DoubleLessThan, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OLT))                  \
-    V(DoubleLessThanOrEqual, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OLE))           \
-    V(DoubleGreaterThan, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OGT))               \
-    V(DoubleGreaterThanOrEqual, OpCode::FCMP, static_cast<BitField>(FCmpCondition::OGE))        \
-    V(Int32LessThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SLT))                   \
-    V(Int32LessThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SLE))            \
-    V(Int32GreaterThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SGT))                \
-    V(Int32GreaterThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SGE))         \
-    V(Int32UnsignedLessThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::ULT))           \
-    V(Int32UnsignedGreaterThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::UGT))        \
-    V(Int32UnsignedGreaterThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::UGE)) \
-    V(Int64LessThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SLT))                   \
-    V(Int64LessThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SLE))            \
-    V(Int64GreaterThan, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SGT))                \
-    V(Int64GreaterThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::SGE))         \
-    V(Int64UnsignedLessThanOrEqual, OpCode::ICMP, static_cast<BitField>(ICmpCondition::ULE))
+    V(DoubleLessThan, Fcmp, static_cast<BitField>(FCmpCondition::OLT))                  \
+    V(DoubleLessThanOrEqual, Fcmp, static_cast<BitField>(FCmpCondition::OLE))           \
+    V(DoubleGreaterThan, Fcmp, static_cast<BitField>(FCmpCondition::OGT))               \
+    V(DoubleGreaterThanOrEqual, Fcmp, static_cast<BitField>(FCmpCondition::OGE))        \
+    V(Int32LessThan, Icmp, static_cast<BitField>(ICmpCondition::SLT))                   \
+    V(Int32LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
+    V(Int32GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
+    V(Int32GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))         \
+    V(Int32UnsignedLessThan, Icmp, static_cast<BitField>(ICmpCondition::ULT))           \
+    V(Int32UnsignedGreaterThan, Icmp, static_cast<BitField>(ICmpCondition::UGT))        \
+    V(Int32UnsignedGreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::UGE)) \
+    V(Int64LessThan, Icmp, static_cast<BitField>(ICmpCondition::SLT))                   \
+    V(Int64LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
+    V(Int64GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
+    V(Int64GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))         \
+    V(Int64UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))
 
 class CompilationConfig {
 public:
@@ -134,8 +142,10 @@ public:
         TRIPLE_ARM32,
     };
 
-    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false)
-        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler)
+    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false,
+                               bool profiling = false)
+        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler),
+          profiling_(profiling)
     {
     }
     ~CompilationConfig() = default;
@@ -175,6 +185,11 @@ public:
         return enablePGOProfiler_;
     }
 
+    bool IsProfiling() const
+    {
+        return profiling_;
+    }
+
 private:
     inline Triple GetTripleFromString(const std::string &triple)
     {
@@ -189,17 +204,19 @@ private:
         if (triple.compare("arm-unknown-linux-gnu") == 0) {
             return Triple::TRIPLE_ARM32;
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     Triple triple_;
     bool isTraceBc_;
     bool enablePGOProfiler_;
+    bool profiling_;
 };
 
 class CircuitBuilder {
 public:
     explicit CircuitBuilder(Circuit *circuit) : circuit_(circuit), acc_(circuit) {}
-    explicit CircuitBuilder(Circuit *circuit, CompilationConfig *cmpCfg)
+    CircuitBuilder(Circuit *circuit, CompilationConfig *cmpCfg)
         : circuit_(circuit), acc_(circuit), cmpCfg_(cmpCfg)
     {
     }
@@ -207,19 +224,28 @@ public:
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
     // low level interface
+    template<TypedUnOp Op>
+    inline GateRef Int32OverflowCheck(GateRef gate);
+    GateRef ArrayCheck(GateRef gate);
+    GateRef StableArrayCheck(GateRef gate);
+    GateRef TypedArrayCheck(GateType type, GateRef gate);
+    GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
-    GateRef TypeCheck(GateType type, GateRef gate);
-    GateRef CallTargetCheck(GateRef function, GateRef id);
+    GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset,
+        GateRef frameState);
+    GateRef PrimitiveTypeCheck(GateType type, GateRef gate);
+    GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param);
+    GateRef DeoptCheck(GateRef condition, GateRef frameState);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
-    GateRef TypedCallOperator(MachineType type, GateRef state, GateRef depend, std::vector<GateRef> inList);
+    GateRef TypedCallOperator(MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef x, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
     GateRef GetLexicalEnv(GateRef depend);
     GateRef Arguments(size_t index);
-    GateRef Merge(GateRef *in, size_t controlCount);
+    GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
         int valueCounts, VariableType type = VariableType::VOID());
     GateRef Selector(OpCode opcode, GateRef control, const std::vector<GateRef> &values,
@@ -229,6 +255,7 @@ public:
     GateRef Int32(int32_t value);
     GateRef Int64(int64_t value);
     GateRef IntPtr(int64_t val);
+    GateRef StringPtr(const std::string &str);
     GateRef Boolean(bool value);
     GateRef Double(double value);
     GateRef UndefineConstant();
@@ -236,7 +263,7 @@ public:
     GateRef NullConstant();
     GateRef ExceptionConstant();
     GateRef RelocatableData(uint64_t val);
-    GateRef Alloca(int size);
+    GateRef Alloca(size_t size);
     GateRef Branch(GateRef state, GateRef condition);
     GateRef SwitchBranch(GateRef state, GateRef index, int caseCounts);
     GateRef Return(GateRef state, GateRef depend, GateRef value);
@@ -250,12 +277,9 @@ public:
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
     GateRef DependAnd(std::initializer_list<GateRef> args);
-    GateRef TaggedNumber(OpCode opcode, GateRef value);
-    GateRef BinaryArithmetic(OpCode opcode, MachineType machineType, GateRef left, GateRef right);
-    GateRef UnaryArithmetic(OpCode opcode, MachineType machineType, GateRef value);
-    GateRef UnaryArithmetic(OpCode opcode, GateRef value);
-    GateRef BinaryLogic(OpCode opcode, GateRef left, GateRef right);
-    GateRef BinaryCmp(OpCode opcode, GateRef left, GateRef right, BitField condition);
+    GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
+        GateRef left, GateRef right);
+    GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
     GateRef GetCallBuiltinId(GateRef method);
     Circuit *GetCircuit() const
@@ -276,6 +300,7 @@ public:
     GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
     GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
     GateRef CallStub(GateRef glue, int index, const std::vector<GateRef> &args);
+    GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew = false);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                  const std::vector<GateRef> &args);
 
@@ -286,34 +311,25 @@ public:
 #define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                 \
     inline GateRef NAME(GateRef x, GateRef y)                                             \
     {                                                                                     \
-        return BinaryArithmetic(OpCode(OPCODEID), MACHINETYPEID, x, y);                   \
+        return BinaryArithmetic(circuit_->OPCODEID(), MACHINETYPEID, x, y);               \
     }
 
     BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(ARITHMETIC_BINARY_OP_WITH_BITWIDTH)
 #undef ARITHMETIC_BINARY_OP_WITH_BITWIDTH
 
-#define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                  \
-    inline GateRef NAME(GateRef x)                                                        \
-    {                                                                                     \
-        return UnaryArithmetic(OpCode(OPCODEID), MACHINETYPEID, x);                       \
+#define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \
+    inline GateRef NAME(GateRef x)                                                                  \
+    {                                                                                               \
+        return circuit_->NewGate(circuit_->OPCODEID(), MACHINETYPEID, { x }, GateType::NJSValue()); \
     }
 
     UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(ARITHMETIC_UNARY_OP_WITH_BITWIDTH)
 #undef ARITHMETIC_UNARY_OP_WITH_BITWIDTH
 
-#define ARITHMETIC_UNARY_OP_WITHOUT_BITWIDTH(NAME, OPCODEID)                              \
-    inline GateRef NAME(GateRef x)                                                        \
-    {                                                                                     \
-        return UnaryArithmetic(OpCode(OPCODEID), x);                                      \
-    }
-
-    UNARY_ARITHMETIC_METHOD_LIST_WITHOUT_BITWIDTH(ARITHMETIC_UNARY_OP_WITHOUT_BITWIDTH)
-#undef ARITHMETIC_UNARY_OP_WITHOUT_BITWIDTH
-
 #define CMP_BINARY_OP_WITHOUT_BITWIDTH(NAME, OPCODEID, CONDITION)                         \
     inline GateRef NAME(GateRef x, GateRef y)                                             \
     {                                                                                     \
-        return BinaryCmp(OpCode(OPCODEID), x, y, CONDITION);                              \
+        return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y);                            \
     }
 
     BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(CMP_BINARY_OP_WITHOUT_BITWIDTH)
@@ -328,7 +344,7 @@ public:
     inline GateRef GetInt32OfTInt(GateRef x);
     inline GateRef TaggedCastToIntPtr(GateRef x);
     inline GateRef GetDoubleOfTDouble(GateRef x);
-    inline GateRef ChangeTaggedPointerToInt64(GateRef x);
+    inline GateRef GetDoubleOfTNumber(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     inline GateRef Int32ToTaggedInt(GateRef x);
@@ -338,6 +354,7 @@ public:
     inline GateRef TaggedIsDouble(GateRef x);
     inline GateRef TaggedIsObject(GateRef x);
     inline GateRef TaggedIsNumber(GateRef x);
+    inline GateRef TaggedIsNumeric(GateRef x);
     inline GateRef TaggedIsNotHole(GateRef x);
     inline GateRef TaggedIsHole(GateRef x);
     inline GateRef TaggedIsUndefined(GateRef x);
@@ -350,6 +367,8 @@ public:
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);
     inline GateRef TaggedIsTransitionHandler(GateRef x);
+    inline GateRef TaggedIsStoreTSHandler(GateRef x);
+    inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
     inline GateRef TaggedIsTrue(GateRef x);
     inline GateRef TaggedIsFalse(GateRef x);
@@ -369,13 +388,6 @@ public:
     inline GateRef DoubleIsNAN(GateRef x);
     inline GateRef TaggedTrue();
     inline GateRef TaggedFalse();
-    inline GateRef SExtInt8ToInt64(GateRef x);
-    inline GateRef SExtInt16ToInt64(GateRef x);
-    inline GateRef SExtInt16ToInt32(GateRef x);
-    inline GateRef ChangeFloat64ToInt32(GateRef x);
-    inline GateRef ChangeUInt32ToFloat64(GateRef x);
-    inline GateRef ChangeInt32ToFloat64(GateRef x);
-    inline GateRef ChangeInt32ToFloat32(GateRef x);
     // Pointer/Arithmetic/Logic Operations
     inline GateRef IntPtrDiv(GateRef x, GateRef y);
     inline GateRef IntPtrOr(GateRef x, GateRef y);
@@ -389,7 +401,7 @@ public:
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
-    template<OpCode::Op Op, MachineType Type>
+    template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
@@ -398,6 +410,7 @@ public:
     inline GateRef GetGlobalConstantString(ConstantIndex index);
 
     GateRef IsJSHClass(GateRef obj);
+    GateRef HasPendingException(GateRef glue);
 
     // middle ir: operations with any type
     template<TypedBinOp Op>
@@ -418,6 +431,7 @@ public:
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef offset);
     GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);
+    GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(std::vector<GateRef> args);
 
@@ -501,8 +515,6 @@ public:
     inline GateRef GetDepend() const;
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
-    // type bits shift
-    static const int OPRAND_TYPE_BITS = 32;
 
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);
@@ -517,7 +529,7 @@ private:
 
 class Label {
 public:
-    explicit Label() = default;
+    Label() = default;
     explicit Label(Environment *env);
     explicit Label(CircuitBuilder *cirBuilder);
     ~Label() = default;

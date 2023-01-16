@@ -17,6 +17,7 @@
 
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins.h"
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_bigint.h"
@@ -262,6 +263,36 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
     EXPECT_EQ(buffer2[0], 'a');
     EXPECT_EQ(buffer2[1], '\0');
     EXPECT_EQ(buffer2[2], 'b');
+}
+
+HWTEST_F_L0(JSNApiTests, StringLatin1_001)
+{
+    LocalScope scope(vm_);
+    std::string test = "中";
+    Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
+
+    EXPECT_EQ(testString->Length(), 1);          
+    char buffer[1];                                      
+    EXPECT_EQ(testString->WriteLatin1(buffer, 1), 1);
+
+    EXPECT_EQ(buffer[0], '-'); // '-' == 0x2D
+}
+
+HWTEST_F_L0(JSNApiTests, StringLatin1_002)
+{
+    LocalScope scope(vm_);
+    std::string test = "En123";
+    Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
+
+    EXPECT_EQ(testString->Length(), 5);          
+    char buffer[5];                                      
+    EXPECT_EQ(testString->WriteLatin1(buffer, 5), 5);
+
+    EXPECT_EQ(buffer[0], 'E');
+    EXPECT_EQ(buffer[1], 'n');
+    EXPECT_EQ(buffer[2], '1');
+    EXPECT_EQ(buffer[3], '2');
+    EXPECT_EQ(buffer[4], '3');
 }
 
 HWTEST_F_L0(JSNApiTests, ToType)

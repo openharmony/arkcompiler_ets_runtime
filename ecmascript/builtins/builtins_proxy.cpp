@@ -43,7 +43,7 @@ JSTaggedValue BuiltinsProxy::ProxyConstructor(EcmaRuntimeCallInfo *argv)
 }
 
 // 26.2.2.1 Proxy.revocable ( target, handler )
-JSTaggedValue BuiltinsProxy::Revocable([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsProxy::Revocable(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Proxy, Revocable);
@@ -85,11 +85,11 @@ JSTaggedValue BuiltinsProxy::InvalidateProxyFunction(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<JSObject> revoke_obj(GetThis(argv));
+    JSHandle<JSObject> revokeObj(GetThis(argv));
     JSHandle<JSTaggedValue> revokeKey = thread->GlobalConstants()->GetHandledRevokeString();
 
     PropertyDescriptor desc(thread);
-    JSObject::GetOwnProperty(thread, revoke_obj, revokeKey, desc);
+    JSObject::GetOwnProperty(thread, revokeObj, revokeKey, desc);
     JSProxyRevocFunction::ProxyRevocFunctions(thread, JSHandle<JSProxyRevocFunction>(desc.GetValue()));
     return JSTaggedValue::Undefined();
 }

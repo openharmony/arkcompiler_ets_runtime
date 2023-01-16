@@ -33,7 +33,7 @@ public:
     void Initialize();
 
     void Iterate(const RootVisitor &v);
-    
+
     void ClearEnvMap()
     {
         objectVector_.clear();
@@ -56,7 +56,7 @@ public:
     }
 
     static constexpr size_t MAX_UINT_32 = 0xFFFFFFFF;
-    
+
 private:
     NO_MOVE_SEMANTIC(SnapshotEnv);
     NO_COPY_SEMANTIC(SnapshotEnv);

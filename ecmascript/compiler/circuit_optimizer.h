@@ -31,7 +31,7 @@ enum class LatticeStatus {
 
 class ValueLattice {
 public:
-    explicit ValueLattice();
+    ValueLattice();
     explicit ValueLattice(LatticeStatus status);
     explicit ValueLattice(uint64_t value);
     ~ValueLattice() = default;
@@ -57,7 +57,7 @@ private:
 
 class ReachabilityLattice {
 public:
-    explicit ReachabilityLattice();
+    ReachabilityLattice();
     explicit ReachabilityLattice(bool reachable);
     ~ReachabilityLattice() = default;
     [[nodiscard]] bool IsReachable() const;
@@ -94,12 +94,12 @@ protected:
 class LatticeUpdateRuleSCCP : public LatticeUpdateRule {
 public:
     ~LatticeUpdateRuleSCCP() override {}
-    uint64_t RunBoolArithmetic(bool valueA, bool valueB, OpCode::Op op);
+    uint64_t RunBoolArithmetic(bool valueA, bool valueB, OpCode op);
     template<class T>
-    uint64_t RunFixedPointArithmetic(T valueA, T valueB, OpCode::Op op);
+    uint64_t RunFixedPointArithmetic(T valueA, T valueB, OpCode op);
     template<class T>
-    double RunFloatingPointArithmetic(T valueA, T valueB, OpCode::Op op);
-    uint64_t RunBasicArithmetic(ValueLattice operandA, ValueLattice operandB, OpCode::Op op, MachineType machineType);
+    double RunFloatingPointArithmetic(T valueA, T valueB, OpCode op);
+    uint64_t RunBasicArithmetic(ValueLattice operandA, ValueLattice operandB, OpCode op, MachineType machineType);
     uint64_t RunFCompareArithmetic(ValueLattice operandA, ValueLattice operandB,
                                    FCmpCondition cond, MachineType machineType);
     uint64_t RunICompareArithmetic(ValueLattice operandA, ValueLattice operandB,

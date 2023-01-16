@@ -295,20 +295,37 @@ JSTaggedValue BuiltinsNumber::ToLocaleString(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Number, ToLocaleString);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let x be ? thisNumberValue(this value).
-    JSTaggedNumber x = ThisNumberValue(thread, argv);
+    JSHandle<JSTaggedValue> x(thread, ThisNumberValue(thread, argv));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 2. Let numberFormat be ? Construct(%NumberFormat%, « locales, options »).
-    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetNumberFormatFunction());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<JSFunction> ctor(ecmaVm->GetGlobalEnv()->GetNumberFormatFunction());
+    ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
     JSHandle<JSNumberFormat> numberFormat = JSHandle<JSNumberFormat>::Cast(obj);
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
-    JSNumberFormat::InitializeNumberFormat(thread, numberFormat, locales, options);
+    bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    if (cacheable) {
+        auto numberFormatter = JSNumberFormat::GetCachedIcuNumberFormatter(thread, locales);
+        if (numberFormatter != nullptr) {
+            JSHandle<JSTaggedValue> result = JSNumberFormat::FormatNumeric(thread, numberFormatter, x.GetTaggedValue());
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return result.GetTaggedValue();
+        }
+    }
+    JSNumberFormat::InitializeNumberFormat(thread, numberFormat, locales, options, cacheable);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (cacheable) {
+        auto numberFormatter = JSNumberFormat::GetCachedIcuNumberFormatter(thread, locales);
+        ASSERT(numberFormatter != nullptr);
+        JSHandle<JSTaggedValue> result = JSNumberFormat::FormatNumeric(thread, numberFormatter, x.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return result.GetTaggedValue();
+    }
 
     // Return ? FormatNumeric(numberFormat, x).
-    JSHandle<JSTaggedValue> result = JSNumberFormat::FormatNumeric(thread, numberFormat, x);
+    JSHandle<JSTaggedValue> result = JSNumberFormat::FormatNumeric(thread, numberFormat, x.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
 }
@@ -414,7 +431,7 @@ JSTaggedValue BuiltinsNumber::ValueOf(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Number, ValueOf);
     // 1. Let x be ? thisNumberValue(this value).
     JSTaggedValue x = ThisNumberValue(thread, argv);
-    
+
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return x;
 }

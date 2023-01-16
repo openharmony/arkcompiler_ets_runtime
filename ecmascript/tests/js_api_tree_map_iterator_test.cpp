@@ -157,7 +157,7 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, SetNextIndex)
     JSHandle<JSAPITreeMapIterator> treeMapIterator =
         factory->NewJSAPITreeMapIterator(jsTreeMap, IterationKind::KEY_AND_VALUE);
     EXPECT_EQ(treeMapIterator->GetNextIndex(), 0U);
-    
+
     for (uint32_t i = 0; i < DEFAULT_LENGTH; i++) {
         treeMapIterator->SetNextIndex(i);
         EXPECT_EQ(treeMapIterator->GetNextIndex(), i);
@@ -309,7 +309,7 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, KEY_AND_VALUE_Next)
         JSHandle<JSObject> resultObj(thread, result);
         std::string resultKeyAndValue = mapKey + std::to_string(i + 1U);
         value.Update(factory->NewFromStdString(resultKeyAndValue).GetTaggedValue());
-        
+
         JSHandle<JSTaggedValue> keyValueArr(JSObject::GetProperty(thread, resultObj, valueStr).GetValue());
         for (int index = 0; index < 2; index++) {
             JSHandle<JSTaggedValue> indexValue(thread, JSTaggedValue(index));
@@ -336,7 +336,7 @@ HWTEST_F_L0(JSAPITreeMapIteratorTest, SpecailReturnOfNextCreateTreeMapIterator)
     JSHandle<JSAPITreeMapIterator> treeMapIterator = factory->NewJSAPITreeMapIterator(
         jsTreeMap, IterationKind::KEY_AND_VALUE);
     treeMapIterator->SetIteratedMap(thread, JSTaggedValue::Undefined());
-    
+
     // test Next exception
     {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

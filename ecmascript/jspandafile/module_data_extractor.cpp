@@ -20,8 +20,8 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/module/js_module_manager.h"
 
-#include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/literal_data_accessor-inl.h"
 
 namespace panda::ecmascript {
@@ -33,7 +33,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
     int moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     ASSERT(moduleIdx != -1);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
-    panda_file::File::EntityId literalArraysId = pf->GetLiteralArraysId();
+    panda_file::File::EntityId literalArraysId = jsPandaFile->GetLiteralArraysId();
     panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
     panda_file::File::EntityId moduleId;
     if (jsPandaFile->IsNewVersion()) {  // new pandafile version use new literal offset mechanism
@@ -61,17 +61,17 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
                                              JSHandle<SourceTextModule> &moduleRecord)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    ModuleDataAccessor mda(*pf, moduleId);
+    ModuleDataAccessor mda(jsPandaFile, moduleId);
     const std::vector<uint32_t> &requestModules = mda.getRequestModules();
-    JSHandle<TaggedArray> requestModuleArray = factory->NewTaggedArray(requestModules.size());
-    for (size_t idx = 0; idx < requestModules.size(); idx++) {
-        StringData sd = pf->GetStringData(panda_file::File::EntityId(requestModules[idx]));
+    size_t len = requestModules.size();
+    JSHandle<TaggedArray> requestModuleArray = factory->NewTaggedArray(len);
+    for (size_t idx = 0; idx < len; idx++) {
+        StringData sd = jsPandaFile->GetStringData(panda_file::File::EntityId(requestModules[idx]));
         JSTaggedValue value(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
         requestModuleArray->Set(thread, idx, value);
     }
-    if (requestModules.size()) {
+    if (len > 0) {
         moduleRecord->SetRequestedModules(thread, requestModuleArray);
     }
 
@@ -96,6 +96,28 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::CJSMODULE);
+    moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
+
+    return JSHandle<JSTaggedValue>::Cast(moduleRecord);
+}
+
+JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                             const CString &moduleFilename, const CString &recordName)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
+
+    JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
+    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
+    SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
+    JSTaggedValue jsonData = ModuleManager::JsonParse(thread, jsPandaFile, recordName);
+    moduleRecord->StoreModuleValue(thread, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
+
+    JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
+    moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
+
+    moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
+    moduleRecord->SetTypes(ModuleTypes::JSONMODULE);
     moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);

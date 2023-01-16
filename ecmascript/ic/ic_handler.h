@@ -126,6 +126,7 @@ public:
             OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 
@@ -156,8 +157,14 @@ public:
         }
         if (op.IsInlinedProps()) {
             InlinedPropsBit::Set<uint32_t>(true, &handler);
-            JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
-            auto index = receiver->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
+            uint32_t index = 0;
+            if (!hasSetter) {
+                JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
+                index = receiver->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
+            } else {
+                JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
+                index = holder->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
+            }
             OffsetBit::Set<uint32_t>(index, &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
@@ -199,6 +206,7 @@ public:
     }
 
     static constexpr size_t HANDLER_INFO_OFFSET = TaggedObjectSize();
+
     ACCESSORS(HandlerInfo, HANDLER_INFO_OFFSET, TRANSITION_HCLASS_OFFSET)
 
     ACCESSORS(TransitionHClass, TRANSITION_HCLASS_OFFSET, SIZE)
@@ -234,6 +242,73 @@ public:
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<PrototypeHandler> handler = factory->NewPrototypeHandler();
+        JSHandle<JSTaggedValue> handlerInfo = StoreHandler::StoreProperty(thread, op);
+        handler->SetHandlerInfo(thread, handlerInfo);
+        handler->SetHolder(thread, op.GetHolder());
+        auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
+        handler->SetProtoCell(thread, result);
+        return JSHandle<JSTaggedValue>::Cast(handler);
+    }
+
+    static constexpr size_t HANDLER_INFO_OFFSET = TaggedObjectSize();
+
+    ACCESSORS(HandlerInfo, HANDLER_INFO_OFFSET, PROTO_CELL_OFFSET)
+
+    ACCESSORS(ProtoCell, PROTO_CELL_OFFSET, HOLDER_OFFSET)
+
+    ACCESSORS(Holder, HOLDER_OFFSET, SIZE)
+
+    DECL_VISIT_OBJECT(HANDLER_INFO_OFFSET, SIZE)
+    DECL_DUMP()
+};
+
+class TransWithProtoHandler : public TaggedObject {
+public:
+    static TransWithProtoHandler *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsTransWithProtoHandler());
+        return static_cast<TransWithProtoHandler *>(object);
+    }
+
+    static inline JSHandle<JSTaggedValue> StoreTransition(const JSThread *thread, const ObjectOperator &op,
+                                                          const JSHandle<JSHClass> &hclass)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<TransWithProtoHandler> handler = factory->NewTransWithProtoHandler();
+        JSHandle<JSTaggedValue> handlerInfo = StoreHandler::StoreProperty(thread, op);
+        handler->SetHandlerInfo(thread, handlerInfo);
+        auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
+        handler->SetProtoCell(thread, result);
+        handler->SetTransitionHClass(thread, hclass.GetTaggedValue());
+
+        return JSHandle<JSTaggedValue>::Cast(handler);
+    }
+
+    static constexpr size_t HANDLER_INFO_OFFSET = TaggedObjectSize();
+
+    ACCESSORS(HandlerInfo, HANDLER_INFO_OFFSET, TRANSITION_HCLASS_OFFSET)
+
+    ACCESSORS(TransitionHClass, TRANSITION_HCLASS_OFFSET, PROTO_CELL_OFFSET)
+
+    ACCESSORS(ProtoCell, PROTO_CELL_OFFSET, SIZE)
+
+    DECL_VISIT_OBJECT(HANDLER_INFO_OFFSET, SIZE)
+    DECL_DUMP()
+};
+
+class StoreTSHandler : public TaggedObject {
+public:
+    static StoreTSHandler *Cast(TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsStoreTSHandler());
+        return static_cast<StoreTSHandler *>(object);
+    }
+
+    static inline JSHandle<JSTaggedValue> StoreAOT(const JSThread *thread, const ObjectOperator &op,
+                                                   const JSHandle<JSHClass> &hclass)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<StoreTSHandler> handler = factory->NewStoreTSHandler();
         JSHandle<JSTaggedValue> handlerInfo = StoreHandler::StoreProperty(thread, op);
         handler->SetHandlerInfo(thread, handlerInfo);
         handler->SetHolder(thread, op.GetHolder());

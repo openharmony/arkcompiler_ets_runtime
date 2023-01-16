@@ -22,7 +22,6 @@
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
 void AssemblerModule::Run(const CompilationConfig *cfg, Chunk* chunk)
@@ -33,6 +32,7 @@ void AssemblerModule::Run(const CompilationConfig *cfg, Chunk* chunk)
     } else if (cfg->IsAArch64()) {
         GenerateStubsAarch64(chunk);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -113,6 +113,7 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
         case JSCallMode::CALL_SETTER:
             return 1;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -146,6 +147,7 @@ bool AssemblerModule::IsCallNew(JSCallMode mode)
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             return true;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return false;
@@ -180,6 +182,7 @@ bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
             return true;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -213,6 +216,7 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
         case JSCallMode::CALL_FROM_AOT:
             return true;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -246,6 +250,7 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
         case JSCallMode::CALL_FROM_AOT:
             return false;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return false;

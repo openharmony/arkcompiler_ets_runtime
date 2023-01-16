@@ -79,21 +79,34 @@ public:
         return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
     }
 
-    inline GateRef GetCallArgv()
+    inline GateRef GetArgv()
     {
         return PtrArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
     }
 
-    GateRef GetCallArgWithArgv(GateRef numArgs, GateRef index);
+    // not check whether index is valid, if not sure, invoke GetArg
+    inline GateRef GetArgNCheck(GateRef index)
+    {
+        GateRef argv = GetArgv();
+        return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(JSTaggedValue::TaggedTypeSize())));
+    }
+
+    GateRef GetArg(GateRef numArgs, GateRef index);
 
     GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue, GateRef numArgs, GateRef func,
                          GateRef newTarget);
+
+    inline GateRef IsNumberYearMonthDay(GateRef year, GateRef month, GateRef day)
+    {
+        GateRef condition = BoolAnd(TaggedIsNumber(year), TaggedIsNumber(month));
+        return BoolAnd(condition, TaggedIsNumber(day));
+    }
 };
 
 #define DECLARE_BUILTINS_STUB_CLASS(name)                                                           \
     class name##StubBuilder : public BuiltinsStubBuilder {                                          \
     public:                                                                                         \
-        explicit name##StubBuilder(CallSignature *callSignature, Environment *env)                  \
+        name##StubBuilder(CallSignature *callSignature, Environment *env)                           \
             : BuiltinsStubBuilder(callSignature, env) {}                                            \
         ~name##StubBuilder() = default;                                                             \
         NO_MOVE_SEMANTIC(name##StubBuilder);                                                        \

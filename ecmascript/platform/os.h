@@ -20,10 +20,10 @@
 #include <cstdint>
 
 namespace panda::ecmascript {
-size_t MallocUsableSize(void *ptr);
+size_t MallocUsableSize(void *p);
 uint32_t NumberOfCpuCore();
 size_t PhysicalSize();
-int PrctlSetVMA(void *ptr, size_t size, const char *tag);
+int PrctlSetVMA(const void *p, const size_t size, const char *tag);
 long PtracePeektext(int pid, uintptr_t addr);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_OS_H

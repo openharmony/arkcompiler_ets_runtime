@@ -37,3 +37,10 @@ class MyBoolean extends Boolean {
 let b = new MyBoolean(true);
 print(b instanceof MyBoolean);
 print(b instanceof Boolean);
+
+let d1 = new Date(16455456000);
+print(d1);
+let d2 = new Date(2022, 3, 4);
+print(d2);
+let d3 = new Date(2022, NaN, 4);
+print(d3);

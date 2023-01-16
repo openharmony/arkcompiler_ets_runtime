@@ -146,8 +146,8 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
     if (method.IsUndefined()) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<Method> target = JSHandle<Method>(thread, method);
-    if (target->GetPandaFile() == nullptr) {
+    Method *target = Method::Cast(method.GetTaggedObject());
+    if (target->IsNativeWithCallField()) {
         return JSTaggedValue::Undefined();
     }
     std::string funcName = target->ParseFunctionName();
@@ -494,7 +494,7 @@ void JSProxyRevocFunction::ProxyRevocFunctions(const JSThread *thread, const JSH
     proxyHandle->SetHandler(thread, JSTaggedValue::Null());
 }
 
-JSTaggedValue JSFunction::AccessCallerArgumentsThrowTypeError([[maybe_unused]] EcmaRuntimeCallInfo *argv)
+JSTaggedValue JSFunction::AccessCallerArgumentsThrowTypeError(EcmaRuntimeCallInfo *argv)
 {
     THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(),
                                 "Under strict mode, 'caller' and 'arguments' properties must not be accessed.",
@@ -689,8 +689,19 @@ JSTaggedValue JSFunction::GetFunctionExtraInfo() const
         } else if (value.IsJSNativePointer()) {
             return value;
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
+    }
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
+{
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedValue value(hashField);
+    if (value.CheckIsJSNativePointer()) {
+        return value;
     }
     return JSTaggedValue::Undefined();
 }
@@ -699,7 +710,7 @@ JSTaggedValue JSFunction::GetRecordName() const
 {
     JSTaggedValue module = GetModule();
     if (module.IsSourceTextModule()) {
-        JSTaggedValue recordName =  SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
+        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
         if (!recordName.IsString()) {
             LOG_INTERPRETER(DEBUG) << "module record name is undefined";
             return JSTaggedValue::Hole();

@@ -47,7 +47,7 @@ public:
 private:
     class EvacuationTask : public Task {
     public:
-        explicit EvacuationTask(int32_t id, ParallelEvacuator *evacuator);
+        EvacuationTask(int32_t id, ParallelEvacuator *evacuator);
         ~EvacuationTask() override;
         bool Run(uint32_t threadIndex) override;
 
@@ -61,7 +61,7 @@ private:
 
     class UpdateReferenceTask : public Task {
     public:
-        explicit UpdateReferenceTask(int32_t id, ParallelEvacuator *evacuator) : Task(id), evacuator_(evacuator) {};
+        UpdateReferenceTask(int32_t id, ParallelEvacuator *evacuator) : Task(id), evacuator_(evacuator) {};
         ~UpdateReferenceTask() override = default;
 
         bool Run(uint32_t threadIndex) override;

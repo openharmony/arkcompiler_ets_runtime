@@ -147,11 +147,6 @@ struct TagElements {
 
 class JSLocale : public JSObject {
 public:
-    struct ParsedLocale {
-        std::string base;
-        std::string extension;
-    };
-
     static JSLocale *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsJSLocale());
@@ -184,31 +179,11 @@ public:
         }
     }
 
-    static std::string ConvertToStdString(const JSHandle<EcmaString> &ecmaStr);
-
-    // 6.2.2 IsStructurallyValidLanguageTag ( locale )
-    static bool IsStructurallyValidLanguageTag(const JSHandle<EcmaString> &tag);
-
-    static bool DealwithLanguageTag(const std::vector<std::string> &containers, size_t &address);
-
-    // 6.2.3 CanonicalizeUnicodeLocaleId ( locale )
-    static JSHandle<EcmaString> CanonicalizeUnicodeLocaleId(JSThread *thread, const JSHandle<EcmaString> &locale);
-
     // 6.2.4 DefaultLocale ()
     static JSHandle<EcmaString> DefaultLocale(JSThread *thread);
 
     // 6.4.1 IsValidTimeZoneName ( timeZone )
     static bool IsValidTimeZoneName(const icu::TimeZone &tz);
-
-    // 9.2.1 CanonicalizeLocaleList ( locales )
-    static JSHandle<TaggedArray> CanonicalizeLocaleList(JSThread *thread, const JSHandle<JSTaggedValue> &locales);
-
-    template<typename T>
-    static JSHandle<TaggedArray> CanonicalizeHelper(JSThread *thread, JSHandle<T> &obj, JSHandle<TaggedArray> &seen);
-
-    // 9.2.2 BestAvailableLocale ( availableLocales, locale )
-    static std::string BestAvailableLocale(JSThread *thread, const JSHandle<TaggedArray> &availableLocales,
-                                           const std::string &locale);
 
     // 9.2.3 LookupMatcher ( availableLocales, requestedLocales )
     static JSHandle<EcmaString> LookupMatcher(JSThread *thread, const JSHandle<TaggedArray> &availableLocales,
@@ -261,7 +236,7 @@ public:
         //   i. If values does not contain an element equal to value, throw a RangeError exception.
         JSHandle<EcmaString> valueEStr = JSTaggedValue::ToString(thread, value);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, T::EXCEPTION);
-        std::string valueStr = ConvertToStdString(valueEStr);
+        std::string valueStr = std::string(ConvertToString(*valueEStr, StringConvertedUsage::LOGICOPERATION));
         int existIdx = -1;
         if (!enumValues.empty()) {
             size_t strValuesSize = strValues.size();
@@ -275,6 +250,7 @@ public:
             }
         }
         if (existIdx == -1) {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
         // e.Return value.
@@ -358,8 +334,8 @@ public:
 
     static bool IsWellCollation(const icu::Locale &locale, const std::string &value)
     {
-        std::set<std::string>  irregularList = {"standard", "search"};
-        if (irregularList.find(value) !=  irregularList.end()) {
+        std::set<std::string> irregularList = {"standard", "search"};
+        if (irregularList.find(value) != irregularList.end()) {
             return false;
         }
         return IsWellExtension<icu::Collator>(locale, "collation", value);
@@ -434,7 +410,7 @@ public:
         if (value.length() < 3) {
             return false;
         }
-        char lastChar  = value[value.length() - 1];
+        char lastChar = value[value.length() - 1];
         if (lastChar == '-') {
             return false;
         }
@@ -497,18 +473,12 @@ public:
         return res;
     }
 
-    static JSHandle<EcmaString> IcuToString(JSThread *thread, const icu::UnicodeString &string);
-
-    static JSHandle<EcmaString> IcuToString(JSThread *thread, const icu::UnicodeString &string, int32_t begin,
-                                            int32_t end);
-
-    static JSHandle<TaggedArray> GetAvailableLocales(JSThread *thread, const char *key, const char *path);
+    static std::vector<std::string> GetAvailableStringLocales(JSThread *thread,
+                                                              const JSHandle<TaggedArray> &availableLocales);
 
     static JSHandle<JSObject> PutElement(JSThread *thread, int index, const JSHandle<JSArray> &array,
                                          const JSHandle<JSTaggedValue> &fieldTypeString,
                                          const JSHandle<JSTaggedValue> &value);
-
-    static JSHandle<EcmaString> ToLanguageTag(JSThread *thread, const icu::Locale &locale);
 
     static std::string GetNumberingSystem(const icu::Locale &icuLocale);
 
@@ -525,10 +495,6 @@ public:
 
     static JSHandle<EcmaString> NormalizeKeywordValue(JSThread *thread, const JSHandle<JSLocale> &locale,
                                                     const std::string &key);
-
-    static void HandleLocaleExtension(size_t &start, size_t &extensionEnd, const std::string result, size_t len);
-
-    static ParsedLocale HandleLocale(const JSHandle<EcmaString> &locale);
 
     static JSHandle<EcmaString> ToString(JSThread *thread, const JSHandle<JSLocale> &locale);
 

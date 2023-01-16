@@ -40,9 +40,9 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId fieldId = methodLiteral->GetMethodId();
     panda_file::MethodDataAccessor mda(*pf, fieldId);
-    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
-        panda_file::AnnotationDataAccessor ada(*pf, annotation_id);
-        auto *annotationName = reinterpret_cast<const char *>(pf->GetStringData(ada.GetClassId()).data);
+    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotationId) {
+        panda_file::AnnotationDataAccessor ada(*pf, annotationId);
+        auto *annotationName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(ada.GetClassId()).data);
         ASSERT(annotationName != nullptr);
         if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {
             return;
@@ -50,7 +50,7 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
         uint32_t length = ada.GetCount();
         for (uint32_t i = 0; i < length; i++) {
             panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-            auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
+            auto *elemName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(adae.GetNameId()).data);
             ASSERT(elemName != nullptr);
             if (::strcmp("_TypeOfInstruction", elemName) != 0) {
                 continue;
@@ -65,7 +65,7 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
             GlobalTSTypeRef funcGT = GlobalTSTypeRef::Default();
             for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // + 2 means bcOffset and typeId
                 int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
-                uint32_t typeId =  static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
+                uint32_t typeId = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
                 GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
 
                 // The type of a function is recorded as (-1, funcTypeId). If the function is a member of a class,

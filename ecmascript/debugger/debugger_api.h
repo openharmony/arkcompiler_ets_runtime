@@ -72,15 +72,22 @@ public:
 
     static Local<JSValueRef> GetProperties(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
                                            int32_t level, uint32_t slot);
-    static void SetProperties(const EcmaVM *vm, const FrameHandler *frameHandler, int32_t level,
+    static void SetProperties(const EcmaVM *ecmaVm, const FrameHandler *frameHandler, int32_t level,
                               uint32_t slot, Local<JSValueRef> value);
     static std::pair<int32_t, uint32_t> GetLevelSlot(const FrameHandler *frameHandler, std::string_view name);
-    static Local<JSValueRef> GetGlobalValue(const EcmaVM *vm, Local<StringRef> name);
-    static bool SetGlobalValue(const EcmaVM *vm, Local<StringRef> name, Local<JSValueRef> value);
+    static Local<JSValueRef> GetGlobalValue(const EcmaVM *ecmaVm, Local<StringRef> name);
+    static bool SetGlobalValue(const EcmaVM *ecmaVm, Local<StringRef> name, Local<JSValueRef> value);
 
     // JSThread
     static Local<JSValueRef> GetAndClearException(const EcmaVM *ecmaVm);
-    static void GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleObj, JSThread *thread);
+    static JSTaggedValue GetCurrentModule(const EcmaVM *ecmaVm);
+    static int32_t GetModuleVariableIndex(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
+                                          const std::string &name);
+    static Local<JSValueRef> GetModuleValue(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
+                                            const std::string &name);
+    static bool SetModuleValue(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
+                               const std::string &name, Local<JSValueRef> value);
+    static void GetModuleVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &moduleObj, JSThread *thread);
     static void SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception);
     static void ClearException(const EcmaVM *ecmaVm);
     static bool IsExceptionCaught(const EcmaVM *ecmaVm);

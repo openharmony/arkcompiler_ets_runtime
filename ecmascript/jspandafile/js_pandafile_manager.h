@@ -21,8 +21,6 @@
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 
-#include "libpandafile/file.h"
-
 namespace panda {
 namespace ecmascript {
 class Program;
@@ -35,10 +33,11 @@ public:
 
     JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
-    const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint);
+    const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
+                                       bool needUpdate = false);
 
     const JSPandaFile *LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
-                                       const void *buffer, size_t size);
+                                       const void *buffer, size_t size, bool needUpdate = false);
 
     JSPandaFile *OpenJSPandaFile(const CString &filename);
 
@@ -56,6 +55,11 @@ public:
         os::memory::LockHolder lock(jsPandaFileLock_);
         for (const auto &iter : loadedJSPandaFiles_) {
             if (!cb(iter.second.first)) {
+                return;
+            }
+        }
+        for (const auto &iter : oldJSPandaFiles_) {
+            if (!cb(iter.first)) {
                 return;
             }
         }
@@ -77,15 +81,18 @@ private:
                                            std::string_view entryPoint);
     void ReleaseJSPandaFile(const JSPandaFile *jsPandaFile);
     const JSPandaFile *GetJSPandaFile(const panda_file::File *pf);
+    const JSPandaFile *FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum);
     const JSPandaFile *FindJSPandaFileUnlocked(const CString &filename);
     void IncreaseRefJSPandaFileUnlocked(const JSPandaFile *jsPandaFile);
     void DecreaseRefJSPandaFile(const JSPandaFile *jsPandaFile);
+    void ObsoleteLoadedJSPandaFile(const CString &filename);
 
     static void *AllocateBuffer(size_t size);
     static void FreeBuffer(void *mem);
 
     os::memory::RecursiveMutex jsPandaFileLock_;
     std::unordered_map<const CString, std::pair<const JSPandaFile *, uint32_t>, CStringHash> loadedJSPandaFiles_;
+    std::unordered_map<const JSPandaFile *, uint32_t> oldJSPandaFiles_;
     std::unordered_map<const JSPandaFile *, std::unique_ptr<DebugInfoExtractor>> extractors_;
 
     friend class JSPandaFile;

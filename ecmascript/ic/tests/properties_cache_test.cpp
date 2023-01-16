@@ -95,7 +95,7 @@ HWTEST_F_L0(PropertiesCacheTest, Clear)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    
+
     JSHandle<JSTaggedValue> handleKey(factory->NewFromASCII("10"));
     JSHandle<JSTaggedValue> handleFunction(factory->NewJSFunction(env));
     JSHClass *FuncHClass = JSObject::Cast(handleFunction->GetTaggedObject())->GetJSHClass();

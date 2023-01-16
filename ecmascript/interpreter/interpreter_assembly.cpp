@@ -32,10 +32,6 @@
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/template_string.h"
 
-#include "libpandafile/code_data_accessor.h"
-#include "libpandafile/file.h"
-#include "libpandafile/method_data_accessor-inl.h"
-
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -218,12 +214,6 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     INTERPRETER_TRACE(thread, AsmExecute);
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    CpuProfiler *profiler = thread->GetEcmaVM()->GetProfiler();
-    if (profiler != nullptr) {
-        profiler->IsNeedAndGetStack(thread);
-    }
-#endif
     thread->CheckSafepoint();
     uint32_t argc = info->GetArgsNumber();
     uintptr_t argv = reinterpret_cast<uintptr_t>(info->GetArgs());
@@ -251,11 +241,6 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     auto prevEntry = InterpretedEntryFrame::GetFrameFromSp(sp)->GetPrevFrameFp();
     thread->SetCurrentSPFrame(prevEntry);
 
-#if ECMASCRIPT_ENABLE_ACTIVE_CPUPROFILER
-    if (profiler != nullptr) {
-        profiler->IsNeedAndGetStack(thread);
-    }
-#endif
     return JSTaggedValue(acc);
 }
 
@@ -352,7 +337,7 @@ void InterpreterAssembly::HandleJeqzImm8(
     int8_t offset = READ_INST_8_0();
     LOG_INST() << "jeqz ->\t"
                 << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-    if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+    if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -368,7 +353,7 @@ void InterpreterAssembly::HandleJeqzImm16(
     int16_t offset = static_cast<int16_t>(READ_INST_16_0());
     LOG_INST() << "jeqz ->\t"
                 << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-    if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+    if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -384,7 +369,7 @@ void InterpreterAssembly::HandleJeqzImm32(
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
     LOG_INST() << "jeqz ->\t"
                 << "cond jmpz " << std::hex << offset;
-    if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+    if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -400,7 +385,7 @@ void InterpreterAssembly::HandleJnezImm8(
     int8_t offset = READ_INST_8_0();
     LOG_INST() << "jnez ->\t"
                 << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-    if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+    if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -416,7 +401,7 @@ void InterpreterAssembly::HandleJnezImm16(
     int16_t offset = static_cast<int16_t>(READ_INST_16_0());
     LOG_INST() << "jnez ->\t"
                 << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-    if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+    if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -432,7 +417,7 @@ void InterpreterAssembly::HandleJnezImm32(
     int32_t offset = static_cast<int32_t>(READ_INST_32_0());
     LOG_INST() << "jnez ->\t"
                 << "cond jmpz " << std::hex << offset;
-    if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+    if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
         (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
         UPDATE_HOTNESS_COUNTER(offset);
         DISPATCH_OFFSET(offset);
@@ -476,7 +461,7 @@ void InterpreterAssembly::HandleFldaiImm64(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
-    auto imm = bit_cast<double>(READ_INST_64_0());
+    auto imm = base::bit_cast<double>(READ_INST_64_0());
     LOG_INST() << "fldai " << imm;
     SET_ACC(JSTaggedValue(imm));
     DISPATCH(FLDAI_IMM64);
@@ -1475,7 +1460,7 @@ void InterpreterAssembly::HandleExpImm8V8(
             SET_ACC(JSTaggedValue(base::NAN_VALUE));
         }
         bool baseZero = doubleBase == 0 &&
-            (bit_cast<uint64_t>(doubleBase) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK;
+            (base::bit_cast<uint64_t>(doubleBase) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK;
         bool isFinite = std::isfinite(doubleExponent);
         bool truncEqual = base::NumberHelper::TruncateDouble(doubleExponent) == doubleExponent;
         bool halfTruncEqual = (base::NumberHelper::TruncateDouble(doubleExponent / 2) + base::HALF) ==
@@ -4135,7 +4120,7 @@ void InterpreterAssembly::HandleDeprecatedAsyncfunctionrejectPrefV8V8V8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
-    [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
+    uint16_t v1 = READ_INST_8_2();
     uint16_t v2 = READ_INST_8_3();
     LOG_INST() << "intrinsics::asyncfunctionreject"
                << " v" << v0 << " v" << v1 << " v" << v2;
@@ -4154,7 +4139,7 @@ void InterpreterAssembly::HandleDeprecatedAsyncfunctionresolvePrefV8V8V8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     uint16_t v0 = READ_INST_8_1();
-    [[maybe_unused]] uint16_t v1 = READ_INST_8_2();
+    uint16_t v1 = READ_INST_8_2();
     uint16_t v2 = READ_INST_8_3();
     LOG_INST() << "intrinsics::asyncfunctionresolve"
                << " v" << v0 << " v" << v1 << " v" << v2;
@@ -7358,15 +7343,15 @@ void InterpreterAssembly::ExceptionHandler(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     FrameHandler frameHandler(thread);
-    uint32_t pcOffset = panda_file::INVALID_OFFSET;
+    uint32_t pcOffset = INVALID_INDEX;
     for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             thread->SetLastFp(frameHandler.GetFp());
             return;
         }
         auto method = frameHandler.GetMethod();
-        pcOffset = FindCatchBlock(method, frameHandler.GetBytecodeOffset());
-        if (pcOffset != panda_file::INVALID_OFFSET) {
+        pcOffset = method->FindCatchBlock(frameHandler.GetBytecodeOffset());
+        if (pcOffset != INVALID_INDEX) {
             thread->SetCurrentFrame(frameHandler.GetSp());
             thread->SetLastFp(frameHandler.GetFp());
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -7374,7 +7359,7 @@ void InterpreterAssembly::ExceptionHandler(
             break;
         }
     }
-    if (pcOffset == panda_file::INVALID_OFFSET) {
+    if (pcOffset == INVALID_INDEX) {
         return;
     }
 
@@ -7393,25 +7378,6 @@ void InterpreterAssembly::ExceptionHandler(
     }
 ASM_UNUSED_BC_STUB_LIST(DECLARE_UNUSED_ASM_HANDLE)
 #undef DECLARE_UNUSED_ASM_HANDLE
-
-uint32_t InterpreterAssembly::FindCatchBlock(Method *caller, uint32_t pc)
-{
-    auto *pandaFile = caller->GetPandaFile();
-    panda_file::MethodDataAccessor mda(*pandaFile, caller->GetMethodId());
-    panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());
-
-    uint32_t pcOffset = panda_file::INVALID_OFFSET;
-    cda.EnumerateTryBlocks([&pcOffset, pc](panda_file::CodeDataAccessor::TryBlock &try_block) {
-        if ((try_block.GetStartPc() <= pc) && ((try_block.GetStartPc() + try_block.GetLength()) > pc)) {
-            try_block.EnumerateCatchBlocks([&](panda_file::CodeDataAccessor::CatchBlock &catch_block) {
-                pcOffset = catch_block.GetHandlerPc();
-                return false;
-            });
-        }
-        return pcOffset == panda_file::INVALID_OFFSET;
-    });
-    return pcOffset;
-}
 
 inline void InterpreterAssembly::InterpreterFrameCopyArgs(
     JSTaggedType *newSp, uint32_t numVregs, uint32_t numActualArgs, uint32_t numDeclaredArgs, bool haveExtraArgs)
@@ -7516,7 +7482,7 @@ inline JSTaggedValue InterpreterAssembly::UpdateHotnessCounter(JSThread* thread,
     JSFunction* function = JSFunction::Cast(state->function.GetTaggedObject());
     Method *method = function->GetCallTarget();
     JSTaggedValue profileTypeInfo = method->GetProfileTypeInfo();
-    if (profileTypeInfo == JSTaggedValue::Undefined()) {
+    if (profileTypeInfo.IsUndefined()) {
         return SlowRuntimeStub::NotifyInlineCache(thread, method);
     }
     return profileTypeInfo;

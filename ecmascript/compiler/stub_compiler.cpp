@@ -33,7 +33,7 @@
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
-    explicit StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log)
+    StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log)
         : PassData(nullptr, nullptr, nullptr, log, "stubs"), module_(module), stub_(stub) {}
     ~StubPassData() = default;
 
@@ -82,7 +82,7 @@ public:
 
     bool Run(StubPassData *data, size_t index)
     {
-        bool enableLog =  data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputCIR();
         auto stubModule = data->GetStubModule();
         CreateCodeGen(stubModule, enableLog);
         CodeGenerator codegen(llvmImpl_, "stubs");
@@ -99,10 +99,11 @@ void StubCompiler::RunPipeline(LLVMModule *module) const
     CompilerLog *log = GetLog();
     auto logList = GetLogList();
     auto cconfig = module->GetCompilationConfig();
+    NativeAreaAllocator allocator;
 
     bool enableMethodLog = !log->NoneMethod();
     for (size_t i = 0; i < callSigns.size(); i++) {
-        Circuit circuit(cconfig->Is64Bit());
+        Circuit circuit(&allocator, cconfig->Is64Bit());
         Stub stub(callSigns[i], &circuit);
         ASSERT(callSigns[i]->HasConstructor());
         void* env = reinterpret_cast<void*>(stub.GetEnvironment());

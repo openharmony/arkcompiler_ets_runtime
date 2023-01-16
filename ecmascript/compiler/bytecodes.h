@@ -40,6 +40,7 @@ enum BytecodeFlags : uint32_t {
     SUPPORT_DEOPT = 1 << 2, // 2: flag 2
     GENERAL_BC = 1 << 3,
     READ_THIS_OBJECT = 1 << 4,
+    NO_SIDE_EFFECTS = 1 << 5,
 };
 
 enum BytecodeKind : uint32_t {
@@ -58,7 +59,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 5;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 6;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
@@ -69,6 +70,11 @@ public:
     bool HasAccIn() const
     {
         return HasFlag(BytecodeFlags::READ_ACC);
+    }
+
+    bool IsNoSideEffects() const
+    {
+        return HasFlag(BytecodeFlags::NO_SIDE_EFFECTS);
     }
 
     bool HasThisIn() const
@@ -298,7 +304,7 @@ public:
 
     ImmValueType ToJSTaggedValueDouble() const
     {
-        return JSTaggedValue(bit_cast<double>(value_)).GetRawData();
+        return JSTaggedValue(base::bit_cast<double>(value_)).GetRawData();
     }
 
     ImmValueType GetValue() const
@@ -334,12 +340,12 @@ private:
 
 class ConstDataId {
 public:
-    explicit ConstDataId(ConstDataIDType type, uint16_t id)
+    ConstDataId(ConstDataIDType type, uint16_t id)
         :type_(type), id_(id)
     {
     }
 
-    explicit ConstDataId(panda::ecmascript::kungfu::BitField bitfield)
+    explicit ConstDataId(uint64_t bitfield)
     {
         type_ = ConstDataIDType(bitfield >> TYPE_SHIFT);
         id_ = bitfield & ((1 << TYPE_SHIFT) - 1);
@@ -392,7 +398,7 @@ public:
         return type_ == ConstDataIDType::ArrayLiteralIDType;
     }
 
-    BitField CaculateBitField() const
+    uint64_t CaculateBitField() const
     {
         return (static_cast<uint8_t>(type_) << TYPE_SHIFT) | id_;
     }
@@ -422,6 +428,11 @@ public:
     bool AccIn() const
     {
         return metaData_.HasAccIn();
+    }
+
+    bool NoSideEffects() const
+    {
+        return metaData_.IsNoSideEffects();
     }
 
     bool ThisObjectIn() const
@@ -521,7 +532,7 @@ private:
 class BytecodeIterator {
 public:
     BytecodeIterator() = default;
-    explicit BytecodeIterator(BytecodeCircuitBuilder *builder,
+    BytecodeIterator(BytecodeCircuitBuilder *builder,
         uint32_t start, uint32_t end)
         : builder_(builder), start_(start), end_(end) {}
     void Reset(BytecodeCircuitBuilder *builder,
@@ -584,8 +595,6 @@ public:
     const uint8_t *PeekPrevPc(size_t i) const;
 
 private:
-    static constexpr uint32_t INVALID_INDEX = std::numeric_limits<uint32_t>::max();
-
     BytecodeCircuitBuilder *builder_ {nullptr};
     uint32_t start_ {0};
     uint32_t end_ {0};

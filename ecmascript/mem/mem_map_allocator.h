@@ -18,18 +18,20 @@
 
 #include <deque>
 #include <map>
+#include <set>
 
 #include "ecmascript/platform/map.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/log_wrapper.h"
+
 #include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 // Regular region with length of DEFAULT_REGION_SIZE(256kb)
 class MemMapPool {
 public:
-    explicit MemMapPool() = default;
+    MemMapPool() = default;
     ~MemMapPool() = default;
 
     void Finalize()
@@ -45,7 +47,7 @@ public:
     NO_COPY_SEMANTIC(MemMapPool);
     NO_MOVE_SEMANTIC(MemMapPool);
 
-    MemMap GetMemFromCache([[maybe_unused]]size_t size)
+    MemMap GetMemFromCache([[maybe_unused]] size_t size)
     {
         ASSERT(size == REGULAR_MMAP_SIZE);
         os::memory::LockHolder lock(lock_);
@@ -107,10 +109,36 @@ public:
     {
         PageUnmap(memMap_);
         freeList_.clear();
+        freeSet_.clear();
     }
 
     NO_COPY_SEMANTIC(MemMapFreeList);
     NO_MOVE_SEMANTIC(MemMapFreeList);
+
+    void MergeList()
+    {
+        auto it = freeList_.begin();
+        while (it != freeList_.end()) {
+            bool isEqual = false;
+            void *startMem = (*it).second.GetMem();
+            size_t newSize = (*it).second.GetSize();
+            auto startIt = it++;
+            if (it == freeList_.end()) {
+                break;
+            }
+            auto next = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(startMem) + newSize);
+            while (it != freeList_.end() && next == (*it).second.GetMem()) {
+                newSize += (*it).second.GetSize();
+                freeList_.erase(it++);
+                next = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(startMem) + newSize);
+                isEqual = true;
+            }
+            if (isEqual) {
+                freeList_.erase(startIt);
+                freeList_.emplace(newSize, MemMap(startMem, newSize));
+            }
+        }
+    }
 
     MemMap GetMemFromList(size_t size)
     {
@@ -121,8 +149,19 @@ public:
         os::memory::LockHolder lock(lock_);
         auto iterate = freeList_.lower_bound(size);
         if (iterate == freeList_.end()) {
-            LOG_GC(ERROR) << "Freelist pool oom: memory fragment(" << freeListPoolSize_ << ")";
-            return MemMap();
+            MergeList();
+            iterate = freeList_.lower_bound(size);
+            // Unable to get memory from freeList, use PageMap
+            if (iterate == freeList_.end()) {
+                if (freeListPoolSize_ + freeSetPoolSize_ + size > capacity_) {
+                    LOG_GC(ERROR) << "Freeset pool oom: overflow(" << freeSetPoolSize_ << ")";
+                    return MemMap();
+                }
+                MemMap smemMap = PageMap(size, PAGE_PROT_NONE, DEFAULT_REGION_SIZE);
+                freeSet_.emplace(reinterpret_cast<uintptr_t>(smemMap.GetMem()));
+                freeSetPoolSize_ += size;
+                return smemMap;
+            }
         }
         MemMap memMap = iterate->second;
         size_t remainderSize = memMap.GetSize() - size;
@@ -138,15 +177,24 @@ public:
     void AddMemToList(MemMap memMap)
     {
         os::memory::LockHolder lock(lock_);
-        freeListPoolSize_ -= memMap.GetSize();
-        freeList_.emplace(memMap.GetSize(), memMap);
+        auto search = freeSet_.find(reinterpret_cast<uintptr_t>(memMap.GetMem()));
+        if (UNLIKELY(search != freeSet_.end())) {
+            freeSetPoolSize_ -= memMap.GetSize();
+            freeSet_.erase(search);
+            PageUnmap(memMap);
+        } else {
+            freeListPoolSize_ -= memMap.GetSize();
+            freeList_.emplace(memMap.GetSize(), memMap);
+        }
     }
 
 private:
     os::memory::Mutex lock_;
     MemMap memMap_;
     std::multimap<size_t, MemMap> freeList_;
+    std::set<uintptr_t> freeSet_;
     std::atomic_size_t freeListPoolSize_ {0};
+    std::atomic_size_t freeSetPoolSize_ {0};
     size_t capacity_ {0};
 };
 
@@ -184,8 +232,8 @@ public:
     void IncreaseAndCheckReserved(size_t size)
     {
         if (reserved_ + size > capacity_) {
-            LOG_GC(ERROR) << "pool is empty, reserved = " << reserved_ << ", capacity_ = "
-                          << capacity_ << ", size = " << size;
+            LOG_GC(ERROR) << "pool is empty, reserved = " << reserved_ << ", capacity_ = " <<
+                capacity_ << ", size = " << size;
         }
         reserved_ += size;
         LOG_GC(DEBUG) << "Ark IncreaseAndCheckReserved reserved = " << reserved_ << ", capacity_ = " << capacity_;
@@ -197,11 +245,7 @@ public:
         LOG_GC(DEBUG) << "Ark DecreaseReserved reserved = " << reserved_ << ", capacity_ = " << capacity_;
     }
 
-    static MemMapAllocator *GetInstance()
-    {
-        static MemMapAllocator vmAllocator_;
-        return &vmAllocator_;
-    }
+    static MemMapAllocator *GetInstance();
 
     MemMap Allocate(size_t size, size_t alignment, bool regular, int prot);
 

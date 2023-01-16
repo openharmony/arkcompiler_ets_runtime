@@ -66,6 +66,8 @@ public:
     static JSTaggedValue Exp(JSThread *thread, JSTaggedValue base, JSTaggedValue exponent);
     static JSTaggedValue IsIn(JSThread *thread, JSTaggedValue prop, JSTaggedValue obj);
     static JSTaggedValue Instanceof(JSThread *thread, JSTaggedValue obj, JSTaggedValue target);
+    static JSTaggedValue InstanceofByHandler(JSThread *thread, JSTaggedValue target, JSTaggedValue object,
+                                             JSTaggedValue instOfHandler);
 
     static JSTaggedValue NewLexicalEnv(JSThread *thread, uint16_t numVars);
     static JSTaggedValue NewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId);

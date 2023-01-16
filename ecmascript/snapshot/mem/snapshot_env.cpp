@@ -63,8 +63,8 @@ void SnapshotEnv::InitGlobalEnv()
 void SnapshotEnv::HandleObjectField(TaggedObject *objectHeader, CQueue<TaggedObject *> *objectQueue,
                                     std::set<TaggedObject *> *objectSet)
 {
-    auto visitor = [objectQueue, objectSet]([[maybe_unused]]TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                            [[maybe_unused]]bool isNative) {
+    auto visitor = [objectQueue, objectSet]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                            [[maybe_unused]] bool isNative) {
         for (ObjectSlot slot = start; slot < end; slot++) {
             auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
             JSTaggedValue fieldValue(*fieldAddr);

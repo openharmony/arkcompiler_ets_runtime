@@ -53,8 +53,7 @@ void JSAPILightWeightMap::InsertValue(const JSThread *thread, const JSHandle<JSA
     JSHandle<TaggedArray> array = GetArrayByKind(thread, lightWeightMap, kind);
     int32_t len = lightWeightMap->GetSize();
     JSHandle<TaggedArray> newArray = GrowCapacity(thread, array, len + 1);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    newArray = factory->InsertElementByIndex(newArray, value, index, len);
+    TaggedArray::InsertElementByIndex(thread, newArray, value, index, len);
     SetArrayByKind(thread, lightWeightMap, newArray, kind);
 }
 
@@ -72,8 +71,7 @@ void JSAPILightWeightMap::RemoveValue(const JSThread *thread, const JSHandle<JSA
     JSHandle<TaggedArray> array = GetArrayByKind(thread, lightWeightMap, kind);
     uint32_t len = lightWeightMap->GetLength();
     ASSERT(index < len);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    factory->RemoveElementByIndex(array, index, len);
+    TaggedArray::RemoveElementByIndex(thread, array, index, len);
 }
 
 void JSAPILightWeightMap::Set(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap,
@@ -296,12 +294,12 @@ JSTaggedValue JSAPILightWeightMap::IsEmpty()
 void JSAPILightWeightMap::Clear(JSThread *thread, const JSHandle<JSAPILightWeightMap> &lightWeightMap)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> hashArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH));
-    JSHandle<JSTaggedValue> keyArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH));
-    JSHandle<JSTaggedValue> valueArray = JSHandle<JSTaggedValue>(factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH));
-    lightWeightMap->SetHashes(thread, hashArray);
-    lightWeightMap->SetKeys(thread, keyArray);
-    lightWeightMap->SetValues(thread, valueArray);
+    JSHandle<TaggedArray> hashArray = factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH);
+    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH);
+    JSHandle<TaggedArray> valueArray = factory->NewTaggedArray(DEFAULT_CAPACITY_LENGTH);
+    lightWeightMap->SetHashes(thread, hashArray.GetTaggedValue());
+    lightWeightMap->SetKeys(thread, keyArray.GetTaggedValue());
+    lightWeightMap->SetValues(thread, valueArray.GetTaggedValue());
     lightWeightMap->SetLength(0);
 }
 
@@ -425,6 +423,7 @@ void JSAPILightWeightMap::SetArrayByKind(const JSThread *thread,
             lightWeightMap->SetValues(thread, array);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -445,6 +444,7 @@ JSHandle<TaggedArray> JSAPILightWeightMap::GetArrayByKind(const JSThread *thread
             array = JSHandle<TaggedArray>(thread, lightWeightMap->GetValues());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return array;

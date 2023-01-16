@@ -24,9 +24,9 @@
 #include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::kungfu {
-GateRef CircuitBuilder::Merge(GateRef *inList, size_t controlCount)
+GateRef CircuitBuilder::Merge(const std::vector<GateRef> &inList)
 {
-    return circuit_->NewGate(OpCode(OpCode::MERGE), controlCount, controlCount, inList, GateType::Empty());
+    return circuit_->NewGate(circuit_->Merge(inList.size()), inList);
 }
 
 GateRef CircuitBuilder::Selector(OpCode opcode, MachineType machineType, GateRef control,
@@ -43,24 +43,19 @@ GateRef CircuitBuilder::Selector(OpCode opcode, MachineType machineType, GateRef
             inList.push_back(values[i]);
         }
     }
-    return circuit_->NewGate(opcode, machineType, valueCounts, inList, type.GetGateType());
+    ASSERT((opcode == OpCode::VALUE_SELECTOR) || (opcode == OpCode::DEPEND_SELECTOR));
+    const GateMetaData* meta = (opcode == OpCode::DEPEND_SELECTOR) ?
+        circuit_->DependSelector(valueCounts) : circuit_->ValueSelector(valueCounts);
+    return circuit_->NewGate(meta, machineType, inList.size(), inList.data(), type.GetGateType());
 }
+
 
 GateRef CircuitBuilder::Selector(OpCode opcode, GateRef control,
     const std::vector<GateRef> &values, int valueCounts, VariableType type)
 {
-    std::vector<GateRef> inList;
-    inList.push_back(control);
-    if (values.size() == 0) {
-        for (int i = 0; i < valueCounts; i++) {
-            inList.push_back(Circuit::NullGate());
-        }
-    } else {
-        for (int i = 0; i < valueCounts; i++) {
-            inList.push_back(values[i]);
-        }
-    }
-    return circuit_->NewGate(opcode, valueCounts, inList, type.GetGateType());
+    MachineType machineType = (opcode == OpCode::DEPEND_SELECTOR) ?
+        MachineType::NOVALUE : MachineType::FLEX;
+    return Selector(opcode, machineType, control, values, valueCounts, type);
 }
 
 GateRef CircuitBuilder::UndefineConstant()
@@ -71,119 +66,196 @@ GateRef CircuitBuilder::UndefineConstant()
 
 GateRef CircuitBuilder::Branch(GateRef state, GateRef condition)
 {
-    return circuit_->NewGate(OpCode(OpCode::IF_BRANCH), 0, { state, condition }, GateType::Empty());
+    return circuit_->NewGate(circuit_->IfBranch(), { state, condition });
 }
 
 GateRef CircuitBuilder::SwitchBranch(GateRef state, GateRef index, int caseCounts)
 {
-    return circuit_->NewGate(OpCode(OpCode::SWITCH_BRANCH), caseCounts, { state, index }, GateType::Empty());
+    return circuit_->NewGate(circuit_->SwitchBranch(caseCounts), { state, index });
 }
 
 GateRef CircuitBuilder::Return(GateRef state, GateRef depend, GateRef value)
 {
-    auto returnList = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
-    return circuit_->NewGate(OpCode(OpCode::RETURN), 0, { state, depend, value, returnList }, GateType::Empty());
+    auto returnList = circuit_->GetReturnRoot();
+    return circuit_->NewGate(circuit_->Return(), { state, depend, value, returnList });
 }
 
 GateRef CircuitBuilder::ReturnVoid(GateRef state, GateRef depend)
 {
-    auto returnList = Circuit::GetCircuitRoot(OpCode(OpCode::RETURN_LIST));
-    return circuit_->NewGate(OpCode(OpCode::RETURN_VOID), 0, { state, depend, returnList }, GateType::Empty());
+    auto returnList = circuit_->GetReturnRoot();
+    return circuit_->NewGate(circuit_->ReturnVoid(), { state, depend, returnList });
 }
 
 GateRef CircuitBuilder::Goto(GateRef state)
 {
-    return circuit_->NewGate(OpCode(OpCode::ORDINARY_BLOCK), 0, { state }, GateType::Empty());
+    return circuit_->NewGate(circuit_->OrdinaryBlock(), { state });
 }
 
 GateRef CircuitBuilder::LoopBegin(GateRef state)
 {
     auto nullGate = Circuit::NullGate();
-    return circuit_->NewGate(OpCode(OpCode::LOOP_BEGIN), 0, { state, nullGate }, GateType::Empty());
+    return circuit_->NewGate(circuit_->LoopBegin(), { state, nullGate });
 }
 
 GateRef CircuitBuilder::LoopEnd(GateRef state)
 {
-    return circuit_->NewGate(OpCode(OpCode::LOOP_BACK), 0, { state }, GateType::Empty());
+    return circuit_->NewGate(circuit_->LoopBack(), { state });
 }
 
 GateRef CircuitBuilder::IfTrue(GateRef ifBranch)
 {
-    return circuit_->NewGate(OpCode(OpCode::IF_TRUE), 0, { ifBranch }, GateType::Empty());
+    return circuit_->NewGate(circuit_->IfTrue(), { ifBranch });
 }
 
 GateRef CircuitBuilder::IfFalse(GateRef ifBranch)
 {
-    return circuit_->NewGate(OpCode(OpCode::IF_FALSE), 0, { ifBranch }, GateType::Empty());
+    return circuit_->NewGate(circuit_->IfFalse(), { ifBranch });
 }
 
 GateRef CircuitBuilder::SwitchCase(GateRef switchBranch, int64_t value)
 {
-    return circuit_->NewGate(OpCode(OpCode::SWITCH_CASE), value, { switchBranch }, GateType::Empty());
+    return circuit_->NewGate(circuit_->SwitchCase(value), { switchBranch });
 }
 
 GateRef CircuitBuilder::DefaultCase(GateRef switchBranch)
 {
-    return circuit_->NewGate(OpCode(OpCode::DEFAULT_CASE), 0, { switchBranch }, GateType::Empty());
+    return circuit_->NewGate(circuit_->DefaultCase(), { switchBranch });
 }
 
 GateRef CircuitBuilder::DependRelay(GateRef state, GateRef depend)
 {
-    return circuit_->NewGate(OpCode(OpCode::DEPEND_RELAY), 0, { state, depend }, GateType::Empty());
+    return circuit_->NewGate(circuit_->DependRelay(), { state, depend });
 }
 
 GateRef CircuitBuilder::DependAnd(std::initializer_list<GateRef> args)
 {
-    std::vector<GateRef> inputs;
-    for (auto arg : args) {
-        inputs.push_back(arg);
-    }
-    return circuit_->NewGate(OpCode(OpCode::DEPEND_AND), args.size(), inputs, GateType::Empty());
+    return circuit_->NewGate(circuit_->DependAnd(), args);
 }
 
 GateRef CircuitBuilder::Arguments(size_t index)
 {
-    auto argListOfCircuit = Circuit::GetCircuitRoot(OpCode(OpCode::ARG_LIST));
-    return GetCircuit()->NewGate(OpCode(OpCode::ARG), MachineType::I64, index, {argListOfCircuit},
-                                 GateType::NJSValue());
+    auto argListOfCircuit = circuit_->GetArgRoot();
+    return GetCircuit()->NewArg(MachineType::I64, index, GateType::NJSValue(), argListOfCircuit);
 }
 
 GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef index)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    auto guard = currentLabel->GetDepend();
-    auto currentDepend = Circuit::NullGate();
-    if (acc_.GetOpCode(guard) != OpCode::GUARD) {
-        currentDepend = guard;
-    } else {
-        currentDepend = acc_.GetDep(guard);
-    }
-    GateRef ret = GetCircuit()->NewGate(OpCode(OpCode::OBJECT_TYPE_CHECK), static_cast<uint64_t>(type.Value()),
-                                        {currentControl, currentDepend, gate, index}, GateType::NJSValue());
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::TypeCheck(GateType type, GateRef gate)
-{
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CHECK), static_cast<uint64_t>(type.Value()),
-                                 {gate}, GateType::NJSValue());
-}
-
-GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id)
+GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef index,
+    GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
-    auto state = currentLabel->GetControl();
-    auto depend = currentLabel->GetDepend();
-    std::vector<GateRef> inLists;
-    inLists.emplace_back(state);
-    inLists.emplace_back(depend);
-    inLists.emplace_back(function);
-    inLists.emplace_back(id);
-    GateRef ret = GetCircuit()->NewGate(OpCode(OpCode::TYPED_CALL_CHECK), inLists.size() - 2, // 2: state&depend
-                                        inLists, GateType::NJSValue());
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayCheck(),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::StableArrayCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->StableArrayCheck(),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::TypedArrayCheck(GateType type, GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::PrimitiveTypeCheck(GateType type, GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->PrimitiveTypeCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef param)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
+        MachineType::I1, { currentControl, currentDepend, function, id, param, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
+        MachineType::I1, { currentControl, currentDepend, condition, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -191,44 +263,38 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id)
 
 GateRef CircuitBuilder::GetLexicalEnv(GateRef depend)
 {
-    return GetCircuit()->NewGate(OpCode(OpCode::GET_ENV), MachineType::I64, 0, {depend}, GateType::TaggedValue());
+    return GetCircuit()->NewGate(circuit_->GetEnv(), MachineType::I64, {depend}, GateType::TaggedValue());
 }
 
 GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                             std::vector<GateRef> inList, GateType gateType)
 {
-    // get BinaryOpCode from a constant gate
-    auto bin = Int8(static_cast<int8_t>(binOp));
-    inList.emplace_back(bin);
-    // merge two expected types of valueIns
-    uint64_t operandTypes = (static_cast<uint64_t>(typeLeft.Value()) << OPRAND_TYPE_BITS) |
-                          static_cast<uint64_t>(typeRight.Value());
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_BINARY_OP), type, operandTypes, inList, gateType);
+    uint64_t operandTypes = GatePairTypeAccessor::ToValue(typeLeft, typeRight);
+    return GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, binOp),
+        type, inList.size(), inList.data(), gateType);
 }
 
-GateRef CircuitBuilder::TypedCallOperator(MachineType type, GateRef state, GateRef depend, std::vector<GateRef> inList)
+GateRef CircuitBuilder::TypedCallOperator(MachineType type, const std::initializer_list<GateRef>& args)
 {
-    BitField number = static_cast<BitField>(inList.size());
-    inList.insert(inList.begin(), depend);
-    inList.insert(inList.begin(), state);
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_CALL), type, number, inList, GateType::AnyType());
+    auto numValueIn = args.size() - 2; // 2: state & depend
+    return GetCircuit()->NewGate(circuit_->TypedCall(numValueIn), type, args, GateType::AnyType());
 }
 
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
                                     const std::vector<GateRef>& inList)
 {
     // merge types of valueIns before and after convertion
-    uint64_t operandTypes = (static_cast<uint64_t>(typeFrom.Value()) << OPRAND_TYPE_BITS) |
-                          static_cast<uint64_t>(typeTo.Value());
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPE_CONVERT), type, operandTypes, inList, GateType::AnyType());
+    uint64_t operandTypes = GatePairTypeAccessor::ToValue(typeFrom, typeTo);
+    return GetCircuit()->NewGate(circuit_->TypedConvert(operandTypes),
+        type, inList.size(), inList.data(), GateType::AnyType());
 }
 
 GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                            const std::vector<GateRef>& inList, GateType gateType)
 {
-    auto unaryOpIdx = static_cast<uint64_t>(unaryOp);
-    uint64_t bitfield = (static_cast<uint64_t>(typeVal.Value()) << OPRAND_TYPE_BITS) | unaryOpIdx;
-    return GetCircuit()->NewGate(OpCode(OpCode::TYPED_UNARY_OP), type, bitfield, inList, gateType);
+    uint64_t value = TypedUnaryAccessor::ToValue(typeVal, unaryOp);
+    return GetCircuit()->NewGate(circuit_->TypedUnaryOp(value),
+        type, inList.size(), inList.data(), gateType);
 }
 
 GateRef CircuitBuilder::Int8(int8_t val)
@@ -256,10 +322,15 @@ GateRef CircuitBuilder::IntPtr(int64_t val)
     return GetCircuit()->GetConstantGate(MachineType::ARCH, val, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::StringPtr(const std::string &str)
+{
+    return GetCircuit()->GetConstantStringGate(MachineType::ARCH, str, GateType::NJSValue());
+}
+
 GateRef CircuitBuilder::RelocatableData(uint64_t val)
 {
-    auto constantList = Circuit::GetCircuitRoot(OpCode(OpCode::CONSTANT_LIST));
-    return GetCircuit()->NewGate(OpCode(OpCode::RELOCATABLE_DATA), val, {constantList}, GateType::TaggedValue());
+    return GetCircuit()->NewGate(circuit_->RelocatableData(val),
+        MachineType::ARCH, GateType::TaggedValue());
 }
 
 GateRef CircuitBuilder::Boolean(bool val)
@@ -269,7 +340,7 @@ GateRef CircuitBuilder::Boolean(bool val)
 
 GateRef CircuitBuilder::Double(double val)
 {
-    return GetCircuit()->GetConstantGate(MachineType::F64, bit_cast<int64_t>(val), GateType::NJSValue());
+    return GetCircuit()->GetConstantGate(MachineType::F64, base::bit_cast<int64_t>(val), GateType::NJSValue());
 }
 
 GateRef CircuitBuilder::HoleConstant()
@@ -295,36 +366,16 @@ MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)
     return type.GetMachineType();
 }
 
-GateRef CircuitBuilder::BinaryArithmetic(OpCode opcode, MachineType machineType, GateRef left, GateRef right)
+GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType, GateRef left, GateRef right)
 {
     auto circuit = GetCircuit();
     GateType type = acc_.GetGateType(left);
-    return circuit->NewGate(opcode, machineType, 0, { left, right }, type);
+    return circuit->NewGate(meta, machineType, { left, right }, type);
 }
 
-GateRef CircuitBuilder::TaggedNumber(OpCode opcode, GateRef value)
+GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right)
 {
-    return GetCircuit()->NewGate(opcode, 0, { value }, GateType::TaggedValue());
-}
-
-GateRef CircuitBuilder::UnaryArithmetic(OpCode opcode, MachineType machineType, GateRef value)
-{
-    return GetCircuit()->NewGate(opcode, machineType, 0, { value }, GateType::NJSValue());
-}
-
-GateRef CircuitBuilder::UnaryArithmetic(OpCode opcode, GateRef value)
-{
-    return GetCircuit()->NewGate(opcode, 0, { value }, GateType::NJSValue());
-}
-
-GateRef CircuitBuilder::BinaryLogic(OpCode opcode, GateRef left, GateRef right)
-{
-    return GetCircuit()->NewGate(opcode, 0, { left, right }, GateType::NJSValue());
-}
-
-GateRef CircuitBuilder::BinaryCmp(OpCode opcode, GateRef left, GateRef right, BitField condition)
-{
-    return GetCircuit()->NewGate(opcode, condition, { left, right }, GateType::NJSValue());
+    return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue());
 }
 
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args)
@@ -424,34 +475,56 @@ GateRef CircuitBuilder::CallStub(GateRef glue, int index, const std::vector<Gate
     return result;
 }
 
+GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew)
+{
+    int index = 0;
+    if (!isNew) {
+        index = static_cast<int>(RTSTUB_ID(PushCallArgsAndDispatchNative));
+    } else {
+        index = static_cast<int>(RTSTUB_ID(PushCallNewAndDispatchNative));
+    }
+
+    const CallSignature *cs = RuntimeStubCSigns::Get(index);
+    GateRef target = IntPtr(index);
+    auto label = GetCurrentLabel();
+    if (depend == Gate::InvalidGateRef) {
+        depend = label->GetDepend();
+    }
+    GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
+    return result;
+}
+
 GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                              const std::vector<GateRef> &args)
 {
     std::vector<GateRef> inputs { depend, target, glue };
     inputs.insert(inputs.end(), args.begin(), args.end());
-    OpCode op(OpCode::NOP);
+    auto numValuesIn = args.size() + 2; // 2: target & glue
+    const GateMetaData* meta = nullptr;
     if (cs->IsCommonStub()) {
-        op = OpCode(OpCode::CALL);
+        meta = circuit_->Call(numValuesIn);
     } else if (cs->IsRuntimeVAStub()) {
-        op = OpCode(OpCode::RUNTIME_CALL_WITH_ARGV);
+        meta = circuit_->RuntimeCallWithArgv(numValuesIn);
     } else if (cs->IsRuntimeStub()) {
-        op = OpCode(OpCode::RUNTIME_CALL);
+        meta = circuit_->RuntimeCall(numValuesIn);
     } else if (cs->IsBCDebuggerStub()) {
-        op = OpCode(OpCode::DEBUGGER_BYTECODE_CALL);
+        meta = circuit_->DebuggerBytecodeCall(numValuesIn);
     } else if (cs->IsBCHandlerStub()) {
-        op = OpCode(OpCode::BYTECODE_CALL);
+        meta = circuit_->BytecodeCall(numValuesIn);
     } else if (cs->IsBuiltinsStub()) {
-        op = OpCode(OpCode::BUILTINS_CALL);
+        meta = circuit_->BuiltinsCall(numValuesIn);
     } else if (cs->IsBuiltinsWithArgvStub()) {
-        op = OpCode(OpCode::BUILTINS_CALL_WITH_ARGV);
+        meta = circuit_->BuiltinsCallWithArgv(numValuesIn);
     } else if (cs->IsRuntimeNGCStub()) {
-        op = OpCode(OpCode::NOGC_RUNTIME_CALL);
+        meta = circuit_->NoGcRuntimeCall(numValuesIn);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     MachineType machineType = cs->GetReturnType().GetMachineType();
     GateType type = cs->GetReturnType().GetGateType();
-    GateRef result = GetCircuit()->NewGate(op, machineType, args.size() + 2, inputs, type);
+    GateRef result = GetCircuit()->NewGate(meta, machineType, inputs.size(), inputs.data(), type);
     return result;
 }
 
@@ -461,17 +534,17 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef ptr = PtrAdd(base, offset);
-    GateRef result = GetCircuit()->NewGate(OpCode(OpCode::STORE), 0, { depend, value, ptr }, type.GetGateType());
+    GateRef result = GetCircuit()->NewGate(circuit_->Store(),
+        MachineType::NOVALUE, { depend, value, ptr }, type.GetGateType());
     label->SetDepend(result);
     if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
         CallStub(glue, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
     }
 }
 
-GateRef CircuitBuilder::Alloca(int size)
+GateRef CircuitBuilder::Alloca(size_t size)
 {
-    auto allocaList = Circuit::GetCircuitRoot(OpCode(OpCode::ALLOCA_LIST));
-    return GetCircuit()->NewGate(OpCode(OpCode::ALLOCA), size, { allocaList }, GateType::NJSValue());
+    return GetCircuit()->NewGate(circuit_->Alloca(size), MachineType::ARCH, GateType::NJSValue());
 }
 
 GateRef CircuitBuilder::ToLength(GateRef receiver)
@@ -479,7 +552,7 @@ GateRef CircuitBuilder::ToLength(GateRef receiver)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::TO_LENGTH), MachineType::I64,
+    auto ret = GetCircuit()->NewGate(circuit_->ToLength(), MachineType::I64,
                                      { currentControl, currentDepend, receiver }, GateType::NumberType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -491,7 +564,7 @@ GateRef CircuitBuilder::HeapAlloc(GateRef initialHClass, GateType type, RegionSp
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::HEAP_ALLOC), flag,
+    auto ret = GetCircuit()->NewGate(circuit_->HeapAlloc(flag), MachineType::ANYVALUE,
                                      { currentControl, currentDepend, initialHClass }, type);
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -503,7 +576,7 @@ GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef offset)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::LOAD_PROPERTY), MachineType::I64,
+    auto ret = GetCircuit()->NewGate(circuit_->LoadProperty(), MachineType::I64,
                                      { currentControl, currentDepend, receiver, offset }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -515,8 +588,20 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef offset, GateRef 
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(OpCode(OpCode::STORE_PROPERTY), MachineType::I64,
+    auto ret = GetCircuit()->NewGate(circuit_->StoreProperty(), MachineType::I64,
                                      { currentControl, currentDepend, receiver, offset, value }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::LoadArrayLength(GateRef array)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->LoadArrayLength(), MachineType::I64,
+                                     { currentControl, currentDepend, array }, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -530,11 +615,18 @@ GateRef CircuitBuilder::Construct(std::vector<GateRef> args)
     uint64_t bitfield = args.size();
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    auto callGate = GetCircuit()->NewGate(OpCode(OpCode::CONSTRUCT), MachineType::I64,
-                                          bitfield, args, GateType::AnyType());
+    auto callGate = GetCircuit()->NewGate(circuit_->Construct(bitfield), MachineType::I64,
+                                          args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
     return callGate;
+}
+
+GateRef CircuitBuilder::HasPendingException(GateRef glue)
+{
+    GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
+    GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
+    return TaggedIsNotHole(exception);
 }
 
 GateRef CircuitBuilder::TaggedIsString(GateRef obj)
@@ -684,7 +776,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, 
                     { constPool, Int32ToTaggedInt(index), module });
                 Jump(&exit);
             }
-        } else if (type == ConstPoolType::OBJECT_LITERAL)  {
+        } else if (type == ConstPoolType::OBJECT_LITERAL) {
             Label isAOTLiteralInfo(env_);
             Branch(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
             Bind(&isAOTLiteralInfo);
@@ -835,10 +927,10 @@ Environment::Environment(size_t arguments, CircuitBuilder *builder)
     for (size_t i = 0; i < arguments; i++) {
         arguments_[i] = circuitBuilder_->Arguments(i);
     }
-    entry_ = Label(NewLabel(this, Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY))));
+    entry_ = Label(NewLabel(this, circuit_->GetStateRoot()));
     currentLabel_ = &entry_;
     currentLabel_->Seal();
-    auto depend_entry = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    auto depend_entry = circuit_->GetDependRoot();
     currentLabel_->SetDepend(depend_entry);
 }
 
@@ -982,7 +1074,7 @@ GateRef Label::LabelImpl::ReadVariable(Variable *var)
     if (valueMap_.find(var) != valueMap_.end()) {
         auto result = valueMap_.at(var);
         GateAccessor acc(env_->GetCircuit());
-        if (!acc.GetOpCode(result).IsNop()) {
+        if (!acc.GetMetaData(result)->IsNop()) {
             return result;
         }
     }
@@ -992,27 +1084,27 @@ GateRef Label::LabelImpl::ReadVariable(Variable *var)
 GateRef Label::LabelImpl::ReadVariableRecursive(Variable *var)
 {
     GateRef val;
-    MachineType MachineType = CircuitBuilder::GetMachineTypeFromVariableType(var->Type());
+    MachineType machineType = CircuitBuilder::GetMachineTypeFromVariableType(var->Type());
     if (!IsSealed()) {
         // only loopheader gate will be not sealed
         int valueCounts = static_cast<int>(this->predecessors_.size()) + 1;
-        if (MachineType == MachineType::NOVALUE) {
-            val = env_->GetBuilder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
+        if (machineType == MachineType::NOVALUE) {
+            val = env_->GetBuilder()->Selector(OpCode::DEPEND_SELECTOR,
                 predeControl_, {}, valueCounts, var->Type());
         } else {
-            val = env_->GetBuilder()->Selector(OpCode(OpCode::VALUE_SELECTOR),
-                MachineType, predeControl_, {}, valueCounts, var->Type());
+            val = env_->GetBuilder()->Selector(OpCode::VALUE_SELECTOR,
+                machineType, predeControl_, {}, valueCounts, var->Type());
         }
         env_->AddSelectorToLabel(val, Label(this));
         incompletePhis_[var] = val;
     } else if (predecessors_.size() == 1) {
         val = predecessors_[0]->ReadVariable(var);
     } else {
-        if (MachineType == MachineType::NOVALUE) {
-            val = env_->GetBuilder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
+        if (machineType == MachineType::NOVALUE) {
+            val = env_->GetBuilder()->Selector(OpCode::DEPEND_SELECTOR,
                 predeControl_, {}, this->predecessors_.size(), var->Type());
         } else {
-            val = env_->GetBuilder()->Selector(OpCode(OpCode::VALUE_SELECTOR), MachineType,
+            val = env_->GetBuilder()->Selector(OpCode::VALUE_SELECTOR, machineType,
                 predeControl_, {}, this->predecessors_.size(), var->Type());
         }
         env_->AddSelectorToLabel(val, Label(this));
@@ -1028,7 +1120,7 @@ void Label::LabelImpl::Bind()
     ASSERT(!predecessors_.empty());
     if (IsLoopHead()) {
         // 2 means input number of depend selector gate
-        loopDepend_ = env_->GetBuilder()->Selector(OpCode(OpCode::DEPEND_SELECTOR), predeControl_, {}, 2);
+        loopDepend_ = env_->GetBuilder()->Selector(OpCode::DEPEND_SELECTOR, predeControl_, {}, 2);
         GateAccessor(env_->GetCircuit()).NewIn(loopDepend_, 1, predecessors_[0]->GetDepend());
         depend_ = loopDepend_;
     }
@@ -1062,7 +1154,7 @@ void Label::LabelImpl::MergeAllControl()
         inGates[i++] = in;
     }
 
-    GateRef merge = env_->GetBuilder()->Merge(inGates.data(), inGates.size());
+    GateRef merge = env_->GetBuilder()->Merge(inGates);
     predeControl_ = merge;
     control_ = merge;
 }
@@ -1071,7 +1163,7 @@ void Label::LabelImpl::MergeAllDepend()
 {
     if (IsControlCase()) {
         // Add depend_relay to current label
-        auto denpendEntry = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+        auto denpendEntry = env_->GetBuilder()->GetCircuit()->GetDependRoot();
         dependRelay_ = env_->GetBuilder()->DependRelay(predeControl_, denpendEntry);
     }
 
@@ -1096,7 +1188,7 @@ void Label::LabelImpl::MergeAllDepend()
     for (auto prede : this->GetPredecessors()) {
         dependsList.push_back(prede->GetDepend());
     }
-    depend_ = env_->GetBuilder()->Selector(OpCode(OpCode::DEPEND_SELECTOR),
+    depend_ = env_->GetBuilder()->Selector(OpCode::DEPEND_SELECTOR,
         predeControl_, dependsList, dependsList.size());
 }
 
@@ -1130,7 +1222,7 @@ GateRef Variable::AddPhiOperand(GateRef val)
     size_t idx = 0;
     for (auto pred : label.GetPredecessors()) {
         auto preVal = pred.ReadVariable(this);
-        ASSERT(!GateAccessor(env_->GetCircuit()).GetOpCode(preVal).IsNop());
+        ASSERT(!GateAccessor(env_->GetCircuit()).GetMetaData(preVal)->IsNop());
         idx++;
         val = AddOperandToSelector(val, idx, preVal);
     }

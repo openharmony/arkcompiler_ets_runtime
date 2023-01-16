@@ -80,7 +80,7 @@ private:
     struct LLVMStackMap llvmStackMap_;
     std::vector<Pc2CallSiteInfo> pc2CallSiteInfoVec_;
     std::vector<std::pair<uintptr_t, uint64_t>> fun2RecordNum_;
-    [[maybe_unused]] std::unique_ptr<DataInfo> dataInfo_;
+    std::unique_ptr<DataInfo> dataInfo_;
     bool enableLog_ {false};
     std::set<uintptr_t> funAddr_;
     std::vector<Func2FpDelta> fun2FpDelta_;

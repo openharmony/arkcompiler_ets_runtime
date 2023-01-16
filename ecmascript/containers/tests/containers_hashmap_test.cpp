@@ -135,7 +135,7 @@ HWTEST_F_L0(ContainersHashMapTest, HashMapConstructor)
     ASSERT_EQ(resultProto, funcProto);
     int size = mapHandle->GetSize();
     ASSERT_EQ(size, 0);
-    
+
     // test HashMapConstructor exception
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersHashMap, HashMapConstructor, objCallInfo);

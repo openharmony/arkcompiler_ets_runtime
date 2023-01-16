@@ -20,10 +20,22 @@ declare function print(arg:string, arg2:any):string;
         b:string;
         constructor() {
             print("this.hasOwnProperty:", this.hasOwnProperty("b"));
-            print("Reflect.has:", Reflect.has(this, "b"));
+            print("Object.getOwnPropertyNames:", Object.getOwnPropertyNames(this));
+            print("Object.getOwnPropertyDescriptor:", Object.getOwnPropertyDescriptor(this,"b"));
             print("Object.keys():", Object.keys(this));
+            print("Reflect.has:", Reflect.has(this, "b"));
             print("Reflect.ownKeys():", Reflect.ownKeys(this));
+            print("Reflect.get:", Reflect.get(this, "b"));
+            print("Reflect.getOwnPropertyDescriptor():", Reflect.getOwnPropertyDescriptor(this, "b"));
             this.b = "abc";
+            print("this.hasOwnProperty:", this.hasOwnProperty("b"));
+            print("Object.getOwnPropertyNames:", Object.getOwnPropertyNames(this));
+            print("Object.getOwnPropertyDescriptor:", Object.getOwnPropertyDescriptor(this,"b"));
+            print("Object.keys():", Object.keys(this));
+            print("Reflect.has:", Reflect.has(this, "b"));
+            print("Reflect.ownKeys():", Reflect.ownKeys(this));
+            print("Reflect.get:", Reflect.get(this, "b"));
+            print("Reflect.getOwnPropertyDescriptor():", Reflect.getOwnPropertyDescriptor(this, "b"));
         }
     }
 

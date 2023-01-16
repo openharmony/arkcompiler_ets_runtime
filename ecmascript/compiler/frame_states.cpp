@@ -66,20 +66,15 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo
                                             pcOffset,
                                             GateType::NJSValue());
     inList[numVregs_] = pcGate;
-    return circuit_->NewGate(OpCode(OpCode::FRAME_STATE), frameStateInputs, inList, GateType::Empty());
+    return circuit_->NewGate(circuit_->FrameState(frameStateInputs), inList);
 }
 
-void FrameStateBuilder::BindGuard(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo)
+void FrameStateBuilder::BindStateSplit(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo)
 {
     auto depend = gateAcc_.GetDep(gate);
-    GateRef glue = argAcc_.GetCommonArgGate(CommonArgIdx::GLUE);
     GateRef frameState = FrameState(pcOffset, stateInfo);
-    auto trueGate = circuit_->GetConstantGate(MachineType::I1,
-                                              1, // 1: true
-                                              GateType::NJSValue());
-    GateRef guard = circuit_->NewGate(
-        OpCode(OpCode::GUARD), 3, {depend, trueGate, frameState, glue}, GateType::Empty());
-    gateAcc_.ReplaceDependIn(gate, guard);
+    GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {depend, frameState});
+    gateAcc_.ReplaceDependIn(gate, stateSplit);
     if (builder_->IsLogEnabled()) {
         gateAcc_.ShortPrint(frameState);
     }
@@ -247,6 +242,9 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
         bb.vregToValSelectorGate.size() != 0;
     // merge current into pred bb
     for (auto bbPred : bb.preds) {
+        if (bbPred->isDead) {
+            continue;
+        }
         if (defPhi) {
             changed |= MergeIntoPredBB(&bb, bbPred);
         } else {
@@ -257,6 +255,9 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
         // clear GET_EXCEPTION gate if this is a catch block
         UpdateAccumulator(Circuit::NullGate());
         for (auto bbPred : bb.trys) {
+            if (bbPred->isDead) {
+                continue;
+            }
             if (defPhi) {
                 changed |= MergeIntoPredBB(&bb, bbPred);
             } else {
@@ -289,7 +290,7 @@ void FrameStateBuilder::BuildFrameState()
     liveOutResult_ = CreateEmptyStateInfo();
     BuildPostOrderList(size);
     ComputeLiveState();
-    BindGuard(size);
+    BindStateSplit(size);
 }
 
 void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo)
@@ -348,7 +349,7 @@ void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &byt
     }
 }
 
-void FrameStateBuilder::BindGuard(size_t size)
+void FrameStateBuilder::BindStateSplit(size_t size)
 {
     for (size_t i = 0; i < size; i++) {
         auto &bb = builder_->GetBasicBlockById(i);
@@ -362,7 +363,7 @@ void FrameStateBuilder::BindGuard(size_t size)
                 auto gate = builder_->GetGateByBcIndex(index);
                 auto pcOffset = builder_->GetPcOffset(index);
                 auto stateInfo = GetCurrentFrameInfo(bb, index);
-                BindGuard(gate, pcOffset, stateInfo);
+                BindStateSplit(gate, pcOffset, stateInfo);
             }
             return true;
         });
@@ -388,22 +389,21 @@ void FrameStateBuilder::SaveBBBeginStateInfo(size_t bbId)
 
 void FrameStateBuilder::UpdateVirtualRegistersOfSuspend(GateRef gate)
 {
-    auto saveGate = gateAcc_.GetDep(gate);
-    while (gateAcc_.GetOpCode(saveGate) == OpCode::SAVE_REGISTER) {
-        auto vreg = static_cast<size_t>(gateAcc_.GetBitField(saveGate));
-        auto def = gateAcc_.GetValueIn(saveGate, 0);
-        UpdateVirtualRegister(vreg, def);
-        saveGate = gateAcc_.GetDep(saveGate);
+    auto saveRegsGate = gateAcc_.GetDep(gate);
+    size_t numOfRegs = gateAcc_.GetNumValueIn(saveRegsGate);
+    for (size_t i = 0; i < numOfRegs; i++) {
+        GateRef def = gateAcc_.GetValueIn(saveRegsGate, i);
+        UpdateVirtualRegister(i, def);
     }
 }
 
 void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
 {
     auto restoreGate = gateAcc_.GetDep(gate);
-    while (gateAcc_.GetOpCode(restoreGate) == OpCode::RESTORE_REGISTER) {
-        auto vreg = static_cast<size_t>(gateAcc_.GetBitField(restoreGate));
+    auto &info = gateAcc_.GetRestoreRegsInfo(restoreGate);
+    for (auto it = info.begin(); it != info.end(); ++it) {
+        auto vreg = it->second;
         UpdateVirtualRegister(vreg, Circuit::NullGate());
-        restoreGate = gateAcc_.GetDep(restoreGate);
     }
 }
 }

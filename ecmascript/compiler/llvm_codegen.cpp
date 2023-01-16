@@ -235,6 +235,7 @@ void LLVMAssembler::Initialize(LOptions option)
         LLVMInitializeARMAsmParser();
         LLVMInitializeARMTarget();
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     llvm::linkAllBuiltinGCs();
@@ -247,7 +248,7 @@ void LLVMAssembler::Initialize(LOptions option)
 }
 
 static const char *SymbolLookupCallback([[maybe_unused]] void *disInfo, [[maybe_unused]] uint64_t referenceValue,
-                                        uint64_t *referenceType, [[maybe_unused]]uint64_t referencePC,
+                                        uint64_t *referenceType, [[maybe_unused]] uint64_t referencePC,
                                         [[maybe_unused]] const char **referenceName)
 {
     *referenceType = LLVMDisassembler_ReferenceType_InOut_None;

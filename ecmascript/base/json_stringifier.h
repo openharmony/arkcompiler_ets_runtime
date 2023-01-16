@@ -25,7 +25,7 @@
 namespace panda::ecmascript::base {
 class JsonStringifier {
 public:
-    explicit JsonStringifier() = default;
+    JsonStringifier() = default;
 
     explicit JsonStringifier(JSThread *thread) : thread_(thread) {}
 

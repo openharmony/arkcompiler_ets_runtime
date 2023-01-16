@@ -195,6 +195,7 @@ private:
     V(Goto, (int block, int bbout))                                                       \
     V(Parameter, (GateRef gate))                                                          \
     V(Constant, (GateRef gate, std::bitset<64> value))                                    \
+    V(ConstString, (GateRef gate, const ChunkVector<char> &str))                                \
     V(RelocatableData, (GateRef gate, uint64_t value))                                    \
     V(ZExtInt, (GateRef gate, GateRef e1))                                                \
     V(SExtInt, (GateRef gate, GateRef e1))                                                \
@@ -239,9 +240,9 @@ private:
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
 class LLVMIRBuilder {
 public:
-    explicit LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
-                           LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
-                           CallSignature::CallConv callConv, bool enableLog = false);
+    LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
+                  LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
+                  CallSignature::CallConv callConv, bool enableLog = false);
     ~LLVMIRBuilder();
     void Build();
 
@@ -354,8 +355,8 @@ private:
     std::vector<BasicBlock *> phiRebuildWorklist_;
     LLVMModule *llvmModule_ {nullptr};
     std::unordered_map<GateRef, LLVMValueRef> gate2LValue_;
-    std::unordered_map<OpCode::Op, HandleType> opHandlers_;
-    std::set<OpCode::Op> illegalOpHandlers_;
+    std::unordered_map<OpCode, HandleType> opHandlers_;
+    std::set<OpCode> illegalOpHandlers_;
     int slotSize_;
     LLVMTypeRef slotType_;
     CallSignature::CallConv callConv_ = CallSignature::CallConv::CCallConv;

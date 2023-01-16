@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_date_time_format.h"
@@ -21,6 +22,7 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
+using namespace panda::ecmascript::base;
 
 namespace panda::test {
 class JSDateTimeFormatTest : public testing::Test {
@@ -218,7 +220,7 @@ HWTEST_F_L0(JSDateTimeFormatTest, InitializeDateTimeFormat)
 
     JSHandle<JSTaggedValue> localeTagVal(thread, dtf->GetLocale());
     JSHandle<EcmaString> localeEcmaStr = JSHandle<EcmaString>::Cast(localeTagVal);
-    std::string localeStr = JSLocale::ConvertToStdString(localeEcmaStr);
+    std::string localeStr = LocaleHelper::ConvertToStdString(localeEcmaStr);
     EXPECT_STREQ(localeStr.c_str(), "zh-Hans-CN-u-ca-chinese");
 }
 
@@ -249,17 +251,17 @@ HWTEST_F_L0(JSDateTimeFormatTest, ToDateTimeOptions_001)
     options = JSDateTimeFormat::ToDateTimeOptions(
         thread, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY, DefaultsOption::ALL); // test "ALL"
     auto yearEcmaStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, yearKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(yearEcmaStr).c_str(), "numeric");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(yearEcmaStr).c_str(), "numeric");
     auto monthEcmaStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, monthKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(monthEcmaStr).c_str(), "numeric");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(monthEcmaStr).c_str(), "numeric");
     auto dayEcmaStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, dayKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dayEcmaStr).c_str(), "numeric");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dayEcmaStr).c_str(), "numeric");
     auto hourEcmaStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, hourKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(hourEcmaStr).c_str(), "numeric");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(hourEcmaStr).c_str(), "numeric");
     auto minuteEcmaStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, minuteKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(minuteEcmaStr).c_str(), "numeric");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(minuteEcmaStr).c_str(), "numeric");
     auto secondEcmaStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, secondKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(secondEcmaStr).c_str(), "numeric");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(secondEcmaStr).c_str(), "numeric");
 }
 
 HWTEST_F_L0(JSDateTimeFormatTest, ToDateTimeOptions_002)
@@ -300,24 +302,24 @@ HWTEST_F_L0(JSDateTimeFormatTest, ToDateTimeOptions_002)
     options = JSDateTimeFormat::ToDateTimeOptions(
         thread, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY, DefaultsOption::ALL); // test "ANY"
     auto weekdayStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, weekdayKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(weekdayStr).c_str(), "narrow");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(weekdayStr).c_str(), "narrow");
     auto yearStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, yearKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(yearStr).c_str(), "2-digit");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(yearStr).c_str(), "2-digit");
     auto monthStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, monthKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(monthStr).c_str(), "2-digit");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(monthStr).c_str(), "2-digit");
     auto dayStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, dayKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dayStr).c_str(), "2-digit");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dayStr).c_str(), "2-digit");
 
     auto dayPeriodStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, dayPeriodKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dayPeriodStr).c_str(), "narrow");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dayPeriodStr).c_str(), "narrow");
     auto hourStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, hourKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(hourStr).c_str(), "2-digit");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(hourStr).c_str(), "2-digit");
     auto minuteStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, minuteKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(minuteStr).c_str(), "2-digit");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(minuteStr).c_str(), "2-digit");
     auto secondStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, secondKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(secondStr).c_str(), "2-digit");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(secondStr).c_str(), "2-digit");
     auto fracSecStr = JSHandle<EcmaString>::Cast(JSObject::GetProperty(thread, options, fracSecKey).GetValue());
-    EXPECT_STREQ(JSLocale::ConvertToStdString(fracSecStr).c_str(), "1");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(fracSecStr).c_str(), "1");
 }
 
 JSHandle<JSDateTimeFormat> CreateDateTimeFormatTest(JSThread *thread, icu::Locale icuLocale, JSHandle<JSObject> options)
@@ -367,10 +369,10 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_001)
 
     // When the option is blank, the default format is "yyyy/MM/dd", the year, month and day are all numeric,
     // because the default option in initialization is "DefaultsOption::DATE".
-    JSHandle<EcmaString> dateTimeEcamStr1 =  JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp1);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr1).c_str(), "2022/5/25");
-    JSHandle<EcmaString> dateTimeEcamStr2 =  JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp2);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr2).c_str(), "2022/5/30");
+    JSHandle<EcmaString> dateTimeEcamStr1 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp1);
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr1).c_str(), "2022/5/25");
+    JSHandle<EcmaString> dateTimeEcamStr2 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp2);
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr2).c_str(), "2022/5/30");
 }
 
 HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_002)
@@ -398,9 +400,9 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_002)
 
     // Format to include all options by "DefaultsOption::ALL".
     JSHandle<EcmaString> dateTimeEcamStr1 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp1);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr1).c_str(), "2022/5/25 上午11:09:34");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr1).c_str(), "2022/5/25 上午11:09:34");
     JSHandle<EcmaString> dateTimeEcamStr2 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp2);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr2).c_str(), "2022/5/30 下午10:30:12");
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr2).c_str(), "2022/5/30 下午10:30:12");
 }
 
 HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_003)
@@ -443,10 +445,10 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_003)
     double timeStamp1 = 1653448174000; // test "2022-05-25 11:09:34.000"
     double timeStamp2 = 1653921012999; // test "2022-05-30 22:30:12.999"
 
-    JSHandle<EcmaString> dateTimeEcamStr1 =  JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp1);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr1).c_str(), "22年05月25日星期三 上午11:09:34.000");
-    JSHandle<EcmaString> dateTimeEcamStr2 =  JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp2);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr2).c_str(), "22年05月30日星期一 晚上10:30:12.999");
+    JSHandle<EcmaString> dateTimeEcamStr1 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp1);
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr1).c_str(), "22年05月25日星期三 上午11:09:34.000");
+    JSHandle<EcmaString> dateTimeEcamStr2 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp2);
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr2).c_str(), "22年05月30日星期一 晚上10:30:12.999");
 }
 
 HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_004)
@@ -489,11 +491,11 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTime_004)
     double timeStamp1 = 1653448174000; // test "2022-05-25 11:09:34.000"
     double timeStamp2 = 1653921012999; // test "2022-05-30 22:30:12.999"
 
-    JSHandle<EcmaString> dateTimeEcamStr1 =  JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp1);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr1).c_str(),
+    JSHandle<EcmaString> dateTimeEcamStr1 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp1);
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr1).c_str(),
         "Wednesday, 05/25/22, 11:09:34.000 in the morning");
-    JSHandle<EcmaString> dateTimeEcamStr2 =  JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp2);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr2).c_str(),
+    JSHandle<EcmaString> dateTimeEcamStr2 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp2);
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr2).c_str(),
         "Monday, 05/30/22, 10:30:12.999 at night");
 }
 
@@ -502,7 +504,7 @@ std::string GetDateTimePartStringTest(JSThread *thread, JSHandle<JSTaggedValue> 
     JSHandle<JSObject> partObj = JSHandle<JSObject>::Cast(part);
     JSHandle<JSTaggedValue> partValue = JSObject::GetProperty(thread, partObj, key).GetValue();
     JSHandle<EcmaString> partEcmaStr = JSHandle<EcmaString>::Cast(partValue);
-    std::string partStr = JSLocale::ConvertToStdString(partEcmaStr);
+    std::string partStr = LocaleHelper::ConvertToStdString(partEcmaStr);
     return partStr;
 }
 
@@ -537,8 +539,8 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_001)
 
     double timeStamp = 1653448174123; // test "2022-05-25 11:09:34.123"
     // Use default date time format and format date and time to parts.
-    JSHandle<EcmaString> dateTimeEcamStr1 =  JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr1).c_str(), "2022/5/25");
+    JSHandle<EcmaString> dateTimeEcamStr1 = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp);
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr1).c_str(), "2022/5/25");
     JSHandle<JSArray> dateTimeArray1 = JSDateTimeFormat::FormatDateTimeToParts(thread, dtf, timeStamp);
     auto year = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray1), 0).GetValue();
     auto literal1 = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray1), 1).GetValue();
@@ -596,8 +598,8 @@ HWTEST_F_L0(JSDateTimeFormatTest, FormatDateTimeToParts_002)
     options = JSDateTimeFormat::ToDateTimeOptions(
         thread, JSHandle<JSTaggedValue>::Cast(options), RequiredOption::ANY, DefaultsOption::ALL);
     JSHandle<JSDateTimeFormat> dtf = CreateDateTimeFormatTest(thread, icuLocale, options);
-    JSHandle<EcmaString> dateTimeEcamStr =  JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp);
-    EXPECT_STREQ(JSLocale::ConvertToStdString(dateTimeEcamStr).c_str(), "22年05月25日星期三 上午11:09:34.123");
+    JSHandle<EcmaString> dateTimeEcamStr = JSDateTimeFormat::FormatDateTime(thread, dtf, timeStamp);
+    EXPECT_STREQ(LocaleHelper::ConvertToStdString(dateTimeEcamStr).c_str(), "22年05月25日星期三 上午11:09:34.123");
 
     JSHandle<JSArray> dateTimeArray = JSDateTimeFormat::FormatDateTimeToParts(thread, dtf, timeStamp);
     auto year = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>::Cast(dateTimeArray), 0).GetValue();
@@ -669,7 +671,8 @@ HWTEST_F_L0(JSDateTimeFormatTest, GainAvailableLocales)
 
     const char *key = "calendar";
     const char *path = nullptr;
-    JSHandle<TaggedArray> availableLocales = JSLocale::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     env->SetDateTimeFormatLocales(thread, availableLocales);
     JSHandle<TaggedArray> gainLocales1 = JSDateTimeFormat::GainAvailableLocales(thread);
     EXPECT_EQ(JSHandle<JSTaggedValue>::Cast(gainLocales1).GetTaggedValue().GetRawData(),

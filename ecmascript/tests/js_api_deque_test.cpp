@@ -272,7 +272,7 @@ HWTEST_F_L0(JSAPIDequeTest, OwnKeys)
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
         JSAPIDeque::InsertEnd(thread, toor, value);
     }
-    
+
     // test OwnKeys
     JSHandle<TaggedArray> keyArray = JSAPIDeque::OwnKeys(thread, toor);
     EXPECT_TRUE(keyArray->GetClass()->IsTaggedArray());

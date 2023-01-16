@@ -128,7 +128,7 @@ public:
     {
         return static_cast<TaggedSingleList *>(obj);
     }
-    
+
     static JSTaggedValue Create(const JSThread *thread, int numberOfElements = TaggedSingleList::DEFAULT_ARRAY_LENGHT);
     static JSTaggedValue Add(const JSThread *thread, const JSHandle<TaggedSingleList> &taggedList,
                              const JSHandle<JSTaggedValue> &value);

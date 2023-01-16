@@ -33,8 +33,30 @@ public:
 
     bool PUBLIC_API Match(const CString &recordName, EntityId methodId);
     void PUBLIC_API LoadProfiler(const std::string &inPath, uint32_t hotnessThreshold);
+    const std::unordered_map<CString, std::unordered_set<EntityId>> &GetProfile() const
+    {
+        return hotnessMethods_;
+    }
+
+    void UpdateProfile(const CString &recordName, std::unordered_set<EntityId> &pgoMethods)
+    {
+        if (hotnessMethods_.find(recordName) != hotnessMethods_.end()) {
+            hotnessMethods_[recordName].insert(pgoMethods.begin(), pgoMethods.end());
+        } else {
+            hotnessMethods_.emplace(recordName, pgoMethods);
+        }
+    }
+
+    bool IsLoaded() const
+    {
+        return isLoaded_;
+    }
+
 private:
-    static constexpr int METHOD_INFO_COUNT = 2;
+    static constexpr int METHOD_INFO_COUNT = 3;
+    static constexpr int METHOD_ID_INDEX = 0;
+    static constexpr int METHOD_COUNT_INDEX = 1;
+    static constexpr int METHOD_MODE_INDEX = 2;
 
     void ParseProfiler(const std::string &profilerString);
     void ParseHotMethodInfo(const std::string &methodInfo, std::unordered_set<EntityId> &methodIds);

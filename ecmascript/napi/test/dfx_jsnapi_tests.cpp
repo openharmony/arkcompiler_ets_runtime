@@ -253,7 +253,7 @@ HWTEST_F_L0(DFXJSNApiTests, Start_Stop_RuntimeStat)
 
     DFXJSNApi::StartRuntimeStat(vm_);
     EXPECT_TRUE(ecmaRuntimeStat->IsRuntimeStatEnabled());
-    
+
     DFXJSNApi::StopRuntimeStat(vm_);
     EXPECT_TRUE(!ecmaRuntimeStat->IsRuntimeStatEnabled());
 }
@@ -288,6 +288,7 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
 
     bool fullGC = false;
     sweeper->Sweep(fullGC);
+    sweeper->PostTask();
     DFXJSNApi::NotifyApplicationState(vm_, true);
     EXPECT_TRUE(concurrentMarker->IsDisabled());
     EXPECT_TRUE(sweeper->IsRequestDisabled());

@@ -254,7 +254,7 @@ bool BuiltinsArrayBuffer::IsDetachedBuffer(JSTaggedValue arrayBuffer)
     JSTaggedValue dataSlot = buffer->GetArrayBufferData();
     // 2. If arrayBuffer’s [[ArrayBufferData]] internal slot is null, return true.
     // 3. Return false.
-    return dataSlot == JSTaggedValue::Null();
+    return dataSlot.IsNull();
 }
 
 // 24.1.1.4
@@ -350,7 +350,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBuffer(JSThread *thread, uint32_t
         default:
             break;
     }
-
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
 }
 
@@ -371,6 +371,7 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(JSThread *thread, JSTaggedVa
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 break;
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return JSTaggedValue::Undefined();
@@ -433,6 +434,7 @@ T BuiltinsArrayBuffer::LittleEndianToBigEndian(T liValue)
                       | ((liValue & 0xFF000000) >> BITS_TWENTY_FOUR);  // NOLINT
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
     }
@@ -490,7 +492,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
         }
         if (!littleEndian) {
             uint32_t res = LittleEndianToBigEndian(unionValue.uValue);
-            return GetTaggedDouble(bit_cast<T>(res));
+            return GetTaggedDouble(base::bit_cast<T>(res));
         }
     } else if constexpr (std::is_same_v<T, double>) {  // NOLINTNEXTLINE(readability-braces-around-statements)
         unionValue.uValue = *reinterpret_cast<uint64_t *>(block + byteIndex);
@@ -499,7 +501,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
         }
         if (!littleEndian) {
             uint64_t res = LittleEndianToBigEndian64Bit(unionValue.uValue);
-            return GetTaggedDouble(bit_cast<T>(res));
+            return GetTaggedDouble(base::bit_cast<T>(res));
         }
     }
 
@@ -591,11 +593,11 @@ void BuiltinsArrayBuffer::SetValueInBufferForFloat(double val, uint8_t *block, u
     }
     if (!littleEndian) {
         if constexpr (std::is_same_v<T, float>) {
-            uint32_t res = bit_cast<uint32_t>(data);
-            data = bit_cast<T>(LittleEndianToBigEndian(res));
+            uint32_t res = base::bit_cast<uint32_t>(data);
+            data = base::bit_cast<T>(LittleEndianToBigEndian(res));
         } else if constexpr (std::is_same_v<T, double>) {
-            uint64_t res = bit_cast<uint64_t>(data);
-            data = bit_cast<T>(LittleEndianToBigEndian64Bit(res));
+            uint64_t res = base::bit_cast<uint64_t>(data);
+            data = base::bit_cast<T>(LittleEndianToBigEndian64Bit(res));
         }
     }
     SetTypeData(block, data, byteIndex);
@@ -664,6 +666,7 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(uint32_t byteIndex, uint8_t 
             SetValueInBufferForFloat<double>(val, block, byteIndex, littleEndian);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return JSTaggedValue::Undefined();

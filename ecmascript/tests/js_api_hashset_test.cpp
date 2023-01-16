@@ -192,7 +192,7 @@ HWTEST_F_L0(JSAPIHashSetTest, JSAPIHashSetRemoveRBTreeTest)
         value.Update(JSTaggedValue(hashCollisionVector[i]));
         JSAPIHashSet::Add(thread, hashSet, value);
     }
-    
+
     // test Remove non-existent value
     JSTaggedValue nonExistentValue = JSAPIHashSet::Remove(thread, hashSet, JSTaggedValue(0));
     EXPECT_EQ(nonExistentValue, JSTaggedValue::False());
@@ -292,7 +292,7 @@ HWTEST_F_L0(JSAPIHashSetTest, JSAPIHashSetIteratorRBTreeTest)
         value.Update(JSTaggedValue(hashCollisionVector[i]));
         JSAPIHashSet::Add(thread, hashSet, value);
     }
-    
+
     JSHandle<JSAPIHashSetIterator> hashsetIterator = factory->NewJSAPIHashSetIterator(hashSet, IterationKind::VALUE);
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);

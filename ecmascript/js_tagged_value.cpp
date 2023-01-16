@@ -106,7 +106,7 @@ bool JSTaggedValue::WithinInt32() const
     }
 
     double doubleValue = GetNumber();
-    if (bit_cast<int64_t>(doubleValue) == bit_cast<int64_t>(-0.0)) {
+    if (base::bit_cast<int64_t>(doubleValue) == base::bit_cast<int64_t>(-0.0)) {
         return false;
     }
 
@@ -241,9 +241,9 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
             }
         }
         if (y->IsNumber() || y->IsStringOrSymbol() || y->IsBoolean() || y->IsBigInt()) {
-            JSHandle<JSTaggedValue> x_primitive(thread, ToPrimitive(thread, x));
+            JSHandle<JSTaggedValue> xPrimitive(thread, ToPrimitive(thread, x));
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x_primitive, y);
+            return Equal(thread, xPrimitive, y);
         }
         return false;
     }
@@ -563,7 +563,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
     }
 
     if (obj->IsSpecialContainer()) {
-        JSHandle<JSTaggedValue> keyHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(key));
+        JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
         return GetJSAPIProperty(thread, obj, keyHandle);
     }
 
@@ -645,7 +645,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     } else if (obj->IsModuleNamespace()) {
         success = ModuleNamespace::SetProperty(thread, mayThrow);
     } else if (obj->IsSpecialContainer()) {
-        JSHandle<JSTaggedValue> keyHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(key));
+        JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
         success = SetJSAPIProperty(thread, obj, keyHandle, value);
     } else {
         success = JSObject::SetProperty(thread, obj, key, value, mayThrow);
@@ -887,8 +887,8 @@ bool JSTaggedValue::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
         return JSProxy::HasProperty(thread, JSHandle<JSProxy>(obj), keyHandle);
     }
     if (obj->IsTypedArray()) {
-        JSHandle<JSTaggedValue> key_handle(thread, JSTaggedValue(key));
-        return JSTypedArray::HasProperty(thread, obj, key_handle);
+        JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
+        return JSTypedArray::HasProperty(thread, obj, keyHandle);
     }
     if (obj->IsSpecialContainer()) {
         return HasContainerProperty(thread, obj, JSHandle<JSTaggedValue>(thread, JSTaggedValue(key)));
@@ -1013,6 +1013,7 @@ bool JSTaggedValue::HasContainerProperty(JSThread *thread, const JSHandle<JSTagg
             return JSHandle<JSAPIVector>::Cast(obj)->Has(key.GetTaggedValue());
         }
         default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
@@ -1057,6 +1058,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnContainerPropertyKeys(JSThread *threa
             return JSAPIVector::OwnKeys(thread, JSHandle<JSAPIVector>::Cast(obj));
         }
         default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

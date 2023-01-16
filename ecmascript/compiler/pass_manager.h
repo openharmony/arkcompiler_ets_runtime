@@ -29,9 +29,9 @@ class BytecodeInfoCollector;
 
 class PassInfo {
 public:
-    explicit PassInfo(TSManager *tsManager, Bytecodes *bytecodes, LexEnvManager *lexEnvManager,
-                             CompilationConfig *cmpCfg, CompilerLog *log, const JSPandaFile *jsPandaFile,
-                             BytecodeInfoCollector* bcInfoCollector, LLVMModule *aotModule)
+    PassInfo(TSManager *tsManager, Bytecodes *bytecodes, LexEnvManager *lexEnvManager,
+             CompilationConfig *cmpCfg, CompilerLog *log, const JSPandaFile *jsPandaFile,
+             BytecodeInfoCollector* bcInfoCollector, LLVMModule *aotModule)
         : tsManager_(tsManager), bytecodes_(bytecodes), lexEnvManager_(lexEnvManager), cmpCfg_(cmpCfg),
           log_(log), jsPandaFile_(jsPandaFile), bcInfoCollector_(bcInfoCollector), aotModule_(aotModule)
     {
@@ -114,7 +114,7 @@ public:
 
 private:
     JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
-    void ResolveModuleAndConstPool(const JSPandaFile *jsPandaFile, const std::string &fileName);
+    void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
     bool EnableTypeLowering() const
     {

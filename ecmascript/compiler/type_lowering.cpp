@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/compiler/type_lowering.h"
+#include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
@@ -42,10 +42,31 @@ void TypeLowering::RunTypeLowering()
 void TypeLowering::LowerType(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
-    auto op = OpCode::Op(acc_.GetOpCode(gate));
+    auto op = OpCode(acc_.GetOpCode(gate));
     switch (op) {
-        case OpCode::TYPE_CHECK:
-            LowerTypeCheck(gate);
+        case OpCode::PRIMITIVE_TYPE_CHECK:
+            LowerPrimitiveTypeCheck(gate);
+            break;
+        case OpCode::ARRAY_CHECK:
+            LowerArrayCheck(gate, glue);
+            break;
+        case OpCode::STABLE_ARRAY_CHECK:
+            LowerStableArrayCheck(gate, glue);
+            break;
+        case OpCode::TYPED_ARRAY_CHECK:
+            LowerTypedArrayCheck(gate, glue);
+            break;
+        case OpCode::OBJECT_TYPE_CHECK:
+            LowerObjectTypeCheck(gate);
+            break;
+        case OpCode::INDEX_CHECK:
+            LowerIndexCheck(gate);
+            break;
+        case OpCode::INT32_OVERFLOW_CHECK:
+            LowerOverflowCheck(gate);
+            break;
+        case OpCode::TYPED_CALL_CHECK:
+            LowerCallTargetCheck(gate);
             break;
         case OpCode::TYPED_BINARY_OP:
             LowerTypedBinaryOp(gate);
@@ -56,14 +77,14 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::TYPED_UNARY_OP:
             LowerTypedUnaryOp(gate);
             break;
-        case OpCode::OBJECT_TYPE_CHECK:
-            LowerObjectTypeCheck(gate, glue);
-            break;
         case OpCode::LOAD_PROPERTY:
             LowerLoadProperty(gate, glue);
             break;
         case OpCode::STORE_PROPERTY:
             LowerStoreProperty(gate, glue);
+            break;
+        case OpCode::LOAD_ARRAY_LENGTH:
+            LowerLoadArrayLength(gate);
             break;
         case OpCode::LOAD_ELEMENT:
             LowerLoadElement(gate);
@@ -80,12 +101,307 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::TYPED_CALL:
             LowerTypedCallBuitin(gate);
             break;
-        case OpCode::TYPED_CALL_CHECK:
-            LowerCallTargetCheck(gate);
-            break;
         default:
             break;
     }
+}
+
+void TypeLowering::LowerPrimitiveTypeCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (type.IsIntType()) {
+        LowerIntCheck(gate);
+    } else if (type.IsDoubleType()) {
+        LowerDoubleCheck(gate);
+    } else if (type.IsNumberType()) {
+        LowerNumberCheck(gate);
+    } else if (type.IsBooleanType()) {
+        LowerBooleanCheck(gate);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeLowering::LowerIntCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsInt(value);
+    builder_.DeoptCheck(typeCheck, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerDoubleCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsDouble(value);
+    builder_.DeoptCheck(typeCheck, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerNumberCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsNumber(value);
+    builder_.DeoptCheck(typeCheck, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerBooleanCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsBoolean(value);
+    builder_.DeoptCheck(typeCheck, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerArrayCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
+    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef receiverHClass = builder_.LoadHClass(receiver);
+    GateRef arrayFunction =
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef protoOrHclass =
+        builder_.Load(VariableType::JS_ANY(), arrayFunction,
+                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef hcalssCheck = builder_.Equal(receiverHClass, protoOrHclass);
+    builder_.DeoptCheck(hcalssCheck, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerStableArrayCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
+    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef receiverHClass = builder_.LoadHClass(receiver);
+    GateRef arrayFunction =
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef protoOrHclass =
+        builder_.Load(VariableType::JS_ANY(), arrayFunction,
+                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef hcalssCheck = builder_.Equal(receiverHClass, protoOrHclass);
+    GateRef guardiansOffset = builder_.IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(false));
+    GateRef guardians = builder_.Load(VariableType(MachineType::I64, GateType::BooleanType()), glue, guardiansOffset);
+    GateRef guardiansCheck = builder_.Equal(guardians, builder_.TaggedTrue());
+    GateRef check = builder_.BoolAnd(hcalssCheck, guardiansCheck);
+    builder_.DeoptCheck(check, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerTypedArrayCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (tsManager_->IsFloat32ArrayType(type)) {
+        LowerFloat32ArrayCheck(gate, glue);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeLowering::LowerFloat32ArrayCheck(GateRef gate, GateRef glue)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
+    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef receiverHClass = builder_.LoadHClass(receiver);
+    GateRef float32ArrayFunction =
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
+    GateRef protoOrHclass =
+        builder_.Load(VariableType::JS_ANY(), float32ArrayFunction,
+                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef check = builder_.Equal(receiverHClass, protoOrHclass);
+    builder_.DeoptCheck(check, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerObjectTypeCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (tsManager_->IsClassInstanceTypeKind(type)) {
+        LowerClassInstanceCheck(gate);
+    } else if (tsManager_->IsClassTypeKind(type)) {
+        LowerNewObjTypeCheck(gate);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeLowering::LowerClassInstanceCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    auto receiver = acc_.GetValueIn(gate, 0);
+    auto receiverHClass = builder_.LoadHClass(receiver);
+    auto hclassOffset = acc_.GetValueIn(gate, 1);
+    GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
+    GateRef check = builder_.Equal(receiverHClass, hclass);
+    builder_.DeoptCheck(check, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerNewObjTypeCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+    GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
+                                          builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef hclassOffset = acc_.GetValueIn(gate, 1);
+    GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
+    GateRef check = builder_.Equal(protoOrHclass, hclass);
+    builder_.DeoptCheck(check, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerIndexCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (tsManager_->IsArrayTypeKind(type)) {
+        LowerArrayIndexCheck(gate);
+    } else if (tsManager_->IsFloat32ArrayType(type)) {
+        LowerFloat32ArrayIndexCheck(gate);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeLowering::LowerArrayIndexCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef hclassIndex = builder_.TruncPtrToInt32(acc_.GetValueIn(gate, 1));
+    GateRef length =
+            builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSArray::LENGTH_OFFSET));
+    GateRef lengthCheck = builder_.Int32UnsignedLessThan(hclassIndex, length);
+    GateRef nonNegativeCheck = builder_.Int32LessThanOrEqual(builder_.Int32(0), hclassIndex);
+    GateRef check = builder_.BoolAnd(lengthCheck, nonNegativeCheck);
+    builder_.DeoptCheck(check, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerFloat32ArrayIndexCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef index = builder_.TruncPtrToInt32(acc_.GetValueIn(gate, 1));
+    GateRef length =
+            builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
+    GateRef nonNegativeCheck = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
+    GateRef lengthCheck = builder_.Int32UnsignedLessThan(index, length);
+    GateRef check = builder_.BoolAnd(nonNegativeCheck, lengthCheck);
+    builder_.DeoptCheck(check, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerOverflowCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    auto op = accessor.GetTypedUnOp();
+    switch (op) {
+        case TypedUnOp::TYPED_INC: {
+            LowerTypedIncOverflowCheck(gate);
+            break;
+        }
+        case TypedUnOp::TYPED_DEC: {
+            LowerTypedDecOverflowCheck(gate);
+            break;
+        }
+        case TypedUnOp::TYPED_NEG: {
+            LowerTypedNegOverflowCheck(gate);
+            break;
+        }
+        default: {
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+            break;
+        }
+    }
+}
+
+void TypeLowering::LowerTypedIncOverflowCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef intVal = builder_.GetInt64OfTInt(value);
+    GateRef max = builder_.Int64(INT32_MAX);
+    GateRef rangeCheck = builder_.Int64NotEqual(intVal, max);
+    builder_.DeoptCheck(rangeCheck, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerTypedDecOverflowCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef intVal = builder_.GetInt64OfTInt(value);
+    GateRef min = builder_.Int64(INT32_MIN);
+    GateRef rangeCheck = builder_.Int64NotEqual(intVal, min);
+    builder_.DeoptCheck(rangeCheck, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerTypedNegOverflowCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef intVal = builder_.GetInt64OfTInt(value);
+    GateRef min = builder_.Int64(INT32_MIN);
+    GateRef zero = builder_.Int64(0);
+    GateRef notMin = builder_.Int64NotEqual(intVal, min);
+    GateRef notZero = builder_.Int64NotEqual(intVal, zero);
+    GateRef rangeCheck = builder_.BoolAnd(notMin, notZero);
+    builder_.DeoptCheck(rangeCheck, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 GateRef TypeLowering::LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel)
@@ -139,26 +455,11 @@ void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType src
         result = IntToTaggedIntPtr(builder_.Int32(0));
         builder_.Jump(&exit);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     builder_.Bind(&exit);
     acc_.ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
-}
-
-void TypeLowering::LowerTypeCheck(GateRef gate)
-{
-    auto type = GateType(static_cast<uint32_t>(acc_.GetBitField(gate)));
-    if (type.IsIntType()) {
-        LowerIntCheck(gate);
-    } else if (type.IsDoubleType()) {
-        LowerDoubleCheck(gate);
-    } else if (type.IsNumberType()) {
-        LowerNumberCheck(gate);
-    } else if (type.IsBooleanType()) {
-        LowerBooleanCheck(gate);
-    } else {
-        UNREACHABLE();
-    }
 }
 
 GateRef TypeLowering::GetConstPool(GateRef jsFunc)
@@ -171,73 +472,6 @@ GateRef TypeLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
 {
     GateRef constPool = GetConstPool(jsFunc);
     return builder_.GetValueFromTaggedArray(constPool, index);
-}
-
-void TypeLowering::LowerObjectTypeCheck(GateRef gate, GateRef glue)
-{
-    Environment env(gate, circuit_, &builder_);
-    auto type = GateType(static_cast<uint32_t>(acc_.GetBitField(gate)));
-    if (tsManager_->IsFloat32ArrayType(type)) {
-        LowerFloat32ArrayCheck(gate, glue);
-    } else if (tsManager_->IsClassInstanceTypeKind(type)) {
-        LowerClassInstanceCheck(gate, glue);
-    } else if (tsManager_->IsClassTypeKind(type)) {
-        LowerNewObjTypeCheck(gate);
-    } else {
-        UNREACHABLE();
-    }
-}
-
-void TypeLowering::LowerClassInstanceCheck(GateRef gate, [[maybe_unused]] GateRef glue)
-{
-    ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
-    auto receiver = acc_.GetValueIn(gate, 0);
-    auto receiverHClass = builder_.LoadHClass(receiver);
-    auto hclassOffset = acc_.GetValueIn(gate, 1);
-    GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
-    GateRef check = builder_.Equal(receiverHClass, hclass);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), check);
-}
-
-void TypeLowering::LowerNewObjTypeCheck(GateRef gate)
-{
-    ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
-    GateRef ctor = acc_.GetValueIn(gate, 0);
-    GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
-                                          builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    GateRef hclassOffset = acc_.GetValueIn(gate, 1);
-    GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
-    GateRef check = builder_.Equal(protoOrHclass, hclass);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), check);
-}
-
-void TypeLowering::LowerFloat32ArrayCheck(GateRef gate, GateRef glue)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef receiverHClass = builder_.LoadHClass(receiver);
-
-    GateRef float32ArrayFunction =
-        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
-    GateRef protoOrHclass =
-        builder_.Load(VariableType::JS_ANY(), float32ArrayFunction,
-                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    GateRef typeCheck = builder_.Equal(receiverHClass, protoOrHclass);
-
-    auto bitfield = acc_.GetBitField(acc_.GetValueIn(gate, 1));
-    GateRef index = builder_.Int32(bitfield);
-    GateRef length =
-            builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
-    GateRef lengthCheck = builder_.Int32UnsignedLessThan(index, length);
-
-    GateRef check = builder_.BoolAnd(typeCheck, lengthCheck);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), check);
 }
 
 void TypeLowering::LowerLoadProperty(GateRef gate, [[maybe_unused]] GateRef glue)
@@ -270,17 +504,52 @@ void TypeLowering::LowerStoreProperty(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypeLowering::LowerLoadArrayLength(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef array = acc_.GetValueIn(gate, 0);
+    GateRef offset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
+    GateRef result = builder_.Load(VariableType::JS_ANY(), array, offset);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
 void TypeLowering::LowerLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto op = static_cast<TypedLoadOp>(acc_.GetBitField(gate));
+    auto op = acc_.GetTypedLoadOp(gate);
     switch (op) {
+        case TypedLoadOp::ARRAY_LOAD_ELEMENT:
+            LowerArrayLoadElement(gate);
+            break;
         case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
             LowerFloat32ArrayLoadElement(gate);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
+}
+
+// for JSArray
+void TypeLowering::LowerArrayLoadElement(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef element =
+        builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSObject::ELEMENTS_OFFSET));
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef res = builder_.GetValueFromTaggedArray(element, index);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), res);
+    Label isHole(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.TaggedIsHole(res), &isHole, &exit);
+    builder_.Bind(&isHole);
+    {
+        result = builder_.UndefineConstant();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 // for Float32Array
@@ -325,12 +594,13 @@ void TypeLowering::LowerFloat32ArrayLoadElement(GateRef gate)
 void TypeLowering::LowerStoreElement(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    auto op = static_cast<TypedStoreOp>(acc_.GetBitField(gate));
+    auto op = acc_.GetTypedStoreOp(gate);
     switch (op) {
         case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
             LowerFloat32ArrayStoreElement(gate, glue);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -399,12 +669,13 @@ void TypeLowering::LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue)
 void TypeLowering::LowerHeapAllocate(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    auto bit = acc_.GetBitField(gate);
+    auto bit = acc_.TryGetValue(gate);
     switch (bit) {
         case RegionSpaceFlag::IN_YOUNG_SPACE:
             LowerHeapAllocateInYoung(gate, glue);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -433,7 +704,7 @@ void TypeLowering::LowerHeapAllocateInYoung(GateRef gate, GateRef glue)
     }
     builder_.Bind(&callRuntime);
     {
-        result = LowerCallRuntime(glue, RTSTUB_ID(AllocateInYoung),  { builder_.ToTaggedInt(size) }, true);
+        result = LowerCallRuntime(glue, RTSTUB_ID(AllocateInYoung),  {builder_.ToTaggedInt(size)}, true);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -496,43 +767,10 @@ void TypeLowering::LowerConstruct(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
-void TypeLowering::LowerIntCheck(GateRef gate)
-{
-    auto value = acc_.GetValueIn(gate, 0);
-    auto typeCheck = builder_.TaggedIsInt(value);
-    acc_.UpdateAllUses(gate, typeCheck);
-    acc_.DeleteGate(gate);
-}
-
-void TypeLowering::LowerDoubleCheck(GateRef gate)
-{
-    auto value = acc_.GetValueIn(gate, 0);
-    auto typeCheck = builder_.TaggedIsDouble(value);
-    acc_.UpdateAllUses(gate, typeCheck);
-    acc_.DeleteGate(gate);
-}
-
-void TypeLowering::LowerNumberCheck(GateRef gate)
-{
-    auto value = acc_.GetValueIn(gate, 0);
-    auto typeCheck = builder_.TaggedIsNumber(value);
-    acc_.UpdateAllUses(gate, typeCheck);
-    acc_.DeleteGate(gate);
-}
-
-void TypeLowering::LowerBooleanCheck(GateRef gate)
-{
-    auto value = acc_.GetValueIn(gate, 0);
-    auto typeCheck = builder_.TaggedIsBoolean(value);
-    acc_.UpdateAllUses(gate, typeCheck);
-    acc_.DeleteGate(gate);
-}
-
 void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto opGate = acc_.GetValueIn(gate, 2);
-    auto op = static_cast<TypedBinOp>(acc_.GetBitField(opGate));
+    TypedBinOp op = acc_.GetTypedBinaryOp(gate);
     switch (op) {
         case TypedBinOp::TYPED_ADD: {
             LowerTypedAdd(gate);
@@ -603,6 +841,7 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
             break;
         }
         default:
+            LOG_COMPILER(FATAL) << "unkown TypedBinOp: " << static_cast<int>(op);
             break;
     }
 }
@@ -610,28 +849,29 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 void TypeLowering::LowerTypedUnaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto bitfield = acc_.GetBitField(gate);
-    auto temp = bitfield >>  CircuitBuilder::OPRAND_TYPE_BITS;
-    auto op = static_cast<TypedUnOp>(bitfield ^ (temp << CircuitBuilder::OPRAND_TYPE_BITS));
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    GateType valueType = accessor.GetTypeValue();
+    auto op = accessor.GetTypedUnOp();
     switch (op) {
         case TypedUnOp::TYPED_TONUMBER:
             break;
         case TypedUnOp::TYPED_NEG:
-            LowerTypedNeg(gate);
+            LowerTypedNeg(gate, valueType);
             break;
         case TypedUnOp::TYPED_NOT:
-            LowerTypedNot(gate);
+            LowerTypedNot(gate, valueType);
             break;
         case TypedUnOp::TYPED_INC:
-            LowerTypedInc(gate);
+            LowerTypedInc(gate, valueType);
             break;
         case TypedUnOp::TYPED_DEC:
-            LowerTypedDec(gate);
+            LowerTypedDec(gate, valueType);
             break;
         case TypedUnOp::TYPED_TOBOOL:
-            LowerTypedToBool(gate);
+            LowerTypedToBool(gate, valueType);
             break;
         default:
+            LOG_COMPILER(FATAL) << "unkown TypedUnOp: " << static_cast<int>(op);
             break;
     }
 }
@@ -643,9 +883,9 @@ void TypeLowering::LowerTypedAdd(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberAdd(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedSub(GateRef gate)
@@ -655,9 +895,9 @@ void TypeLowering::LowerTypedSub(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberSub(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedMul(GateRef gate)
@@ -667,9 +907,9 @@ void TypeLowering::LowerTypedMul(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberMul(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedMod(GateRef gate)
@@ -679,9 +919,9 @@ void TypeLowering::LowerTypedMod(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberMod(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedLess(GateRef gate)
@@ -691,9 +931,9 @@ void TypeLowering::LowerTypedLess(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberLess(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedLessEq(GateRef gate)
@@ -703,9 +943,9 @@ void TypeLowering::LowerTypedLessEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberLessEq(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedGreater(GateRef gate)
@@ -715,9 +955,9 @@ void TypeLowering::LowerTypedGreater(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberGreater(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedGreaterEq(GateRef gate)
@@ -729,7 +969,6 @@ void TypeLowering::LowerTypedGreaterEq(GateRef gate)
     } else {
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedDiv(GateRef gate)
@@ -739,9 +978,9 @@ void TypeLowering::LowerTypedDiv(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberDiv(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedEq(GateRef gate)
@@ -751,6 +990,7 @@ void TypeLowering::LowerTypedEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberEq(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -763,9 +1003,9 @@ void TypeLowering::LowerTypedNotEq(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberNotEq(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedShl(GateRef gate)
@@ -777,7 +1017,6 @@ void TypeLowering::LowerTypedShl(GateRef gate)
     } else {
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedShr(GateRef gate)
@@ -787,9 +1026,9 @@ void TypeLowering::LowerTypedShr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberShr(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedAshr(GateRef gate)
@@ -799,9 +1038,9 @@ void TypeLowering::LowerTypedAshr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberAshr(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedAnd(GateRef gate)
@@ -811,9 +1050,9 @@ void TypeLowering::LowerTypedAnd(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberAnd(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerTypedOr(GateRef gate)
@@ -823,6 +1062,7 @@ void TypeLowering::LowerTypedOr(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberOr(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
@@ -835,66 +1075,62 @@ void TypeLowering::LowerTypedXor(GateRef gate)
     if (leftType.IsNumberType() && rightType.IsNumberType()) {
         LowerNumberXor(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
-void TypeLowering::LowerTypedInc(GateRef gate)
+void TypeLowering::LowerTypedInc(GateRef gate, GateType value)
 {
-    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
-        LowerNumberInc(gate);
+        LowerNumberInc(gate, value);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
-void TypeLowering::LowerTypedDec(GateRef gate)
+void TypeLowering::LowerTypedDec(GateRef gate, GateType value)
 {
-    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
-        LowerNumberDec(gate);
+        LowerNumberDec(gate, value);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
-void TypeLowering::LowerTypedNeg(GateRef gate)
+void TypeLowering::LowerTypedNeg(GateRef gate, GateType value)
 {
-    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
-        LowerNumberNeg(gate);
+        LowerNumberNeg(gate, value);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
     return;
 }
 
-void TypeLowering::LowerTypedToBool(GateRef gate)
+void TypeLowering::LowerTypedToBool(GateRef gate, GateType value)
 {
-    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
-        LowerNumberToBool(gate);
+        LowerNumberToBool(gate, value);
     } else if (value.IsBooleanType()) {
         LowerBooleanToBool(gate);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
-void TypeLowering::LowerTypedNot(GateRef gate)
+void TypeLowering::LowerTypedNot(GateRef gate, GateType value)
 {
-    auto value = acc_.GetLeftType(gate);
     if (value.IsNumberType()) {
-        LowerNumberNot(gate);
+        LowerNumberNot(gate, value);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    return;
 }
 
 void TypeLowering::LowerNumberAdd(GateRef gate)
@@ -1084,28 +1320,25 @@ void TypeLowering::LowerNumberXor(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberInc(GateRef gate)
+void TypeLowering::LowerNumberInc(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_INC>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberDec(GateRef gate)
+void TypeLowering::LowerNumberDec(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_DEC>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberNeg(GateRef gate)
+void TypeLowering::LowerNumberNeg(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     if (valueType.IsIntType()) {
         // value is int
@@ -1155,10 +1388,9 @@ void TypeLowering::LowerNumberNeg(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberToBool(GateRef gate)
+void TypeLowering::LowerNumberToBool(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.HoleConstant());
     if (valueType.IsIntType()) {
         // value is int
@@ -1202,16 +1434,15 @@ void TypeLowering::LowerBooleanToBool(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void TypeLowering::LowerNumberNot(GateRef gate)
+void TypeLowering::LowerNumberNot(GateRef gate, GateType valueType)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetLeftType(gate);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     result = MonocularNumber<TypedUnOp::TYPED_NOT>(value, valueType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-template<OpCode::Op Op>
+template<OpCode Op>
 GateRef TypeLowering::CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
@@ -1332,8 +1563,9 @@ GateRef TypeLowering::CalculateNumbers(GateRef left, GateRef right, GateType lef
     return ret;
 }
 
-template<OpCode::Op Op>
-GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right, GateType leftType, GateType rightType)
+template<OpCode Op>
+GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right,
+                                  GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -1350,6 +1582,8 @@ GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right, GateType leftType
     Label rightIsDouble(&builder_);
     Label leftIsInt(&builder_);
     Label leftIsDouble(&builder_);
+    Label overflow(&builder_);
+    Label notOverflow(&builder_);
 
     auto LowerIntOpInt = [&]() -> void {
         intLeft = builder_.GetInt32OfTInt(left);
@@ -1419,22 +1653,37 @@ GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right, GateType leftType
         switch (Op) {
             case OpCode::LSL: {
                 res = builder_.Int32LSL(*intLeft, shift);
+                result = IntToTaggedIntPtr(res);
+                builder_.Jump(&exit);
                 break;
             }
             case OpCode::LSR: {
                 res = builder_.Int32LSR(*intLeft, shift);
+                auto condition = builder_.Int32UnsignedGreaterThan(res, builder_.Int32(INT32_MAX));
+                builder_.Branch(condition, &overflow, &notOverflow);
+                builder_.Bind(&overflow);
+                {
+                    result = builder_.DoubleToTaggedDoublePtr(builder_.ChangeUInt32ToFloat64(res));
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&notOverflow);
+                {
+                    result = IntToTaggedIntPtr(res);
+                    builder_.Jump(&exit);
+                }
                 break;
             }
             case OpCode::ASR: {
                 res = builder_.Int32ASR(*intLeft, shift);
+                result = IntToTaggedIntPtr(res);
+                builder_.Jump(&exit);
                 break;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
         }
-        result = IntToTaggedIntPtr(res);
-        builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
     auto ret = *result;
@@ -1442,7 +1691,7 @@ GateRef TypeLowering::ShiftNumber(GateRef left, GateRef right, GateType leftType
     return ret;
 }
 
-template<OpCode::Op Op>
+template<OpCode Op>
 GateRef TypeLowering::LogicalNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
@@ -1539,117 +1788,11 @@ GateRef TypeLowering::LogicalNumbers(GateRef left, GateRef right, GateType leftT
                 break;
             }
             default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
         }
         result = IntToTaggedIntPtr(res);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-template<OpCode::Op Op>
-GateRef TypeLowering::FastAddOrSubOrMul(GateRef left, GateRef right)
-{
-    auto env = builder_.GetCurrentEnvironment();
-    Label entry(&builder_);
-    env->SubCfgEntry(&entry);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-    DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-
-    Label exit(&builder_);
-    Label doFloatOp(&builder_);
-    Label doIntOp(&builder_);
-    Label leftIsNumber(&builder_);
-    Label rightIsNumber(&builder_);
-    Label leftIsIntRightIsDouble(&builder_);
-    Label rightIsInt(&builder_);
-    Label rightIsDouble(&builder_);
-    builder_.Branch(builder_.TaggedIsNumber(left), &leftIsNumber, &exit);
-    builder_.Bind(&leftIsNumber);
-    {
-        builder_.Branch(builder_.TaggedIsNumber(right), &rightIsNumber, &exit);
-        builder_.Bind(&rightIsNumber);
-        {
-            Label leftIsInt(&builder_);
-            Label leftIsDouble(&builder_);
-            builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftIsDouble);
-            builder_.Bind(&leftIsInt);
-            {
-                builder_.Branch(builder_.TaggedIsInt(right), &doIntOp, &leftIsIntRightIsDouble);
-                builder_.Bind(&leftIsIntRightIsDouble);
-                {
-                    doubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
-                    doubleRight = builder_.GetDoubleOfTDouble(right);
-                    builder_.Jump(&doFloatOp);
-                }
-            }
-            builder_.Bind(&leftIsDouble);
-            {
-                builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightIsDouble);
-                builder_.Bind(&rightIsInt);
-                {
-                    doubleLeft = builder_.GetDoubleOfTDouble(left);
-                    doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
-                    builder_.Jump(&doFloatOp);
-                }
-                builder_.Bind(&rightIsDouble);
-                {
-                    doubleLeft = builder_.GetDoubleOfTDouble(left);
-                    doubleRight = builder_.GetDoubleOfTDouble(right);
-                    builder_.Jump(&doFloatOp);
-                }
-            }
-        }
-    }
-    builder_.Bind(&doIntOp);
-    {
-        Label overflow(&builder_);
-        Label notOverflow(&builder_);
-        // handle left is int and right is int
-        GateRef res = BinaryOp<Op, MachineType::I64>(builder_.GetInt64OfTInt(left),
-                                                     builder_.GetInt64OfTInt(right));
-        GateRef max = builder_.Int64(INT32_MAX);
-        GateRef min = builder_.Int64(INT32_MIN);
-        Label greaterZero(&builder_);
-        Label notGreaterZero(&builder_);
-        builder_.Branch(builder_.Int32GreaterThan(builder_.GetInt32OfTInt(left), builder_.Int32(0)),
-                        &greaterZero, &notGreaterZero);
-        builder_.Bind(&greaterZero);
-        {
-            builder_.Branch(builder_.Int64GreaterThan(res, max), &overflow, &notOverflow);
-        }
-        builder_.Bind(&notGreaterZero);
-        {
-            Label lessZero(&builder_);
-            builder_.Branch(builder_.Int32LessThan(builder_.GetInt32OfTInt(left), builder_.Int32(0)),
-                            &lessZero, &notOverflow);
-            builder_.Bind(&lessZero);
-            builder_.Branch(builder_.Int64LessThan(res, min), &overflow, &notOverflow);
-        }
-        builder_.Bind(&overflow);
-        {
-            GateRef newDoubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
-            GateRef newDoubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
-            GateRef middleRet = BinaryOp<Op, MachineType::F64>(newDoubleLeft, newDoubleRight);
-            result = DoubleToTaggedDoublePtr(middleRet);
-            builder_.Jump(&exit);
-        }
-        builder_.Bind(&notOverflow);
-        {
-            result = builder_.ToTaggedIntPtr(res);
-            builder_.Jump(&exit);
-        }
-    }
-    builder_.Bind(&doFloatOp);
-    {
-        // Other situations
-        auto res = BinaryOp<Op, MachineType::F64>(*doubleLeft, *doubleRight);
-        result = DoubleToTaggedDoublePtr(res);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -1979,10 +2122,10 @@ GateRef TypeLowering::MonocularNumber(GateRef value, GateType valueType)
     return ret;
 }
 
-template<OpCode::Op Op, MachineType Type>
+template<OpCode Op, MachineType Type>
 GateRef TypeLowering::BinaryOp(GateRef x, GateRef y)
 {
-    return builder_.BinaryArithmetic(OpCode(Op), Type, x, y);
+    return builder_.BinaryOp<Op, Type>(x, y);
 }
 
 GateRef TypeLowering::DoubleToTaggedDoublePtr(GateRef gate)
@@ -2002,12 +2145,12 @@ GateRef TypeLowering::TruncDoubleToInt(GateRef gate)
 
 GateRef TypeLowering::Int32Mod(GateRef left, GateRef right)
 {
-    return BinaryOp<OpCode::SMOD, MachineType::I32>(left, right);
+    return builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right);
 }
 
 GateRef TypeLowering::DoubleMod(GateRef left, GateRef right)
 {
-    return BinaryOp<OpCode::FMOD, MachineType::F64>(left, right);
+    return builder_.BinaryArithmetic(circuit_->Fmod(), MachineType::F64, left, right);
 }
 
 GateRef TypeLowering::IntToTaggedIntPtr(GateRef x)
@@ -2287,7 +2430,8 @@ GateRef TypeLowering::FastDiv(GateRef left, GateRef right)
         }
         builder_.Bind(&rightNotZero);
         {
-            result = DoubleToTaggedDoublePtr(BinaryOp<OpCode::FDIV, MachineType::F64>(*doubleLeft, *doubleRight));
+            result = DoubleToTaggedDoublePtr(
+                builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, *doubleLeft, *doubleRight));
             builder_.Jump(&exit);
         }
     }
@@ -2440,7 +2584,7 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
                 {
                     GateRef glue = acc_.GetGlueFromArgList();
                     result = builder_.CallNGCRuntime(
-                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, { *doubleLeft, *doubleRight });
+                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, {*doubleLeft, *doubleRight});
                     builder_.Jump(&exit);
                 }
             }
@@ -2457,7 +2601,8 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
     return ret;
 }
 
-GateRef TypeLowering::DivNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
+GateRef TypeLowering::DivNumbers(GateRef left, GateRef right,
+                                 GateType leftType, GateType rightType)
 {
     auto env = builder_.GetCurrentEnvironment();
     Label entry(&builder_);
@@ -2580,7 +2725,8 @@ GateRef TypeLowering::DivNumbers(GateRef left, GateRef right, GateType leftType,
         }
         builder_.Bind(&rightNotZero);
         {
-            result = DoubleToTaggedDoublePtr(BinaryOp<OpCode::FDIV, MachineType::F64>(*doubleLeft, *doubleRight));
+            result = DoubleToTaggedDoublePtr(
+                builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, *doubleLeft, *doubleRight));
             builder_.Jump(&exit);
         }
     }
@@ -2710,7 +2856,15 @@ void TypeLowering::LowerTypedCallBuitin(GateRef gate)
 
 void TypeLowering::LowerCallTargetCheck(GateRef gate)
 {
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+
     BuiltinLowering lowering(circuit_);
-    lowering.LowerCallTargetCheck(gate);
+    GateRef funcheck = lowering.LowerCallTargetCheck(&env, gate);
+    GateRef paracheck = lowering.CheckPara(gate);
+    GateRef check = builder_.BoolAnd(paracheck, funcheck);
+    builder_.DeoptCheck(check, frameState);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript

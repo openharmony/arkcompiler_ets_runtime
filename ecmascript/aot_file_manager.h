@@ -38,6 +38,26 @@ private:
     uint32_t offset_ {0};
 };
 
+class ExecutedMemoryAllocator {
+public:
+    struct ExeMem {
+        void *addr_ {nullptr};
+        size_t size_ {0};
+    };
+
+    static void AllocateBuf(uint32_t size, ExeMem &exeMem)
+    {
+        MemMap buf = MachineCodePageMap(AlignUp(size, PageSize()), PAGE_PROT_EXEC_READWRITE);
+        exeMem.addr_ = buf.GetMem();
+        exeMem.size_ = buf.GetSize();
+    }
+
+    static void DestoryBuf(ExeMem &exeMem)
+    {
+        PageUnmap(MemMap(exeMem.addr_, exeMem.size_));
+    }
+};
+
 struct ModuleSectionDes {
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> sectionsInfo_ {};
     uint32_t startIndex_ {static_cast<uint32_t>(-1)}; // record current module first function index in AOTFileInfo
@@ -45,6 +65,40 @@ struct ModuleSectionDes {
     std::shared_ptr<uint8_t> arkStackMapPtr_ {nullptr};
     uint32_t arkStackMapSize_ {0};
     uint8_t *arkStackMapRawPtr_ {nullptr};
+
+    std::string GetSecName(const ElfSecName idx) const
+    {
+        switch (idx) {
+            case ElfSecName::RODATA:
+                return "rodata";
+            case ElfSecName::RODATA_CST4:
+                return "rodata.cst4";
+            case ElfSecName::RODATA_CST8:
+                return "rodata.cst8";
+            case ElfSecName::RODATA_CST16:
+                return "rodata.cst16";
+            case ElfSecName::RODATA_CST32:
+                return "rodata.cst32";
+            case ElfSecName::TEXT:
+                return "text";
+            case ElfSecName::DATA:
+                return "data";
+            case ElfSecName::GOT:
+                return "got";
+            case ElfSecName::RELATEXT:
+                return "rela.text";
+            case ElfSecName::STRTAB:
+                return "strtab";
+            case ElfSecName::SYMTAB:
+                return "symtab";
+            case ElfSecName::LLVM_STACKMAP:
+                return "llvm_stackmaps";
+            default: {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+            }
+        }
+    }
 
     void SetArkStackMapPtr(std::shared_ptr<uint8_t> ptr)
     {
@@ -61,7 +115,7 @@ struct ModuleSectionDes {
         arkStackMapRawPtr_ = ptr;
     }
 
-    uint8_t* GetArkStackMapRawPtr()
+    uint8_t* GetArkStackMapRawPtr() const
     {
         return arkStackMapRawPtr_;
     }
@@ -125,7 +179,7 @@ struct ModuleSectionDes {
         return it == sectionsInfo_.end() ? 0 : it->second.second;
     }
 
-    uint32_t GetSecInfosSize()
+    uint32_t GetSecInfosSize() const
     {
         return sectionsInfo_.size();
     }
@@ -144,6 +198,11 @@ struct ModuleSectionDes {
     void LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset,
         uint64_t codeAddress);
     void LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset);
+
+private:
+    static constexpr int DECIMAL_LENS = 2;
+    static constexpr int HUNDRED_TIME = 100;
+    static constexpr int PERCENT_LENS = 4;
 };
 
 class PUBLIC_API AOTFileInfo {
@@ -160,7 +219,7 @@ public:
         uint32_t moduleIndex_;
         int fpDeltaPrevFrameSp_;
         uint32_t funcSize_;
-        [[maybe_unused]] uint32_t calleeRegisterNum_;
+        uint32_t calleeRegisterNum_;
         int32_t CalleeReg2Offset_[2 * kungfu::MAX_CALLEE_SAVE_REIGISTER_NUM];
         bool IsStub() const
         {
@@ -216,23 +275,6 @@ public:
         return des_;
     }
 
-    void Iterate(const RootVisitor &v);
-
-    void SetCode(JSHandle<MachineCode> code)
-    {
-        machineCodeObj_ = code.GetTaggedValue();
-    }
-
-    JSHandle<MachineCode> GetCode()
-    {
-        return JSHandle<MachineCode>(reinterpret_cast<uintptr_t>(&machineCodeObj_));
-    }
-
-    bool isCodeHole()
-    {
-        return machineCodeObj_.IsHole();
-    }
-
     uint32_t GetStubNum() const
     {
         return entryNum_;
@@ -285,55 +327,27 @@ public:
     }
 
     using CallSiteInfo = std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>;
+
     bool CalCallSiteInfo(uintptr_t retAddr, CallSiteInfo& ret) const;
 
 protected:
+    ExecutedMemoryAllocator::ExeMem& GetExeMem() {
+        return exeMem_;
+    }
+
     uint32_t entryNum_ {0};
     uint32_t moduleNum_ {0};
     uint32_t totalCodeSize_ {0};
     std::vector<FuncEntryDes> entries_ {};
     std::vector<ModuleSectionDes> des_ {};
-    // NOTE: code object is non movable(code space) currently.
-    // The thought use of code->GetDataOffsetAddress() as data base rely on this assumption.
-    // A stable technique or mechanism for code object against other GC situation is future work.
-    JSTaggedValue machineCodeObj_ {JSTaggedValue::Hole()};
-};
-
-class AnFileDataManager {
-public:
-    static AnFileDataManager *GetInstance();
-
-    ~AnFileDataManager();
-
-    struct AnFileData {
-        uint32_t entryNum {0};
-        uint32_t moduleNum {0};
-        uint32_t totalCodeSize {0};
-        std::vector<AOTFileInfo::FuncEntryDes> entries {};
-        std::vector<ModuleSectionDes> des {};
-        void *poolAddr {nullptr};
-        size_t poolSize {0};
-    };
-
-    bool SafeLoad(const std::string &filename);
-    std::shared_ptr<const AnFileData> SafeGetAnFileData(const CString &filename);
-
-private:
-    AnFileDataManager() = default;
-    std::shared_ptr<const AnFileData> UnsafeFind(const CString &filename) const;
-    bool UnsafeLoadData(const CString &filename, std::string &realPath);
-
-    os::memory::RecursiveMutex lock_;
-    std::unordered_map<const CString, std::shared_ptr<AnFileData>, CStringHash> loadedData_;
+    ExecutedMemoryAllocator::ExeMem exeMem_ {};
 };
 
 class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
-    void Iterate(const RootVisitor &v);
     void Save(const std::string &filename);
-    bool Load(const std::string &filename);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
@@ -355,6 +369,9 @@ public:
         return static_cast<uintptr_t>(it->second);
     }
 
+    template<size_t Size>
+    bool AnVersionCheck(std::array<uint8_t, Size> anVersion);
+
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
 
     bool IsLoad() const
@@ -364,22 +381,13 @@ public:
 
     void RewriteRelcateDeoptHandler(EcmaVM *vm);
 
-    JSHandle<JSTaggedValue> PUBLIC_API GetSnapshotConstantPool() const
-    {
-        return JSHandle<JSTaggedValue>(uintptr_t(&snapshotConstantPool_));
-    }
-
-    void PUBLIC_API SetSnapshotConstantPool(JSTaggedValue snapshotConstantPool)
-    {
-        snapshotConstantPool_ = snapshotConstantPool;
-    }
-
 private:
+    bool Load(const std::string &filename);
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
-    JSTaggedValue snapshotConstantPool_ {JSTaggedValue::Hole()};
-    std::shared_ptr<const AnFileDataManager::AnFileData> data_;
     bool isLoad_ {false};
+
+    friend class AnFileDataManager;
 };
 
 class PUBLIC_API StubFileInfo : public AOTFileInfo {
@@ -387,7 +395,6 @@ public:
     StubFileInfo() = default;
     ~StubFileInfo() override = default;
     void Save(const std::string &filename);
-    bool Load(EcmaVM *vm);
 
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
@@ -438,9 +445,12 @@ public:
     }
 
 private:
+    bool Load();
     void *asmStubAddr_ {nullptr};
     size_t asmStubSize_ {0};
     std::vector<int> asmStubTempHolder_ {};
+
+    friend class AnFileDataManager;
 };
 
 class AOTLiteralInfo : public TaggedArray {
@@ -452,6 +462,38 @@ public:
     }
 };
 
+class AnFileDataManager {
+public:
+    enum class Type : uint8_t {
+        STUB = 0,
+        AOT,
+    };
+
+    static AnFileDataManager *GetInstance();
+    ~AnFileDataManager();
+
+    bool SafeLoad(const std::string &fileName, Type type, EcmaVM *vm = nullptr);
+    uint32_t SafeGetFileInfoIndex(const std::string &fileName);
+    std::shared_ptr<AnFileInfo> SafeGetAnFileInfo(uint32_t index);
+    std::shared_ptr<StubFileInfo> SafeGetStubFileInfo();
+    bool SafeInsideStub(uintptr_t pc);
+    bool SafeInsideAOT(uintptr_t pc);
+    AOTFileInfo::CallSiteInfo SafeCalCallSiteInfo(uintptr_t retAddr);
+
+    void SafeDestoryAllData();
+
+private:
+    AnFileDataManager() = default;
+    std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
+    bool UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *vm);
+    bool UnsafeLoadFromStub();
+
+    os::memory::RWLock lock_;
+    std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_;
+    std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};
+    std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};
+};
+
 class AOTFileManager {
 public:
     explicit AOTFileManager(EcmaVM *vm);
@@ -459,55 +501,38 @@ public:
 
     static constexpr size_t AOT_VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, AOT_VERSION_SIZE> AOT_VERSION {0, 0, 0, 1};
+    static constexpr char FILE_EXTENSION_AN[] = ".an";
+    static constexpr char FILE_EXTENSION_AI[] = ".ai";
+    static constexpr uint8_t DESERI_CP_ITEM_SIZE = 2;
 
-    void LoadStubFile();
+    void LoadStubFile(const std::string &fileName);
     void LoadAnFile(const std::string &fileName);
+    void LoadAnFile(JSPandaFile *jsPandaFile);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool InsideStub(uintptr_t pc) const;
     bool InsideAOT(uintptr_t pc) const;
+    void Iterate(const RootVisitor &v);
 
-    void Iterate(const RootVisitor &v)
-    {
-        if (!stubFileInfo_.isCodeHole()) {
-            stubFileInfo_.Iterate(v);
-        }
-        if (anFileInfos_.size() != 0) {
-            for (auto &info : anFileInfos_) {
-                info.Iterate(v);
-            }
-        }
-    }
-
-    void UpdateJSMethods(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
-    const AnFileInfo *GetAnFileInfo(const JSPandaFile *jsPandaFile) const;
+    const std::shared_ptr<AnFileInfo> GetAnFileInfo(const JSPandaFile *jsPandaFile) const;
     bool IsLoad(const JSPandaFile *jsPandaFile) const;
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
+    uint32_t GetAnFileIndex(const JSPandaFile *jsPandaFile) const;
+    void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
+                             std::string_view entryPoint);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
                                    const AOTLiteralInfo *entryIndexes);
-    void LoadSnapshotFile([[maybe_unused]]const std::string& filename);
+    void LoadAiFile([[maybe_unused]] const std::string& filename);
+    void LoadAiFile(const JSPandaFile *jsPandaFile);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
-    void AddSnapshotConstantPool(JSTaggedValue snapshotConstantPool);
-    JSHandle<JSTaggedValue> GetSnapshotConstantPool(const JSPandaFile *jsPandaFile);
+    void AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList);
+    JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
+    std::string GetAotFileName(EcmaVM *vm, const JSPandaFile *jsPandaFile, const std::string &extensionName) const;
 
 private:
-    void SetStubmmap(void *addr, size_t totalCodeSize)
-    {
-        stubAddrs_.emplace_back(std::make_pair(addr, totalCodeSize));
-    }
-
-    const StubFileInfo& GetStubFileInfo() const
-    {
-        return stubFileInfo_;
-    }
-
-    void AddAnFileInfo(AnFileInfo anFileInfo)
-    {
-        anFileInfos_.emplace_back(anFileInfo);
-    }
 
     void RewriteRelcateDeoptHandler(EcmaVM *vm, AnFileInfo AOTFileInfo)
     {
@@ -519,11 +544,9 @@ private:
     void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
                                             const AsmInterParsedOption &asmInterOpt);
 
-    std::vector<std::pair<void *, size_t>> stubAddrs_;
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    StubFileInfo stubFileInfo_ {};
-    std::vector<AnFileInfo> anFileInfos_ {};
+    std::unordered_map<uint32_t, CMap<int32_t, JSTaggedValue>> desCPs_ {};
     kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 
     friend class AnFileInfo;

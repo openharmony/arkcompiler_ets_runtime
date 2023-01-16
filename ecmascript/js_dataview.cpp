@@ -44,6 +44,7 @@ uint32_t JSDataView::GetElementSize(DataViewType type)
             size = 8;  // 8 means the length
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     return size;

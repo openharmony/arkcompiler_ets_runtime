@@ -27,7 +27,7 @@ public:
     static JSTaggedValue CjsModuleConstructor(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue Compiler(EcmaRuntimeCallInfo *msg);
-    
+
     static JSTaggedValue Load(EcmaRuntimeCallInfo *msg);
 
     static JSTaggedValue Require(EcmaRuntimeCallInfo *msg);

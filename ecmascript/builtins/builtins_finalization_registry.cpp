@@ -66,7 +66,7 @@ JSTaggedValue BuiltinsFinalizationRegistry::Register(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, FinalizationRegistry, Register);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> heldValue  = GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> heldValue = GetCallArg(argv, 1);
     JSHandle<JSTaggedValue> unregisterToken = GetCallArg(argv, 2);  // 2 : unregisterToken storage location
     // 1. Let finalizationRegistry be the this value.
     JSHandle<JSTaggedValue> finalizationRegistry = GetThis(argv);

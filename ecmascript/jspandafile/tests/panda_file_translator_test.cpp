@@ -73,17 +73,17 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
     const File *file = pf->GetPandaFile();
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    ClassDataAccessor cda(*file, class_id);
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    MethodLiteral method1(pf, methodId[0]);
-    MethodLiteral method2(pf, methodId[1]);
-    pf->SetMethodLiteralToMap(&method1);
-    pf->SetMethodLiteralToMap(&method2);
+    MethodLiteral *method1 = new MethodLiteral(methodId[0]);
+    MethodLiteral *method2 = new MethodLiteral(methodId[1]);
+    pf->SetMethodLiteralToMap(method1);
+    pf->SetMethodLiteralToMap(method2);
     pfManager->InsertJSPandaFile(pf);
 
     JSHandle<ecmascript::Program> program1 =
@@ -118,8 +118,8 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
     const File *file = pf->GetPandaFile();
-    File::EntityId class_id = file->GetClassId(typeDesc);
-    ClassDataAccessor cda(*file, class_id);
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
     std::vector<File::EntityId> methodId {};
     cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
         methodId.push_back(mda.GetMethodId());

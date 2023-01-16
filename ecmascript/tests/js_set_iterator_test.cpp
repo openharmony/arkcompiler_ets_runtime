@@ -87,7 +87,7 @@ HWTEST_F_L0(JSSetIteratorTest, CreateSetIterator)
 
     JSHandle<JSTaggedValue> setIteratorValue2 =
         JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::VALUE);
-    
+
     EXPECT_EQ(setIteratorValue2->IsJSSetIterator(), true);
     JSHandle<JSSetIterator> setIterator2(setIteratorValue2);
     EXPECT_EQ(JSTaggedValue::SameValue(setIterator2->GetIteratedSet(), jsSet->GetLinkedSet()), true);
@@ -156,12 +156,12 @@ HWTEST_F_L0(JSSetIteratorTest, KEY_Next)
     ecmaRuntimeCallInfo->SetThis(setIteratorValue.GetTaggedValue());
     ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue::Undefined());
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    
+
     for (int i = 0; i <= 3; i++) { // 3 : 3 default numberOfElements
         JSTaggedValue result = JSSetIterator::Next(ecmaRuntimeCallInfo);
         JSHandle<JSTaggedValue> resultObj(thread, result);
         if (i < 3) {
-            EXPECT_EQ(setIterator->GetNextIndex(), static_cast<uint32_t>(i+1));
+            EXPECT_EQ(setIterator->GetNextIndex(), static_cast<uint32_t>(i + 1));
             EXPECT_EQ(i, JSIterator::IteratorValue(thread, resultObj)->GetInt());
         }
         else {
@@ -192,7 +192,7 @@ HWTEST_F_L0(JSSetIteratorTest, KEY_AND_VALUE_Next)
     ecmaRuntimeCallInfo->SetThis(setIteratorValue.GetTaggedValue());
     ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue::Undefined());
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    
+
     for (int i = 0; i <= 3; i++) { // 3 : 3 default numberOfElements
         JSTaggedValue result = JSSetIterator::Next(ecmaRuntimeCallInfo);
         JSHandle<JSTaggedValue> resultObj(thread, result);

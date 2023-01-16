@@ -88,24 +88,16 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
 
-    JSTaggedValue npmKey = module->GetNpmKey();
-    CString npmKeyStr = "";
-    if (!npmKey.IsUndefined()) {
-        npmKeyStr = ConvertToString(EcmaString::Cast(npmKey.GetTaggedObject()));
-    }
     CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
-    CString entryPoint = "";
-    bool npm = false;
-    std::tie(entryPoint, npm) = ModuleManager::ConcatFileNameWithMerge(
-        jsPandaFile, baseFilename, moduleRecordName, moduleRequestName, npmKeyStr);
-    JSHandle<SourceTextModule> newModule = moduleManager->HostResolveImportedModuleWithMerge(baseFilename, entryPoint);
-    if (npm) {
-        JSHandle<EcmaString> newNpmkey =  thread->GetEcmaVM()->GetFactory()->NewFromUtf8(npmKeyStr.c_str());
-        newModule->SetNpmKey(thread, newNpmkey);
-    } else {
-        newModule->SetNpmKey(thread, module->GetNpmKey());
+    CString entryPoint =
+        ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
+    if (entryPoint == JSPandaFile::PREVIEW_OF_ACROSS_HAP_FLAG) {
+        JSHandle<SourceTextModule> throwValue(thread, JSTaggedValue::Undefined());
+        THROW_SYNTAX_ERROR_AND_RETURN(thread, "", throwValue);
     }
-    return newModule;
+#endif
+    return moduleManager->HostResolveImportedModuleWithMerge(baseFilename, entryPoint);
 }
 
 // old way with bundle
@@ -124,9 +116,9 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModule(JSThread 
 
 bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &module,
     const JSHandle<JSTaggedValue> &exportName,
-    CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet)
+    CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector)
 {
-    for (auto rr : resolveSet) {
+    for (auto rr : resolveVector) {
         // a. If module and r.[[Module]] are the same Module Record and
         // SameValue(exportName, r.[[ExportName]]) is true, then
         if (JSTaggedValue::SameValue(rr.first.GetTaggedValue(), module.GetTaggedValue()) &&
@@ -140,32 +132,25 @@ bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &mod
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
-    const JSHandle<JSTaggedValue> &cjsModule,
-    const JSHandle<JSTaggedValue> &exportName,
-    CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet)
+                                                           const JSHandle<JSTaggedValue> &cjsExports,
+                                                           const JSHandle<JSTaggedValue> &exportName)
 {
-    // 1. Let module be this Source Text Module Record.
+    // Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
-    // Check if circular import request.
-    // 2.For each Record { [[Module]], [[ExportName]] } r in resolveSet, do
-    if (CheckCircularImport(module, exportName, resolveSet)) {
-        return globalConstants->GetHandledNull();
-    }
-    // 3. Append the Record { [[Module]]: module, [[ExportName]]: exportName } to resolveSet.
-    resolveSet.emplace_back(std::make_pair(module, exportName));
-    // 4. if cjsModule IsCjsExports, means the cjs module has multiple outputs
-    if (cjsModule->IsCjsExports()) {
-        JSHClass *jsHclass = JSObject::Cast(cjsModule.GetTaggedValue())->GetJSHClass();
+    // if cjsExports Is JSObject, means the cjs module has multiple outputs
+    if (cjsExports->IsJSObject()) {
+        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(cjsExports.GetTaggedValue())->GetJSHClass());
         // Get layoutInfo and compare the input and output names of files
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+        JSHandle<LayoutInfo> layoutInfo(thread, jsHclass->GetLayout());
         if (layoutInfo->NumberOfElements() != 0) {
             JSHandle<JSTaggedValue> resolution = ResolveCjsLocalExport(thread, layoutInfo, exportName, module);
             if (!resolution->IsUndefined()) {
                 return resolution;
             }
+            // When cjsExports Is JSObject, and can not resolve local export, continue.
         }
     }
-    // 5. If cjsModule != IsCjsExports, means the cjs module use default output
+    // If cjsExports != JSObject, means the cjs module use default output
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
     if (JSTaggedValue::SameValue(exportName, defaultString)) {
         // bind with a number
@@ -177,17 +162,17 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsExport(JSThread *thread, con
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
     const JSHandle<JSTaggedValue> &exportName,
-    CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveSet)
+    CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector)
 {
     // 1. Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
     // Check if circular import request.
-    // 2.For each Record { [[Module]], [[ExportName]] } r in resolveSet, do
-    if (CheckCircularImport(module, exportName, resolveSet)) {
+    // 2.For each Record { [[Module]], [[ExportName]] } r in resolveVector, do
+    if (CheckCircularImport(module, exportName, resolveVector)) {
         return globalConstants->GetHandledNull();
     }
-    // 3. Append the Record { [[Module]]: module, [[ExportName]]: exportName } to resolveSet.
-    resolveSet.emplace_back(std::make_pair(module, exportName));
+    // 3. Append the Record { [[Module]]: module, [[ExportName]]: exportName } to resolveVector.
+    resolveVector.emplace_back(std::make_pair(module, exportName));
     // 4. For each ExportEntry Record e in module.[[LocalExportEntries]], do
     JSHandle<JSTaggedValue> localExportEntriesTv(thread, module->GetLocalExportEntries());
     if (!localExportEntriesTv->IsUndefined()) {
@@ -200,7 +185,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     JSHandle<JSTaggedValue> indirectExportEntriesTv(thread, module->GetIndirectExportEntries());
     if (!indirectExportEntriesTv->IsUndefined()) {
         JSHandle<JSTaggedValue> resolution = ResolveIndirectExport(thread, indirectExportEntriesTv,
-                                                                   exportName, module, resolveSet);
+                                                                   exportName, module, resolveVector);
         if (!resolution->IsUndefined()) {
             return resolution;
         }
@@ -228,7 +213,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
         ee.Update(starExportEntries->Get(idx));
         moduleRequest.Update(ee->GetModuleRequest());
         JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, moduleRequest,
-                                                           module, starResolution, resolveSet);
+                                                           module, starResolution, resolveVector);
         if (result->IsString() || result->IsException()) {
             return result;
         }
@@ -240,22 +225,29 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
 void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                       const JSHandle<SourceTextModule> &requiredModule)
 {
-    JSHandle<JSTaggedValue> cjsModuleName(thread, requiredModule->GetEcmaModuleFilename());
+    JSTaggedValue cjsFileName(requiredModule->GetEcmaModuleFilename());
+    JSTaggedValue cjsRecordName(requiredModule->GetEcmaModuleRecordName());
+    JSMutableHandle<JSTaggedValue> cjsModuleName(thread, JSTaggedValue::Undefined());
     // Get exported cjs module
+    bool isBundle;
+    if (cjsRecordName.IsUndefined()) {
+        cjsModuleName.Update(cjsFileName);
+        isBundle = true;
+    } else {
+        cjsModuleName.Update(cjsRecordName);
+        isBundle = false;
+    }
     JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
     // Get esm environment
-    JSHandle<JSTaggedValue> moduleEnvironment(thread, SourceTextModule::Cast(
-        module.GetTaggedValue().GetTaggedObject())->GetEnvironment());
+    JSHandle<JSTaggedValue> moduleEnvironment(thread, module->GetEnvironment());
     auto globalConstants = thread->GlobalConstants();
     if (moduleEnvironment->IsUndefined()) {
-        CString msg = "moduleEnvironment is Undefined";
-        THROW_ERROR(thread, ErrorType::RANGE_ERROR, msg.c_str());
+        return;
     }
-    JSHandle<TaggedArray> environment(thread, TaggedArray::Cast(moduleEnvironment->GetTaggedObject()));
+    JSHandle<TaggedArray> environment = JSHandle<TaggedArray>::Cast(moduleEnvironment);
     size_t length = environment->GetLength();
     JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries());
     JSMutableHandle<ImportEntry> host(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
     // update required module
     for (size_t idx = 0; idx < length; idx++) {
@@ -265,30 +257,32 @@ void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTex
             continue;
         }
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        JSTaggedValue resolvedModule = binding->GetModule();
-        JSHandle<SourceTextModule> requestedModule(thread, resolvedModule);
-        JSHandle<JSTaggedValue> moduleName(thread, requestedModule->GetEcmaModuleFilename());
+        JSHandle<SourceTextModule> requestedModule(thread, binding->GetModule());
+        JSMutableHandle<JSTaggedValue> requestedName(thread, JSTaggedValue::Undefined());
+        if (isBundle) {
+            requestedName.Update(requestedModule->GetEcmaModuleFilename());
+        } else {
+            requestedName.Update(requestedModule->GetEcmaModuleRecordName());
+        }
         // if not the same module, then don't have to update
-        if (!JSTaggedValue::SameValue(moduleName, cjsModuleName)) {
+        if (!JSTaggedValue::SameValue(requestedName, cjsModuleName)) {
             continue;
         }
         // rebinding here
         host.Update(importEntries->Get(idx));
         importName.Update(host->GetImportName());
-        // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
         JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveCjsExport(thread, requestedModule, cjsExports, importName, resolveSet);
+            SourceTextModule::ResolveCjsExport(thread, requestedModule, cjsExports, importName);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed";
+            CString msg = "CJSInstantiate find importName " + ConvertToString(importName.GetTaggedValue());
+            msg += " failed\nrequestedName" + ConvertToString(requestedName.GetTaggedValue());
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
         // in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
         environment->Set(thread, idx, resolution);
     }
-    module->SetEnvironment(thread, environment);
 }
 
 int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<SourceTextModule> &module)
@@ -375,6 +369,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
             } else {
                 ASSERT(moduleRecordName.IsString());
                 requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
                 requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleRecordName());
             }
 
@@ -488,12 +483,15 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             envRec.Update(newMap);
         } else {
             // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
-            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
+            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
             JSHandle<JSTaggedValue> resolution =
-                SourceTextModule::ResolveExport(thread, importedModule, importName, resolveSet);
+                SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
-                CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed";
+                CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed ";
+                if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                    msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+                }
                 THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
             }
             // iii. Call envRec.CreateImportBinding(
@@ -553,12 +551,15 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
             return;
         }
         // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
         JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveExport(thread, importedModule, importName, resolveSet);
+            SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed";
+            CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed ";
+            if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+            }
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
@@ -594,10 +595,10 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
         size_t idx = 0;
         for (std::string &name : exportedNames) {
             // i. Let resolution be ? module.ResolveExport(name, « »).
-            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
+            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
             JSHandle<JSTaggedValue> nameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(name));
             JSHandle<JSTaggedValue> resolution =
-                SourceTextModule::ResolveExport(thread, module, nameHandle, resolveSet);
+                SourceTextModule::ResolveExport(thread, module, nameHandle, resolveVector);
             // ii. If resolution is a ResolvedBinding Record, append name to unambiguousNames.
             if (resolution->IsResolvedBinding() || resolution->IsResolvedIndexBinding()) {
                 unambiguousNames->Set(thread, idx, nameHandle);
@@ -618,7 +619,7 @@ int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule
 {
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is "instantiated" or "evaluated".
-    [[maybe_unused]] ModuleStatus status = module->GetStatus();
+    ModuleStatus status = module->GetStatus();
     ASSERT((status == ModuleStatus::INSTANTIATED || status == ModuleStatus::EVALUATED));
     // 3. Let stack be a new empty List.
     CVector<JSHandle<SourceTextModule>> stack;
@@ -645,6 +646,41 @@ int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule
     // 6. Assert: module.[[Status]] is "evaluated" and module.[[EvaluationError]] is undefined.
     status = module->GetStatus();
     ASSERT(status == ModuleStatus::EVALUATED && module->GetEvaluationError() == SourceTextModule::UNDEFINED_INDEX);
+    // 7. Assert: stack is empty.
+    ASSERT(stack.empty());
+    // 8. Return undefined.
+    return SourceTextModule::UNDEFINED_INDEX;
+}
+
+int SourceTextModule::EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module)
+{
+    // 1. Let module be this Source Text Module Record.
+    // 2. Assert: module.[[Status]] is "instantiated" or "evaluated".
+    [[maybe_unused]] ModuleStatus status = module->GetStatus();
+    ASSERT((status == ModuleStatus::INSTANTIATED || status == ModuleStatus::EVALUATED));
+    // 3. Let stack be a new empty List.
+    CVector<JSHandle<SourceTextModule>> stack;
+    // 4. Let result be InnerModuleEvaluation(module, stack, 0)
+    JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
+    int result = SourceTextModule::ModuleEvaluation(thread, moduleRecord, stack, 0);
+    // 5. If result is an abrupt completion, then
+    if (thread->HasPendingException()) {
+        // a. For each module m in stack, do
+        for (auto mm : stack) {
+            // i. Assert: m.[[Status]] is "evaluating".
+            ASSERT(mm->GetStatus() == ModuleStatus::EVALUATING);
+            // ii. Set m.[[Status]] to "evaluated".
+            mm->SetStatus(ModuleStatus::EVALUATED);
+            // iii. Set m.[[EvaluationError]] to result.
+            mm->SetEvaluationError(result);
+        }
+        // b. Assert: module.[[EvaluationError]] is result.
+        ASSERT(module->GetEvaluationError() == result);
+        // c. return result
+        return result;
+    }
+    // 6. Assert: module.[[EvaluationError]] is undefined.
+    ASSERT(module->GetEvaluationError() == SourceTextModule::UNDEFINED_INDEX);
     // 7. Assert: stack is empty.
     ASSERT(stack.empty());
     // 8. Return undefined.
@@ -708,6 +744,11 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
             }
             // c. Set index to ? InnerModuleEvaluation(requiredModule, stack, index).
             JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
+            // if requiredModule is jsonModule, then don't need to execute.
+            if (requiredModule->GetTypes() == ModuleTypes::JSONMODULE) {
+                requiredModule->SetStatus(ModuleStatus::EVALUATED);
+                continue;
+            }
             index = SourceTextModule::InnerModuleEvaluation(thread, requiredModuleRecord, stack, index);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             // d. Assert: requiredModule.[[Status]] is either "evaluating" or "evaluated".
@@ -726,7 +767,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
                 int dfsAncIdx = std::min(module->GetDFSAncestorIndex(), requiredModule->GetDFSAncestorIndex());
                 module->SetDFSAncestorIndex(dfsAncIdx);
             }
-            // if requiredModule == CommonJS, instantiate here (after CommonJS execution).
+            // if requiredModule is CommonJS Module, instantiate here (after CommonJS execution).
             if ((requiredModule->GetTypes() == ModuleTypes::CJSMODULE)) {
                 CJSInstantiate(thread, module, requiredModule);
             }
@@ -756,6 +797,41 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
             // iv. If requiredModule and module are the same Module Record, set done to true.
             if (JSTaggedValue::SameValue(module.GetTaggedValue(), requiredModule.GetTaggedValue())) {
                 done = true;
+            }
+        }
+    }
+    return index;
+}
+
+int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
+                                       CVector<JSHandle<SourceTextModule>> &stack, int index)
+{
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    if (!module->GetRequestedModules().IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+        size_t requestedModulesLen = requestedModules->GetLength();
+        JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
+        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            required.Update(requestedModules->Get(idx));
+            JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
+            JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+            if (moduleRecordName.IsUndefined()) {
+                requiredModule.Update(SourceTextModule::HostResolveImportedModule(thread, module, required));
+            } else {
+                ASSERT(moduleRecordName.IsString());
+                requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
+            }
+            JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
+            if (requiredModule->GetTypes() == ModuleTypes::JSONMODULE) {
+                requiredModule->SetStatus(ModuleStatus::EVALUATED);
+                continue;
+            }
+            index = SourceTextModule::InnerModuleEvaluation(thread, requiredModuleRecord, stack, index);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
+            [[maybe_unused]] ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
+            ASSERT(requiredModuleStatus == ModuleStatus::EVALUATED);
+            if ((requiredModule->GetTypes() == ModuleTypes::CJSMODULE)) {
+                CJSInstantiate(thread, module, requiredModule);
             }
         }
     }
@@ -993,7 +1069,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
                                                             const JSHandle<SourceTextModule> &module,
                                                             JSMutableHandle<JSTaggedValue> &starResolution,
                                                             CVector<std::pair<JSHandle<SourceTextModule>,
-                                                            JSHandle<JSTaggedValue>>> &resolveSet)
+                                                            JSHandle<JSTaggedValue>>> &resolveVector)
 {
     auto globalConstants = thread->GlobalConstants();
     // a. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
@@ -1006,9 +1082,9 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
         importedModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest));
     }
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // b. Let resolution be ? importedModule.ResolveExport(exportName, resolveSet).
+    // b. Let resolution be ? importedModule.ResolveExport(exportName, resolveVector).
     JSHandle<JSTaggedValue> resolution =
-        SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveSet);
+        SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveVector);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // c. If resolution is "ambiguous", return "ambiguous".
     if (resolution->IsString()) { // if resolution is string, resolution must be "ambiguous"
@@ -1068,7 +1144,7 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsLocalExport(JSThread *thread,
-                                                                LayoutInfo *layoutInfo,
+                                                                JSHandle<LayoutInfo> layoutInfo,
                                                                 const JSHandle<JSTaggedValue> &exportName,
                                                                 const JSHandle<SourceTextModule> &module)
 {
@@ -1116,7 +1192,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
                                                                 const JSHandle<JSTaggedValue> &exportName,
                                                                 const JSHandle<SourceTextModule> &module,
                                                                 CVector<std::pair<JSHandle<SourceTextModule>,
-                                                                JSHandle<JSTaggedValue>>> &resolveSet)
+                                                                JSHandle<JSTaggedValue>>> &resolveVector)
 {
     auto globalConstants = thread->GlobalConstants();
     JSMutableHandle<IndirectExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
@@ -1141,9 +1217,9 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest));
             }
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-            // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolveSet).
+            // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolveVector).
             importName.Update(ee->GetImportName());
-            return SourceTextModule::ResolveExport(thread, requestedModule, importName, resolveSet);
+            return SourceTextModule::ResolveExport(thread, requestedModule, importName, resolveVector);
         }
     }
     return thread->GlobalConstants()->GetHandledUndefined();
@@ -1166,12 +1242,15 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
         ee.Update(indirectExportEntries->Get(idx));
         // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
         exportName.Update(ee->GetExportName());
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
         JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveExport(thread, module, exportName, resolveSet);
+            SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
             CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed";
+            if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+            }
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // c. Assert: resolution is a ResolvedBinding Record.
@@ -1196,12 +1275,13 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
         ee.Update(indirectExportEntries->Get(idx));
         // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
         exportName.Update(ee->GetExportName());
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
+        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
         JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveExport(thread, module, exportName, resolveSet);
+            SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed";
+            CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed ";
+            msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // c. Assert: resolution is a ResolvedBinding Record.

@@ -37,6 +37,7 @@ JSHClass *TSObjectType::GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectTyp
             break;
         }
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 
@@ -89,22 +90,27 @@ JSHClass *TSObjectType::CreatePrototypeHClassByProps(JSThread *thread, JSHandle<
     JSHandle<JSHClass> hclass;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
-        CVector<JSHandle<JSTaggedValue>> prototypeKeys {ctor};
+        CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> sortedPrototype {{ctor, GlobalTSTypeRef()}};
         for (uint32_t index = 0; index < numOfProps; ++index) {
             auto key = propType->GetKey(index);
+            auto value = GlobalTSTypeRef(propType->GetTypeId(index).GetInt());
             if (!JSTaggedValue::SameValue(key, ctor.GetTaggedValue())) {
-                prototypeKeys.emplace_back(JSHandle<JSTaggedValue>(thread, key));
+                sortedPrototype.emplace_back(std::make_pair(JSHandle<JSTaggedValue>(thread, key), value));
             }
         }
 
-        uint32_t keysLen = prototypeKeys.size();
+        uint32_t keysLen = sortedPrototype.size();
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(keysLen);
+        TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
 
         for (uint32_t index = 0; index < keysLen; ++index) {
-            key.Update(prototypeKeys[index]);
+            key.Update(sortedPrototype[index].first);
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
             PropertyAttributes attributes = PropertyAttributes::Default(true, false, true);
+            if (tsManager->IsGetterSetterFunc(sortedPrototype[index].second)) {
+                attributes.SetIsAccessor(true);
+            }
             attributes.SetIsInlinedProps(true);
             attributes.SetRepresentation(Representation::MIXED);
             attributes.SetOffset(index);

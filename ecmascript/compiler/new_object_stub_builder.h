@@ -44,11 +44,13 @@ public:
     void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
                            bool isEmptyArray);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
+    GateRef FastNewThisObject(GateRef glue, GateRef ctor);
+    GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
 private:
     void AllocateInYoung(Variable *result, Label *exit);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
-    GateRef glue_ {0};
+    GateRef glue_ {Circuit::NullGate()};
     GateRef size_ {0};
 };
 }  // namespace panda::ecmascript::kungfu

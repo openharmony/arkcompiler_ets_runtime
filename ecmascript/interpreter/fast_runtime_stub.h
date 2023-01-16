@@ -66,6 +66,9 @@ public:
 
     static inline JSTaggedValue NewThisObject(JSThread *thread, JSTaggedValue ctor, JSTaggedValue newTarget,
                                               InterpretedFrame* state);
+    static inline JSTaggedValue CallGetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
+                                           JSTaggedValue value);
+    static inline JSTaggedValue FastParseDate(const EcmaString *str);
 
 private:
     friend class ICRuntimeStub;
@@ -73,8 +76,6 @@ private:
     static inline bool IsSpecialReceiverObj(JSType jsType);
     static inline bool IsFastTypeArray(JSType jsType);
     static inline int32_t TryToElementsIndex(JSTaggedValue key);
-    static inline JSTaggedValue CallGetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
-                                           JSTaggedValue value);
     static inline JSTaggedValue CallSetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue value,
                                            JSTaggedValue accessorValue);
     static inline bool ShouldCallSetter(JSTaggedValue receiver, JSTaggedValue holder, JSTaggedValue accessorValue,
@@ -93,6 +94,7 @@ private:
                                                          JSTaggedValue key, JSType jsType);
     static inline JSTaggedValue FastSetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                                          JSTaggedValue key, JSTaggedValue value, JSType jsType);
+    static inline bool GetNumFromString(const char *str, int len, int *index, int *num);
 };
 }  // namespace panda::ecmascript
 

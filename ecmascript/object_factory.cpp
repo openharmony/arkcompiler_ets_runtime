@@ -143,16 +143,17 @@ using ErrorHelper = base::ErrorHelper;
 ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap)
     : thread_(thread), vm_(thread->GetEcmaVM()), heap_(heap) {}
 
-JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, FunctionKind kind, uint8_t builtinId)
+JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, FunctionKind kind,
+                                                           kungfu::BuiltinsStubCSigns::ID builtinId)
 {
     uint32_t numArgs = 2;  // function object and this
     auto method = NewMethod(nullptr);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
-    if (builtinId != INVALID_BUILTINS_ID) {
-        bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(static_cast<kungfu::BuiltinsStubCSigns::ID>(builtinId));
+    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+        bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(builtinId);
         method->SetFastBuiltinBit(isFast);
-        method->SetBuiltinId(builtinId);
+        method->SetBuiltinId(static_cast<uint8_t>(builtinId));
     }
     method->SetNumArgsWithCallField(numArgs);
     method->SetFunctionKind(kind);
@@ -225,7 +226,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
 
     JSTaggedValue data = array->GetArrayBufferData();
     size_t size = static_cast<size_t>(length) * sizeof(uint8_t);
-    if (data != JSTaggedValue::Undefined()) {
+    if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
         auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(size);
         if (memset_s(newData, length, 0, length) != EOK) {
@@ -362,7 +363,7 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
         UNREACHABLE();
     }
     JSTaggedValue data = regexp->GetByteCodeBuffer();
-    if (data != JSTaggedValue::Undefined()) {
+    if (!data.IsUndefined()) {
         JSNativePointer *native = JSNativePointer::Cast(data.GetTaggedObject());
         native->ResetExternalPointer(newBuffer);
         return;
@@ -1004,6 +1005,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
         case JSType::JS_ARRAY: {
             JSArray::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
+            ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
             auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
             JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
             break;
@@ -1284,6 +1286,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             CjsRequire::Cast(*obj)->SetParent(thread_, JSTaggedValue::Undefined());
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
@@ -1334,7 +1337,7 @@ TaggedObject *ObjectFactory::NewObject(const JSHandle<JSHClass> &hclass)
     return header;
 }
 
-TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclass, int inobjPropCount)
+TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclass, uint32_t inobjPropCount)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(*hclass);
@@ -1344,12 +1347,13 @@ TaggedObject *ObjectFactory::NewNonMovableObject(const JSHandle<JSHClass> &hclas
     return header;
 }
 
-void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass, TaggedObject *obj, int inobjPropCount)
+void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass,
+                                              TaggedObject *obj, uint32_t inobjPropCount)
 {
     ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < hclass->GetObjectSize());
     auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
     JSTaggedType initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
-    for (int i = 0; i < inobjPropCount; ++i) {
+    for (uint32_t i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
     }
@@ -1366,7 +1370,7 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
-                                                  FunctionKind kind, uint8_t builtinId)
+                                                  FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId)
 {
     JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, kind, builtinId);
     return NewJSFunction(env, target);
@@ -1517,6 +1521,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
             function = JSHandle<JSFunction>::Cast(NewNonMovableJSObject(clazz));
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     clazz->SetCallable(true);
@@ -2015,6 +2020,7 @@ JSHandle<JSProxy> ObjectFactory::NewJSProxy(const JSHandle<JSTaggedValue> &targe
     }
 
     JSHandle<JSProxy> proxy(thread_, header);
+    proxy->InitializeHash();
     proxy->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_PROXY));
     proxy->SetTarget(thread_, target.GetTaggedValue());
     proxy->SetHandler(thread_, handler.GetTaggedValue());
@@ -2090,64 +2096,13 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
             header = heap_->AllocateNonMovableOrHugeObject(arrayClass, size);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 
     JSHandle<TaggedArray> array(thread_, header);
     array->InitializeWithSpecialValue(initVal, length);
     return array;
-}
-
-void ObjectFactory::RemoveElementByIndex(JSHandle<TaggedArray> &srcArray,
-                                         uint32_t index,
-                                         uint32_t effectiveLength)
-{
-    ASSERT(0 <= index || index < effectiveLength);
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
-    if (region->InYoungSpace() && !region->IsMarking()) {
-        size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
-        size_t offset = taggedTypeSize * index;
-        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
-        while (index < effectiveLength - 1) {
-            *addr = *(addr + 1);
-            addr++;
-            index++;
-        }
-    } else {
-        while (index < effectiveLength - 1) {
-            srcArray->Set(thread_, index, srcArray->Get(index + 1));
-            index++;
-        }
-    }
-    srcArray->Set(thread_, effectiveLength - 1, JSTaggedValue::Hole());
-}
-
-JSHandle<TaggedArray> ObjectFactory::InsertElementByIndex(JSHandle<TaggedArray> &srcArray,
-                                                          const JSHandle<JSTaggedValue> &value,
-                                                          uint32_t index,
-                                                          uint32_t effectiveLength)
-{
-    ASSERT(0 <= index || index <= effectiveLength);
-    ASSERT(effectiveLength < srcArray->GetLength());
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*srcArray));
-    if (region->InYoungSpace() && !region->IsMarking()) {
-        size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
-        size_t offset = taggedTypeSize * effectiveLength;
-        auto *addr = reinterpret_cast<JSTaggedType *>(ToUintPtr(srcArray->GetData()) + offset);
-        while (effectiveLength != index && effectiveLength > 0) {
-            *addr = *(addr - 1);
-            addr--;
-            effectiveLength--;
-        }
-    } else {
-        while (effectiveLength != index && effectiveLength > 0) {
-            JSTaggedValue oldValue = srcArray->Get(effectiveLength - 1);
-            srcArray->Set(thread_, effectiveLength, oldValue);
-            effectiveLength--;
-        }
-    }
-    srcArray->Set(thread_, index, value.GetTaggedValue());
-    return srcArray;
 }
 
 JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements,
@@ -2157,9 +2112,11 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
     JSHandle<TaggedArray> dstElements = NewTaggedArrayWithoutInit(newLength, spaceType);
-    dstElements->SetLength(newLength);
+    if (newLength == 0) {
+        return dstElements;
+    }
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace()) {
+    if (region->InYoungSpace() && !region->IsMarking()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
             reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
@@ -2174,26 +2131,6 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
     }
     return dstElements;
-}
-
-void ObjectFactory::CopyTaggedArrayElement(JSHandle<TaggedArray> &srcElements,
-                                           JSHandle<TaggedArray> &dstElements,
-                                           uint32_t effectiveLength)
-{
-    ASSERT(effectiveLength <= srcElements->GetLength());
-    ASSERT(effectiveLength <= dstElements->GetLength());
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*dstElements));
-    if (region->InYoungSpace() && !region->IsMarking()) {
-        size_t size = effectiveLength * sizeof(JSTaggedType);
-        if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
-            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed" << " size: " << size;
-        }
-    } else {
-        for (uint32_t i = 0; i < effectiveLength; i++) {
-            dstElements->Set(thread_, i, srcElements->Get(i));
-        }
-    }
 }
 
 // private
@@ -2215,9 +2152,11 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, 
             header = heap_->AllocateOldOrHugeObject(arrayClass, size);
             break;
         default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
     JSHandle<TaggedArray> array(thread_, header);
+    array->SetLength(length);
     return array;
 }
 
@@ -2459,6 +2398,7 @@ JSHandle<Program> ObjectFactory::NewProgram()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetProgramClass().GetTaggedObject()));
     JSHandle<Program> p(thread_, header);
+    p->InitializeHash();
     p->SetMainFunction(thread_, JSTaggedValue::Undefined());
     return p;
 }
@@ -2794,7 +2734,6 @@ JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFuncti
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetPromiseExecutorFunctionClass());
     JSHandle<JSPromiseExecutorFunction> executorFunction =
         JSHandle<JSPromiseExecutorFunction>::Cast(NewJSObject(hclass));
-    executorFunction->SetCapability(thread_, JSTaggedValue::Hole());
     executorFunction->SetCapability(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(executorFunction);
     JSFunction::InitializeJSFunction(thread_, function);
@@ -2993,6 +2932,32 @@ JSHandle<PrototypeHandler> ObjectFactory::NewPrototypeHandler()
     return handler;
 }
 
+JSHandle<TransWithProtoHandler> ObjectFactory::NewTransWithProtoHandler()
+{
+    NewObjectHook();
+    TransWithProtoHandler *header =
+        TransWithProtoHandler::Cast(heap_->AllocateYoungOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetTransWithProtoHandlerClass().GetTaggedObject())));
+    JSHandle<TransWithProtoHandler> handler(thread_, header);
+    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
+    handler->SetTransitionHClass(thread_, JSTaggedValue::Undefined());
+    return handler;
+}
+
+JSHandle<StoreTSHandler> ObjectFactory::NewStoreTSHandler()
+{
+    NewObjectHook();
+    StoreTSHandler *header =
+        StoreTSHandler::Cast(heap_->AllocateYoungOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetStoreTSHandlerClass().GetTaggedObject())));
+    JSHandle<StoreTSHandler> handler(thread_, header);
+    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
+    handler->SetHolder(thread_, JSTaggedValue::Undefined());
+    return handler;
+}
+
 JSHandle<PromiseRecord> ObjectFactory::NewPromiseRecord()
 {
     NewObjectHook();
@@ -3166,22 +3131,6 @@ JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTag
     return obj;
 }
 
-JSHandle<JSObject> ObjectFactory::NewDefaultExportOfScript()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
-    JSHandle<JSTaggedValue> emptyObj(NewJSObjectByConstructor(builtinObj));
-    JSHandle<JSTaggedValue> defaultKey(NewFromUtf8("default"));
-
-    JSHandle<TaggedArray> props(NewTaggedArray(2)); // 2 : two propertise
-    props->Set(thread_, 0, defaultKey);
-    props->Set(thread_, 1, emptyObj);
-    JSHandle<JSHClass> hclass = CreateObjectClass(props, 1);
-    JSHandle<JSObject> obj = NewJSObject(hclass);
-    obj->SetPropertyInlinedProps(thread_, 0, props->Get(1));
-    return obj;
-}
-
 // ----------------------------------- new TSType ----------------------------------------
 JSHandle<TSObjLayoutInfo> ObjectFactory::CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal)
 {
@@ -3219,6 +3168,7 @@ JSHandle<TSClassType> ObjectFactory::NewTSClassType()
     classType->SetInstanceType(thread_, JSTaggedValue::Undefined());
     classType->SetConstructorType(thread_, JSTaggedValue::Undefined());
     classType->SetPrototypeType(thread_, JSTaggedValue::Undefined());
+    classType->SetName(thread_, JSTaggedValue::Undefined());
     classType->SetExtensionGT(GlobalTSTypeRef::Default());
     classType->SetHasLinked(false);
 
@@ -3826,7 +3776,6 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetNamespace(thread_, undefinedValue);
     obj->SetEcmaModuleFilename(thread_, undefinedValue);
     obj->SetEcmaModuleRecordName(thread_, undefinedValue);
-    obj->SetNpmKey(thread_, undefinedValue);
     obj->SetRequestedModules(thread_, undefinedValue);
     obj->SetImportEntries(thread_, undefinedValue);
     obj->SetLocalExportEntries(thread_, undefinedValue);

@@ -121,7 +121,7 @@ HWTEST_F_L0(JSRegexpIteratorTest, Next)
 
         JSHandle<JSTaggedValue> matchObj(thread, result);
         if (i <= matchLength - 1) {
-            JSHandle<JSTaggedValue> resultValue(thread, JSTaggedValue(i+1));
+            JSHandle<JSTaggedValue> resultValue(thread, JSTaggedValue(i + 1));
             JSHandle<EcmaString> compareVal =
                 factory->ConcatFromString(JSHandle<EcmaString>(barZero), JSTaggedValue::ToString(thread, resultValue));
             JSHandle<JSTaggedValue> matchResult = JSIterator::IteratorValue(thread, matchObj);

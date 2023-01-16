@@ -84,10 +84,9 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
             inlinedCall_ <= MAX_INLINE_CALL_ALLOWED) {
             auto success = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
             if (success) {
-                circuit_->PushFunctionCompilationDataList();
+                CircuitRootScope scope(circuit_);
                 InlineCall(methodInfo, methodPcInfo, inlinedMethod);
                 ReplaceCallInput(gate, isCallThis);
-                circuit_->PopFunctionCompilationDataList();
                 inlinedCall_++;
             }
         }
@@ -138,22 +137,12 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
     return true;
 }
 
-CString TSInlineLowering::GetRecordName(const JSPandaFile *jsPandaFile,
-    panda_file::File::EntityId methodIndex)
-{
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
-    panda_file::MethodDataAccessor patchMda(*pf, methodIndex);
-    panda_file::ClassDataAccessor patchCda(*pf, patchMda.GetClassId());
-    CString desc = utf::Mutf8AsCString(patchCda.GetDescriptor());
-    return jsPandaFile->ParseEntryPoint(desc);
-}
-
 void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method)
 {
     const JSPandaFile *jsPandaFile = info_->GetJSPandaFile();
     TSManager *tsManager = info_->GetTSManager();
     CompilerLog *log = info_->GetCompilerLog();
-    CString recordName = GetRecordName(jsPandaFile, method->GetMethodId());
+    CString recordName = MethodLiteral::GetRecordName(jsPandaFile, method->GetMethodId());
     bool hasTyps = jsPandaFile->HasTSTypes(recordName);
     if (!hasTyps) {
         return;
@@ -162,6 +151,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     std::string fileName = jsPandaFile->GetFileName();
     std::string fullName = methodName + "@" + fileName;
 
+    circuit_->InitRoot();
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
                                    info_->GetByteCodes(), true, IsLogEnabled(),
@@ -229,28 +219,23 @@ GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVecto
     vaueList[0] = state;
     for (size_t i = 0; i < returnVector.size(); i++) {
         GateRef returnGate = returnVector.at(i);
-        GateRef returnState = acc_.GetState(returnGate);
-        if (acc_.GetOpCode(returnState) == OpCode::IF_EXCEPTION) {
-            continue;
-        }
+        ASSERT(acc_.GetOpCode(acc_.GetState(returnGate)) != OpCode::IF_EXCEPTION);
         stateList[i] = acc_.GetState(returnGate);
         dependList[i + 1] = acc_.GetDep(returnGate);
         vaueList[i + 1] = acc_.GetValueIn(returnGate, 0);
         acc_.DeleteGate(returnGate);
     }
 
-    state = circuit_->NewGate(OpCode(OpCode::MERGE), numOfIns,
-                              stateList, GateType::Empty());
-    depend = circuit_->NewGate(OpCode(OpCode::DEPEND_SELECTOR), numOfIns,
-                               dependList, GateType::Empty());
-    return circuit_->NewGate(OpCode(OpCode::VALUE_SELECTOR), MachineType::I64, numOfIns,
-                             vaueList, GateType::AnyType());
+    state = circuit_->NewGate(circuit_->Merge(numOfIns), stateList);
+    depend = circuit_->NewGate(circuit_->DependSelector(numOfIns), dependList);
+    return circuit_->NewGate(circuit_->ValueSelector(numOfIns), MachineType::I64, numOfIns,
+                             vaueList.data(), GateType::AnyType());
 }
 
 void TSInlineLowering::ReplaceEntryGate(GateRef callGate)
 {
-    auto stateEntry = Circuit::GetCircuitRoot(OpCode(OpCode::STATE_ENTRY));
-    auto dependEntry = Circuit::GetCircuitRoot(OpCode(OpCode::DEPEND_ENTRY));
+    auto stateEntry = acc_.GetStateRoot();
+    auto dependEntry = acc_.GetDependRoot();
 
     GateRef callState = acc_.GetState(callGate);
     GateRef callDepend = acc_.GetDep(callGate);
@@ -310,6 +295,7 @@ void TSInlineLowering::ReplaceHirAndDeleteState(GateRef gate, GateRef state, Gat
         } else if (acc_.IsValueIn(useIt)) {
             useIt = acc_.ReplaceIn(useIt, value);
         } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }

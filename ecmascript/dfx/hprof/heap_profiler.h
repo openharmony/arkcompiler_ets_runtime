@@ -24,8 +24,6 @@
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/progress.h"
 
-#include "os/mem.h"
-
 namespace panda::ecmascript {
 class HeapSnapshot;
 class EcmaVM;
@@ -50,7 +48,10 @@ public:
                            bool traceAllocation = false, bool newThread = true) override;
     bool StopHeapTracking(Stream *stream, Progress *progress = nullptr, bool newThread = true) override;
     bool UpdateHeapTracking(Stream *stream) override;
-
+    Chunk *GetChunk() const
+    {
+        return const_cast<Chunk *>(&chunk_);
+    }
 private:
     /**
      * trigger full gc to make sure no unreachable objects in heap
@@ -64,6 +65,7 @@ private:
                                    bool isPrivate = false, bool traceAllocation = false);
     std::string GenDumpFileName(DumpFormat dumpFormat);
     CString GetTimeStamp();
+    void UpdateHeapObjects(HeapSnapshot *snapshot);
     void ClearSnapshot();
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
@@ -71,6 +73,7 @@ private:
     CVector<HeapSnapshot *> hprofs_;
     HeapSnapshotJSONSerializer *jsonSerializer_ {nullptr};
     std::unique_ptr<HeapTracker> heapTracker_;
+    Chunk chunk_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_HPROF_HEAP_PROFILER_H

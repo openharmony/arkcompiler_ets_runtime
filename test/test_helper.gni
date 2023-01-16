@@ -82,6 +82,10 @@ template("host_moduletest_action") {
   if (defined(invoker.is_merge) && invoker.is_merge) {
     _is_merge_ = true
   }
+  _is_json_ = false
+  if (defined(invoker.is_json) && invoker.is_json) {
+    _is_json_ = true
+  }
   _timeout_ = "120"
   if (defined(invoker.timeout)) {
     _timeout_ = invoker.timeout
@@ -90,6 +94,28 @@ template("host_moduletest_action") {
   _test_js_path_ = "./${_target_name_}.js"
   _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
   _test_expect_path_ = "./expect_output.txt"
+
+  if (_is_json_) {
+    merge_file_raw = "./${_target_name_}.txt"
+    merge_file = "$target_out_dir/${_target_name_}.txt"
+    merge_file_prefix =
+        "//arkcompiler/ets_runtime/test/moduletest/${_target_name_}/"
+
+    action("gen_${_target_name_}_merge_file") {
+      script = "../../quickfix/generate_merge_file.py"
+      args = [
+        "--input",
+        rebase_path(merge_file_raw),
+        "--output",
+        rebase_path(merge_file),
+        "--prefix",
+        rebase_path(merge_file_prefix),
+      ]
+
+      inputs = [ merge_file_raw ]
+      outputs = [ merge_file ]
+    }
+  }
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
@@ -106,10 +132,19 @@ template("host_moduletest_action") {
     if (_is_merge_) {
       extra_args += [ "--merge-abc" ]
     }
-    in_puts = [
-      _test_js_path_,
-      _test_expect_path_,
-    ]
+    if (_is_json_) {
+      extra_dependencies = [ ":gen_${_target_name_}_merge_file" ]
+      src_js = "@" + rebase_path(merge_file)
+      in_puts = [
+        _test_expect_path_,
+        merge_file,
+      ]
+    } else {
+      in_puts = [
+        _test_expect_path_,
+        _test_js_path_,
+      ]
+    }
     out_puts = [ _test_abc_path_ ]
   }
 
@@ -700,6 +735,11 @@ template("host_quickfix_test_action") {
       extra_visibility =
           [ ":*" ]  # Only targets in this file can depend on this.
       extra_dependencies = [ ":gen_${_target_name_}_${filename}_merge_file" ]
+
+      if (defined(invoker.is_hotpatch) && filename == "patch") {
+        extra_dependencies += [ ":gen_${_target_name_}_base_abc" ]
+      }
+
       src_js = "@" + rebase_path(merge_file)
       dst_file = rebase_path(abc_path)
       extra_args = [
@@ -724,7 +764,15 @@ template("host_quickfix_test_action") {
         merge_file,
       ]
 
+      if (defined(invoker.is_hotpatch) && filename == "patch") {
+        in_puts += [ _test_map_path_ ]
+      }
+
       out_puts = [ abc_path ]
+
+      if (defined(invoker.is_hotpatch) && filename == "base") {
+        out_puts += [ _test_map_path_ ]
+      }
     }
 
     if (filename != _test_file_name_[0]) {

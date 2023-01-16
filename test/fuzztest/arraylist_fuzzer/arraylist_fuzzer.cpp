@@ -97,7 +97,7 @@ namespace OHOS {
             if (value->IsNumber()) {
                 TaggedArray *elements = TaggedArray::Cast(JSAPIArrayList::Cast(arrayList.GetTaggedValue().
                                                           GetTaggedObject())->GetElements().GetTaggedObject());
-                [[maybe_unused]]JSTaggedValue result = elements->Get(key->GetInt());
+                [[maybe_unused]] JSTaggedValue result = elements->Get(key->GetInt());
             }
         }
         return JSTaggedValue::Undefined();

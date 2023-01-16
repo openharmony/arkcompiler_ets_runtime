@@ -40,6 +40,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/aot_file_manager.h"
@@ -51,7 +52,6 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/quick_fix_manager.h"
 #include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -68,6 +68,7 @@
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/runtime_call_id.h"
@@ -131,9 +132,9 @@ void EcmaVM::PreFork()
 
 void EcmaVM::PostFork()
 {
-    heap_->SetIsFork(true);
+    heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->SetThreadId();
-    Taskpool::GetCurrentTaskpool()->Initialize();
+    heap_->EnableParallelGC();
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
@@ -146,8 +147,6 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     options_ = std::move(options);
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
-    snapshotFileName_ = options_.GetSnapshotFile().c_str();
-    frameworkAbcFileName_ = options_.GetFrameworkAbcFile().c_str();
     options_.ParseAsmInterOption();
 }
 
@@ -221,9 +220,9 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter()) {
         LoadStubFile();
     }
-    if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
-        LoadAOTFiles();
-    }
+
+    optCodeProfiler_ = new OptCodeProfiler();
+
     initialized_ = true;
     return true;
 }
@@ -287,6 +286,11 @@ EcmaVM::~EcmaVM()
         runtimeStat_->Print();
     }
 
+    if (optCodeProfiler_ != nullptr) {
+        delete optCodeProfiler_;
+        optCodeProfiler_ = nullptr;
+    }
+
     // clear c_address: c++ pointer delete
     ClearBufferData();
     if (!isBundlePack_) {
@@ -295,6 +299,8 @@ EcmaVM::~EcmaVM()
             const_cast<JSPandaFile *>(jsPandaFile)->DeleteParsedConstpoolVM(this);
         }
     }
+    // clear icu cache
+    ClearIcuCache();
 
     if (gcStats_ != nullptr) {
         if (options_.EnableGCStatsPrint()) {
@@ -357,7 +363,7 @@ EcmaVM::~EcmaVM()
 
     if (aotFileManager_ != nullptr) {
         delete aotFileManager_;
-        aotFileManager_  = nullptr;
+        aotFileManager_ = nullptr;
     }
 
     if (thread_ != nullptr) {
@@ -403,28 +409,17 @@ EcmaVM::CpuProfilingScope::~CpuProfilingScope()
 #endif
 }
 
-bool EcmaVM::FindCatchBlock(Method *method, uint32_t pc) const
-{
-    uint32_t pcOffset = panda_file::INVALID_OFFSET;
-    if (thread_->IsAsmInterpreter()) {
-        pcOffset = InterpreterAssembly::FindCatchBlock(method, pc);
-    } else {
-        pcOffset = EcmaInterpreter::FindCatchBlock(method, pc);
-    }
-    return pcOffset != panda_file::INVALID_OFFSET;
-}
-
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                               const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
-    aotFileManager_->UpdateJSMethods(mainFunc, jsPandaFile, entryPoint);
+    aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
     Method *method = mainFunc->GetCallTarget();
     size_t actualNumArgs = method->GetNumArgs();
     size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
     std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
     args[0] = mainFunc.GetTaggedValue().GetRawData();
     args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
-    const JSTaggedType *prevFp = thread_->GetCurrentSPFrame();
+    const JSTaggedType *prevFp = thread_->GetLastLeaveFrame();
     JSTaggedValue res = ExecuteAot(actualNumArgs, args.data(), prevFp, OptimizedEntryFrame::CallType::CALL_FUNC);
     if (thread_->HasPendingException()) {
         return thread_->GetException();
@@ -435,6 +430,7 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
 JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                                  OptimizedEntryFrame::CallType callType)
 {
+    INTERPRETER_TRACE(thread_, ExecuteAot);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             actualNumArgs,
@@ -447,15 +443,8 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const
 Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                            bool excuteFromJob)
 {
-    JSTaggedValue result;
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSHandle<Program> program;
-    if (jsPandaFile != frameworkPandaFile_) {
-        program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
-    } else {
-        program = JSHandle<Program>(thread_, frameworkProgram_);
-        frameworkProgram_ = JSTaggedValue::Hole();
-    }
+    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
     if (program.IsEmpty()) {
         LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
         return Unexpected(false);
@@ -463,10 +452,11 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     // for debugger
     debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
-    JSHandle<JSFunction> func = JSHandle<JSFunction>(thread_, program->GetMainFunction());
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     if (jsPandaFile->IsModule(entryPoint.data())) {
-        global = JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
+        global = undefined;
         CString moduleName = jsPandaFile->GetJSPandaFileDesc();
         if (!jsPandaFile->IsBundlePack()) {
             moduleName = entryPoint.data();
@@ -480,6 +470,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         func->SetModule(thread_, recordName);
     }
 
+    JSTaggedValue result;
     if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
         thread_->SetPrintBCOffset(true);
         EcmaRuntimeStatScope runtimeStatScope(this);
@@ -488,7 +479,6 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         if (jsPandaFile->IsCjs(entryPoint.data())) {
             CJSExecution(func, global, jsPandaFile);
         } else {
-            JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(this);
@@ -502,10 +492,14 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
 
     // print exception information
     if (!excuteFromJob && thread_->HasPendingException()) {
-        auto exception = thread_->GetException();
-        HandleUncaughtException(exception.GetTaggedObject());
+        HandleUncaughtException(thread_->GetException());
     }
     return result;
+}
+
+bool EcmaVM::HasCachedConstpool(const JSPandaFile *jsPandaFile) const
+{
+    return cachedConstpools_.find(jsPandaFile) != cachedConstpools_.end();
 }
 
 JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t index)
@@ -531,6 +525,14 @@ std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> EcmaVM::Find
     return iter->second;
 }
 
+// For new version instruction.
+JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
+{
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+    return FindConstpool(jsPandaFile, index);
+}
+
 JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
 {
     panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
@@ -545,17 +547,22 @@ JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaF
     return JSHandle<ConstantPool>(thread_, constpool);
 }
 
-void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg, const JSPandaFile *jsPandaFile)
+void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                          const JSPandaFile *jsPandaFile)
 {
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-
     // create "module", "exports", "require", "filename", "dirname"
     JSHandle<CjsModule> module = factory_->NewCjsModule();
     JSHandle<JSTaggedValue> require = GetGlobalEnv()->GetCjsRequireFunction();
     JSHandle<CjsExports> exports = factory_->NewCjsExports();
     JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
-    RequireManager::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+    if (jsPandaFile->IsBundlePack()) {
+        RequireManager::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+    } else {
+        filename.Update(func->GetModule());
+        ASSERT(filename->IsString());
+        RequireManager::ResolveDirPath(thread_, dirname, filename);
+    }
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
 
@@ -565,6 +572,7 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
         EcmaInterpreter::NewRuntimeCallInfo(thread_,
                                             JSHandle<JSTaggedValue>(func),
                                             thisArg, undefined, 5); // 5 : argument numbers
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     if (info == nullptr) {
         LOG_ECMA(ERROR) << "CJSExecution Stack overflow!";
         return;
@@ -577,10 +585,16 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     EcmaRuntimeStatScope runtimeStatScope(this);
     CpuProfilingScope profilingScope(this);
     EcmaInterpreter::Execute(info);
+    if (!thread_->HasPendingException()) {
+        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+    }
 
+    // print exception information
+    if (thread_->HasPendingException()) {
+        HandleUncaughtException(thread_->GetException());
+    }
     // Collecting module.exports : exports ---> module.exports --->Module._cache
     RequireManager::CollectExecutedExp(thread_, cjsInfo);
-    return;
 }
 
 void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index)
@@ -616,20 +630,20 @@ void EcmaVM::EnableUserUncaughtErrorHandler()
     isUncaughtExceptionRegistered_ = true;
 }
 
-void EcmaVM::HandleUncaughtException(TaggedObject *exception)
+void EcmaVM::HandleUncaughtException(JSTaggedValue exception)
 {
     if (isUncaughtExceptionRegistered_) {
         return;
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread_);
-    JSHandle<JSTaggedValue> exceptionHandle(thread_, JSTaggedValue(exception));
+    JSHandle<JSTaggedValue> exceptionHandle(thread_, exception);
     // if caught exceptionHandle type is JSError
     thread_->ClearException();
     if (exceptionHandle->IsJSError()) {
         PrintJSErrorInfo(exceptionHandle);
         if (thread_->IsPrintBCOffset() && exceptionBCList_.size() != 0) {
-            for (auto info : exceptionBCList_) {
-                LOG_ECMA(ERROR) << "Exception at function " << info.first << ": " << info.second;
+            for (const auto &[methodName, bcOffset] : exceptionBCList_) {
+                LOG_ECMA(ERROR) << "Exception at function " << methodName << ": " << bcOffset;
             }
         }
         return;
@@ -767,7 +781,7 @@ void EcmaVM::ClearBufferData()
 
     cachedConstpools_.clear();
     internalNativeMethods_.clear();
-    WorkerList_.clear();
+    workerList_.clear();
 }
 
 bool EcmaVM::ExecutePromisePendingJob()
@@ -805,9 +819,8 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&frameworkProgram_)));
-    rv(Root::ROOT_VM,
-        ObjectSlot(ToUintPtr(&internalNativeMethods_.front())), ObjectSlot(ToUintPtr(&internalNativeMethods_.back())));
+    rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
+        ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
     moduleManager_->Iterate(v);
     tsManager_->Iterate(v);
     aotFileManager_->Iterate(v);
@@ -835,16 +848,17 @@ void EcmaVM::SetupRegExpResultCache()
 
 void EcmaVM::LoadStubFile()
 {
-    aotFileManager_->LoadStubFile();
+    std::string stubFile = options_.GetStubFile();
+    aotFileManager_->LoadStubFile(stubFile);
 }
 
 void EcmaVM::LoadAOTFiles()
 {
-    std::string anFile = options_.GetAOTOutputFile() + ".an";
+    std::string anFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AN;
     aotFileManager_->LoadAnFile(anFile);
 
-    std::string aiFile = options_.GetAOTOutputFile() + ".ai";
-    aotFileManager_->LoadSnapshotFile(aiFile);
+    std::string aiFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AI;
+    aotFileManager_->LoadAiFile(aiFile);
 }
 
 #if !WIN_OR_MAC_OR_IOS_PLATFORM

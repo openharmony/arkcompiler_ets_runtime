@@ -25,6 +25,23 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript::kungfu {
+class CircuitRootScope {
+public:
+    explicit CircuitRootScope(Circuit *circuit)
+        : circuit_(circuit), root_(circuit->GetRoot())
+    {
+    }
+
+    ~CircuitRootScope()
+    {
+        circuit_->SetRoot(root_);
+    }
+
+private:
+    Circuit *circuit_ {nullptr};
+    GateRef root_ { 0 };
+};
+
 class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_BYTECODE_COUNT = 10;
@@ -52,8 +69,6 @@ private:
     void TryInline(GateRef gate, bool isCallThis);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
     void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method);
-    CString GetRecordName(const JSPandaFile *jsPandaFile,
-        panda_file::File::EntityId methodIndex);
     void ReplaceCallInput(GateRef gate, bool isCallThis);
 
     void ReplaceEntryGate(GateRef callGate);

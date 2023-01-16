@@ -35,7 +35,7 @@ class FrameHandler {
 public:
     explicit FrameHandler(const JSThread *thread);
 
-    explicit FrameHandler(const JSThread *thread, void *fp);
+    FrameHandler(const JSThread *thread, void *fp);
     ~FrameHandler() = default;
 
     DEFAULT_COPY_SEMANTIC(FrameHandler);
@@ -203,7 +203,7 @@ public:
     }
 
 private:
-    [[maybe_unused]] JSThread *thread_ {nullptr};
+    JSThread *thread_ {nullptr};
     const JSTaggedType *oldSp_ {nullptr};
 };
 

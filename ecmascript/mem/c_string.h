@@ -52,7 +52,7 @@ float CStringToF(const CString &str);
 double CStringToD(const CString &str);
 
 CString ConvertToString(const std::string &str);
-std::string CstringConvertToStdString(const CString &str);
+std::string ConvertToStdString(const CString &str);
 
 // '\u0000' is skip according to holdZero
 CString ConvertToString(const ecmascript::EcmaString *s, StringConvertedUsage usage = StringConvertedUsage::PRINT);
@@ -72,21 +72,20 @@ std::enable_if_t<std::is_integral_v<T>, CString> ToCString(T number)
     if (number == 0) {
         return CString("0");
     }
-    bool IsNeg = false;
-    if (number < 0) {
-        number = -number;
-        IsNeg = true;
-    }
-
     static constexpr uint32_t BUFF_SIZE = std::numeric_limits<T>::digits10 + 3;  // 3: Reserved for sign bit and '\0'.
     char buf[BUFF_SIZE];
     uint32_t position = BUFF_SIZE - 1;
     buf[position] = '\0';
-    while (number > 0) {
-        buf[--position] = static_cast<int8_t>(number % 10 + '0'); // 10 : decimal
+    bool isNeg = number < 0;
+    while (number != 0) {
+        if (isNeg) {
+            buf[--position] = static_cast<int8_t>('0' - (number % 10)); // 10 : decimal
+        } else {
+            buf[--position] = static_cast<int8_t>('0' + (number % 10)); // 10 : decimal
+        }
         number /= 10; // 10 : decimal
     }
-    if (IsNeg) {
+    if (isNeg) {
         buf[--position] = '-';
     }
     return CString(&buf[position]);

@@ -82,6 +82,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         size_t res = MakeArgListWithHole(thread, elements, length);
         return std::make_pair(elements, res);
     } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -196,7 +197,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     // 10. Let status be DefinePropertyOrThrow(F, "length", PropertyDescriptor {[[Value]]: L,
     //     [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
     PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(lengthValue)), false, false, true);
-    [[maybe_unused]] bool status =
+    bool status =
         JSTaggedValue::DefinePropertyOrThrow(thread, JSHandle<JSTaggedValue>(boundFunction), lengthKey, desc);
     // 11. Assert: status is not an abrupt completion.
     ASSERT_PRINT(status, "DefinePropertyOrThrow failed");

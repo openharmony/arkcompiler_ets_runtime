@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string.h"
@@ -111,7 +111,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, AddIncreaseCapacityAddAll)
         EXPECT_TRUE(result);
     }
     EXPECT_EQ(lws->GetSize(), NODE_NUMBERS);
-    
+
     uint32_t tmp = NODE_NUMBERS * 3; // 3 means the value
     JSAPILightWeightSet::IncreaseCapacityTo(thread, lws, static_cast<int32_t>(tmp));
     uint32_t capacity = TaggedArray::Cast(lws->GetValues().GetTaggedObject())->GetLength();
@@ -148,7 +148,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, EqualClearNotEqual)
     JSMutableHandle<JSTaggedValue> value1(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value2(thread, JSTaggedValue::Undefined());
     bool result = false;
-    
+
     // test Equal of two empty lightweightset
     result = JSAPILightWeightSet::Equal(thread, lws, JSHandle<JSTaggedValue>::Cast(equalLws));
     EXPECT_FALSE(result);
@@ -264,7 +264,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, GetIndexOfRemoveRemoveAtGetValueAt)
         result = JSAPILightWeightSet::Add(thread, lws, value);
     }
     EXPECT_EQ(lws->GetSize(), NODE_NUMBERS);
-    
+
     // test GetIndexOf
     std::string tValue("myvalue5");
     value.Update(factory->NewFromStdString(tValue).GetTaggedValue());
@@ -280,7 +280,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, GetIndexOfRemoveRemoveAtGetValueAt)
     EXPECT_EQ(value.GetTaggedValue(), jsValue);
     jsValue = lws->Remove(thread, value);
     EXPECT_EQ(jsValue, JSTaggedValue::Undefined());
-    
+
     // test RemoveAt
     result = lws->RemoveAt(thread, 4); // 4 means the value
     EXPECT_EQ(lws->GetSize(), NODE_NUMBERS - 2); // 2 means the value
@@ -296,7 +296,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, Iterator)
     constexpr uint32_t NODE_NUMBERS = 8; // 8 means the value
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
-    
+
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         value.Update(JSTaggedValue(i));
@@ -317,7 +317,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, RBTreeGetHashIndex)
     std::vector<int> hashCollisionVector = {4307, 5135, 5903, 6603, 6780, 8416, 1224, 1285, 1463, 9401, 9740};
     uint32_t NODE_NUMBERS = static_cast<uint32_t>(hashCollisionVector.size());
     JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
-    
+
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         value.Update(JSTaggedValue(hashCollisionVector[i]));
@@ -335,7 +335,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, SpecialReturnTestEnsureCapacityGetValueAtGe
 {
     constexpr uint32_t NODE_NUMBERS = 8;
     JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
-    
+
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         value.Update(JSTaggedValue(i));
@@ -365,7 +365,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, GetHashAtHasHash)
 {
     constexpr uint32_t NODE_NUMBERS = 8;
     JSHandle<JSAPILightWeightSet> lws(thread, CreateLightWeightSet());
-    
+
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> hash(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {

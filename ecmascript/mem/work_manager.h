@@ -142,7 +142,7 @@ struct WorkNodeHolder {
 class WorkManager final {
 public:
     WorkManager() = delete;
-    explicit WorkManager(Heap *heap, uint32_t threadNum);
+    WorkManager(Heap *heap, uint32_t threadNum);
     ~WorkManager();
 
     void Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase);

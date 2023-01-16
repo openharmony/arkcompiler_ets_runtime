@@ -29,7 +29,7 @@ public:
         ASSERT(JSTaggedValue(object).IsJSAPIHashMap());
         return static_cast<JSAPIHashMap *>(object);
     }
-    
+
     static void Set(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
                     JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value);
     static JSTaggedValue HasValue(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
@@ -45,7 +45,7 @@ public:
     {
         return JSTaggedValue(GetSize());
     }
-    
+
     static constexpr size_t HASHMAP_TABLE_INDEX = JSObject::SIZE;
     ACCESSORS(Table, HASHMAP_TABLE_INDEX, HASHMAP_SIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Size, uint32_t, HASHMAP_SIZE_OFFSET, LAST_OFFSET)

@@ -361,7 +361,7 @@ HWTEST_F_L0(JSBigintTest, UnaryMinus)
     JSHandle<BigInt> minusRes4 = BigInt::UnaryMinus(thread, minSafeIntSubOne);
     EXPECT_TRUE(BigInt::Equal(minusRes4.GetTaggedValue(), maxSafeIntPlusOne.GetTaggedValue()));
 
-    JSHandle<BigInt> zero =  BigInt::Int32ToBigInt(thread, 0);
+    JSHandle<BigInt> zero = BigInt::Int32ToBigInt(thread, 0);
     JSHandle<BigInt> minusRes5 = BigInt::UnaryMinus(thread, zero);
     EXPECT_TRUE(!minusRes5->GetSign());
     EXPECT_TRUE(BigInt::Equal(zero.GetTaggedValue(), minusRes5.GetTaggedValue()));
@@ -606,7 +606,7 @@ HWTEST_F_L0(JSBigintTest, GetUint64MaxBigint_GetInt64MaxBigint)
     JSHandle<BigInt> exponent = BigInt::Int32ToBigInt(thread, 64); // 64 : bits
     JSHandle<BigInt> exponentone = BigInt::Int32ToBigInt(thread, 63); // 63 : bits
     JSHandle<BigInt> base = BigInt::Int32ToBigInt(thread, 2); // 2 : base value
-    JSHandle<BigInt> uint64MaxBigint1  = BigInt::Exponentiate(thread, base, exponent);
+    JSHandle<BigInt> uint64MaxBigint1 = BigInt::Exponentiate(thread, base, exponent);
     JSHandle<BigInt> uint64MaxBigint2 = BigInt::GetUint64MaxBigint(thread);
     EXPECT_TRUE(BigInt::Equal(uint64MaxBigint1.GetTaggedValue(), uint64MaxBigint2.GetTaggedValue()));
     JSHandle<BigInt> int64MaxBigint1 = BigInt::Exponentiate(thread, base, exponentone);

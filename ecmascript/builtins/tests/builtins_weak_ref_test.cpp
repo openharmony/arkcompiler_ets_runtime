@@ -149,7 +149,7 @@ HWTEST_F_L0(BuiltinsWeakRefTest, Deref2)
     TestHelper::TearDownFrame(thread, prev);
     JSTaggedValue result1 = BuiltinsWeakRef::Deref(ecmaRuntimeCallInfo);
     ASSERT_EQ(result1, target.GetTaggedValue());
-    
+
     JSObject::SetProperty(thread, target, styleKey, styleValue);
     ASSERT_EQ(result1, target.GetTaggedValue());
 }
