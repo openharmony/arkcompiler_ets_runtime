@@ -26,6 +26,7 @@ config("include_llvm_config") {
       "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
     ]
   }
+  cflags_cc = [ "-DARK_GC_SUPPORT" ]
 }
 
 module_output_path = "arkcompiler/ets_runtime"
