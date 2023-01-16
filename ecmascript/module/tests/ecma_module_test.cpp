@@ -299,7 +299,6 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     entryPoint = ModuleManager::ConcatFileNameWithMerge(pf2, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
-
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)

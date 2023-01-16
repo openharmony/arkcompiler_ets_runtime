@@ -108,8 +108,8 @@ std::string PrintBacktraceReturnString()
                 offset = ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase);
             }
         }
-        stack << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  "
-              << file << "(" << "+" << std::hex << offset << ")" << std::endl;
+        stack << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  " <<
+            file << "(" << "+" << std::hex << offset << ")" << std::endl;
     }
     stack.clear();
     return stack.str();
