@@ -444,6 +444,10 @@ template("host_aot_test_action") {
   _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
   _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
   _test_aot_arg_ = "$target_out_dir/${_target_name_}"
+  _test_aot_path_slowpath_ = "$target_out_dir/slowpath/${_target_name_}.an"
+  _test_aot_snapshot_path_slowpath_ =
+      "$target_out_dir/slowpath/${_target_name_}.ai"
+  _test_aot_arg_slowpath_ = "$target_out_dir/slowpath/${_target_name_}"
   _test_aot_log_level = "info"
   _test_expect_path_ = "./expect_output.txt"
 
@@ -505,9 +509,8 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_disable_type_lowering) &&
         invoker.is_disable_type_lowering) {
-      _aot_compile_options_ += " --enable-type-lowering=false"
+      _aot_compile_options_ += ""
     }
-
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
       deps += [ ":gen_builtins_d_abc" ]
@@ -538,13 +541,65 @@ template("host_aot_test_action") {
     ]
   }
 
+  action("${_target_name_}AotCompileActionSlowPtah") {
+    testonly = true
+    _host_aot_target_ =
+        "$js_root/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_aot_target_,
+    ]
+    deps += _deps_
+
+    script = "$js_root/script/run_ark_executable.py"
+
+    _aot_compile_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
+        " --log-level=" + _test_aot_log_level + " --log-components=all" +
+        "  --enable-type-lowering=false"
+    if (defined(invoker.is_disable_type_lowering) &&
+        invoker.is_disable_type_lowering) {
+      _aot_compile_options_ += ""
+    }
+
+    if (defined(invoker.is_enable_builtins_dts) &&
+        invoker.is_enable_builtins_dts) {
+      deps += [ ":gen_builtins_d_abc" ]
+      _aot_compile_options_ +=
+          " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
+      "--script-options",
+      _aot_compile_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-sub-output",
+      "ts aot compile success",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [
+      _test_aot_path_slowpath_,
+      _test_aot_snapshot_path_slowpath_,
+    ]
+  }
+
   action("${_target_name_}AotAction") {
     testonly = true
-
     _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
 
     deps = [
+      ":${_target_name_}AotActionSlowPtah",
       ":${_target_name_}AotCompileAction",
       ":gen_${_target_name_}_abc",
       _host_jsvm_target_,
@@ -585,6 +640,55 @@ template("host_aot_test_action") {
     inputs = [ _test_abc_path_ ]
 
     outputs = [ "$target_out_dir/${_target_name_}/" ]
+  }
+
+  action("${_target_name_}AotActionSlowPtah") {
+    testonly = true
+    _host_jsvm_target_ =
+        "$js_root/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+    deps = [
+      ":${_target_name_}AotCompileActionSlowPtah",
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
+
+    script = "$js_root/script/run_ark_executable.py"
+
+    _aot_run_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+    if (defined(invoker.is_enable_enableArkTools) &&
+        invoker.is_enable_enableArkTools) {
+      _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
+    }
+
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _aot_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-file",
+      rebase_path(_test_expect_path_),
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/SlowPtah" ]
   }
 }
 
