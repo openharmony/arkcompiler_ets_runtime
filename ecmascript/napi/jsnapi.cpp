@@ -478,7 +478,7 @@ uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
         return 0;
     }
     JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(localAddress));
-    return vm->GetJSThread()->GetEcmaGlobalStorage()->NewGlobalHandle(value);
+    return vm->GetJSThread()->NewGlobalHandle(value);
 }
 
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
@@ -486,7 +486,7 @@ uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
     if (localAddress == 0) {
         return 0;
     }
-    return vm->GetJSThread()->GetEcmaGlobalStorage()->SetWeak(localAddress);
+    return vm->GetJSThread()->SetWeak(localAddress);
 }
 
 uintptr_t JSNApi::SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref,
@@ -495,8 +495,7 @@ uintptr_t JSNApi::SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void
     if (localAddress == 0) {
         return 0;
     }
-    return vm->GetJSThread()->GetEcmaGlobalStorage()->SetWeak(localAddress, ref, freeGlobalCallBack,
-                                                              nativeFinalizeCallback);
+    return vm->GetJSThread()->SetWeak(localAddress, ref, freeGlobalCallBack, nativeFinalizeCallback);
 }
 
 uintptr_t JSNApi::ClearWeak(const EcmaVM *vm, uintptr_t localAddress)
@@ -504,12 +503,12 @@ uintptr_t JSNApi::ClearWeak(const EcmaVM *vm, uintptr_t localAddress)
     if (localAddress == 0) {
         return 0;
     }
-    if (JSTaggedValue(reinterpret_cast<ecmascript::EcmaGlobalStorage::Node *>(localAddress)->GetObject())
+    if (JSTaggedValue(reinterpret_cast<ecmascript::Node *>(localAddress)->GetObject())
         .IsUndefined()) {
         LOG_ECMA(ERROR) << "The object of weak reference has been recycled!";
         return 0;
     }
-    return vm->GetJSThread()->GetEcmaGlobalStorage()->ClearWeak(localAddress);
+    return vm->GetJSThread()->ClearWeak(localAddress);
 }
 
 bool JSNApi::IsWeak(const EcmaVM *vm, uintptr_t localAddress)
@@ -517,15 +516,15 @@ bool JSNApi::IsWeak(const EcmaVM *vm, uintptr_t localAddress)
     if (localAddress == 0) {
         return false;
     }
-    return vm->GetJSThread()->GetEcmaGlobalStorage()->IsWeak(localAddress);
+    return vm->GetJSThread()->IsWeak(localAddress);
 }
 
 void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
 {
-    if (addr == 0 || !reinterpret_cast<ecmascript::EcmaGlobalStorage::Node *>(addr)->IsUsing()) {
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
         return;
     }
-    vm->GetJSThread()->GetEcmaGlobalStorage()->DisposeGlobalHandle(addr);
+    vm->GetJSThread()->DisposeGlobalHandle(addr);
 }
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer)

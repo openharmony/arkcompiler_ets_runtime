@@ -373,10 +373,7 @@ config("ecma_test_config") {
   ]
 
   if (enable_leak_check) {
-    defines = [
-      "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
-      "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
-    ]
+    defines = [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
   }
 
   ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
@@ -691,6 +688,7 @@ if (is_mingw) {
 ecma_platform_source = []
 if (is_mingw) {
   ecma_platform_source += [
+    "ecmascript/platform/windows/backtrace.cpp",
     "ecmascript/platform/windows/map.cpp",
     "ecmascript/platform/windows/file.cpp",
     "ecmascript/platform/windows/os.cpp",
@@ -703,9 +701,17 @@ if (is_mingw) {
     "ecmascript/platform/unix/time.cpp",
   ]
   if (is_mac || target_os == "ios") {
-    ecma_platform_source += [ "ecmascript/platform/unix/mac/os.cpp" ]
+    ecma_platform_source += [
+      "ecmascript/platform/unix/mac/os.cpp",
+      "ecmascript/platform/unix/mac/backtrace.cpp",
+    ]
   } else {
     ecma_platform_source += [ "ecmascript/platform/unix/linux/os.cpp" ]
+    if (is_ohos && is_standard_system) {
+      ecma_platform_source += [ "ecmascript/platform/unix/ohos/backtrace.cpp" ]
+    } else {
+      ecma_platform_source += [ "ecmascript/platform/unix/linux/backtrace.cpp" ]
+    }
   }
 }
 
@@ -742,7 +748,6 @@ source_set("libark_jsruntime_set") {
   if (is_ohos && is_standard_system) {
     defines = [ "ENABLE_EXCEPTION_BACKTRACE" ]
     include_dirs = []
-    sources += [ "ecmascript/dfx/native_dfx/backtrace.cpp" ]
     if (enable_bytrace) {
       defines += [ "ENABLE_BYTRACE" ]
       include_dirs += [ "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter" ]
@@ -763,10 +768,7 @@ source_set("libark_jsruntime_set") {
           [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
     }
     if (enable_leak_check) {
-      defines += [
-        "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
-        "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
-      ]
+      defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
     }
     if (use_musl && current_cpu == "arm" && !is_mac && !is_mingw &&
         target_os != "ios") {
@@ -818,13 +820,7 @@ source_set("libark_jsruntime_test_set") {
   }
 
   if (enable_leak_check) {
-    if (is_linux && (current_cpu == "x86" || current_cpu == "x64")) {
-      sources += [ "ecmascript/dfx/native_dfx/linux/backtrace.cpp" ]
-    }
-    defines += [
-      "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK",
-      "ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK",
-    ]
+    defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
   }
 
   public_configs = [
