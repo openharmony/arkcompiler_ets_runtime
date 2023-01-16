@@ -802,7 +802,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
 void EcmaInterpreter::NotifyBytecodePcChanged(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
@@ -821,7 +821,7 @@ void EcmaInterpreter::NotifyBytecodePcChanged(JSThread *thread)
 const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
@@ -842,7 +842,7 @@ JSTaggedValue EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
     FrameHandler frameHandler(thread);
     JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
 
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
@@ -3635,8 +3635,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     NOPRINT_HANDLE_OPCODE(EXCEPTION) {
         FrameHandler frameHandler(thread);
-        uint32_t pcOffset = INVALID_INDEX;
-        for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        uint32_t pcOffset = panda_file::INVALID_OFFSET;
+        for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
             if (frameHandler.IsEntryFrame()) {
                 return;
             }
