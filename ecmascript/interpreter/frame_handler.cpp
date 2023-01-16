@@ -43,7 +43,7 @@ ARK_INLINE void FrameHandler::AdvanceToJSFrame()
     FrameIterator it(sp_, thread_);
     for (; !it.Done(); it.Advance()) {
         FrameType t = it.GetFrameType();
-        if (IsJSFrame(t) || IsAsmInterpretedEntryFrame(t)) {
+        if (IsJSFrame(t) || IsJSEntryFrame(t)) {
             break;
         }
     }

@@ -155,6 +155,16 @@ public:
         return (type == FrameType::INTERPRETER_ENTRY_FRAME);
     }
 
+    bool IsOptimizedEntryFrame(FrameType type) const
+    {
+        return type == FrameType::OPTIMIZED_ENTRY_FRAME;
+    }
+
+    bool IsJSEntryFrame(FrameType type) const
+    {
+        return IsAsmInterpretedEntryFrame(type) || IsOptimizedEntryFrame(type);
+    }
+
     bool IsLeaveFrame() const
     {
         FrameType type = GetFrameType();
