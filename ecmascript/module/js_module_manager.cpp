@@ -757,7 +757,7 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
                                         const std::string &key)
 {
     JSThread *thread = vm->GetJSThread();
-    JSHandle<TaggedArray> localExportEntries = JSHandle<TaggedArray>(thread, ecmaModule->GetLocalExportEntries());
+    JSHandle<TaggedArray> localExportEntries(thread, ecmaModule->GetLocalExportEntries());
     size_t exportEntriesLen = localExportEntries->GetLength();
     // 0: There's only one export value "default"
     int index = 0;

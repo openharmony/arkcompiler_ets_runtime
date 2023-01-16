@@ -126,6 +126,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region)
             if (address == 0) {
                 address = allocator->Allocate(size, OLD_SPACE);
                 actualPromoted = true;
+                promotedSize += size;
             }
         }
         LOG_ECMA_IF(address == 0, FATAL) << "Evacuate object failed:" << size;

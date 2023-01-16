@@ -51,10 +51,8 @@ bool JSPrimitiveRef::StringGetIndexProperty(const JSThread *thread, const JSHand
 {
     uint16_t tmpChar = 0;
     {
-        JSHandle<EcmaString> strHandle = JSHandle<EcmaString>(thread,
-            EcmaString::Cast(JSPrimitiveRef::Cast(*obj)->GetValue()));
-        JSHandle<EcmaString> strFlat = JSHandle<EcmaString>(thread,
-            EcmaStringAccessor::Flatten(thread->GetEcmaVM(), strHandle));
+        JSHandle<EcmaString> strHandle(thread, EcmaString::Cast(JSPrimitiveRef::Cast(*obj)->GetValue()));
+        JSHandle<EcmaString> strFlat(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), strHandle));
         if (EcmaStringAccessor(strFlat).GetLength() <= index) {
             return false;
         }

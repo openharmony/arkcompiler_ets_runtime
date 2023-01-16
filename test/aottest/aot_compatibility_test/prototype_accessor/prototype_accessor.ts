@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,19 +13,27 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:moduleUseCjs
- * @tc.desc:test module CJS
- * @tc.type: FUNC
- * @tc.require: issueI5NO8G
- */
-import cjs from "./Cjs"
-import * as ns from "./someArgsCjs"
-import {json, fun} from "./someArgsCjs"
-import "./cjsWithoutExports.js"
+declare function print(arg:any):string;
 
-print(JSON.stringify(cjs));
-print(JSON.stringify(json));
-fun();
-print(ns.tag);
-ns.con();
+{
+    class A {
+        x:number;
+        constructor() {
+            this.x = 1;
+        }
+        set setX(n:number) {
+            this.x = n;
+        }
+        get getX() {
+            return this.x;
+        }
+    }
+
+    class B extends A {}
+
+    let b = new B();
+    print(b.x);
+    b.setX = 5;
+    print(b.x);
+    print(b.getX);
+}

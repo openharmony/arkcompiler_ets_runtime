@@ -45,7 +45,11 @@ public:
     static inline JSTaggedValue StoreICWithHandler(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                                    JSTaggedValue value, JSTaggedValue handler);
     static inline void StoreWithTransition(JSThread *thread, JSObject *receiver, JSTaggedValue value,
-                                           JSTaggedValue handler);
+                                           JSTaggedValue handler, bool withPrototype = false);
+    static inline JSTaggedValue StoreTransWithProto(JSThread *thread, JSObject *receiver,
+                                                    JSTaggedValue value, JSTaggedValue handler);
+    static inline JSTaggedValue StoreWithTS(JSThread *thread, JSTaggedValue receiver,
+                                            JSTaggedValue value, JSTaggedValue handler);
     static inline JSTaggedValue StorePrototype(JSThread *thread, JSTaggedValue receiver,
                                                JSTaggedValue value, JSTaggedValue handler);
     static inline JSTaggedValue LoadFromField(JSObject *receiver, uint32_t handlerInfo);

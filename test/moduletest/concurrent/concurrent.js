@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,18 +14,15 @@
  */
 
 /*
- * @tc.name:moduleUseCjs
- * @tc.desc:test module CJS
+ * @tc.name:concurrent
+ * @tc.desc:test concurrent function
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-import cjs from "./Cjs"
-import * as ns from "./someArgsCjs"
-import {json, fun} from "./someArgsCjs"
-import "./cjsWithoutExports.js"
+ function foo() {
+    "use concurrent"
+    var a = 1
+    print(a)
+}
 
-print(JSON.stringify(cjs));
-print(JSON.stringify(json));
-fun();
-print(ns.tag);
-ns.con();
+print(foo.name)

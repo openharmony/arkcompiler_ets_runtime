@@ -960,7 +960,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         int8_t offset = READ_INST_8_0();
         LOG_INST() << "jeqz ->\t"
                    << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-        if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+        if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
             (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
             UPDATE_HOTNESS_COUNTER(offset);
             DISPATCH_OFFSET(offset);
@@ -972,7 +972,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         int16_t offset = READ_INST_16_0();
         LOG_INST() << "jeqz ->\t"
                    << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-        if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+        if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
             (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
             UPDATE_HOTNESS_COUNTER(offset);
             DISPATCH_OFFSET(offset);
@@ -984,7 +984,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         int32_t offset = READ_INST_32_0();
         LOG_INST() << "jeqz ->\t"
                    << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-        if (GET_ACC() == JSTaggedValue::False() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
+        if (GET_ACC().IsFalse() || (GET_ACC().IsInt() && GET_ACC().GetInt() == 0) ||
             (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)) {
             UPDATE_HOTNESS_COUNTER(offset);
             DISPATCH_OFFSET(offset);
@@ -996,7 +996,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         int8_t offset = READ_INST_8_0();
         LOG_INST() << "jnez ->\t"
                    << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-        if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+        if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
             (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
             UPDATE_HOTNESS_COUNTER(offset);
             DISPATCH_OFFSET(offset);
@@ -1008,7 +1008,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         int16_t offset = READ_INST_16_0();
         LOG_INST() << "jnez ->\t"
                    << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-        if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+        if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
             (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
             UPDATE_HOTNESS_COUNTER(offset);
             DISPATCH_OFFSET(offset);
@@ -1020,7 +1020,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         int32_t offset = READ_INST_32_0();
         LOG_INST() << "jnez ->\t"
                    << "cond jmpz " << std::hex << static_cast<int32_t>(offset);
-        if (GET_ACC() == JSTaggedValue::True() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
+        if (GET_ACC().IsTrue() || (GET_ACC().IsInt() && GET_ACC().GetInt() != 0) ||
             (GET_ACC().IsDouble() && GET_ACC().GetDouble() != 0)) {
             UPDATE_HOTNESS_COUNTER(offset);
             DISPATCH_OFFSET(offset);
@@ -7174,7 +7174,7 @@ bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, J
         needRestoreAcc = thread->CheckSafepoint();
         RESTORE_ACC();
         method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
-        if (state->profileTypeInfo == JSTaggedValue::Undefined()) {
+        if (state->profileTypeInfo.IsUndefined()) {
             state->acc = acc;
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             auto thisFunc = JSFunction::Cast(state->function.GetTaggedObject());

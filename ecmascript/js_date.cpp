@@ -20,6 +20,7 @@
 #include <sys/time.h>
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/platform/time.h"
 
 namespace panda::ecmascript {
@@ -479,6 +480,16 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    JSHandle<JSTaggedValue> msg = base::BuiltinsBase::GetCallArg(argv, 0);
+    JSHandle<EcmaString> ecmaStr = JSTaggedValue::ToString(thread, msg);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+    JSTaggedValue res = FastRuntimeStub::FastParseDate(*ecmaStr);
+    if (!res.IsHole()) {
+        return res;
+    }
+    JSHandle<JSTaggedValue> str = JSHandle<JSTaggedValue>::Cast(ecmaStr);
+    CString date = ConvertToString(EcmaString::Cast(str->GetTaggedObject()));
+
     const CString isoPriStr = "(^|(\\+|-)(\\d{2}))";
     const CString isoDateStr =
         "(((\\d{4})-(0?[1-9]|1[0-2])-(0?[1-9]|1[0-9]|2[0-9]|3[0-1]))"
@@ -504,10 +515,7 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
     std::regex isoReg(isoRegStr);
     std::regex utcReg(utcRegStr);
     std::regex localReg(localRegStr);
-    JSHandle<JSTaggedValue> msg = base::BuiltinsBase::GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> str = JSHandle<JSTaggedValue>::Cast(JSTaggedValue::ToString(thread, msg));
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    CString date = ConvertToString(EcmaString::Cast(str->GetTaggedObject()));
+    
     if (std::regex_match(date, isoReg)) {
         return IsoParseStringToMs(date);
     }

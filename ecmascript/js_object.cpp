@@ -1206,7 +1206,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
     auto result = FastRuntimeStub::SetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
                                                             value.GetTaggedValue());
     if (!result.IsHole()) {
-        return result != JSTaggedValue::Exception();
+        return !result.IsException();
     }
     PropertyDescriptor desc(thread, value, true, true, true);
     return JSTaggedValue::DefineOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), key, desc);
@@ -1219,7 +1219,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
     auto result =
         FastRuntimeStub::SetPropertyByIndex<true>(thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
     if (!result.IsHole()) {
-        return result != JSTaggedValue::Exception();
+        return !result.IsException();
     }
     PropertyDescriptor desc(thread, value, true, true, true);
     return DefineOwnProperty(thread, obj, index, desc);

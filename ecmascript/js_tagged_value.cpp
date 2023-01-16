@@ -563,7 +563,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
     }
 
     if (obj->IsSpecialContainer()) {
-        JSHandle<JSTaggedValue> keyHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(key));
+        JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
         return GetJSAPIProperty(thread, obj, keyHandle);
     }
 
@@ -645,7 +645,7 @@ bool JSTaggedValue::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     } else if (obj->IsModuleNamespace()) {
         success = ModuleNamespace::SetProperty(thread, mayThrow);
     } else if (obj->IsSpecialContainer()) {
-        JSHandle<JSTaggedValue> keyHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(key));
+        JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
         success = SetJSAPIProperty(thread, obj, keyHandle, value);
     } else {
         success = JSObject::SetProperty(thread, obj, key, value, mayThrow);

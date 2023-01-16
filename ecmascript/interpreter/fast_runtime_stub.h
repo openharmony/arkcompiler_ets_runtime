@@ -68,6 +68,7 @@ public:
                                               InterpretedFrame* state);
     static inline JSTaggedValue CallGetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                            JSTaggedValue value);
+    static inline JSTaggedValue FastParseDate(const EcmaString *str);
 
 private:
     friend class ICRuntimeStub;
@@ -93,6 +94,7 @@ private:
                                                          JSTaggedValue key, JSType jsType);
     static inline JSTaggedValue FastSetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                                          JSTaggedValue key, JSTaggedValue value, JSType jsType);
+    static inline bool GetNumFromString(const char *str, int len, int *index, int *num);
 };
 }  // namespace panda::ecmascript
 

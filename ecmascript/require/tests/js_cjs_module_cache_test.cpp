@@ -73,7 +73,7 @@ HWTEST_F_L0(CjsModuleCacheTest, PutIfAbsent)
                                            newCacheTested->GetModule(fileName.GetTaggedValue()));
 
     EXPECT_TRUE(newCacheTested->ContainsModule(fileName.GetTaggedValue()));
-    JSHandle<EcmaString> fileNameTested = JSHandle<EcmaString>(thread, moduleTested->GetFilename());
+    JSHandle<EcmaString> fileNameTested(thread, moduleTested->GetFilename());
     EXPECT_EQ(EcmaStringAccessor::Compare(vm, fileNameTested, JSHandle<EcmaString>(fileName)), 0);
 }
 
@@ -104,7 +104,7 @@ HWTEST_F_L0(CjsModuleCacheTest, ResetModule)
     JSHandle<CjsModule> moduleTested = JSHandle<CjsModule>(thread,
                                            newCacheTested->GetModule(fileName.GetTaggedValue()));
 
-    JSHandle<EcmaString> exportsTested = JSHandle<EcmaString>(thread, moduleTested->GetExports());
+    JSHandle<EcmaString> exportsTested(thread, moduleTested->GetExports());
     EXPECT_EQ(EcmaStringAccessor::Compare(vm, exportsTested, test), 0);
 }
 } // namespace panda::test

@@ -11,8 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-get before set: undefined
-get after set: 2
-get after change: 3
-delete property: true
-get after delete: undefined
+false
+true
+true
+2
+3
+false
+undefined
+false
+1
+true
+1
+3
+true
+true
+xxxx
+TypeError: CallObj is NonCallable
+Exception at function func_main_0: 310

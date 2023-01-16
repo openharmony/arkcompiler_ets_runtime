@@ -127,7 +127,7 @@ JSTaggedValue FrameHandler::GetAcc() const
 
 uint32_t FrameHandler::GetBytecodeOffset() const
 {
-    ASSERT(IsInterpretedFrame());
+    ASSERT(IsJSFrame());
     Method *method = GetMethod();
     auto offset = GetPc() - method->GetBytecodeArray();
     return static_cast<uint32_t>(offset);
@@ -217,7 +217,7 @@ JSTaggedValue FrameHandler::GetFunction() const
 
 const uint8_t *FrameHandler::GetPc() const
 {
-    ASSERT(IsInterpretedFrame());
+    ASSERT(IsJSFrame());
     FrameIterator it(sp_, thread_);
     if (IsAsmInterpretedFrame()) {
         auto *frame = it.GetFrame<AsmInterpretedFrame>();

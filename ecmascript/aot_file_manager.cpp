@@ -418,7 +418,6 @@ void AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     std::string baseName = JSFilePath::GetFileName(filename.c_str());
     uint32_t anFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(baseName + FILE_EXTENSION_AN);
-
     if (anFileInfoIndex == INVALID_INDEX) {
         // The abc file does not have corresponding an and ai files
         return;

@@ -651,10 +651,10 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpParseCache)
     JSHandle<EcmaString> string2 = factory->NewFromASCII("abcd");
     CVector<CString> vec;
     regExpParserCache->SetCache(*string1, 0, JSTaggedValue::True(), 2, vec);
-    ASSERT_TRUE(regExpParserCache->GetCache(*string1, 0, vec).first == JSTaggedValue::True());
+    ASSERT_TRUE(regExpParserCache->GetCache(*string1, 0, vec).first.IsTrue());
     ASSERT_TRUE(regExpParserCache->GetCache(*string1, 0, vec).second == 2U);
     ASSERT_TRUE(regExpParserCache->GetCache(*string1,
-                                            RegExpParserCache::CACHE_SIZE, vec).first == JSTaggedValue::Hole());
-    ASSERT_TRUE(regExpParserCache->GetCache(*string2, 0, vec).first == JSTaggedValue::Hole());
+                                            RegExpParserCache::CACHE_SIZE, vec).first.IsHole());
+    ASSERT_TRUE(regExpParserCache->GetCache(*string2, 0, vec).first.IsHole());
 }
 }  // namespace panda::test

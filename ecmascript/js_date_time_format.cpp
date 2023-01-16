@@ -845,7 +845,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
     const icu::Calendar *calendar = icuSimpleDateFormat->getCalendar();
     std::string icuCalendar = calendar->getType();
     if (icuCalendar == "gregorian") {
-        if (dateTimeFormat->GetIso8601() == JSTaggedValue::True()) {
+        if (dateTimeFormat->GetIso8601().IsTrue()) {
             calendarValue.Update(globalConst->GetHandledIso8601String().GetTaggedValue());
         } else {
             calendarValue.Update(globalConst->GetHandledGregoryString().GetTaggedValue());

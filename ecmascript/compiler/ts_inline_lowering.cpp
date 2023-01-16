@@ -219,10 +219,7 @@ GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVecto
     vaueList[0] = state;
     for (size_t i = 0; i < returnVector.size(); i++) {
         GateRef returnGate = returnVector.at(i);
-        GateRef returnState = acc_.GetState(returnGate);
-        if (acc_.GetOpCode(returnState) == OpCode::IF_EXCEPTION) {
-            continue;
-        }
+        ASSERT(acc_.GetOpCode(acc_.GetState(returnGate)) != OpCode::IF_EXCEPTION);
         stateList[i] = acc_.GetState(returnGate);
         dependList[i + 1] = acc_.GetDep(returnGate);
         vaueList[i + 1] = acc_.GetValueIn(returnGate, 0);

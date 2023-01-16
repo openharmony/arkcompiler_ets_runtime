@@ -242,8 +242,7 @@ JSTaggedValue BuiltinsString::CharAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> thisFlat = JSHandle<EcmaString>(thread,
-        EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
+    JSHandle<EcmaString> thisFlat(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
     int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisFlat).GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t pos = 0;
@@ -273,8 +272,7 @@ JSTaggedValue BuiltinsString::CharCodeAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> thisFlat = JSHandle<EcmaString>(thread,
-        EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
+    JSHandle<EcmaString> thisFlat(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
     int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisFlat).GetLength());
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
     int32_t pos = 0;
@@ -304,8 +302,7 @@ JSTaggedValue BuiltinsString::CodePointAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> thisFlat = JSHandle<EcmaString>(thread,
-        EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
+    JSHandle<EcmaString> thisFlat(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), thisHandle));
     JSHandle<JSTaggedValue> posTag = BuiltinsString::GetCallArg(argv, 0);
 
     JSTaggedNumber posVal = JSTaggedValue::ToNumber(thread, posTag);
@@ -574,7 +571,7 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, thisTag,
                                                                  RegExpExecResultCache::MATCH_TYPE, regexp);
-        if (cacheResult != JSTaggedValue::Undefined()) {
+        if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }
     }
@@ -809,7 +806,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, thisTag,
                                                                  RegExpExecResultCache::REPLACE_TYPE, searchTag,
                                                                  replaceTag.GetTaggedValue());
-        if (cacheResult != JSTaggedValue::Undefined()) {
+        if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }
     }
@@ -1050,8 +1047,7 @@ JSTaggedValue BuiltinsString::GetSubstitution(JSThread *thread, const JSHandle<E
     auto ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<EcmaString> dollarString = JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledDollarString());
-    JSHandle<EcmaString> replacementFlat = JSHandle<EcmaString>(
-        thread, EcmaStringAccessor::Flatten(ecmaVm, replacement));
+    JSHandle<EcmaString> replacementFlat(thread, EcmaStringAccessor::Flatten(ecmaVm, replacement));
     int32_t replaceLength = static_cast<int32_t>(EcmaStringAccessor(replacementFlat).GetLength());
     int32_t tailPos = position + static_cast<int32_t>(EcmaStringAccessor(matched).GetLength());
 

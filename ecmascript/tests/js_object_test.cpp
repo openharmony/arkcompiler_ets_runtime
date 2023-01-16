@@ -1024,9 +1024,9 @@ HWTEST_F_L0(JSObjectTest, EnableProtoChangeMarker)
     JSTaggedValue protoDetails1 = obj1Class->GetProtoChangeDetails();
     EXPECT_TRUE(protoDetails1.IsProtoChangeDetails());
     JSTaggedValue listeners1 = ProtoChangeDetails::Cast(protoDetails1.GetTaggedObject())->GetChangeListener();
-    EXPECT_TRUE(listeners1 != JSTaggedValue::Undefined());
+    EXPECT_TRUE(!listeners1.IsUndefined());
     JSTaggedValue listeners2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener();
-    EXPECT_TRUE(listeners2 == JSTaggedValue::Undefined());
+    EXPECT_TRUE(listeners2.IsUndefined());
     uint32_t index = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
     JSTaggedValue listenersResult = ChangeListener::Cast(listeners1.GetTaggedObject())->Get(index);
     EXPECT_TRUE(listenersResult == obj2Class.GetTaggedValue());
@@ -1177,7 +1177,7 @@ HWTEST_F_L0(JSObjectTest, NoticeThroughChain)
     JSTaggedValue listeners2Value = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetChangeListener();
     EXPECT_TRUE(listeners2Value != JSTaggedValue(0));
     uint32_t index2 = ProtoChangeDetails::Cast(protoDetails2.GetTaggedObject())->GetRegisterIndex();
-    EXPECT_TRUE(listeners1->Get(index2) == JSTaggedValue::Hole());
+    EXPECT_TRUE(listeners1->Get(index2).IsHole());
 
     JSTaggedValue obj6Marker = obj6Class->GetProtoChangeMarker();
     EXPECT_TRUE(obj6Marker.IsProtoChangeMarker());

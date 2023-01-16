@@ -152,6 +152,8 @@ private:
                        const std::vector<GateRef> &successControl,
                        const std::vector<GateRef> &exceptionControl,
                        bool noThrow = false);
+    void ExceptionReturn(GateRef state, GateRef depend);
+    void ReplaceHirWithIfBranch(GateRef hirGate, GateRef callGate, GateRef ifBranch);
     void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
     void ReplaceHirToJSCall(GateRef hirGate, GateRef callGate);
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);
@@ -286,6 +288,7 @@ private:
     void LowerGetUnmappedArgs(GateRef gate, GateRef actualArgc);
     void LowerCopyRestArgs(GateRef gate, GateRef actualArgc);
     GateRef LowerCallRuntime(int index, const std::vector<GateRef> &args, bool useLabel = false);
+    GateRef LowerCallNGCRuntime(int index, const std::vector<GateRef> &args, bool useLabel = false);
     int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
     void LowerCreateAsyncGeneratorObj(GateRef gate);
     void LowerAsyncGeneratorResolve(GateRef gate);

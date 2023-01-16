@@ -130,7 +130,7 @@ static JSTaggedValue JSDateTimeFormatCreateWithLocaleTest(JSThread *thread, JSHa
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> newTarget(env->GetDateTimeFormatFunction());
-    JSHandle<JSObject> optionsObj = JSHandle<JSObject>(thread, BuiltinsDateTimeOptionsSet(thread));
+    JSHandle<JSObject> optionsObj(thread, BuiltinsDateTimeOptionsSet(thread));
 
     JSHandle<JSTaggedValue> localesString = locale;
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*newTarget), 8);

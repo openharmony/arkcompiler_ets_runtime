@@ -68,7 +68,7 @@ JSTaggedValue BuiltinsSharedArrayBuffer::IsSharedArrayBuffer(EcmaRuntimeCallInfo
     JSHandle<JSArrayBuffer> buffer(arg);
     JSTaggedValue bufferdata = buffer->GetArrayBufferData();
     // 3. If bufferData is null, return false.
-    if (bufferdata == JSTaggedValue::Null()) {
+    if (bufferdata.IsNull()) {
         return BuiltinsSharedArrayBuffer::GetTaggedBoolean(false);
     }
     // 4. If this ArrayBuffer is not shared, return false.

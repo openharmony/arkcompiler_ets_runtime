@@ -216,7 +216,7 @@ JSTaggedValue CompareOp::NotEqualWithIC(JSThread *thread, JSTaggedValue left,
 {
     INTERPRETER_TRACE(thread, NotEqualWithIC);
     JSTaggedValue res = EqualWithIC(thread, left, right, operationType);
-    return res == JSTaggedValue::True() ? JSTaggedValue::False() : JSTaggedValue::True();
+    return res.IsTrue() ? JSTaggedValue::False() : JSTaggedValue::True();
 }
 
 ComparisonResult CompareOp::Compare(JSThread *thread, JSTaggedValue left,

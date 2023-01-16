@@ -29,6 +29,7 @@
 #include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_proxy.h"
@@ -435,7 +436,9 @@ JSTaggedValue FastRuntimeStub::GetPropertyByName(JSThread *thread, JSTaggedValue
                     return CallGetter(thread, receiver, holder, value);
                 }
                 ASSERT(!value.IsAccessor());
-                return value;
+                if (!value.IsHole()) {
+                    return value;
+                }
             }
         } else {
             TaggedArray *array = TaggedArray::Cast(JSObject::Cast(holder)->GetProperties().GetTaggedObject());
@@ -468,6 +471,7 @@ JSTaggedValue FastRuntimeStub::SetPropertyByName(JSThread *thread, JSTaggedValue
     INTERPRETER_TRACE(thread, SetPropertyByName);
     // property
     JSTaggedValue holder = receiver;
+    int receiverHoleEntry = -1;
     do {
         auto *hclass = holder.GetTaggedObject()->GetClass();
         JSType jsType = hclass->GetObjectType();
@@ -506,6 +510,19 @@ JSTaggedValue FastRuntimeStub::SetPropertyByName(JSThread *thread, JSTaggedValue
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
                 }
+                if (hclass->IsAOT()) {
+                    auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
+                    if (attrVal.IsHole()) {
+                        if (receiverHoleEntry == -1 && holder == receiver) {
+                            receiverHoleEntry = entry;
+                        }
+                        if (UseOwn) {
+                            break;
+                        }
+                        holder = hclass->GetPrototype();
+                        continue;
+                    }
+                }
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
@@ -541,6 +558,14 @@ JSTaggedValue FastRuntimeStub::SetPropertyByName(JSThread *thread, JSTaggedValue
         }
         holder = hclass->GetPrototype();
     } while (holder.IsHeapObject());
+
+    if (receiverHoleEntry != -1) {
+        auto *receiverHClass = receiver.GetTaggedObject()->GetClass();
+        LayoutInfo *receiverLayoutInfo = LayoutInfo::Cast(receiverHClass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr(receiverLayoutInfo->GetAttr(receiverHoleEntry));
+        JSObject::Cast(receiver)->SetProperty(thread, receiverHClass, attr, value);
+        return JSTaggedValue::Undefined();
+    }
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSObject> objHandle(thread, receiver);
@@ -692,7 +717,7 @@ bool FastRuntimeStub::FastSetPropertyByIndex(JSThread *thread, JSTaggedValue rec
     INTERPRETER_TRACE(thread, FastSetPropertyByIndex);
     JSTaggedValue result = FastRuntimeStub::SetPropertyByIndex(thread, receiver, index, value);
     if (!result.IsHole()) {
-        return result != JSTaggedValue::Exception();
+        return !result.IsException();
     }
     return JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver), index,
                                       JSHandle<JSTaggedValue>(thread, value), true);
@@ -704,7 +729,7 @@ bool FastRuntimeStub::FastSetPropertyByValue(JSThread *thread, JSTaggedValue rec
     INTERPRETER_TRACE(thread, FastSetPropertyByValue);
     JSTaggedValue result = FastRuntimeStub::SetPropertyByValue(thread, receiver, key, value);
     if (!result.IsHole()) {
-        return result != JSTaggedValue::Exception();
+        return !result.IsException();
     }
     return JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
                                       JSHandle<JSTaggedValue>(thread, key), JSHandle<JSTaggedValue>(thread, value),
@@ -923,6 +948,67 @@ JSTaggedValue FastRuntimeStub::FastSetTypeArrayProperty(JSThread *thread, JSTagg
         return JSTypedArray::FastSetPropertyByIndex(thread, receiver, index, value, jsType);
     }
     return JSTaggedValue::Hole();
+}
+
+bool FastRuntimeStub::GetNumFromString(const char *str, int len, int *index, int *num)
+{
+    int indexStr = *index;
+    char oneByte = 0;
+    oneByte = str[indexStr];
+    if (oneByte < '0' || oneByte > '9') {
+        return false;
+    }
+    if (indexStr >= len) {
+        return false;
+    }
+    int value = 0;
+    while (indexStr < len) {
+        oneByte = str[indexStr];
+        int val = static_cast<int>(oneByte - '0');
+        if (val >= 0 && val <= JSDate::NUM_NINE) {
+            value = value * JSDate::TEN + val;
+            indexStr++;
+        } else if (oneByte != '-') {
+            return false;
+        } else {
+            indexStr++;
+            break;
+        }
+    }
+    *num = value;
+    *index = indexStr;
+    return true;
+}
+
+JSTaggedValue FastRuntimeStub::FastParseDate(const EcmaString *str)
+{
+    int year = 0;
+    int month = 1;
+    int date = 1;
+    int index = 0;
+    
+    CVector<uint8_t> tmpBuf;
+    EcmaStringAccessor strAccessor(const_cast<EcmaString *>(str));
+    int len = static_cast<int>(strAccessor.GetLength());
+    auto data = reinterpret_cast<const char *>(strAccessor.GetUtf8DataFlat(str, tmpBuf));
+    if (!GetNumFromString(data, len, &index, &year)) {
+        return JSTaggedValue::Hole();
+    }
+    if (!GetNumFromString(data, len, &index, &month)) {
+        return JSTaggedValue::Hole();
+    }
+    if (!GetNumFromString(data, len, &index, &date)) {
+        return JSTaggedValue::Hole();
+    }
+    if (month < 1 || month > JSDate::MONTH_PER_YEAR) {
+        return JSTaggedValue::Hole();
+    }
+    if (date < 1 || date > JSDate::MAX_DAYS_MONTH) {
+        return JSTaggedValue::Hole();
+    }
+    double day = JSDate::MakeDay(year, month - 1, date);
+    double timeValue = JSDate::TimeClip(JSDate::MakeDate(day, 0));
+    return JSTaggedValue(timeValue);
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_FAST_RUNTIME_STUB_INL_H

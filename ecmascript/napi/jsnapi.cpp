@@ -782,7 +782,7 @@ Local<JSValueRef> PrimitiveRef::GetValue(const EcmaVM *vm)
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     if (obj->IsJSPrimitiveRef()) {
         JSTaggedValue primitiveValue = JSPrimitiveRef::Cast(obj->GetTaggedObject())->GetValue();
-        JSHandle<JSTaggedValue> value = JSHandle<JSTaggedValue>(vm->GetJSThread(), primitiveValue);
+        JSHandle<JSTaggedValue> value(vm->GetJSThread(), primitiveValue);
         return JSNApiHelper::ToLocal<JSValueRef>(value);
     }
     return Local<JSValueRef>();
@@ -1385,7 +1385,7 @@ Local<StringRef> FunctionRef::GetName(const EcmaVM *vm)
 {
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
-    JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
+    JSHandle<JSFunctionBase> func(thread, JSNApiHelper::ToJSTaggedValue(this));
     JSHandle<JSTaggedValue> name = JSFunctionBase::GetFunctionName(thread, func);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return scope.Escape(JSNApiHelper::ToLocal<StringRef>(name));
@@ -1395,8 +1395,8 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
 {
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
-    JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
-    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
+    JSHandle<JSFunctionBase> func(thread, JSNApiHelper::ToJSTaggedValue(this));
+    JSHandle<Method> method(thread, func->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
@@ -1430,8 +1430,8 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
 bool FunctionRef::IsNative(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
-    JSHandle<JSFunctionBase> func = JSHandle<JSFunctionBase>(thread, JSNApiHelper::ToJSTaggedValue(this));
-    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
+    JSHandle<JSFunctionBase> func(thread, JSNApiHelper::ToJSTaggedValue(this));
+    JSHandle<Method> method(thread, func->GetMethod());
     return method->IsNativeWithCallField();
 }
 
@@ -2221,7 +2221,7 @@ Local<BooleanRef> JSValueRef::ToBoolean(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
-    JSHandle<JSTaggedValue> booleanObj = JSHandle<JSTaggedValue>(thread, JSTaggedValue(obj->ToBoolean()));
+    JSHandle<JSTaggedValue> booleanObj(thread, JSTaggedValue(obj->ToBoolean()));
     return JSNApiHelper::ToLocal<BooleanRef>(booleanObj);
 }
 

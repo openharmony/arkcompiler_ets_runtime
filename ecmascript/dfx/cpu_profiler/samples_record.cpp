@@ -239,8 +239,8 @@ void SamplesRecord::FinetuneSampleData()
         bool findFlag = false;
         size_t findIdx = sampleIdx;
         size_t preIdx = sampleIdx;
-        uint64_t preSampleTime = static_cast<uint64_t>(sampleTime -
-            profileInfo_->timeDeltas[sampleIdx]); // preIdx's timestamp
+        uint64_t preSampleTime = sampleTime -
+            static_cast<uint64_t>(profileInfo_->timeDeltas[sampleIdx]); // preIdx's timestamp
         std::string napiFunctionAddr = napiCallAddrVec_[napiCallIdx];
         if (sampleIdx - 1 >= 0) {
             preIdx = sampleIdx - 1;
@@ -319,8 +319,8 @@ void SamplesRecord::FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &
     if (isEndSample) {
         // if is endIdx, sampleTime add endTimeDelta is real current timestamp
         int endTimeDelta = profileInfo_->timeDeltas[idx];
-        profileInfo_->timeDeltas[idx] -= static_cast<int>(sampleTime + endTimeDelta - napiTime);
-        profileInfo_->timeDeltas[idx + 1] += static_cast<int>(sampleTime + endTimeDelta - napiTime);
+        profileInfo_->timeDeltas[idx] -= static_cast<int>(sampleTime - napiTime) + endTimeDelta;
+        profileInfo_->timeDeltas[idx + 1] += static_cast<int>(sampleTime - napiTime) + endTimeDelta;
     } else {
         profileInfo_->timeDeltas[idx] -= static_cast<int>(sampleTime - napiTime);
         profileInfo_->timeDeltas[idx + 1] += static_cast<int>(sampleTime - napiTime);
