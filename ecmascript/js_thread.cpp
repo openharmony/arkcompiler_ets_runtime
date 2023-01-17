@@ -277,7 +277,9 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
                 weakNodeNativeFinalizeCallbacks_.push_back(std::make_pair(nativeFinalizeCallback,
                                                                           node->GetReference()));
             }
-            node->CallFreeGlobalCallback();
+            if (!node->CallFreeGlobalCallback()) {
+                DisposeGlobalHandle(ToUintPtr(node));
+            }
         } else if (fwd != object) {
             // update
             node->SetObject(JSTaggedValue(fwd).GetRawData());
