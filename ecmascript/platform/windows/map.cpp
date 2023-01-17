@@ -22,6 +22,14 @@
 #undef ERROR
 #endif
 
+#ifdef VOID
+#undef VOID
+#endif
+
+#ifdef CONST
+#undef CONST
+#endif
+
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem.h"
 

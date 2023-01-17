@@ -212,7 +212,6 @@ group("fuzztest") {
     "jsnapideleteserializationdata_fuzzer:fuzztest",
     "jsnapideserializevalue_fuzzer:fuzztest",
     "jsnapisethostpromiserejectiontracker_fuzzer:fuzztest",
-    "jsnapisethostresolvepathtracker_fuzzer:fuzztest",
     "jsnapistartdebugger_fuzzer:fuzztest",
     "jsonparse_fuzzer:fuzztest",
     "jsonstringify_fuzzer:fuzztest",

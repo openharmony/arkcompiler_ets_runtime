@@ -382,17 +382,6 @@ public:
         }
     }
 
-    // CJS callbacks
-    void SetResolvePathCallback(ResolvePathCallback cb)
-    {
-        resolvePathCallback_ = cb;
-    }
-
-    ResolvePathCallback GetResolvePathCallback() const
-    {
-        return resolvePathCallback_;
-    }
-
     void SetResolveBufferCallback(ResolveBufferCallback cb)
     {
         resolveBufferCallback_ = cb;
@@ -472,6 +461,11 @@ public:
             return false;
         }
         return false;
+    }
+
+    bool IsWorkerThread()
+    {
+        return options_.IsWorker();
     }
 
     bool IsBundlePack() const
@@ -589,9 +583,9 @@ public:
         return optCodeProfiler_;
     }
 
-protected:
-
     void HandleUncaughtException(JSTaggedValue exception);
+
+protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
 

@@ -135,9 +135,11 @@ void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::strin
 {
     const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
     ModuleManager *moduleManager = vm_->GetModuleManager();
+    JSThread *thread = vm_->GetJSThread();
     for (auto info: recordInfo) {
         auto recordName = info.first;
-        if (jsPandaFile->IsModule(recordName)) {
+        if (jsPandaFile->IsModule(thread, recordName)) {
+            ASSERT(!thread->HasPendingException());
             moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(), recordName);
         }
     }

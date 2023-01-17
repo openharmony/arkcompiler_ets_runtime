@@ -16,9 +16,11 @@
 #include "ecmascript/require/js_cjs_module.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -28,6 +30,7 @@
 namespace panda::ecmascript {
 using BuiltinsJson = builtins::BuiltinsJson;
 
+using PathHelper = base::PathHelper;
 void CjsModule::InitializeModule(JSThread *thread, JSHandle<CjsModule> &module,
                                  JSHandle<JSTaggedValue> &filename, JSHandle<JSTaggedValue> &dirname)
 {
@@ -102,9 +105,10 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
 
     JSMutableHandle<JSTaggedValue> filename(thread, JSTaggedValue::Undefined());
     if (jsPandaFile->IsBundlePack()) {
-        RequireManager::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
+        PathHelper::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
         filename.Update(ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
                                                   request.GetTaggedValue()));
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         mergedFilename = ConvertToString(filename.GetTaggedValue());
     } else {
         CString currentEntryPoint = ConvertToString(entrypointVal.GetTaggedValue());
@@ -123,7 +127,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     // Don't get required exports from cache, execute required JSPandaFile.
     // module = new Module(), which belongs to required JSPandaFile.
     JSHandle<CjsModule> module = factory->NewCjsModule();
-    RequireManager::ResolveDirPath(thread, dirname, filename);
+    dirname.Update(PathHelper::ResolveDirPath(thread, filename));
     InitializeModule(thread, module, filename, dirname);
     PutIntoCache(thread, module, filename);
 
@@ -138,7 +142,10 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     }
     // Execute required JSPandaFile
     RequireExecution(thread, mergedFilename, requestEntryPoint);
-
+    if (thread->HasPendingException()) {
+        thread->GetEcmaVM()->HandleUncaughtException(thread->GetException());
+        return thread->GlobalConstants()->GetHandledUndefined();
+    }
     // Search from Module.cache after execution.
     JSHandle<JSTaggedValue> cachedExports = SearchFromModuleCache(thread, filename);
     if (cachedExports->IsHole()) {
@@ -153,59 +160,11 @@ void CjsModule::RequireExecution(JSThread *thread, CString mergedFilename, CStri
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, mergedFilename, requestEntryPoint);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(FATAL) << "open jsPandaFile : " << mergedFilename <<
-        " , record name : " << requestEntryPoint << " error";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "Try to load cjs module " << requestEntryPoint << " in abc : " << mergedFilename;
+        CString msg = "Faild to load file '" + requestEntryPoint + "', please check the request path.";
+        THROW_ERROR(thread, ErrorType::REFERENCE_ERROR, msg.c_str());
     }
     JSPandaFileExecutor::Execute(thread, jsPandaFile, requestEntryPoint);
-}
-
-JSHandle<EcmaString> CjsModule::ResolveFilename(JSThread *thread, JSTaggedValue dirname, JSTaggedValue request)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-    ResolvePathCallback resolvePathCallback = thread->GetEcmaVM()->GetResolvePathCallback();
-    if (resolvePathCallback == nullptr) {
-        JSHandle<EcmaString> nativeRequireName = ResolveFilenameFromNative(thread, dirname, request);
-        return nativeRequireName;
-    }
-    std::string modDirname = std::string(ConvertToString(EcmaString::Cast(dirname.GetTaggedObject())));
-    std::string modFile = std::string(ConvertToString(EcmaString::Cast(request.GetTaggedObject())));
-    std::string callbackRequireName = resolvePathCallback(modDirname, modFile);
-    CString fullname = callbackRequireName.c_str();
-    return factory->NewFromUtf8(fullname);
-}
-
-JSHandle<EcmaString> CjsModule::ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
-                                                          JSTaggedValue request)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-    CString dirnameStr = ConvertToString(EcmaString::Cast(dirname.GetTaggedObject()));
-    CString requestStr = ConvertToString(EcmaString::Cast(request.GetTaggedObject()));
-    if (requestStr.find("./") == 0) {
-        requestStr = requestStr.substr(2); // 2 : delete './'
-    }
-    int suffixEnd = static_cast<int>(requestStr.find_last_of('.'));
-    if (suffixEnd == -1) {
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
-    }
-    CString fullname;
-    CString res;
-    if (requestStr[0] == '/') { // absolute FilePath
-        fullname = requestStr.substr(0, suffixEnd) + ".abc";
-    } else {
-        int pos = static_cast<int>(dirnameStr.find_last_of('/'));
-        if (pos == -1) {
-            RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
-        }
-        fullname = dirnameStr.substr(0, pos + 1) + requestStr.substr(0, suffixEnd) + ".abc";
-    }
-
-    if (!AOTFileManager::GetAbsolutePath(fullname, res)) {
-        LOG_FULL(FATAL) << "resolve absolute path fail";
-    }
-    return factory->NewFromUtf8(res);
 }
 
 JSTaggedValue CjsModule::Require(JSThread *thread, JSHandle<EcmaString> &request,

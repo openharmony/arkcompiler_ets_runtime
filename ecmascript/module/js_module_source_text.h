@@ -33,10 +33,10 @@ public:
     CAST_CHECK(SourceTextModule, IsSourceTextModule);
 
     // 15.2.1.17 Runtime Semantics: HostResolveImportedModule ( referencingModule, specifier )
-    static JSHandle<SourceTextModule> HostResolveImportedModule(JSThread *thread,
+    static JSHandle<JSTaggedValue> HostResolveImportedModule(JSThread *thread,
                                                                 const JSHandle<SourceTextModule> &module,
                                                                 const JSHandle<JSTaggedValue> &moduleRequest);
-    static JSHandle<SourceTextModule> HostResolveImportedModuleWithMerge(
+    static JSHandle<JSTaggedValue> HostResolveImportedModuleWithMerge(
         JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
 
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
@@ -117,7 +117,7 @@ public:
     // 15.2.1.16.4 Instantiate()
     static void CJSInstantiate(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                const JSHandle<SourceTextModule> &requiredModule);
-    static int Instantiate(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    static int Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl);
 
     JSTaggedValue GetModuleValue(JSThread *thread, int32_t index, bool isThrow);
     void StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value);

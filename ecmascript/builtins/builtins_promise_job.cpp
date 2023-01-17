@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_promise_job.h"
 
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -25,10 +26,12 @@
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {
+using PathHelper = base::PathHelper;
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -128,6 +131,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), PromiseJob, DynamicImportJob);
     JSThread *thread = argv->GetThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     EcmaVM *vm = thread->GetEcmaVM();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -148,14 +152,22 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString baseFilename = ConvertToString(dirPath.GetTaggedValue());
     CString fileNameStr = "";
     if (recordName->IsUndefined()) {
-        moduleName = CjsModule::ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
-                                                          specifierString.GetTaggedValue());
+        moduleName = ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
+                                               specifierString.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         fileNameStr = ConvertToString(moduleName.GetTaggedValue());
     } else {
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifierString.GetTaggedValue());
         const JSPandaFile *jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
+        if (jsPandaFile == nullptr) {
+            LOG_ECMA(ERROR) << "Try to load record " << recordNameStr << " in abc : " << baseFilename;
+            CString msg = "Faild to load file '" + recordNameStr + "', please check the request path.";
+            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        }
+
         entryPoint =
             ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
 
@@ -164,12 +176,20 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
     const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr,
                                                                                         entryPoint);
-    bool isModule = jsPandaFile->IsModule(entryPoint);
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(ERROR) << "Try to load record " << entryPoint << " in abc : " << fileNameStr;
+        CString msg = "Faild to load file '" + entryPoint + "', please check the request path.";
+        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    bool isModule = jsPandaFile->IsModule(thread, entryPoint);
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
-            LOG_FULL(FATAL) << "Cannot execute dynamic-imported panda file : "<< fileNameStr.c_str()
-                            << entryPoint.c_str();
+            LOG_ECMA(ERROR) << "Try to load record " << entryPoint << " in abc : " << fileNameStr;
+            CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
+            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
     if (thread->HasPendingException()) {

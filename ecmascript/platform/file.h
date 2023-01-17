@@ -26,6 +26,8 @@
 
 #include <string>
 
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/js_tagged_value.h"
 namespace panda::ecmascript {
 #ifdef PANDA_TARGET_WINDOWS
 using fd_t = HANDLE;
@@ -53,5 +55,7 @@ fd_t Open(const char *file, int flag);
 void Close(fd_t fd);
 void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, fd_t *extra);
 int FileUnMap(void *addr, uint64_t size, fd_t *extra);
+JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
+                                               JSTaggedValue request);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H
