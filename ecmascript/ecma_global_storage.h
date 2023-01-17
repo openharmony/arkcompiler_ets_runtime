@@ -180,11 +180,13 @@ public:
         return nativeFinalizeCallback_;
     }
 
-    void CallFreeGlobalCallback()
+    bool CallFreeGlobalCallback()
     {
         if (freeGlobalCallback_ != nullptr) {
             freeGlobalCallback_(reference_);
+            return true;
         }
+        return false;
     }
 
     void CallNativeFinalizeCallback()
