@@ -35,7 +35,10 @@ class EcmaHandleScope;
 class EcmaVM;
 class HeapRegionAllocator;
 class PropertiesCache;
+template<typename T>
 class EcmaGlobalStorage;
+class Node;
+class DebugNode;
 using WeakClearCallback = void (*)(void *);
 
 enum class MarkStatus : uint8_t {
@@ -255,9 +258,7 @@ public:
     void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor);
 
-#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
     void IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
-#endif
 
     uintptr_t* PUBLIC_API ExpandHandleStorage();
     void PUBLIC_API ShrinkHandleStorage(int prevIndex);
@@ -327,11 +328,6 @@ public:
     }
 
     void ClearException();
-
-    EcmaGlobalStorage *GetEcmaGlobalStorage() const
-    {
-        return globalStorage_;
-    }
 
     void SetGlobalObject(JSTaggedValue globalObject)
     {
@@ -603,6 +599,40 @@ public:
         glueData_.glueGlobalEnv_ = global;
     }
 
+    inline uintptr_t NewGlobalHandle(JSTaggedType value)
+    {
+        return newGlobalHandle_(value);
+    }
+
+    inline void DisposeGlobalHandle(uintptr_t nodeAddr)
+    {
+        disposeGlobalHandle_(nodeAddr);
+    }
+
+    inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback freeGlobalCallBack = nullptr,
+                             WeakClearCallback nativeFinalizeCallBack = nullptr)
+    {
+        return setWeak_(nodeAddr, ref, freeGlobalCallBack, nativeFinalizeCallBack);
+    }
+
+    inline uintptr_t ClearWeak(uintptr_t nodeAddr)
+    {
+        return clearWeak_(nodeAddr);
+    }
+
+    inline bool IsWeak(uintptr_t addr) const
+    {
+        return isWeak_(addr);
+    }
+
+    bool IsStartGlobalLeakCheck() const;
+    bool EnableGlobalObjectLeakCheck() const;
+    bool EnableGlobalPrimitiveLeakCheck() const;
+    uint32_t IncreaseGlobalNumberCount()
+    {
+        return ++globalNumberCount_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -792,7 +822,16 @@ private:
     std::vector<std::pair<WeakClearCallback, void *>> weakNodeSecondPassCallbacks_ {};
 
     PropertiesCache *propertiesCache_ {nullptr};
-    EcmaGlobalStorage *globalStorage_ {nullptr};
+    EcmaGlobalStorage<Node> *globalStorage_ {nullptr};
+    EcmaGlobalStorage<DebugNode> *globalDebugStorage_ {nullptr};
+
+    std::function<uintptr_t(JSTaggedType value)> newGlobalHandle_;
+    std::function<void(uintptr_t nodeAddr)> disposeGlobalHandle_;
+    std::function<uintptr_t(uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack_,
+         WeakClearCallback nativeFinalizeCallBack)> setWeak_;
+    std::function<uintptr_t(uintptr_t nodeAddr)> clearWeak_;
+    std::function<bool(uintptr_t addr)> isWeak_;
+    uint32_t globalNumberCount_ {0};
 
     // Run-time state
     bool getStackSignal_ {false};

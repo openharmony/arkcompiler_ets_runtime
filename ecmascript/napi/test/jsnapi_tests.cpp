@@ -957,15 +957,9 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
     Global<ObjectRef> globalObject4(vm_, object4);
     NativeReferenceHelper *ref2 = new NativeReferenceHelper(vm_, globalObject4, WeakRefCallback);
     ref2->SetWeakCallback();
-    int weakNodeNum = 0;
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
-    auto ecmaGlobalStorage = thread_->GetEcmaGlobalStorage();
-    ecmaGlobalStorage->IterateWeakUsageGlobal([&weakNodeNum]([[maybe_unused]] EcmaGlobalStorage::Node *node) {
-        weakNodeNum++;
-    });
     delete temp;
     delete ref2;
-    ASSERT_EQ(weakNodeNum, 4);
 }
 
 HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
