@@ -348,48 +348,7 @@ bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
             topFrame = false;
             FrameIterator itNext(it.GetSp(), thread);
             itNext.Advance<GCVisitedFlag::IGNORED>();
-            auto nextMethod = itNext.CheckAndGetMethod();
-            if (nextMethod == nullptr) {
-                continue;
-            }
-            JSFunction* function = JSFunction::Cast(itNext.GetFunction().GetTaggedObject());
-            JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-            if (!extraInfoValue.IsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
-                DebugInfoExtractor *debugExtractor =
-                    JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
-                panda_file::File::EntityId methodId =
-                    reinterpret_cast<MethodLiteral *>(GetMethodIdentifier(nextMethod, itNext))->GetMethodId();
-                const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
-                const char *tempVariable;
-                if (sourceFile.empty()) {
-                    tempVariable = "";
-                } else {
-                    tempVariable = sourceFile.c_str();
-                }
-
-                if (!CheckAndCopy(url_, sizeof(url_), tempVariable)) {
-                    return false;
-                }
-                int lineNumber = 0;
-                auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
-                    lineNumber = line + 1;
-                    return true;
-                };
-                int columnNumber = 0;
-                auto callbackColumnFunc = [&columnNumber](int32_t column) -> bool {
-                    columnNumber += column + 1;
-                    return true;
-                };
-                uint32_t offset = itNext.GetBytecodeOffset();
-                if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset)) {
-                    line_ = '?';
-                }
-                if (!debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-                    column_ = '?';
-                }
-                line_ = lineNumber;
-                column_ = columnNumber;
-            }
+            GetRowAndColumnNumbers(itNext);
         }
         methodKey.methodIdentifier = GetMethodIdentifier(method, it);
         if (stackInfo.count(methodKey) == 0) {
@@ -508,24 +467,24 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
     }
     if (extraInfoValue.CheckIsJSNativePointer()) {
         stream << JSNativePointer::Cast(extraInfoValue.GetTaggedObject())->GetExternalPointer();
-        CheckAndCopy(functionName, size, "arkui(");
-        const uint8_t arkuiBeginLength = 6; // 6:the length of "arkui("
-        CheckAndCopy(functionName + arkuiBeginLength, size - arkuiBeginLength, methodNameStr.c_str());
+        CheckAndCopy(functionName, size, methodNameStr.c_str());
         const uint8_t methodNameStrLength = methodNameStr.size();
-        CheckAndCopy(functionName + arkuiBeginLength + methodNameStrLength, size - arkuiBeginLength - methodNameStrLength, stream.str().c_str());
+        CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(");
+        const uint8_t arkuiBeginLength = 1; // 1:the length of "("
+        CheckAndCopy(functionName + methodNameStrLength + arkuiBeginLength, size - methodNameStrLength - arkuiBeginLength, stream.str().c_str());
         uint8_t srcLength = stream.str().size();
-        CheckAndCopy(functionName + arkuiBeginLength + methodNameStrLength + srcLength, size - arkuiBeginLength - methodNameStrLength - srcLength, ")");
+        CheckAndCopy(functionName + methodNameStrLength + arkuiBeginLength + srcLength, size - methodNameStrLength - arkuiBeginLength - srcLength, ")");
         return;
     }
     // builtin method
     auto method = it.CheckAndGetMethod();
     auto addr = method->GetNativePointer();
     stream << addr;
-    CheckAndCopy(functionName, size, "builtin(");
-    const uint8_t builtinBeginLength = 8; // 8:the length of "builtin("
-    CheckAndCopy(functionName + builtinBeginLength, size - builtinBeginLength, methodNameStr.c_str());
+    CheckAndCopy(functionName, size, methodNameStr.c_str());
     const uint8_t methodNameStrLength = methodNameStr.size();
-    CheckAndCopy(functionName + builtinBeginLength + methodNameStrLength, size - builtinBeginLength - methodNameStrLength, stream.str().c_str());
+    CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(");
+    const uint8_t builtinBeginLength = 1; // 1:the length of "("
+    CheckAndCopy(functionName + methodNameStrLength + builtinBeginLength, size - methodNameStrLength - builtinBeginLength, stream.str().c_str());
     uint8_t srcLength = stream.str().size();
     CheckAndCopy(functionName + builtinBeginLength + methodNameStrLength + srcLength, size - builtinBeginLength - methodNameStrLength - srcLength, ")");
 }
@@ -753,5 +712,50 @@ void CpuProfiler::RecordCallNapiInfo(const std::string &methodAddr)
     uint64_t currentTime = SamplingProcessor::GetMicrosecondsTimeStamp();
     generator_->RecordCallNapiTime(currentTime);
     generator_->RecordCallNapiAddr(methodAddr);
+}
+
+void CpuProfiler::GetRowAndColumnNumbers(FrameIterator &itNext)
+{
+    auto nextMethod = itNext.CheckAndGetMethod();
+    if (nextMethod == nullptr) {
+        return;
+    }
+    JSFunction* function = JSFunction::Cast(itNext.GetFunction().GetTaggedObject());
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
+    if (!extraInfoValue.IsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
+        DebugInfoExtractor *debugExtractor =
+            JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
+        panda_file::File::EntityId methodId =
+            reinterpret_cast<MethodLiteral *>(GetMethodIdentifier(nextMethod, itNext))->GetMethodId();
+        const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
+        const char *tempVariable;
+        if (sourceFile.empty()) {
+            tempVariable = "";
+        } else {
+            tempVariable = sourceFile.c_str();
+        }
+        if (!CheckAndCopy(url_, sizeof(url_), tempVariable)) {
+            return;
+        }
+        int lineNumber = 0;
+        auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+            lineNumber = line + 1;
+            return true;
+        };
+        int columnNumber = 0;
+        auto callbackColumnFunc = [&columnNumber](int32_t column) -> bool {
+            columnNumber += column + 1;
+            return true;
+        };
+        uint32_t offset = itNext.GetBytecodeOffset();
+        if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset)) {
+            line_ = '?';
+        }
+        if (!debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
+            column_ = '?';
+        }
+        line_ = lineNumber;
+        column_ = columnNumber;
+    }
 }
 } // namespace panda::ecmascript
