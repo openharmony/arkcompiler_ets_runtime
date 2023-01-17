@@ -29,7 +29,7 @@ print(array[first]);
 print(array[second]);
 
 // test object
-let phrase: { [key: number | string]: any } = {
+let phrase: { 0: string, "100": string | number, fullPhrase: any } = {
     0 : "100",
     "100" : "hello",
 
