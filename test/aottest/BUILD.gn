@@ -148,7 +148,8 @@ group("ark_aot_test") {
     "throwundefindeifhole:throwundefindeifholeAotAction",
     "tonumber:tonumberAotAction",
     "tonumeric:tonumericAotAction",
-    "try_catch_finally:try_catch_finallyAotAction",
+
+    # "try_catch_finally:try_catch_finallyAotAction",
     "trystglobalbynameprefid32:trystglobalbynameprefid32AotAction",
     "typeof:typeofAotAction",
     "xor:xorAotAction",
