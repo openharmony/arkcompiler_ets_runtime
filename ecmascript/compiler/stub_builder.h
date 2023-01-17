@@ -542,6 +542,8 @@ public:
     GateRef GetMethodFromJSProxy(GateRef proxy);
     GateRef GetHandlerFromJSProxy(GateRef proxy);
     GateRef GetTargetFromJSProxy(GateRef proxy);
+    inline void SetHotnessCounter(GateRef glue, GateRef method, GateRef value);
+    inline void SaveHotnessCounterIfNeeded(GateRef glue, GateRef sp, GateRef hotnessCounter, JSCallMode mode);
     inline void SavePcIfNeeded(GateRef glue);
     inline void SaveJumpSizeIfNeeded(GateRef glue, GateRef jumpSize);
     inline GateRef ComputeTaggedArraySize(GateRef length);
@@ -550,7 +552,7 @@ public:
     inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
-    GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
+    GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
