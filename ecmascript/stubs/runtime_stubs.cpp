@@ -1029,8 +1029,8 @@ DEF_RUNTIME_STUBS(UpFrame)
 {
     RUNTIME_STUBS_HEADER(UpFrame);
     FrameHandler frameHandler(thread);
-    uint32_t pcOffset = INVALID_INDEX;
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    uint32_t pcOffset = panda_file::INVALID_OFFSET;
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             thread->SetCurrentFrame(frameHandler.GetSp());
             thread->SetLastFp(frameHandler.GetFp());
@@ -1459,7 +1459,7 @@ DEF_RUNTIME_STUBS(NotifyBytecodePcChanged)
 {
     RUNTIME_STUBS_HEADER(NotifyBytecodePcChanged);
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
             continue;
         }

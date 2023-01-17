@@ -70,12 +70,28 @@ public:
     bool IsInterpretedFrame() const
     {
         FrameType type = GetFrameType();
-        return (type >= FrameType::INTERPRETER_FIRST) && (type <= FrameType::INTERPRETER_LAST);
+        return IsInterpretedFrame(type);
     }
 
     bool IsInterpretedFrame(FrameType type) const
     {
         return (type >= FrameType::INTERPRETER_FIRST) && (type <= FrameType::INTERPRETER_LAST);
+    }
+
+    bool IsJSFrame() const
+    {
+        FrameType type = GetFrameType();
+        return IsJSFrame(type);
+    }
+
+    bool IsJSFrame(FrameType type) const
+    {
+        return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type);
+    }
+
+    bool IsOptimizedJSFunctionFrame(FrameType type) const
+    {
+        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
     }
 
     bool IsAsmInterpretedFrame() const
@@ -118,6 +134,37 @@ public:
         return (type == FrameType::INTERPRETER_ENTRY_FRAME);
     }
 
+    bool IsAsmInterpretedEntryFrame() const
+    {
+        FrameType type = GetFrameType();
+        return IsAsmInterpretedEntryFrame(type);
+    }
+
+    bool IsAsmInterpretedEntryFrame(FrameType type) const
+    {
+        return (type == FrameType::ASM_INTERPRETER_ENTRY_FRAME || type == FrameType::ASM_INTERPRETER_BRIDGE_FRAME);
+    }
+
+    bool IsCInterpretedEntryFrame() const
+    {
+        return (GetFrameType() == FrameType::INTERPRETER_ENTRY_FRAME);
+    }
+
+    bool IsCInterpretedEntryFrame(FrameType type) const
+    {
+        return (type == FrameType::INTERPRETER_ENTRY_FRAME);
+    }
+
+    bool IsOptimizedEntryFrame(FrameType type) const
+    {
+        return type == FrameType::OPTIMIZED_ENTRY_FRAME;
+    }
+
+    bool IsJSEntryFrame(FrameType type) const
+    {
+        return IsAsmInterpretedEntryFrame(type) || IsOptimizedEntryFrame(type);
+    }
+
     bool IsLeaveFrame() const
     {
         FrameType type = GetFrameType();
@@ -134,8 +181,8 @@ public:
         return fp_;
     }
 
-    void PrevInterpretedFrame();
-    JSTaggedType *GetPrevInterpretedFrame();
+    void PrevJSFrame();
+    JSTaggedType *GetPrevJSFrame();
 
     // for InterpretedFrame.
     JSTaggedValue GetVRegValue(size_t index) const;
@@ -181,7 +228,7 @@ private:
         return *typeAddr;
     }
 
-    void AdvanceToInterpretedFrame();
+    void AdvanceToJSFrame();
     uintptr_t GetInterpretedFrameEnd(JSTaggedType *prevSp) const;
 private:
     JSTaggedType *sp_ {nullptr};

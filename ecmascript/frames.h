@@ -458,6 +458,7 @@ public:
     }
 
     friend class FrameIterator;
+    friend class FrameHandler;
     void GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const;
     void GetFuncCalleeRegAndOffset(
         const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const;
