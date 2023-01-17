@@ -93,7 +93,14 @@ JSThread::~JSThread()
     currentHandleStorageIndex_ = -1;
     handleScopeCount_ = 0;
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
-    GetEcmaVM()->GetChunk()->Delete(globalStorage_);
+    if (globalStorage_ != nullptr) {
+        GetEcmaVM()->GetChunk()->Delete(globalStorage_);
+        globalStorage_ = nullptr;
+    }
+    if (globalDebugStorage_ != nullptr) {
+        GetEcmaVM()->GetChunk()->Delete(globalDebugStorage_);
+        globalDebugStorage_ = nullptr;
+    }
 
     GetNativeAreaAllocator()->Free(glueData_.frameBase_, sizeof(JSTaggedType) *
         vm_->GetEcmaParamConfiguration().GetMaxStackSize());
@@ -162,6 +169,16 @@ bool JSThread::IsStartGlobalLeakCheck() const
     return GetEcmaVM()->GetJSOptions().IsStartGlobalLeakCheck();
 }
 
+bool JSThread::EnableGlobalObjectLeakCheck() const
+{
+    return GetEcmaVM()->GetJSOptions().EnableGlobalObjectLeakCheck();
+}
+
+bool JSThread::EnableGlobalPrimitiveLeakCheck() const
+{
+    return GetEcmaVM()->GetJSOptions().EnableGlobalPrimitiveLeakCheck();
+}
+
 void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
     const RootBaseAndDerivedVisitor &derivedVisitor)
 {
@@ -218,9 +235,11 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     int primitiveCount = 0;
-    bool isLeakCheck = IsStartGlobalLeakCheck();
-    globalDebugStorage_->IterateUsageGlobal(
-        [visitor, &globalCount, &typeCount, &primitiveCount, isLeakCheck](DebugNode *node) {
+    bool isStartLeakCheck = IsStartGlobalLeakCheck();
+    bool isObjectLeakCheck = EnableGlobalObjectLeakCheck();
+    bool isPrimitiveLeakCheck = EnableGlobalPrimitiveLeakCheck();
+    globalDebugStorage_->IterateUsageGlobal([visitor, &globalCount, &typeCount, &primitiveCount,
+        isStartLeakCheck, isObjectLeakCheck, isPrimitiveLeakCheck](DebugNode *node) {
         node->MarkCount();
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
@@ -234,7 +253,7 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
 
             // Print global information about possible memory leaks.
             // You can print the global new stack within the range of the leaked global number.
-            if (!isLeakCheck && node->GetGlobalNumber() > 0 && node->GetMarkCount() > 0) {
+            if (isObjectLeakCheck && !isStartLeakCheck && node->GetGlobalNumber() > 0 && node->GetMarkCount() > 0) {
                 LOG_ECMA(INFO) << "Global maybe leak object address:" << std::hex << object
                                << ", type:" << JSHClass::DumpJSType(JSType(object->GetClass()->GetObjectType()))
                                << ", node address:" << node
@@ -243,6 +262,12 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
             }
         } else {
             primitiveCount++;
+            if (isPrimitiveLeakCheck && !isStartLeakCheck && node->GetGlobalNumber() > 0 && node->GetMarkCount() > 0) {
+                LOG_ECMA(INFO) << "Global maybe leak primitive:" << std::hex << value.GetRawData()
+                               << ", node address:" << node
+                               << ", number:" << std::dec <<  node->GetGlobalNumber()
+                               << ", markCount:" << node->GetMarkCount();
+            }
         }
         globalCount++;
     });
