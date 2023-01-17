@@ -40,6 +40,7 @@ enum ArkProperties {
     ENABLE_SNAPSHOT_DESERIALIZE = 1 << 8,
     EXCEPTION_BACKTRACE = 1 << 9,
     GLOBAL_LEAK_CHECK = 1 << 10,
+    ENABLE_IDLE_GC = 1 << 11,
 };
 
 // asm interpreter control parsed option
@@ -278,7 +279,7 @@ public:
     int GetDefaultProperties()
     {
         return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP |
-            ArkProperties::ENABLE_ARKTOOLS;
+            ArkProperties::ENABLE_ARKTOOLS | ArkProperties::ENABLE_IDLE_GC;
     }
 
     int GetArkProperties()
@@ -319,6 +320,11 @@ public:
     bool EnableThreadCheck() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::THREAD_CHECK) != 0;
+    }
+
+    bool EnableIdleGC() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_IDLE_GC) != 0;
     }
 
     bool EnableGlobalLeakCheck() const
