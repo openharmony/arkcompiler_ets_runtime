@@ -465,6 +465,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
     result_ += "{";
     bool hasContent = false;
 
+    ASSERT(!value->IsAccessor());
     JSHandle<JSObject> obj(value);
     if (!replacer->IsArray(thread_)) {
         if (UNLIKELY(value->IsJSProxy() || value->IsTypedArray())) {  // serialize proxy and typedArray
@@ -693,6 +694,10 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
             handleKey_.Update(entryKey);
             int index = numberDic->FindEntry(entryKey);
             JSTaggedValue value = numberDic->GetValue(index);
+            if (UNLIKELY(value.IsAccessor())) {
+                value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
+                                             JSHandle<JSTaggedValue>(obj));
+            }
             handleValue_.Update(value);
             hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
