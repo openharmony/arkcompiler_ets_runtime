@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,14 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_DFX_NATIVE_DFX_BACKTRACE_H
-#define ECMASCRIPT_DFX_NATIVE_DFX_BACKTRACE_H
-
-#include <cstdint>
-#include <string>
+#include "ecmascript/platform/backtrace.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
-void PrintBacktrace(uintptr_t value);
-std::string PrintBacktraceReturnString();
+void PrintBacktrace()
+{
+    LOG_ECMA(INFO) << "Print backtrace in macos not support";
+}
 } // namespace panda::ecmascript
-#endif  // ECMASCRIPT_DFX_NATIVE_DFX_BACKTRACE_H

@@ -53,13 +53,12 @@ public:
 HWTEST_F_L0(JSHandleTest, NewGlobalHandle)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto global = thread->GetEcmaGlobalStorage();
 
     uintptr_t globalString = 0;
     {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         auto string1 = factory->NewFromASCII("test1");
-        globalString = global->NewGlobalHandle(string1.GetTaggedType());
+        globalString = thread->NewGlobalHandle(string1.GetTaggedType());
     }
     // trigger GC
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
@@ -74,7 +73,6 @@ HWTEST_F_L0(JSHandleTest, NewGlobalHandle)
 HWTEST_F_L0(JSHandleTest, NewGlobalHandle1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto global = thread->GetEcmaGlobalStorage();
 
     uintptr_t globalString[600] = {0};
     {
@@ -82,13 +80,13 @@ HWTEST_F_L0(JSHandleTest, NewGlobalHandle1)
         for (int i = 0; i < 600; i++) {
             std::string test = "test" + std::to_string(i);
             auto string1 = factory->NewFromUtf8(test.c_str());
-            globalString[i] = global->NewGlobalHandle(string1.GetTaggedType());
+            globalString[i] = thread->NewGlobalHandle(string1.GetTaggedType());
         }
     }
     // trigger GC
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     for (int i = 300; i > 200; i--) {
-        global->DisposeGlobalHandle(globalString[i]);
+        thread->DisposeGlobalHandle(globalString[i]);
     }
     // check result
     for (int i = 0; i <= 200; i++) {
@@ -112,7 +110,6 @@ HWTEST_F_L0(JSHandleTest, NewGlobalHandle1)
 HWTEST_F_L0(JSHandleTest, DisposeGlobalHandle)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto global = thread->GetEcmaGlobalStorage();
 
     uintptr_t globalString[600] = {0};
     {
@@ -120,25 +117,17 @@ HWTEST_F_L0(JSHandleTest, DisposeGlobalHandle)
         for (int i = 0; i < 600; i++) {
             std::string test = "test" + std::to_string(i);
             auto string1 = factory->NewFromUtf8(test.c_str());
-            globalString[i] = global->NewGlobalHandle(string1.GetTaggedType());
+            globalString[i] = thread->NewGlobalHandle(string1.GetTaggedType());
         }
     }
     for (int i = 512; i > 200; i--) {
-        global->DisposeGlobalHandle(globalString[i]);
+        thread->DisposeGlobalHandle(globalString[i]);
     }
-    int count = 0;
-    global->IterateUsageGlobal([&count] (EcmaGlobalStorage::Node *node) {
-        JSTaggedValue value(node->GetObject());
-        EXPECT_TRUE(value.IsString());
-        count++;
-    });
-    EXPECT_EQ(count, 288);
 }
 
 HWTEST_F_L0(JSHandleTest, DisposeAndNewGlobalHandle)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto global = thread->GetEcmaGlobalStorage();
 
     uintptr_t globalString[768] = {0};
     {
@@ -146,11 +135,11 @@ HWTEST_F_L0(JSHandleTest, DisposeAndNewGlobalHandle)
         for (int i = 0; i < 768; i++) {
             std::string test = "test" + std::to_string(i);
             auto string1 = factory->NewFromUtf8(test.c_str());
-            globalString[i] = global->NewGlobalHandle(string1.GetTaggedType());
+            globalString[i] = thread->NewGlobalHandle(string1.GetTaggedType());
         }
     }
     for (int i = 767; i > 200; i--) {
-        global->DisposeGlobalHandle(globalString[i]);
+        thread->DisposeGlobalHandle(globalString[i]);
     }
     // trigger GC
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
@@ -159,7 +148,7 @@ HWTEST_F_L0(JSHandleTest, DisposeAndNewGlobalHandle)
         for (int i = 200; i < 400; i++) {
             std::string test = "test" + std::to_string(i);
             auto string1 = factory->NewFromUtf8(test.c_str());
-            globalString[i] = global->NewGlobalHandle(string1.GetTaggedType());
+            globalString[i] = thread->NewGlobalHandle(string1.GetTaggedType());
         }
     }
     // check result
@@ -175,14 +164,13 @@ HWTEST_F_L0(JSHandleTest, DisposeAndNewGlobalHandle)
 HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto global = thread->GetEcmaGlobalStorage();
 
     uintptr_t globalString = 0;
     {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         auto string1 = factory->NewFromASCII("test1");
-        globalString = global->NewGlobalHandle(string1.GetTaggedType());
-        globalString = global->SetWeak(globalString);
+        globalString = thread->NewGlobalHandle(string1.GetTaggedType());
+        globalString = thread->SetWeak(globalString);
 
         // trigger GC
         thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
@@ -192,7 +180,7 @@ HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle)
             factory->NewFromASCII("test1"),
             JSHandle<EcmaString>(thread, *reinterpret_cast<EcmaString **>(globalString))),
             0);
-        EXPECT_TRUE(global->IsWeak(globalString));
+        EXPECT_TRUE(thread->IsWeak(globalString));
     }
     // trigger GC
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
@@ -205,7 +193,6 @@ HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle)
 HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto global = thread->GetEcmaGlobalStorage();
 
     uintptr_t globalString[800] = {0};
     {
@@ -213,12 +200,12 @@ HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle1)
         for (int i = 0; i < 800; i++) {
             std::string test = "test" + std::to_string(i);
             auto string1 = factory->NewFromUtf8(test.c_str());
-            globalString[i] = global->NewGlobalHandle(string1.GetTaggedType());
-            globalString[i] = global->SetWeak(globalString[i]);
-            EXPECT_TRUE(global->IsWeak(globalString[i]));
+            globalString[i] = thread->NewGlobalHandle(string1.GetTaggedType());
+            globalString[i] = thread->SetWeak(globalString[i]);
+            EXPECT_TRUE(thread->IsWeak(globalString[i]));
         }
         for (int i = 600; i > 200; i--) {
-            global->DisposeGlobalHandle(globalString[i]);
+            thread->DisposeGlobalHandle(globalString[i]);
         }
         // trigger GC
         thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);

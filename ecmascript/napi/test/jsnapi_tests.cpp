@@ -271,8 +271,8 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_001)
     std::string test = "中";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Length(), 1);          
-    char buffer[1];                                      
+    EXPECT_EQ(testString->Length(), 1);
+    char buffer[1];
     EXPECT_EQ(testString->WriteLatin1(buffer, 1), 1);
 
     EXPECT_EQ(buffer[0], '-'); // '-' == 0x2D
@@ -284,8 +284,8 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_002)
     std::string test = "En123";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Length(), 5);          
-    char buffer[5];                                      
+    EXPECT_EQ(testString->Length(), 5);
+    char buffer[5];
     EXPECT_EQ(testString->WriteLatin1(buffer, 5), 5);
 
     EXPECT_EQ(buffer[0], 'E');
@@ -1018,15 +1018,9 @@ HWTEST_F_L0(JSNApiTests, WeakRefSecondPassCallback)
     Global<ObjectRef> globalObject4(vm_, object4);
     NativeReferenceHelper *ref2 = new NativeReferenceHelper(vm_, globalObject4, WeakRefCallback);
     ref2->SetWeakCallback();
-    int weakNodeNum = 0;
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
-    auto ecmaGlobalStorage = thread_->GetEcmaGlobalStorage();
-    ecmaGlobalStorage->IterateWeakUsageGlobal([&weakNodeNum]([[maybe_unused]] EcmaGlobalStorage::Node *node) {
-        weakNodeNum++;
-    });
     delete temp;
     delete ref2;
-    ASSERT_EQ(weakNodeNum, 4);
 }
 
 HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)

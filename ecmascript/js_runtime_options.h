@@ -39,7 +39,8 @@ enum ArkProperties {
     ENABLE_SNAPSHOT_SERIALIZE = 1 << 7,
     ENABLE_SNAPSHOT_DESERIALIZE = 1 << 8,
     EXCEPTION_BACKTRACE = 1 << 9,
-    ENABLE_IDLE_GC = 1 << 10,
+    GLOBAL_LEAK_CHECK = 1 << 10,
+    ENABLE_IDLE_GC = 1 << 11,
 };
 
 // asm interpreter control parsed option
@@ -324,6 +325,21 @@ public:
     bool EnableIdleGC() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_IDLE_GC) != 0;
+    }
+
+    bool EnableGlobalLeakCheck() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::GLOBAL_LEAK_CHECK) != 0;
+    }
+
+    bool IsStartGlobalLeakCheck() const
+    {
+        return startGlobalLeakCheck_;
+    }
+
+    void SwitchStartGlobalLeakCheck()
+    {
+        startGlobalLeakCheck_ = !startGlobalLeakCheck_;
     }
 
     bool EnableSnapshotSerialize() const
@@ -885,6 +901,7 @@ private:
     bool traceDeopt_ {false};
     uint32_t deoptThreshold_ {10};
     bool optCodeProfiler_ {false};
+    bool startGlobalLeakCheck_ {false};
 };
 }  // namespace panda::ecmascript
 

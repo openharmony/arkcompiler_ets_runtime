@@ -14,9 +14,10 @@
  */
 
 #include "ecmascript/js_thread.h"
+#include "ecmascript/log_wrapper.h"
 
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
-#include "ecmascript/dfx/native_dfx/backtrace.h"
+#include "ecmascript/platform/backtrace.h"
 #endif
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_param_configuration.h"
@@ -58,7 +59,27 @@ JSThread *JSThread::Create(EcmaVM *vm)
 JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
 {
     auto chunk = vm->GetChunk();
-    globalStorage_ = chunk->New<EcmaGlobalStorage>(this, vm->GetNativeAreaAllocator());
+    if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        globalStorage_ = chunk->New<EcmaGlobalStorage<Node>>(this, vm->GetNativeAreaAllocator());
+        newGlobalHandle_ = std::bind(&EcmaGlobalStorage<Node>::NewGlobalHandle, globalStorage_, std::placeholders::_1);
+        disposeGlobalHandle_ = std::bind(&EcmaGlobalStorage<Node>::DisposeGlobalHandle, globalStorage_,
+            std::placeholders::_1);
+        setWeak_ = std::bind(&EcmaGlobalStorage<Node>::SetWeak, globalStorage_, std::placeholders::_1,
+            std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+        clearWeak_ = std::bind(&EcmaGlobalStorage<Node>::ClearWeak, globalStorage_, std::placeholders::_1);
+        isWeak_ = std::bind(&EcmaGlobalStorage<Node>::IsWeak, globalStorage_, std::placeholders::_1);
+    } else {
+        globalDebugStorage_ =
+            chunk->New<EcmaGlobalStorage<DebugNode>>(this, vm->GetNativeAreaAllocator());
+        newGlobalHandle_ = std::bind(&EcmaGlobalStorage<DebugNode>::NewGlobalHandle, globalDebugStorage_,
+            std::placeholders::_1);
+        disposeGlobalHandle_ = std::bind(&EcmaGlobalStorage<DebugNode>::DisposeGlobalHandle, globalDebugStorage_,
+            std::placeholders::_1);
+        setWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::SetWeak, globalDebugStorage_, std::placeholders::_1,
+            std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+        clearWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::ClearWeak, globalDebugStorage_, std::placeholders::_1);
+        isWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::IsWeak, globalDebugStorage_, std::placeholders::_1);
+    }
     propertiesCache_ = new PropertiesCache();
     vmThreadControl_ = new VmThreadControl();
 }
@@ -94,8 +115,8 @@ void JSThread::SetException(JSTaggedValue exception)
     glueData_.exception_ = exception;
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
     if (vm_->GetJSOptions().EnableExceptionBacktrace()) {
-        LOG_ECMA(INFO) << "SetException Backtrace:";
-        PrintBacktrace(exception.GetRawData());
+        LOG_ECMA(INFO) << "SetException:" << exception.GetRawData();
+        PrintBacktrace();
     }
 #endif
 }
@@ -136,6 +157,11 @@ const JSTaggedType *JSThread::GetCurrentInterpretedFrame() const
     return GetCurrentSPFrame();
 }
 
+bool JSThread::IsStartGlobalLeakCheck() const
+{
+    return GetEcmaVM()->GetJSOptions().IsStartGlobalLeakCheck();
+}
+
 void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
     const RootBaseAndDerivedVisitor &derivedVisitor)
 {
@@ -152,29 +178,28 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     FrameHandler frameHandler(this);
     frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
     // visit tagged handle storage roots
-#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
-    IterateHandleWithCheck(visitor, rangeVisitor);
-#else
-    if (currentHandleStorageIndex_ != -1) {
-        int32_t nid = currentHandleStorageIndex_;
-        for (int32_t i = 0; i <= nid; ++i) {
-            auto node = handleStorageNodes_.at(i);
-            auto start = node->data();
-            auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            rangeVisitor(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+    if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        IterateHandleWithCheck(visitor, rangeVisitor);
+    } else {
+        if (currentHandleStorageIndex_ != -1) {
+            int32_t nid = currentHandleStorageIndex_;
+            for (int32_t i = 0; i <= nid; ++i) {
+                auto node = handleStorageNodes_.at(i);
+                auto start = node->data();
+                auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
+                rangeVisitor(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            }
         }
-    }
 
-    globalStorage_->IterateUsageGlobal([visitor](EcmaGlobalStorage::Node *node) {
-        JSTaggedValue value(node->GetObject());
-        if (value.IsHeapObject()) {
-            visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
-        }
-    });
-#endif
+        globalStorage_->IterateUsageGlobal([visitor](Node *node) {
+            JSTaggedValue value(node->GetObject());
+            if (value.IsHeapObject()) {
+                visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            }
+        });
+    }
 }
 
-#ifdef ECMASCRIPT_ENABLE_GLOBAL_LEAK_CHECK
 void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
 {
     size_t handleCount = 0;
@@ -193,8 +218,9 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     int primitiveCount = 0;
-    globalStorage_->IterateUsageGlobal(
-        [visitor, &globalCount, &typeCount, &primitiveCount](EcmaGlobalStorage::Node *node) {
+    bool isLeakCheck = IsStartGlobalLeakCheck();
+    globalDebugStorage_->IterateUsageGlobal(
+        [visitor, &globalCount, &typeCount, &primitiveCount, isLeakCheck](DebugNode *node) {
         node->MarkCount();
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
@@ -206,16 +232,9 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
             }
             typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
 
-            // There are some reasonable framework-level global objects in the initial phase.
-            // The value can be adjusted as required.
-            static const int MIN_NUMBER_COUNT = 110000;
-            static const int GLOBAL_NUMBER_COUNT = 10000;
-            static const int MARK_INTERVAL_TIMES = 10;
             // Print global information about possible memory leaks.
             // You can print the global new stack within the range of the leaked global number.
-            if (node->GetGlobalNumber() > MIN_NUMBER_COUNT &&
-                node->GetGlobalNumber() < MIN_NUMBER_COUNT + GLOBAL_NUMBER_COUNT &&
-                ((node->GetMarkCount() % MARK_INTERVAL_TIMES) == 0)) {
+            if (!isLeakCheck && node->GetGlobalNumber() > 0 && node->GetMarkCount() > 0) {
                 LOG_ECMA(INFO) << "Global maybe leak object address:" << std::hex << object
                                << ", type:" << JSHClass::DumpJSType(JSType(object->GetClass()->GetObjectType()))
                                << ", node address:" << node
@@ -230,40 +249,45 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
 
     // Determine whether memory leakage by checking handle and global count.
     LOG_ECMA(INFO) << "Iterate root handle count:" << handleCount << ", global handle count:" << globalCount;
-    LOG_ECMA(INFO) << "Global type Primitive count:" << primitiveCount;
+    OPTIONAL_LOG(GetEcmaVM(), INFO) << "Global type Primitive count:" << primitiveCount;
     // Print global object type statistic.
     static const int MIN_COUNT_THRESHOLD = 50;
     for (int i = 0; i < JS_TYPE_LAST; i++) {
         if (typeCount[i] > MIN_COUNT_THRESHOLD) {
-            LOG_ECMA(INFO) << "Global type " << JSHClass::DumpJSType(JSType(i)) << " count:" << typeCount[i];
+            OPTIONAL_LOG(GetEcmaVM(), INFO) << "Global type " << JSHClass::DumpJSType(JSType(i))
+                                            << " count:" << typeCount[i];
         }
     }
 }
-#endif
 
 void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
 {
-    globalStorage_->IterateWeakUsageGlobal([this, visitor](EcmaGlobalStorage::Node *node) {
+    auto callBack = [this, visitor](WeakNode *node) {
         JSTaggedValue value(node->GetObject());
-        if (value.IsHeapObject()) {
-            auto object = value.GetTaggedObject();
-            auto fwd = visitor(object);
-            if (fwd == nullptr) {
-                // undefind
-                node->SetObject(JSTaggedValue::Undefined().GetRawData());
-                auto weakNode = reinterpret_cast<EcmaGlobalStorage::WeakNode *>(node);
-                auto nativeFinalizeCallback = weakNode->GetNativeFinalizeCallback();
-                if (nativeFinalizeCallback) {
-                    weakNodeNativeFinalizeCallbacks_.push_back(std::make_pair(nativeFinalizeCallback,
-                                                                              weakNode->GetReference()));
-                }
-                weakNode->CallFreeGlobalCallback();
-            } else if (fwd != object) {
-                // update
-                node->SetObject(JSTaggedValue(fwd).GetRawData());
-            }
+        if (!value.IsHeapObject()) {
+            return;
         }
-    });
+        auto object = value.GetTaggedObject();
+        auto fwd = visitor(object);
+        if (fwd == nullptr) {
+            // undefind
+            node->SetObject(JSTaggedValue::Undefined().GetRawData());
+            auto nativeFinalizeCallback = node->GetNativeFinalizeCallback();
+            if (nativeFinalizeCallback) {
+                weakNodeNativeFinalizeCallbacks_.push_back(std::make_pair(nativeFinalizeCallback,
+                                                                          node->GetReference()));
+            }
+            node->CallFreeGlobalCallback();
+        } else if (fwd != object) {
+            // update
+            node->SetObject(JSTaggedValue(fwd).GetRawData());
+        }
+    };
+    if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        globalStorage_->IterateWeakUsageGlobal(callBack);
+    } else {
+        globalDebugStorage_->IterateWeakUsageGlobal(callBack);
+    }
 }
 
 bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)

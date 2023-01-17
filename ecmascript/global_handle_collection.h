@@ -33,14 +33,14 @@ public:
     template<typename T>
     JSHandle<T> NewHandle(JSTaggedType value)
     {
-        uintptr_t addr = thread_->GetEcmaGlobalStorage()->NewGlobalHandle(value);
+        uintptr_t addr = thread_->NewGlobalHandle(value);
         return JSHandle<T>(addr);
     }
 
     template<typename T>
     void Dispose(JSHandle<T> handle)
     {
-        thread_->GetEcmaGlobalStorage()->DisposeGlobalHandle(handle.GetAddress());
+        thread_->DisposeGlobalHandle(handle.GetAddress());
     }
 
 private:
