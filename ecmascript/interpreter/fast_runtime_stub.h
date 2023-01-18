@@ -51,50 +51,16 @@ public:
     static inline JSTaggedValue SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                    JSTaggedValue value);
 
-    static inline bool FastSetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                              JSTaggedValue value);
-    static inline bool FastSetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
-                                              JSTaggedValue value);
-    static inline JSTaggedValue FastGetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
-    static inline JSTaggedValue FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
-    template<bool UseHole = false>
-    static inline JSTaggedValue FastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
-    static inline PropertyAttributes AddPropertyByName(JSThread *thread, JSHandle<JSObject> objHandle,
-                                                       JSHandle<JSTaggedValue> keyHandle,
-                                                       JSHandle<JSTaggedValue> valueHandle,
-                                                       PropertyAttributes attr);
-
     static inline JSTaggedValue NewThisObject(JSThread *thread, JSTaggedValue ctor, JSTaggedValue newTarget,
                                               InterpretedFrame* state);
     static inline JSTaggedValue CallGetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                            JSTaggedValue value);
-    static inline JSTaggedValue FastParseDate(const EcmaString *str);
 
 private:
     friend class ICRuntimeStub;
-    static inline bool IsSpecialIndexedObj(JSType jsType);
-    static inline bool IsSpecialReceiverObj(JSType jsType);
-    static inline bool IsFastTypeArray(JSType jsType);
-    static inline int32_t TryToElementsIndex(JSTaggedValue key);
+
     static inline JSTaggedValue CallSetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue value,
                                            JSTaggedValue accessorValue);
-    static inline bool ShouldCallSetter(JSTaggedValue receiver, JSTaggedValue holder, JSTaggedValue accessorValue,
-                                        PropertyAttributes attr);
-    static inline JSTaggedValue AddPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
-                                                   JSTaggedValue value);
-
-    // non ECMA standard jsapi container
-    static inline bool IsSpecialContainer(JSType jsType);
-    static inline JSTaggedValue GetContainerProperty(JSThread *thread, JSTaggedValue receiver, uint32_t index,
-                                                     JSType jsType);
-    static inline JSTaggedValue SetContainerProperty(JSThread *thread, JSTaggedValue receiver, uint32_t index,
-                                                     JSTaggedValue value, JSType jsType);
-    static inline bool TryStringOrSymbolToIndex(JSTaggedValue key, uint32_t *output);
-    static inline JSTaggedValue FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
-                                                         JSTaggedValue key, JSType jsType);
-    static inline JSTaggedValue FastSetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
-                                                         JSTaggedValue key, JSTaggedValue value, JSType jsType);
-    static inline bool GetNumFromString(const char *str, int len, int *index, int *num);
 };
 }  // namespace panda::ecmascript
 

@@ -20,7 +20,7 @@
 #include <sys/time.h>
 
 #include "ecmascript/base/builtins_base.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/platform/time.h"
 
 namespace panda::ecmascript {
@@ -483,7 +483,7 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> msg = base::BuiltinsBase::GetCallArg(argv, 0);
     JSHandle<EcmaString> ecmaStr = JSTaggedValue::ToString(thread, msg);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    JSTaggedValue res = FastRuntimeStub::FastParseDate(*ecmaStr);
+    JSTaggedValue res = ObjectFastOperator::FastParseDate(*ecmaStr);
     if (!res.IsHole()) {
         return res;
     }
@@ -515,7 +515,7 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
     std::regex isoReg(isoRegStr);
     std::regex utcReg(utcRegStr);
     std::regex localReg(localRegStr);
-    
+
     if (std::regex_match(date, isoReg)) {
         return IsoParseStringToMs(date);
     }

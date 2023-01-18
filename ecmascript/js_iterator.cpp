@@ -20,9 +20,9 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {
 JSTaggedValue JSIterator::IteratorCloseAndReturn(JSThread *thread, const JSHandle<JSTaggedValue> &iter)
@@ -163,7 +163,7 @@ JSHandle<JSTaggedValue> JSIterator::IteratorClose(JSThread *thread, const JSHand
     }
     JSTaggedValue returnStr = globalConst->GetReturnString();
     // 3.Let return be GetMethod(iterator, "return").
-    JSTaggedValue func = FastRuntimeStub::FastGetPropertyByName(thread, iter.GetTaggedValue(), returnStr);
+    JSTaggedValue func = ObjectFastOperator::FastGetPropertyByName(thread, iter.GetTaggedValue(), returnStr);
     // 4.ReturnIfAbrupt(return).
     JSHandle<JSTaggedValue> returnFunc(thread, func);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, returnFunc);

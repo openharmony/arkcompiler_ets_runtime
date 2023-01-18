@@ -29,39 +29,39 @@
 #include "containers_treemap.h"
 #include "containers_treeset.h"
 #include "containers_vector.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
-#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashset_iterator.h"
-#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
 #include "ecmascript/js_api/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_api/js_api_list_iterator.h"
-#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_list.h"
 #include "ecmascript/js_api/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api/js_api_queue.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/js_api/js_api_queue_iterator.h"
-#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/js_api/js_api_stack_iterator.h"
-#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
@@ -156,8 +156,8 @@ JSTaggedValue ContainersPrivate::InitializeContainer(JSThread *thread, const JSH
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> key(factory->NewFromASCII(name));
     JSTaggedValue value =
-        FastRuntimeStub::GetPropertyByName<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
-    if (value != JSTaggedValue::Undefined()) {
+        ObjectFastOperator::GetPropertyByName<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+    if (!value.IsUndefined()) {
         return value;
     }
     JSHandle<JSTaggedValue> map = func(thread);
@@ -675,12 +675,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
                       FuncLength::ZERO);
     SetFrozenFunction(thread, plainArrayFuncPrototype, "getValueAt", ContainersPlainArray::GetValueAt,
                       FuncLength::ZERO);
-    
+
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersPlainArray::GetSize, "length",
                                                         FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey =  globalConst->GetHandledLengthString();
     SetGetter(thread, plainArrayFuncPrototype, lengthKey, lengthGetter);
-    
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetFunctionAtSymbol(thread, env, plainArrayFuncPrototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
                         ContainersPlainArray::GetIteratorObj, FuncLength::ONE);
@@ -813,7 +813,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeVector(JSThread *thread)
     SetFrozenFunction(thread, prototype, "getFirstElement", ContainersVector::GetFirstElement, FuncLength::ZERO);
     SetFrozenFunction(thread, prototype, "trimToCurrentLength",
                       ContainersVector::TrimToCurrentLength, FuncLength::ZERO);
-    
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, prototype, "Vector");
 
@@ -1162,7 +1162,7 @@ void ContainersPrivate::InitializeHashMapIterator(JSThread *thread)
     // HashMapIterator.prototype.next()
     SetFrozenFunction(thread, hashMapIteratorPrototype, "next", JSAPIHashMapIterator::Next, FuncLength::ZERO);
     SetStringTagSymbol(thread, env, hashMapIteratorPrototype, "HashMap Iterator");
-    
+
     globalConst->SetConstant(ConstantIndex::HASHMAP_ITERATOR_PROTOTYPE_INDEX,
                              hashMapIteratorPrototype.GetTaggedValue());
 }
@@ -1196,7 +1196,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
     SetFrozenFunction(thread, hashSetFuncPrototype, "entries", ContainersHashSet::Entries, FuncLength::ZERO);
     SetFrozenFunction(thread, hashSetFuncPrototype, "forEach", ContainersHashSet::ForEach, FuncLength::TWO,
                       BUILTINS_STUB_ID(HashSetForEach));
-    
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // @@ToStringTag
     SetStringTagSymbol(thread, env, hashSetFuncPrototype, "HashSet");

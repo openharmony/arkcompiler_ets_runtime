@@ -617,7 +617,7 @@ private:
     friend class ObjectOperator;
     friend class LoadICRuntime;
     friend class StoreICRuntime;
-    friend class FastRuntimeStub;
+    friend class ObjectFastOperator;
     friend class ICRuntimeStub;
     friend class RuntimeStubs;
 
