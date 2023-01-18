@@ -29,39 +29,39 @@
 #include "containers_treemap.h"
 #include "containers_treeset.h"
 #include "containers_vector.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
-#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"
-#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
-#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashset_iterator.h"
-#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_api/js_api_lightweightmap_iterator.h"
-#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
 #include "ecmascript/js_api/js_api_lightweightset_iterator.h"
-#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
-#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_api/js_api_list_iterator.h"
-#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_list.h"
 #include "ecmascript/js_api/js_api_plain_array_iterator.h"
-#include "ecmascript/js_api/js_api_queue.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/js_api/js_api_queue_iterator.h"
-#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_queue.h"
 #include "ecmascript/js_api/js_api_stack_iterator.h"
-#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
-#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
-#include "ecmascript/js_api/js_api_vector.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"
+#include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
@@ -157,7 +157,7 @@ JSTaggedValue ContainersPrivate::InitializeContainer(JSThread *thread, const JSH
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> key(factory->NewFromASCII(name));
     JSTaggedValue value =
-        FastRuntimeStub::GetPropertyByName<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+        ObjectFastOperator::GetPropertyByName<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
     if (!value.IsUndefined()) {
         return value;
     }

@@ -25,7 +25,6 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
@@ -33,6 +32,7 @@
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::base {
 constexpr unsigned char CODE_SPACE = 0x20;
@@ -172,7 +172,7 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
             // Repeat while k<len.
             for (uint32_t i = 0; i < len; i++) {
                 // a. Let v be Get(replacer, ToString(k)).
-                JSTaggedValue prop = FastRuntimeStub::FastGetPropertyByIndex(thread_, replacer.GetTaggedValue(), i);
+                JSTaggedValue prop = ObjectFastOperator::FastGetPropertyByIndex(thread_, replacer.GetTaggedValue(), i);
                 // b. ReturnIfAbrupt(v).
                 RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
                 /*
@@ -293,7 +293,7 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
         // a. Let toJSON be Get(value, "toJSON").
         JSHandle<JSTaggedValue> toJson = thread_->GlobalConstants()->GetHandledToJsonString();
         JSHandle<JSTaggedValue> toJsonFun(
-            thread_, FastRuntimeStub::FastGetPropertyByValue(thread_, tagValue, toJson.GetTaggedValue()));
+            thread_, ObjectFastOperator::FastGetPropertyByValue(thread_, tagValue, toJson.GetTaggedValue()));
         // b. ReturnIfAbrupt(toJSON).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         tagValue = value.GetTaggedValue();
@@ -503,7 +503,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
         uint32_t propLen = propList_.size();
         for (uint32_t i = 0; i < propLen; i++) {
             JSTaggedValue tagVal =
-                FastRuntimeStub::FastGetPropertyByValue(thread_, obj.GetTaggedValue(), propList_[i].GetTaggedValue());
+                ObjectFastOperator::FastGetPropertyByValue(thread_, obj.GetTaggedValue(), propList_[i].GetTaggedValue());
             handleValue_.Update(tagVal);
             JSTaggedValue serializeValue = GetSerializeValue(value, propList_[i], handleValue_, replacer);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
@@ -602,7 +602,7 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
     uint32_t len = jsArr->GetArrayLength();
     if (len > 0) {
         for (uint32_t i = 0; i < len; i++) {
-            JSTaggedValue tagVal = FastRuntimeStub::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);
+            JSTaggedValue tagVal = ObjectFastOperator::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);
             if (UNLIKELY(tagVal.IsAccessor())) {
                 tagVal = JSObject::CallGetter(thread_, AccessorData::Cast(tagVal.GetTaggedObject()), value);
             }

@@ -21,7 +21,6 @@
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/property_box.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass-inl.h"
@@ -30,6 +29,7 @@
 #include "ecmascript/layout_info.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
@@ -735,7 +735,7 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         return;
     }
 
-    attr = FastRuntimeStub::AddPropertyByName(thread_, obj, key_, value, attr);
+    attr = ObjectFastOperator::AddPropertyByName(thread_, obj, key_, value, attr);
     if (obj->GetJSHClass()->IsDictionaryMode()) {
         SetFound(0, value.GetTaggedValue(), attr.GetValue(), false);
     } else {
