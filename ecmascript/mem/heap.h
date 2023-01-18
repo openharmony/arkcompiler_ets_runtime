@@ -95,6 +95,12 @@ struct IdleData {
     }
 };
 
+enum class HeapMode {
+    NORMAL,
+    SPAWN,
+    SHARE,
+};
+
 class Heap {
 public:
     explicit Heap(EcmaVM *ecmaVm);
@@ -470,9 +476,9 @@ public:
         shouldThrowOOMError_ = shouldThrow;
     }
 
-    void SetIsFork(bool isFork)
+    void SetHeapMode(HeapMode mode)
     {
-        isFork_ = isFork;
+        mode_ = mode;
     }
 
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
@@ -617,7 +623,7 @@ private:
     bool enableIdleGC_ {true};
     bool waitForStartUp_ {true};
     bool couldIdleGC_ {false};
-    bool isFork_ {false};
+    HeapMode mode_ { HeapMode::NORMAL };
 
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};

@@ -20,7 +20,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
-#include "ecmascript/dfx/native_dfx/backtrace.h"
+#include "ecmascript/platform/backtrace.h"
 #endif
 
 namespace panda::ecmascript {

@@ -132,7 +132,7 @@ void EcmaVM::PreFork()
 
 void EcmaVM::PostFork()
 {
-    heap_->SetIsFork(true);
+    heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->SetThreadId();
     heap_->EnableParallelGC();
 }

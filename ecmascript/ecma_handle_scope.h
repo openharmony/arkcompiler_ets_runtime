@@ -19,7 +19,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-#include "ecmascript/dfx/native_dfx/backtrace.h"
+#include "ecmascript/platform/backtrace.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/clock_scope.h"
 #endif
@@ -69,7 +69,7 @@ public:
             if (totalSpentTime >= MAYBE_HANDLE_LEAK_TIME_MS) {
                 LOG_ECMA(INFO) << "New handle in scope count:" << thread->handleScopeCount_
                                << ", time:" << totalSpentTime << "ms";
-                PrintBacktrace(value);
+                PrintBacktrace();
             }
         }
 #endif
