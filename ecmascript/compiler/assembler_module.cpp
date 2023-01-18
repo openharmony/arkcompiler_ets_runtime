@@ -237,6 +237,7 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_THIS_ARG0:
         case JSCallMode::CALL_THIS_ARG1:
         case JSCallMode::CALL_THIS_ARG2:

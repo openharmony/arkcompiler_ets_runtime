@@ -573,7 +573,7 @@ GateRef StubBuilder::CallGetterHelper(GateRef glue, GateRef receiver, GateRef ho
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, getter, Int32(0), 0,
+            auto retValue = JSCallDispatch(glue, getter, Int32(0), 0, Circuit::NullGate(),
                                            JSCallMode::CALL_GETTER, { receiver });
             Label noPendingException(env);
             Branch(HasPendingException(glue), &exit, &noPendingException);
@@ -621,7 +621,7 @@ GateRef StubBuilder::CallSetterHelper(GateRef glue, GateRef receiver, GateRef ac
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, setter, Int32(1), 0,
+            auto retValue = JSCallDispatch(glue, setter, Int32(1), 0, Circuit::NullGate(),
                                            JSCallMode::CALL_SETTER, { receiver, value });
             Label noPendingException(env);
             Branch(HasPendingException(glue), &exit, &noPendingException);
@@ -3153,7 +3153,8 @@ void StubBuilder::TryFastHasInstance(GateRef glue, GateRef instof, GateRef targe
     Jump(fastPath);
     Bind(&slowPath);
     {
-        GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, JSCallMode::CALL_SETTER, { target, object });
+        GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, Circuit::NullGate(),
+                                          JSCallMode::CALL_SETTER, { target, object });
         result->WriteVariable(FastToBoolean(retValue));
         Jump(exit);
     }
@@ -4477,7 +4478,7 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
 }
 
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
-                                    JSCallMode mode, std::initializer_list<GateRef> args)
+                                    GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -4730,6 +4731,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         if (jumpSize != 0) {
             SaveJumpSizeIfNeeded(glue, jumpSize);
         }
+        SaveHotnessCounterIfNeeded(glue, sp, hotnessCounter, mode);
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg0AndDispatch),

@@ -20,6 +20,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
@@ -253,6 +254,25 @@ void StubBuilder::SaveJumpSizeIfNeeded(GateRef glue, GateRef jumpSize)
             IntPtr(AsmInterpretedFrame::GetSize(GetEnvironment()->IsArch32Bit())));
         Store(VariableType::INT64(), glue, frame,
             IntPtr(AsmInterpretedFrame::GetCallSizeOffset(GetEnvironment()->IsArch32Bit())), jumpSize);
+    }
+}
+
+void StubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
+{
+    auto env = GetEnvironment();
+    GateRef newValue = env->GetBuilder()->TruncInt64ToInt16(value);
+    Store(VariableType::INT16(), glue, method, IntPtr(Method::LITERAL_INFO_OFFSET), newValue);
+}
+
+void StubBuilder::SaveHotnessCounterIfNeeded(GateRef glue, GateRef sp, GateRef hotnessCounter, JSCallMode mode)
+{
+    if (env_->IsAsmInterp() && kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
+        ASSERT(hotnessCounter != Circuit::NullGate());
+        GateRef frame = PtrSub(sp, IntPtr(AsmInterpretedFrame::GetSize(env_->IsArch32Bit())));
+        GateRef function = Load(VariableType::JS_POINTER(), frame,
+            IntPtr(AsmInterpretedFrame::GetFunctionOffset(env_->IsArch32Bit())));
+        GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        SetHotnessCounter(glue, method, hotnessCounter);
     }
 }
 
