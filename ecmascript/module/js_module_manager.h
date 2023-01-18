@@ -52,17 +52,20 @@ public:
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
 
-    JSHandle<SourceTextModule> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
-    JSHandle<SourceTextModule> HostResolveImportedModule(std::string &baseFilename, std::string &moduleFilename);
-    JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
-    JSHandle<SourceTextModule> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
-                                                                             const CString &recordName);
+    JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
+    JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule);
+    JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
+                                                                          const CString &recordName);
 
     JSTaggedValue GetCurrentModule();
 
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
     void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
     void Iterate(const RootVisitor &v);
+
+    static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
+                                           CString moduleRecordName, CString moduleRequestName);
+
     bool GetCurrentMode() const
     {
         return isExecuteBuffer_;
@@ -71,9 +74,7 @@ public:
     {
         isExecuteBuffer_ = mode;
     }
-    void ConcatFileName(std::string &dirPath, std::string &requestPath, std::string &fileName);
-    static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
-                                           CString moduleRecordName, CString moduleRequestName);
+
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
     static bool IsImportedPath(const CString &moduleRequestName, size_t &typePos);
@@ -93,9 +94,9 @@ private:
                                   JSTaggedValue key, JSTaggedValue value);
     // deprecated end
 
-    JSHandle<SourceTextModule> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
-    JSHandle<SourceTextModule> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                      const CString &recodeName);
+    JSHandle<JSTaggedValue> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
+    JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                   const CString &recodeName);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 

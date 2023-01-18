@@ -39,13 +39,6 @@ struct CJSInfo {
 };
 class RequireManager {
 public:
-
-    static void ResolveCurrentPath(JSThread *thread, JSMutableHandle<JSTaggedValue> &dirPath,
-                                   JSMutableHandle<JSTaggedValue> &file,
-                                   const JSPandaFile *jsPandaFile);
-    static void ResolveDirPath(JSThread *thread, JSMutableHandle<JSTaggedValue> &dirPath,
-                               JSHandle<JSTaggedValue> &file);
-
     static void InitializeCommonJS(JSThread *thread, CJSInfo cjsInfo);
 
     static void CollectExecutedExp(JSThread *thread, CJSInfo cjsInfo);

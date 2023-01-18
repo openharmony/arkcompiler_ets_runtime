@@ -54,11 +54,6 @@ public:
     static JSTaggedValue Require(JSThread *thread, JSHandle<EcmaString> &request, JSHandle<CjsModule> &parent,
                                  bool isMain);
 
-    static JSHandle<EcmaString> ResolveFilename(JSThread *thread, JSTaggedValue dirname, JSTaggedValue filename);
-
-    static JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
-                                                          JSTaggedValue request);
-
     static void RequireExecution(JSThread *thread, CString mergedFilename, CString requestEntryPoint);
 };
 }  // namespace panda::ecmascript

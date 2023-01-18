@@ -223,11 +223,12 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
                                                        JSHandle<ConstantPool> constpool)
 {
     auto &recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(entryPoint);
+    JSThread *thread = vm->GetJSThread();
+    ASSERT(!thread->HasPendingException());
     if (recordInfo.IsParsedConstpoolOfCurrentVM(vm)) {
         return;
     }
 
-    JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

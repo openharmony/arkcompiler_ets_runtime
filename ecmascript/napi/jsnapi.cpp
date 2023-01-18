@@ -582,12 +582,6 @@ void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
     vm->SetData(data);
 }
 
-void JSNApi::SetHostResolvePathTracker(EcmaVM *vm,
-                                       std::function<std::string(std::string dirPath, std::string requestPath)> cb)
-{
-    vm->SetResolvePathCallback(cb);
-}
-
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb)
 {
     vm->SetResolveBufferCallback(cb);
@@ -2718,10 +2712,10 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
     ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     ecmascript::CString recordName = method->GetRecordName();
 
-    bool isModule = jsPandaFile->IsModule(recordName);
+    bool isModule = jsPandaFile->IsModule(thread, recordName);
     if (isModule) {
         ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
-        JSHandle<ecmascript::SourceTextModule> moduleRecord;
+        JSHandle<ecmascript::JSTaggedValue> moduleRecord;
         if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
         } else {
@@ -2732,9 +2726,10 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
             vm->HandleUncaughtException(thread->GetException());
             return false;
         }
-        moduleRecord->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
-        ecmascript::SourceTextModule::EvaluateForConcurrent(thread, moduleRecord);
-        transFunc->SetModule(thread, moduleRecord);
+        JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
+        module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
+        ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
+        transFunc->SetModule(thread, module);
         return true;
     }
     return false;

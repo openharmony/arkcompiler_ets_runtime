@@ -16,11 +16,14 @@
 #include "ecmascript/builtins/builtins_cjs_module.h"
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_require_manager.h"
 
 namespace panda::ecmascript::builtins {
+using PathHelper = base::PathHelper;
 JSTaggedValue BuiltinsCjsModule::CjsModuleConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
@@ -56,15 +59,15 @@ JSTaggedValue BuiltinsCjsModule::ResolveFilename(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> parent(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread, JSTaggedValue::Undefined());
     const JSPandaFile *jsPandaFile = EcmaInterpreter::GetNativeCallPandafile(thread);
-    RequireManager::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
+    PathHelper::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
 
     if (length != 1) {  // strange arg's number
         LOG_ECMA(FATAL) << "BuiltinsCjsModule::Load : can only accept one argument";
         UNREACHABLE();
     }
     JSHandle<EcmaString> requestName = JSHandle<EcmaString>::Cast(GetCallArg(argv, 0));
-    JSHandle<EcmaString> filename = CjsModule::ResolveFilename(thread, dirname.GetTaggedValue(),
-                                                               requestName.GetTaggedValue());
+    JSHandle<EcmaString> filename = ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
+                                                              requestName.GetTaggedValue());
 
     return filename.GetTaggedValue();
 }

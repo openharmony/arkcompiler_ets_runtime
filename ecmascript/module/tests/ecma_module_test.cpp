@@ -397,7 +397,7 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModule)
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     JSHandle<JSTaggedValue> moduleRecord(thread, module.GetTaggedValue());
     moduleManager->AddResolveImportedModule(baseFileName.c_str(), moduleRecord);
-    JSHandle<SourceTextModule> res = moduleManager->HostResolveImportedModule(baseFileName.c_str());
+    JSHandle<JSTaggedValue> res = moduleManager->HostResolveImportedModule(baseFileName.c_str());
 
     EXPECT_EQ(moduleRecord->GetRawData(), res.GetTaggedValue().GetRawData());
 }

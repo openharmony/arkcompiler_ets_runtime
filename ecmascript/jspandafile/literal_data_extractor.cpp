@@ -267,7 +267,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         moduleName = entryPoint;
         entry = entryPoint;
     }
-    if (jsPandaFile->IsModule(entry)) {
+    if (jsPandaFile->IsModule(thread, entry)) {
         EcmaVM *vm = thread->GetEcmaVM();
         JSHandle<SourceTextModule> module = vm->GetModuleManager()->HostGetImportedModule(moduleName);
         jsFunc->SetModule(thread, module.GetTaggedValue());

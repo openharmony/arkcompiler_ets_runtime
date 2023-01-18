@@ -70,11 +70,15 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
             JSPandaFile::CroppingRecord(entry);
         }
     }
-    bool isModule = jsPandaFile->IsModule(entry.c_str());
+    bool isModule = jsPandaFile->IsModule(thread, entry.c_str());
+    if (thread->HasPendingException()) {
+        vm->HandleUncaughtException(thread->GetException());
+        return JSTaggedValue::Undefined();
+    }
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         ModuleManager *moduleManager = vm->GetModuleManager();
-        JSHandle<SourceTextModule> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
+        JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
         if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(name);
         } else {
@@ -87,9 +91,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
             }
             return JSTaggedValue::Undefined();
         }
-
-        moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
-        SourceTextModule::Evaluate(thread, moduleRecord, nullptr, 0, excuteFromJob);
+        JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+        module->SetStatus(ModuleStatus::INSTANTIATED);
+        SourceTextModule::Evaluate(thread, module, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str(), excuteFromJob);
@@ -107,7 +111,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     }
 
     CString entry = entryPoint.data();
-    bool isModule = jsPandaFile->IsModule(entry);
+    bool isModule = jsPandaFile->IsModule(thread, entry);
     bool isBundle = jsPandaFile->IsBundlePack();
     if (isModule) {
         return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size);
@@ -135,8 +139,16 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), buffer, size);
     if (jsPandaFile == nullptr) {
-        return Unexpected(false);
+        if (thread->GetEcmaVM()->IsWorkerThread()) {
+            CString mesWorker = "Excute worker's entryPoint failed: " + entry +
+                ". Please check worker's reference path .";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, mesWorker.c_str(), Unexpected(false));
+        }
+        CString message = "Excute file's entryPoint failed: " + entry +
+            ". Please check the reference path .";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), Unexpected(false));
     }
+    ASSERT(jsPandaFile->IsModule(thread, entry.c_str()));
     bool isBundle = jsPandaFile->IsBundlePack();
     if (!isBundle) {
         const_cast<JSPandaFile *>(jsPandaFile)->CheckIsNewRecord(vm);
@@ -144,7 +156,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
             JSPandaFile::CroppingRecord(entry);
         }
     }
-    ASSERT(jsPandaFile->IsModule(entry.c_str()));
+    ASSERT(jsPandaFile->IsModule(thread, entry.c_str()));
     return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);
 }
 
@@ -155,7 +167,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     EcmaVM *vm = thread->GetEcmaVM();
     ModuleManager *moduleManager = vm->GetModuleManager();
     moduleManager->SetExecuteMode(true);
-    JSHandle<SourceTextModule> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
+    JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
     if (isBundle) {
         moduleRecord = moduleManager->HostResolveImportedModule(buffer, size, filename);
     } else {
@@ -166,8 +178,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
         vm->HandleUncaughtException(thread->GetException());
         return JSTaggedValue::Undefined();
     }
-    moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
-    SourceTextModule::Evaluate(thread, moduleRecord, buffer, size);
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    SourceTextModule::Evaluate(thread, module, buffer, size);
     return JSTaggedValue::Undefined();
 }
 

@@ -1222,22 +1222,6 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SetHostPromiseRejectionTracker)
     ASSERT_EQ(res, reinterpret_cast<ecmascript::PromiseRejectCallback>(data));
 }
 
-HWTEST_F_L0(JSNApiTests, JSNApi_SetHostResolvePathTracker)
-{
-    std::string dirPath;
-    std::string requestPath;
-    using CallbackType = std::function<std::string(std::string, std::string)>;
-    CallbackType callback = [dirPath, requestPath](std::string dp, std::string rp) -> std::string {
-        dp = dirPath;
-        rp = requestPath;
-        return dp + rp;
-    };
-    JSNApi::SetHostResolvePathTracker(vm_, callback);
-    ResolvePathCallback res = nullptr;
-    res = vm_->GetResolvePathCallback();
-    EXPECT_TRUE(res);
-}
-
 HWTEST_F_L0(JSNApiTests, JSNApi_SetNativePtrGetter_SetHostEnqueueJob)
 {
     void *cb = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);

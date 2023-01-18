@@ -204,7 +204,7 @@ MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
     return iter->second;
 }
 
-bool JSPandaFile::IsModule(const CString &recordName) const
+bool JSPandaFile::IsModule(JSThread *thread, const CString &recordName) const
 {
     if (IsBundlePack()) {
         return jsRecordInfo_.begin()->second.moduleRecordIdx != -1;
@@ -213,11 +213,11 @@ bool JSPandaFile::IsModule(const CString &recordName) const
     if (info != jsRecordInfo_.end()) {
         return info->second.moduleRecordIdx != -1;
     }
-    LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
-    UNREACHABLE();
+    CString msg = "Faild to load file '" + recordName + "', please check the request path.";
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
 }
 
-bool JSPandaFile::IsCjs(const CString &recordName) const
+bool JSPandaFile::IsCjs(JSThread *thread, const CString &recordName) const
 {
     if (IsBundlePack()) {
         return jsRecordInfo_.begin()->second.isCjs;
@@ -226,8 +226,8 @@ bool JSPandaFile::IsCjs(const CString &recordName) const
     if (info != jsRecordInfo_.end()) {
         return info->second.isCjs;
     }
-    LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
-    UNREACHABLE();
+    CString msg = "Faild to load file '" + recordName + "', please check the request path.";
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
 }
 
 bool JSPandaFile::IsJson(JSThread *thread, const CString &recordName) const
@@ -239,8 +239,8 @@ bool JSPandaFile::IsJson(JSThread *thread, const CString &recordName) const
     if (info != jsRecordInfo_.end()) {
         return info->second.isJson;
     }
-    CString message = "find entryPoint failed: " + recordName;
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), false);
+    CString msg = "Faild to load file '" + recordName + "', please check the request path.";
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
 }
 
 CString JSPandaFile::GetJsonStringId(JSThread *thread, const CString &recordName) const
@@ -255,11 +255,11 @@ CString JSPandaFile::GetJsonStringId(JSThread *thread, const CString &recordName
         StringData sd = GetStringData(EntityId(info->second.jsonStringId));
         return utf::Mutf8AsCString(sd.data);
     }
-    CString message = "find jsonStringId failed: " + recordName;
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), "");
+    CString msg = "Faild to load file '" + recordName + "', please check the request path.";
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), "");
 }
 
-CString JSPandaFile::FindEntryPoint(const CString &recordName) const
+CString JSPandaFile::FindNpmEntryPoint(const CString &recordName) const
 {
     if (HasRecord(recordName)) {
         return recordName;

@@ -230,9 +230,9 @@ public:
         return pf_->GetHeader()->file_size;
     }
 
-    bool PUBLIC_API IsModule(const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool PUBLIC_API IsModule(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
-    bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool IsCjs(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
     bool IsJson(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
@@ -298,7 +298,7 @@ public:
     void CheckIsBundlePack();
     void CheckIsNewRecord(EcmaVM *vm);
 
-    CString FindEntryPoint(const CString &record) const;
+    CString FindNpmEntryPoint(const CString &record) const;
 
     static CString ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName);
     static std::string ParseHapPath(const CString &fileName);

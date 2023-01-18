@@ -89,7 +89,7 @@ void PatchLoader::ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *j
     for (const auto &item : patchRecordInfos) {
         const CString &recordName = item.first;
         vm->GetModuleManager()->HostResolveImportedModuleWithMerge(fileName, recordName);
-
+        ASSERT(!thread->HasPendingException());
         if (!isNewVersion) {
             PandaFileTranslator::ParseFuncAndLiteralConstPool(vm, jsPandaFile, recordName, constpool);
         }
@@ -357,11 +357,11 @@ bool PatchLoader::CheckIsInvalidPatch(const JSPandaFile *baseFile, const JSPanda
         CString baseRecordName = patchRecordName;
         ASSERT(baseRecordInfos.find(baseRecordName) != baseRecordInfos.end());
 
-        JSHandle<SourceTextModule> patchModule =
+        JSHandle<JSTaggedValue> patchModule =
             moduleManager->ResolveModuleWithMerge(thread, patchFile, patchRecordName);
         JSHandle<SourceTextModule> baseModule = moduleManager->HostGetImportedModule(baseRecordName);
 
-        if (CheckIsModuleMismatch(thread, patchModule, baseModule)) {
+        if (CheckIsModuleMismatch(thread, JSHandle<SourceTextModule>(patchModule), baseModule)) {
             return true;
         }
     }

@@ -1265,8 +1265,6 @@ public:
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
-    static void SetHostResolvePathTracker(EcmaVM *vm,
-                                          std::function<std::string(std::string dirPath, std::string requestPath)> cb);
     static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
