@@ -309,7 +309,7 @@ void TypeLowering::LowerArrayIndexCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
 
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef hclassIndex = builder_.TruncPtrToInt32(acc_.GetValueIn(gate, 1));
+    GateRef hclassIndex = builder_.GetInt32OfTInt(acc_.GetValueIn(gate, 1));
     GateRef length =
             builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSArray::LENGTH_OFFSET));
     GateRef lengthCheck = builder_.Int32UnsignedLessThan(hclassIndex, length);
@@ -325,7 +325,7 @@ void TypeLowering::LowerFloat32ArrayIndexCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
 
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef index = builder_.TruncPtrToInt32(acc_.GetValueIn(gate, 1));
+    GateRef index = builder_.GetInt32OfTInt(acc_.GetValueIn(gate, 1));
     GateRef length =
             builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
     GateRef nonNegativeCheck = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
@@ -538,6 +538,7 @@ void TypeLowering::LowerArrayLoadElement(GateRef gate)
     GateRef element =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSObject::ELEMENTS_OFFSET));
     GateRef index = acc_.GetValueIn(gate, 1);
+    index = builder_.GetInt32OfTInt(index);
     GateRef res = builder_.GetValueFromTaggedArray(element, index);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), res);
     Label isHole(&builder_);
@@ -564,6 +565,7 @@ void TypeLowering::LowerFloat32ArrayLoadElement(GateRef gate)
     GateRef arrbuffer =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
     GateRef index = acc_.GetValueIn(gate, 1);
+    index = builder_.GetInt32OfTInt(index);
     GateRef elementSize = builder_.Int32(4);  // 4: float32 occupy 4 bytes
     GateRef offset = builder_.PtrMul(index, elementSize);
     GateRef byteOffset =

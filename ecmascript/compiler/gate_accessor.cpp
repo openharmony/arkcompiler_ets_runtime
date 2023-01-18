@@ -308,12 +308,24 @@ void GateAccessor::GetOutStates(GateRef gate, std::vector<GateRef>& outStates) c
     }
 }
 
-void GateAccessor::GetStateUses(GateRef gate, std::vector<GateRef>& outStates)
+void GateAccessor::GetStateUses(GateRef gate, std::vector<GateRef>& stateUses)
 {
+    stateUses.clear();
     auto uses = Uses(gate);
     for (auto it = uses.begin(); it != uses.end(); it++) {
         if (IsStateIn(it)) {
-            outStates.emplace_back(*it);
+            stateUses.emplace_back(*it);
+        }
+    }
+}
+
+void GateAccessor::GetDependUses(GateRef gate, std::vector<GateRef>& dependUses)
+{
+    dependUses.clear();
+    auto uses = Uses(gate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (IsDependIn(it)) {
+            dependUses.emplace_back(*it);
         }
     }
 }
@@ -356,6 +368,11 @@ bool GateAccessor::IsState(GateRef gate) const
 bool GateAccessor::IsConstant(GateRef gate) const
 {
     return GetMetaData(gate)->IsConstant();
+}
+
+bool GateAccessor::IsDependSelector(GateRef gate) const
+{
+    return GetMetaData(gate)->IsDependSelector();
 }
 
 bool GateAccessor::IsConstantValue(GateRef gate, uint64_t value) const

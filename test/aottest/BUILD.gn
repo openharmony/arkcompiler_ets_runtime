@@ -109,6 +109,7 @@ group("ark_aot_test") {
     "newlexenv:newlexenvAotAction",
     "newobjspread:newobjspreadAotAction",
     "not:notAotAction",
+    "optimization:optimizationAotAction",
     "or:orAotAction",
     "poplexenv:poplexenvAotAction",
     "proxy:proxyAotAction",
