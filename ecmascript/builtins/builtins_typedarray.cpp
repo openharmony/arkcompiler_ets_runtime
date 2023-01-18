@@ -23,7 +23,6 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_function.h"
@@ -34,6 +33,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::builtins {
 using TypedArrayHelper = base::TypedArrayHelper;
@@ -226,7 +226,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
             } else {
                 mapValue.Update(kValue.GetTaggedValue());
             }
-            FastRuntimeStub::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
+            ObjectFastOperator::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             k++;
         }
@@ -270,8 +270,8 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> mapValue;
     while (k < len) {
         tKey.Update(JSTaggedValue(k));
-        kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, arrayLike.GetTaggedValue(),
-                                                              tKey.GetTaggedValue()));
+        kValue.Update(ObjectFastOperator::FastGetPropertyByValue(thread, arrayLike.GetTaggedValue(),
+                                                                 tKey.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (mapping) {
             EcmaRuntimeCallInfo *info =
@@ -284,7 +284,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         } else {
             mapValue = kValue;
         }
-        FastRuntimeStub::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
+        ObjectFastOperator::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
@@ -587,8 +587,8 @@ JSTaggedValue BuiltinsTypedArray::Filter(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     for (uint32_t k = 0; k < len; k++) {
         tKey.Update(JSTaggedValue(k));
-        kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(),
-                                                              tKey.GetTaggedValue()));
+        kValue.Update(ObjectFastOperator::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(),
+                                                                 tKey.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle,
@@ -618,8 +618,8 @@ JSTaggedValue BuiltinsTypedArray::Filter(EcmaRuntimeCallInfo *argv)
     for (int32_t n = 0; n < captured; n++) {
         valueHandle.Update(kept->Get(n));
         ntKey.Update(JSTaggedValue(n));
-        FastRuntimeStub::FastSetPropertyByValue(thread, newArrObj.GetTaggedValue(),
-                                                ntKey.GetTaggedValue(), valueHandle.GetTaggedValue());
+        ObjectFastOperator::FastSetPropertyByValue(thread, newArrObj.GetTaggedValue(),
+                                                   ntKey.GetTaggedValue(), valueHandle.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     // 18. Return A.
@@ -920,8 +920,8 @@ JSTaggedValue BuiltinsTypedArray::Map(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     for (uint32_t k = 0; k < len; k++) {
         key.Update(JSTaggedValue(k));
-        kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(),
-                                                              key.GetTaggedValue()));
+        kValue.Update(ObjectFastOperator::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(),
+                                                                 key.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackfnHandle, thisArgHandle, undefined, argsLength);
@@ -930,8 +930,8 @@ JSTaggedValue BuiltinsTypedArray::Map(EcmaRuntimeCallInfo *argv)
         JSTaggedValue callResult = JSFunction::Call(info);
         mapValue.Update(callResult);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        FastRuntimeStub::FastSetPropertyByValue(thread, newArrObj.GetTaggedValue(),
-                                                key.GetTaggedValue(), mapValue.GetTaggedValue());
+        ObjectFastOperator::FastSetPropertyByValue(thread, newArrObj.GetTaggedValue(),
+                                                   key.GetTaggedValue(), mapValue.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
@@ -1056,9 +1056,9 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         // 18. Let srcLength be ToLength(Get(src, "length")).
         JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
         JSHandle<JSTaggedValue> lenResult(thread,
-            FastRuntimeStub::FastGetPropertyByValue(thread,
-                                                    JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(),
-                                                    lengthKey.GetTaggedValue()));
+            ObjectFastOperator::FastGetPropertyByValue(thread,
+                                                       JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(),
+                                                       lengthKey.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSTaggedNumber tSrcLen = JSTaggedValue::ToLength(thread, lenResult);
         // 19. ReturnIfAbrupt(srcLength).
@@ -1094,9 +1094,8 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         while (targetByteIndex < limit) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
-            kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread,
-                                                                  JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(),
-                                                                  kKey.GetTaggedValue()));
+            kValue.Update(ObjectFastOperator::FastGetPropertyByValue(
+                thread, JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(), kKey.GetTaggedValue()));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (BuiltinsArrayBuffer::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
@@ -1290,12 +1289,12 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
         uint32_t n = 0;
         while (k < final) {
             tKey.Update(JSTaggedValue(k));
-            kValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(),
-                                                                  tKey.GetTaggedValue()));
+            kValue.Update(ObjectFastOperator::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(),
+                                                                     tKey.GetTaggedValue()));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             ntKey.Update(JSTaggedValue(n));
-            FastRuntimeStub::FastSetPropertyByValue(thread, newArrObj.GetTaggedValue(),
-                                                    ntKey.GetTaggedValue(), kValue.GetTaggedValue());
+            ObjectFastOperator::FastSetPropertyByValue(thread, newArrObj.GetTaggedValue(),
+                                                       ntKey.GetTaggedValue(), kValue.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             n++;
             k++;
@@ -1380,14 +1379,14 @@ JSTaggedValue BuiltinsTypedArray::Sort(EcmaRuntimeCallInfo *argv)
         uint32_t beginIndex = 0;
         uint32_t endIndex = i;
         key.Update(JSTaggedValue(i));
-        presentValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
-                                                                    key.GetTaggedValue()));
+        presentValue.Update(ObjectFastOperator::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
+                                                                       key.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         while (beginIndex < endIndex) {
             uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
             key1.Update(JSTaggedValue(middleIndex));
-            middleValue.Update(FastRuntimeStub::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
-                                                                       key1.GetTaggedValue()));
+            middleValue.Update(ObjectFastOperator::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
+                                                                          key1.GetTaggedValue()));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             int32_t compareResult = TypedArrayHelper::SortCompare(thread, callbackFnHandle, buffer,
                                                                   middleValue, presentValue);
@@ -1399,15 +1398,15 @@ JSTaggedValue BuiltinsTypedArray::Sort(EcmaRuntimeCallInfo *argv)
             for (uint32_t j = i; j > endIndex; j--) {
                 key2.Update(JSTaggedValue(j - 1));
                 previousValue.Update(
-                    FastRuntimeStub::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
-                                                            key2.GetTaggedValue()));
+                    ObjectFastOperator::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
+                                                               key2.GetTaggedValue()));
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                FastRuntimeStub::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), j,
-                                                        previousValue.GetTaggedValue());
+                ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), j,
+                                                           previousValue.GetTaggedValue());
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
-            FastRuntimeStub::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), endIndex,
-                                                    presentValue.GetTaggedValue());
+            ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), endIndex,
+                                                       presentValue.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
     }

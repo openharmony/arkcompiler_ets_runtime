@@ -20,13 +20,13 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -1203,8 +1203,8 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
-    auto result = FastRuntimeStub::SetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
-                                                            value.GetTaggedValue());
+    auto result = ObjectFastOperator::SetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
+                                                               value.GetTaggedValue());
     if (!result.IsHole()) {
         return !result.IsException();
     }
@@ -1217,7 +1217,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
     auto result =
-        FastRuntimeStub::SetPropertyByIndex<true>(thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
+        ObjectFastOperator::SetPropertyByIndex<true>(thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
     if (!result.IsHole()) {
         return !result.IsException();
     }
@@ -1439,7 +1439,7 @@ void JSObject::EnumerableOwnPropertyNamesHelper(JSThread *thread, const JSHandle
         }
         JSTaggedValue value = JSTaggedValue::Hole();
         if (fastMode) {
-            value = FastRuntimeStub::GetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+            value = ObjectFastOperator::GetPropertyByValue<true>(thread, obj.GetTaggedValue(), key.GetTaggedValue());
             RETURN_IF_ABRUPT_COMPLETION(thread);
         }
         if (value.IsHole()) {

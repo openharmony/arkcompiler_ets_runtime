@@ -23,12 +23,13 @@
 #include "ecmascript/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::base {
 constexpr unsigned int UNICODE_DIGIT_LENGTH = 4;
@@ -328,7 +329,7 @@ private:
         while (current_ <= range_) {
             value = ParseJSONText<true>();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-            FastRuntimeStub::SetPropertyByIndex<true>(thread_, arr.GetTaggedValue(), index++, value);
+            ObjectFastOperator::SetPropertyByIndex<true>(thread_, arr.GetTaggedValue(), index++, value);
             GetNextNonSpaceChar();
             if (*current_ == ',') {
                 current_++;
@@ -376,7 +377,7 @@ private:
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON", JSTaggedValue::Exception());
             }
             value = ParseJSONText<true>();
-            FastRuntimeStub::SetPropertyByValue<true>(
+            ObjectFastOperator::SetPropertyByValue<true>(
                 thread_, result.GetTaggedValue(), keyHandle.GetTaggedValue(), value);
             GetNextNonSpaceChar();
             if (*current_ == ',') {

@@ -24,7 +24,6 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_array_iterator.h"
@@ -33,6 +32,7 @@
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
@@ -2234,12 +2234,12 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
     for (int i = 1; i < len; i++) {
         int beginIndex = 0;
         int endIndex = i;
-        presentValue.Update(FastRuntimeStub::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), i));
+        presentValue.Update(ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), i));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         while (beginIndex < endIndex) {
             int middleIndex = (beginIndex + endIndex) / 2; // 2 : half
             middleValue.Update(
-                FastRuntimeStub::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), middleIndex));
+                ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), middleIndex));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             double compareResult = ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2253,14 +2253,14 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
         if (endIndex >= 0 && endIndex < i) {
             for (int j = i; j > endIndex; j--) {
                 previousValue.Update(
-                    FastRuntimeStub::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), j - 1));
+                    ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), j - 1));
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                FastRuntimeStub::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), j,
-                                                        previousValue.GetTaggedValue());
+                ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), j,
+                                                           previousValue.GetTaggedValue());
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
-            FastRuntimeStub::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), endIndex,
-                                                    presentValue.GetTaggedValue());
+            ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), endIndex,
+                                                       presentValue.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
     }
