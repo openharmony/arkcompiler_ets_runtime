@@ -114,10 +114,19 @@ public:
         Node::Reset(thread, next, value, isUsing);
         ResetDebugInfo();
         if (isUsing && thread->IsStartGlobalLeakCheck()) {
-            IncGlobalNumber(thread);
             if (JSTaggedValue(value).IsHeapObject()) {
-                LOG_ECMA(INFO) << "Global Handle Number:[" << globalNumber_ << "], value:0x" << std::hex << value;
-                PrintBacktrace();
+                if (thread->EnableGlobalObjectLeakCheck()) {
+                    IncGlobalNumber(thread);
+                    LOG_ECMA(INFO) << "Global Handle Number:[" << globalNumber_ << "], object:0x" << std::hex << value;
+                    PrintBacktrace();
+                }
+            } else {
+                if (thread->EnableGlobalPrimitiveLeakCheck()) {
+                    IncGlobalNumber(thread);
+                    LOG_ECMA(INFO) << "Global Handle Number:[" << globalNumber_ << "], primitive:0x"
+                                   << std::hex << value;
+                    PrintBacktrace();
+                }
             }
         }
     }

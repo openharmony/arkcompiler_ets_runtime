@@ -624,6 +624,8 @@ public:
     }
 
     bool IsStartGlobalLeakCheck() const;
+    bool EnableGlobalObjectLeakCheck() const;
+    bool EnableGlobalPrimitiveLeakCheck() const;
     uint32_t IncreaseGlobalNumberCount()
     {
         return ++globalNumberCount_;

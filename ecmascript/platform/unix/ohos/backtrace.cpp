@@ -40,13 +40,13 @@ void PrintBacktrace()
         if (handle == nullptr) {
             handle = dlopen(LIB_UNWIND_Z_SO_NAME.c_str(), RTLD_NOW);
             if (handle == nullptr) {
-                LOG_ECMA(ERROR) << "dlopen libunwind.so failed";
+                LOG_ECMA(INFO) << "dlopen libunwind.so failed";
                 return;
             }
         }
         unwBackTrace = reinterpret_cast<UnwBackTraceFunc>(dlsym(handle, "unw_backtrace"));
         if (unwBackTrace == nullptr) {
-            LOG_ECMA(ERROR) << "dlsym unw_backtrace failed";
+            LOG_ECMA(INFO) << "dlsym unw_backtrace failed";
             return;
         }
     }
@@ -82,13 +82,13 @@ std::string PrintBacktraceReturnString()
         if (handle == nullptr) {
             handle = dlopen(LIB_UNWIND_Z_SO_NAME.c_str(), RTLD_NOW);
             if (handle == nullptr) {
-                LOG_ECMA(ERROR) << "dlopen libunwind.so failed";
+                LOG_ECMA(INFO) << "dlopen libunwind.so failed";
                 return "";
             }
         }
         unwBackTrace = reinterpret_cast<UnwBackTraceFunc>(dlsym(handle, "unw_backtrace"));
         if (unwBackTrace == nullptr) {
-            LOG_ECMA(ERROR) << "dlsym unw_backtrace failed";
+            LOG_ECMA(INFO) << "dlsym unw_backtrace failed";
             return "";
         }
     }

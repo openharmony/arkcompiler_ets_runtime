@@ -39,8 +39,9 @@ enum ArkProperties {
     ENABLE_SNAPSHOT_SERIALIZE = 1 << 7,
     ENABLE_SNAPSHOT_DESERIALIZE = 1 << 8,
     EXCEPTION_BACKTRACE = 1 << 9,
-    GLOBAL_LEAK_CHECK = 1 << 10,
-    ENABLE_IDLE_GC = 1 << 11,
+    GLOBAL_OBJECT_LEAK_CHECK = 1 << 10,
+    GLOBAL_PRIMITIVE_LEAK_CHECK = 1 << 11,
+    ENABLE_IDLE_GC = 1 << 12,
 };
 
 // asm interpreter control parsed option
@@ -327,9 +328,19 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_IDLE_GC) != 0;
     }
 
+    bool EnableGlobalObjectLeakCheck() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::GLOBAL_OBJECT_LEAK_CHECK) != 0;
+    }
+
+    bool EnableGlobalPrimitiveLeakCheck() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::GLOBAL_PRIMITIVE_LEAK_CHECK) != 0;
+    }
+
     bool EnableGlobalLeakCheck() const
     {
-        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::GLOBAL_LEAK_CHECK) != 0;
+        return EnableGlobalObjectLeakCheck() || EnableGlobalPrimitiveLeakCheck();
     }
 
     bool IsStartGlobalLeakCheck() const
