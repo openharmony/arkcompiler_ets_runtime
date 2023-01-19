@@ -50,7 +50,9 @@ std::string GetFileDelimiter();
 bool RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
 int64_t GetFileSizeByFd(fd_t fd);
 fd_t Open(const char *file, int flag);
+void DPrintf(fd_t fd, const std::string &buffer);
 void Close(fd_t fd);
+void FSync(fd_t fd);
 void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, fd_t *extra);
 int FileUnMap(void *addr, uint64_t size, fd_t *extra);
 }  // namespace panda::ecmascript

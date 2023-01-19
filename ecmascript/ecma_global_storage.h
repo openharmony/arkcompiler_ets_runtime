@@ -116,16 +116,11 @@ public:
         if (isUsing && thread->IsStartGlobalLeakCheck()) {
             if (JSTaggedValue(value).IsHeapObject()) {
                 if (thread->EnableGlobalObjectLeakCheck()) {
-                    IncGlobalNumber(thread);
-                    LOG_ECMA(INFO) << "Global Handle Number:[" << globalNumber_ << "], object:0x" << std::hex << value;
-                    PrintBacktrace();
+                    SaveBacktrace(thread, value);
                 }
             } else {
                 if (thread->EnableGlobalPrimitiveLeakCheck()) {
-                    IncGlobalNumber(thread);
-                    LOG_ECMA(INFO) << "Global Handle Number:[" << globalNumber_ << "], primitive:0x"
-                                   << std::hex << value;
-                    PrintBacktrace();
+                    SaveBacktrace(thread, value);
                 }
             }
         }
@@ -147,16 +142,22 @@ public:
         globalNumber_ = -1;
     }
 
-    void IncGlobalNumber(JSThread *thread)
-    {
-        globalNumber_ = thread->IncreaseGlobalNumberCount();
-    }
-
     int32_t GetGlobalNumber()
     {
         return globalNumber_;
     }
+
 private:
+    void SaveBacktrace(JSThread *thread, JSTaggedType value)
+    {
+        globalNumber_ = thread->IncreaseGlobalNumberCount();
+        std::ostringstream stack;
+        stack << "Global Handle Number:[" << globalNumber_ << "], value:0x" <<
+            std::hex << value << std::endl;
+        Backtrace(stack, true);
+        thread->WriteToStackTraceFd(stack);
+    }
+
     int32_t markCount_ {0};
     // A number generated in the order of distribution.It Used to help locate global memory leaks.
     int32_t globalNumber_ {-1};

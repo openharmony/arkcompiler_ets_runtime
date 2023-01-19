@@ -88,7 +88,9 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
     }
     if (data.empty()) {
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
-        data = PrintBacktraceReturnString();
+        std::ostringstream stack;
+        Backtrace(stack);
+        data = stack.str();
 #endif
     }
     return data;

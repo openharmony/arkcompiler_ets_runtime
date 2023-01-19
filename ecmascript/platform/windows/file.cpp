@@ -55,6 +55,16 @@ fd_t Open(const char *file, int flag)
     return fd;
 }
 
+void DPrintf(fd_t fd, const std::string &buffer)
+{
+    LOG_ECMA(DEBUG) << "Unsupport dprintf fd(" << fd << ") in windows, buffer:" << buffer;
+}
+
+void FSync(fd_t fd)
+{
+    LOG_ECMA(DEBUG) << "Unsupport fsync fd(" << fd << ") in windows";
+}
+
 void Close(fd_t fd)
 {
     CloseHandle(fd);
