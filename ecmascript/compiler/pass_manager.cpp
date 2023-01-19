@@ -40,6 +40,12 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
     BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, maxAotMethodSize_,
         enableCollectLiteralInfo);
+
+    if (!IsReleasedPandaFile(jsPandaFile)) {
+        LOG_COMPILER(ERROR) << "The input panda file [" << fileName
+                            << "] of AOT Compiler is debuggable version, do not use for performance test!";
+    }
+
     ResolveModule(jsPandaFile, fileName);
     auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
@@ -129,6 +135,20 @@ JSPandaFile *PassManager::CreateAndVerifyJSPandaFile(const CString &fileName)
 
     JSPandaFileManager::GetInstance()->InsertJSPandaFile(jsPandaFile);
     return jsPandaFile;
+}
+
+bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const
+{
+    MethodLiteral* methodLiteral = jsPandaFile->GetMethodLiterals();
+    if (methodLiteral == nullptr) {
+        LOG_COMPILER(ERROR) << "There is no mehtod literal in " << jsPandaFile->GetJSPandaFileDesc();
+        return false;
+    }
+
+    panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
+    DebugInfoExtractor *debugInfoExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    LocalVariableTable lvt = debugInfoExtractor->GetLocalVariableTable(methodId);
+    return lvt.empty();
 }
 
 void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName)
