@@ -57,6 +57,8 @@ private:
 
     void UpdateValueSelector(GateRef prevLoopBeginGate, GateRef controlStateGate, GateRef prevBcOffsetPhiGate);
 
+    GateRef GetFirstRestoreRegister(GateRef gate) const;
+
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
     CircuitBuilder builder_;
