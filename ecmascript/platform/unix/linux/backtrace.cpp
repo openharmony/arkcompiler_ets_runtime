@@ -18,29 +18,28 @@
 #include <execinfo.h>
 #include <unistd.h>
 
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript {
 static const int MAX_STACK_SIZE = 256;
 static const int FRAMES_LEN = 16;
 
-void PrintBacktrace()
+void Backtrace(std::ostringstream &stack, [[maybe_unused]] bool enableCache)
 {
-    void *stack[MAX_STACK_SIZE];
+    void *buffer[MAX_STACK_SIZE];
     char **stackList = nullptr;
-    int framesLen = backtrace(stack, MAX_STACK_SIZE);
-    stackList = backtrace_symbols(stack, framesLen);
+    int framesLen = backtrace(buffer, MAX_STACK_SIZE);
+    stackList = backtrace_symbols(buffer, framesLen);
     if (stackList == nullptr) {
         return;
     }
 
-    LOG_ECMA(INFO) << "=====================Backtrace========================";
+    stack << "=====================Backtrace========================";
     for (int i = 0; i < FRAMES_LEN; ++i) {
         if (stackList[i] == nullptr) {
             break;
         }
-        LOG_ECMA(INFO) << stackList[i];
+        stack << stackList[i];
     }
 
     free(stackList);

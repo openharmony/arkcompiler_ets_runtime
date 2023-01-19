@@ -69,7 +69,9 @@ public:
             if (totalSpentTime >= MAYBE_HANDLE_LEAK_TIME_MS) {
                 LOG_ECMA(INFO) << "New handle in scope count:" << thread->handleScopeCount_
                                << ", time:" << totalSpentTime << "ms";
-                PrintBacktrace();
+                std::ostringstream stack;
+                Backtrace(stack, true);
+                LOG_ECMA(INFO) << stack.str();
             }
         }
 #endif

@@ -68,7 +68,16 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate)
 {
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
-    const_cast<EcmaVM *>(vm)->GetJSOptions().SwitchStartGlobalLeakCheck();
+    auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
+    options.SwitchStartGlobalLeakCheck();
+    if (options.EnableGlobalLeakCheck() && options.IsStartGlobalLeakCheck()) {
+        int32_t stackTraceFd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_STACKTRACE));
+        if (stackTraceFd < 0) {
+            options.SwitchStartGlobalLeakCheck();
+        } else {
+            vm->GetJSThread()->SetStackTraceFd(stackTraceFd);
+        }
+    }
     // Write in faultlog for heap leak.
     int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
     if (fd < 0) {
