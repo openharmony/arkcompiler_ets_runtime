@@ -826,12 +826,6 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
             GateRef saveRegs =
                 circuit_->NewGate(circuit_->SaveRegister(numRegs), vec);
             gateAcc_.ReplaceDependIn(gate, saveRegs);
-        } else if (bytecodeInfo.GetOpcode() == EcmaOpcode::RESUMEGENERATOR) {
-            GateRef restoreRegs =
-                circuit_->NewGate(circuit_->RestoreRegister(), MachineType::I64, { depend }, GateType::TaggedValue());
-            gateAcc_.ReplaceDependIn(gate, restoreRegs);
-        } else {
-            UNREACHABLE();
         }
         suspendAndResumeGates_.emplace_back(gate);
     }
@@ -1000,8 +994,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         gateAcc_.NewIn(currentPhi, 0, bb.stateStart);
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
-            std::pair<GateRef, uint32_t> needReplaceInfo(currentPhi, i + 1);
-            gateAcc_.NewIn(currentPhi, i + 1, ResolveDef(predId, predBcIdx, reg, acc, needReplaceInfo));
+            gateAcc_.NewIn(currentPhi, i + 1, ResolveDef(predId, predBcIdx, reg, acc));
         }
     } else {
         // 2: the number of value inputs and it is in accord with LOOP_BEGIN
@@ -1015,9 +1008,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
             if (bb.loopbackBlocks.count(predId)) {
-                std::pair<GateRef, uint32_t> needReplaceInfo(loopBackValue, loopBackIndex);
-                gateAcc_.NewIn(loopBackValue, loopBackIndex++,
-                               ResolveDef(predId, predBcIdx, reg, acc, needReplaceInfo));
+                gateAcc_.NewIn(loopBackValue, loopBackIndex++, ResolveDef(predId, predBcIdx, reg, acc));
             }
         }
         inList = std::vector<GateRef>(1 + bb.numOfStatePreds - bb.numOfLoopBacks, Circuit::NullGate());
@@ -1029,8 +1020,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
             if (!bb.loopbackBlocks.count(predId)) {
-                std::pair<GateRef, uint32_t> needReplaceInfo(forwardValue, forwardIndex);
-                gateAcc_.NewIn(forwardValue, forwardIndex++, ResolveDef(predId, predBcIdx, reg, acc, needReplaceInfo));
+                gateAcc_.NewIn(forwardValue, forwardIndex++, ResolveDef(predId, predBcIdx, reg, acc));
             }
         }
         gateAcc_.NewIn(currentPhi, 1, forwardValue);   // 1: index of forward value input
@@ -1039,8 +1029,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
 }
 
 // recursive variables renaming algorithm
-GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc,
-                                           std::pair<GateRef, uint32_t> &needReplaceInfo)
+GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc)
 {
     auto tmpReg = reg;
     // find def-site in bytecodes of basic block
@@ -1082,15 +1071,16 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
         // New SAVE_REGISTER HIR, used to save register content when processing suspend instruction.
         auto resumeGate = byteCodeToJSGate_.at(iterator.Index());
-        ans = gateAcc_.GetDep(resumeGate);
-        auto &regs = gateAcc_.GetRestoreRegsInfo(ans);
-        auto it = regs.find(needReplaceInfo);
-        if (it != regs.end()) {
+        ans = GetExistingRestore(resumeGate, tmpReg);
+        if (ans != Circuit::NullGate()) {
             break;
         }
-        gateAcc_.SetRestoreRegsInfo(ans, needReplaceInfo, tmpReg);
-
-        auto saveRegGate = ResolveDef(bbId, iterator.Index() - 1, tmpReg, tmpAcc, needReplaceInfo);
+        GateRef resumeDependGate = gateAcc_.GetDep(resumeGate);
+        ans = circuit_->NewGate(circuit_->RestoreRegister(tmpReg), MachineType::I64,
+                                { resumeDependGate }, GateType::AnyType());
+        SetExistingRestore(resumeGate, tmpReg, ans);
+        gateAcc_.SetDep(resumeGate, ans);
+        auto saveRegGate = ResolveDef(bbId, iterator.Index() - 1, tmpReg, tmpAcc);
         ASSERT(Bytecodes::GetOpcode(iterator.PeekPrevPc(2)) == EcmaOpcode::SUSPENDGENERATOR_V8); // 2: prev bc
         GateRef suspendGate = byteCodeToJSGate_.at(iterator.Index() - 2); // 2: prev bc
         GateRef saveRegs = gateAcc_.GetDep(suspendGate);
@@ -1130,7 +1120,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
     }
     if (ans == Circuit::NullGate()) {
         // recursively find def-site in dominator block
-        return ResolveDef(bb.iDominator->id, bb.iDominator->end, tmpReg, tmpAcc, needReplaceInfo);
+        return ResolveDef(bb.iDominator->id, bb.iDominator->end, tmpReg, tmpAcc);
     } else {
         // def-site already found
         return ans;
@@ -1185,13 +1175,12 @@ void BytecodeCircuitBuilder::BuildCircuit()
                 if (!gateAcc_.IsInGateNull(gate, inIdx)) {
                     continue;
                 }
-                std::pair<GateRef, uint32_t> needReplaceInfo(gate, inIdx);
                 if (valueIdx < bytecodeInfo.inputs.size()) {
                     auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
-                    GateRef defVreg = ResolveDef(bbIndex, bcIndex - 1, vregId, false, needReplaceInfo);
+                    GateRef defVreg = ResolveDef(bbIndex, bcIndex - 1, vregId, false);
                     gateAcc_.NewIn(gate, inIdx, defVreg);
                 } else {
-                    GateRef defAcc = ResolveDef(bbIndex, bcIndex - 1, 0, true, needReplaceInfo);
+                    GateRef defAcc = ResolveDef(bbIndex, bcIndex - 1, 0, true);
                     gateAcc_.NewIn(gate, inIdx, defAcc);
                 }
             }

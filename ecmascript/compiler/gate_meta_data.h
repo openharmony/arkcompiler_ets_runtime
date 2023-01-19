@@ -199,7 +199,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \
     V(BuiltinsCallWithArgv, BUILTINS_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)  \
     V(BuiltinsCall, BUILTINS_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
-    V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)
+    V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)                    \
 
 #define GATE_META_DATA_LIST_WITH_SIZE(V)                                            \
     V(Merge, MERGE, GateFlags::CONTROL, value, 0, 0)                                \
@@ -224,6 +224,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(HeapAlloc, HEAP_ALLOC, GateFlags::NONE_FLAG, 1, 1, 1)              \
     V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)           \
     V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)        \
+    V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)  \
     V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 0)              \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                 \
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)
@@ -236,7 +237,6 @@ std::string MachineTypeToStr(MachineType machineType);
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
     V(TYPED_BINARY_OP)          \
-    V(RESTORE_REGISTER)         \
     V(CONSTSTRING)
 
 enum class OpCode : uint8_t {
@@ -272,7 +272,6 @@ public:
         MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
-        RESTORE_REGISTERS_OP,
     };
     GateMetaData() = default;
     GateMetaData(OpCode opcode, GateFlags flags,
@@ -345,11 +344,6 @@ public:
     bool IsStringType() const
     {
         return GetKind() == Kind::MUTABLE_STRING;
-    }
-
-    bool IsRestoreRegisterOp() const
-    {
-        return GetKind() == Kind::RESTORE_REGISTERS_OP;
     }
 
     bool IsRoot() const;
@@ -492,33 +486,6 @@ public:
 
 private:
     uint64_t value_ { 0 };
-};
-
-class RestoreRegsMetaData : public GateMetaData {
-public:
-    RestoreRegsMetaData() : GateMetaData(OpCode::RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0),
-        restoreRegsInfo_()
-    {
-        SetKind(GateMetaData::Kind::RESTORE_REGISTERS_OP);
-    }
-
-    static const RestoreRegsMetaData* Cast(const GateMetaData* meta)
-    {
-        ASSERT(meta->IsRestoreRegisterOp());
-        return static_cast<const RestoreRegsMetaData*>(meta);
-    }
-
-    const std::map<std::pair<GateRef, uint32_t>, uint32_t> &GetRestoreRegsInfo() const
-    {
-        return restoreRegsInfo_;
-    }
-
-    void SetRestoreRegsInfo(std::pair<GateRef, uint32_t> &needReplaceInfo, uint32_t regIdx)
-    {
-        restoreRegsInfo_[needReplaceInfo] = regIdx;
-    }
-private:
-    std::map<std::pair<GateRef, uint32_t>, uint32_t> restoreRegsInfo_;
 };
 
 class TypedBinaryMegaData : public OneParameterMetaData {

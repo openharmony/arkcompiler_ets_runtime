@@ -190,20 +190,6 @@ EcmaOpcode GateAccessor::GetByteCodeOpcode(GateRef gate) const
     return gatePtr->GetJSBytecodeMetaData()->GetByteCodeOpcode();
 }
 
-const std::map<std::pair<GateRef, uint32_t>, uint32_t> &GateAccessor::GetRestoreRegsInfo(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::RESTORE_REGISTER);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetRestoreRegsMetaData()->GetRestoreRegsInfo();
-}
-
-void GateAccessor::SetRestoreRegsInfo(GateRef gate, std::pair<GateRef, uint32_t> &info, uint32_t index) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::RESTORE_REGISTER);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    const_cast<RestoreRegsMetaData*>(gatePtr->GetRestoreRegsMetaData())->SetRestoreRegsInfo(info, index);
-}
-
 void GateAccessor::Print(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

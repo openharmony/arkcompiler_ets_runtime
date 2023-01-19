@@ -3230,36 +3230,35 @@ GateRef SlowPathLowering::GetValueFromTaggedArray(GateRef arrayGate, GateRef ind
 void SlowPathLowering::LowerResumeGenerator(GateRef gate)
 {
     GateRef obj = acc_.GetValueIn(gate, 0);
-    GateRef restoreRegs = acc_.GetDep(gate);
-    auto restoreInfo = acc_.GetRestoreRegsInfo(restoreRegs);
-
-    acc_.SetDep(gate, acc_.GetDep(restoreRegs));
-    builder_.SetDepend(acc_.GetDep(restoreRegs));
+    GateRef restoreGate = acc_.GetDep(gate);
+    std::vector<GateRef> registerGates {};
+    while (acc_.GetOpCode(restoreGate) == OpCode::RESTORE_REGISTER) {
+        registerGates.emplace_back(restoreGate);
+        restoreGate = acc_.GetDep(restoreGate);
+    }
+    acc_.SetDep(gate, restoreGate);
+    builder_.SetDepend(restoreGate);
     GateRef contextOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET);
     GateRef contextGate = builder_.Load(VariableType::JS_POINTER(), obj, contextOffset);
     GateRef arrayOffset = builder_.IntPtr(GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET);
     GateRef arrayGate = builder_.Load(VariableType::JS_POINTER(), contextGate, arrayOffset);
 
-    auto uses = acc_.Uses(restoreRegs);
-    for (auto use = uses.begin(); use != uses.end();) {
-        int32_t vregId;
-        if (acc_.GetOpCode(*use) == OpCode::SAVE_REGISTER) {
-            vregId = static_cast<int32_t>(use.GetIndex() - 1);
-        } else {
-            std::pair<GateRef, uint32_t> info(*use, use.GetIndex());
-            vregId = static_cast<int32_t>(restoreInfo[info]);
+    for (auto item : registerGates) {
+        auto index = acc_.GetVirtualRegisterIndex(item);
+        auto indexOffset = builder_.Int32(index);
+        GateRef value = GetValueFromTaggedArray(arrayGate, indexOffset);
+        auto uses = acc_.Uses(item);
+        for (auto use = uses.begin(); use != uses.end();) {
+            size_t valueStartIndex = acc_.GetStateCount(*use) + acc_.GetDependCount(*use);
+            size_t valueEndIndex = valueStartIndex + acc_.GetInValueCount(*use);
+            if (use.GetIndex() >= valueStartIndex && use.GetIndex() < valueEndIndex) {
+                use = acc_.ReplaceIn(use, value);
+            } else {
+                use++;
+            }
         }
-        auto vregIdOffset = builder_.Int32(vregId);
-        GateRef value = GetValueFromTaggedArray(arrayGate, vregIdOffset);
-        size_t valueStartIndex = acc_.GetStateCount(*use) + acc_.GetDependCount(*use);
-        size_t valueEndIndex = valueStartIndex + acc_.GetInValueCount(*use);
-        if (use.GetIndex() >= valueStartIndex && use.GetIndex() < valueEndIndex) {
-            use = acc_.ReplaceIn(use, value);
-        } else {
-            use++;
-        }
+        acc_.DeleteGate(item);
     }
-    acc_.DeleteGate(restoreRegs);
 
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
