@@ -302,7 +302,9 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor)
                 weakNodeSecondPassCallbacks_.push_back(std::make_pair(secondPassCallback,
                                                                       node->GetReference()));
             }
-            node->CallFirstPassCallback();
+            if (!node->CallFirstPassCallback()) {
+                DisposeGlobalHandle(ToUintPtr(node));
+            }
         } else if (fwd != object) {
             // update
             node->SetObject(JSTaggedValue(fwd).GetRawData());

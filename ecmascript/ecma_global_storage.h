@@ -189,11 +189,13 @@ public:
         return secondPassCallback_;
     }
 
-    void CallFirstPassCallback()
+    bool CallFirstPassCallback()
     {
         if (firstPassCallback_ != nullptr) {
             firstPassCallback_(reference_);
+            return true;
         }
+        return false;
     }
 
     void CallSecondPassCallback()
