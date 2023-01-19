@@ -400,10 +400,10 @@ void FrameStateBuilder::UpdateVirtualRegistersOfSuspend(GateRef gate)
 void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
 {
     auto restoreGate = gateAcc_.GetDep(gate);
-    auto &info = gateAcc_.GetRestoreRegsInfo(restoreGate);
-    for (auto it = info.begin(); it != info.end(); ++it) {
-        auto vreg = it->second;
+    while (gateAcc_.GetOpCode(restoreGate) == OpCode::RESTORE_REGISTER) {
+        auto vreg = static_cast<size_t>(gateAcc_.GetVirtualRegisterIndex(restoreGate));
         UpdateVirtualRegister(vreg, Circuit::NullGate());
+        restoreGate = gateAcc_.GetDep(restoreGate);
     }
 }
 }

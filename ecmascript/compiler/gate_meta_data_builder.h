@@ -123,11 +123,6 @@ public:
         return &cachedNop_;
     }
 
-    const GateMetaData* RestoreRegister()
-    {
-        return new (chunk_) RestoreRegsMetaData();
-    }
-
     GateMetaData* NewGateMetaData(const GateMetaData* other)
     {
         auto meta = new (chunk_) GateMetaData(other->opcode_, other->GetFlags(),
