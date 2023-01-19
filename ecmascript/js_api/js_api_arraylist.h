@@ -47,7 +47,7 @@ public:
                           const JSHandle<JSTaggedValue> &value);
     static int GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
                               const JSHandle<JSTaggedValue> &value);
-    static bool RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList, int value);
+    static JSTaggedValue RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList, int value);
     static bool Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
                        const JSHandle<JSTaggedValue> &value);
     static JSTaggedValue RemoveByRange(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,

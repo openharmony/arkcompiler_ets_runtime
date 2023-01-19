@@ -171,7 +171,7 @@ int JSAPIArrayList::GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIArrayLi
     return -1;
 }
 
-bool JSAPIArrayList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList, int index)
+JSTaggedValue JSAPIArrayList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList, int index)
 {
     int length = arrayList->GetLength().GetInt();
     if (index < 0 || index >= length) {
@@ -179,17 +179,20 @@ bool JSAPIArrayList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayLi
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
-    ASSERT(!elements->IsDictionaryMode());
-    for (int i = index; i <= length - 2; i++) { // 2 : 2 get index of (lastElementIndex - 1)
-        elements->Set(thread, i, elements->Get(i + 1));
+    TaggedArray *resElements = TaggedArray::Cast(arrayList->GetElements().GetTaggedObject());
+    JSTaggedValue oldValue = resElements->Get(index);
+
+    if (index >= 0) {
+        JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
+        ASSERT(!elements->IsDictionaryMode());
+        TaggedArray::RemoveElementByIndex(thread, elements, index, length);
+        arrayList->SetLength(thread, JSTaggedValue(length - 1));
     }
 
-    arrayList->SetLength(thread, JSTaggedValue(--length));
-    return true;
+    return oldValue;
 }
 
 bool JSAPIArrayList::Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
@@ -230,23 +233,19 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    int32_t toIndex = 0;
-    if (endIndex >= length) {
-        toIndex = length;
-    } else {
-        toIndex = endIndex;
-    }
+    int32_t toIndex = endIndex >= length ? length : endIndex;
 
     JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
     ASSERT(!elements->IsDictionaryMode());
     int32_t numMoved = length - toIndex;
-    for (int32_t i = 0; i <= numMoved; i++) {
-        elements->Set(thread, startIndex + i, elements->Get(static_cast<uint32_t>(toIndex + i)));
-    }
 
-    int32_t newLength = length - (toIndex - startIndex);
+    for (int32_t i = 0; i < numMoved; i++) {
+        elements->Set(thread, startIndex + i, elements->Get(static_cast<uint32_t>(endIndex + i)));
+    }
+    int32_t newLength = length - (endIndex - startIndex);
     arrayList->SetLength(thread, JSTaggedValue(newLength));
-    return JSTaggedValue::True();
+    elements->SetLength(newLength);
+    return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue JSAPIArrayList::ReplaceAllElements(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
@@ -314,9 +313,8 @@ JSTaggedValue JSAPIArrayList::SubArrayList(JSThread *thread, const JSHandle<JSAP
     }
 
     int endIndex = toIndex >= length - 1 ? length - 1 : toIndex;
-    int newLength = endIndex - fromIndex;
-    JSHandle<JSAPIArrayList> subArrayList =
-        thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(newLength);
+    int newLength = toIndex == length ? length - fromIndex : endIndex - fromIndex;
+    JSHandle<JSAPIArrayList> subArrayList = thread->GetEcmaVM()->GetFactory()->NewJSAPIArrayList(newLength);
     if (newLength == 0) {
         return subArrayList.GetTaggedValue();
     }
