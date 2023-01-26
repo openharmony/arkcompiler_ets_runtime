@@ -28,7 +28,38 @@
             "sub_component": [
                 "//arkcompiler/ets_runtime:ark_js_packages"
             ],
-            "inner_kits": [],
+            "inner_kits": [
+                {
+                  "name": "//arkcompiler/ets_runtime:libark_jsruntime",
+                  "header": {
+                    "header_files": [
+                      "jsnapi.h",
+                      "dfx_jsnapi.h"
+                    ],
+                    "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"
+                  }
+                },
+                {
+                    "name": "//arkcompiler/ets_runtime:libark_jsruntime_static",
+                    "header": {
+                      "header_files": [
+                        "jsnapi.h",
+                        "dfx_jsnapi.h"
+                      ],
+                      "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"
+                    }
+                  },
+                  {
+                      "name": "//arkcompiler/ets_runtime:libark_jsruntime_test",
+                      "header": {
+                        "header_files": [
+                          "jsnapi.h",
+                          "dfx_jsnapi.h"
+                        ],
+                        "header_base": "//arkcompiler/ets_runtime/ecmascript/napi/include"
+                      }
+                    }
+            ],
             "test": [
                 "//arkcompiler/ets_runtime:ark_js_unittest"
             ]

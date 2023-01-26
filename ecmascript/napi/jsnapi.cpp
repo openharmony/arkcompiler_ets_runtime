@@ -278,11 +278,18 @@ bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unu
                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    if (vm == nullptr) {
+        return false;
+    }
+
     const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (handler.IsValid()) {
         return false;
     }
 
+    if (libraryPath == nullptr) {
+        return false;
+    }
     auto handle = panda::os::library_loader::Load(std::string(libraryPath));
     if (!handle) {
         return false;
@@ -315,6 +322,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     if (vm == nullptr) {
         return false;
     }
+
     const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
 
     using StopDebug = void (*)(const std::string &);
@@ -326,6 +334,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     }
 
     reinterpret_cast<StopDebug>(sym.Value())("PandaDebugger");
+
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
 #else

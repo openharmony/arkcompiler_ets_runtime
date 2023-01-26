@@ -60,7 +60,7 @@ config("include_llvm") {
   }
 }
 
-source_set("libark_jsoptimizer_set") {
+ohos_source_set("libark_jsoptimizer_set") {
   sources = [
     "access_object_stub_builder.cpp",
     "argument_accessor.cpp",
@@ -242,38 +242,7 @@ source_set("libark_jsoptimizer_set") {
   }
 }
 
-source_set("ark_stub_compiler_set") {
-  sources = [ "stub_compiler.cpp" ]
-  include_dirs = [ "$target_gen_dir" ]
-
-  public_configs = [
-    ":include_llvm",
-    "$js_root:ark_jsruntime_compiler_config",
-    "$js_root:ark_jsruntime_public_config",
-  ]
-
-  deps = [
-    ":libark_jsoptimizer_set",
-    ":libark_mock_stub_set",
-    "$ark_root/libpandafile:arkfile_header_deps",
-    "$js_root:libark_js_intl_set",
-    "$js_root:libark_jsruntime_set",
-  ]
-}
-
-source_set("ark_aot_compiler_set") {
-  sources = [ "aot_compiler.cpp" ]
-
-  public_configs = [
-    ":include_llvm",
-    "$js_root:ark_jsruntime_compiler_config",
-    "$js_root:ark_jsruntime_public_config",
-  ]
-
-  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
-}
-
-source_set("libark_stub_set") {
+ohos_source_set("libark_stub_set") {
   deps = [ ":build_stub_to_cpp" ]
 
   sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
@@ -284,7 +253,7 @@ source_set("libark_stub_set") {
   ]
 }
 
-source_set("libark_mock_stub_set") {
+ohos_source_set("libark_mock_stub_set") {
   sources = [ "mock/mock_stub_an.cpp" ]
 
   public_configs = [
@@ -335,15 +304,26 @@ ohos_shared_library("libark_jsoptimizer_test") {
 }
 
 ohos_executable("ark_stub_compiler") {
+  sources = [ "stub_compiler.cpp" ]
+  include_dirs = [ "$target_gen_dir" ]
+
+  configs = [
+    ":include_llvm",
+    "$js_root:ark_jsruntime_compiler_config",
+    "$js_root:ark_jsruntime_public_config",
+  ]
+
   deps = [
-    ":ark_stub_compiler_set",
+    ":libark_jsoptimizer_set",
+    ":libark_mock_stub_set",
     "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_js_intl_set",
+    "$js_root:libark_jsruntime_set",
   ]
 
   if (!ark_standalone_build && host_os != "mac") {
     ldflags = [ "-Wl,--lto-O0" ]
   }
-  install_enable = false
 
   if (run_with_asan) {
     defines = [ "RUN_WITH_ASAN" ]
@@ -361,16 +341,24 @@ ohos_executable("ark_stub_compiler") {
     ]
   }
 
+  install_enable = false
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
 
 ohos_executable("ark_aot_compiler") {
-  deps = [ ":ark_aot_compiler_set" ]
+  sources = [ "aot_compiler.cpp" ]
 
-  deps += [
+  configs = [
+    ":include_llvm",
+    "$js_root:ark_jsruntime_compiler_config",
+    "$js_root:ark_jsruntime_public_config",
+  ]
+
+  deps = [
     ":libark_mock_stub_set",
     "$ark_root/libpandabase:libarkbase_static",
+    "$ark_root/libpandafile:arkfile_header_deps",
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
