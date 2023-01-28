@@ -291,26 +291,8 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
     if (entry != -1) {
         return JSHandle<JSTaggedValue>(thread, dict->GetValue(entry));
     }
-    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(moduleFileName);
-    if (jsPandaFile == nullptr) {
-        bool mode = GetCurrentMode();
-        if (mode) {
-            ResolveBufferCallback resolveBufferCallback = thread->GetEcmaVM()->GetResolveBufferCallback();
-            if (resolveBufferCallback == nullptr) {
-                LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
-                UNREACHABLE();
-            }
-            std::vector<uint8_t> data = resolveBufferCallback(JSPandaFile::ParseHapPath(moduleFileName));
-            if (data.empty()) {
-                LOG_FULL(FATAL) << "resolveBufferCallback get buffer failed";
-                UNREACHABLE();
-            }
-            jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName.c_str(),
-                                                                             data.data(), data.size(), true);
-        } else {
-            jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, true);
-        }
-    }
+    const JSPandaFile *jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "Try to load record " << recordName << " in abc : " << moduleFileName;
         CString msg = "Faild to load file '" + recordName + "', please check the request path.";

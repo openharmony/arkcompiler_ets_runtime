@@ -310,13 +310,45 @@ CString JSPandaFile::ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CStri
         entryPoint = vm->GetBundleName() + "/" + inputFileName.substr(startStrLen);
     } else {
         // Temporarily handle the relative path sent by arkui
-        entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
+        if (inputFileName.find("@bundle:") != CString::npos) {
+            entryPoint = inputFileName.substr(MODULE_OR_BUNDLE_PREFIX_LEN);
+            outFileName = ParseNewPagesUrl(vm, entryPoint);
+        } else {
+            entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
+        }
     }
     pos = entryPoint.rfind(".abc");
     if (pos != CString::npos) {
         entryPoint = entryPoint.substr(0, pos);
     }
     return entryPoint;
+}
+
+CString JSPandaFile::ParseNewPagesUrl(EcmaVM *vm, const CString &entryPoint)
+{
+    auto errorFun = [entryPoint](const size_t &pos) {
+        if (pos == CString::npos) {
+            LOG_ECMA(FATAL) << "ParseNewPagesUrl failed, please check Url " << entryPoint;
+        }
+    };
+    size_t bundleEndPos = entryPoint.find('/');
+    errorFun(bundleEndPos);
+    CString bundleName = entryPoint.substr(0, bundleEndPos);
+    size_t moduleStartPos = bundleEndPos + 1;
+    size_t moduleEndPos = entryPoint.find('/', moduleStartPos);
+    errorFun(moduleEndPos);
+    CString moduleName = entryPoint.substr(moduleStartPos, moduleEndPos - moduleStartPos);
+    CString baseFileName;
+    if (bundleName != vm->GetBundleName()) {
+        // Cross-application
+        baseFileName = BUNDLE_INSTALL_PATH + bundleName + "/" + moduleName + "/" + moduleName + MERGE_ABC_ETS_MODULES;
+    } else if (moduleName != vm->GetModuleName()) {
+        // Intra-application cross hap
+        baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
+    } else {
+        baseFileName = "";
+    }
+    return baseFileName;
 }
 
 std::string JSPandaFile::ParseHapPath(const CString &fileName)
