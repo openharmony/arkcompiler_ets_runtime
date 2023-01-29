@@ -17,6 +17,7 @@
 #define ECMASCRIPT_JS_THREAD_H
 
 #include <atomic>
+#include <sstream>
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
@@ -626,6 +627,9 @@ public:
     bool IsStartGlobalLeakCheck() const;
     bool EnableGlobalObjectLeakCheck() const;
     bool EnableGlobalPrimitiveLeakCheck() const;
+    void WriteToStackTraceFd(std::ostringstream &buffer) const;
+    void SetStackTraceFd(int32_t fd);
+    void CloseStackTraceFd();
     uint32_t IncreaseGlobalNumberCount()
     {
         return ++globalNumberCount_;
@@ -822,6 +826,7 @@ private:
     PropertiesCache *propertiesCache_ {nullptr};
     EcmaGlobalStorage<Node> *globalStorage_ {nullptr};
     EcmaGlobalStorage<DebugNode> *globalDebugStorage_ {nullptr};
+    int32_t stackTraceFd_ {-1};
 
     std::function<uintptr_t(JSTaggedType value)> newGlobalHandle_;
     std::function<void(uintptr_t nodeAddr)> disposeGlobalHandle_;

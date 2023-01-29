@@ -19,20 +19,22 @@
 #include <iomanip>
 #include <ios>
 #include <cstring>
+#include <map>
 #include <unwind.h>
 
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
 static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
-static const int MAX_STACK_SIZE = 16;
+static const int MAX_STACK_SIZE = 10;
 static const int ALIGN_WIDTH = 2;
 
 using UnwBackTraceFunc = int (*)(void**, int);
 
-void PrintBacktrace()
+static std::map<void *, Dl_info> stackInfoCache;
+
+void Backtrace(std::ostringstream &stack, bool enableCache)
 {
     static UnwBackTraceFunc unwBackTrace = nullptr;
     if (!unwBackTrace) {
@@ -53,65 +55,24 @@ void PrintBacktrace()
 
     void *buffer[MAX_STACK_SIZE] = { nullptr };
     int level = unwBackTrace(reinterpret_cast<void**>(&buffer), MAX_STACK_SIZE);
-    std::ostringstream stack;
     stack << "=====================Backtrace========================";
     for (int i = 1; i < level; i++) {
-        const char *file = "";
-        uintptr_t offset = 0;
         Dl_info info;
-        if (dladdr(buffer[i], &info)) {
-            if (info.dli_fname) {
-                file = info.dli_fname;
+        auto iter = stackInfoCache.find(buffer[i]);
+        if (enableCache && iter != stackInfoCache.end()) {
+            info = iter->second;
+        } else {
+            if (!dladdr(buffer[i], &info)) {
+                break;
             }
-            if (info.dli_fbase) {
-                offset = ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase);
+            if (enableCache) {
+                stackInfoCache.emplace(buffer[i], info);
             }
-            stack << std::endl << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  "
-                  << file << "(" << "+" << std::hex << offset << ")";
         }
+        const char *file =  info.dli_fname ? info.dli_fname : "";
+        uintptr_t offset = info.dli_fbase ? ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase) : 0;
+        stack << std::endl << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  " <<
+            file << "(" << "+" << std::hex << offset << ")";
     }
-    LOG_ECMA(INFO) << stack.str();
-    stack.clear();
-}
-
-std::string PrintBacktraceReturnString()
-{
-    static UnwBackTraceFunc unwBackTrace = nullptr;
-    if (!unwBackTrace) {
-        void *handle = dlopen(LIB_UNWIND_SO_NAME.c_str(), RTLD_NOW);
-        if (handle == nullptr) {
-            handle = dlopen(LIB_UNWIND_Z_SO_NAME.c_str(), RTLD_NOW);
-            if (handle == nullptr) {
-                LOG_ECMA(INFO) << "dlopen libunwind.so failed";
-                return "";
-            }
-        }
-        unwBackTrace = reinterpret_cast<UnwBackTraceFunc>(dlsym(handle, "unw_backtrace"));
-        if (unwBackTrace == nullptr) {
-            LOG_ECMA(INFO) << "dlsym unw_backtrace failed";
-            return "";
-        }
-    }
-
-    void *buffer[MAX_STACK_SIZE] = { nullptr };
-    int level = unwBackTrace(reinterpret_cast<void**>(&buffer), MAX_STACK_SIZE);
-    std::ostringstream stack;
-    for (int i = 1; i < level; i++) {
-        const char *file = "";
-        uintptr_t offset = 0;
-        Dl_info info;
-        if (dladdr(buffer[i], &info)) {
-            if (info.dli_fname) {
-                file = info.dli_fname;
-            }
-            if (info.dli_fbase) {
-                offset = ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase);
-            }
-            stack << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  "
-                  << file << "(" << "+" << std::hex << offset << ")" << std::endl;
-        }
-    }
-    stack.clear();
-    return stack.str();
 }
 } // namespace panda::ecmascript

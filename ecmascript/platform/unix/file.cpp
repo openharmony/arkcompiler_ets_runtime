@@ -55,6 +55,22 @@ fd_t Open(const char *file, int flag)
     return open(file, flag);
 }
 
+void DPrintf(fd_t fd, const std::string &buffer)
+{
+    int ret = dprintf(fd, "%s", buffer.c_str());
+    if (ret < 0) {
+        LOG_ECMA(DEBUG) << "dprintf fd(" << fd << ") failed";
+    }
+}
+
+void FSync(fd_t fd)
+{
+    int ret = fsync(fd);
+    if (ret < 0) {
+        LOG_ECMA(DEBUG) << "fsync fd(" << fd << ") failed";
+    }
+}
+
 void Close(fd_t fd)
 {
     close(fd);

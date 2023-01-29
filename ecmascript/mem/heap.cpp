@@ -1033,7 +1033,7 @@ void Heap::InvokeWeakNodeNativeFinalizeCallback()
     runningNativeFinalizeCallbacks_ = false;
 }
 
-void Heap::StatisticHeapObject(TriggerGCType gcType) const
+void Heap::PrintHeapInfo(TriggerGCType gcType) const
 {
     OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
@@ -1050,6 +1050,11 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
                    << "), AppspawnSpace(" << appSpawnSpace_->GetHeapObjectSize() << "/"
                    << appSpawnSpace_->GetCommittedSize() << "/" << appSpawnSpace_->GetInitialCapacity()
                    << "), GlobalLimitSize(" << globalSpaceAllocLimit_ << ").";
+}
+
+void Heap::StatisticHeapObject(TriggerGCType gcType) const
+{
+    PrintHeapInfo(gcType);
 #if ECMASCRIPT_ENABLE_HEAP_DETAIL_STATISTICS
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
