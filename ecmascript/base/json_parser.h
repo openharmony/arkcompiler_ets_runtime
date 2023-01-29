@@ -319,6 +319,7 @@ private:
         }
 
         current_++;
+        SkipStartWhiteSpace();
         JSHandle<JSArray> arr = factory_->NewJSArray();
         if (*current_ == ']') {
             return arr.GetTaggedValue();
