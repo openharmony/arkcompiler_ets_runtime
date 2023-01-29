@@ -321,7 +321,7 @@ DependChainInfo* DependChainInfo::Merge(DependChainInfo* that)
     newInfo->typedCallCheckSet_ = MergeSet<TypedCallCheckInfo>(typedCallCheckSet_, that->typedCallCheckSet_);
     newInfo->frameState_ = frameState_ == that->frameState_ ? frameState_ : Circuit::NullGate();
     return newInfo;
-} 
+}
 
 void EarlyElimination::Run()
 {
@@ -340,7 +340,8 @@ void EarlyElimination::Run()
     }
 }
 
-bool EarlyElimination::IsSideEffectLoop(GateRef depend) {
+bool EarlyElimination::IsSideEffectLoop(GateRef depend)
+{
     ChunkSet<GateRef> visited(GetChunk());
     ChunkQueue<GateRef> workList(GetChunk());
     workList.push(depend);
@@ -364,7 +365,7 @@ bool EarlyElimination::IsSideEffectLoop(GateRef depend) {
     return false;
 }
 
-ElementInfo* EarlyElimination::GetElementInfo(GateRef gate) const 
+ElementInfo* EarlyElimination::GetElementInfo(GateRef gate) const
 {
     auto op = acc_.GetTypedLoadOp(gate);
     auto v0 = acc_.GetValueIn(gate, 0);
@@ -372,14 +373,14 @@ ElementInfo* EarlyElimination::GetElementInfo(GateRef gate) const
     return new (GetChunk()) ElementInfo(op, v0, v1);
 }
 
-PropertyInfo* EarlyElimination::GetPropertyInfo(GateRef gate) const 
+PropertyInfo* EarlyElimination::GetPropertyInfo(GateRef gate) const
 {
     auto v0 = acc_.GetValueIn(gate, 0);
     auto v1 = acc_.GetValueIn(gate, 1);
     return new (GetChunk()) PropertyInfo(v0, v1);
 }
 
-ArrayLengthInfo* EarlyElimination::GetArrayLengthInfo(GateRef gate) const 
+ArrayLengthInfo* EarlyElimination::GetArrayLengthInfo(GateRef gate) const
 {
     auto v0 = acc_.GetValueIn(gate, 0);
     return new (GetChunk()) ArrayLengthInfo(v0);
@@ -500,7 +501,8 @@ void EarlyElimination::TrustedTypePropagate(ChunkQueue<GateRef>& workList, const
     }
 }
 
-void EarlyElimination::TryEliminate(GateRef gate) {
+void EarlyElimination::TryEliminate(GateRef gate)
+{
     auto op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::LOAD_PROPERTY:
@@ -553,7 +555,8 @@ void EarlyElimination::TryEliminate(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateElement(GateRef gate) {
+void EarlyElimination::TryEliminateElement(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetElementInfo(gate);
@@ -566,7 +569,8 @@ void EarlyElimination::TryEliminateElement(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateProperty(GateRef gate) {
+void EarlyElimination::TryEliminateProperty(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetPropertyInfo(gate);
@@ -579,7 +583,8 @@ void EarlyElimination::TryEliminateProperty(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateArrayLength(GateRef gate) {
+void EarlyElimination::TryEliminateArrayLength(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetArrayLengthInfo(gate);
@@ -592,7 +597,8 @@ void EarlyElimination::TryEliminateArrayLength(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminatePrimitiveTypeCheck(GateRef gate) {
+void EarlyElimination::TryEliminatePrimitiveTypeCheck(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetPrimitiveTypeCheckInfo(gate);
@@ -604,7 +610,8 @@ void EarlyElimination::TryEliminatePrimitiveTypeCheck(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateInt32OverflowCheck(GateRef gate) {
+void EarlyElimination::TryEliminateInt32OverflowCheck(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetInt32OverflowCheckInfo(gate);
@@ -616,7 +623,8 @@ void EarlyElimination::TryEliminateInt32OverflowCheck(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateArrayCheck(GateRef gate) {
+void EarlyElimination::TryEliminateArrayCheck(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetArrayCheckInfo(gate);
@@ -628,7 +636,8 @@ void EarlyElimination::TryEliminateArrayCheck(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateStableArrayCheck(GateRef gate) {
+void EarlyElimination::TryEliminateStableArrayCheck(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetStableArrayCheckInfo(gate);
@@ -640,7 +649,8 @@ void EarlyElimination::TryEliminateStableArrayCheck(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateTypedArrayCheck(GateRef gate) {
+void EarlyElimination::TryEliminateTypedArrayCheck(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetTypedArrayCheckInfo(gate);
@@ -652,7 +662,8 @@ void EarlyElimination::TryEliminateTypedArrayCheck(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateObjectTypeCheck(GateRef gate) {
+void EarlyElimination::TryEliminateObjectTypeCheck(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetObjectTypeCheckInfo(gate);
@@ -664,7 +675,8 @@ void EarlyElimination::TryEliminateObjectTypeCheck(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateIndexCheck(GateRef gate) {
+void EarlyElimination::TryEliminateIndexCheck(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetIndexCheckInfo(gate);
@@ -676,7 +688,8 @@ void EarlyElimination::TryEliminateIndexCheck(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateTypedCallCheck(GateRef gate) {
+void EarlyElimination::TryEliminateTypedCallCheck(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto info = GetTypedCallCheckInfo(gate);
@@ -688,7 +701,8 @@ void EarlyElimination::TryEliminateTypedCallCheck(GateRef gate) {
     }
 }
 
-void EarlyElimination::TryEliminateStateSplitAndFrameState(GateRef gate) {
+void EarlyElimination::TryEliminateStateSplitAndFrameState(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     auto frameState = dependInfo->LookUpFrameState();
@@ -705,7 +719,8 @@ void EarlyElimination::TryEliminateStateSplitAndFrameState(GateRef gate) {
     return ;
 }
 
-void EarlyElimination::TryEliminateOther(GateRef gate) {
+void EarlyElimination::TryEliminateOther(GateRef gate)
+{
     auto depIn = acc_.GetDep(gate);
     auto dependInfo = dependInfos_[acc_.GetId(depIn)];
     if (!acc_.IsNotWrite(gate)) {
@@ -715,7 +730,8 @@ void EarlyElimination::TryEliminateOther(GateRef gate) {
     return ;
 }
 
-void EarlyElimination::TryEliminateDependSelector(GateRef gate) {
+void EarlyElimination::TryEliminateDependSelector(GateRef gate)
+{
     auto state = acc_.GetState(gate);
     DependChainInfo* dependInfo = nullptr;
     if (acc_.IsLoopHead(state)) {
@@ -739,7 +755,8 @@ void EarlyElimination::TryEliminateDependSelector(GateRef gate) {
     dependInfos_[acc_.GetId(gate)] = dependInfo;
 }
 
-void EarlyElimination::TryEliminateDependAnd(GateRef gate) {
+void EarlyElimination::TryEliminateDependAnd(GateRef gate)
+{
     auto dep0 = acc_.GetDep(gate, 0);
     auto info0 = dependInfos_[acc_.GetId(dep0)];
     auto dep1 = acc_.GetDep(gate, 1);
@@ -757,7 +774,7 @@ void EarlyElimination::RemoveGate(GateRef gate, GateRef value)
         if (acc_.IsStateIn(i)) {
             i = acc_.ReplaceIn(i, state);
         } else if (acc_.IsDependIn(i)) {
-            i = acc_.ReplaceIn(i, depend); 
+            i = acc_.ReplaceIn(i, depend);
         } else {
             i = acc_.ReplaceIn(i, value);
         }

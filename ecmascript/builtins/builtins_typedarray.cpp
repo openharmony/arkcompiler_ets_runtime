@@ -226,7 +226,8 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
             } else {
                 mapValue.Update(kValue.GetTaggedValue());
             }
-            ObjectFastOperator::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k, mapValue.GetTaggedValue());
+            ObjectFastOperator::FastSetPropertyByIndex(thread, targetObj.GetTaggedValue(), k,
+                                                       mapValue.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             k++;
         }

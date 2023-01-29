@@ -26,8 +26,9 @@ public:
     ElementInfo(TypedLoadOp loadOp, GateRef receiver, GateRef index)
         : loadOp_(loadOp), receiver_(receiver), index_(index) {};
     ~ElementInfo() = default;
-    bool operator < (const ElementInfo& rhs) const {
-        if (loadOp_ != rhs.loadOp_){
+    bool operator < (const ElementInfo& rhs) const
+    {
+        if (loadOp_ != rhs.loadOp_) {
             return loadOp_ < rhs.loadOp_;
         } else if (receiver_ != rhs.receiver_) {
             return receiver_ < rhs.receiver_;
@@ -46,7 +47,8 @@ class PropertyInfo : public ChunkObject {
 public:
     PropertyInfo(GateRef receiver, GateRef offset) : receiver_(receiver), offset_(offset) {};
     ~PropertyInfo() = default;
-    bool operator < (const PropertyInfo& rhs) const {
+    bool operator < (const PropertyInfo& rhs) const
+    {
         if (receiver_ != rhs.receiver_) {
             return receiver_ < rhs.receiver_;
         } else {
@@ -63,7 +65,8 @@ class ArrayLengthInfo : public ChunkObject {
 public:
     ArrayLengthInfo(GateRef receiver) : receiver_(receiver){};
     ~ArrayLengthInfo() = default;
-    bool operator < (const ArrayLengthInfo& rhs) const {
+    bool operator < (const ArrayLengthInfo& rhs) const
+    {
         return receiver_ < rhs.receiver_;
     }
 
@@ -75,7 +78,8 @@ class PrimitiveTypeCheckInfo : public ChunkObject {
 public:
     PrimitiveTypeCheckInfo(GateType type, GateRef value) : type_(type), value_(value) {};
     ~PrimitiveTypeCheckInfo() = default;
-    bool operator < (const PrimitiveTypeCheckInfo& rhs) const {
+    bool operator < (const PrimitiveTypeCheckInfo& rhs) const
+    {
         if (type_ != rhs.type_){
             return type_ < rhs.type_;
         } else {
@@ -92,8 +96,9 @@ class Int32OverflowCheckInfo : public ChunkObject {
 public:
     Int32OverflowCheckInfo(TypedUnOp unOp, GateRef value) : unOp_(unOp), value_(value) {};
     ~Int32OverflowCheckInfo() = default;
-    bool operator < (const Int32OverflowCheckInfo& rhs) const {
-        if (unOp_ != rhs.unOp_){
+    bool operator < (const Int32OverflowCheckInfo& rhs) const
+    {
+        if (unOp_ != rhs.unOp_) {
             return unOp_ < rhs.unOp_;
         } else {
             return value_ < rhs.value_;
@@ -109,7 +114,8 @@ class ArrayCheckInfo : public ChunkObject {
 public:
     ArrayCheckInfo(GateRef receiver) : receiver_(receiver){};
     ~ArrayCheckInfo() = default;
-    bool operator < (const ArrayCheckInfo& rhs) const {
+    bool operator < (const ArrayCheckInfo& rhs) const
+    {
         return receiver_ < rhs.receiver_;
     }
 
@@ -121,7 +127,8 @@ class StableArrayCheckInfo : public ChunkObject {
 public:
     StableArrayCheckInfo(GateRef receiver) : receiver_(receiver){};
     ~StableArrayCheckInfo() = default;
-    bool operator < (const StableArrayCheckInfo& rhs) const {
+    bool operator < (const StableArrayCheckInfo& rhs) const
+    {
         return receiver_ < rhs.receiver_;
     }
 
@@ -134,8 +141,9 @@ public:
     TypedArrayCheckInfo(GateType type, GateRef receiver)
         : type_(type), receiver_(receiver) {};
     ~TypedArrayCheckInfo() = default;
-    bool operator < (const TypedArrayCheckInfo& rhs) const {
-        if (type_ != rhs.type_){
+    bool operator < (const TypedArrayCheckInfo& rhs) const
+    {
+        if (type_ != rhs.type_) {
             return type_ < rhs.type_;
         } else {
             return receiver_ < rhs.receiver_;
@@ -152,8 +160,9 @@ public:
     ObjectTypeCheckInfo(GateType type, GateRef receiver, GateRef offset)
         : type_(type), receiver_(receiver), offset_(offset) {};
     ~ObjectTypeCheckInfo() = default;
-    bool operator < (const ObjectTypeCheckInfo& rhs) const {
-        if (type_ != rhs.type_){
+    bool operator < (const ObjectTypeCheckInfo& rhs) const
+    {
+        if (type_ != rhs.type_) {
             return type_ < rhs.type_;
         } else if (receiver_ != rhs.receiver_) {
             return receiver_ < rhs.receiver_;
@@ -173,8 +182,9 @@ public:
     IndexCheckInfo(GateType type, GateRef receiver, GateRef index)
         : type_(type), receiver_(receiver), index_(index) {};
     ~IndexCheckInfo() = default;
-    bool operator < (const IndexCheckInfo& rhs) const {
-        if (type_ != rhs.type_){
+    bool operator < (const IndexCheckInfo& rhs) const
+    {
+        if (type_ != rhs.type_) {
             return type_ < rhs.type_;
         } else if (receiver_ != rhs.receiver_) {
             return receiver_ < rhs.receiver_;
@@ -194,8 +204,9 @@ public:
     TypedCallCheckInfo(GateRef func, GateRef id, GateRef para)
         : func_(func), id_(id), para_(para) {};
     ~TypedCallCheckInfo() = default;
-    bool operator < (const TypedCallCheckInfo& rhs) const {
-        if (func_ != rhs.func_){
+    bool operator < (const TypedCallCheckInfo& rhs) const
+    {
+        if (func_ != rhs.func_) {
             return func_ < rhs.func_;
         } else if (id_ != rhs.id_) {
             return id_ < rhs.id_;
@@ -215,7 +226,8 @@ public:
     DependChainInfo(Chunk* chunk) : chunk_(chunk) {};
     ~DependChainInfo() = default;
     
-    bool operator == (const DependChainInfo& rhs) const {
+    bool operator == (const DependChainInfo& rhs) const
+    {
         return (elementMap_ == rhs.elementMap_) &&
                (propertyMap_ == rhs.propertyMap_) &&
                (arrayLengthMap_ == rhs.arrayLengthMap_) &&
@@ -284,7 +296,7 @@ private:
 class EarlyElimination {
 public:
     EarlyElimination(Circuit *circuit, bool enableLog, const std::string& name, NativeAreaAllocator *allocator)
-        : circuit_(circuit), acc_(circuit), enableLog_(enableLog), 
+        : circuit_(circuit), acc_(circuit), enableLog_(enableLog),
         methodName_(name), chunk_(allocator), dependInfos_(&chunk_), stateSplits_(&chunk_) {}
 
     ~EarlyElimination() = default;

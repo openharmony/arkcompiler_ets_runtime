@@ -276,7 +276,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
 
 template<bool UseOwn>
 JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
-                                                  JSTaggedValue value)
+                                                     JSTaggedValue value)
 {
     INTERPRETER_TRACE(thread, SetPropertyByIndex);
     JSTaggedValue holder = receiver;
@@ -353,7 +353,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedV
 
 template<bool UseOwn>
 JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                  JSTaggedValue value)
+                                                     JSTaggedValue value)
 {
     INTERPRETER_TRACE(thread, SetPropertyByValue);
     if (UNLIKELY(!key.IsNumber() && !key.IsStringOrSymbol())) {
@@ -596,7 +596,8 @@ bool ObjectFastOperator::IsFastTypeArray(JSType jsType)
     return jsType >= JSType::JS_TYPED_ARRAY_FIRST && jsType <= JSType::JS_FLOAT64_ARRAY;
 }
 
-JSTaggedValue ObjectFastOperator::FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
+JSTaggedValue ObjectFastOperator::FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver,
+                                                           JSTaggedValue holder,
                                                            JSTaggedValue key, JSType jsType)
 {
     CHECK_IS_ON_PROTOTYPE_CHAIN(receiver, holder);
@@ -623,8 +624,9 @@ bool ObjectFastOperator::TryStringOrSymbolToIndex(JSTaggedValue key, uint32_t *o
     return EcmaStringAccessor(strObj).ToTypedArrayIndex(output);
 }
 
-JSTaggedValue ObjectFastOperator::FastSetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
-                                                           JSTaggedValue key, JSTaggedValue value, JSType jsType)
+JSTaggedValue ObjectFastOperator::FastSetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver,
+                                                           JSTaggedValue holder, JSTaggedValue key,
+                                                           JSTaggedValue value, JSType jsType)
 {
     CHECK_IS_ON_PROTOTYPE_CHAIN(receiver, holder);
     JSTaggedValue negativeZero = thread->GlobalConstants()->GetNegativeZeroString();
