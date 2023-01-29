@@ -35,6 +35,16 @@
 namespace panda::ecmascript {
 using BuiltinsJson = builtins::BuiltinsJson;
 
+namespace {
+constexpr size_t NATIVE_PREFIX_SIZE = 8;
+constexpr size_t OHOS_PREFIX_SIZE = 6;
+constexpr size_t APP_PREFIX_SIZE = 5;
+
+constexpr char REQUIRE_NAITVE_MODULE_PREFIX[] = "@native:";
+constexpr char REQUIRE_NAPI_OHOS_PREFIX[] = "@ohos:";
+constexpr char REQUIRE_NAPI_APP_PREFIX[] = "@app:";
+}
+
 ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 {
     resolvedModules_ = NameDictionary::Create(vm_->GetJSThread(), DEAULT_DICTIONART_CAPACITY).GetTaggedValue();
@@ -106,7 +116,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     JSTaggedValue resolvedModule = binding->GetModule();
     ASSERT(resolvedModule.IsSourceTextModule());
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
-    if (module->GetTypes() == ModuleTypes::CJSMODULE) {
+    if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
         JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(JSTaggedValue(module)));
         JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
         // if cjsModule is not JSObject, means cjs uses default exports.
@@ -221,7 +231,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(JSTaggedValue key, JST
     JSTaggedValue resolvedModule = binding->GetModule();
     ASSERT(resolvedModule.IsSourceTextModule());
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
-    if (module->GetTypes() == ModuleTypes::CJSMODULE) {
+    if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
         JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(JSTaggedValue(module)));
         return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
     }
@@ -408,6 +418,20 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     return moduleRecord;
 }
 
+JSHandle<JSTaggedValue> ModuleManager::ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    JSThread *thread = vm_->GetJSThread();
+
+    JSHandle<JSTaggedValue> referencingModule(factory->NewFromUtf8(moduleRequestName));
+    JSHandle<JSTaggedValue> moduleRecord = ModuleDataExtractor::ParseNativeModule(thread,
+        moduleRequestName, moduleType);
+    JSHandle<NameDictionary> dict(thread, resolvedModules_);
+    resolvedModules_ = NameDictionary::Put(thread, dict, referencingModule, moduleRecord,
+        PropertyAttributes::Default()).GetTaggedValue();
+    return moduleRecord;
+}
+
 JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
     JSThread *thread, const JSPandaFile *jsPandaFile, const CString &recordName)
 {
@@ -485,7 +509,7 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     // if requiredModuleST is CommonJS
     JSHandle<SourceTextModule> requiredModuleST = JSHandle<SourceTextModule>::Cast(requiredModule);
-    if (requiredModuleST->GetTypes() == ModuleTypes::CJSMODULE) {
+    if (requiredModuleST->GetTypes() == ModuleTypes::CJS_MODULE) {
         JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(requiredModuleST.GetTaggedValue()));
         return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
     }
@@ -706,5 +730,86 @@ JSTaggedValue ModuleManager::JsonParse(JSThread *thread, const JSPandaFile *jsPa
     JSHandle<JSTaggedValue> arg0(thread->GetEcmaVM()->GetFactory()->NewFromASCII(value));
     info->SetCallArg(arg0.GetTaggedValue());
     return BuiltinsJson::Parse(info);
+}
+
+std::pair<bool, ModuleTypes> ModuleManager::CheckNativeModule(const CString &moduleRequestName)
+{
+    if (moduleRequestName.compare(0, OHOS_PREFIX_SIZE, REQUIRE_NAPI_OHOS_PREFIX) == 0) {
+        return {true, ModuleTypes::OHOS_MODULE};
+    } else if (moduleRequestName.compare(0, APP_PREFIX_SIZE, REQUIRE_NAPI_APP_PREFIX) == 0) {
+        return {true, ModuleTypes::APP_MODULE};
+    } else if (moduleRequestName.compare(0, NATIVE_PREFIX_SIZE, REQUIRE_NAITVE_MODULE_PREFIX) == 0) {
+        return {true, ModuleTypes::NATIVE_MODULE};
+    } else {
+        return {false, ModuleTypes::UNKNOWN};
+    }
+}
+
+CString ModuleManager::GetStrippedModuleName(const CString &moduleRequestName)
+{
+    size_t pos = 0;
+    if (moduleRequestName.compare(0, OHOS_PREFIX_SIZE, REQUIRE_NAPI_OHOS_PREFIX) == 0) {
+        pos = OHOS_PREFIX_SIZE;
+    } else if (moduleRequestName.compare(0, APP_PREFIX_SIZE, REQUIRE_NAPI_APP_PREFIX) == 0) {
+        pos = APP_PREFIX_SIZE;
+    } else if (moduleRequestName.compare(0, NATIVE_PREFIX_SIZE, REQUIRE_NAITVE_MODULE_PREFIX) == 0) {
+        pos = NATIVE_PREFIX_SIZE;
+    } else {
+        LOG_FULL(FATAL) << "Unknown format " << moduleRequestName;
+        UNREACHABLE();
+    }
+    return moduleRequestName.substr(pos);
+}
+
+Local<JSValueRef> ModuleManager::GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType)
+{
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    auto globalConstants = vm->GetJSThread()->GlobalConstants();
+    auto funcName = (moduleType == ModuleTypes::NATIVE_MODULE) ?
+        globalConstants->GetHandledRequireNativeModuleString() :
+        globalConstants->GetHandledRequireNapiString();
+    return globalObject->Get(vm, JSNApiHelper::ToLocal<StringRef>(funcName));
+}
+
+void ModuleManager::EvaluateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord,
+    const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    LocalScope scope(vm);
+
+    CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
+    CString moduleName = GetStrippedModuleName(moduleRequestName);
+    std::vector<Local<JSValueRef>> arguments;
+    LOG_FULL(INFO) << "Request module is " << moduleRequestName;
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleName.c_str()));
+    if (moduleType == ModuleTypes::APP_MODULE) {
+        size_t pos = moduleName.find_last_of('/');
+        if (pos == CString::npos) {
+            LOG_FULL(FATAL) << "Invalid native module " << moduleName;
+            UNREACHABLE();
+        }
+        CString soName = moduleName.substr(pos + 1);
+        CString path = moduleName.substr(0, pos);
+        // use module name as so name
+        arguments[0] = StringRef::NewFromUtf8(vm, soName.c_str());
+        arguments.emplace_back(BooleanRef::New(vm, true));
+        arguments.emplace_back(StringRef::NewFromUtf8(vm, path.c_str()));
+    }
+
+    auto maybeFuncRef = GetRequireNativeModuleFunc(vm, moduleType);
+    // some function(s) may not registered in global object for non-main thread
+    if (!maybeFuncRef->IsFunction()) {
+        LOG_FULL(WARN) << "Not found require func";
+        return;
+    }
+
+    Local<FunctionRef> funcRef = maybeFuncRef;
+    auto exportObject = funcRef->Call(vm, JSValueRef::Undefined(vm), arguments.data(), arguments.size());
+    if (UNLIKELY(thread->HasPendingException())) {
+        thread->ClearException();
+        LOG_FULL(ERROR) << "EvaluateNativeModule has exception";
+        return;
+    }
+    moduleRecord->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
 }
 } // namespace panda::ecmascript

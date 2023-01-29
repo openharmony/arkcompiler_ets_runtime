@@ -566,6 +566,10 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::CJS_EXPORTS_INDEX, factory->NewFromASCIINonMovable("exports"));
     SetConstant(ConstantIndex::CJS_CACHE_INDEX, factory->NewFromASCIINonMovable("_cache"));
     SetConstant(ConstantIndex::NAPI_WRAPPER_INDEX, factory->NewFromASCIINonMovable("_napiwrapper"));
+    // for require native module
+    SetConstant(ConstantIndex::REQUIRE_NATIVE_MOUDULE_FUNC_INDEX,
+                factory->NewFromASCIINonMovable("requireNativeModule"));
+    SetConstant(ConstantIndex::REQUIRE_NAPI_FUNC_INDEX, factory->NewFromASCIINonMovable("requireNapi"));
 
     auto accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
                                                  reinterpret_cast<void *>(JSFunction::PrototypeGetter));

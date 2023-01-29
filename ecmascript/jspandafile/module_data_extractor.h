@@ -39,6 +39,8 @@ public:
     static JSHandle<JSTaggedValue> ParseCjsModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     static JSHandle<JSTaggedValue> ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
         const CString &moduleFilename, const CString &recordName = nullptr);
+    static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread,
+        const CString &moduleRequestName, ModuleTypes moduleType);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSPANDAFILE_MODULE_DATA_EXTRACTOR_H

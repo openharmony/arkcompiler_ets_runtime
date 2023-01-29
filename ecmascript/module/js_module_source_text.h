@@ -24,7 +24,16 @@
 
 namespace panda::ecmascript {
 enum class ModuleStatus : uint8_t { UNINSTANTIATED = 0x01, INSTANTIATING, INSTANTIATED, EVALUATING, EVALUATED };
-enum class ModuleTypes : uint8_t { ECMAMODULE = 0x01, CJSMODULE, JSONMODULE, UNKNOWN};
+
+enum class ModuleTypes : uint8_t {
+    ECMA_MODULE = 0x01,
+    CJS_MODULE,
+    JSON_MODULE,
+    NATIVE_MODULE,
+    OHOS_MODULE,
+    APP_MODULE,
+    UNKNOWN
+};
 
 class SourceTextModule final : public ModuleRecord {
 public:

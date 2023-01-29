@@ -414,7 +414,10 @@ class JSThread;
     V(JSTaggedValue, NanCapitalString, NAN_INDEX, nan)                                                                \
     V(JSTaggedValue, CjsExportsString, CJS_EXPORTS_INDEX, exportsStr)                                                 \
     V(JSTaggedValue, CjsCacheString, CJS_CACHE_INDEX, cacheStr)                                                       \
-    V(JSTaggedValue, NapiWrapperString, NAPI_WRAPPER_INDEX, napiwrapper)
+    V(JSTaggedValue, NapiWrapperString, NAPI_WRAPPER_INDEX, napiwrapper)                                              \
+    /* for require native module */                                                                                   \
+    V(JSTaggedValue, RequireNativeModuleString, REQUIRE_NATIVE_MOUDULE_FUNC_INDEX, requireNativeModule)               \
+    V(JSTaggedValue, RequireNapiString, REQUIRE_NAPI_FUNC_INDEX, requireNapi)                                         \
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                           \
