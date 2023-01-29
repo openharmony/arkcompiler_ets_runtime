@@ -504,7 +504,8 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
         uint32_t propLen = propList_.size();
         for (uint32_t i = 0; i < propLen; i++) {
             JSTaggedValue tagVal =
-                ObjectFastOperator::FastGetPropertyByValue(thread_, obj.GetTaggedValue(), propList_[i].GetTaggedValue());
+                ObjectFastOperator::FastGetPropertyByValue(thread_, obj.GetTaggedValue(),
+                                                           propList_[i].GetTaggedValue());
             handleValue_.Update(tagVal);
             JSTaggedValue serializeValue = GetSerializeValue(value, propList_[i], handleValue_, replacer);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
