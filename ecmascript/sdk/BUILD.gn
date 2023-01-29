@@ -17,6 +17,7 @@ import("//build/ohos.gni")
 # Triggered only when the SDK is compiled
 if (is_standard_system) {
   # Avoid conditional judgment branches caused by dynamic library suffixes.
+  dylib_suffix = ""
   if (is_mac) {
     dylib_suffix = ".dylib"
   } else if (is_mingw) {
@@ -179,6 +180,23 @@ if (is_standard_system) {
       module_source_dir =
           target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/aot/src/"
       module_install_name = ""
+    }
+  } else if (is_mac) {
+    ohos_copy("copy_ark_aot_builtins_mac") {
+      deps = []
+      sources = []
+
+      # Add lib_ark_builtins
+      sources += [ "../ts_types/lib_ark_builtins.d.ts" ]
+
+      # Set the output directory
+      outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-mac/aot/src/{{source_file_part}}" ]
+      module_source_dir =
+          target_out_dir +
+          "/ets/build-tools/ets-loader/bin/ark/build-mac/aot/src/"
+      module_install_name = ""
+      subsystem_name = "developtools"
+      part_name = "ets_runtime"
     }
   }
 }
