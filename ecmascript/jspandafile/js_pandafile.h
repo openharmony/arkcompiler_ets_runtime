@@ -301,6 +301,7 @@ public:
     CString FindNpmEntryPoint(const CString &record) const;
 
     static CString ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName);
+    static CString ParseNewPagesUrl(EcmaVM *vm, const CString &entryPoint);
     static std::string ParseHapPath(const CString &fileName);
     static void CroppingRecord(CString &recordName);
 

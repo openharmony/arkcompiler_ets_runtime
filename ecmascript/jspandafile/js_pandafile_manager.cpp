@@ -72,7 +72,24 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
         }
     }
 
-    auto pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
+    bool mode = thread->GetEcmaVM()->GetModuleManager()->GetCurrentMode();
+    std::unique_ptr<const panda_file::File> pf;
+    if (mode) {
+        ResolveBufferCallback resolveBufferCallback = thread->GetEcmaVM()->GetResolveBufferCallback();
+        if (resolveBufferCallback == nullptr) {
+            LOG_ECMA(ERROR) << "JSPandaFileExecutor::ExecuteFromFile resolveBufferCallback is nullptr";
+            return nullptr;
+        }
+        std::vector<uint8_t> data = resolveBufferCallback(JSPandaFile::ParseHapPath(filename));
+        if (data.empty()) {
+            LOG_ECMA(ERROR) << "JSPandaFileExecutor::ExecuteFromFile resolveBufferCallback get buffer failed";
+            return nullptr;
+        }
+        pf = panda_file::OpenPandaFileFromMemory(data.data(), data.size());
+    } else {
+        pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
+    }
+
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;
