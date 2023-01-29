@@ -459,9 +459,11 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
             const uint8_t methodNameStrLength = methodNameStr.size();
             CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(");
             const uint8_t napiBeginLength = 1; // 1:the length of "("
-            CheckAndCopy(functionName + methodNameStrLength + napiBeginLength, size - methodNameStrLength - napiBeginLength, stream.str().c_str());
+            CheckAndCopy(functionName + methodNameStrLength + napiBeginLength,
+                size - methodNameStrLength - napiBeginLength, stream.str().c_str());
             uint8_t srcLength = stream.str().size();
-            CheckAndCopy(functionName + methodNameStrLength + napiBeginLength + srcLength, size - methodNameStrLength - napiBeginLength - srcLength, ")");
+            CheckAndCopy(functionName + methodNameStrLength + napiBeginLength + srcLength,
+                size - methodNameStrLength - napiBeginLength - srcLength, ")");
             return;
         }
     }
@@ -471,9 +473,11 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
         const uint8_t methodNameStrLength = methodNameStr.size();
         CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(");
         const uint8_t arkuiBeginLength = 1; // 1:the length of "("
-        CheckAndCopy(functionName + methodNameStrLength + arkuiBeginLength, size - methodNameStrLength - arkuiBeginLength, stream.str().c_str());
+        CheckAndCopy(functionName + methodNameStrLength + arkuiBeginLength,
+            size - methodNameStrLength - arkuiBeginLength, stream.str().c_str());
         uint8_t srcLength = stream.str().size();
-        CheckAndCopy(functionName + methodNameStrLength + arkuiBeginLength + srcLength, size - methodNameStrLength - arkuiBeginLength - srcLength, ")");
+        CheckAndCopy(functionName + methodNameStrLength + arkuiBeginLength + srcLength,
+            size - methodNameStrLength - arkuiBeginLength - srcLength, ")");
         return;
     }
     // builtin method
@@ -484,9 +488,11 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
     const uint8_t methodNameStrLength = methodNameStr.size();
     CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(");
     const uint8_t builtinBeginLength = 1; // 1:the length of "("
-    CheckAndCopy(functionName + methodNameStrLength + builtinBeginLength, size - methodNameStrLength - builtinBeginLength, stream.str().c_str());
+    CheckAndCopy(functionName + methodNameStrLength + builtinBeginLength,
+        size - methodNameStrLength - builtinBeginLength, stream.str().c_str());
     uint8_t srcLength = stream.str().size();
-    CheckAndCopy(functionName + builtinBeginLength + methodNameStrLength + srcLength, size - builtinBeginLength - methodNameStrLength - srcLength, ")");
+    CheckAndCopy(functionName + builtinBeginLength + methodNameStrLength + srcLength,
+        size - builtinBeginLength - methodNameStrLength - srcLength, ")");
 }
 
 void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread, const std::string &methodAddr)
