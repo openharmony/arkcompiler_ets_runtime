@@ -590,16 +590,6 @@ protected:
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
 
 private:
-    class CpuProfilingScope {
-    public:
-        explicit CpuProfilingScope(EcmaVM* vm);
-        ~CpuProfilingScope();
-
-    private:
-        [[maybe_unused]] EcmaVM* vm_;
-        [[maybe_unused]] CpuProfiler* profiler_;
-    };
-
     void SetGlobalEnv(GlobalEnv *global);
 
     void SetMicroJobQueue(job::MicroJobQueue *queue);
@@ -619,6 +609,8 @@ private:
 
     void LoadAOTFiles();
     void LoadStubFile();
+
+    void CheckStartCpuProfiler();
 
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();

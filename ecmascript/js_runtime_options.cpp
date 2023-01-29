@@ -36,6 +36,7 @@ const std::string PUBLIC_API STUB_HELP_HEAD_MSG =
 const std::string PUBLIC_API HELP_OPTION_MSG =
     "--aot-file: Path (file suffix not needed) to AOT output file. Default: \"aot_file\"\n"
     "--ark-properties: set ark properties\n"
+    "--ark-bundle-name: set ark bundle name\n"
     "--asm-interpreter: Enable asm interpreter. Default: true\n"
     "--asm-opcode-disable-range: Opcode range when asm interpreter is enabled.\n"
     "--assert-types: Enable type assertion for type inference tests. Default: false\n"
@@ -61,7 +62,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--trace-deopt: enable tracing deopt for aot runtime. Default: false\n"
     "--deopt-threshold: set max count which aot function can occur deoptimization. Default: 10\n"
     "--opt-code-profiler: enable opt code Bytecode Statistics for aot runtime. Default: false\n"
-    "--enable-cpuprofiler: Enable cpuprofiler to sample call stack and output to json file. Default: false\n"
     "--enable-force-gc: enable force gc when allocating object. Default: true\n"
     "--enable-ic: switch of inline cache. Default: true\n"
     "--enable-runtime-stat: enable statistics of runtime state. Default: false\n"
@@ -118,6 +118,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
     const struct option longOptions[] = {
         {"aot-file", required_argument, nullptr, OPTION_AOT_FILE},
         {"ark-properties", required_argument, nullptr, OPTION_ARK_PROPERTIES},
+        {"ark-bundleName", required_argument, nullptr, OPTION_ARK_BUNDLENAME},
         {"asm-interpreter", required_argument, nullptr, OPTION_ENABLE_ASM_INTERPRETER},
         {"asm-opcode-disable-range", required_argument, nullptr, OPTION_ASM_OPCODE_DISABLE_RANGE},
         {"assert-types", required_argument, nullptr, OPTION_ASSERT_TYPES},
@@ -131,7 +132,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"trace-deopt", required_argument, nullptr, OPTION_TRACE_DEOPT},
         {"deopt-threshold", required_argument, nullptr, OPTION_DEOPT_THRESHOLD},
         {"opt-code-profiler", required_argument, nullptr, OPTION_OPT_CODE_PROFILER},
-        {"enable-cpuprofiler", required_argument, nullptr, OPTION_ENABLE_CPUPROFILER},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
@@ -218,6 +218,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_ARK_BUNDLENAME:
+                SetArkBundleName(optarg);
+                break;
             case OPTION_ENABLE_ASM_INTERPRETER:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -287,14 +290,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetOptCodeProfiler(argBool);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_ENABLE_CPUPROFILER:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableCpuprofiler(argBool);
                 } else {
                     return false;
                 }

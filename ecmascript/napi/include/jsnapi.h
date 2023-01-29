@@ -974,14 +974,16 @@ public:
         enableArkTools_ = value;
     }
 
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     void SetEnableCpuprofiler(bool value) {
         enableCpuprofiler_ = value;
     }
-#endif
 
     void SetArkProperties(int prop) {
         arkProperties_ = prop;
+    }
+
+    void SetArkBundleName(std::string bundleName) {
+        arkBundleName_ = bundleName;
     }
 
     void SetGcThreadNum(size_t num)
@@ -1104,16 +1106,19 @@ private:
         return enableArkTools_;
     }
 
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     bool GetEnableCpuprofiler() const
     {
         return enableCpuprofiler_;
     }
-#endif
 
     int GetArkProperties() const
     {
         return arkProperties_;
+    }
+
+    std::string GetArkBundleName() const
+    {
+        return arkBundleName_;
     }
 
     size_t GetGcThreadNum() const
@@ -1167,10 +1172,9 @@ private:
     LOG_PRINT logBufPrint_ {nullptr};
     std::string debuggerLibraryPath_ {};
     bool enableArkTools_ {false};
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     bool enableCpuprofiler_ {false};
-#endif
     int arkProperties_ {-1};
+    std::string arkBundleName_ = {""};
     size_t gcThreadNum_ {DEFAULT_GC_THREAD_NUM};
     size_t longPauseTime_ {DEFAULT_LONG_PAUSE_TIME};
     bool enableAsmInterpreter_ {true};
