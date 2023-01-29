@@ -577,6 +577,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         MOVE_AND_READ_INST_8(currentInst, 1)   \
     })
 
+#ifndef EXCLUDE_C_INTERPRETER
 JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
@@ -607,6 +608,7 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     thread->SetCurrentSPFrame(prevSp);
     return tagged;
 }
+#endif
 
 JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
 {
@@ -619,7 +621,7 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     if (thread->IsAsmInterpreter()) {
         return InterpreterAssembly::Execute(info);
     }
-
+#ifndef EXCLUDE_C_INTERPRETER
     JSHandle<JSTaggedValue> func = info->GetFunction();
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(func.GetTaggedValue().GetTaggedObject());
     ASSERT(callTarget != nullptr);
@@ -719,6 +721,9 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     JSTaggedType *prevSp = entryState->base.prev;
     thread->SetCurrentSPFrame(prevSp);
     return resAcc;
+#else
+    return JSTaggedValue::Exception();
+#endif
 }
 
 JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context)
@@ -733,7 +738,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     if (thread->IsAsmInterpreter()) {
         return InterpreterAssembly::GeneratorReEnterInterpreter(thread, context);
     }
-
+#ifndef EXCLUDE_C_INTERPRETER
     JSTaggedType *currentSp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
 
     // push break frame
@@ -786,6 +791,9 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     // pop frame
     thread->SetCurrentSPFrame(currentSp);
     return res;
+#else
+    return JSTaggedValue::Exception();
+#endif
 }
 
 JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context)
@@ -872,6 +880,7 @@ JSTaggedValue EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
     UNREACHABLE();
 }
 
+#ifndef EXCLUDE_C_INTERPRETER
 // NOLINTNEXTLINE(readability-function-size)
 NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp)
 {
@@ -7095,6 +7104,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
 #include "templates/debugger_instruction_handler.inl"
 }
+#endif
 
 void EcmaInterpreter::InitStackFrame(JSThread *thread)
 {

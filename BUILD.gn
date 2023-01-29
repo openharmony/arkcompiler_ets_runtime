@@ -309,6 +309,7 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_ANDROID",
       "PANDA_TARGET_UNIX",
       "PANDA_USE_FUTEX",
+      "EXCLUDE_C_INTERPRETER",
     ]
   } else if (target_os == "ios") {
     defines += [

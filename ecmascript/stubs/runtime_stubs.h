@@ -133,9 +133,6 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(UpdateLayOutAndAddTransition)       \
     V(NoticeThroughChainAndRefreshUser)   \
     V(JumpToCInterpreter)                 \
-    V(JumpToDeprecatedInst)               \
-    V(JumpToWideInst)                     \
-    V(JumpToThrowInst)                    \
     V(StGlobalRecord)                     \
     V(SetFunctionNameNoPrefix)            \
     V(StOwnByValueWithNameSet)            \

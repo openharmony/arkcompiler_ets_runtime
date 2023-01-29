@@ -1389,6 +1389,7 @@ DEF_RUNTIME_STUBS(Mod2)
 
 DEF_RUNTIME_STUBS(JumpToCInterpreter)
 {
+#ifndef EXCLUDE_C_INTERPRETER
     RUNTIME_STUBS_HEADER(JumpToCInterpreter);
     JSTaggedValue constpool = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue profileTypeInfo = GetArg(argv, argc, 1);  // 1: means the first parameter
@@ -1402,57 +1403,9 @@ DEF_RUNTIME_STUBS(JumpToCInterpreter)
     asmDispatchTable[opcode](thread, currentPc, sp, constpool, profileTypeInfo, acc, hotnessCounter.GetInt());
     sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
     return JSTaggedValue(reinterpret_cast<uint64_t>(sp)).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(JumpToDeprecatedInst)
-{
-    RUNTIME_STUBS_HEADER(JumpToDeprecatedInst);
-    JSTaggedValue constpool = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue profileTypeInfo = GetArg(argv, argc, 1);  // 1: means the first parameter
-    JSTaggedValue acc = GetArg(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue hotnessCounter = GetArg(argv, argc, 3);  // 3: means the third parameter
-
-    auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    const uint8_t *currentPc = reinterpret_cast<const uint8_t*>(GET_ASM_FRAME(sp)->pc);
-
-    uint8_t opcode = currentPc[0];
-    deprecatedDispatchTable[opcode](thread, currentPc, sp, constpool, profileTypeInfo, acc, hotnessCounter.GetInt());
-    sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    return JSTaggedValue(reinterpret_cast<uint64_t>(sp)).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(JumpToWideInst)
-{
-    RUNTIME_STUBS_HEADER(JumpToWideInst);
-    JSTaggedValue constpool = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue profileTypeInfo = GetArg(argv, argc, 1);  // 1: means the first parameter
-    JSTaggedValue acc = GetArg(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue hotnessCounter = GetArg(argv, argc, 3);  // 3: means the third parameter
-
-    auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    const uint8_t *currentPc = reinterpret_cast<const uint8_t*>(GET_ASM_FRAME(sp)->pc);
-
-    uint8_t opcode = currentPc[0];
-    wideDispatchTable[opcode](thread, currentPc, sp, constpool, profileTypeInfo, acc, hotnessCounter.GetInt());
-    sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    return JSTaggedValue(reinterpret_cast<uint64_t>(sp)).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(JumpToThrowInst)
-{
-    RUNTIME_STUBS_HEADER(JumpToThrowInst);
-    JSTaggedValue constpool = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue profileTypeInfo = GetArg(argv, argc, 1);  // 1: means the first parameter
-    JSTaggedValue acc = GetArg(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue hotnessCounter = GetArg(argv, argc, 3);  // 3: means the third parameter
-
-    auto sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    const uint8_t *currentPc = reinterpret_cast<const uint8_t*>(GET_ASM_FRAME(sp)->pc);
-
-    uint8_t opcode = currentPc[0];
-    throwDispatchTable[opcode](thread, currentPc, sp, constpool, profileTypeInfo, acc, hotnessCounter.GetInt());
-    sp = const_cast<JSTaggedType *>(thread->GetCurrentInterpretedFrame());
-    return JSTaggedValue(reinterpret_cast<uint64_t>(sp)).GetRawData();
+#else
+    return JSTaggedValue::Hole().GetRawData();
+#endif
 }
 
 DEF_RUNTIME_STUBS(NotifyBytecodePcChanged)

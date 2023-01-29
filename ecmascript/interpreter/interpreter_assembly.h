@@ -52,6 +52,7 @@ public:
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);
 
     static bool AssemblyIsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
+#ifndef EXCLUDE_C_INTERPRETER
 #define DEF_HANDLER(name)                                                    \
     static void name(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,  \
                      JSTaggedValue constpool, JSTaggedValue profileTypeInfo, \
@@ -59,8 +60,10 @@ public:
     ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
     ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_HANDLER)
 #undef DEF_HANDLER
+#endif
 };
 
+#ifndef EXCLUDE_C_INTERPRETER
 #define DEF_HANDLER(name) InterpreterAssembly::name,
 static std::array<DispatchEntryPoint, BCStubEntries::BC_HANDLER_COUNT> asmDispatchTable {
     ASM_INTERPRETER_BC_STUB_ID_LIST(DEF_HANDLER)
@@ -75,6 +78,7 @@ static std::array<DispatchEntryPoint, kungfu::BytecodeStubCSigns::NUM_OF_THROW_S
     ASM_INTERPRETER_THROW_STUB_LIST(DEF_HANDLER, DEF_HANDLER, DEF_HANDLER)
 };
 #undef DEF_HANDLER
+#endif
 
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_INTERPRETER_ASSEMBLY_64BIT_H

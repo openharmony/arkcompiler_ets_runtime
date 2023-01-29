@@ -46,7 +46,9 @@ public:
         JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack = true);
     static inline JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
+#ifndef EXCLUDE_C_INTERPRETER
     static inline void RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp);
+#endif
     static inline void InitStackFrame(JSThread *thread);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
 
