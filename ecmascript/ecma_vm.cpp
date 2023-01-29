@@ -18,6 +18,7 @@
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins.h"
+#include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
 #include "ecmascript/builtins/builtins_global.h"
@@ -66,6 +67,7 @@
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/object_factory.h"
@@ -281,6 +283,9 @@ void EcmaVM::SetRuntimeStatEnable(bool flag)
 EcmaVM::~EcmaVM()
 {
     initialized_ = false;
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    DFXJSNApi::StopCpuProfilerForFile(this);
+#endif
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
@@ -389,28 +394,6 @@ JSHandle<job::MicroJobQueue> EcmaVM::GetMicroJobQueue() const
     return JSHandle<job::MicroJobQueue>(reinterpret_cast<uintptr_t>(&microJobQueue_));
 }
 
-EcmaVM::CpuProfilingScope::CpuProfilingScope(EcmaVM* vm) : vm_(vm), profiler_(nullptr)
-{
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (vm_->GetJSOptions().EnableCpuProfiler()) {
-        profiler_ = new CpuProfiler(vm);
-        vm->SetProfiler(profiler_);
-        profiler_->CpuProfiler::StartCpuProfilerForFile("");
-    }
-#endif
-}
-
-EcmaVM::CpuProfilingScope::~CpuProfilingScope()
-{
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (profiler_ != nullptr) {
-        profiler_->CpuProfiler::StopCpuProfilerForFile();
-        delete profiler_;
-        profiler_ = nullptr;
-    }
-#endif
-}
-
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                               const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
@@ -442,6 +425,21 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const
     return res;
 }
 
+void EcmaVM::CheckStartCpuProfiler()
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (profiler_ == nullptr && !options_.IsWorker() &&
+        options_.EnableCpuProfiler() && options_.GetArkBundleName().compare(bundleName_) == 0) {
+        std::string fileName = options_.GetArkBundleName() + ".cpuprofile";
+        if (!builtins::BuiltinsArkTools::CreateFile(fileName)) {
+            LOG_ECMA(ERROR) << "createFile failed " << fileName;
+        } else {
+            DFXJSNApi::StartCpuProfilerForFile(this, fileName);
+        }
+    }
+#endif
+}
+
 Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                            bool excuteFromJob)
 {
@@ -471,6 +469,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entryPoint.data());
         func->SetModule(thread_, recordName);
     }
+    CheckStartCpuProfiler();
 
     JSTaggedValue result;
     if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
@@ -486,7 +485,6 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(this);
-            CpuProfilingScope profilingScope(this);
             EcmaInterpreter::Execute(info);
         }
     }
@@ -587,7 +585,6 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
                      cjsInfo.filenameHdl.GetTaggedValue(),
                      cjsInfo.dirnameHdl.GetTaggedValue());
     EcmaRuntimeStatScope runtimeStatScope(this);
-    CpuProfilingScope profilingScope(this);
     EcmaInterpreter::Execute(info);
     if (!thread_->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());

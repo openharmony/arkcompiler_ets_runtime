@@ -178,6 +178,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
 {
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetArkProperties(option.GetArkProperties());
+    runtimeOptions.SetArkBundleName(option.GetArkBundleName());
     runtimeOptions.SetLongPauseTime(option.GetLongPauseTime());
     runtimeOptions.SetGcThreadNum(option.GetGcThreadNum());
     runtimeOptions.SetIsWorker(option.GetIsWorker());

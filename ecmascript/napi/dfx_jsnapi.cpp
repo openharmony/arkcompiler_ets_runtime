@@ -68,6 +68,9 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate)
 {
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    DFXJSNApi::StopCpuProfilerForFile(vm);
+#endif
     auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
     options.SwitchStartGlobalLeakCheck();
     if (options.EnableGlobalLeakCheck() && options.IsStartGlobalLeakCheck()) {
