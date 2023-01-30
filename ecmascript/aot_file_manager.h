@@ -474,6 +474,7 @@ public:
     uint32_t SafeGetFileInfoIndex(const std::string &fileName);
     std::shared_ptr<AnFileInfo> SafeGetAnFileInfo(uint32_t index);
     std::shared_ptr<StubFileInfo> SafeGetStubFileInfo();
+    bool SafeTryReadLock();
     bool SafeInsideStub(uintptr_t pc);
     bool SafeInsideAOT(uintptr_t pc);
     AOTFileInfo::CallSiteInfo SafeCalCallSiteInfo(uintptr_t retAddr);
@@ -506,6 +507,7 @@ public:
     void LoadStubFile(const std::string &fileName);
     void LoadAnFile(const std::string &fileName);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
+    bool TryReadLock() const;
     bool InsideStub(uintptr_t pc) const;
     bool InsideAOT(uintptr_t pc) const;
     void Iterate(const RootVisitor &v);
