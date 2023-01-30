@@ -15,7 +15,11 @@
 
 #include "ecmascript/js_thread.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/platform/file.h"
 
+#ifdef VOID
+#undef VOID
+#endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
 #endif
@@ -123,7 +127,9 @@ void JSThread::SetException(JSTaggedValue exception)
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
     if (vm_->GetJSOptions().EnableExceptionBacktrace()) {
         LOG_ECMA(INFO) << "SetException:" << exception.GetRawData();
-        PrintBacktrace();
+        std::ostringstream stack;
+        Backtrace(stack);
+        LOG_ECMA(INFO) << stack.str();
     }
 #endif
 }
@@ -177,6 +183,30 @@ bool JSThread::EnableGlobalObjectLeakCheck() const
 bool JSThread::EnableGlobalPrimitiveLeakCheck() const
 {
     return GetEcmaVM()->GetJSOptions().EnableGlobalPrimitiveLeakCheck();
+}
+
+void JSThread::WriteToStackTraceFd(std::ostringstream &buffer) const
+{
+    if (stackTraceFd_ < 0) {
+        return;
+    }
+    buffer << std::endl;
+    DPrintf(reinterpret_cast<fd_t>(stackTraceFd_), buffer.str());
+    buffer.str("");
+}
+
+void JSThread::SetStackTraceFd(int32_t fd)
+{
+    stackTraceFd_ = fd;
+}
+
+void JSThread::CloseStackTraceFd()
+{
+    if (stackTraceFd_ != -1) {
+        FSync(reinterpret_cast<fd_t>(stackTraceFd_));
+        Close(reinterpret_cast<fd_t>(stackTraceFd_));
+        stackTraceFd_ = -1;
+    }
 }
 
 void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
@@ -235,11 +265,11 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
     int typeCount[JS_TYPE_LAST] = { 0 };
     int primitiveCount = 0;
-    bool isStartLeakCheck = IsStartGlobalLeakCheck();
-    bool isObjectLeakCheck = EnableGlobalObjectLeakCheck();
-    bool isPrimitiveLeakCheck = EnableGlobalPrimitiveLeakCheck();
-    globalDebugStorage_->IterateUsageGlobal([visitor, &globalCount, &typeCount, &primitiveCount,
-        isStartLeakCheck, isObjectLeakCheck, isPrimitiveLeakCheck](DebugNode *node) {
+    bool isStopObjectLeakCheck = EnableGlobalObjectLeakCheck() && !IsStartGlobalLeakCheck() && stackTraceFd_ > 0;
+    bool isStopPrimitiveLeakCheck = EnableGlobalPrimitiveLeakCheck() && !IsStartGlobalLeakCheck() && stackTraceFd_ > 0;
+    std::ostringstream buffer;
+    globalDebugStorage_->IterateUsageGlobal([this, visitor, &globalCount, &typeCount, &primitiveCount,
+        isStopObjectLeakCheck, isStopPrimitiveLeakCheck, &buffer](DebugNode *node) {
         node->MarkCount();
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
@@ -253,25 +283,30 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
 
             // Print global information about possible memory leaks.
             // You can print the global new stack within the range of the leaked global number.
-            if (isObjectLeakCheck && !isStartLeakCheck && node->GetGlobalNumber() > 0 && node->GetMarkCount() > 0) {
-                LOG_ECMA(INFO) << "Global maybe leak object address:" << std::hex << object
-                               << ", type:" << JSHClass::DumpJSType(JSType(object->GetClass()->GetObjectType()))
-                               << ", node address:" << node
-                               << ", number:" << std::dec <<  node->GetGlobalNumber()
-                               << ", markCount:" << node->GetMarkCount();
+            if (isStopObjectLeakCheck && node->GetGlobalNumber() > 0 && node->GetMarkCount() > 0) {
+                buffer << "Global maybe leak object address:" << std::hex << object <<
+                    ", type:" << JSHClass::DumpJSType(JSType(object->GetClass()->GetObjectType())) <<
+                    ", node address:" << node << ", number:" << std::dec <<  node->GetGlobalNumber() <<
+                    ", markCount:" << node->GetMarkCount();
+                WriteToStackTraceFd(buffer);
             }
         } else {
             primitiveCount++;
-            if (isPrimitiveLeakCheck && !isStartLeakCheck && node->GetGlobalNumber() > 0 && node->GetMarkCount() > 0) {
-                LOG_ECMA(INFO) << "Global maybe leak primitive:" << std::hex << value.GetRawData()
-                               << ", node address:" << node
-                               << ", number:" << std::dec <<  node->GetGlobalNumber()
-                               << ", markCount:" << node->GetMarkCount();
+            if (isStopPrimitiveLeakCheck && node->GetGlobalNumber() > 0 && node->GetMarkCount() > 0) {
+                buffer << "Global maybe leak primitive:" << std::hex << value.GetRawData() <<
+                    ", node address:" << node << ", number:" << std::dec <<  node->GetGlobalNumber() <<
+                    ", markCount:" << node->GetMarkCount();
+                WriteToStackTraceFd(buffer);
             }
         }
         globalCount++;
     });
 
+    if (isStopObjectLeakCheck || isStopPrimitiveLeakCheck) {
+        buffer << "Global leak check success!";
+        WriteToStackTraceFd(buffer);
+        CloseStackTraceFd();
+    }
     // Determine whether memory leakage by checking handle and global count.
     LOG_ECMA(INFO) << "Iterate root handle count:" << handleCount << ", global handle count:" << globalCount;
     OPTIONAL_LOG(GetEcmaVM(), INFO) << "Global type Primitive count:" << primitiveCount;

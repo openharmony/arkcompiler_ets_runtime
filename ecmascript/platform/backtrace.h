@@ -20,7 +20,6 @@
 #include <string>
 
 namespace panda::ecmascript {
-void PrintBacktrace();
-std::string PrintBacktraceReturnString();
+void Backtrace(std::ostringstream &stack, bool enableCache = false);
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_BACKTRACE_H
