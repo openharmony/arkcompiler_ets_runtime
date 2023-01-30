@@ -26,6 +26,7 @@ group("ark_typeinfer_test") {
     "callithisrange:callithisrangeAotTypeInferAction",
     "callprimitivebuiltin:callprimitivebuiltinAotTypeInferAction",
     "class:classAotTypeInferAction",
+    "classwithproperty:classwithpropertyAotTypeInferAction",
     "createemptyarray:createemptyarrayAotTypeInferAction",
     "createemptyobject:createemptyobjectAotTypeInferAction",
     "createobjecthavingmethod:createobjecthavingmethodAotTypeInferAction",

@@ -79,9 +79,15 @@ void TypeInfer::TraverseCircuit()
     }
 }
 
-bool TypeInfer::UpdateType(GateRef gate, const GateType type)
+bool TypeInfer::UpdateType(GateRef gate, const GateType type, bool savePreType)
 {
-    auto preType = gateAccessor_.GetGateType(gate);
+    GateType preType = gateAccessor_.GetGateType(gate);
+
+    // When the type after type inference is any and you want to save previous type, it wolud not update.
+    if (savePreType && type.IsAnyType()) {
+        return false;
+    }
+
     if (type != preType) {
         gateAccessor_.SetGateType(gate, type);
         return true;
@@ -89,10 +95,10 @@ bool TypeInfer::UpdateType(GateRef gate, const GateType type)
     return false;
 }
 
-bool TypeInfer::UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef)
+bool TypeInfer::UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef, bool savePreType)
 {
     auto type = GateType(typeRef);
-    return UpdateType(gate, type);
+    return UpdateType(gate, type, savePreType);
 }
 
 bool TypeInfer::IsNewLexEnv(EcmaOpcode opcode) const
@@ -309,7 +315,7 @@ bool TypeInfer::InferPhiGate(GateRef gate)
         auto valueInType = gateAccessor_.GetGateType(*it);
         if (valueInType.IsAnyType()) {
             phiState_[gate] = InferState::ANY_INFERED; // phi gate has been marked as any
-            return UpdateType(gate, valueInType);
+            return UpdateType(gate, valueInType, false);
         }
         if (valueInType.IsNumberType()) {
             numberTypeSet.insert(valueInType.GetGTRef());
@@ -329,10 +335,10 @@ bool TypeInfer::InferPhiGate(GateRef gate)
     }
     if (typeList.size() > 1) {
         auto unionType = tsManager_->GetOrCreateUnionType(typeList);
-        return UpdateType(gate, unionType);
+        return UpdateType(gate, unionType, false);
     }
     auto type = typeList.at(0);
-    return UpdateType(gate, type);
+    return UpdateType(gate, type, false);
 }
 
 bool TypeInfer::SetNumberType(GateRef gate)
@@ -902,19 +908,19 @@ bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
         if (!loopInType.IsAnyType()) {
             phiState_[gate] = InferState::INITAILIZED;
         }
-        return UpdateType(gate, loopInType);
+        return UpdateType(gate, loopInType, false);
     }
     // if loopBackType has been inferred to any, not initialized to any, the loop-begin phi should be marked as any
     if (loopBackType.IsAnyType() && phiState_.find(loopBackGate) != phiState_.end() &&
         phiState_[loopBackGate] == InferState::ANY_INFERED) {
-        return UpdateType(gate, GateType::AnyType());
+        return UpdateType(gate, GateType::AnyType(), false);
     }
     // if loopInType and loopBackType both have non-any type, we need special treatment for the situation
     // in which loopInType and loopBackType both are numberType(int/double/number)
     if (loopInType.IsNumberType() && loopBackType.IsNumberType() && loopInType != loopBackType) {
-        return UpdateType(gate, GateType::NumberType());
+        return UpdateType(gate, GateType::NumberType(), false);
     }
-    return UpdateType(gate, loopInType);
+    return UpdateType(gate, loopInType, false);
 }
 
 GlobalTSTypeRef TypeInfer::ConvertPrimitiveToBuiltin(const GateType &gateType)

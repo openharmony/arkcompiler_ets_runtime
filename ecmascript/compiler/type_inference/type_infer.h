@@ -63,8 +63,9 @@ public:
     }
 
 private:
-    bool UpdateType(GateRef gate, const GateType type);
-    bool UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef);
+    // savePreType: save the previous type, which is true by default
+    bool UpdateType(GateRef gate, const GateType type, bool savePreType = true);
+    bool UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef, bool savePreType = true);
     bool ShouldInfer(const GateRef gate) const;
     bool Infer(GateRef gate);
     bool InferPhiGate(GateRef gate);
