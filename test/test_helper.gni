@@ -470,26 +470,6 @@ template("host_aot_test_action") {
 
   _script_args_ = rebase_path(_test_abc_path_)
 
-  _builtins_dts_path_ =
-      "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts"
-  _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
-
-  ts2abc_gen_abc("gen_builtins_d_abc") {
-    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-
-    # extra_dependencies = _deps_
-    src_js = rebase_path(_builtins_dts_path_)
-    dst_file = rebase_path(_builtins_d_abc_path_)
-    extra_args = [
-      "--merge-abc",
-      "--q",
-      "--b",
-    ]
-
-    in_puts = [ _builtins_dts_path_ ]
-    out_puts = [ _builtins_d_abc_path_ ]
-  }
-
   action("${_target_name_}AotCompileAction") {
     testonly = true
 
@@ -513,9 +493,10 @@ template("host_aot_test_action") {
     }
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
-      deps += [ ":gen_builtins_d_abc" ]
+      deps += [ "//arkcompiler/ets_runtime:gen_builtins_d_abc" ]
       _aot_compile_options_ +=
-          " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
+          " --builtins-dts=" + rebase_path(root_out_dir) +
+          "/obj/arkcompiler/ets_runtime/lib_ark_builtins.d.abc"
     }
 
     args = [
@@ -565,9 +546,10 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
-      deps += [ ":gen_builtins_d_abc" ]
+      deps += [ "//arkcompiler/ets_runtime:gen_builtins_d_abc" ]
       _aot_compile_options_ +=
-          " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
+          " --builtins-dts=" + rebase_path(root_out_dir) +
+          "/obj/arkcompiler/ets_runtime/lib_ark_builtins.d.abc"
     }
 
     args = [
@@ -715,26 +697,6 @@ template("host_typeinfer_test_action") {
 
   _script_args_ = rebase_path(_test_abc_path_)
 
-  _builtins_dts_path_ =
-      "//arkcompiler/ets_runtime/ecmascript/ts_types/lib_ark_builtins.d.ts"
-  _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
-
-  ts2abc_gen_abc("gen_builtins_d_abc") {
-    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-
-    # extra_dependencies = _deps_
-    src_js = rebase_path(_builtins_dts_path_)
-    dst_file = rebase_path(_builtins_d_abc_path_)
-    extra_args = [
-      "--merge-abc",
-      "--q",
-      "--b",
-    ]
-
-    in_puts = [ _builtins_dts_path_ ]
-    out_puts = [ _builtins_d_abc_path_ ]
-  }
-
   action("${_target_name_}AotTypeInferAction") {
     testonly = true
 
@@ -752,9 +714,10 @@ template("host_typeinfer_test_action") {
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
-      deps += [ ":gen_builtins_d_abc" ]
+      deps += [ "//arkcompiler/ets_runtime:gen_builtins_d_abc" ]
       _aot_compile_options_ +=
-          " --builtins-dts=" + rebase_path(_builtins_d_abc_path_)
+          " --builtins-dts=" + rebase_path(root_out_dir) +
+          "/obj/arkcompiler/ets_runtime/lib_ark_builtins.d.abc"
     }
 
     if (defined(invoker.is_disable_type_lowering) &&
