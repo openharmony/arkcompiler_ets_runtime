@@ -410,6 +410,8 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
                     << ", aot: " << jsOption.GetEnableAOT()
                     << ", bundle name: " <<  option.GetBundleName();
+    jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
+    vm->ResetPGOProfiler();
 
     if (jsOption.GetEnableAOT() && option.GetAnDir().size()) {
         jsOption.SetAOTOutputFile(option.GetAnDir());

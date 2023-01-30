@@ -166,6 +166,10 @@ public:
         return factory_;
     }
 
+    void ResetPGOProfiler();
+
+    bool IsEnablePGOProfiler() const;
+
     bool Initialize();
 
     GCStats *GetEcmaGCStats() const
@@ -687,13 +691,13 @@ private:
     CVector<JSTaggedValue> internalNativeMethods_;
 
     // For repair patch.
-    QuickFixManager *quickFixManager_;
+    QuickFixManager *quickFixManager_ {nullptr};
 
     // PGO Profiler
-    PGOProfiler *pgoProfiler_;
+    PGOProfiler *pgoProfiler_ {nullptr};
 
     // opt code Profiler
-    OptCodeProfiler *optCodeProfiler_;
+    OptCodeProfiler *optCodeProfiler_ {nullptr};
 
     // For icu objects cache
     struct IcuFormatter {
