@@ -74,7 +74,7 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
 
     bool mode = thread->GetEcmaVM()->GetModuleManager()->GetCurrentMode();
     std::unique_ptr<const panda_file::File> pf;
-    if (mode) {
+    if (!thread->GetEcmaVM()->IsBundlePack() && mode) {
         ResolveBufferCallback resolveBufferCallback = thread->GetEcmaVM()->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
             LOG_ECMA(ERROR) << "JSPandaFileExecutor::ExecuteFromFile resolveBufferCallback is nullptr";
