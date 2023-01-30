@@ -92,6 +92,7 @@ public:
     static constexpr uint32_t INVALID_INDEX = -1;
     static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
     static constexpr int DEFAULT_TYPE_SUMMARY_OFFSET = 0;
+    static constexpr int PACKAGE_PREFIX_LEN = 9;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
