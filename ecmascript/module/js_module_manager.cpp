@@ -582,6 +582,8 @@ CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, C
                 entryPoint = moduleRequestName;
             }
         }
+    } else if (moduleRequestName.find("@package:") != CString::npos) {
+        entryPoint = moduleRequestName.substr(JSPandaFile::PACKAGE_PREFIX_LEN);
     } else {
         pos = moduleRecordName.find(JSPandaFile::NODE_MODULES);
         CString key = "";
