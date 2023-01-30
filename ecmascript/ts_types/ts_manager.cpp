@@ -23,7 +23,8 @@
 namespace panda::ecmascript {
 TSManager::TSManager(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
                                    assertTypes_(vm_->GetJSOptions().AssertTypes()),
-                                   printAnyTypes_(vm_->GetJSOptions().PrintAnyTypes())
+                                   printAnyTypes_(vm_->GetJSOptions().PrintAnyTypes()),
+                                   typeThreshold_(vm_->GetJSOptions().GetTypeThreshold())
 {
     JSHandle<TSModuleTable> mTable = factory_->NewTSModuleTable(TSModuleTable::DEFAULT_TABLE_CAPACITY);
     SetTSModuleTable(mTable);

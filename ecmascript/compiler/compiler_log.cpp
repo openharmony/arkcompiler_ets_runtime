@@ -34,7 +34,7 @@ CompilerLog::CompilerLog(const std::string &logOpt, bool TraceBC)
     traceBc_ = TraceBC;
 }
 
-void CompilerLog::SetMethodLog(const std::string &fileName, const CString& recordName,
+void CompilerLog::SetMethodLog(const std::string &fileName,
                                const std::string &methodName, AotMethodLogList *logList)
 {
     bool enableMethodLog = !NoneMethod();
@@ -42,7 +42,6 @@ void CompilerLog::SetMethodLog(const std::string &fileName, const CString& recor
         enableMethodLog = logList->IncludesMethod(fileName, methodName);
     }
     SetEnableMethodLog(enableMethodLog);
-    AddCompiledMethod(methodName, recordName);
 }
 
 bool MethodLogList::IncludesMethod(const std::string &methodName) const

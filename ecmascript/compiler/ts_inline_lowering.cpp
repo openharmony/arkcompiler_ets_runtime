@@ -162,7 +162,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     }
 
     PassData data(&builder, circuit_, info_, log, fullName,
-                  methodInfo.GetMethodInfoIndex(), hasTyps, recordName,
+                  &methodInfo, hasTyps, recordName,
                   method, method->GetMethodId().GetOffset());
     PassRunner<PassData> pipeline(&data);
     pipeline.RunPass<TypeInferPass>();

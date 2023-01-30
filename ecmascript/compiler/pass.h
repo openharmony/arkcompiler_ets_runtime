@@ -36,12 +36,12 @@ class PassInfo;
 class PassData {
 public:
     PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassInfo *info, CompilerLog *log,
-             std::string methodName, size_t methodInfoIndex = 0, bool hasTypes = false,
+             std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
              uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr)
         : builder_(builder), circuit_(circuit), info_(info), log_(log), methodName_(methodName),
-          methodInfoIndex_(methodInfoIndex), hasTypes_(hasTypes), recordName_(recordName),
-          methodLiteral_(methodLiteral), methodOffset_(methodOffset), allocator_(allocator)
+          methodInfo_(methodInfo), hasTypes_(hasTypes), recordName_(recordName), methodLiteral_(methodLiteral),
+          methodOffset_(methodOffset), allocator_(allocator)
     {
     }
 
@@ -112,9 +112,14 @@ public:
         return methodOffset_;
     }
 
+    MethodInfo* GetMethodInfo() const
+    {
+        return methodInfo_;
+    }
+
     size_t GetMethodInfoIndex() const
     {
-        return methodInfoIndex_;
+        return methodInfo_->GetMethodInfoIndex();
     }
 
     bool HasTypes() const
@@ -132,6 +137,31 @@ public:
         return allocator_;
     }
 
+    bool IsTypeAbort() const
+    {
+        if (hasTypes_) {
+            // A ts method which has low type percent and not marked as a resolved method
+            // should be skipped from full compilation.
+            if (methodInfo_->IsTypeInferAbort() && !methodInfo_->IsResolvedMethod()) {
+                info_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
+                return true;
+            }
+        } else {
+            // For js method, type infer pass will be skipped and it don't have a type percent.
+            // If we set an non zero type threshold, js method will be skipped from full compilation.
+            // The default Type threshold is -1.
+            if (info_->GetTSManager()->GetTypeThreshold() >= 0) {
+                info_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
+                return true;
+            }
+        }
+        // when a method will be full compiled, we should confirm its TypeInferAbortBit to be false
+        // maybe it used to be true in the first round of compilation.
+        methodInfo_->SetTypeInferAbort(false);
+        log_->AddCompiledMethod(methodName_, recordName_);
+        return false;
+    }
+
 private:
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
@@ -139,7 +169,7 @@ private:
     PassInfo *info_ {nullptr};
     CompilerLog *log_ {nullptr};
     std::string methodName_;
-    size_t methodInfoIndex_;
+    MethodInfo *methodInfo_ {nullptr};
     bool hasTypes_;
     const CString &recordName_;
     MethodLiteral *methodLiteral_ {nullptr};
@@ -171,7 +201,7 @@ public:
         if (data->HasTypes()) {
             bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
             TypeInfer typeInfer(data->GetBuilder(), data->GetCircuit(), data->GetInfo(), data->GetMethodInfoIndex(),
-                                enableLog, data->GetMethodName(), data->GetRecordName());
+                                enableLog, data->GetMethodName(), data->GetRecordName(), data->GetMethodInfo());
             typeInfer.TraverseCircuit();
         }
         return true;

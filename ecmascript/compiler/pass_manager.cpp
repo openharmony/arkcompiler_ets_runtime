@@ -68,14 +68,14 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
     cmpDriver.Run([this, &fileName, &info]
         (const CString recordName, const std::string &methodName, MethodLiteral *methodLiteral,
-         uint32_t methodOffset, const MethodPcInfo &methodPCInfo, size_t methodInfoIndex) {
+         uint32_t methodOffset, const MethodPcInfo &methodPCInfo, MethodInfo &methodInfo) {
         auto jsPandaFile = info.GetJSPandaFile();
         auto cmpCfg = info.GetCompilerConfig();
         auto tsManager = info.GetTSManager();
         // note: TSManager need to set current constantpool before all pass
         tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
 
-        log_->SetMethodLog(fileName, recordName, methodName, logList_);
+        log_->SetMethodLog(fileName, methodName, logList_);
 
         std::string fullName = methodName + "@" + fileName;
         bool enableMethodLog = log_->GetEnableMethodLog();
@@ -99,11 +99,14 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
 
         PassData data(&builder, &circuit, &info, log_, fullName,
-                      methodInfoIndex, hasTypes, recordName,
+                      &methodInfo, hasTypes, recordName,
                       methodLiteral, methodOffset, vm_->GetNativeAreaAllocator());
         PassRunner<PassData> pipeline(&data);
         if (EnableTypeInfer()) {
             pipeline.RunPass<TypeInferPass>();
+        }
+        if (data.IsTypeAbort()) {
+            return;
         }
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         if (EnableTypeLowering()) {

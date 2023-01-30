@@ -38,7 +38,9 @@ public:
 
     void UpdateCompileQueue(const CString &recordName, EntityId resolvedMethod)
     {
-        if (pfLoader_.Match(recordName, resolvedMethod)) {
+        const auto &methodList = bytecodeInfo_.GetMethodList();
+        auto &resolvedMethodInfo = methodList.at(resolvedMethod.GetOffset());
+        if (pfLoader_.Match(recordName, resolvedMethod) && !resolvedMethodInfo.IsTypeInferAbort()) {
             return;
         }
         // update profile and update compile queue
@@ -88,7 +90,12 @@ public:
                     if (!methodInfo.IsCompiled()) {
                         methodInfo.SetIsCompiled(true);
                         cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, compilingMethod,
-                           methodPcInfo, methodInfo.GetMethodInfoIndex());
+                           methodPcInfo, methodInfo);
+                    } else if (NeedSecondaryCompile(methodInfo)) {
+                        // if a method used to be not full compiled but now it's a deopt resolved method
+                        // it should be full compiled again
+                        cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, compilingMethod,
+                           methodPcInfo, methodInfo);
                     }
                 }
                 auto &innerMethods = methodInfo.GetInnerMethods();
@@ -106,6 +113,9 @@ public:
             return;
         }
         uint32_t resolvedMethod = bytecodeInfo_.GetDefineMethod(classLiteralOffset);
+        auto &methodList = bytecodeInfo_.GetMethodList();
+        auto &methodInfo = methodList.at(resolvedMethod);
+        methodInfo.SetResolvedMethod(true);
         panda_file::File::EntityId resolvedMethodId(resolvedMethod);
         UpdateCompileQueue(recordName, resolvedMethodId);
     }
@@ -113,6 +123,11 @@ private:
     void UpdatePGO();
 
     void InitializeCompileQueue();
+
+    bool NeedSecondaryCompile(const MethodInfo &methodInfo) const
+    {
+        return methodInfo.IsTypeInferAbort() && methodInfo.IsResolvedMethod();
+    }
 
     void SearchForCompilation(const std::unordered_set<EntityId> &methodSet, std::unordered_set<EntityId> &newMethodSet,
                               uint32_t mainMethodOffset, bool needUpdateCompile)
@@ -132,7 +147,7 @@ private:
             auto &methodInfo = methodList.at(methodOffset);
             auto outMethodOffset = methodInfo.GetOutMethodOffset();
             // if current method has already been marked as PGO, stop searching upper layer of the define chain
-            if (methodInfo.IsPGO()) {
+            if (methodInfo.IsPGO() && !methodInfo.IsTypeInferAbort()) {
                 return;
             }
             // we need to collect these new-marked PGO methods to update PGO profile
@@ -152,6 +167,7 @@ private:
                     auto outMethodInfo = methodList.at(outMethodOffset);
                     if (outMethodInfo.IsPGO()) {
                         compileQueue_.push(methodOffset);
+                        return;
                     }
                 } else {
                     // if current searched method is an un-marked main method, just push it to compile queue
