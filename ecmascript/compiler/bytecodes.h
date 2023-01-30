@@ -198,7 +198,7 @@ public:
     static constexpr uint32_t LAST_WIDE_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16);
     static constexpr uint32_t LAST_THROW_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16);
+        static_cast<uint32_t>(EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
 
     static_assert(DEPRECATED_PREFIX_OPCODE_INDEX ==
         static_cast<uint32_t>(EcmaOpcode::DEPRECATED_LDLEXENV_PREF_NONE));

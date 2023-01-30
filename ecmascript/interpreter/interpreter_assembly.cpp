@@ -1837,6 +1837,25 @@ void InterpreterAssembly::HandleThrowUndefinedifholePrefV8V8(
     INTERPRETER_GOTO_EXCEPTION_HANDLER();
 }
 
+void InterpreterAssembly::HandleThrowUndefinedifholewithnamePrefId16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    JSTaggedValue hole = acc;
+    if (!hole.IsHole()) {
+        DISPATCH(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
+    }
+
+    uint16_t stringId = READ_INST_16_1();
+    LOG_INST() << "intrinsic::throwundefinedifholewithname" << std::hex << stringId;
+    constpool = GetConstantPool(sp);
+    JSTaggedValue obj = ConstantPool::GetStringFromCache(thread, constpool, stringId);
+    ASSERT(obj.IsString());
+    SAVE_PC();
+    SlowRuntimeStub::ThrowUndefinedIfHole(thread, obj);
+    INTERPRETER_GOTO_EXCEPTION_HANDLER();
+}
+
 void InterpreterAssembly::HandleStownbynameImm8Id16V8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)

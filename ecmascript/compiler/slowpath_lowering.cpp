@@ -414,6 +414,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::THROW_UNDEFINEDIFHOLE_PREF_V8_V8:
             LowerThrowUndefinedIfHole(gate);
             break;
+        case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
+            LowerThrowUndefinedIfHoleWithName(gate, jsFunc);
+            break;
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
             LowerThrowIfSuperNotCorrectCall(gate);
@@ -1184,6 +1187,32 @@ void SlowPathLowering::LowerThrowUndefinedIfHole(GateRef gate)
     }
     builder_.Bind(&isHole);
     {
+        LowerCallRuntime(RTSTUB_ID(ThrowUndefinedIfHole), {obj}, true);
+        builder_.Jump(&exceptionExit);
+    }
+    CREATE_DOUBLE_EXIT(successExit, exceptionExit)
+    ReplaceHirToSubCfg(gate, Circuit::NullGate(), successControl, failControl);
+}
+
+void SlowPathLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate, GateRef jsFunc)
+{
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef hole = acc_.GetValueIn(gate, 1);
+    Label successExit(&builder_);
+    Label exceptionExit(&builder_);
+    Label isHole(&builder_);
+    Label notHole(&builder_);
+    builder_.Branch(builder_.TaggedIsHole(hole), &isHole, &notHole);
+    builder_.Bind(&notHole);
+    {
+        builder_.Jump(&successExit);
+    }
+    builder_.Bind(&isHole);
+    {
+        GateRef obj = builder_.GetObjectFromConstPool(glue_, jsFunc,
+                                                      builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)),
+                                                      ConstPoolType::STRING);
         LowerCallRuntime(RTSTUB_ID(ThrowUndefinedIfHole), {obj}, true);
         builder_.Jump(&exceptionExit);
     }
