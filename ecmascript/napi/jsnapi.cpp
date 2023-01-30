@@ -1272,7 +1272,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
 
     current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
 
-    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, factory, current);
+    JSHandle<JSObject> clsPrototype = JSFunction::NewJSFunctionPrototype(thread, current);
     clsPrototype.GetTaggedValue().GetTaggedObject()->GetClass()->SetClassPrototype(true);
     JSHandle<JSTaggedValue>::Cast(current)->GetTaggedObject()->GetClass()->SetClassConstructor(true);
     current->SetClassConstructor(true);

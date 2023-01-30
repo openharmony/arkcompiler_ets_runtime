@@ -31,7 +31,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         UNREACHABLE();
     }
     RegionSpaceFlag flags = space->GetRegionFlag();
-    bool isRegular = (flags == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE) ? false : true;
+    bool isRegular = (flags != RegionSpaceFlag::IN_HUGE_OBJECT_SPACE);
     int prot = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE) ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
     auto pool = MemMapAllocator::GetInstance()->Allocate(capacity, DEFAULT_REGION_SIZE, isRegular, prot);
     void *mapMem = pool.GetMem();
@@ -61,7 +61,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
 void HeapRegionAllocator::FreeRegion(Region *region)
 {
     auto size = region->GetCapacity();
-    bool isRegular = region->InHugeObjectSpace() ? false : true;
+    bool isRegular = !(region->InHugeObjectSpace());
     auto allocateBase = region->GetAllocateBase();
 
     DecreaseAnnoMemoryUsage(size);

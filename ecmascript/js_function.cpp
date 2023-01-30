@@ -50,15 +50,13 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
             func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
             JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSFunction> objFun(env->GetObjectFunction());
+            JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
             if (kind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
-                JSHandle<JSFunction> objFun(env->GetObjectFunction());
-                JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
                 JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetAsyncGeneratorPrototype());
                 func->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
             }
             if (kind == FunctionKind::GENERATOR_FUNCTION) {
-                JSHandle<JSFunction> objFun(env->GetObjectFunction());
-                JSHandle<JSObject> initialGeneratorFuncPrototype = factory->NewJSObjectByConstructor(objFun);
                 JSObject::SetPrototype(thread, initialGeneratorFuncPrototype, env->GetGeneratorPrototype());
                 func->SetProtoOrHClass(thread, initialGeneratorFuncPrototype);
             }
@@ -74,13 +72,12 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     }
 }
 
-JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, ObjectFactory *factory,
-                                                      const JSHandle<JSFunction> &func)
+JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSFunction> objFun(env->GetObjectFunction());
-    JSHandle<JSObject> funPro = factory->NewJSObjectByConstructor(objFun);
+    JSHandle<JSObject> funPro = thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFun);
     func->SetFunctionPrototype(thread, funPro.GetTaggedValue());
 
     // set "constructor" in prototype
@@ -98,14 +95,14 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
         return reinterpret_cast<JSHClass *>(protoOrHClass.GetTaggedObject());
     }
 
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> proto;
     if (!fun->HasFunctionPrototype()) {
-        proto = JSHandle<JSTaggedValue>::Cast(NewJSFunctionPrototype(thread, factory, fun));
+        proto = JSHandle<JSTaggedValue>::Cast(NewJSFunctionPrototype(thread, fun));
     } else {
         proto = JSHandle<JSTaggedValue>(thread, fun->GetProtoOrHClass());
     }
 
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
     fun->SetProtoOrHClass(thread, hclass);
     return *hclass;
@@ -115,8 +112,7 @@ JSTaggedValue JSFunction::PrototypeGetter(JSThread *thread, const JSHandle<JSObj
 {
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(self);
     if (!func->HasFunctionPrototype()) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        NewJSFunctionPrototype(thread, factory, func);
+        NewJSFunctionPrototype(thread, func);
     }
     return JSFunction::Cast(*self)->GetFunctionPrototype();
 }
@@ -404,10 +400,8 @@ bool JSFunctionBase::SetFunctionName(JSThread *thread, const JSHandle<JSFunction
         if (description.IsUndefined()) {
             functionName = factory->GetEmptyString();
         } else {
-            JSHandle<EcmaString> leftBrackets = JSHandle<EcmaString>::Cast(globalConst->
-                                                                            GetHandledLeftSquareBracketString());
-            JSHandle<EcmaString> rightBrackets = JSHandle<EcmaString>::Cast(globalConst->
-                                                                            GetHandledRightSquareBracketString());
+            JSHandle<EcmaString> leftBrackets(globalConst->GetHandledLeftSquareBracketString());
+            JSHandle<EcmaString> rightBrackets(globalConst->GetHandledRightSquareBracketString());
             functionName = factory->ConcatFromString(leftBrackets, descriptionHandle);
             functionName = factory->ConcatFromString(functionName, rightBrackets);
         }
@@ -417,7 +411,7 @@ bool JSFunctionBase::SetFunctionName(JSThread *thread, const JSHandle<JSFunction
     EcmaString *newString;
     if (needPrefix) {
         JSHandle<EcmaString> handlePrefixString = JSTaggedValue::ToString(thread, prefix);
-        JSHandle<EcmaString> spaceString = JSHandle<EcmaString>::Cast(globalConst->GetHandledSpaceString());
+        JSHandle<EcmaString> spaceString(globalConst->GetHandledSpaceString());
         JSHandle<EcmaString> concatString = factory->ConcatFromString(handlePrefixString, spaceString);
         newString = *factory->ConcatFromString(concatString, functionName);
     } else {
@@ -523,13 +517,9 @@ void JSFunction::SetFunctionNameNoPrefix(JSThread *thread, JSFunction *func, JST
             if (description.IsUndefined()) {
                 nameHandle.Update(globalConst->GetEmptyString());
             } else {
-                JSHandle<EcmaString> concatName;
-                JSHandle<EcmaString> leftBrackets = JSHandle<EcmaString>::Cast(globalConst->
-                                                                                GetHandledLeftSquareBracketString());
-                JSHandle<EcmaString> rightBrackets = JSHandle<EcmaString>::Cast(globalConst->
-                                                                                GetHandledRightSquareBracketString());
-                concatName = factory->ConcatFromString(
-                    leftBrackets,
+                JSHandle<EcmaString> leftBrackets(globalConst->GetHandledLeftSquareBracketString());
+                JSHandle<EcmaString> rightBrackets(globalConst->GetHandledRightSquareBracketString());
+                JSHandle<EcmaString> concatName = factory->ConcatFromString(leftBrackets,
                     JSHandle<EcmaString>(thread, JSSymbol::Cast(nameBegin->GetTaggedObject())->GetDescription()));
                 concatName = factory->ConcatFromString(concatName, rightBrackets);
                 nameHandle.Update(concatName.GetTaggedValue());
@@ -655,8 +645,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc,
         if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
             array->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
         } else {
-            JSHandle<TaggedArray> newArray =
-                thread->GetEcmaVM()->GetFactory()->NewTaggedArray(nativeFieldCount + RESOLVED_MAX_SIZE);
+            JSHandle<TaggedArray> newArray = vm->GetFactory()->NewTaggedArray(nativeFieldCount + RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(nativeFieldCount);
             for (uint32_t i = 0; i < nativeFieldCount; i++) {
                 newArray->Set(thread, i, array->Get(i));
@@ -666,8 +655,7 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc,
             Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         }
     } else {
-        JSHandle<TaggedArray> newArray =
-            thread->GetEcmaVM()->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
+        JSHandle<TaggedArray> newArray = vm->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
         newArray->SetExtraLength(0);
         newArray->Set(thread, HASH_INDEX, value);
         newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
@@ -686,12 +674,12 @@ JSTaggedValue JSFunction::GetFunctionExtraInfo() const
             if (array->GetLength() >= nativeFieldCount + RESOLVED_MAX_SIZE) {
                 return array->Get(nativeFieldCount + FUNCTION_EXTRA_INDEX);
             }
-        } else if (value.IsJSNativePointer()) {
-            return value;
-        } else {
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
         }
+        if (value.IsJSNativePointer()) {
+            return value;
+        }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
     }
     return JSTaggedValue::Undefined();
 }
@@ -716,11 +704,11 @@ JSTaggedValue JSFunction::GetRecordName() const
             return JSTaggedValue::Hole();
         }
         return recordName;
-    } else if (module.IsString()) {
-        return module;
-    } else {
-        LOG_INTERPRETER(DEBUG) << "record name is undefined";
-        return JSTaggedValue::Hole();
     }
+    if (module.IsString()) {
+        return module;
+    }
+    LOG_INTERPRETER(DEBUG) << "record name is undefined";
+    return JSTaggedValue::Hole();
 }
 }  // namespace panda::ecmascript

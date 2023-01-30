@@ -111,7 +111,7 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
 
     uint32_t pos = detail.fillStartLoc;
     bool withElementsFlag = false;
-    bool isStaticFlag = detail.methodLiteral ? true : false;
+    bool isStaticFlag = (detail.methodLiteral != nullptr);
     bool keysHasNameFlag = false;
 
     JSHandle<JSTaggedValue> nameString = globalConst->GetHandledNameString();

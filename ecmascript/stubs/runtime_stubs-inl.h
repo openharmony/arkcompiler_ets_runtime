@@ -105,7 +105,7 @@ JSTaggedValue RuntimeStubs::RuntimeExp(JSThread *thread, JSTaggedValue base, JST
 }
 
 JSTaggedValue RuntimeStubs::RuntimeIsIn(JSThread *thread, const JSHandle<JSTaggedValue> &prop,
-                                           const JSHandle<JSTaggedValue> &obj)
+                                        const JSHandle<JSTaggedValue> &obj)
 {
     if (!obj->IsECMAObject()) {
         return RuntimeThrowTypeError(thread, "Cannot use 'in' operator in Non-Object");
@@ -118,7 +118,7 @@ JSTaggedValue RuntimeStubs::RuntimeIsIn(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeInstanceof(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                                 const JSHandle<JSTaggedValue> &target)
+                                              const JSHandle<JSTaggedValue> &target)
 {
     bool ret = JSObject::InstanceOf(thread, obj, target);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -994,7 +994,9 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return generatorObjectHandle.GetTaggedValue();
-    } else if (genObj->IsGeneratorObject()) {
+    }
+
+    if (genObj->IsGeneratorObject()) {
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
         // save stack, should copy cur_frame, function execute over will free cur_frame
@@ -1008,9 +1010,9 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return generatorObjectHandle.GetTaggedValue();
-    } else {
-        return RuntimeThrowTypeError(thread, "RuntimeSuspendGenerator failed");
     }
+
+    return RuntimeThrowTypeError(thread, "RuntimeSuspendGenerator failed");
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index)
@@ -1214,8 +1216,7 @@ JSTaggedValue RuntimeStubs::RuntimeTryLdGlobalByName(JSThread *thread, const JSH
     if (!res.GetPropertyMetaData().IsFound()) {
         return RuntimeThrowReferenceError(thread, prop, " is not defined");
     }
-    auto result = res.GetValue().GetTaggedValue();
-    return result;
+    return res.GetValue().GetTaggedValue();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeTryUpdateGlobalRecord(JSThread *thread, JSTaggedValue prop,
@@ -1289,7 +1290,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     // get current filename
-    Method *method = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetCallTarget();
+    Method *method = JSFunction::Cast(func->GetTaggedObject())->GetCallTarget();
     const JSPandaFile* jsPandaFile = method->GetJSPandaFile();
     CString filename = jsPandaFile->GetJSPandaFileDesc();
 
@@ -1304,7 +1305,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
         CString dirPathStr = filename.substr(0, foundPos + 1);
         dirPath = factory->NewFromUtf8(dirPathStr);
     } else {
-        JSHandle<JSTaggedValue> module(thread, JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetModule());
+        JSHandle<JSTaggedValue> module(thread, JSFunction::Cast(func->GetTaggedObject())->GetModule());
         dirPath = factory->NewFromUtf8(filename.c_str());
         if (module->IsSourceTextModule()) {
             recordName.Update(SourceTextModule::Cast(module->GetTaggedObject())->GetEcmaModuleRecordName());
@@ -1421,8 +1422,8 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeShl2(JSThread *thread,
-                                           const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &left,
+                                        const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> leftValue = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1451,7 +1452,7 @@ JSTaggedValue RuntimeStubs::RuntimeShl2(JSThread *thread,
 }
 
 JSTaggedValue RuntimeStubs::RuntimeShr2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1477,7 +1478,7 @@ JSTaggedValue RuntimeStubs::RuntimeShr2(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeSub2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1497,7 +1498,7 @@ JSTaggedValue RuntimeStubs::RuntimeSub2(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeMul2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1519,7 +1520,7 @@ JSTaggedValue RuntimeStubs::RuntimeMul2(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeDiv2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1547,7 +1548,7 @@ JSTaggedValue RuntimeStubs::RuntimeDiv2(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeMod2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1576,7 +1577,7 @@ JSTaggedValue RuntimeStubs::RuntimeMod2(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeAshr2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                            const JSHandle<JSTaggedValue> &right)
+                                         const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1602,7 +1603,7 @@ JSTaggedValue RuntimeStubs::RuntimeAshr2(JSThread *thread, const JSHandle<JSTagg
 }
 
 JSTaggedValue RuntimeStubs::RuntimeAnd2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1628,7 +1629,7 @@ JSTaggedValue RuntimeStubs::RuntimeAnd2(JSThread *thread, const JSHandle<JSTagge
 }
 
 JSTaggedValue RuntimeStubs::RuntimeOr2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                          const JSHandle<JSTaggedValue> &right)
+                                       const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1654,7 +1655,7 @@ JSTaggedValue RuntimeStubs::RuntimeOr2(JSThread *thread, const JSHandle<JSTagged
 }
 
 JSTaggedValue RuntimeStubs::RuntimeXor2(JSThread *thread, const JSHandle<JSTaggedValue> &left,
-                                           const JSHandle<JSTaggedValue> &right)
+                                        const JSHandle<JSTaggedValue> &right)
 {
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, left);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1790,8 +1791,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
 
     JSHandle<JSFunction> jsFunc;
     FunctionKind kind = methodHandle->GetFunctionKind();
-    switch (kind)
-    {
+    switch (kind) {
         case FunctionKind::NORMAL_FUNCTION:
         case FunctionKind::CONCURRENT_FUNCTION:
         case FunctionKind::BASE_CONSTRUCTOR: {
@@ -1930,9 +1930,9 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
-                                                 const JSHandle<JSTaggedValue> &func,
-                                                 const JSHandle<JSTaggedValue> &obj,
-                                                 const JSHandle<JSTaggedValue> &array)
+                                              const JSHandle<JSTaggedValue> &func,
+                                              const JSHandle<JSTaggedValue> &obj,
+                                              const JSHandle<JSTaggedValue> &array)
 {
     if ((!obj->IsUndefined() && !obj->IsECMAObject()) || !func->IsCallable() || !array->IsJSArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "cannot Callspread", JSTaggedValue::Exception());
@@ -2158,8 +2158,8 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
 }
 
 JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvWithName(JSThread *thread, uint16_t numVars, uint16_t scopeId,
-                                                               JSHandle<JSTaggedValue> &currentLexEnv,
-                                                               JSHandle<JSTaggedValue> &func)
+                                                            JSHandle<JSTaggedValue> &currentLexEnv,
+                                                            JSHandle<JSTaggedValue> &func)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LexicalEnv> newEnv = factory->NewLexicalEnv(numVars);
@@ -2209,7 +2209,9 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return generatorObjectHandle.GetTaggedValue();
-    } else if (genObj->IsGeneratorObject()) {
+    }
+
+    if (genObj->IsGeneratorObject()) {
         JSHandle<JSGeneratorObject> generatorObjectHandle(genObj);
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
@@ -2219,9 +2221,9 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return generatorObjectHandle.GetTaggedValue();
-    } else {
-        return RuntimeThrowTypeError(thread, "RuntimeSuspendGenerator failed");
     }
+
+    return RuntimeThrowTypeError(thread, "RuntimeSuspendGenerator failed");
 }
 
 JSTaggedValue RuntimeStubs::RuntimeOptConstruct(JSThread *thread, JSHandle<JSTaggedValue> ctor,

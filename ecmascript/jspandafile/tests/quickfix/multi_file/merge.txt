@@ -1,2 +1,2 @@
-index.js;index;esm;index.js;entry
+index.js;main;esm;index.js;entry
 module.js;module;esm;module.js;entry

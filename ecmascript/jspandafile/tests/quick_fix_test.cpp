@@ -87,7 +87,7 @@ HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
 
     JSNApi::SetBundle(instance, false);
 
-    bool result = JSNApi::Execute(instance, baseFileName, "index");
+    bool result = JSNApi::Execute(instance, baseFileName, "main");
     EXPECT_TRUE(result);
 
     auto res = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
@@ -98,6 +98,35 @@ HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
     EXPECT_FALSE(result);
 
     res = JSNApi::UnloadPatch(instance, patchFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
+}
+
+HWTEST_F_L0(QuickFixTest, HotReload_MultiHap)
+{
+    std::string baseFileName1 = QUICKFIX_ABC_PATH "single_file/base/index.abc";
+    std::string patchFileName1 = QUICKFIX_ABC_PATH "single_file/patch/index.abc";
+
+    std::string baseFileName2 = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    std::string patchFileName2 = QUICKFIX_ABC_PATH "multi_file/patch/merge.abc";
+
+    JSNApi::SetBundle(instance, false);
+
+    bool result = JSNApi::Execute(instance, baseFileName1, "index");
+    EXPECT_TRUE(result);
+
+    result = JSNApi::Execute(instance, baseFileName2, "main");
+    EXPECT_TRUE(result);
+
+    auto res = JSNApi::LoadPatch(instance, patchFileName1, baseFileName1);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
+
+    res = JSNApi::LoadPatch(instance, patchFileName2, baseFileName2);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
+
+    res = JSNApi::UnloadPatch(instance, patchFileName1);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
+
+    res = JSNApi::UnloadPatch(instance, patchFileName2);
     EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
 }
 
