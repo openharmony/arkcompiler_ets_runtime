@@ -77,9 +77,9 @@ JSTaggedValue ModuleManager::GetModuleName(JSTaggedValue currentModule)
     JSTaggedValue recordName = module->GetEcmaModuleRecordName();
     if (recordName.IsUndefined()) {
         return module->GetEcmaModuleFilename();
-    } else {
-        return recordName;
     }
+
+    return recordName;
 }
 
 JSTaggedValue ModuleManager::GetModuleValueOutter(int32_t index, JSTaggedValue jsFunc)
@@ -225,8 +225,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(JSTaggedValue key, JST
         JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(JSTaggedValue(module)));
         return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
     }
-    return SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread,
-                                                                                    binding->GetBindingName(), false);
+    return module->GetModuleValue(thread, binding->GetBindingName(), false);
 }
 
 void ModuleManager::StoreModuleValue(JSTaggedValue key, JSTaggedValue value)
@@ -304,8 +303,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
     resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
-                                           JSHandle<JSTaggedValue>(moduleRecord), PropertyAttributes::Default())
-                                           .GetTaggedValue();
+                                           moduleRecord, PropertyAttributes::Default()).GetTaggedValue();
 
     return moduleRecord;
 }

@@ -50,7 +50,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSRelativeTimeFormat, thread);
 
     // 7. Let numberingSystem be ? GetOption(options, "numberingSystem", "string", undefined, undefined).
-    JSHandle<JSTaggedValue> property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledNumberingSystemString());
+    JSHandle<JSTaggedValue> property = globalConst->GetHandledNumberingSystemString();
     JSHandle<JSTaggedValue> undefinedValue(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> numberingSystemValue =
         JSLocale::GetOption(thread, rtfOptions, property, OptionType::STRING, undefinedValue, undefinedValue);
@@ -102,7 +102,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     }
 
     // 16. Let s be ? GetOption(options, "style", "string", «"long", "short", "narrow"», "long").
-    property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledStyleString());
+    property = globalConst->GetHandledStyleString();
     RelativeStyleOption styleOption = JSLocale::GetOptionOfString(thread, rtfOptions, property,
         {RelativeStyleOption::LONG, RelativeStyleOption::SHORT, RelativeStyleOption::NARROW},
         {"long", "short", "narrow"}, RelativeStyleOption::LONG);
@@ -112,7 +112,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     relativeTimeFormat->SetStyle(styleOption);
 
     // 18. Let numeric be ? GetOption(options, "numeric", "string", ?"always", "auto"?, "always").
-    property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledNumericString());
+    property = globalConst->GetHandledNumericString();
     NumericOption numericOption =
         JSLocale::GetOptionOfString(thread, rtfOptions, property, {NumericOption::ALWAYS, NumericOption::AUTO},
                                     {"always", "auto"}, NumericOption::ALWAYS);
@@ -490,13 +490,13 @@ void JSRelativeTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSRe
 
     auto globalConst = thread->GlobalConstants();
     // [[locale]]
-    JSHandle<JSTaggedValue> property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledLocaleString());
+    JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
     JSHandle<EcmaString> locale(thread, relativeTimeFormat->GetLocale());
     PropertyDescriptor localeDesc(thread, JSHandle<JSTaggedValue>::Cast(locale), true, true, true);
     JSObject::DefineOwnProperty(thread, options, property, localeDesc);
 
     // [[Style]]
-    property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledStyleString());
+    property = globalConst->GetHandledStyleString();
     RelativeStyleOption style = relativeTimeFormat->GetStyle();
     JSHandle<JSTaggedValue> styleValue;
     if (style == RelativeStyleOption::LONG) {
@@ -510,7 +510,7 @@ void JSRelativeTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSRe
     JSObject::DefineOwnProperty(thread, options, property, styleDesc);
 
     // [[Numeric]]
-    property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledNumericString());
+    property = globalConst->GetHandledNumericString();
     NumericOption numeric = relativeTimeFormat->GetNumeric();
     JSHandle<JSTaggedValue> numericValue;
     if (numeric == NumericOption::ALWAYS) {

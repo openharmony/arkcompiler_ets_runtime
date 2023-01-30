@@ -199,8 +199,7 @@ JSHandle<EcmaString> LocaleHelper::ToLanguageTag(JSThread *thread, const icu::Lo
     UErrorCode status = U_ZERO_ERROR;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto result = locale.toLanguageTag<std::string>(status);
-    bool flag = (U_FAILURE(status) == 0) ? true : false;
-    if (!flag) {
+    if (U_FAILURE(status) != 0) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "invalid locale", factory->GetEmptyString());
     }
     size_t findBeginning = result.find("-u-");
@@ -415,12 +414,10 @@ std::vector<std::string> LocaleHelper::GetAvailableLocales(JSThread *thread, con
                 continue;
             }
         }
-        bool isScript = false;
         allLocales.push_back(locStr);
         icu::Locale formalLocale = icu::Locale::createCanonical(locStr.c_str());
         std::string scriptStr = formalLocale.getScript();
-        isScript = scriptStr.empty() ? false : true;
-        if (isScript) {
+        if (!scriptStr.empty()) {
             std::string languageStr = formalLocale.getLanguage();
             std::string countryStr = formalLocale.getCountry();
             std::string shortLocale = icu::Locale(languageStr.c_str(), countryStr.c_str()).getName();

@@ -709,7 +709,7 @@ HWTEST_F_L0(JSObjectTest, SpeciesConstructor)
         factory->NewJSFunction(env, static_cast<void *>(nullptr), FunctionKind::BASE_CONSTRUCTOR);
     JSHandle<JSTaggedValue> constructorFuncValue(constructorFunc);
     constructorFunc->GetJSHClass()->SetExtensible(true);
-    JSFunction::NewJSFunctionPrototype(thread, factory, constructorFunc);
+    JSFunction::NewJSFunctionPrototype(thread, constructorFunc);
 
     JSHandle<JSObject> nullHandle(thread, JSTaggedValue::Null());
     JSHandle<JSTaggedValue> undefinedValue(thread, JSTaggedValue::Undefined());

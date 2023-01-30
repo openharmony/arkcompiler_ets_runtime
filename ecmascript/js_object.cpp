@@ -1746,9 +1746,8 @@ void JSObject::ToPropertyDescriptor(JSThread *thread, const JSHandle<JSTaggedVal
     auto globalConst = thread->GlobalConstants();
     // 3. Let desc be a new Property Descriptor that initially has no fields.
     // 4. Let hasEnumerable be HasProperty(Obj, "enumerable")
-    JSHandle<JSTaggedValue> enumerableStr = globalConst->GetHandledEnumerableString();
     {
-        ObjectOperator op(thread, obj.GetTaggedValue(), enumerableStr.GetTaggedValue());
+        ObjectOperator op(thread, obj.GetTaggedValue(), globalConst->GetEnumerableString());
         if (op.IsFound()) {
             auto value = op.FastGetValue();
             bool enumerable = value->IsException() ? false : value->ToBoolean();
@@ -1756,9 +1755,8 @@ void JSObject::ToPropertyDescriptor(JSThread *thread, const JSHandle<JSTaggedVal
         }
     }
     // 7. Let hasConfigurable be HasProperty(Obj, "configurable").
-    JSHandle<JSTaggedValue> configurableStr = globalConst->GetHandledConfigurableString();
     {
-        ObjectOperator op(thread, obj.GetTaggedValue(), configurableStr.GetTaggedValue());
+        ObjectOperator op(thread, obj.GetTaggedValue(), globalConst->GetConfigurableString());
         if (op.IsFound()) {
             auto value = op.FastGetValue();
             bool conf = value->IsException() ? false : value->ToBoolean();
@@ -1766,18 +1764,16 @@ void JSObject::ToPropertyDescriptor(JSThread *thread, const JSHandle<JSTaggedVal
         }
     }
     // 10. Let hasValue be HasProperty(Obj, "value").
-    JSHandle<JSTaggedValue> valueStr = globalConst->GetHandledValueString();
     {
-        ObjectOperator op(thread, obj.GetTaggedValue(), valueStr.GetTaggedValue());
+        ObjectOperator op(thread, obj.GetTaggedValue(), globalConst->GetValueString());
         if (op.IsFound()) {
             JSHandle<JSTaggedValue> prop = op.FastGetValue();
             desc.SetValue(prop);
         }
     }
     // 13. Let hasWritable be HasProperty(Obj, "writable").
-    JSHandle<JSTaggedValue> writableStr = globalConst->GetHandledWritableString();
     {
-        ObjectOperator op(thread, obj.GetTaggedValue(), writableStr.GetTaggedValue());
+        ObjectOperator op(thread, obj.GetTaggedValue(), globalConst->GetWritableString());
         if (op.IsFound()) {
             auto value = op.FastGetValue();
             bool writable = value->IsException() ? false : value->ToBoolean();
@@ -1785,9 +1781,8 @@ void JSObject::ToPropertyDescriptor(JSThread *thread, const JSHandle<JSTaggedVal
         }
     }
     // 16. Let hasGet be HasProperty(Obj, "get").
-    JSHandle<JSTaggedValue> getStr = globalConst->GetHandledGetString();
     {
-        ObjectOperator op(thread, obj.GetTaggedValue(), getStr.GetTaggedValue());
+        ObjectOperator op(thread, obj.GetTaggedValue(), globalConst->GetGetString());
         if (op.IsFound()) {
             JSHandle<JSTaggedValue> getter = op.FastGetValue();
             if (!getter->IsCallable() && !getter->IsUndefined()) {
@@ -1798,9 +1793,8 @@ void JSObject::ToPropertyDescriptor(JSThread *thread, const JSHandle<JSTaggedVal
     }
 
     // 19. Let hasSet be HasProperty(Obj, "set").
-    JSHandle<JSTaggedValue> setStr = globalConst->GetHandledSetString();
     {
-        ObjectOperator op(thread, obj.GetTaggedValue(), setStr.GetTaggedValue());
+        ObjectOperator op(thread, obj.GetTaggedValue(), globalConst->GetSetString());
         if (op.IsFound()) {
             JSHandle<JSTaggedValue> setter = op.FastGetValue();
             if (!setter->IsCallable() && !setter->IsUndefined()) {

@@ -453,8 +453,7 @@ public:
         const char *formalLocale = locale.getName();
         UResourceBundle *localeRes = ures_open(packageName, formalLocale, &status);
         if (localeRes != nullptr && status == U_ZERO_ERROR) {
-            bool flag = (key == nullptr) ? true : false;
-            if (flag) {
+            if (key == nullptr) {
                 res = true;
             } else {
                 UResourceBundle *keyRes = ures_getByKey(localeRes, key, nullptr, &status);

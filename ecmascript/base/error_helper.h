@@ -33,8 +33,6 @@ public:
     static JSTaggedValue ErrorCommonConstructor(EcmaRuntimeCallInfo *argv, const ErrorType &errorType);
 
 private:
-    static std::string DecodeFunctionName(const std::string &name);
-
     static JSHandle<JSTaggedValue> GetErrorJSFunction(JSThread *thread);
 
     static JSHandle<EcmaString> BuildEcmaStackTrace(JSThread *thread);

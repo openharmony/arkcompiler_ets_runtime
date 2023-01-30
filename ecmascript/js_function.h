@@ -102,8 +102,7 @@ public:
                                 const JSHandle<JSTaggedValue> &proto, bool writable = true);
     static bool SetFunctionLength(JSThread *thread, const JSHandle<JSFunction> &func, JSTaggedValue length,
                                   bool cfg = true);
-    static JSHandle<JSObject> NewJSFunctionPrototype(JSThread *thread, ObjectFactory *factory,
-                                                     const JSHandle<JSFunction> &func);
+    static JSHandle<JSObject> NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func);
     static JSTaggedValue AccessCallerArgumentsThrowTypeError(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue PrototypeGetter(JSThread *thread, const JSHandle<JSObject> &self);
     static bool PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,

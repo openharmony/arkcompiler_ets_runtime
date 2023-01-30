@@ -186,14 +186,6 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     return nativeInstanceObj.GetTaggedValue();
 }
 
-std::string ErrorHelper::DecodeFunctionName(const std::string &name)
-{
-    if (name.empty()) {
-        return "anonymous";
-    }
-    return name;
-}
-
 JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
