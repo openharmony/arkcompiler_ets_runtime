@@ -857,7 +857,7 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
         return env;
     }
 
-    const uint8_t *GetPc()
+    const uint8_t *GetPc() const
     {
         return pc;
     }
@@ -1385,6 +1385,7 @@ public:
     int ComputeDelta() const;
     template <GCVisitedFlag GCVisit = GCVisitedFlag::IGNORED>
     void Advance();
+    uint32_t GetBytecodeOffset() const;
     uintptr_t GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc = 0) const;
     uintptr_t GetPrevFrame() const;
     uintptr_t GetCallSiteSp() const
