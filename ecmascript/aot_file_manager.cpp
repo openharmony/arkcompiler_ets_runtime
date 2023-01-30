@@ -488,6 +488,12 @@ uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const
     return anFileDataManager->SafeGetFileInfoIndex(anFileName);
 }
 
+bool AOTFileManager::TryReadLock() const
+{
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    return anFileDataManager->SafeTryReadLock();
+}
+
 bool AOTFileManager::InsideStub(uintptr_t pc) const
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
@@ -896,6 +902,20 @@ std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()
 {
     os::memory::ReadLockHolder lock(lock_);
     return loadedStub_;
+}
+
+// Using for cpuprofiler to check if the ReadLock can be held in singal handler, to avoid the reentrancy deadlock.
+bool AnFileDataManager::SafeTryReadLock()
+{
+    // Try to acquire the lock when the signal callback starts to execute. At this time, the vm thread is interrupted,
+    // so the status of whether the lock is held by vm thread will not change until the signal callback ends. If the
+    // attempt is successful, it means that the current vm thread does not hold the lock，the reentrancy problem will
+    // not occur in the callback.
+    if (lock_.TryReadLock()) {
+        lock_.Unlock();
+        return true;
+    }
+    return false;
 }
 
 bool AnFileDataManager::SafeInsideStub(uintptr_t pc)
