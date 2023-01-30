@@ -238,7 +238,7 @@ source_set("ark_aot_compiler_set") {
   ]
 
   deps = [
-    "$js_root:libark_jsruntime",
+    "$js_root:libark_jsruntime_set",
   ]
 }
 
