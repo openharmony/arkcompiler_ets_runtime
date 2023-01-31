@@ -13,3 +13,4 @@
 
 123
 abc
+TypeError: type error
