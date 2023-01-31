@@ -301,6 +301,7 @@ private:
     void LowerLdThisByName(GateRef gate, GateRef jsFunc);
     void LowerConstPoolData(GateRef gate);
     void LowerDeoptCheck(GateRef gate);
+    void LowerConstruct(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};

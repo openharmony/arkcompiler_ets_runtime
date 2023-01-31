@@ -31,3 +31,18 @@ class D extends C {
 let d = new D(123, "abc");
 print(d.a);
 print(d.b);
+
+
+class E {
+    a:number;
+    constructor() {
+        this.a = 123;
+        throw TypeError("type error");
+    }
+}
+
+try {
+    new E();
+} catch(e) {
+    print(e);
+}
