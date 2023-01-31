@@ -783,8 +783,9 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     GateRef gate = 0;
+    bool writable = !bytecodeInfo.NoSideEffects();
     auto meta = circuit_->JSBytecode(numValueInputs,
-            bytecodeInfo.GetOpcode(), iterator.Index());
+        bytecodeInfo.GetOpcode(), iterator.Index(), writable);
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, meta);
     if (bytecodeInfo.IsDef()) {
         gate = circuit_->NewGate(meta, MachineType::I64, inList.size(),
@@ -795,9 +796,11 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     }
     gateAcc_.NewIn(gate, 0, state);
     gateAcc_.NewIn(gate, 1, depend);
-    auto ifSuccess = circuit_->NewGate(circuit_->IfSuccess(), {gate});
-    auto ifException = circuit_->NewGate(circuit_->IfException(), {gate});
+    state = gate;
     if (!bb.catchs.empty()) {
+        auto ifSuccess = circuit_->NewGate(circuit_->IfSuccess(), {gate});
+        auto ifException = circuit_->NewGate(circuit_->IfException(), {gate});
+
         auto &bbNext = bb.catchs.at(0);
         auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
         SetBlockPred(*bbNext, ifException, gate, isLoopBack);
@@ -806,12 +809,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         } else {
             bbNext->expandedPreds.push_back({bb.id, iterator.Index(), true});
         }
-    } else {
-        auto constant = circuit_->GetConstantGate(MachineType::I64,
-                                                  JSTaggedValue::VALUE_EXCEPTION,
-                                                  GateType::TaggedValue());
-        circuit_->NewGate(circuit_->Return(),
-            { ifException, gate, constant, circuit_->GetReturnRoot() });
+        state = ifSuccess;
     }
     byteCodeToJSGate_[iterator.Index()] = gate;
     if (bytecodeInfo.IsGeneratorRelative()) {
@@ -834,16 +832,15 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         }
         suspendAndResumeGates_.emplace_back(gate);
     }
+    depend = gate;
     if (bytecodeInfo.IsThrow()) {
         auto constant = circuit_->GetConstantGate(MachineType::I64,
                                                   JSTaggedValue::VALUE_EXCEPTION,
                                                   GateType::TaggedValue());
         circuit_->NewGate(circuit_->Return(),
-            { ifSuccess, gate, constant, circuit_->GetReturnRoot() });
+            { state, depend, constant, circuit_->GetReturnRoot() });
         return;
     }
-    state = ifSuccess;
-    depend = gate;
     if (iterator.Index() == bb.end) {
         auto &bbNext = graph_[bb.id + 1];
         auto isLoopBack = bbNext.loopbackBlocks.count(bb.id);
@@ -858,8 +855,9 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     if (bytecodeInfo.IsCondJump()) {
+        ASSERT(!bytecodeInfo.Deopt());
         auto meta = circuit_->JSBytecode(numValueInputs,
-            bytecodeInfo.GetOpcode(), iterator.Index());
+            bytecodeInfo.GetOpcode(), iterator.Index(), false);
         auto numValues = meta->GetNumIns();
         GateRef gate = circuit_->NewGate(meta, std::vector<GateRef>(numValues, Circuit::NullGate()));
         gateAcc_.NewIn(gate, 0, state);
@@ -1081,7 +1079,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         // New SAVE_REGISTER HIR, used to save register content when processing suspend instruction.
         auto resumeGate = byteCodeToJSGate_.at(iterator.Index());
         ans = gateAcc_.GetDep(resumeGate);
-        auto regs = gateAcc_.GetRestoreRegsInfo(ans);
+        auto &regs = gateAcc_.GetRestoreRegsInfo(ans);
         auto it = regs.find(needReplaceInfo);
         if (it != regs.end()) {
             break;

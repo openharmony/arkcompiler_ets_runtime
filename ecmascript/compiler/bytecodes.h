@@ -40,6 +40,7 @@ enum BytecodeFlags : uint32_t {
     SUPPORT_DEOPT = 1 << 2, // 2: flag 2
     GENERAL_BC = 1 << 3,
     READ_THIS_OBJECT = 1 << 4,
+    NO_SIDE_EFFECTS = 1 << 5,
 };
 
 enum BytecodeKind : uint32_t {
@@ -58,7 +59,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 5;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 6;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
@@ -69,6 +70,11 @@ public:
     bool HasAccIn() const
     {
         return HasFlag(BytecodeFlags::READ_ACC);
+    }
+
+    bool IsNoSideEffects() const
+    {
+        return HasFlag(BytecodeFlags::NO_SIDE_EFFECTS);
     }
 
     bool HasThisIn() const
@@ -422,6 +428,11 @@ public:
     bool AccIn() const
     {
         return metaData_.HasAccIn();
+    }
+
+    bool NoSideEffects() const
+    {
+        return metaData_.IsNoSideEffects();
     }
 
     bool ThisObjectIn() const

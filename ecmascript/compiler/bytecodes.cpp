@@ -30,6 +30,34 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     }
 
     switch (inst.GetOpcode()) {
+        case EcmaOpcode::GETPROPITERATOR:
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+        case EcmaOpcode::LDSYMBOL:
+        case EcmaOpcode::LDGLOBAL:
+        case EcmaOpcode::LDBIGINT_ID16:
+        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::GETMODULENAMESPACE_IMM8:
+        case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
+        case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
+        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
+        default:
+            break;
+    }
+
+    switch (inst.GetOpcode()) {
         case EcmaOpcode::MOV_V4_V4:
         case EcmaOpcode::MOV_V8_V8:
         case EcmaOpcode::MOV_V16_V16:
