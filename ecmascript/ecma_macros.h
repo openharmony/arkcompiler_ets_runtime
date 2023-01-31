@@ -535,7 +535,10 @@
         LOG_FULL(FATAL) << __func__ << ":" << __LINE__ << " begin: " << (begin) << " end: " << (end); \
     }
 
-#define CHECK_JS_THREAD(vm) ASSERT(vm->GetJSThread()->GetThreadId() == JSThread::GetCurrentThreadId())
+#define CHECK_JS_THREAD(vm)                                                         \
+    if (!(vm)->GetJSThread()->IsCrossThreadExecutionEnable()) {                     \
+        ASSERT((vm)->GetJSThread()->GetThreadId() == JSThread::GetCurrentThreadId()); \
+    }
 
 #if !defined(NDEBUG)
 #define STACK_ASSERT_SCOPE(thread) [[maybe_unused]] StackAssertScope stackAssertScope = StackAssertScope(thread)

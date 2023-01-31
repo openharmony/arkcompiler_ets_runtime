@@ -624,6 +624,16 @@ public:
         return isWeak_(addr);
     }
 
+    void EnableCrossThreadExecution()
+    {
+        glueData_.allowCrossThreadExecution_ = true;
+    }
+
+    bool IsCrossThreadExecutionEnable() const
+    {
+        return glueData_.allowCrossThreadExecution_;
+    }
+
     bool IsStartGlobalLeakCheck() const;
     bool EnableGlobalObjectLeakCheck() const;
     bool EnableGlobalPrimitiveLeakCheck() const;
@@ -654,7 +664,8 @@ public:
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
-                                                 GlobalEnvConstants> {
+                                                 GlobalEnvConstants,
+                                                 base::AlignedUint64> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -675,6 +686,7 @@ public:
             StackLimitIndex,
             GlueGlobalEnvIndex,
             GlobalConstIndex,
+            AllowCrossThreadExecutionIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -774,6 +786,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::GlobalConstIndex)>(isArch32);
         }
 
+        static size_t GetAllowCrossThreadExecutionOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::AllowCrossThreadExecutionIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -793,6 +810,7 @@ public:
         alignas(EAS) uint64_t stackLimit_ {0};
         alignas(EAS) GlobalEnv *glueGlobalEnv_;
         alignas(EAS) GlobalEnvConstants globalConst_;
+        alignas(EAS) bool allowCrossThreadExecution_ {false};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 

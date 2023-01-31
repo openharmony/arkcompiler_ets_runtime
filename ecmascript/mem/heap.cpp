@@ -338,6 +338,9 @@ TriggerGCType Heap::SelectGCType() const
 
 void Heap::CollectGarbage(TriggerGCType gcType)
 {
+    if (thread_->IsCrossThreadExecutionEnable()) {
+        return;
+    }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     [[maybe_unused]] GcStateScope scope(thread_);
 #endif
