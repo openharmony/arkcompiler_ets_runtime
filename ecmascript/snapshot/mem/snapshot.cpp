@@ -184,6 +184,7 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     Close(fd);
     // relocate object field
     processor.Relocate(type, jsPandaFile, hdr.rootObjectSize);
+    LOG_COMPILER(INFO) << "loaded ai file: " << snapshotFile.c_str();
     return jsPandaFile;
 }
 

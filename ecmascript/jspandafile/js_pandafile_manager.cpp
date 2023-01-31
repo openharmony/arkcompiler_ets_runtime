@@ -122,9 +122,11 @@ JSHandle<Program> JSPandaFileManager::GenerateProgram(
     EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
-    vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
-    JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
-    return program;
+    if (AnFileDataManager::GetInstance()->IsEnable()) {
+        vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
+    }
+
+    return PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
 }
 
 const JSPandaFile *JSPandaFileManager::FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum)
@@ -277,9 +279,11 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
 {
     ASSERT(GetJSPandaFile(pf) == nullptr);
     JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc);
-
     auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
-    aotFM->LoadAnFile(newJsPandaFile);
+    if (aotFM->IsLoad(newJsPandaFile)) {
+        uint32_t index = aotFM->GetAnFileIndex(newJsPandaFile);
+        newJsPandaFile->SetAOTFileInfoIndex(index);
+    }
 
     CString methodName = entryPoint.data();
     if (newJsPandaFile->IsBundlePack()) {
