@@ -479,10 +479,30 @@ public:
     bool SafeInsideStub(uintptr_t pc);
     bool SafeInsideAOT(uintptr_t pc);
     AOTFileInfo::CallSiteInfo SafeCalCallSiteInfo(uintptr_t retAddr);
-
     void SafeDestoryAllData();
+    const std::string& GetDir() const
+    {
+        return anDir_;
+    }
 
-private:
+    bool IsEnable() const
+    {
+        return anEnable_;
+    }
+
+    // only main thread call this, only call once, no need to lock
+    void SetDir(std::string dir)
+    {
+        anDir_ = dir;
+    }
+
+    void SetEnable(bool enable)
+    {
+        anEnable_ = enable;
+    }
+
+
+public:
     AnFileDataManager() = default;
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
     bool UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *vm);
@@ -492,6 +512,9 @@ private:
     std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_;
     std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};
+    std::string anDir_;
+    bool anEnable_ {false};
+
 };
 
 class AOTFileManager {
