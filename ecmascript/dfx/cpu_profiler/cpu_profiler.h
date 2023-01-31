@@ -103,6 +103,7 @@ private:
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
     bool GetFrameStackCallNapi(JSThread *thread);
+    void GetRowAndColumnNumbers(FrameIterator &itNext);
     void *GetMethodIdentifier(Method *method, const FrameIterator &it);
     RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool isLeaveFrame) const;
     uint32_t napiCallCount_ = 0;
@@ -114,6 +115,9 @@ private:
     const EcmaVM *vm_ = nullptr;
     uint32_t interval_ = 0;
     bool callNapiGetStack_ = true;
+    int line_ = 0;
+    int column_ = 0;
+    char url_[500] = {0}; // 500:the maximum size of the url
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_CPU_PROFILE_H
