@@ -590,13 +590,6 @@ GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
     return GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
 }
 
-void InterpreterStubBuilder::SetHotnessCounter(GateRef glue, GateRef method, GateRef value)
-{
-    auto env = GetEnvironment();
-    GateRef newValue = env->GetBuilder()->TruncInt64ToInt16(value);
-    Store(VariableType::INT16(), glue, method, IntPtr(Method::LITERAL_INFO_OFFSET), newValue);
-}
-
 void InterpreterStubBuilder::DispatchWithId(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
     GateRef profileTypeInfo, GateRef acc,
     GateRef hotnessCounter, GateRef index)
