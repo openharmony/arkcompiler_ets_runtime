@@ -50,7 +50,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
     moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
 
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
-    moduleRecord->SetTypes(ModuleTypes::ECMAMODULE);
+    moduleRecord->SetTypes(ModuleTypes::ECMA_MODULE);
     moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
@@ -95,7 +95,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
-    moduleRecord->SetTypes(ModuleTypes::CJSMODULE);
+    moduleRecord->SetTypes(ModuleTypes::CJS_MODULE);
     moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
@@ -117,8 +117,28 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
     moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
 
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
-    moduleRecord->SetTypes(ModuleTypes::JSONMODULE);
+    moduleRecord->SetTypes(ModuleTypes::JSON_MODULE);
     moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
+
+    return JSHandle<JSTaggedValue>::Cast(moduleRecord);
+}
+
+JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
+    const CString &moduleRequestName, ModuleTypes moduleType)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
+
+    // set moduleRecordName as non-undefined to distinguish between merge and non-merge mode
+    JSHandle<EcmaString> falsyRecordName = factory->NewFromUtf8(moduleRequestName);
+    moduleRecord->SetEcmaModuleRecordName(thread, falsyRecordName);
+    JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
+    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
+    SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1);
+    moduleRecord->SetTypes(moduleType);
+    moduleRecord->SetIsNewBcVersion(true);
+    moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
+    moduleRecord->StoreModuleValue(thread, 0, thread->GlobalConstants()->GetHandledUndefined());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
 }
