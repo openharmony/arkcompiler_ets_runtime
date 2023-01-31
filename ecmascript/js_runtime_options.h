@@ -43,6 +43,7 @@ enum ArkProperties {
     GLOBAL_PRIMITIVE_LEAK_CHECK = 1 << 11,
     ENABLE_IDLE_GC = 1 << 12,  // default enable
     CPU_PROFILER = 1 << 13,
+    ENABLE_CPU_PROFILER_VM_TAG = 1 << 14,
 };
 
 // asm interpreter control parsed option
@@ -349,6 +350,11 @@ public:
     bool EnableCpuProfiler() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER) != 0;
+    }
+
+    bool EnableCpuProfilerVMTag() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_CPU_PROFILER_VM_TAG) != 0;
     }
 
     bool IsStartGlobalLeakCheck() const

@@ -385,11 +385,20 @@ std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningStat
         case RunningState::GC:
             return temp.append("(GC)");
         case RunningState::CINT:
-            return temp.append("(CINT)");
+            if (enableVMTag_) {
+                return temp.append("(CINT)");
+            }
+            return temp.append("");
         case RunningState::AINT:
-            return temp.append("(AINT)");
+            if (enableVMTag_) {
+                return temp.append("(AINT)");
+            }
+            return temp.append("");
         case RunningState::AOT:
-            return temp.append("(AOT)");
+            if (enableVMTag_) {
+                return temp.append("(AOT)");
+            }
+            return temp.append("");
         case RunningState::BUILTIN:
             return temp.append("(BUILTIN)");
         case RunningState::NAPI:
@@ -397,7 +406,10 @@ std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningStat
         case RunningState::ARKUI_ENGINE:
             return temp.append("(ARKUI_ENGINE)");
         case RunningState::RUNTIME:
-            return temp.append("(RUNTIME)");
+            if (enableVMTag_) {
+                return temp.append("(RUNTIME)");
+            }
+            return temp.append("");
         default:
             return temp.append("(OTHER)");
     }
