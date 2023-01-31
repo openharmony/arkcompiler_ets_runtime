@@ -3768,11 +3768,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
     Label ctorIsBase(env);
     Label ctorNotBase(env);
     Label isException(env);
-    Label callRuntime(env);
-    Label newObject(env);
-    Label newObjectCheckException(env);
 
-    GateRef isBase = IsBase(ctor);
     Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
     Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
@@ -3780,40 +3776,16 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
     Branch(IsConstructor(ctor), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        Branch(isBase, &ctorIsBase, &ctorNotBase);
+        Branch(IsBase(ctor), &ctorIsBase, &ctorNotBase);
         Bind(&ctorIsBase);
         {
-            Label isHeapObject(env);
-            Label checkJSObject(env);
-            auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
-                IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            Branch(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &callRuntime);
-            Bind(&isHeapObject);
-            Branch(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
-            Bind(&checkJSObject);
-            auto objectType = GetObjectType(protoOrHclass);
-            Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
-                &newObject, &callRuntime);
-            Bind(&newObject);
-            {
-                NewObjectStubBuilder newBuilder(this);
-                newBuilder.SetParameters(glue, 0);
-                Label afterNew(env);
-                newBuilder.NewJSObject(&thisObj, &afterNew, protoOrHclass);
-                Bind(&afterNew);
-                Jump(&newObjectCheckException);
-            }
-            Bind(&callRuntime);
-            {
-                thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {ctor});
-                Jump(&newObjectCheckException);
-            }
-            Bind(&newObjectCheckException);
-            Branch(TaggedIsException(*res), &isException, &ctorNotBase);
+            NewObjectStubBuilder newBuilder(this);
+            thisObj = newBuilder.FastNewThisObject(glue, ctor);
+            Branch(HasPendingException(glue), &isException, &ctorNotBase);
         }
         Bind(&ctorNotBase);
         GateRef argv = PtrAdd(sp, PtrMul(
-            PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function&this
+            PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
@@ -3865,11 +3837,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
     Label ctorIsBase(env);
     Label ctorNotBase(env);
     Label isException(env);
-    Label callRuntime(env);
-    Label newObject(env);
-    Label newObjectCheckException(env);
 
-    GateRef isBase = IsBase(ctor);
     Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
     Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
@@ -3877,40 +3845,16 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
     Branch(IsConstructor(ctor), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        Branch(isBase, &ctorIsBase, &ctorNotBase);
+        Branch(IsBase(ctor), &ctorIsBase, &ctorNotBase);
         Bind(&ctorIsBase);
         {
-            Label isHeapObject(env);
-            Label checkJSObject(env);
-            auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
-                IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            Branch(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &callRuntime);
-            Bind(&isHeapObject);
-            Branch(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
-            Bind(&checkJSObject);
-            auto objectType = GetObjectType(protoOrHclass);
-            Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
-                &newObject, &callRuntime);
-            Bind(&newObject);
-            {
-                NewObjectStubBuilder newBuilder(this);
-                newBuilder.SetParameters(glue, 0);
-                Label afterNew(env);
-                newBuilder.NewJSObject(&thisObj, &afterNew, protoOrHclass);
-                Bind(&afterNew);
-                Jump(&newObjectCheckException);
-            }
-            Bind(&callRuntime);
-            {
-                thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {ctor});
-                Jump(&newObjectCheckException);
-            }
-            Bind(&newObjectCheckException);
-            Branch(TaggedIsException(*res), &isException, &ctorNotBase);
+            NewObjectStubBuilder newBuilder(this);
+            thisObj = newBuilder.FastNewThisObject(glue, ctor);
+            Branch(HasPendingException(glue), &isException, &ctorNotBase);
         }
         Bind(&ctorNotBase);
         GateRef argv = PtrAdd(sp, PtrMul(
-            PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function&this
+            PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
@@ -3962,11 +3906,7 @@ DECLARE_ASM_HANDLER(HandleWideNewobjrangePrefImm16V8)
     Label ctorIsBase(env);
     Label ctorNotBase(env);
     Label isException(env);
-    Label callRuntime(env);
-    Label newObject(env);
-    Label newObjectCheckException(env);
 
-    GateRef isBase = IsBase(ctor);
     Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
     Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
@@ -3974,40 +3914,16 @@ DECLARE_ASM_HANDLER(HandleWideNewobjrangePrefImm16V8)
     Branch(IsConstructor(ctor), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        Branch(isBase, &ctorIsBase, &ctorNotBase);
+        Branch(IsBase(ctor), &ctorIsBase, &ctorNotBase);
         Bind(&ctorIsBase);
         {
-            Label isHeapObject(env);
-            Label checkJSObject(env);
-            auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
-                IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            Branch(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &callRuntime);
-            Bind(&isHeapObject);
-            Branch(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
-            Bind(&checkJSObject);
-            auto objectType = GetObjectType(protoOrHclass);
-            Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
-                &newObject, &callRuntime);
-            Bind(&newObject);
-            {
-                NewObjectStubBuilder newBuilder(this);
-                newBuilder.SetParameters(glue, 0);
-                Label afterNew(env);
-                newBuilder.NewJSObject(&thisObj, &afterNew, protoOrHclass);
-                Bind(&afterNew);
-                Jump(&newObjectCheckException);
-            }
-            Bind(&callRuntime);
-            {
-                thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {ctor});
-                Jump(&newObjectCheckException);
-            }
-            Bind(&newObjectCheckException);
-            Branch(TaggedIsException(*res), &isException, &ctorNotBase);
+            NewObjectStubBuilder newBuilder(this);
+            thisObj = newBuilder.FastNewThisObject(glue, ctor);
+            Branch(HasPendingException(glue), &isException, &ctorNotBase);
         }
         Bind(&ctorNotBase);
         GateRef argv = PtrAdd(sp, PtrMul(
-            PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function&this
+            PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize,
                              JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV,
