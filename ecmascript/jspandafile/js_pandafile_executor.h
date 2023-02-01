@@ -36,7 +36,6 @@ public:
                                                              const CString &entry, const void *buffer, size_t size);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                  std::string_view entryPoint, bool excuteFromJob = false);
-    static CString NormalizePath(const CString &fileName);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H

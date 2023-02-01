@@ -66,9 +66,6 @@ public:
     void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
     void Iterate(const RootVisitor &v);
 
-    static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
-                                           CString moduleRecordName, CString moduleRequestName);
-
     bool GetCurrentMode() const
     {
         return isExecuteBuffer_;
@@ -80,8 +77,6 @@ public:
 
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
-    static bool IsImportedPath(const CString &moduleRequestName, size_t &typePos);
-    static void AddIndexToEntryPoint(const JSPandaFile *jsPandaFile, CString &entryPoint, CString &key);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
 
     inline static bool IsNativeModule(ModuleTypes moduleType)

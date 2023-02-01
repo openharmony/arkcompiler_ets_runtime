@@ -69,20 +69,12 @@ public:
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
-    static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
-    static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
-    static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
-    static constexpr char NODE_MODULES[] = "node_modules/";
-    static constexpr char NODE_MODULES_ZERO[] = "node_modules/0/";
-    static constexpr char NODE_MODULES_ONE[] = "node_modules/1/";
-    static constexpr char MERGE_ABC_NAME[] = "modules.abc";
-    static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
     static constexpr char PACKAGE_NAME[] = "pkgName@";
-    static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
+    static constexpr char MERGE_ABC_NAME[] = "modules.abc";
+    static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
+    static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr int PACKAGE_NAME_LEN = 8;
-    static constexpr int MODULE_OR_BUNDLE_PREFIX_LEN = 8;
     static constexpr int DEFAULT_TYPE_SUMMARY_OFFSET = 0;
-    static constexpr int PACKAGE_PREFIX_LEN = 9;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -300,11 +292,6 @@ public:
     void CheckIsNewRecord(EcmaVM *vm);
 
     CString FindNpmEntryPoint(const CString &record) const;
-
-    static CString ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName);
-    static CString ParseNewPagesUrl(EcmaVM *vm, const CString &entryPoint);
-    static std::string ParseHapPath(const CString &fileName);
-    static void CroppingRecord(CString &recordName);
 
     uint32_t GetAOTFileInfoIndex() const
     {

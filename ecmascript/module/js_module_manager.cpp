@@ -15,6 +15,7 @@
 #include "ecmascript/module/js_module_manager.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/frame_handler.h"
@@ -34,6 +35,7 @@
 
 namespace panda::ecmascript {
 using BuiltinsJson = builtins::BuiltinsJson;
+using PathHelper = base::PathHelper;
 
 namespace {
 constexpr size_t NATIVE_PREFIX_SIZE = 8;
@@ -533,136 +535,6 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(JSTaggedValue localName,
 void ModuleManager::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&resolvedModules_)));
-}
-
-CString ModuleManager::ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
-                                               CString moduleRecordName, CString moduleRequestName)
-{
-    CString entryPoint;
-    size_t pos = 0;
-    size_t typePos = CString::npos;
-    if (moduleRequestName.find("@bundle:") != CString::npos) {
-        moduleRequestName = moduleRequestName.substr(JSPandaFile::MODULE_OR_BUNDLE_PREFIX_LEN);
-        pos = moduleRequestName.find('/');
-        CString bundleName = moduleRequestName.substr(0, pos);
-        size_t bundleNameLen = bundleName.length();
-        entryPoint = moduleRequestName;
-        if (jsPandaFile->IsNewRecord()) {
-            bool isDifferentBundle = (moduleRecordName.length() > bundleNameLen) &&
-            (moduleRecordName.compare(0, bundleNameLen, bundleName) != 0);
-            pos = moduleRequestName.find('/', bundleNameLen + 1);
-            if (isDifferentBundle && CString::npos != pos) {
-                CString moduleName = moduleRequestName.substr(bundleNameLen + 1, pos - bundleNameLen - 1);
-                baseFilename = JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + '/' + moduleName +
-                            JSPandaFile::MERGE_ABC_ETS_MODULES;
-            }
-        } else {
-            JSPandaFile::CroppingRecord(entryPoint);
-        }
-    } else if (moduleRequestName.find("@module:") != CString::npos) {
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-        moduleRequestName = moduleRequestName.substr(JSPandaFile::MODULE_OR_BUNDLE_PREFIX_LEN);
-        pos = moduleRequestName.find('/');
-        ASSERT(pos != CString::npos);
-        baseFilename =
-            JSPandaFile::BUNDLE_INSTALL_PATH + moduleRequestName.substr(0, pos) + JSPandaFile::MERGE_ABC_ETS_MODULES;
-        pos = moduleRecordName.find('/');
-        entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
-#else
-        entryPoint = JSPandaFile::PREVIEW_OF_ACROSS_HAP_FLAG;
-        LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
-#endif
-    } else if (IsImportedPath(moduleRequestName, typePos)) {
-        if (typePos != CString::npos) {
-            moduleRequestName = moduleRequestName.substr(0, typePos);
-        }
-        pos = moduleRequestName.find("./");
-        if (pos == 0) {
-            moduleRequestName = moduleRequestName.substr(2); // 2 means jump "./"
-        }
-        pos = moduleRecordName.rfind('/');
-        if (pos != CString::npos) {
-            entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
-        } else {
-            entryPoint = moduleRequestName;
-        }
-        entryPoint = JSPandaFileExecutor::NormalizePath(entryPoint);
-        if (!jsPandaFile->HasRecord(entryPoint)) {
-            entryPoint += "/index";
-        }
-        if (!jsPandaFile->HasRecord(entryPoint)) {
-            pos = baseFilename.rfind('/');
-            if (pos != CString::npos) {
-                baseFilename = baseFilename.substr(0, pos + 1) + moduleRequestName + ".abc";
-            } else {
-                baseFilename = moduleRequestName + ".abc";
-            }
-            pos = moduleRequestName.rfind('/');
-            if (pos != CString::npos) {
-                entryPoint = moduleRequestName.substr(pos + 1);
-            } else {
-                entryPoint = moduleRequestName;
-            }
-        }
-    } else if (moduleRequestName.find("@package:") != CString::npos) {
-        entryPoint = moduleRequestName.substr(JSPandaFile::PACKAGE_PREFIX_LEN);
-    } else {
-        pos = moduleRecordName.find(JSPandaFile::NODE_MODULES);
-        CString key = "";
-        if (pos != CString::npos) {
-            auto info = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(moduleRecordName);
-            CString PackageName = info.npmPackageName;
-            while ((pos = PackageName.rfind(JSPandaFile::NODE_MODULES)) != CString::npos) {
-                key = PackageName + "/" + JSPandaFile::NODE_MODULES + moduleRequestName;
-                AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
-                if (entryPoint.empty()) {
-                    break;
-                }
-                PackageName = PackageName.substr(0, pos > 0 ? pos - 1 : 0);
-            }
-        }
-
-        if (entryPoint.empty()) {
-            key = JSPandaFile::NODE_MODULES_ZERO + moduleRequestName;
-            AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
-        }
-
-        if (entryPoint.empty()) {
-            key = JSPandaFile::NODE_MODULES_ONE + moduleRequestName;
-            AddIndexToEntryPoint(jsPandaFile, entryPoint, key);
-        }
-
-        if (entryPoint.empty()) {
-            LOG_ECMA(ERROR) << "find entryPoint failed\n"
-                            << "moduleRequestName : " << moduleRequestName << "\n"
-                            << "moduleRecordName : " << moduleRecordName << "\n";
-        }
-    }
-    return entryPoint;
-}
-
-bool ModuleManager::IsImportedPath(const CString &moduleRequestName, size_t &typePos)
-{
-    if (moduleRequestName.rfind(".js") != CString::npos) {
-        typePos = moduleRequestName.rfind(".js");
-        return true;
-    } else if (moduleRequestName.rfind(".ts") != CString::npos) {
-        typePos = moduleRequestName.rfind(".ts");
-        return true;
-    } else if (moduleRequestName.rfind(".ets") != CString::npos) {
-        typePos = moduleRequestName.rfind(".ets");
-        return true;
-    }
-    return moduleRequestName.find("./") == 0 || moduleRequestName.find("../") == 0;
-}
-
-void ModuleManager::AddIndexToEntryPoint(const JSPandaFile *jsPandaFile, CString &entryPoint, CString &key)
-{
-    entryPoint = jsPandaFile->FindNpmEntryPoint(key);
-    if (entryPoint.empty()) {
-        key += "/index";
-        entryPoint = jsPandaFile->FindNpmEntryPoint(key);
-    }
 }
 
 CString ModuleManager::GetRecordName(JSTaggedValue module)

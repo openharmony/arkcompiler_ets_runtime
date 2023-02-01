@@ -21,6 +21,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/json_stringifier.h"
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -164,11 +165,11 @@ using JSHandle = ecmascript::JSHandle<T>;
 template<typename T>
 using JSMutableHandle = ecmascript::JSMutableHandle<T>;
 
+using PathHelper = ecmascript::base::PathHelper;
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
-
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
 static os::memory::Mutex mutex;
@@ -641,7 +642,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
     JSThread *thread = vm->GetJSThread();
     ecmascript::CString name = vm->GetAssetPath();
     if (!vm->IsBundlePack()) {
-        entry = ecmascript::JSPandaFile::ParseOhmUrl(vm, entry, name);
+        entry = PathHelper::ParseOhmUrl(vm, entry, name);
         const JSPandaFile *jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), false);
         if (jsPandaFile == nullptr) {
@@ -649,7 +650,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
             return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
         }
         if (!jsPandaFile->IsNewRecord()) {
-            JSPandaFile::CroppingRecord(entry);
+            PathHelper::CroppingRecord(entry);
         }
     }
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();

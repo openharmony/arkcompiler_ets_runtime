@@ -168,8 +168,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
 
-        entryPoint =
-            ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
+        entryPoint = PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
 
         fileNameStr = baseFilename;
         moduleName = vm->GetFactory()->NewFromUtf8(entryPoint);

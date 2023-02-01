@@ -16,6 +16,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_file_path.h"
 
@@ -80,7 +81,7 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
             LOG_ECMA(ERROR) << "JSPandaFileExecutor::ExecuteFromFile resolveBufferCallback is nullptr";
             return nullptr;
         }
-        std::vector<uint8_t> data = resolveBufferCallback(JSPandaFile::ParseHapPath(filename));
+        std::vector<uint8_t> data = resolveBufferCallback(base::PathHelper::ParseHapPath(filename));
         if (data.empty()) {
             LOG_ECMA(ERROR) << "JSPandaFileExecutor::ExecuteFromFile resolveBufferCallback get buffer failed";
             return nullptr;
