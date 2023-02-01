@@ -344,6 +344,26 @@ bool JSSerializer::WriteTaggedArray(const JSHandle<JSTaggedValue> &value)
     return true;
 }
 
+bool JSSerializer::WriteByteArray(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<ByteArray> byteArray = JSHandle<ByteArray>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::BYTE_ARRAY)) {
+        return false;
+    }
+    uint32_t len = byteArray->GetLength();
+    if (!WriteInt(len)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    uint32_t size = byteArray->GetSize();
+    if (!WriteInt(size)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    return true;
+}
+
 bool JSSerializer::WriteConstantPool(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<ConstantPool> constPool = JSHandle<ConstantPool>::Cast(value);
@@ -661,11 +681,17 @@ bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, Seria
         return false;
     }
     // Write ACCESSORS(ViewedArrayBuffer) which is a pointer to an ArrayBuffer
-    JSHandle<JSTaggedValue> viewedArrayBuffer(thread_, typedArray->GetViewedArrayBuffer());
-    if (!WriteJSArrayBuffer(viewedArrayBuffer)) {
+    JSHandle<JSTaggedValue> viewedArrayBufferOrByteArray(thread_, typedArray->GetViewedArrayBuffer());
+    if (viewedArrayBufferOrByteArray->IsArrayBuffer()) {
+        if (!WriteJSArrayBuffer(viewedArrayBufferOrByteArray)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    } else if (!WriteByteArray(viewedArrayBufferOrByteArray)) {
         bufferSize_ = oldSize;
         return false;
     }
+
     // Write ACCESSORS(TypedArrayName)
     JSHandle<JSTaggedValue> typedArrayName(thread_, typedArray->GetTypedArrayName());
     if (!SerializeJSTaggedValue(typedArrayName)) {
@@ -1145,6 +1171,8 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
             return ReadNativeMethod();
         case SerializationUID::CONSTANT_POOL:
             return ReadConstantPool();
+        case SerializationUID::BYTE_ARRAY:
+            return ReadByteArray();
         default:
             return JSHandle<JSTaggedValue>();
     }
@@ -1164,6 +1192,20 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadTaggedArray()
         taggedArray->Set(thread_, i, val.GetTaggedValue());
     }
     return arrayTag;
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadByteArray()
+{
+    int32_t len = 0;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&len)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    int32_t size = 0;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&size)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<ByteArray> byteArray = factory_->NewByteArray(len, size);
+    return JSHandle<JSTaggedValue>(byteArray);
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadConstantPool()
@@ -1543,11 +1585,11 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
         return JSHandle<JSTaggedValue>();
     }
 
-    JSHandle<JSTaggedValue> viewedArrayBuffer = DeserializeJSTaggedValue();
-    if (viewedArrayBuffer.IsEmpty()) {
+    JSHandle<JSTaggedValue> viewedArrayBufferOrByteArray = DeserializeJSTaggedValue();
+    if (viewedArrayBufferOrByteArray.IsEmpty()) {
         return JSHandle<JSTaggedValue>();
     }
-    typedArray->SetViewedArrayBuffer(thread_, viewedArrayBuffer);
+    typedArray->SetViewedArrayBuffer(thread_, viewedArrayBufferOrByteArray);
 
     JSHandle<JSTaggedValue> typedArrayName = DeserializeJSTaggedValue();
     if (typedArrayName.IsEmpty()) {

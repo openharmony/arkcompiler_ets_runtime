@@ -100,6 +100,7 @@ enum class SerializationUID : uint8_t {
     CONSTANT_POOL,
     TAGGED_ARRAY,
     // Function end
+    BYTE_ARRAY,
     NATIVE_POINTER,
     UNKNOWN
 };
@@ -118,6 +119,7 @@ private:
     bool WriteMethod(const JSHandle<JSTaggedValue> &value);
     bool WriteConstantPool(const JSHandle<JSTaggedValue> &value);
     bool WriteTaggedArray(const JSHandle<JSTaggedValue> &value);
+    bool WriteByteArray(const JSHandle<JSTaggedValue> &value);
     bool WriteTaggedObject(const JSHandle<JSTaggedValue> &value);
     bool WritePrimitiveValue(const JSHandle<JSTaggedValue> &value);
     bool WriteInt(int32_t value);
@@ -179,6 +181,7 @@ private:
     JSHandle<JSTaggedValue> ReadJSFunctionBase();
     JSHandle<JSTaggedValue> ReadJSFunction();
     JSHandle<JSTaggedValue> ReadTaggedArray();
+    JSHandle<JSTaggedValue> ReadByteArray();
     JSHandle<JSTaggedValue> ReadJSMethod();
     JSHandle<JSTaggedValue> ReadNativeMethod();
     JSHandle<JSTaggedValue> ReadConstantPool();

@@ -537,7 +537,7 @@ public:
         Destroy();
     }
 
-    void TypedArrayTest(std::pair<uint8_t *, size_t> data, const JSHandle<JSTypedArray> &originTypedArray)
+    void TypedArrayTest1(std::pair<uint8_t *, size_t> data, const JSHandle<JSTypedArray> &originTypedArray)
     {
         Init();
         JSHandle<JSTaggedValue> originTypedArrayName(thread, originTypedArray->GetTypedArrayName());
@@ -563,6 +563,7 @@ public:
         EXPECT_TRUE(contentType == originTypedArray->GetContentType()) << "Not Same ContentType";
 
         // check arrayBuffer
+        EXPECT_TRUE(viewedArrayBuffer->IsArrayBuffer());
         JSHandle<JSArrayBuffer> resJSArrayBuffer(viewedArrayBuffer);
         JSHandle<JSArrayBuffer> originArrayBuffer(thread, originTypedArray->GetViewedArrayBuffer());
         uint32_t resTaggedLength = resJSArrayBuffer->GetArrayBufferByteLength();
@@ -577,6 +578,44 @@ public:
         for (uint32_t i = 0; i < resTaggedLength; i++) {
             EXPECT_TRUE(static_cast<char *>(resBuffer)[i] == static_cast<char *>(buffer)[i]) << "Not same viewedBuffer";
         }
+        Destroy();
+    }
+
+    void TypedArrayTest2(std::pair<uint8_t *, size_t> data, const JSHandle<JSTypedArray> &originTypedArray)
+    {
+        Init();
+        JSHandle<JSTaggedValue> originTypedArrayName(thread, originTypedArray->GetTypedArrayName());
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.Deserialize();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize TypedArray fail";
+        EXPECT_TRUE(res->IsJSInt8Array()) << "[NotJSInt8Array] Deserialize TypedArray fail";
+        JSHandle<JSTypedArray> resJSInt8Array = JSHandle<JSTypedArray>::Cast(res);
+
+        JSHandle<JSTaggedValue> typedArrayName(thread, resJSInt8Array->GetTypedArrayName());
+        JSTaggedNumber byteLength(resJSInt8Array->GetByteLength());
+        JSTaggedNumber byteOffset(resJSInt8Array->GetByteOffset());
+        JSTaggedNumber arrayLength(resJSInt8Array->GetArrayLength());
+        ContentType contentType = resJSInt8Array->GetContentType();
+        JSHandle<JSTaggedValue> byteArray(thread, resJSInt8Array->GetViewedArrayBuffer());
+
+        EXPECT_TRUE(typedArrayName->IsString());
+        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(typedArrayName),
+                                                        *JSHandle<EcmaString>(originTypedArrayName)));
+        EXPECT_TRUE(byteLength.ToUint32() == originTypedArray->GetByteLength()) << "Not Same ByteLength";
+        EXPECT_TRUE(byteOffset.ToUint32() == originTypedArray->GetByteOffset()) << "Not Same ByteOffset";
+        EXPECT_TRUE(arrayLength.ToUint32() == originTypedArray->GetArrayLength()) << "Not Same ArrayLength";
+        EXPECT_TRUE(contentType == originTypedArray->GetContentType()) << "Not Same ContentType";
+
+        // check byteArray
+        EXPECT_TRUE(byteArray->IsByteArray());
+        JSHandle<ByteArray> resByteArray(byteArray);
+        JSHandle<ByteArray> originByteArray(thread, originTypedArray->GetViewedArrayBuffer());
+        uint32_t resTaggedLength = resByteArray->GetLength();
+        uint32_t originTaggedLength = originByteArray->GetLength();
+        EXPECT_TRUE(resTaggedLength == originTaggedLength) << "Not same byteArray length";
+        uint32_t resElementSize = resByteArray->GetSize();
+        uint32_t originElementSize = originByteArray->GetSize();
+        EXPECT_TRUE(resElementSize == originElementSize) << "Not same byteArray size";
         Destroy();
     }
 
@@ -1343,7 +1382,7 @@ JSArrayBuffer *CreateTestJSArrayBuffer(JSThread *thread)
     return *jsArrayBuffer;
 }
 
-HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray)
+HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray1)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -1365,7 +1404,34 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray)
     EXPECT_TRUE(success);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::TypedArrayTest, jsDeserializerTest, data, int8Array);
+    std::thread t1(&JSDeserializerTest::TypedArrayTest1, jsDeserializerTest, data, int8Array);
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray2)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> target = env->GetInt8ArrayFunction();
+    JSHandle<JSTypedArray> int8Array =
+        JSHandle<JSTypedArray>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(target), target));
+    JSTaggedValue byteArray = factory->NewByteArray(8, 1).GetTaggedValue();
+    int8Array->SetViewedArrayBuffer(thread, byteArray);
+    int byteLength = 10;
+    int byteOffset = 0;
+    int arrayLength = (byteLength - byteOffset) / (sizeof(int8_t));
+    int8Array->SetByteLength(byteLength);
+    int8Array->SetByteOffset(byteOffset);
+    int8Array->SetTypedArrayName(thread, thread->GlobalConstants()->GetInt8ArrayString());
+    int8Array->SetArrayLength(arrayLength);
+    int8Array->SetContentType(ContentType::Number);
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(int8Array));
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::TypedArrayTest2, jsDeserializerTest, data, int8Array);
     t1.join();
     delete serializer;
 };
