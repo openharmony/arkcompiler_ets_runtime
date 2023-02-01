@@ -29,6 +29,7 @@ static constexpr int64_t CHINA_1901_MS = -2177452800000;
 static constexpr int CHINA_BEFORE_1901_ADDMS = 343000;
 static constexpr int MS_PER_SECOND = 1000;
 static constexpr int SEC_PER_MINUTE = 60;
+static constexpr int SEC_PER_HOUR = 3600;
 static constexpr int MIN_PER_HOUR = 60;
 static constexpr int MS_PER_HOUR = 3600 * 1000;
 static constexpr int MS_PER_DAY = 86400000;
@@ -56,9 +57,11 @@ static constexpr int DAYS_IN_400_YEARS = 146097;
 static constexpr int DAYS_MAR_TO_DEC = 306;
 static constexpr int DAYS_JAN_AND_FEB = 59;
 static constexpr int MONTH_COEFFICIENT = 2;
+static constexpr int MOUTH_PER_YEAR = 12;
 static constexpr std::array<int, 2> COEFFICIENT_TO_CIVIL = {5, 153};
 static constexpr std::array<int, 3> MONTH_TRANSFORM = {3, 10, -9};
 static constexpr int DAYS_FEBRUARY = 28;
+static constexpr char DEL = 127;
 
 class DateUtils {
 public:
@@ -143,12 +146,13 @@ public:
 
     JSTaggedValue SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, bool isLocal) const;
     double GetDateValue(double timeMs, uint8_t code, bool isLocal) const;
+    static JSTaggedValue GetTimeFromString(const char *str, int len);
 
     static constexpr double MAX_DOUBLE = std::numeric_limits<double>::max();
     static constexpr double MAX_INT = std::numeric_limits<int>::max();
     static constexpr uint16_t NINETEEN_HUNDRED_YEAR = 1900;
-    static constexpr uint16_t HUNDRED = 100;
     static constexpr uint16_t THOUSAND = 1000;
+    static constexpr uint16_t HUNDRED = 100;
     static constexpr int TEN = 10;
     static constexpr int NUM_NINE = 9;
     static constexpr int MONTH_PER_YEAR = 12;
@@ -166,7 +170,6 @@ private:
     static int64_t MathMod(int64_t a, int b);
 
     static constexpr int MINUTE_PER_HOUR = 60;
-    static constexpr int MOUTH_PER_YEAR = 12;
     static constexpr std::array<int, 12> MONTH_DAYS = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     // NOLINTNEXTLINE(readability-braces-around-statements,bugprone-suspicious-semicolon)
     static constexpr int  DAYS_FROM_MONTH [2][13] = {
