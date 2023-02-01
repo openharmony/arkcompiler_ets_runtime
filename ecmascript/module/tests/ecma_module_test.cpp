@@ -17,6 +17,7 @@
 #include "assembler/assembly-parser.h"
 #include "libpandafile/class_data_accessor-inl.h"
 
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -31,7 +32,7 @@
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
-
+using PathHelper = panda::ecmascript::base::PathHelper;
 namespace panda::test {
 class EcmaModuleTest : public testing::Test {
 public:
@@ -198,163 +199,6 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValue)
     EXPECT_EQ(exportValueHandle.GetTaggedValue(), importDefaultValue);
 }
 
-HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
-{
-    CString baseFilename = "merge.abc";
-    const char *data = R"(
-        .language ECMAScript
-        .function any func_main_0(any a0, any a1, any a2) {
-            ldai 1
-            return
-        }
-    )";
-    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    Parser parser;
-    auto res = parser.Parse(data);
-    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
-
-    // Test moduleRequestName start with "@bundle"
-    CString moduleRecordName = "moduleTest1";
-    CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
-    CString result = "com.bundleName.test/moduleName/requestModuleName1";
-    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
-    EXPECT_EQ(result, entryPoint);
-
-    // Test cross application
-    moduleRecordName = "@bundle:com.bundleName1.test/moduleName/requestModuleName1";
-    CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.abc";
-    ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
-    EXPECT_EQ(baseFilename, newBaseFileName);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
-{
-    CString baseFilename = "merge.abc";
-    const char *data = R"(
-        .language ECMAScript
-        .function any func_main_0(any a0, any a1, any a2) {
-            ldai 1
-            return
-        }
-    )";
-    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    Parser parser;
-    auto res = parser.Parse(data);
-    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
-
-    // Test moduleRequestName start with "./"
-    CString moduleRecordName = "moduleTest2";
-    CString moduleRequestName = "./requestModule.js";
-    CString result = "requestModule";
-    pf->InsertJSRecordInfo(result);
-    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
-    EXPECT_EQ(result, entryPoint);
-
-    // Test moduleRecordName with "/"
-    moduleRecordName = "moduleName/moduleTest2";
-    moduleRequestName = "./requestModule.js";
-    result = "moduleName/requestModule";
-    pf->InsertJSRecordInfo(result);
-    entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
-    EXPECT_EQ(result, entryPoint);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
-{
-    CString baseFilename = "merge.abc";
-    const char *data = R"(
-        .language ECMAScript
-        .function any func_main_0(any a0, any a1, any a2) {
-            ldai 1
-            return
-        }
-    )";
-    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    Parser parser;
-    auto res = parser.Parse(data);
-    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
-
-    // Test RecordName is not in JSPandaFile
-    CString moduleRecordName = "moduleTest3";
-    CString moduleRequestName = "./secord.js";
-    CString result = "secord";
-    CString requestFileName = "secord.abc";
-    CString entryPoint =
-        ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
-    EXPECT_EQ(baseFilename, requestFileName);
-    EXPECT_EQ(result, entryPoint);
-
-    // Test RecordName is not in JSPandaFile and baseFilename with "/" and moduleRequestName with "/"
-    baseFilename = "test/merge.abc";
-    std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), baseFilename);
-
-    moduleRecordName = "moduleTest3";
-    moduleRequestName = "./test/secord.js";
-    result = "secord";
-    requestFileName = "test/test/secord.abc";
-    entryPoint = ModuleManager::ConcatFileNameWithMerge(pf2, baseFilename, moduleRecordName, moduleRequestName);
-    EXPECT_EQ(baseFilename, requestFileName);
-    EXPECT_EQ(result, entryPoint);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
-{
-    CString baseFilename = "merge.abc";
-    const char *data = R"(
-        .language ECMAScript
-        .function any func_main_0(any a0, any a1, any a2) {
-            ldai 1
-            return
-        }
-    )";
-    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    Parser parser;
-    auto res = parser.Parse(data);
-    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
-    const CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &recordInfo = pf->GetJSRecordInfo();
-    // Test moduleRequestName is npm package
-    CString moduleRecordName = "node_modules/0/moduleTest4/index";
-    CString moduleRequestName = "json/index";
-    CString result = "node_modules/0/moduleTest4/node_modules/json/index";
-    JSPandaFile::JSRecordInfo info;
-    info.npmPackageName = "node_modules/0/moduleTest4";
-    const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({moduleRecordName, info});
-    const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({result, info});
-    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
-    EXPECT_EQ(result, entryPoint);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge5)
-{
-    CString baseFilename = "merge.abc";
-    const char *data = R"(
-        .language ECMAScript
-        .function any func_main_0(any a0, any a1, any a2) {
-            ldai 1
-            return
-        }
-    )";
-    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    Parser parser;
-    auto res = parser.Parse(data);
-    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
-
-    // Test moduleRequestName start with "@module"
-    CString moduleRecordName = "com.bundleName.test/moduleName1/moduleTest1";
-    CString moduleRequestName = "@module:moduleName/requestModuleName1";
-    CString result = "com.bundleName.test/moduleName/requestModuleName1";
-    CString newBaseFileName = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
-    CString entryPoint = ModuleManager::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
-    EXPECT_EQ(result, entryPoint);
-    EXPECT_EQ(baseFilename, newBaseFileName);
-}
-
 HWTEST_F_L0(EcmaModuleTest, GetRecordName1)
 {
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module_base.abc";
@@ -433,5 +277,238 @@ HWTEST_F_L0(EcmaModuleTest, Instantiate_Evaluate_GetNamespace_SetNamespace)
     ModuleRecord::GetNamespace(module.GetTaggedValue());
     ModuleRecord::SetNamespace(thread, module.GetTaggedValue(), JSTaggedValue::Undefined());
     EXPECT_TRUE(res == SourceTextModule::UNDEFINED_INDEX);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // Test moduleRequestName start with "@bundle"
+    CString moduleRecordName = "moduleTest1";
+    CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    CString result = "com.bundleName.test/moduleName/requestModuleName1";
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+
+    // Test cross application
+    moduleRecordName = "@bundle:com.bundleName1.test/moduleName/requestModuleName1";
+    CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.abc";
+    PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(baseFilename, newBaseFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // Test moduleRequestName start with "./"
+    CString moduleRecordName = "moduleTest2";
+    CString moduleRequestName = "./requestModule.js";
+    CString result = "requestModule";
+    pf->InsertJSRecordInfo(result);
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+
+    // Test moduleRecordName with "/"
+    moduleRecordName = "moduleName/moduleTest2";
+    moduleRequestName = "./requestModule.js";
+    result = "moduleName/requestModule";
+    pf->InsertJSRecordInfo(result);
+    entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // Test RecordName is not in JSPandaFile
+    CString moduleRecordName = "moduleTest3";
+    CString moduleRequestName = "./secord.js";
+    CString result = "secord";
+    CString requestFileName = "secord.abc";
+    CString entryPoint =
+        PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(baseFilename, requestFileName);
+    EXPECT_EQ(result, entryPoint);
+
+    // Test RecordName is not in JSPandaFile and baseFilename with "/" and moduleRequestName with "/"
+    baseFilename = "test/merge.abc";
+    std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFile *pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), baseFilename);
+
+    moduleRecordName = "moduleTest3";
+    moduleRequestName = "./test/secord.js";
+    result = "secord";
+    requestFileName = "test/test/secord.abc";
+    entryPoint = PathHelper::ConcatFileNameWithMerge(pf2, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(baseFilename, requestFileName);
+    EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+    const CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &recordInfo = pf->GetJSRecordInfo();
+    // Test moduleRequestName is npm package
+    CString moduleRecordName = "node_modules/0/moduleTest4/index";
+    CString moduleRequestName = "json/index";
+    CString result = "node_modules/0/moduleTest4/node_modules/json/index";
+    JSPandaFile::JSRecordInfo info;
+    info.npmPackageName = "node_modules/0/moduleTest4";
+    const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({moduleRecordName, info});
+    const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({result, info});
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge5)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // Test moduleRequestName start with "@module"
+    CString moduleRecordName = "com.bundleName.test/moduleName1/moduleTest1";
+    CString moduleRequestName = "@module:moduleName/requestModuleName1";
+    CString result = "com.bundleName.test/moduleName/requestModuleName1";
+    CString newBaseFileName = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+    EXPECT_EQ(baseFilename, newBaseFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, NormalizePath)
+{
+    CString res1 = "node_modules/0/moduleTest/index";
+    CString moduleRecordName1 = "node_modules///0//moduleTest/index";
+
+    CString res2 = "./node_modules/0/moduleTest/index";
+    CString moduleRecordName2 = "./node_modules///0//moduleTest/index";
+
+    CString res3 = "../node_modules/0/moduleTest/index";
+    CString moduleRecordName3 = "../node_modules/0/moduleTest///index";
+
+    CString res4 = "./moduleTest/index";
+    CString moduleRecordName4 = "./node_modules/..//moduleTest////index";
+
+    CString normalName1 = PathHelper::NormalizePath(moduleRecordName1);
+    CString normalName2 = PathHelper::NormalizePath(moduleRecordName2);
+    CString normalName3 = PathHelper::NormalizePath(moduleRecordName3);
+    CString normalName4 = PathHelper::NormalizePath(moduleRecordName4);
+
+    EXPECT_EQ(res1, normalName1);
+    EXPECT_EQ(res2, normalName2);
+    EXPECT_EQ(res3, normalName3);
+    EXPECT_EQ(res4, normalName4);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
+{
+    // old pages url
+    instance->SetBundleName("com.bundleName.test");
+    instance->SetModuleName("moduleName");
+    CString inputFileName = "pages/index.abc";
+    CString outFileName = "";
+    CString res1 = "com.bundleName.test/moduleName/ets/pages/index";
+    CString entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    EXPECT_EQ(entryPoint, res1);
+    EXPECT_EQ(outFileName, "");
+
+    // new pages url
+    inputFileName = "@bundle:com.bundleName.test/moduleName/ets/pages/index.abc";
+    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    EXPECT_EQ(entryPoint, res1);
+    EXPECT_EQ(outFileName, "");
+
+    // new pages url Intra-application cross hap
+    inputFileName = "@bundle:com.bundleName.test/moduleName1/ets/pages/index.abc";
+    CString outRes = "/data/storage/el1/bundle/moduleName1/ets/modules.abc";
+    CString res2 = "com.bundleName.test/moduleName1/ets/pages/index";
+    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    EXPECT_EQ(entryPoint, res2);
+    EXPECT_EQ(outFileName, outRes);
+
+    // new pages url Cross-application
+    inputFileName = "@bundle:com.bundleName.test1/moduleName1/ets/pages/index.abc";
+    CString outRes1 = "/data/storage/el1/bundle/com.bundleName.test1/moduleName1/moduleName1/ets/modules.abc";
+    CString res3 = "com.bundleName.test1/moduleName1/ets/pages/index";
+    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    EXPECT_EQ(entryPoint, res3);
+    EXPECT_EQ(outFileName, outRes1);
+
+    // worker url Intra-application cross hap
+    inputFileName = "/data/storage/el1/bundle/entry/ets/mainAbility.abc";
+    CString outRes2 = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString res4 = "com.bundleName.test/entry/ets/mainAbility";
+    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    EXPECT_EQ(entryPoint, res4);
+    EXPECT_EQ(outFileName, outRes2);
+
+    // worker url
+    outFileName = "";
+    inputFileName = "/data/storage/el1/bundle/moduleName/ets/mainAbility.abc";
+    CString res5 = "com.bundleName.test/moduleName/ets/mainAbility";
+    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    EXPECT_EQ(entryPoint, res5);
+    EXPECT_EQ(outFileName, "");
 }
 }  // namespace panda::test

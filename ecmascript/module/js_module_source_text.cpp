@@ -28,6 +28,7 @@
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
+using PathHelper = base::PathHelper;
 CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                         const JSHandle<TaggedArray> &exportStarSet)
 {
@@ -96,9 +97,9 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
 
     CString entryPoint =
-        ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+        PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-    if (entryPoint == JSPandaFile::PREVIEW_OF_ACROSS_HAP_FLAG) {
+    if (entryPoint == PathHelper::PREVIEW_OF_ACROSS_HAP_FLAG) {
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());
     }
 #endif

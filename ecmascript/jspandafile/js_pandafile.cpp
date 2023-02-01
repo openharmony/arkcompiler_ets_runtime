@@ -65,7 +65,7 @@ void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
     }
 
     for (auto info : jsRecordInfo_) {
-        if (info.first.find(NODE_MODULES) != CString::npos) {
+        if (info.first.find(NPM_PATH_SEGMENT) != CString::npos) {
             continue;
         }
         CString recordName = info.first;
@@ -288,92 +288,6 @@ CString JSPandaFile::FindNpmEntryPoint(const CString &recordName) const
         }
     }
     return entryPoint;
-}
-
-CString JSPandaFile::ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName)
-{
-    CString bundleInstallName(BUNDLE_INSTALL_PATH);
-    size_t startStrLen = bundleInstallName.length();
-    size_t pos = CString::npos;
-
-    if (inputFileName.length() > startStrLen && inputFileName.compare(0, startStrLen, bundleInstallName) == 0) {
-        pos = startStrLen;
-    }
-    CString entryPoint;
-    if (pos != CString::npos) {
-        pos = inputFileName.find('/', startStrLen);
-        ASSERT(pos != CString::npos);
-        CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
-        if (moduleName != vm->GetModuleName()) {
-            outFileName = CString(BUNDLE_INSTALL_PATH) + moduleName + CString(MERGE_ABC_ETS_MODULES);
-        }
-        entryPoint = vm->GetBundleName() + "/" + inputFileName.substr(startStrLen);
-    } else {
-        // Temporarily handle the relative path sent by arkui
-        if (inputFileName.find("@bundle:") != CString::npos) {
-            entryPoint = inputFileName.substr(MODULE_OR_BUNDLE_PREFIX_LEN);
-            outFileName = ParseNewPagesUrl(vm, entryPoint);
-        } else {
-            entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
-        }
-    }
-    pos = entryPoint.rfind(".abc");
-    if (pos != CString::npos) {
-        entryPoint = entryPoint.substr(0, pos);
-    }
-    return entryPoint;
-}
-
-CString JSPandaFile::ParseNewPagesUrl(EcmaVM *vm, const CString &entryPoint)
-{
-    auto errorFun = [entryPoint](const size_t &pos) {
-        if (pos == CString::npos) {
-            LOG_ECMA(FATAL) << "ParseNewPagesUrl failed, please check Url " << entryPoint;
-        }
-    };
-    size_t bundleEndPos = entryPoint.find('/');
-    errorFun(bundleEndPos);
-    CString bundleName = entryPoint.substr(0, bundleEndPos);
-    size_t moduleStartPos = bundleEndPos + 1;
-    size_t moduleEndPos = entryPoint.find('/', moduleStartPos);
-    errorFun(moduleEndPos);
-    CString moduleName = entryPoint.substr(moduleStartPos, moduleEndPos - moduleStartPos);
-    CString baseFileName;
-    if (bundleName != vm->GetBundleName()) {
-        // Cross-application
-        baseFileName = BUNDLE_INSTALL_PATH + bundleName + "/" + moduleName + "/" + moduleName + MERGE_ABC_ETS_MODULES;
-    } else if (moduleName != vm->GetModuleName()) {
-        // Intra-application cross hap
-        baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
-    } else {
-        baseFileName = "";
-    }
-    return baseFileName;
-}
-
-std::string JSPandaFile::ParseHapPath(const CString &fileName)
-{
-    CString bundleSubInstallName(BUNDLE_SUB_INSTALL_PATH);
-    size_t startStrLen = bundleSubInstallName.length();
-    if (fileName.length() > startStrLen && fileName.compare(0, startStrLen, bundleSubInstallName) == 0) {
-        CString hapPath = fileName.substr(startStrLen);
-        size_t pos = hapPath.find(MERGE_ABC_ETS_MODULES);
-        if (pos != CString::npos) {
-            return hapPath.substr(0, pos).c_str();
-        }
-    }
-    return "";
-}
-
-void JSPandaFile::CroppingRecord(CString &recordName)
-{
-    size_t pos = recordName.find('/');
-    if (pos != CString::npos) {
-        pos = recordName.find('/', pos + 1);
-        if (pos != CString::npos) {
-            recordName = recordName.substr(pos + 1);
-        }
-    }
 }
 
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
