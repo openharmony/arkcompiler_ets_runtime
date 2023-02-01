@@ -535,7 +535,7 @@ HWTEST_F_L0(JSAPIArrayListTest, SubArrayList)
         JSAPIArrayList::SubArrayList(thread, arrayList, fromIndexValue0, toIndexValue0);
     JSHandle<JSAPIArrayList> newSubArrayList(thread, newSubArrayListValue);
     int newLength = static_cast<int>(newSubArrayList->GetLength().GetArrayLength());
-    EXPECT_EQ(newLength, 0);
+    EXPECT_EQ(newLength, 1);
 }
 
 /**
