@@ -77,7 +77,6 @@ public:
                 const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile_, methodLiteral->GetMethodId()));
                 if (FilterMethod(bytecodeInfo_.GetRecordName(index), methodLiteral, methodPcInfo)) {
                     bytecodeInfo_.AddSkippedMethod(compilingMethod);
-                    LOG_COMPILER(INFO) << " method " << methodName << " has been skipped";
                 } else {
                     if (!methodInfo.IsCompiled()) {
                         methodInfo.SetIsCompiled(true);

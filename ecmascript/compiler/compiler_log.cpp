@@ -34,13 +34,15 @@ CompilerLog::CompilerLog(const std::string &logOpt, bool TraceBC)
     traceBc_ = TraceBC;
 }
 
-void CompilerLog::SetMethodLog(const std::string &fileName, const std::string &methodName, AotMethodLogList *logList)
+void CompilerLog::SetMethodLog(const std::string &fileName, const CString& recordName,
+                               const std::string &methodName, AotMethodLogList *logList)
 {
     bool enableMethodLog = !NoneMethod();
     if (CertainMethod()) {
         enableMethodLog = logList->IncludesMethod(fileName, methodName);
     }
     SetEnableMethodLog(enableMethodLog);
+    AddCompiledMethod(methodName, recordName);
 }
 
 bool MethodLogList::IncludesMethod(const std::string &methodName) const
@@ -131,6 +133,14 @@ const std::string TimeScope::GetShortName(const std::string& methodName)
     }
 }
 
+void CompilerLog::Print() const
+{
+    if (compilerLogTime_) {
+        PrintTime();
+    }
+    PrintCompiledMethod();
+}
+
 void CompilerLog::PrintPassTime() const
 {
     double allPassTimeforAllMethods = 0;
@@ -178,6 +188,17 @@ void CompilerLog::PrintTime() const
     PrintMethodTime();
 }
 
+void CompilerLog::PrintCompiledMethod() const
+{
+    LOG_COMPILER(INFO) << " ";
+    LOG_COMPILER(INFO) << " Total number of full compiled methods is: " << compiledMethodSet_.size();
+    for (auto it = compiledMethodSet_.begin(); it != compiledMethodSet_.end(); it++) {
+        LOG_COMPILER(INFO) << " method: " << std::setw(METHOD_LENS) << it->first
+                           << " in record: " << std::setw(RECORD_LENS) << it->second
+                           << " has been full compiled ";
+    }
+}
+
 void CompilerLog::AddMethodTime(const std::string& name, uint32_t id, double time)
 {
     auto methodInfo = std::make_pair(id, name);
@@ -187,6 +208,12 @@ void CompilerLog::AddMethodTime(const std::string& name, uint32_t id, double tim
 void CompilerLog::AddPassTime(const std::string& name, double time)
 {
     timePassMap_[name] += time;
+}
+
+void CompilerLog::AddCompiledMethod(const std::string& name, const CString& recordName)
+{
+    auto info = std::make_pair(name, recordName);
+    compiledMethodSet_.insert(info);
 }
 
 int CompilerLog::GetIndex()
