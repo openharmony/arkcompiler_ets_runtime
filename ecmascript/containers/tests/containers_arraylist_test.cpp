@@ -199,7 +199,7 @@ HWTEST_F_L0(ContainersArrayListTest, RemoveByRange)
     // remove success
     {
         JSTaggedValue result = ArrayListRemoveByRange(arrayList, JSTaggedValue(1), JSTaggedValue(3));
-        EXPECT_EQ(result, JSTaggedValue::True());
+        EXPECT_EQ(result, JSTaggedValue::Undefined());
         EXPECT_EQ(arrayList->GetSize(), static_cast<int>(NODE_NUMBERS - 2));
         for (uint32_t i = 0; i < NODE_NUMBERS - 2; i++) {
             if (i < 1) {

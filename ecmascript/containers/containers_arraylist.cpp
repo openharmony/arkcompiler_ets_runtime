@@ -372,10 +372,12 @@ JSTaggedValue ContainersArrayList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    JSAPIArrayList::RemoveByIndex(thread, JSHandle<JSAPIArrayList>::Cast(self), JSTaggedValue::ToUint32(thread, value));
+    JSTaggedValue result =
+        JSAPIArrayList::RemoveByIndex(thread,
+                                      JSHandle<JSAPIArrayList>::Cast(self), JSTaggedValue::ToUint32(thread, value));
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return JSTaggedValue::True();
+    return result;
 }
 
 JSTaggedValue ContainersArrayList::Remove(EcmaRuntimeCallInfo *argv)
@@ -440,10 +442,11 @@ JSTaggedValue ContainersArrayList::RemoveByRange(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSAPIArrayList::RemoveByRange(thread, JSHandle<JSAPIArrayList>::Cast(self), startIndex, endIndex);
+    JSTaggedValue result =
+        JSAPIArrayList::RemoveByRange(thread, JSHandle<JSAPIArrayList>::Cast(self), startIndex, endIndex);
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return JSTaggedValue::True();
+    return result;
 }
 
 JSTaggedValue ContainersArrayList::ReplaceAllElements(EcmaRuntimeCallInfo *argv)
@@ -562,7 +565,7 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
-    if (callbackFnHandle->IsUndefined() || !callbackFnHandle->IsCallable()) {
+    if (!callbackFnHandle->IsUndefined() && !callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle);
         CString errorMsg =
             "The type of \"comparator\" must be callable. Received value is: " + ConvertToString(*result);
@@ -598,7 +601,7 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
             elements->Set(thread, endIndex, presentValue.GetTaggedValue());
         }
     }
-    return JSTaggedValue::True();
+    return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue ContainersArrayList::GetSize(EcmaRuntimeCallInfo *argv)
