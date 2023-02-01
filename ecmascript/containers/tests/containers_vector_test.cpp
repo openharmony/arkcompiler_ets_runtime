@@ -375,13 +375,13 @@ HWTEST_F_L0(ContainersVectorTest, RemoveByIndexAndRemoveAndRemoveRangeAndClear)
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
         callInfo->SetFunction(JSTaggedValue::Undefined());
         callInfo->SetThis(vector.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(2));
-        callInfo->SetCallArg(1, JSTaggedValue(6));
+        callInfo->SetCallArg(0, JSTaggedValue(4));
+        callInfo->SetCallArg(1, JSTaggedValue(2));
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         ContainersVector::RemoveByRange(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_EQ(vector->GetSize(), 2);
+        EXPECT_EQ(vector->GetSize(), 6);
     }
     // isEmpty
     {
