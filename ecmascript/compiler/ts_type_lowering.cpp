@@ -89,6 +89,14 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
             case EcmaOpcode::DEC_IMM8:
             case EcmaOpcode::LESS_IMM8_V8:
             case EcmaOpcode::LESSEQ_IMM8_V8:
+            case EcmaOpcode::GREATER_IMM8_V8:
+            case EcmaOpcode::GREATEREQ_IMM8_V8:
+            case EcmaOpcode::EQ_IMM8_V8:
+            case EcmaOpcode::NOTEQ_IMM8_V8:
+            case EcmaOpcode::STRICTEQ_IMM8_V8:
+            case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+            case EcmaOpcode::ISTRUE:
+            case EcmaOpcode::ISFALSE:
                 return true;
             default:
                 break;
@@ -951,11 +959,13 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     builder_.PrimitiveTypeCheck(valueType, value);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
-    auto toBool = builder_.TypedUnaryOp<TypedUnOp::TYPED_TOBOOL>(value, valueType, GateType::NJSValue());
+
+    GateRef result;
     if (!flag) {
-        toBool = builder_.BoolNot(toBool);
+        result = builder_.TypedUnaryOp<TypedUnOp::TYPED_ISFALSE>(value, valueType, GateType::TaggedValue());
+    } else {
+        result = builder_.TypedUnaryOp<TypedUnOp::TYPED_ISTRUE>(value, valueType, GateType::TaggedValue());
     }
-    auto result = builder_.BooleanToTaggedBooleanPtr(toBool);
 
     std::vector<GateRef> removedGate;
     ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);

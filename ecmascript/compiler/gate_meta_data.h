@@ -68,7 +68,8 @@ enum class TypedUnOp : uint8_t {
     TYPED_NOT,
     TYPED_INC,
     TYPED_DEC,
-    TYPED_TOBOOL,
+    TYPED_ISFALSE,
+    TYPED_ISTRUE,
 };
 
 enum class DeoptType : uint8_t {

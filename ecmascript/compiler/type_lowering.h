@@ -145,7 +145,8 @@ private:
     void LowerTypedDec(GateRef gate, GateType value);
     void LowerTypedNeg(GateRef gate, GateType value);
     void LowerTypedNot(GateRef gate, GateType value);
-    void LowerTypedToBool(GateRef gate, GateType value);
+    void LowerTypedIsTrue(GateRef gate, GateType value);
+    void LowerTypedIsFalse(GateRef gate, GateType value);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
@@ -172,8 +173,6 @@ private:
     void LowerNumberDec(GateRef gate, GateType valueType);
     void LowerNumberNeg(GateRef gate, GateType valueType);
     void LowerNumberNot(GateRef gate, GateType valueType);
-    void LowerNumberToBool(GateRef gate, GateType valueType);
-    void LowerBooleanToBool(GateRef gate);
     void LowerIndexCheck(GateRef gate);
     void LowerOverflowCheck(GateRef gate);
     void LowerTypedIncOverflowCheck(GateRef gate);
@@ -239,6 +238,8 @@ private:
     GateType GetRightType(GateRef gate);
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef ConvertNumberToBool(GateRef gate, GateType valueType);
+    GateRef ConvertBooleanToBool(GateRef gate);
     GateRef GetFrameState(GateRef gate) const
     {
         return acc_.GetFrameState(gate);
