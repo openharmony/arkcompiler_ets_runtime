@@ -26,6 +26,19 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsRegExp : public base::BuiltinsBase {
 public:
+    enum RegExpGlobalArrayIndex {
+        DUMP_HEAD,
+        DOLLAR_ONE,
+        DOLLAR_TWO,
+        DOLLAR_THREE,
+        DOLLAR_FOUR,
+        DOLLAR_FIVE,
+        DOLLAR_SIX,
+        DOLLAR_SEVEN,
+        DOLLAR_EIGHT,
+        DOLLAR_NINE
+    };
+
     // 21.2.3.1 RegExp ( pattern, flags )
     static JSTaggedValue RegExpConstructor(EcmaRuntimeCallInfo *argv);
 
@@ -77,6 +90,7 @@ public:
 private:
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
+    static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
 
     static RegExpExecutor::MatchResult Matcher(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                                const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
@@ -91,6 +105,8 @@ private:
     static JSTaggedValue RegExpAlloc(JSThread *thread, const JSHandle<JSTaggedValue> &newTarget);
 
     static uint32_t UpdateExpressionFlags(JSThread *thread, const CString &checkStr);
+
+    static JSHandle<JSTaggedValue> GetDollarString(JSThread *thread, RegExpGlobalArrayIndex index);
 
     // 21.2.3.2.2 Runtime Semantics: RegExpInitialize ( obj, pattern, flags )
     static JSTaggedValue RegExpInitialize(JSThread *thread, const JSHandle<JSTaggedValue> &obj,

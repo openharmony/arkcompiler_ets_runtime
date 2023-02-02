@@ -1462,6 +1462,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     JSHandle<JSTaggedValue> zeroValue(matchResult.captures_[0].second);
     JSObject::CreateDataProperty(thread, results, 0, zeroValue);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
     JSHandle<JSTaggedValue> groupName(thread, regexpObj->GetGroupName());
     JSMutableHandle<JSTaggedValue> groups(thread, JSTaggedValue::Undefined());
@@ -1472,25 +1473,45 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     }
     JSHandle<JSTaggedValue> groupsKey = globalConst->GetHandledGroupsString();
     JSObject::CreateDataProperty(thread, results, groupsKey, groups);
+    // Create a new RegExp on global
+    JSHandle<JSObject> globalRegExp = JSHandle<JSObject>(env->GetRegExpFunction());
+    JSMutableHandle<JSTaggedValue> keyString(thread, JSTaggedValue::Undefined());
+    uint32_t captureIndex = 1;
     // 28. For each integer i such that i > 0 and i <= n
-    for (uint32_t i = 1; i < capturesSize; i++) {
+    for (; captureIndex < capturesSize; captureIndex++) {
         // a. Let capture_i be ith element of r's captures List
         JSTaggedValue capturedValue;
-        if (matchResult.captures_[i].first) {
+        if (matchResult.captures_[captureIndex].first) {
             capturedValue = JSTaggedValue::Undefined();
         } else {
-            capturedValue = matchResult.captures_[i].second.GetTaggedValue();
+            capturedValue = matchResult.captures_[captureIndex].second.GetTaggedValue();
         }
         JSHandle<JSTaggedValue> iValue(thread, capturedValue);
-        JSObject::CreateDataProperty(thread, results, i, iValue);
+        // add to RegExp.$i and i must <= 9
+        if (captureIndex <= REGEXP_GLOBAL_ARRAY_SIZE) {
+            keyString.Update(GetDollarString(thread, static_cast<RegExpGlobalArrayIndex>(captureIndex)));
+            ObjectOperator op(thread, globalRegExp, keyString);
+            PropertyBox *cell = PropertyBox::Cast(op.GetValue().GetTaggedObject());
+            cell->SetValue(thread, iValue);
+        }
+
+        JSObject::CreateDataProperty(thread, results, captureIndex, iValue);
         if (!groupName->IsUndefined()) {
             JSHandle<JSObject> groupObject = JSHandle<JSObject>::Cast(groups);
             TaggedArray *groupArray = TaggedArray::Cast(regexpObj->GetGroupName().GetTaggedObject());
-            if (groupArray->GetLength() > i - 1) {
-                JSHandle<JSTaggedValue> skey(thread, groupArray->Get(i - 1));
+            if (groupArray->GetLength() > captureIndex - 1) {
+                JSHandle<JSTaggedValue> skey(thread, groupArray->Get(captureIndex - 1));
                 JSObject::CreateDataProperty(thread, groupObject, skey, iValue);
             }
         }
+    }
+    JSHandle<JSTaggedValue> emptyString = thread->GlobalConstants()->GetHandledEmptyString();
+    while (captureIndex <= REGEXP_GLOBAL_ARRAY_SIZE) {
+        keyString.Update(GetDollarString(thread, static_cast<RegExpGlobalArrayIndex>(captureIndex)));
+        ObjectOperator op(thread, globalRegExp, keyString);
+        PropertyBox *cell = PropertyBox::Cast(op.GetValue().GetTaggedObject());
+        cell->SetValue(thread, emptyString);
+        ++captureIndex;
     }
     if (lastIndex == 0 && useCache) {
         RegExpExecResultCache::AddResultInCache(thread, cacheTable, pattern, flags, inputStr,
@@ -1600,6 +1621,32 @@ uint32_t BuiltinsRegExp::UpdateExpressionFlags(JSThread *thread, const CString &
         flagsBits |= flagsBitsTemp;
     }
     return flagsBits;
+}
+
+JSHandle<JSTaggedValue> BuiltinsRegExp::GetDollarString(JSThread *thread, RegExpGlobalArrayIndex index)
+{
+    switch (index) {
+        case DOLLAR_ONE:
+            return thread->GlobalConstants()->GetHandledDollarStringOne();
+        case DOLLAR_TWO:
+            return thread->GlobalConstants()->GetHandledDollarStringTwo();
+        case DOLLAR_THREE:
+            return thread->GlobalConstants()->GetHandledDollarStringThree();
+        case DOLLAR_FOUR:
+            return thread->GlobalConstants()->GetHandledDollarStringFour();
+        case DOLLAR_FIVE:
+            return thread->GlobalConstants()->GetHandledDollarStringFive();
+        case DOLLAR_SIX:
+            return thread->GlobalConstants()->GetHandledDollarStringSix();
+        case DOLLAR_SEVEN:
+            return thread->GlobalConstants()->GetHandledDollarStringSeven();
+        case DOLLAR_EIGHT:
+            return thread->GlobalConstants()->GetHandledDollarStringEight();
+        case DOLLAR_NINE:
+            return thread->GlobalConstants()->GetHandledDollarStringNine();
+        default:
+            return thread->GlobalConstants()->GetHandledEmptyString();
+    }
 }
 
 JSTaggedValue BuiltinsRegExp::FlagsBitsToString(JSThread *thread, uint8_t flags)

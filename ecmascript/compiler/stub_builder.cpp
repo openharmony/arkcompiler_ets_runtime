@@ -1028,6 +1028,27 @@ GateRef StubBuilder::TaggedIsBigInt(GateRef obj)
     return ret;
 }
 
+GateRef StubBuilder::TaggedIsPropertyBox(GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isHeapObject(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        GateRef type = GetObjectType(LoadHClass(obj));
+        result = Int32Equal(type, Int32(static_cast<int32_t>(JSType::PROPERTY_BOX)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::TaggedIsAccessor(GateRef x)
 {
     auto env = GetEnvironment();
@@ -2179,6 +2200,15 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     GateRef propAttr = GetPropAttrFromLayoutInfo(layOutInfo, entryA);
                     GateRef attr = GetInt32OfTInt(propAttr);
                     GateRef value = JSObjectGetProperty(*holder, hclass, attr);
+                    Label isPropertyBox(env);
+                    Label notPropertyBox(env);
+                    Branch(TaggedIsPropertyBox(value), &isPropertyBox, &notPropertyBox);
+                    Bind(&isPropertyBox);
+                    {
+                        result = GetValueFromPropertyBox(value);
+                        Jump(&exit);
+                    }
+                    Bind(&notPropertyBox);
                     Label isAccessor(env);
                     Label notAccessor(env);
                     Branch(IsAccessor(attr), &isAccessor, &notAccessor);

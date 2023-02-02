@@ -570,6 +570,15 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::REQUIRE_NATIVE_MOUDULE_FUNC_INDEX,
                 factory->NewFromASCIINonMovable("requireNativeModule"));
     SetConstant(ConstantIndex::REQUIRE_NAPI_FUNC_INDEX, factory->NewFromASCIINonMovable("requireNapi"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_ONE_INDEX, factory->NewFromASCIINonMovable("$1"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_TWO_INDEX, factory->NewFromASCIINonMovable("$2"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_THREE_INDEX, factory->NewFromASCIINonMovable("$3"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_FOUR_INDEX, factory->NewFromASCIINonMovable("$4"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_FIVE_INDEX, factory->NewFromASCIINonMovable("$5"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_SIX_INDEX, factory->NewFromASCIINonMovable("$6"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_SEVEN_INDEX, factory->NewFromASCIINonMovable("$7"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_EIGHT_INDEX, factory->NewFromASCIINonMovable("$8"));
+    SetConstant(ConstantIndex::DOLLAR_STRING_NINE_INDEX, factory->NewFromASCIINonMovable("$9"));
 
     auto accessor = factory->NewInternalAccessor(reinterpret_cast<void *>(JSFunction::PrototypeSetter),
                                                  reinterpret_cast<void *>(JSFunction::PrototypeGetter));
