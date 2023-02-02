@@ -172,11 +172,9 @@ bool JSAPIVector::Remove(JSThread *thread, const JSHandle<JSAPIVector> &vector, 
     int32_t index = GetIndexOf(thread, vector, obj);
     int32_t length = vector->GetSize();
     if (index >= 0) {
-        TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
+        JSHandle<TaggedArray> elements(thread, vector->GetElements());
         ASSERT(!elements->IsDictionaryMode());
-        for (int32_t i = index; i < length - 1; i++) {
-            elements->Set(thread, i, elements->Get(i + 1));
-        }
+        TaggedArray::RemoveElementByIndex(thread, elements, index, length);
         length--;
         vector->SetLength(length);
         return true;
@@ -190,16 +188,18 @@ JSTaggedValue JSAPIVector::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIV
     if (index < 0 || index >= length) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", JSTaggedValue::Exception());
     }
-    TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
-    ASSERT(!elements->IsDictionaryMode());
-    JSTaggedValue oldValue = elements->Get(index);
+    TaggedArray *resElements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
+    ASSERT(!resElements->IsDictionaryMode());
+    JSTaggedValue oldValue = resElements->Get(index);
 
-    for (int32_t i = index; i < length - 1; i++) {
-        elements->Set(thread, i, elements->Get(i + 1));
+    if (index >= 0) {
+        JSHandle<TaggedArray> elements(thread, vector->GetElements());
+        ASSERT(!elements->IsDictionaryMode());
+        TaggedArray::RemoveElementByIndex(thread, elements, index, length);
+        vector->SetLength(length - 1);
     }
     length--;
     vector->SetLength(length);
-
     return oldValue;
 }
 
@@ -225,6 +225,7 @@ JSTaggedValue JSAPIVector::RemoveByRange(JSThread *thread, const JSHandle<JSAPIV
     }
 
     int32_t newLength = length - (endIndex - fromIndex);
+    elements->SetLength(newLength);
     vector->SetLength(newLength);
     return JSTaggedValue::True();
 }
