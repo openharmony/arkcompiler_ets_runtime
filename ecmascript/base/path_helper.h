@@ -35,6 +35,7 @@ public:
     static constexpr char PREFIX_MODULE[] = "@module:";
     static constexpr char PREFIX_PACKAGE[] = "@package:";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
+    static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
     static constexpr char NPM_ENTRY_FILE[] = "/index";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
@@ -360,17 +361,17 @@ public:
         return CString();
     }
 
-    static CString ParseThirdPartyPackge(const JSPandaFile *jsPandaFile, CString &moduleRecordName,
-                                         CString &moduleRequestName, const CString &packagePath)
+    static CString ParseThirdPartyPackge(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                         const CString &requestName, const CString &packagePath)
     {
         CString entryPoint;
-        size_t pos = moduleRecordName.find(packagePath);
+        size_t pos = recordName.find(packagePath);
         CString key = "";
         if (pos != CString::npos) {
-            auto info = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(moduleRecordName);
+            auto info = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(recordName);
             CString PackageName = info.npmPackageName;
             while ((pos = PackageName.rfind(packagePath)) != CString::npos) {
-                key = PackageName + '/' + packagePath + "/" + moduleRequestName;
+                key = PackageName + '/' + packagePath + "/" + requestName;
                 entryPoint = FindNpmEntryPoint(jsPandaFile, key);
                 if (!entryPoint.empty()) {
                     return entryPoint;
@@ -378,14 +379,18 @@ public:
                 PackageName = PackageName.substr(0, pos > 0 ? pos - 1 : 0);
             }
         }
-
-        entryPoint = FindPackageInTopLevel(jsPandaFile, moduleRequestName, packagePath);
-        if (entryPoint.empty()) {
-            LOG_ECMA(ERROR) << "find entryPoint failed\n"
-                            << "moduleRequestName : " << moduleRequestName << "\n"
-                            << "moduleRecordName : " << moduleRecordName << "\n";
-        }
+        entryPoint = FindPackageInTopLevel(jsPandaFile, requestName, packagePath);
         return entryPoint;
+    }
+
+    static CString ParseThirdPartyPackge(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                         const CString &requestName)
+    {
+        CString entryPoint = ParseThirdPartyPackge(jsPandaFile, recordName, requestName, PACKAGE_PATH_SEGMENT);
+        if (!entryPoint.empty()) {
+            return entryPoint;
+        }
+        return ParseThirdPartyPackge(jsPandaFile, recordName, requestName, NPM_PATH_SEGMENT);
     }
 
     static bool CheckAndRemoveSuffix(CString &moduleRequestName)
@@ -402,21 +407,27 @@ public:
     }
 
     static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
-                                           CString moduleRecordName, CString moduleRequestName)
+                                           CString recordName, CString requestName)
     {
         CString entryPoint;
-        if (StringStartWith(moduleRequestName, PREFIX_BUNDLE, PREFIX_BUNDLE_LEN)) {
-            entryPoint = ParsePreixBundle(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
-        } else if (StringStartWith(moduleRequestName, PREFIX_MODULE, PREFIX_MODULE_LEN)) {
-            entryPoint = ParsePreixModule(baseFilename, moduleRecordName, moduleRequestName);
-        } else if (StringStartWith(moduleRequestName, PREFIX_PACKAGE, PREFIX_PACKAGE_LEN)) {
-            entryPoint = moduleRequestName.substr(PREFIX_PACKAGE_LEN);
-        } else if (CheckAndRemoveSuffix(moduleRequestName)) {
-            entryPoint = MakeNewRecord(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+        if (StringStartWith(requestName, PREFIX_BUNDLE, PREFIX_BUNDLE_LEN)) {
+            entryPoint = ParsePreixBundle(jsPandaFile, baseFilename, recordName, requestName);
+        } else if (StringStartWith(requestName, PREFIX_MODULE, PREFIX_MODULE_LEN)) {
+            entryPoint = ParsePreixModule(baseFilename, recordName, requestName);
+        } else if (StringStartWith(requestName, PREFIX_PACKAGE, PREFIX_PACKAGE_LEN)) {
+            entryPoint = requestName.substr(PREFIX_PACKAGE_LEN);
+        } else if (CheckAndRemoveSuffix(requestName)) {
+            entryPoint = MakeNewRecord(jsPandaFile, baseFilename, recordName, requestName);
         } else {
-            entryPoint = ParseThirdPartyPackge(jsPandaFile, moduleRecordName, moduleRequestName, NPM_PATH_SEGMENT);
+            entryPoint = ParseThirdPartyPackge(jsPandaFile, recordName, requestName);
         }
-        return entryPoint;
+        if (!entryPoint.empty()) {
+            return entryPoint;
+        }
+        LOG_ECMA(FATAL) << "Failed to resolve the requested entryPoint. BaseFilename : '" << baseFilename <<
+                           "'. RecordName : '" <<  recordName <<
+                           "'. RequestName : '" <<  requestName << "'.";
+        UNREACHABLE();
     }
 };
 }  // namespace panda::ecmascript::base
