@@ -154,10 +154,26 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     options_.ParseAsmInterOption();
 }
 
+void EcmaVM::ResetPGOProfiler()
+{
+    if (pgoProfiler_ == nullptr) {
+        LOG_ECMA(ERROR) << "ResetPGOProfiler failed. pgoProfile is null.";
+        return;
+    }
+    bool isEnablePGOProfiler = IsEnablePGOProfiler();
+    PGOProfilerManager::GetInstance()->Reset(pgoProfiler_, isEnablePGOProfiler);
+    thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
+}
+
+bool EcmaVM::IsEnablePGOProfiler() const
+{
+    return options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
+}
+
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
-    bool isEnablePGOProfiler = options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
+    bool isEnablePGOProfiler = IsEnablePGOProfiler();
     pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
     Taskpool::GetCurrentTaskpool()->Initialize();

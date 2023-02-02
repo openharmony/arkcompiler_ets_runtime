@@ -101,6 +101,12 @@ private:
     PGOProfiler(EcmaVM *vm, bool isEnable)
         : isEnable_(isEnable), chunk_(vm->GetNativeAreaAllocator()), profilerMap_(&chunk_) {};
     virtual ~PGOProfiler();
+    void Reset(bool isEnable)
+    {
+        isEnable_ = isEnable;
+        profilerMap_.clear();
+        methodCount_ = 0;
+    }
 
     static constexpr uint32_t MERGED_EVERY_COUNT = 10;
     bool isEnable_ {false};
@@ -136,6 +142,16 @@ public:
             InitializeData();
         }
         return new PGOProfiler(vm, isEnable);
+    }
+
+    void Reset(PGOProfiler *profiler, bool isEnable)
+    {
+        if (profiler) {
+            profiler->Reset(isEnable);
+        }
+        if (isEnable) {
+            InitializeData();
+        }
     }
 
     void Destroy(PGOProfiler *profiler)
