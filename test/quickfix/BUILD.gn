@@ -38,7 +38,10 @@ if (!is_debug) {
   ]
 }
 
-hot_patch_test_list = [ "add_callfunction" ]
+hot_patch_test_list = [
+  "add_callfunction",
+  "external_method",
+]
 
 host_quickfix_test_action("multi_patch") {
   extra_patches = [

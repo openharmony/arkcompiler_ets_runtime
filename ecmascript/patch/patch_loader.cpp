@@ -42,7 +42,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // Get patch constpool.
-    ParseConstpoolWithMerge(thread, patchFile, patchRecordInfos);
+    ParseConstpoolWithMerge(thread, patchFile, patchRecordInfos, baseFile);
     if (!vm->HasCachedConstpool(patchFile)) {
         LOG_ECMA(ERROR) << "patch constpool is empty";
         return PatchErrorCode::INTERNAL_ERROR;
@@ -69,7 +69,8 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
 }
 
 void PatchLoader::ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                          const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos)
+                                          const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos,
+                                          const JSPandaFile *baseFile)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<ConstantPool> constpool;
@@ -95,12 +96,13 @@ void PatchLoader::ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *j
         }
     }
     if (isNewVersion) {
-        GenerateConstpoolCache(thread, jsPandaFile, patchRecordInfos);
+        GenerateConstpoolCache(thread, jsPandaFile, patchRecordInfos, baseFile);
     }
 }
 
 void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
-    const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos)
+                                         const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos,
+                                         const JSPandaFile *baseFile)
 {
     ASSERT(jsPandaFile->IsNewVersion());
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -117,11 +119,10 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
             continue;
         }
 
-        cda.EnumerateMethods([pf, jsPandaFile, thread, &entry](panda_file::MethodDataAccessor &mda) {
+        cda.EnumerateMethods([pf, jsPandaFile, baseFile, thread, &entry](panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
             EcmaVM *vm = thread->GetEcmaVM();
-            JSHandle<ConstantPool> constpool =
-                vm->FindOrCreateConstPool(jsPandaFile, EntityId(methodId));
+            JSHandle<ConstantPool> constpool = vm->FindOrCreateConstPool(jsPandaFile, EntityId(methodId));
 
             auto codeId = mda.GetCodeId();
             ASSERT(codeId.has_value());
@@ -145,7 +146,11 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
                             U_FALLTHROUGH;
                         case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8: {
                             uint32_t id = bcIns.GetId().AsRawValue();
-                            ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), id);
+                            if (jsPandaFile->IsExternal(constpool->GetEntityId(id))) {
+                                FillExternalMethod(thread, jsPandaFile, baseFile, constpool, id);
+                            } else {
+                                ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), id);
+                            }
                             break;
                         }
                         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
@@ -182,6 +187,44 @@ void PatchLoader::GenerateConstpoolCache(JSThread *thread, const JSPandaFile *js
                 bcIns = bcIns.GetNext();
             }
         });
+    }
+}
+
+void PatchLoader::FillExternalMethod(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
+                                     JSHandle<ConstantPool> patchConstpool, uint32_t id)
+{
+    if (baseFile == nullptr) {
+        return;
+    }
+
+    panda_file::File::EntityId externalMethodId = patchConstpool->GetEntityId(id);
+    CString patchMethodName = MethodLiteral::GetMethodName(patchFile, externalMethodId);
+    CString patchRecordName = MethodLiteral::GetRecordName(patchFile, externalMethodId);
+
+    const CMap<int32_t, JSTaggedValue> &baseConstpoolValues = thread->GetEcmaVM()->FindConstpools(baseFile).value();
+    for (const auto &item : baseConstpoolValues) {
+        ConstantPool *baseConstpool = ConstantPool::Cast(item.second.GetTaggedObject());
+        uint32_t len = baseConstpool->GetCacheLength();
+        for (uint32_t idx = 0; idx < len; idx++) {
+            JSTaggedValue constpoolValue = baseConstpool->GetObjectFromCache(idx);
+            if (!constpoolValue.IsMethod()) {
+                continue;
+            }
+
+            Method *baseMethod = Method::Cast(constpoolValue.GetTaggedObject());
+            auto baseMethodId = baseMethod->GetMethodId();
+            CString baseRecordName = MethodLiteral::GetRecordName(baseFile, baseMethodId);
+            if (patchRecordName != baseRecordName) {
+                continue;
+            }
+
+            CString baseMethodName = MethodLiteral::GetMethodName(baseFile, baseMethodId);
+            if (patchMethodName == baseMethodName) {
+                patchConstpool->SetObjectToCache(thread, id, constpoolValue);
+                LOG_ECMA(INFO) << "Replace patch external method:" << baseRecordName << ":" << baseMethodName;
+                break;
+            }
+        }
     }
 }
 
@@ -296,7 +339,7 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
         MethodLiteral *base = item.second;
         JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile, base->GetMethodId());
         ReplaceMethod(thread, method, base, baseConstpoolValue);
-        LOG_ECMA(INFO) << "Replace method: " << method->GetRecordName() << ":" << method->GetMethodName();
+        LOG_ECMA(INFO) << "Replace base method: " << method->GetRecordName() << ":" << method->GetMethodName();
     }
 
     vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchUnloaded(patchFile);
@@ -689,7 +732,7 @@ bool PatchLoader::FindAndReplaceSameMethod(JSThread *thread,
                     ReplaceMethod(thread, baseMethod, patch, patchConstpoolValue);
 
                     InsertMethodInfo(indexs, base, baseMethodInfo);
-                    LOG_ECMA(INFO) << "Replace method: " << baseRecordName << ":" << baseMethodName;
+                    LOG_ECMA(INFO) << "Replace base method: " << baseRecordName << ":" << baseMethodName;
                 }
                 continue;
             }
@@ -728,7 +771,7 @@ bool PatchLoader::FindAndReplaceSameMethod(JSThread *thread,
                     ReplaceMethod(thread, baseMethod, patch, patchConstpoolValue);
 
                     InsertMethodInfo(indexs, base, baseMethodInfo);
-                    LOG_ECMA(INFO) << "Replace method: " << baseRecordName << ":" << baseMethodName;
+                    LOG_ECMA(INFO) << "Replace base method: " << baseRecordName << ":" << baseMethodName;
                 }
             }
         }

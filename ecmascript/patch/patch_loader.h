@@ -73,9 +73,13 @@ private:
                                  CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
 
     static void ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                        const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos);
+                                        const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos,
+                                        const JSPandaFile *baseFile = nullptr);
     static void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                       const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos);
+                                       const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos,
+                                       const JSPandaFile *baseFile = nullptr);
+    static void FillExternalMethod(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
+                                   JSHandle<ConstantPool> patchConstpool, uint32_t id);
 
     static bool ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
                                  const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
