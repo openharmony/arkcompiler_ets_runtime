@@ -64,7 +64,7 @@ void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
         return;
     }
     for (auto info : jsRecordInfo_) {
-        if (info.first.find(NODE_MODULES) != CString::npos) {
+        if (info.first.find(NPM_PATH_SEGMENT) != CString::npos) {
             continue;
         }
         CString recordName = info.first;
@@ -286,47 +286,6 @@ CString JSPandaFile::FindEntryPoint(const CString &recordName) const
         }
     }
     return entryPoint;
-}
-
-CString JSPandaFile::ParseOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outFileName)
-{
-    CString bundleInstallName(BUNDLE_INSTALL_PATH);
-    size_t startStrLen = bundleInstallName.length();
-    size_t pos = CString::npos;
-
-    if (inputFileName.length() > startStrLen && inputFileName.compare(0, startStrLen, bundleInstallName) == 0) {
-        pos = startStrLen;
-    }
-    CString entryPoint;
-    if (pos != CString::npos) {
-        pos = inputFileName.find('/', startStrLen);
-        ASSERT(pos != CString::npos);
-        CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
-        if (moduleName != vm->GetModuleName()) {
-            outFileName = CString(BUNDLE_INSTALL_PATH) + moduleName + CString(MERGE_ABC_ETS_MODULES);
-        }
-        entryPoint = vm->GetBundleName() + "/" + inputFileName.substr(startStrLen);
-    } else {
-        // Temporarily handle the relative path sent by arkui
-        entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
-    }
-    pos = entryPoint.rfind(".abc");
-    if (pos != CString::npos) {
-        entryPoint = entryPoint.substr(0, pos);
-    }
-
-    return entryPoint;
-}
-
-void JSPandaFile::CroppingRecord(CString &recordName)
-{
-    size_t pos = recordName.find('/');
-    if (pos != CString::npos) {
-        pos = recordName.find('/', pos + 1);
-        if (pos != CString::npos) {
-            recordName = recordName.substr(pos + 1);
-        }
-    }
 }
 
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)

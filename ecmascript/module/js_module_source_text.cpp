@@ -16,6 +16,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 
 #include "ecmascript/global_env.h"
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -26,6 +27,7 @@
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
+using PathHelper = base::PathHelper;
 CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                         const JSHandle<TaggedArray> &exportStarSet)
 {
@@ -90,9 +92,9 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
 
     CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
     CString entryPoint =
-        ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+        PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-    if (entryPoint == JSPandaFile::PREVIEW_OF_ACROSS_HAP_FLAG) {
+    if (entryPoint == PathHelper::PREVIEW_OF_ACROSS_HAP_FLAG) {
         JSHandle<SourceTextModule> throwValue(thread, JSTaggedValue::Undefined());
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", throwValue);
     }
