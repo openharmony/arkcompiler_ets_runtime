@@ -38,9 +38,9 @@ void PGOProfilerLoader::LoadProfiler(const std::string &inPath, uint32_t hotness
         return;
     }
 
-    static const std::string endString = ".aprof";
+    static const std::string endString = ".ap";
     if (realPath.compare(realPath.length() - endString.length(), endString.length(), endString)) {
-        LOG_ECMA(ERROR) << "The file path( " << realPath << ") does not end with .aprof";
+        LOG_ECMA(ERROR) << "The file path( " << realPath << ") does not end with .ap";
         return;
     }
     LOG_ECMA(INFO) << "Load profiler from file:" << realPath;

@@ -151,7 +151,7 @@ void PGOProfilerManager::SaveProfiler(SaveTask *task)
         isEnable_ = false;
         return;
     }
-    static const std::string PROFILE_FILE_NAME = "/profiler.aprof";
+    static const std::string PROFILE_FILE_NAME = "/modules.ap";
     realOutPath += PROFILE_FILE_NAME;
     LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath;
 
