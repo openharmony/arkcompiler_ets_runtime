@@ -367,7 +367,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleThrowIfnotobjectPrefV8)                                       \
     T(HandleThrowUndefinedifholePrefV8V8)                                 \
     T(HandleThrowIfsupernotcorrectcallPrefImm8)                           \
-    T(HandleThrowIfsupernotcorrectcallPrefImm16)
+    T(HandleThrowIfsupernotcorrectcallPrefImm16)                          \
+    T(HandleThrowUndefinedifholewithnamePrefId16)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \

@@ -196,6 +196,7 @@ private:
     void LowerThrowPatternNonCoercible(GateRef gate);
     void LowerThrowIfNotObject(GateRef gate);
     void LowerThrowUndefinedIfHole(GateRef gate);
+    void LowerThrowUndefinedIfHoleWithName(GateRef gate, GateRef jsFunc);
     void LowerThrowIfSuperNotCorrectCall(GateRef gate);
     void LowerThrowDeleteSuperProperty(GateRef gate);
     void LowerLdSymbol(GateRef gate);
