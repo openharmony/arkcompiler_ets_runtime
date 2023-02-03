@@ -515,13 +515,13 @@ class StringMetaData : public GateMetaData {
 public:
     StringMetaData(Chunk* chunk, const std::string &str)
         : GateMetaData(OpCode::CONSTSTRING, GateFlags::NONE_FLAG, 0, 0, 0),
-        stringData_(str.size(), chunk)
+        stringData_(str.size() + 1, chunk)
     {
         auto srcLength = str.size();
         auto destlength = stringData_.size();
         auto dest = stringData_.data();
         auto src = str.c_str();
-        if (destlength <= static_cast<size_t>(srcLength) || strcpy_s(dest, srcLength, src) != EOK) {
+        if (destlength <= static_cast<size_t>(srcLength) || strcpy_s(dest, destlength, src) != EOK) {
             LOG_COMPILER(FATAL) << "StringMetaData strcpy_s failed";
         }
         SetKind(GateMetaData::Kind::MUTABLE_STRING);

@@ -464,6 +464,7 @@ ecma_source = [
   "ecmascript/containers/containers_treemap.cpp",
   "ecmascript/containers/containers_treeset.cpp",
   "ecmascript/containers/containers_vector.cpp",
+  "ecmascript/date_parse.cpp",
   "ecmascript/deoptimizer/calleeReg.cpp",
   "ecmascript/deoptimizer/deoptimizer.cpp",
   "ecmascript/deoptimizer/relocator.cpp",
