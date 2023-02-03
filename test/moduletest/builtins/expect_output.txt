@@ -32,4 +32,9 @@ parseInt result = 16947500000
 builtins number end
 builtins regexp start
 20210608_5V0J5lVh4xVNYx0AUE.jpg,.jpg
+RegExp $1 is read-only
+st2
+a
+
+undefined
 builtins regexp end

@@ -1798,6 +1798,9 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     JSHandle<JSObject> regexpFunction(
         NewBuiltinConstructor(env, regPrototype, RegExp::RegExpConstructor, "RegExp", FunctionLength::TWO));
 
+    // initialize RegExp.$1 .. $9 static and read-only attributes
+    InitializeGlobalRegExp(regexpFunction);
+
     JSHandle<JSFunction>(regexpFunction)->SetFunctionPrototype(thread_, regexpFuncInstanceHClass.GetTaggedValue());
 
     const GlobalEnvConstants *globalConstants = thread_->GlobalConstants();
@@ -3409,6 +3412,29 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
     SetFunction(env, tools, "stopCpuProf", builtins::BuiltinsArkTools::StopCpuProfiler, FunctionLength::ZERO);
 #endif
     return tools;
+}
+
+void Builtins::InitializeGlobalRegExp(JSHandle<JSObject> &obj) const
+{
+    JSHandle<JSTaggedValue> emptyString = thread_->GlobalConstants()->GetHandledEmptyString();
+    JSHandle<JSTaggedValue> newBox1 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$1", newBox1);
+    JSHandle<JSTaggedValue> newBox2 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$2", newBox2);
+    JSHandle<JSTaggedValue> newBox3 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$3", newBox3);
+    JSHandle<JSTaggedValue> newBox4 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$4", newBox4);
+    JSHandle<JSTaggedValue> newBox5 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$5", newBox5);
+    JSHandle<JSTaggedValue> newBox6 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$6", newBox6);
+    JSHandle<JSTaggedValue> newBox7 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$7", newBox7);
+    JSHandle<JSTaggedValue> newBox8 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$8", newBox8);
+    JSHandle<JSTaggedValue> newBox9 = JSHandle<JSTaggedValue>(factory_->NewPropertyBox(emptyString));
+    SetConstantObject(obj, "$9", newBox9);
 }
 
 JSHandle<JSObject> Builtins::InitializeArkPrivate(const JSHandle<GlobalEnv> &env) const

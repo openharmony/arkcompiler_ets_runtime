@@ -418,6 +418,15 @@ class JSThread;
     /* for require native module */                                                                                   \
     V(JSTaggedValue, RequireNativeModuleString, REQUIRE_NATIVE_MOUDULE_FUNC_INDEX, requireNativeModule)               \
     V(JSTaggedValue, RequireNapiString, REQUIRE_NAPI_FUNC_INDEX, requireNapi)                                         \
+    V(JSTaggedValue, DollarStringOne, DOLLAR_STRING_ONE_INDEX, dollarStrOne)                                          \
+    V(JSTaggedValue, DollarStringTwo, DOLLAR_STRING_TWO_INDEX, dollarStrTwo)                                          \
+    V(JSTaggedValue, DollarStringThree, DOLLAR_STRING_THREE_INDEX, dollarStrThree)                                    \
+    V(JSTaggedValue, DollarStringFour, DOLLAR_STRING_FOUR_INDEX, dollarStrFour)                                       \
+    V(JSTaggedValue, DollarStringFive, DOLLAR_STRING_FIVE_INDEX, dollarStrFive)                                       \
+    V(JSTaggedValue, DollarStringSix, DOLLAR_STRING_SIX_INDEX, dollarStrSix)                                          \
+    V(JSTaggedValue, DollarStringSeven, DOLLAR_STRING_SEVEN_INDEX, dollarStrSeven)                                    \
+    V(JSTaggedValue, DollarStringEight, DOLLAR_STRING_EIGHT_INDEX, dollarStrEight)                                    \
+    V(JSTaggedValue, DollarStringNine, DOLLAR_STRING_NINE_INDEX, dollarStrNine)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                           \

@@ -74,6 +74,9 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                 PropertyAttributes attr(layoutInfo->GetAttr(entry));
                 ASSERT(static_cast<int>(attr.GetOffset()) == entry);
                 auto value = JSObject::Cast(holder)->GetProperty(hclass, attr);
+                if (value.IsPropertyBox()) {
+                    return PropertyBox::Cast(value.GetTaggedObject())->GetValue();
+                }
                 if (UNLIKELY(attr.IsAccessor())) {
                     return CallGetter(thread, receiver, holder, value);
                 }

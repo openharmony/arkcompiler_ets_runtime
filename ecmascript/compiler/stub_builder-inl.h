@@ -608,10 +608,6 @@ inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
     return env_->GetBuilder()->TaggedIsAsyncGeneratorObject(x);
 }
 
-inline GateRef StubBuilder::TaggedIsPropertyBox(GateRef x)
-{
-    return env_->GetBuilder()->TaggedIsPropertyBox(x);
-}
 
 inline GateRef StubBuilder::TaggedIsWeak(GateRef x)
 {

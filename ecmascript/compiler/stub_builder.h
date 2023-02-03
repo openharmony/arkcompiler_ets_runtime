@@ -205,7 +205,6 @@ public:
     GateRef InYoungGeneration(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);
-    GateRef TaggedIsPropertyBox(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
     GateRef TaggedIsPrototypeHandler(GateRef x);
     GateRef TaggedIsStoreTSHandler(GateRef x);
@@ -293,6 +292,7 @@ public:
     GateRef IsTreeString(GateRef obj);
     GateRef TreeStringIsFlat(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
+    GateRef TaggedIsPropertyBox(GateRef obj);
     GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
     GateRef IsJSFunctionBase(GateRef obj);
