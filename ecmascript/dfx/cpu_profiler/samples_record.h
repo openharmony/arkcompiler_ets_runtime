@@ -105,7 +105,7 @@ struct ProfileInfo {
 
 struct FrameInfoTemp {
     char codeType[20] = {0}; // 20:the maximum size of the codeType
-    char functionName[50] = {0}; // 50:the maximum size of the functionName
+    char functionName[100] = {0}; // 50:the maximum size of the functionName
     int columnNumber = 0;
     int lineNumber = 0;
     int scriptId = 0;
@@ -165,6 +165,11 @@ public:
     void FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &sampleTime, bool isEndSample);
     std::ofstream fileHandle_;
 
+    void SetEnableVMTag(bool flag)
+    {
+        enableVMTag_ = flag;
+    }
+
 private:
     void StringifyStateTimeStatistic();
     void StringifyNodes();
@@ -202,6 +207,7 @@ private:
     CVector<FrameInfoTemp> napiFrameInfoTemps_;
     CVector<uint64_t> napiCallTimeVec_;
     CVector<std::string> napiCallAddrVec_;
+    bool enableVMTag_ {false};
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_SAMPLES_RECORD_H
