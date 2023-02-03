@@ -119,7 +119,7 @@ private:
     bool WriteMethod(const JSHandle<JSTaggedValue> &value);
     bool WriteConstantPool(const JSHandle<JSTaggedValue> &value);
     bool WriteTaggedArray(const JSHandle<JSTaggedValue> &value);
-    bool WriteByteArray(const JSHandle<JSTaggedValue> &value);
+    bool WriteByteArray(const JSHandle<JSTaggedValue> &value, DataViewType viewType);
     bool WriteTaggedObject(const JSHandle<JSTaggedValue> &value);
     bool WritePrimitiveValue(const JSHandle<JSTaggedValue> &value);
     bool WriteInt(int32_t value);
@@ -147,6 +147,7 @@ private:
     bool IsTargetSymbol(JSTaggedValue symbolVal);
     bool IsSerialized(uintptr_t addr) const;
     bool WriteIfSerialized(uintptr_t addr);
+    uint32_t GetDataViewTypeIndex(const DataViewType dataViewType);
 
     NO_MOVE_SEMANTIC(JSSerializer);
     NO_COPY_SEMANTIC(JSSerializer);
@@ -206,6 +207,7 @@ private:
     bool DefinePropertiesAndElements(const JSHandle<JSTaggedValue> &obj);
     bool ReadDesc(PropertyDescriptor *desc);
     bool ReadBoolean(bool *value);
+    DataViewType GetDataViewTypeByIndex(uint32_t viewTypeIndex);
 
     NO_MOVE_SEMANTIC(JSDeserializer);
     NO_COPY_SEMANTIC(JSDeserializer);
