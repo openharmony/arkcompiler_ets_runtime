@@ -241,6 +241,12 @@ bool EcmaVM::Initialize()
         LoadStubFile();
     }
 
+    if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
+        AnFileDataManager::GetInstance()->SetEnable(true);
+        std::string aotFilename = options_.GetAOTOutputFile();
+        LoadAOTFiles(aotFilename);
+    }
+
     optCodeProfiler_ = new OptCodeProfiler();
 
     initialized_ = true;
@@ -421,6 +427,8 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
     args[0] = mainFunc.GetTaggedValue().GetRawData();
     args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
     const JSTaggedType *prevFp = thread_->GetLastLeaveFrame();
+    // do not modify this log to INFO, this will call many times
+    LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
     JSTaggedValue res = ExecuteAot(actualNumArgs, args.data(), prevFp, OptimizedEntryFrame::CallType::CALL_FUNC);
     if (thread_->HasPendingException()) {
         return thread_->GetException();
@@ -433,6 +441,8 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
+    // do not modify this log to INFO, this will call many times
+    LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             actualNumArgs,
                                                             args,
@@ -869,12 +879,12 @@ void EcmaVM::LoadStubFile()
     aotFileManager_->LoadStubFile(stubFile);
 }
 
-void EcmaVM::LoadAOTFiles()
+void EcmaVM::LoadAOTFiles(const std::string& aotFileName)
 {
-    std::string anFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AN;
+    std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
     aotFileManager_->LoadAnFile(anFile);
 
-    std::string aiFile = options_.GetAOTOutputFile() + AOTFileManager::FILE_EXTENSION_AI;
+    std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
     aotFileManager_->LoadAiFile(aiFile);
 }
 

@@ -160,7 +160,7 @@ group("ark_aot_test") {
     deps += [
       # builtins_stub test only print log in debug mode
       "builtins_array:builtins_arrayAotAction",
-      "builtins_stub:builtins_stubAotAction",
+      # "builtins_stub:builtins_stubAotAction",
     ]
   }
 

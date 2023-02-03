@@ -353,14 +353,13 @@ void JSNApi::NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress)
 
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &hapPath)
 {
-    JSRuntimeOptions &jsOption = vm->GetJSOptions();
-    if (jsOption.GetAOTOutputFile().empty()) {
+    if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
         return;
     }
-    std::string hapName = ecmascript::JSFilePath::GetFileName(hapPath);
-    jsOption.SetAOTOutputFile(jsOption.GetAOTOutputFile() + hapName);
-    LOG_ECMA(INFO) << "start to load aot file: " << jsOption.GetAOTOutputFile();
-    vm->LoadAOTFiles();
+    std::string aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir();
+    aotFileName += ecmascript::JSFilePath::GetFileName(hapPath);
+    LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
+    vm->LoadAOTFiles(aotFileName);
 }
 
 bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
@@ -414,7 +413,8 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     vm->ResetPGOProfiler();
 
     if (jsOption.GetEnableAOT() && option.GetAnDir().size()) {
-        jsOption.SetAOTOutputFile(option.GetAnDir());
+        ecmascript::AnFileDataManager::GetInstance()->SetDir(option.GetAnDir());
+        ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
     }
 
     vm->PostFork();
@@ -2724,6 +2724,9 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
             moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
         } else {
             moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
+            if (ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
+                vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
+            }
         }
         ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {

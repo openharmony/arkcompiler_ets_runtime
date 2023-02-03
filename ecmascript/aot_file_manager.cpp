@@ -328,7 +328,7 @@ bool AnFileInfo::Load(const std::string &filename)
         }
     }
 
-    LOG_COMPILER(INFO) << "loaded aot file: " << filename.c_str();
+    LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
     isLoad_ = true;
     return true;
 }
@@ -397,40 +397,6 @@ void AOTFileManager::LoadAnFile(const std::string &fileName)
     }
 }
 
-void AOTFileManager::LoadAnFile(JSPandaFile *jsPandaFile)
-{
-    auto fileName = GetAotFileName(vm_, jsPandaFile, AOTFileManager::FILE_EXTENSION_AN);
-    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT, vm_)) {
-        return;
-    }
-
-    if (IsLoad(jsPandaFile)) {
-        uint32_t index = GetAnFileIndex(jsPandaFile);
-        jsPandaFile->SetAOTFileInfoIndex(index);
-    }
-}
-
-void AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
-{
-    Snapshot snapshot(vm_);
-    auto filename = GetAotFileName(vm_, jsPandaFile, AOTFileManager::FILE_EXTENSION_AI);
-    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    std::string baseName = JSFilePath::GetFileName(filename.c_str());
-    uint32_t anFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(baseName + FILE_EXTENSION_AN);
-    if (anFileInfoIndex == INVALID_INDEX) {
-        // The abc file does not have corresponding an and ai files
-        return;
-    }
-
-    auto iter = desCPs_.find(anFileInfoIndex);
-    if (iter == desCPs_.end()) {
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
-        snapshot.Deserialize(SnapshotType::AI, filename.c_str());
-#endif
-    }
-}
-
 void AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
 {
     Snapshot snapshot(vm_);
@@ -438,6 +404,28 @@ void AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
     snapshot.Deserialize(SnapshotType::AI, filename.c_str());
 #endif
 }
+
+void AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
+{
+    uint32_t anFileInfoIndex = GetAnFileIndex(jsPandaFile);
+    // this abc file does not have corresponding an file
+    if (anFileInfoIndex == INVALID_INDEX) {
+        return;
+    }
+
+    auto iter = desCPs_.find(anFileInfoIndex);
+    // already loaded
+    if (iter != desCPs_.end()) {
+        return;
+    }
+
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    std::string aiFilename = anFileDataManager->GetDir();
+    aiFilename += JSFilePath::GetHapName(jsPandaFile) + AOTFileManager::FILE_EXTENSION_AI;
+    LoadAiFile(aiFilename);
+
+}
+
 
 const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
 {
@@ -451,7 +439,7 @@ const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFil
 
 bool AOTFileManager::IsLoad(const JSPandaFile *jsPandaFile) const
 {
-    if (vm_->GetJSOptions().GetAOTOutputFile().empty()) {
+    if (!AnFileDataManager::GetInstance()->IsEnable()) {
         return false;
     }
 
@@ -736,21 +724,6 @@ bool AOTFileManager::GetAbsolutePath(const CString &relativePathCstr, CString &a
         return true;
     }
     return false;
-}
-
-std::string AOTFileManager::GetAotFileName(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                           const std::string &extensionName) const
-{
-    auto option = vm->GetJSOptions();
-    std::string aotFileName;
-    if (option.WasAOTOutputFileSet()) {
-        std::string fullPathName = JSFilePath::GetAotFullPathName(jsPandaFile);
-        aotFileName = fullPathName + extensionName;
-    } else {
-        std::string hapName = JSFilePath::GetHapName(jsPandaFile);
-        aotFileName = hapName + extensionName;
-    }
-    return aotFileName;
 }
 
 void BinaryBufferParser::ParseBuffer(void *dst, uint32_t count)
