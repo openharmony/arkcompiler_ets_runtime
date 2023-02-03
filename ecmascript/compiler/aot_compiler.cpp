@@ -104,7 +104,7 @@ int Main(const int argc, const char **argv)
         CompilerLog log(logOption, isTraceBC);
         log.SetEnableCompilerLogTime(compilerLogTime);
         AotMethodLogList logList(logMethodsList);
-        AOTFileGenerator generator(&log, &logList, vm);
+        AOTFileGenerator generator(&log, &logList, vm, triple);
         std::string profilerIn(runtimeOptions.GetPGOProfilerPath());
         if (runtimeOptions.WasSetEntryPoint()) {
             entrypoint = runtimeOptions.GetEntryPoint();

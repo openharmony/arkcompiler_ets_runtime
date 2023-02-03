@@ -347,7 +347,7 @@ class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
-    void Save(const std::string &filename);
+    void Save(const std::string &filename, kungfu::Triple triple);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
@@ -368,9 +368,6 @@ public:
         }
         return static_cast<uintptr_t>(it->second);
     }
-
-    template<size_t Size>
-    bool AnVersionCheck(std::array<uint8_t, Size> anVersion);
 
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
 
@@ -523,8 +520,7 @@ public:
     explicit AOTFileManager(EcmaVM *vm);
     virtual ~AOTFileManager();
 
-    static constexpr size_t AOT_VERSION_SIZE = 4;
-    static constexpr std::array<uint8_t, AOT_VERSION_SIZE> AOT_VERSION {0, 0, 0, 1};
+    static constexpr uint32_t AOT_VERSION = 1;
     static constexpr char FILE_EXTENSION_AN[] = ".an";
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
     static constexpr uint8_t DESERI_CP_ITEM_SIZE = 2;

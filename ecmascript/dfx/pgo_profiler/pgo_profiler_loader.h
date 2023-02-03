@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/jspandafile/method_literal.h"
 
@@ -32,7 +33,9 @@ public:
     NO_MOVE_SEMANTIC(PGOProfilerLoader);
 
     bool PUBLIC_API Match(const CString &recordName, EntityId methodId);
-    void PUBLIC_API LoadProfiler(const std::string &inPath, uint32_t hotnessThreshold);
+    bool PUBLIC_API Load(const std::string &inPath, uint32_t hotnessThreshold);
+    bool PUBLIC_API Verify(uint32_t checksum);
+    bool PUBLIC_API LoadAndVerify(const std::string &inPath, uint32_t hotnessThreshold, uint32_t checksum);
     const std::unordered_map<CString, std::unordered_set<EntityId>> &GetProfile() const
     {
         return hotnessMethods_;
@@ -53,16 +56,28 @@ public:
     }
 
 private:
+    static constexpr int HEADER_INFO_COUNT = 2;
+    static constexpr int MAGIC_ID_INDEX = 0;
+    static constexpr int VERSION_ID_INDEX = 1;
+
+    static constexpr int PANDA_FILE_INFO_COUNT = 2;
+    static constexpr int PANDA_FILE_DESC_INDEX = 0;
+    static constexpr int CHECK_SUM_INDEX = 1;
+
     static constexpr int METHOD_INFO_COUNT = 3;
     static constexpr int METHOD_ID_INDEX = 0;
     static constexpr int METHOD_COUNT_INDEX = 1;
     static constexpr int METHOD_MODE_INDEX = 2;
 
-    void ParseProfiler(const std::string &profilerString);
-    void ParseHotMethodInfo(const std::string &methodInfo, std::unordered_set<EntityId> &methodIds);
+    bool ParseProfilerHeader(void **buffer);
+    bool ParsePandaFileInfo(void **buffer);
+    void ParseProfiler(void **buffer);
 
     bool isLoaded_ {false};
-    uint32_t hotnessThreshold_ = {0};
+    bool isVerifySuccess_ {true};
+    uint32_t hotnessThreshold_ {0};
+    PGOProfilerHeader header_;
+    std::vector<PandaFileProfilerInfo> pandaFileProfilerInfos_;
     std::unordered_map<CString, std::unordered_set<EntityId>> hotnessMethods_;
 };
 } // namespace panda::ecmascript

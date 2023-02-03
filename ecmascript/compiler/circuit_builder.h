@@ -27,6 +27,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/platform/elf.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::kungfu {
@@ -136,12 +137,6 @@ class Variable;
 
 class CompilationConfig {
 public:
-    enum class Triple {
-        TRIPLE_AMD64,
-        TRIPLE_AARCH64,
-        TRIPLE_ARM32,
-    };
-
     explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false,
                                bool profiling = false)
         : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler),

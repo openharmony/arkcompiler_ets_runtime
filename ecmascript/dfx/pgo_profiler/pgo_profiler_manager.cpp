@@ -15,15 +15,19 @@
 
 #include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 
+#include <ios>
+#include <sstream>
 #include <string>
 
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
+static const std::string PROFILE_FILE_NAME = "/modules.ap";
 
 PGOProfiler::~PGOProfiler()
 {
@@ -54,14 +58,20 @@ void PGOProfiler::Sample(JSTaggedType value, SampleMode mode)
                 info->IncreaseCount();
                 info->SetSampleMode(mode);
             } else {
-                auto info = chunk_.New<MethodProfilerInfo>(1, std::string(jsMethod->GetMethodName()), mode);
+                size_t len = strlen(jsMethod->GetMethodName());
+                void *infoAddr = chunk_.Allocate(MethodProfilerInfo::Size(len));
+                auto info = new (infoAddr) MethodProfilerInfo(jsMethod->GetMethodId(), 1, mode, len);
+                info->SetMethodName(jsMethod->GetMethodName(), len);
                 methodCountMap->emplace(jsMethod->GetMethodId(), info);
                 methodCount_++;
             }
         } else {
             ChunkUnorderedMap<EntityId, MethodProfilerInfo *> *methodsCountMap =
                 chunk_.New<ChunkUnorderedMap<EntityId, MethodProfilerInfo *>>(&chunk_);
-            auto info = chunk_.New<MethodProfilerInfo>(1, std::string(jsMethod->GetMethodName()), mode);
+            size_t len = strlen(jsMethod->GetMethodName());
+            void *infoAddr = chunk_.Allocate(MethodProfilerInfo::Size(len));
+            auto info = new (infoAddr) MethodProfilerInfo(jsMethod->GetMethodId(), 1, mode, len);
+            info->SetMethodName(jsMethod->GetMethodName(), len);
             methodsCountMap->emplace(jsMethod->GetMethodId(), info);
             profilerMap_.emplace(recordName, methodsCountMap);
             methodCount_++;
@@ -85,7 +95,7 @@ void PGOProfilerManager::Initialize(uint32_t hotnessThreshold, const std::string
 
 void PGOProfilerManager::Destroy()
 {
-    if (!isEnable_) {
+    if (!isInitialized_) {
         return;
     }
     // SaveTask is already finished
@@ -93,24 +103,46 @@ void PGOProfilerManager::Destroy()
     globalProfilerMap_->clear();
     chunk_.reset();
     nativeAreaAllocator_.reset();
-    isEnable_ = false;
+    isInitialized_ = false;
 }
 
-void PGOProfilerManager::InitializeData()
+bool PGOProfilerManager::InitializeData()
 {
     os::memory::LockHolder lock(mutex_);
-    if (!isEnable_) {
-        isEnable_ = true;
+    if (!isInitialized_) {
+        if (!RealPath(outDir_, realOutPath_, false)) {
+            return false;
+        }
+        realOutPath_ += PROFILE_FILE_NAME;
+        LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath_;
+
         nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
         chunk_ = std::make_unique<Chunk>(nativeAreaAllocator_.get());
         globalProfilerMap_ = chunk_->
             New<ChunkUnorderedMap<CString, ChunkUnorderedMap<EntityId, MethodProfilerInfo *> *>>(chunk_.get());
+        pandaFileProfilerInfos_ = chunk_->New<ChunkVector<PandaFileProfilerInfo *>>(chunk_.get());
+        isInitialized_ = true;
     }
+    return true;
+}
+
+void PGOProfilerManager::SamplePandaFileInfo(uint32_t checksum)
+{
+    if (!isInitialized_) {
+        return;
+    }
+    for (auto info : *pandaFileProfilerInfos_) {
+        if (info->GetChecksum() == checksum) {
+            return;
+        }
+    }
+    auto info = chunk_->New<PandaFileProfilerInfo>(checksum);
+    pandaFileProfilerInfos_->emplace_back(info);
 }
 
 void PGOProfilerManager::Merge(PGOProfiler *profiler)
 {
-    if (!isEnable_) {
+    if (!isInitialized_) {
         return;
     }
 
@@ -134,8 +166,11 @@ void PGOProfilerManager::Merge(PGOProfiler *profiler)
                 auto &info = result->second;
                 info->Merge(localInfo);
             } else {
-                auto info = chunk_->New<MethodProfilerInfo>(localInfo->GetCount(), localInfo->GetMethodName(),
-                    localInfo->GetSampleMode());
+                size_t len = strlen(localInfo->GetMethodName());
+                void *infoAddr = chunk_->Allocate(MethodProfilerInfo::Size(len));
+                auto info = new (infoAddr) MethodProfilerInfo(methodId, localInfo->GetCount(),
+                    localInfo->GetSampleMode(), len);
+                info->SetMethodName(localInfo->GetMethodName(), len);
                 globalMethodCountMap->emplace(methodId, info);
             }
             localInfo->ClearCount();
@@ -145,34 +180,44 @@ void PGOProfilerManager::Merge(PGOProfiler *profiler)
 
 void PGOProfilerManager::SaveProfiler(SaveTask *task)
 {
-    std::string realOutPath;
-    if (!RealPath(outDir_, realOutPath, false)) {
-        outDir_ = "";
-        isEnable_ = false;
-        return;
-    }
-    static const std::string PROFILE_FILE_NAME = "/modules.ap";
-    realOutPath += PROFILE_FILE_NAME;
-    LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath;
-
-    std::ofstream fileStream(realOutPath.c_str());
+    std::ofstream fileStream(realOutPath_.c_str());
     if (!fileStream.is_open()) {
-        LOG_ECMA(ERROR) << "The file path(" << realOutPath << ") open failure!";
+        LOG_ECMA(ERROR) << "The file path(" << realOutPath_ << ") open failure!";
         return;
     }
+    ProcessProfileHeader(fileStream);
+    ProcessPandaFileInfo(fileStream);
     ProcessProfile(fileStream, task);
     fileStream.close();
 }
 
+void PGOProfilerManager::ProcessProfileHeader(std::ofstream &fileStream)
+{
+    fileStream.write(reinterpret_cast<char *>(&header_), sizeof(PGOProfilerHeader));
+}
+
+void PGOProfilerManager::ProcessPandaFileInfo(std::ofstream &fileStream)
+{
+    uint32_t size = pandaFileProfilerInfos_->size();
+    fileStream.write(reinterpret_cast<char *>(&size), sizeof(uint32_t));
+    for (auto info : *pandaFileProfilerInfos_) {
+        fileStream.write(reinterpret_cast<char *>(info), sizeof(PandaFileProfilerInfo));
+    }
+}
+
 void PGOProfilerManager::ProcessProfile(std::ofstream &fileStream, SaveTask *task)
 {
-    std::string profilerString;
+    uint32_t recordCount = 0;
+    std::stringstream stream;
+
     for (auto iter = globalProfilerMap_->begin(); iter != globalProfilerMap_->end(); iter++) {
+        uint32_t methodCount = 0;
+        std::stringstream methodStream;
         auto methodCountMap = iter->second;
-        bool isFirst = true;
         for (auto countIter = methodCountMap->begin(); countIter != methodCountMap->end(); countIter++) {
-            LOG_ECMA(DEBUG) << "Method:" << countIter->first << "/" <<  countIter->second->GetMethodName()
-                            << "(" << countIter->second->GetCount() << ")";
+            LOG_ECMA(DEBUG) << "Method:" << countIter->first << "/" << countIter->second->GetCount()
+                            << "/" << std::to_string(static_cast<int>(countIter->second->GetSampleMode()))
+                            << "/" << countIter->second->GetMethodName() << "/" << countIter->second->GetMethodLength();
             if (task && task->IsTerminate()) {
                 LOG_ECMA(INFO) << "ProcessProfile: task is already terminate";
                 return;
@@ -181,33 +226,24 @@ void PGOProfilerManager::ProcessProfile(std::ofstream &fileStream, SaveTask *tas
                 countIter->second->GetSampleMode() == SampleMode::CALL_MODE) {
                 continue;
             }
-            if (!isFirst) {
-                profilerString += ",";
-            } else {
-                auto recordName = iter->first;
-                profilerString += recordName;
-                profilerString += ":[";
-                isFirst = false;
-            }
-            profilerString += std::to_string(countIter->first.GetOffset());
-            profilerString += "/";
-            profilerString += std::to_string(countIter->second->GetCount());
-            profilerString += "/";
-            profilerString += std::to_string(static_cast<int>(countIter->second->GetSampleMode()));
-            profilerString += "/";
-            profilerString += countIter->second->GetMethodName();
+            methodStream.write(reinterpret_cast<char *>(countIter->second), countIter->second->Size());
+            methodCount++;
         }
-        if (!isFirst) {
-            profilerString += "]\n";
-            fileStream.write(profilerString.c_str(), profilerString.size());
-            profilerString.clear();
+        if (methodCount > 0) {
+            stream << iter->first;
+            stream << '\0';
+            stream.write(reinterpret_cast<char *>(&methodCount), sizeof(uint32_t));
+            stream << methodStream.rdbuf();
+            recordCount++;
         }
     }
+    fileStream.write(reinterpret_cast<char *>(&recordCount), sizeof(uint32_t));
+    fileStream << stream.rdbuf();
 }
 
 void PGOProfilerManager::TerminateSaveTask()
 {
-    if (!isEnable_) {
+    if (!isInitialized_) {
         return;
     }
     Taskpool::GetCurrentTaskpool()->TerminateTask(GLOBAL_TASK_ID, TaskType::PGO_SAVE_TASK);
@@ -215,7 +251,7 @@ void PGOProfilerManager::TerminateSaveTask()
 
 void PGOProfilerManager::PostSaveTask()
 {
-    if (!isEnable_) {
+    if (!isInitialized_) {
         return;
     }
     Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(GLOBAL_TASK_ID));

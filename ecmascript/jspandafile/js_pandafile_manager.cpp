@@ -17,6 +17,7 @@
 
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/base/path_helper.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_file_path.h"
 
@@ -257,7 +258,9 @@ JSPandaFile *JSPandaFileManager::OpenJSPandaFile(const CString &filename)
 
 JSPandaFile *JSPandaFileManager::NewJSPandaFile(const panda_file::File *pf, const CString &desc)
 {
-    return new JSPandaFile(pf, desc);
+    auto jsPandaFile = new JSPandaFile(pf, desc);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(jsPandaFile->GetChecksum());
+    return jsPandaFile;
 }
 
 void JSPandaFileManager::ReleaseJSPandaFile(const JSPandaFile *jsPandaFile)

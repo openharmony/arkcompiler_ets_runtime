@@ -50,6 +50,8 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler/");
     vm_ = JSNApi::CreateJSVM(option);
+    uint32_t checksum = 304293;
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(304293);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
@@ -61,7 +63,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     JSNApi::DestroyJSVM(vm_);
     // Loader
     PGOProfilerLoader loader;
-    loader.LoadProfiler("ark-profiler/modules.ap", 2);
+    ASSERT_TRUE(loader.LoadAndVerify("ark-profiler/modules.ap", 2, checksum));
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
@@ -105,7 +107,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
 
     // Loader
     PGOProfilerLoader loader;
-    loader.LoadProfiler("ark-profiler1/modules.ap", 2);
+    ASSERT_TRUE(loader.Load("ark-profiler1/modules.ap", 2));
     CString expectRecordName = "test";
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(70)));
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(80)));
@@ -145,7 +147,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
 
     // Loader
     PGOProfilerLoader loader;
-    loader.LoadProfiler("ark-profiler2/modules.ap", 2);
+    ASSERT_TRUE(loader.Load("ark-profiler2/modules.ap", 2));
     CString expectRecordName = "test";
     CString expectRecordName1 = "test1";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
@@ -178,7 +180,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     // Loader
     PGOProfilerLoader loader;
     // path is empty()
-    loader.LoadProfiler("ark-profiler3/modules.ap", 2);
+    ASSERT_TRUE(!loader.Load("ark-profiler3/modules.ap", 2));
     CString expectRecordName = "test";
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
     rmdir("ark-profiler3/");
@@ -232,13 +234,10 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
 
     PGOProfilerLoader loader;
     // path is empty()
-    loader.LoadProfiler("", 2);
+    ASSERT_TRUE(!loader.Load("", 2));
     // path size greater than PATH_MAX
     char path[PATH_MAX + 1] = {'0'};
-    loader.LoadProfiler(path, 4);
-    mkdir("modules.ap", S_IXUSR | S_IXGRP | S_IXOTH);
-    loader.LoadProfiler("modules.ap", 2);
-    rmdir("modules.ap");
+    loader.Load(path, 4);
 }
 
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
@@ -276,11 +275,11 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
 
     PGOProfilerLoader loader;
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    loader.LoadProfiler("ark-profiler5/profiler", 2);
+    ASSERT_TRUE(!loader.Load("ark-profiler5/profiler", 2));
     CString expectRecordName = "test";
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
 
-    loader.LoadProfiler("ark-profiler5/modules.ap", 2);
+    loader.Load("ark-profiler5/modules.ap", 2);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(75)));
 #else
@@ -290,31 +289,6 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     unlink("ark-profiler5/modules.ap");
     rmdir("ark-profiler5/profiler");
     rmdir("ark-profiler5/");
-}
-
-HWTEST_F_L0(PGOProfilerTest, InvalidFormat)
-{
-    mkdir("ark-profiler6/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::ofstream file("ark-profiler6/modules.ap");
-    std::string result = "recordName\n";
-    file.write(result.c_str(), result.size());
-    result = "recordName:[]\n";
-    file.write(result.c_str(), result.size());
-    result = "recordName2:[123/df/main]\n";
-    file.write(result.c_str(), result.size());
-    result = "recordName3:[test/11/main]\n";
-    file.write(result.c_str(), result.size());
-    result = "recordName4:[2313]\n";
-    file.write(result.c_str(), result.size());
-    file.close();
-    PGOProfilerLoader loader;
-    loader.LoadProfiler("ark-profiler6/modules.ap", 2);
-    ASSERT_FALSE(loader.Match("recordName2", EntityId(123)));
-    ASSERT_FALSE(loader.Match("recordName4", EntityId(2313)));
-
-    unlink("ark-profiler6/modules.ap");
-    rmdir("ark-profiler6");
 }
 
 HWTEST_F_L0(PGOProfilerTest, DoubleRecordNameFormat)
@@ -328,7 +302,7 @@ HWTEST_F_L0(PGOProfilerTest, DoubleRecordNameFormat)
     file.write(result.c_str(), result.size());
     file.close();
     PGOProfilerLoader loader;
-    loader.LoadProfiler("ark-profiler7/modules.ap", 2);
+    loader.Load("ark-profiler7/modules.ap", 2);
 
     unlink("ark-profiler7/modules.ap");
     rmdir("ark-profiler7");
@@ -351,7 +325,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerLoaderNoHotMethod)
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerLoader loader;
-    loader.LoadProfiler("ark-profiler8/modules.ap", 2);
+    ASSERT_TRUE(loader.Load("ark-profiler8/modules.ap", 2));
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
@@ -391,7 +365,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerLoader loader;
-    loader.LoadProfiler("ark-profiler9/modules.ap", 2);
+    ASSERT_TRUE(loader.Load("ark-profiler9/modules.ap", 2));
     CString expectRecordName = "test";
     for (int i = 61; i < 91; i++) {
         if (i % 3 == 0) {

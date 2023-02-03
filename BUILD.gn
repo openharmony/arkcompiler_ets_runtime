@@ -694,12 +694,14 @@ if (is_mingw) {
     "ecmascript/platform/windows/file.cpp",
     "ecmascript/platform/windows/os.cpp",
     "ecmascript/platform/windows/time.cpp",
+    "ecmascript/platform/windows/elf.cpp",
   ]
 } else {
   ecma_platform_source += [
     "ecmascript/platform/unix/file.cpp",
     "ecmascript/platform/unix/map.cpp",
     "ecmascript/platform/unix/time.cpp",
+    "ecmascript/platform/unix/elf.cpp",
   ]
   if (is_mac || target_os == "ios") {
     ecma_platform_source += [

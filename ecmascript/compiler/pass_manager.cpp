@@ -35,7 +35,10 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         return false;
     }
 
-    profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
+    if (!profilerLoader_.LoadAndVerify(profilerIn, hotnessThreshold_, jsPandaFile->GetChecksum())) {
+        LOG_COMPILER(ERROR) << "Load and verify profiler failure";
+        return false;
+    }
     bool enableCollectLiteralInfo = EnableTypeInfer() &&
         (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
     BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, maxAotMethodSize_,

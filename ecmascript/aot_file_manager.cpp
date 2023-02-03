@@ -32,6 +32,7 @@
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/mem/region.h"
+#include "ecmascript/platform/elf.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/map.h"
 
@@ -219,7 +220,7 @@ bool StubFileInfo::Load()
     return true;
 }
 
-void AnFileInfo::Save(const std::string &filename)
+void AnFileInfo::Save(const std::string &filename, kungfu::Triple triple)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
@@ -227,8 +228,10 @@ void AnFileInfo::Save(const std::string &filename)
     }
     std::ofstream file(realPath.c_str(), std::ofstream::binary);
     SetStubNum(entries_.size());
-    auto anVersion = AOTFileManager::AOT_VERSION;
-    file.write(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
+
+    Elf64_Ehdr header;
+    PackELFHeader(header, AOTFileManager::AOT_VERSION, triple);
+    file.write(reinterpret_cast<char *>(&header), sizeof(Elf64_Ehdr));
     file.write(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
     file.write(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
     uint32_t moduleNum = GetCodeUnitsNum();
@@ -293,9 +296,9 @@ bool AnFileInfo::Load(const std::string &filename)
         return false;
     }
 
-    std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> anVersion;
-    file.read(reinterpret_cast<char *>(anVersion.data()), sizeof(uint8_t) * AOTFileManager::AOT_VERSION_SIZE);
-    if (!AnVersionCheck(anVersion)) {
+    Elf64_Ehdr header;
+    file.read(reinterpret_cast<char *>(&header), sizeof(Elf64_Ehdr));
+    if (!VerifyELFHeader(header, AOTFileManager::AOT_VERSION)) {
         file.close();
         return false;
     }
@@ -330,29 +333,6 @@ bool AnFileInfo::Load(const std::string &filename)
 
     LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
     isLoad_ = true;
-    return true;
-}
-
-template<size_t Size>
-bool AnFileInfo::AnVersionCheck(std::array<uint8_t, Size> anVersion)
-{
-    if (anVersion > AOTFileManager::AOT_VERSION) {
-        auto convToStr = [] (std::array<uint8_t, AOTFileManager::AOT_VERSION_SIZE> version) -> std::string {
-            std::string ret = "";
-            for (size_t i = 0; i < AOTFileManager::AOT_VERSION_SIZE; ++i) {
-                if (i) {
-                    ret += ".";
-                }
-                ret += std::to_string(version[i]);
-            }
-            return ret;
-        };
-        LOG_COMPILER(ERROR) << "Load an file failed, an file version is incorrect, "
-                            << "expected version should be less or equal than "
-                            << convToStr(AOTFileManager::AOT_VERSION)
-                            << ", but got " << convToStr(anVersion);
-        return false;
-    }
     return true;
 }
 
