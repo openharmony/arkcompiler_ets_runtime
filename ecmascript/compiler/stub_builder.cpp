@@ -1709,7 +1709,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     Branch(IsField(handlerInfo), &aotHandlerInfoIsField, &aotHandlerInfoNotField);
                     Bind(&aotHandlerInfoIsField);
                     {
-                        StoreField(glue, *holder, value, handlerInfo);
+                        StoreField(glue, receiver, value, handlerInfo);
                         Jump(&exit);
                     }
                     Bind(&aotHandlerInfoNotField);
@@ -2673,7 +2673,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             {
                                 Label storeReceiverHoleEntry(env);
                                 Label noNeedStore(env);
-                                GateRef checkReceiverHoleEntry = Int32NotEqual(*receiverHoleEntry, Int32(-1));
+                                GateRef checkReceiverHoleEntry = Int32Equal(*receiverHoleEntry, Int32(-1));
                                 GateRef checkHolderEqualsRecv = Equal(*holder, receiver);
                                 Branch(BoolAnd(checkReceiverHoleEntry, checkHolderEqualsRecv),
                                     &storeReceiverHoleEntry, &noNeedStore);

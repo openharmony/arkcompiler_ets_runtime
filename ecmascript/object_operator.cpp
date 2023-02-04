@@ -724,6 +724,8 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         return;
     }
 
+    // The property has already existed whose value is hole, initialized by speculative hclass.
+    // Not need AddProperty,just SetProperty
     if (receiverHoleEntry_ != -1) {
         auto *hclass = receiver_->GetTaggedObject()->GetClass();
         LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
@@ -731,6 +733,8 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         JSObject::Cast(receiver_.GetTaggedValue())->SetProperty(thread_, hclass, attr, value.GetTaggedValue());
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();
+        SetIsAOT(true);
+        SetIsOnPrototype(false);
         SetFound(index, value.GetTaggedValue(), attr.GetValue(), true);
         return;
     }
