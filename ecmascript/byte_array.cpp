@@ -22,7 +22,7 @@ void ByteArray::Set(uint32_t idx, DataViewType type, JSTaggedType val, uint32_t 
 {
     void *pointer = GetData();
     auto *block = reinterpret_cast<uint8_t *>(pointer) + offset;
-    builtins::BuiltinsArrayBuffer::SetValueInBuffer(idx * GetSize(), block, type,
+    builtins::BuiltinsArrayBuffer::SetValueInBuffer(idx * GetByteLength(), block, type,
                                                     JSTaggedValue(val).GetNumber(), true);
 }
 
@@ -30,6 +30,6 @@ JSTaggedValue ByteArray::Get(JSThread *thread, uint32_t idx, DataViewType type, 
 {
     void *pointer = GetData();
     auto *block = reinterpret_cast<uint8_t *>(pointer) + offset;
-    return builtins::BuiltinsArrayBuffer::GetValueFromBuffer(thread, idx * GetSize(), block, type, true);
+    return builtins::BuiltinsArrayBuffer::GetValueFromBuffer(thread, idx * GetByteLength(), block, type, true);
 }
 }  // namespace panda::ecmascript

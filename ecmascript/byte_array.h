@@ -37,15 +37,15 @@ public:
 
     inline void *GetData(uint32_t index = 0) const
     {
-        return reinterpret_cast<void *>(ToUintPtr(this) + DATA_OFFSET + index * GetSize());
+        return reinterpret_cast<void *>(ToUintPtr(this) + DATA_OFFSET + index * GetByteLength());
     }
 
     void Set(uint32_t idx, DataViewType type, JSTaggedType val, uint32_t offset = 0);
     JSTaggedValue Get(JSThread *thread, uint32_t idx, DataViewType type, uint32_t offset = 0);
 
-    static constexpr size_t LENGTH_OFFSET = TaggedObjectSize();
-    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, SIZE_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(Size, uint32_t, SIZE_OFFSET, LAST_OFFSET)
+    static constexpr size_t ARRAY_LENGTH_OFFSET = TaggedObjectSize();
+    ACCESSORS_PRIMITIVE_FIELD(ArrayLength, uint32_t, ARRAY_LENGTH_OFFSET, BYTE_LENGTH_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(ByteLength, uint32_t, BYTE_LENGTH_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
     static constexpr size_t DATA_OFFSET = SIZE;  // DATA_OFFSET equal to Empty ByteArray size
 
@@ -55,7 +55,7 @@ private:
     friend class ObjectFactory;
 };
 
-static_assert(ByteArray::LENGTH_OFFSET == sizeof(TaggedObject));
+static_assert(ByteArray::ARRAY_LENGTH_OFFSET == sizeof(TaggedObject));
 static_assert((ByteArray::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_BYTE_ARRAY_H

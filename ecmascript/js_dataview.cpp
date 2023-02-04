@@ -37,8 +37,6 @@ uint32_t JSDataView::GetElementSize(DataViewType type)
             size = 4;  // 4 means the length
             break;
         case DataViewType::FLOAT64:
-            size = 8;  // 8 means the length
-            break;
         case DataViewType::BIGINT64:
         case DataViewType::BIGUINT64:
             size = 8;  // 8 means the length

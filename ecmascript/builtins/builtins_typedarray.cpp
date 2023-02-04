@@ -389,7 +389,7 @@ JSTaggedValue BuiltinsTypedArray::GetByteLength(EcmaRuntimeCallInfo *argv)
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typeArrayObj = JSHandle<JSTypedArray>::Cast(thisHandle);
-    JSTaggedValue buffer = typeArrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typeArrayObj->GetViewedArrayBufferOrByteArray();
     // 5. If IsDetachedBuffer(buffer) is true, return 0.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         return JSTaggedValue(0);
@@ -419,7 +419,7 @@ JSTaggedValue BuiltinsTypedArray::GetByteOffset(EcmaRuntimeCallInfo *argv)
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typeArrayObj = JSHandle<JSTypedArray>::Cast(thisHandle);
-    JSTaggedValue buffer = typeArrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typeArrayObj->GetViewedArrayBufferOrByteArray();
     // 5. If IsDetachedBuffer(buffer) is true, return 0.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         return JSTaggedValue(0);
@@ -863,7 +863,7 @@ JSTaggedValue BuiltinsTypedArray::GetLength(EcmaRuntimeCallInfo *argv)
     }
     // 4. Assert: O has [[ViewedArrayBuffer]] and [[ArrayLength]] internal slots.
     // 5. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSTaggedValue buffer = JSHandle<JSTypedArray>::Cast(thisHandle)->GetViewedArrayBuffer();
+    JSTaggedValue buffer = JSHandle<JSTypedArray>::Cast(thisHandle)->GetViewedArrayBufferOrByteArray();
     // 6. If IsDetachedBuffer(buffer) is true, return 0.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         return JSTaggedValue(0);
@@ -1122,7 +1122,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTypedArray> typedArray(argArray);
     // 12. Let srcBuffer be the value of typedArray’s [[ViewedArrayBuffer]] internal slot.
     // 13. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
-    JSTaggedValue srcBuffer = typedArray->GetViewedArrayBuffer();
+    JSTaggedValue srcBuffer = typedArray->GetViewedArrayBufferOrByteArray();
     JSHandle<JSTaggedValue> srcBufferHandle(thread, srcBuffer);
     if (BuiltinsArrayBuffer::IsDetachedBuffer(srcBuffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ArrayBuffer of typedArray is detached buffer.",
@@ -1304,13 +1304,13 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
         // 22. Else if count > 0,
         //   a. Let srcBuffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
         //   b. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
-        JSTaggedValue srcBuffer = thisObj->GetViewedArrayBuffer();
+        JSTaggedValue srcBuffer = thisObj->GetViewedArrayBufferOrByteArray();
         if (BuiltinsArrayBuffer::IsDetachedBuffer(srcBuffer)) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "The ArrayBuffer of this value is detached buffer.",
                                         JSTaggedValue::Exception());
         }
         //   c. Let targetBuffer be the value of A’s [[ViewedArrayBuffer]] internal slot.
-        JSTaggedValue targetBuffer = JSTypedArray::Cast(*newArrObj)->GetViewedArrayBuffer();
+        JSTaggedValue targetBuffer = JSTypedArray::Cast(*newArrObj)->GetViewedArrayBufferOrByteArray();
         //   d. Let elementSize be the Number value of the Element Size value specified in Table 49 for srcType.
         uint32_t elementSize = TypedArrayHelper::GetSizeFromType(srcType);
         //   e. NOTE: If srcType and targetType are the same the transfer must be performed in a manner that

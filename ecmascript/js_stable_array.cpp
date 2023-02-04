@@ -596,7 +596,7 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
                                                            DataViewType targetType, uint32_t targetOffset,
                                                            uint32_t srcLength, JSHandle<TaggedArray> &elements)
 {
-    JSHandle<JSTaggedValue> targetBuffer(thread, targetArray->GetViewedArrayBuffer());
+    JSHandle<JSTaggedValue> targetBuffer(thread, targetArray->GetViewedArrayBufferOrByteArray());
     // If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(targetBuffer.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",

@@ -552,7 +552,7 @@ public:
         JSTaggedNumber byteOffset(resJSInt8Array->GetByteOffset());
         JSTaggedNumber arrayLength(resJSInt8Array->GetArrayLength());
         ContentType contentType = resJSInt8Array->GetContentType();
-        JSHandle<JSTaggedValue> viewedArrayBuffer(thread, resJSInt8Array->GetViewedArrayBuffer());
+        JSHandle<JSTaggedValue> viewedArrayBuffer(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray());
 
         EXPECT_TRUE(typedArrayName->IsString());
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(typedArrayName),
@@ -565,7 +565,7 @@ public:
         // check arrayBuffer
         EXPECT_TRUE(viewedArrayBuffer->IsArrayBuffer());
         JSHandle<JSArrayBuffer> resJSArrayBuffer(viewedArrayBuffer);
-        JSHandle<JSArrayBuffer> originArrayBuffer(thread, originTypedArray->GetViewedArrayBuffer());
+        JSHandle<JSArrayBuffer> originArrayBuffer(thread, originTypedArray->GetViewedArrayBufferOrByteArray());
         uint32_t resTaggedLength = resJSArrayBuffer->GetArrayBufferByteLength();
         uint32_t originTaggedLength = originArrayBuffer->GetArrayBufferByteLength();
         EXPECT_TRUE(resTaggedLength == originTaggedLength) << "Not same viewedBuffer length";
@@ -596,7 +596,7 @@ public:
         JSTaggedNumber byteOffset(resJSInt8Array->GetByteOffset());
         JSTaggedNumber arrayLength(resJSInt8Array->GetArrayLength());
         ContentType contentType = resJSInt8Array->GetContentType();
-        JSHandle<JSTaggedValue> byteArray(thread, resJSInt8Array->GetViewedArrayBuffer());
+        JSHandle<JSTaggedValue> byteArray(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray());
 
         EXPECT_TRUE(typedArrayName->IsString());
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>(typedArrayName),
@@ -609,16 +609,16 @@ public:
         // check byteArray
         EXPECT_TRUE(byteArray->IsByteArray());
         JSHandle<ByteArray> resByteArray(byteArray);
-        JSHandle<ByteArray> originByteArray(thread, originTypedArray->GetViewedArrayBuffer());
-        uint32_t resTaggedLength = resByteArray->GetLength();
-        uint32_t originTaggedLength = originByteArray->GetLength();
+        JSHandle<ByteArray> originByteArray(thread, originTypedArray->GetViewedArrayBufferOrByteArray());
+        uint32_t resTaggedLength = resByteArray->GetArrayLength();
+        uint32_t originTaggedLength = originByteArray->GetArrayLength();
         EXPECT_TRUE(resTaggedLength == originTaggedLength) << "Not same byteArray length";
-        uint32_t resElementSize = resByteArray->GetSize();
-        uint32_t originElementSize = originByteArray->GetSize();
+        uint32_t resElementSize = resByteArray->GetByteLength();
+        uint32_t originElementSize = originByteArray->GetByteLength();
         EXPECT_TRUE(resElementSize == originElementSize) << "Not same byteArray size";
         for (uint32_t i = 0; i < resTaggedLength; i++) {
-            JSTaggedValue resByteArrayVal = resByteArray->Get(thread, i, DataViewType::UINT32);
-            JSTaggedValue originByteArrayVal = originByteArray->Get(thread, i, DataViewType::UINT32);
+            JSTaggedValue resByteArrayVal = resByteArray->Get(thread, i, DataViewType::UINT8);
+            JSTaggedValue originByteArrayVal = originByteArray->Get(thread, i, DataViewType::UINT8);
             EXPECT_TRUE(resByteArrayVal == originByteArrayVal) << "Not same viewedBuffer";
         }
         Destroy();
@@ -1395,7 +1395,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray1)
     JSHandle<JSTypedArray> int8Array =
         JSHandle<JSTypedArray>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(target), target));
     JSHandle<JSTaggedValue> viewedArrayBuffer(thread, CreateTestJSArrayBuffer(thread));
-    int8Array->SetViewedArrayBuffer(thread, viewedArrayBuffer);
+    int8Array->SetViewedArrayBufferOrByteArray(thread, viewedArrayBuffer);
     int byteLength = 10;
     int byteOffset = 0;
     int arrayLength = (byteLength - byteOffset) / (sizeof(int8_t));
@@ -1425,7 +1425,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray2)
     JSTaggedType val = JSTaggedValue(value).GetRawData();
     JSHandle<ByteArray> byteArray = factory->NewByteArray(3, sizeof(value));
     byteArray->Set(1, DataViewType::UINT8, val);
-    int8Array->SetViewedArrayBuffer(thread, byteArray);
+    int8Array->SetViewedArrayBufferOrByteArray(thread, byteArray);
     int byteLength = 10;
     int byteOffset = 0;
     int arrayLength = (byteLength - byteOffset) / (sizeof(int8_t));
