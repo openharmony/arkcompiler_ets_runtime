@@ -1189,7 +1189,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ PushFpAndLr();
     Register sp(SP);
     Register fp(FP);
-    Register frameType(X1);
+    Register frameType(X2);
     Register glueReg(X0);
 
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME)));
@@ -1197,11 +1197,16 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ Add(fp, sp, Immediate(DOUBLE_SLOT_SIZE));
     __ CalleeSave();
 
+    Register deoptType(X1);
+    Register align(X3);
+    Register argC(X3);
     Register runtimeId(X2);
+    __ Stp(deoptType, align, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Mov(argC, Immediate(1));
     __ Mov(runtimeId, Immediate(RTSTUB_ID(DeoptHandler)));
-    __ Stp(runtimeId, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Stp(runtimeId, argC, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-    __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE)); // 2: skip runtimeId argc
+    __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 4: skip runtimeId, argc, deoptType, align
 
     __ CalleeRestore();
     Register context(X2);

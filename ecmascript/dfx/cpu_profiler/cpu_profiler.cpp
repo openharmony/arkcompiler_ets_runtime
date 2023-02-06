@@ -302,6 +302,7 @@ void CpuProfiler::GetFrameStack(FrameIterator &it)
         }
         const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
         struct MethodKey methodKey;
+        methodKey.deoptType = method->GetDeoptType();
         methodKey.state = GetRunningState(it, jsPandaFile, topFrame);
         if (topFrame) {
             JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
@@ -338,6 +339,7 @@ bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
         }
 
         struct MethodKey methodKey;
+        methodKey.deoptType = method->GetDeoptType();
         if (topFrame) {
             methodKey.state = RunningState::NAPI;
         } else {

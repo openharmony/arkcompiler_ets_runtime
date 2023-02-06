@@ -1978,6 +1978,9 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     GateRef frameState = acc_.GetIn(gate, 1);
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
+    GateRef deoptType = acc_.GetIn(gate, 3);
+    uint64_t v = acc_.GetConstantValue(deoptType);
+    params.push_back(LLVMConstInt(LLVMInt64Type(), v, false)); // deoptType
     LLVMValueRef callee = GetExperimentalDeopt(module_);
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 

@@ -15,6 +15,7 @@
 #include "ecmascript/deoptimizer/deoptimizer.h"
 
 #include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -228,9 +229,11 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     return true;
 }
 
-void Deoptimizier::Dump(Method* method)
+void Deoptimizier::Dump(Method* method, kungfu::DeoptType type)
 {
     if (traceDeopt_) {
+        std::string checkType = DisplayItems(type);
+        LOG_COMPILER(INFO) << "Check Type: " << checkType;
         std::string data = JsStackInfo::BuildMethodTrace(method, pc_);
         LOG_COMPILER(INFO) << "Deoptimize" << data;
         const uint8_t *pc = method->GetBytecodeArray() + pc_;
@@ -239,17 +242,58 @@ void Deoptimizier::Dump(Method* method)
     }
 }
 
-JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
+std::string Deoptimizier::DisplayItems(kungfu::DeoptType type)
+{
+    switch (type) {
+        case kungfu::DeoptType::NOTINT:
+            return "NOT INT";
+        case kungfu::DeoptType::NOTDOUBLE:
+            return "NOT DOUBLE";
+        case kungfu::DeoptType::NOTNUMBER:
+            return "NOT NUMBER";
+        case kungfu::DeoptType::NOTBOOL:
+            return "NOT BOOL";
+        case kungfu::DeoptType::NOTARRAY:
+            return "NOT ARRAY";
+        case kungfu::DeoptType::NOTSARRAY:
+            return "NOT SARRAY";
+        case kungfu::DeoptType::NOTF32ARRAY:
+            return "NOT F32ARRAY";
+        case kungfu::DeoptType::WRONGHCLASS:
+            return "WRONG HCLASS";
+        case kungfu::DeoptType::NOTNEWOBJ:
+            return "NOT NEWOBJ TYPE";
+        case kungfu::DeoptType::NOTARRAYIDX:
+            return "NOT ARRAY IDX";
+        case kungfu::DeoptType::NOTF32ARRAYIDX:
+            return "NOT F32 ARRAY IDX";
+        case kungfu::DeoptType::NOTINCOV:
+            return "NOT INC OVERFLOW";
+        case kungfu::DeoptType::NOTDECOV:
+            return "NOT DEC OVERFLOW";
+        case kungfu::DeoptType::NOTNEGOV:
+            return "NOT NEG OVERFLOW";
+        case kungfu::DeoptType::NOTCALLTGT:
+            return "NOT CALL TARGET";
+        default: {
+            return "NOT CHECK";
+        }
+    }
+}
+
+JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(kungfu::DeoptType type)
 {
     JSTaggedValue callTarget = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
     auto method = GetMethod(callTarget);
-    Dump(method);
+    Dump(method, type);
     ASSERT(thread_ != nullptr);
-    uint16_t deoptThreshold = method->GetDeoptThreshold();
+    uint8_t deoptThreshold = method->GetDeoptThreshold();
     if (deoptThreshold > 0) {
+        method->SetDeoptType(type);
         method->SetDeoptThreshold(--deoptThreshold);
     } else {
         method->SetAotCodeBit(false);
+        method->SetDeoptType(kungfu::DeoptType::NOTCHECK);
         method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
     }
 

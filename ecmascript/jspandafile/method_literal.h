@@ -17,6 +17,7 @@
 #define ECMASCRIPT_METHOD_LITERAL_H
 
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_string.h"
@@ -119,11 +120,6 @@ public:
         return GetNumVregsWithCallField() + GetNumArgs();
     }
 
-    static uint64_t SetNumArgsWithCallField(uint64_t callField, uint32_t numargs)
-    {
-        return NumArgsBits::Update(callField, numargs);
-    }
-
     static uint64_t SetNativeBit(uint64_t callField, bool isNative)
     {
         return IsNativeBit::Update(callField, isNative);
@@ -132,11 +128,6 @@ public:
     static uint64_t SetAotCodeBit(uint64_t callField, bool isCompiled)
     {
         return IsAotCodeBit::Update(callField, isCompiled);
-    }
-
-    static uint64_t SetFastBuiltinBit(uint64_t callField, bool isFastBuiltin)
-    {
-        return IsFastBuiltinBit::Update(callField, isFastBuiltin);
     }
 
     static bool HaveThisWithCallField(uint64_t callField)
@@ -213,10 +204,8 @@ public:
 
     static constexpr size_t BUILTINID_NUM_BITS = 8;
     static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
-    static constexpr size_t DEOPT_THRESHOLD_BITS = 16;
     using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
     using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
-    using DeoptCountBits = FunctionKindBits::NextField<uint16_t, DEOPT_THRESHOLD_BITS>; // offset 12-28
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
@@ -287,26 +276,6 @@ public:
     static uint16_t GetSlotSize(uint64_t literalInfo)
     {
         return SlotSizeBits::Decode(literalInfo);
-    }
-
-    static uint8_t GetBuiltinId(uint64_t literalInfo)
-    {
-        return BuiltinIdBits::Decode(literalInfo);
-    }
-
-    static uint64_t SetBuiltinId(uint64_t literalInfo, uint8_t id)
-    {
-        return BuiltinIdBits::Update(literalInfo, id);
-    }
-
-    static uint64_t SetDeoptThreshold(uint64_t literalInfo, uint16_t count)
-    {
-        return DeoptCountBits::Update(literalInfo, count);
-    }
-
-    static uint16_t GetDeoptThreshold(uint64_t literalInfo)
-    {
-        return DeoptCountBits::Decode(literalInfo);
     }
 
     static const char PUBLIC_API *GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId);

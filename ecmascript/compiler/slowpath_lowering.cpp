@@ -3644,6 +3644,7 @@ void SlowPathLowering::LowerDeoptCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef condition = acc_.GetValueIn(gate, 0);
     GateRef frameState = acc_.GetValueIn(gate, 1);
+    GateRef deoptType = acc_.GetValueIn(gate, 2);
 
     Label success(&builder_);
     Label fail(&builder_);
@@ -3651,7 +3652,7 @@ void SlowPathLowering::LowerDeoptCheck(GateRef gate)
     builder_.Bind(&fail);
     {
         GateRef glue = acc_.GetGlueFromArgList();
-        GateRef deoptCall = circuit_->NewGate(circuit_->Deopt(), {builder_.GetDepend(), frameState, glue});
+        GateRef deoptCall = circuit_->NewGate(circuit_->Deopt(), {builder_.GetDepend(), frameState, glue, deoptType});
         builder_.SetDepend(deoptCall);
         builder_.Return(deoptCall);
     }
