@@ -639,7 +639,7 @@ GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
     return arrayType->GetElementGT();
 }
 
-void TSManager::GenerateStaticHClass(JSHandle<TSClassType> classType)
+void TSManager::GenerateTSHClass(JSHandle<TSClassType> classType)
 {
     JSHandle<TSObjectType> instanceType(thread_, classType->GetInstanceType());
     JSHClass *ihc = TSObjectType::GetOrCreateHClass(thread_, instanceType, TSObjectTypeKind::INSTANCE);

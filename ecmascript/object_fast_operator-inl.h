@@ -155,7 +155,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set readonly property", JSTaggedValue::Exception());
                 }
-                if (hclass->IsAOT()) {
+                if (hclass->IsTS()) {
                     auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
                     if (attrVal.IsHole()) {
                         if (receiverHoleEntry == -1 && holder == receiver) {

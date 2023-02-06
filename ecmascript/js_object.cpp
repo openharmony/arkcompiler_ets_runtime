@@ -282,7 +282,7 @@ void JSObject::DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject>
     }
 
     if (!array->IsDictionaryMode()) {
-        if (obj->GetJSHClass()->IsAOT()) {
+        if (obj->GetJSHClass()->IsTS()) {
             obj->SetPropertyInlinedProps(thread, index, JSTaggedValue::Hole());
             return;
         }

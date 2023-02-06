@@ -120,14 +120,14 @@ public:
         IsTransitionField::Set(flag, &metaData_);
     }
 
-    inline bool IsAOT() const
+    inline bool IsTSHClass() const
     {
-        return IsAOTField::Get(metaData_);
+        return IsTSHClassField::Get(metaData_);
     }
 
-    inline void SetIsAOT(bool flag)
+    inline void SetIsTSHClass(bool flag)
     {
-        IsAOTField::Set(flag, &metaData_);
+        IsTSHClassField::Set(flag, &metaData_);
     }
 
     inline PropertyAttributes GetAttr() const
@@ -281,10 +281,10 @@ private:
     using IsOnPrototypeField = IsFastModeField::NextFlag;  // 1: on prototype
     using HasReceiverField = IsOnPrototypeField::NextFlag;
     using IsTransitionField = HasReceiverField::NextFlag;
-    using IsAOTField = IsTransitionField::NextFlag;
+    using IsTSHClassField = IsTransitionField::NextFlag;
 
     void UpdateHolder();
-    void UpdateIsAOT();
+    void UpdateIsTSHClass();
     void StartLookUp(OperatorType type);
     void StartGlobalLookUp(OperatorType type);
     void HandleKey(const JSHandle<JSTaggedValue> &key);
