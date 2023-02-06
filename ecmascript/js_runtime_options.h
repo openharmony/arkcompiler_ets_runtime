@@ -839,7 +839,7 @@ public:
         return traceDeopt_;
     }
 
-    void SetDeoptThreshold(uint16_t value)
+    void SetDeoptThreshold(uint8_t value)
     {
         deoptThreshold_ = value;
     }
@@ -924,7 +924,7 @@ private:
     uint32_t pgoHotnessThreshold_ {2};
     std::string pgoProfilerPath_ {""};
     bool traceDeopt_ {false};
-    uint32_t deoptThreshold_ {10};
+    uint8_t deoptThreshold_ {10};
     bool optCodeProfiler_ {false};
     bool startGlobalLeakCheck_ {false};
 };

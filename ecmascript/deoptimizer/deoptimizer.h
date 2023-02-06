@@ -98,7 +98,8 @@ public:
     }
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
-    JSTaggedType ConstructAsmInterpretFrame();
+    JSTaggedType ConstructAsmInterpretFrame(kungfu::DeoptType type);
+    static std::string DisplayItems(kungfu::DeoptType type);
 
     JSThread *GetThread() const
     {
@@ -139,7 +140,7 @@ private:
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
-    void Dump(Method* method);
+    void Dump(Method* method, kungfu::DeoptType type);
     JSThread *thread_ {nullptr};
     uintptr_t *calleeRegAddr_ {nullptr};
     size_t numCalleeRegs_ {0};

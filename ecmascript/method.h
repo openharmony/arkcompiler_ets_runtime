@@ -32,62 +32,137 @@ class Method : public TaggedObject {
 public:
     CAST_CHECK(Method, IsMethod);
 
+    uint64_t SetNumArgsWithCallField(uint64_t callField, uint32_t numargs)
+    {
+        return NumArgsBits::Update(callField, numargs);
+    }
+
+    uint64_t SetNativeBit(uint64_t callField, bool isNative)
+    {
+        return IsNativeBit::Update(callField, isNative);
+    }
+
+    uint64_t SetAotCodeBit(uint64_t callField, bool isCompiled)
+    {
+        return IsAotCodeBit::Update(callField, isCompiled);
+    }
+
+    uint64_t SetFastBuiltinBit(uint64_t callField, bool isFastBuiltin)
+    {
+        return IsFastBuiltinBit::Update(callField, isFastBuiltin);
+    }
+
+    bool HaveThisWithCallField(uint64_t callField) const
+    {
+        return HaveThisBit::Decode(callField);
+    }
+
+    bool HaveNewTargetWithCallField(uint64_t callField) const
+    {
+        return HaveNewTargetBit::Decode(callField);
+    }
+
+    bool HaveExtraWithCallField(uint64_t callField)
+    {
+        return HaveExtraBit::Decode(callField);
+    }
+
+    bool HaveFuncWithCallField(uint64_t callField) const
+    {
+        return HaveFuncBit::Decode(callField);
+    }
+
+    bool IsNativeWithCallField(uint64_t callField) const
+    {
+        return IsNativeBit::Decode(callField);
+    }
+
+    bool IsAotWithCallField(uint64_t callField) const
+    {
+        return IsAotCodeBit::Decode(callField);
+    }
+
+    bool OnlyHaveThisWithCallField(uint64_t callField) const
+    {
+        return (callField & CALL_TYPE_MASK) == 1;  // 1: the first bit of callFiled is HaveThisBit
+    }
+
+    bool OnlyHaveNewTagetAndThisWithCallField(uint64_t callField) const
+    {
+        return (callField & CALL_TYPE_MASK) == 0b11;  // the first two bit of callFiled is `This` and `NewTarget`
+    }
+
+    static uint32_t GetNumArgsWithCallField(uint64_t callField)
+    {
+        return NumArgsBits::Decode(callField);
+    }
+
+    static uint64_t SetCallNative(uint64_t callField, bool isCallNative)
+    {
+        return IsCallNativeBit::Update(callField, isCallNative);
+    }
+
+    static bool IsCallNative(uint64_t callField)
+    {
+        return IsCallNativeBit::Decode(callField);
+    }
+
     void SetNumArgsWithCallField(uint32_t numargs)
     {
         uint64_t callField = GetCallField();
-        uint64_t newValue = MethodLiteral::SetNumArgsWithCallField(callField, numargs);
+        uint64_t newValue = SetNumArgsWithCallField(callField, numargs);
         SetCallField(newValue);
     }
 
     void SetNativeBit(bool isNative)
     {
         uint64_t callField = GetCallField();
-        uint64_t newValue = MethodLiteral::SetNativeBit(callField, isNative);
+        uint64_t newValue = SetNativeBit(callField, isNative);
         SetCallField(newValue);
     }
 
     void SetAotCodeBit(bool isCompiled)
     {
         uint64_t callField = GetCallField();
-        uint64_t newValue = MethodLiteral::SetAotCodeBit(callField, isCompiled);
+        uint64_t newValue = SetAotCodeBit(callField, isCompiled);
         SetCallField(newValue);
     }
 
     void SetFastBuiltinBit(bool isFastBuiltin)
     {
         uint64_t callField = GetCallField();
-        uint64_t newValue = MethodLiteral::SetFastBuiltinBit(callField, isFastBuiltin);
+        uint64_t newValue = SetFastBuiltinBit(callField, isFastBuiltin);
         SetCallField(newValue);
     }
 
     bool HaveThisWithCallField() const
     {
         uint64_t callField = GetCallField();
-        return MethodLiteral::HaveThisWithCallField(callField);
+        return HaveThisWithCallField(callField);
     }
 
     bool HaveNewTargetWithCallField() const
     {
         uint64_t callField = GetCallField();
-        return MethodLiteral::HaveNewTargetWithCallField(callField);
+        return HaveNewTargetWithCallField(callField);
     }
 
-    bool HaveExtraWithCallField() const
+    bool HaveExtraWithCallField()
     {
         uint64_t callField = GetCallField();
-        return MethodLiteral::HaveExtraWithCallField(callField);
+        return HaveExtraWithCallField(callField);
     }
 
     bool HaveFuncWithCallField() const
     {
         uint64_t callField = GetCallField();
-        return MethodLiteral::HaveFuncWithCallField(callField);
+        return HaveFuncWithCallField(callField);
     }
 
     bool IsNativeWithCallField() const
     {
         uint64_t callField = GetCallField();
-        return MethodLiteral::IsNativeWithCallField(callField);
+        return IsNativeWithCallField(callField);
     }
 
     bool IsAotWithCallField() const
@@ -108,10 +183,15 @@ public:
         return MethodLiteral::OnlyHaveNewTagetAndThisWithCallField(callField);
     }
 
+    uint32_t GetNumVregsWithCallField(uint64_t callField) const
+    {
+        return NumVregsBits::Decode(callField);
+    }
+
     uint32_t GetNumVregsWithCallField() const
     {
         uint64_t callField = GetCallField();
-        return MethodLiteral::GetNumVregsWithCallField(callField);
+        return GetNumVregsWithCallField(callField);
     }
 
     uint32_t GetNumArgsWithCallField() const
@@ -161,23 +241,76 @@ public:
         return MethodLiteral::GetSlotSize(literalInfo);
     }
 
+    uint8_t GetBuiltinId(uint64_t literalInfo) const
+    {
+        return BuiltinIdBits::Decode(literalInfo);
+    }
+
+    uint64_t SetBuiltinId(uint64_t literalInfo, uint8_t id)
+    {
+        return BuiltinIdBits::Update(literalInfo, id);
+    }
+
+    uint64_t SetFunctionKind(uint64_t extraLiteralInfo, FunctionKind kind)
+    {
+        return FunctionKindBits::Update(extraLiteralInfo, kind);
+    }
+
+    FunctionKind GetFunctionKind(uint64_t extraLiteralInfo) const
+    {
+        return static_cast<FunctionKind>(FunctionKindBits::Decode(extraLiteralInfo));
+    }
+
+    uint64_t SetDeoptThreshold(uint64_t literalInfo, uint8_t count)
+    {
+        return DeoptCountBits::Update(literalInfo, count);
+    }
+
+    uint16_t GetDeoptThreshold(uint64_t literalInfo) const
+    {
+        return DeoptCountBits::Decode(literalInfo);
+    }
+
+    uint64_t SetDeoptType(uint64_t extraLiteralInfo, kungfu::DeoptType type)
+    {
+        return DeoptTypeBits::Update(extraLiteralInfo, type);
+    }
+
+    void SetDeoptType(kungfu::DeoptType type)
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        uint64_t newValue = SetDeoptType(extraLiteralInfo, type);
+        SetExtraLiteralInfo(newValue);
+    }
+
+    kungfu::DeoptType GetDeoptType(uint64_t extraLiteralInfo) const
+    {
+        return static_cast<kungfu::DeoptType>(DeoptTypeBits::Decode(extraLiteralInfo));
+    }
+
+    kungfu::DeoptType GetDeoptType() const
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        return GetDeoptType(extraLiteralInfo);
+    }
+
     void SetFunctionKind(FunctionKind kind)
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-        uint64_t newValue = MethodLiteral::SetFunctionKind(extraLiteralInfo, kind);
+        uint64_t newValue = SetFunctionKind(extraLiteralInfo, kind);
         SetExtraLiteralInfo(newValue);
     }
 
     FunctionKind GetFunctionKind() const
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-        return MethodLiteral::GetFunctionKind(extraLiteralInfo);
+        return GetFunctionKind(extraLiteralInfo);
     }
 
     uint8_t GetBuiltinId() const
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-        return MethodLiteral::GetBuiltinId(extraLiteralInfo);
+        return GetBuiltinId(extraLiteralInfo);
     }
 
     void SetCallNative(bool isCallNative)
@@ -196,21 +329,21 @@ public:
     void SetBuiltinId(uint8_t id)
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-        uint64_t newValue = MethodLiteral::SetBuiltinId(extraLiteralInfo, id);
+        uint64_t newValue = SetBuiltinId(extraLiteralInfo, id);
         SetExtraLiteralInfo(newValue);
     }
 
-    void SetDeoptThreshold(uint16_t count)
+    void SetDeoptThreshold(uint8_t count)
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-        uint64_t newValue = MethodLiteral::SetDeoptThreshold(extraLiteralInfo, count);
+        uint64_t newValue = SetDeoptThreshold(extraLiteralInfo, count);
         SetExtraLiteralInfo(newValue);
     }
 
     uint16_t GetDeoptThreshold() const
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-        return MethodLiteral::GetDeoptThreshold(extraLiteralInfo);
+        return GetDeoptThreshold(extraLiteralInfo);
     }
 
     const void* GetNativePointer() const
@@ -251,6 +384,29 @@ public:
     const CString GetRecordName() const;
 
     uint32_t FindCatchBlock(uint32_t pc) const;
+
+    /* callfield */
+    static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455
+    using HaveThisBit = BitField<bool, 0, 1>;  // offset 0
+    using HaveNewTargetBit = HaveThisBit::NextFlag;  // offset 1
+    using HaveExtraBit = HaveNewTargetBit::NextFlag;  // offset 2
+    using HaveFuncBit = HaveExtraBit::NextFlag;  // offset 3
+    using NumVregsBits = HaveFuncBit::NextField<uint32_t, VREGS_ARGS_NUM_BITS>;  // offset 4-31
+    using NumArgsBits = NumVregsBits::NextField<uint32_t, VREGS_ARGS_NUM_BITS>;  // offset 32-59
+    using IsNativeBit = NumArgsBits::NextFlag;  // offset 60
+    using IsAotCodeBit = IsNativeBit::NextFlag; // offset 61
+    using IsFastBuiltinBit = IsAotCodeBit::NextFlag; // offset 62
+    using IsCallNativeBit = IsFastBuiltinBit::NextFlag; // offset 63
+
+    /*  ExtraLiteralInfo */
+    static constexpr size_t BUILTINID_NUM_BITS = 8;
+    static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
+    static constexpr size_t DEOPT_THRESHOLD_BITS = 8;
+    static constexpr size_t DEOPTTYPE_NUM_BITS = 8;
+    using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
+    using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
+    using DeoptCountBits = FunctionKindBits::NextField<uint8_t, DEOPT_THRESHOLD_BITS>; // offset 12-19
+    using DeoptTypeBits = DeoptCountBits::NextField<kungfu::DeoptType, DEOPTTYPE_NUM_BITS>; // offset 20-27
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, PROFILE_TYPE_INFO_OFFSET)

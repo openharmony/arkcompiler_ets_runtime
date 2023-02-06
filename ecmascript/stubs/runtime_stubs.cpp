@@ -2175,7 +2175,10 @@ DEF_RUNTIME_STUBS(DeoptHandler)
     deopt.CollectDeoptBundleVec(deoptBundle);
     ASSERT(!deoptBundle.empty());
     deopt.CollectVregs(deoptBundle);
-    return deopt.ConstructAsmInterpretFrame();
+
+    uintptr_t *args = reinterpret_cast<uintptr_t *>(argv);
+    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(args[0]);
+    return deopt.ConstructAsmInterpretFrame(type);
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

@@ -22,6 +22,8 @@
 #include <cstring>
 #include <semaphore.h>
 
+#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
@@ -48,11 +50,15 @@ struct MethodKey {
     void *methodIdentifier = nullptr;
     RunningState state = RunningState::OTHER;
     uint32_t napiCallCount = 0;
+    kungfu::DeoptType deoptType = kungfu::DeoptType::NOTCHECK;
     bool operator < (const MethodKey &methodKey) const
     {
         return state < methodKey.state ||
                (state == methodKey.state && methodIdentifier < methodKey.methodIdentifier) ||
-               (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier && napiCallCount < methodKey.napiCallCount);
+               (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier &&
+                napiCallCount < methodKey.napiCallCount) ||
+               (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier &&
+                napiCallCount == methodKey.napiCallCount && deoptType < methodKey.deoptType);
     }
 };
 
@@ -175,7 +181,7 @@ private:
     void StringifyNodes();
     void StringifySamples();
     struct FrameInfo GetMethodInfo(struct MethodKey &methodKey);
-    std::string AddRunningStateToName(char *functionName, RunningState state);
+    std::string AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type);
     void FrameInfoTempToMap();
     void NapiFrameInfoTempToMap();
     void StatisticStateTime(int timeDelta, RunningState state);

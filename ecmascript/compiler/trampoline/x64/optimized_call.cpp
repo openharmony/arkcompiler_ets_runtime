@@ -1459,11 +1459,13 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ PushCppCalleeSaveRegisters();
 
     __ Movq(rdi, rax); // glue
-    __ PushAlignBytes();
-    __ Pushq(0);  // argc
+    Register deoptType = rsi;
+    __ Pushq(deoptType);  // argv[0]
+    __ Pushq(1);  // argc
     __ Pushq(kungfu::RuntimeStubCSigns::ID_DeoptHandler);
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-    __ Addq(3 * FRAME_SLOT_SIZE, rsp); // 3: skip runtimeId argc & align
+
+    __ Addq(3 * FRAME_SLOT_SIZE, rsp); // 3: skip runtimeId argc deoptType
 
     Register context = rsi;
     __ Movq(rax, context);

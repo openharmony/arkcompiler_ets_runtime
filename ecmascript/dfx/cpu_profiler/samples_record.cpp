@@ -378,41 +378,54 @@ struct FrameInfo SamplesRecord::GetMethodInfo(struct MethodKey &methodKey)
     return entry;
 }
 
-std::string SamplesRecord::AddRunningStateToName(char *functionName, RunningState state)
+std::string SamplesRecord::AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type)
 {
     std::string temp = functionName;
+    if (state == RunningState::AOT && type != kungfu::DeoptType::NOTCHECK) {
+        state = RunningState::AINT;
+    }
     switch (state) {
         case RunningState::GC:
-            return temp.append("(GC)");
+            temp.append("(GC)");
+            break;
         case RunningState::CINT:
             if (enableVMTag_) {
-                return temp.append("(CINT)");
+                temp.append("(CINT)");
             }
-            return temp.append("");
+            break;
         case RunningState::AINT:
             if (enableVMTag_) {
-                return temp.append("(AINT)");
+                temp.append("(AINT)");
             }
-            return temp.append("");
+            break;
         case RunningState::AOT:
             if (enableVMTag_) {
-                return temp.append("(AOT)");
+                temp.append("(AOT)");
             }
-            return temp.append("");
+            break;
         case RunningState::BUILTIN:
-            return temp.append("(BUILTIN)");
+            temp.append("(BUILTIN)");
+            break;
         case RunningState::NAPI:
-            return temp.append("(NAPI)");
+            temp.append("(NAPI)");
+            break;
         case RunningState::ARKUI_ENGINE:
-            return temp.append("(ARKUI_ENGINE)");
+            temp.append("(ARKUI_ENGINE)");
+            break;
         case RunningState::RUNTIME:
             if (enableVMTag_) {
-                return temp.append("(RUNTIME)");
+                temp.append("(RUNTIME)");
             }
-            return temp.append("");
+            break;
         default:
-            return temp.append("(OTHER)");
+            temp.append("(OTHER)");
+            break;
     }
+    if (type != kungfu::DeoptType::NOTCHECK && enableVMTag_) {
+        std::string typeCheckStr = "(DEOPT:" + Deoptimizier::DisplayItems(type) + ")";
+        temp.append(typeCheckStr);
+    }
+    return temp;
 }
 
 void SamplesRecord::StatisticStateTime(int timeDelta, RunningState state)
@@ -655,8 +668,9 @@ void SamplesRecord::FrameInfoTempToMap()
         } else {
             frameInfo.scriptId = iter->second;
         }
-        frameInfo.functionName = AddRunningStateToName(frameInfoTemps_[i].functionName,
-                                                       frameInfoTemps_[i].methodKey.state);
+        frameInfo.functionName = AddRunningState(frameInfoTemps_[i].functionName,
+                                                 frameInfoTemps_[i].methodKey.state,
+                                                 frameInfoTemps_[i].methodKey.deoptType);
         frameInfo.codeType = frameInfoTemps_[i].codeType;
         frameInfo.columnNumber = frameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = frameInfoTemps_[i].lineNumber;
@@ -681,8 +695,9 @@ void SamplesRecord::NapiFrameInfoTempToMap()
         } else {
             frameInfo.scriptId = iter->second;
         }
-        frameInfo.functionName = AddRunningStateToName(napiFrameInfoTemps_[i].functionName,
-                                                       napiFrameInfoTemps_[i].methodKey.state);
+        frameInfo.functionName = AddRunningState(napiFrameInfoTemps_[i].functionName,
+                                                 napiFrameInfoTemps_[i].methodKey.state,
+                                                 napiFrameInfoTemps_[i].methodKey.deoptType);
         frameInfo.codeType = napiFrameInfoTemps_[i].codeType;
         frameInfo.columnNumber = napiFrameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = napiFrameInfoTemps_[i].lineNumber;
