@@ -197,7 +197,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     // 10. Let status be DefinePropertyOrThrow(F, "length", PropertyDescriptor {[[Value]]: L,
     //     [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true}).
     PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(lengthValue)), false, false, true);
-    bool status =
+    [[maybe_unused]] bool status =
         JSTaggedValue::DefinePropertyOrThrow(thread, JSHandle<JSTaggedValue>(boundFunction), lengthKey, desc);
     // 11. Assert: status is not an abrupt completion.
     ASSERT_PRINT(status, "DefinePropertyOrThrow failed");

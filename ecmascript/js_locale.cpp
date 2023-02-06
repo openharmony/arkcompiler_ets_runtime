@@ -222,14 +222,14 @@ JSHandle<JSArray> JSLocale::SupportedLocales(JSThread *thread, const JSHandle<Ta
     //    a. Let options be ? ToObject(options).
     //    b. Let matcher be ? GetOption(options, "localeMatcher", "string", « "lookup", "best fit" », "best fit").
     // 2. Else, let matcher be "best fit".
-    LocaleMatcherOption matcher = LocaleMatcherOption::BEST_FIT;
     if (!options->IsUndefined()) {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, options);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
 
-        matcher = GetOptionOfString<LocaleMatcherOption>(thread, obj, globalConst->GetHandledLocaleMatcherString(),
-                                                         {LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT},
-                                                         {"lookup", "best fit"}, LocaleMatcherOption::BEST_FIT);
+        [[maybe_unused]] LocaleMatcherOption matcher = GetOptionOfString<LocaleMatcherOption>(thread,
+            obj, globalConst->GetHandledLocaleMatcherString(),
+            {LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT}, {"lookup", "best fit"},
+            LocaleMatcherOption::BEST_FIT);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     }
 
