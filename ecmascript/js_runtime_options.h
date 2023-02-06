@@ -28,20 +28,22 @@
 namespace panda::ecmascript {
 using arg_list_t = std::vector<std::string>;
 enum ArkProperties {
-    DEFAULT = -1,
+    DEFAULT = -1,  // default value 1000001011100
     OPTIONAL_LOG = 1,
     GC_STATS_PRINT = 1 << 1,
-    PARALLEL_GC = 1 << 2,
-    CONCURRENT_MARK = 1 << 3,
-    CONCURRENT_SWEEP = 1 << 4,
+    PARALLEL_GC = 1 << 2,  // default enable
+    CONCURRENT_MARK = 1 << 3,  // default enable
+    CONCURRENT_SWEEP = 1 << 4,  // default enable
     THREAD_CHECK = 1 << 5,
-    ENABLE_ARKTOOLS = 1 << 6,
+    ENABLE_ARKTOOLS = 1 << 6,  // default enable
     ENABLE_SNAPSHOT_SERIALIZE = 1 << 7,
     ENABLE_SNAPSHOT_DESERIALIZE = 1 << 8,
     EXCEPTION_BACKTRACE = 1 << 9,
     GLOBAL_OBJECT_LEAK_CHECK = 1 << 10,
     GLOBAL_PRIMITIVE_LEAK_CHECK = 1 << 11,
-    ENABLE_IDLE_GC = 1 << 12,
+    ENABLE_IDLE_GC = 1 << 12,  // default enable
+    CPU_PROFILER = 1 << 13,
+    ENABLE_CPU_PROFILER_VM_TAG = 1 << 14,
 };
 
 // asm interpreter control parsed option
@@ -59,11 +61,11 @@ extern const std::string PUBLIC_API HELP_TAIL_MSG;
 enum CommandValues {
     OPTION_DEFAULT,
     OPTION_ENABLE_ARK_TOOLS,
-    OPTION_ENABLE_CPUPROFILER,
     OPTION_STUB_FILE,
     OPTION_ENABLE_FORCE_GC,
     OPTION_FORCE_FULL_GC,
     OPTION_ARK_PROPERTIES,
+    OPTION_ARK_BUNDLENAME,
     OPTION_GC_THREADNUM,
     OPTION_LONG_PAUSE_TIME,
     OPTION_AOT_FILE,
@@ -242,16 +244,6 @@ public:
         forceFullGc_ = value;
     }
 
-    bool EnableCpuProfiler() const
-    {
-        return enableCpuprofiler_;
-    }
-
-    void SetEnableCpuprofiler(bool value)
-    {
-        enableCpuprofiler_ = value;
-    }
-
     void SetGcThreadNum(size_t num)
     {
         gcThreadNum_ = num;
@@ -279,6 +271,13 @@ public:
         }
     }
 
+    void SetArkBundleName(std::string bundleName)
+    {
+        if (bundleName != "") {
+            arkBundleName_ = bundleName;
+        }
+    }
+
     int GetDefaultProperties()
     {
         return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP
@@ -288,6 +287,11 @@ public:
     int GetArkProperties()
     {
         return arkProperties_;
+    }
+
+    std::string GetArkBundleName() const
+    {
+        return arkBundleName_;
     }
 
     bool EnableOptionalLog() const
@@ -343,6 +347,16 @@ public:
     bool EnableGlobalLeakCheck() const
     {
         return EnableGlobalObjectLeakCheck() || EnableGlobalPrimitiveLeakCheck();
+    }
+
+    bool EnableCpuProfiler() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER) != 0;
+    }
+
+    bool EnableCpuProfilerVMTag() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_CPU_PROFILER_VM_TAG) != 0;
     }
 
     bool IsStartGlobalLeakCheck() const
@@ -894,11 +908,11 @@ private:
     void ParseListArgParam(const std::string &option, arg_list_t *argListStr, std::string delimiter);
 
     bool enableArkTools_ {true};
-    bool enableCpuprofiler_ {false};
     std::string stubFile_ {"stub.an"};
     bool enableForceGc_ {true};
     bool forceFullGc_ {true};
     int arkProperties_ = GetDefaultProperties();
+    std::string arkBundleName_ = {""};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
     std::string aotOutputFile_ {""};
