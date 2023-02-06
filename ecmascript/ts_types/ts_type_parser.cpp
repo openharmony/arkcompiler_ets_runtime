@@ -18,6 +18,7 @@
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/module/js_module_manager.h"
 
 #include "libpandafile/annotation_data_accessor.h"
 #include "libpandafile/class_data_accessor-inl.h"
@@ -82,6 +83,12 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     JSHandle<EcmaString> importVarNamePath(thread_, literal->Get(IMPORT_PATH_OFFSET_IN_LITERAL)); // #A#./A
     JSHandle<EcmaString> relativePath = GenerateImportRelativePath(importVarNamePath);
     CString cstringRelativePath = ConvertToString(*relativePath);
+    // skip @ohos:|@app:|@native: prefixed imports
+    auto [isNative, _] = ModuleManager::CheckNativeModule(cstringRelativePath);
+    if (isNative) {
+        return GlobalTSTypeRef::Default();
+    }
+
     CString baseFileName = jsPandaFile->GetJSPandaFileDesc();
     CString entryPoint =
         base::PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFileName, recordName, cstringRelativePath);
@@ -150,6 +157,9 @@ JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSPandaFile *jsPandaFil
     } else {
         auto extensionGT = CreateGT(jsPandaFile, recordName, extendsTypeId);
         classType->SetExtensionGT(extensionGT);
+        if (extensionGT == GlobalTSTypeRef::Default()) {
+            classType->SetHasLinked(true);
+        }
     }
 
     // ignore implement
