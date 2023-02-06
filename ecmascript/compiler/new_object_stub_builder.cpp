@@ -74,9 +74,21 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     Bind(&noException);
     {
         StoreHClass(glue_, result->ReadVariable(), hclass);
+        DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
+        Label isAOT(env);
+        Label initialize(env);
+        Branch(IsAOTHClass(hclass), &isAOT, &initialize);
+        Bind(&isAOT);
+        {
+            // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
+            // to follow ECMA spec.
+            initValue = Hole();
+            Jump(&initialize);
+        }
+        Bind(&initialize);
         Label afterInitialize(env);
         InitializeWithSpeicalValue(&afterInitialize,
-            result->ReadVariable(), Undefined(), Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_));
+            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_));
         Bind(&afterInitialize);
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);

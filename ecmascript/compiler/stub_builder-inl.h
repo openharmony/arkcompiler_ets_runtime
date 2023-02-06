@@ -1548,7 +1548,7 @@ inline GateRef StubBuilder::GetNumberOfPropsFromHClass(GateRef hClass)
 
 inline GateRef StubBuilder::IsAOTHClass(GateRef hClass)
 {
-    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     return Int32NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::IsAOTBit::START_BIT)),
         Int32((1LU << JSHClass::IsAOTBit::SIZE) - 1)),

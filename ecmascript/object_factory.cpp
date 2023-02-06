@@ -1352,6 +1352,8 @@ void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass,
 {
     ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < hclass->GetObjectSize());
     auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
+    // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
+    // to follow ECMA spec.
     JSTaggedType initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
     for (uint32_t i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
