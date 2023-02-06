@@ -35,6 +35,11 @@ public:
         size_ = size;
     }
 
+    void SetGule(GateRef glue)
+    {
+        glue_ = glue;
+    }
+
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);

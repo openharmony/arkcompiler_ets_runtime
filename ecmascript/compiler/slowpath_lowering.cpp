@@ -51,6 +51,8 @@ void SlowPathLowering::CallRuntimeLowering()
             LowerConstPoolData(gate);
         } else if (op == OpCode::DEOPT_CHECK) {
             LowerDeoptCheck(gate);
+        } else if (op == OpCode::CONSTRUCT) {
+            LowerConstruct(gate);
         }
     }
 
@@ -3655,5 +3657,20 @@ void SlowPathLowering::LowerDeoptCheck(GateRef gate)
     }
     builder_.Bind(&success);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void SlowPathLowering::LowerConstruct(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
+    GateRef target = builder_.IntPtr(RTSTUB_ID(JSCallNew));
+    size_t num = acc_.GetNumValueIn(gate);
+    std::vector<GateRef> args(num);
+    for (size_t i = 0; i < num; ++i) {
+        args[i] = acc_.GetValueIn(gate, i);
+    }
+    auto depend = builder_.GetDepend();
+    GateRef constructGate = builder_.Call(cs, glue_, target, depend, args);
+    ReplaceHirToJSCall(gate, constructGate);
 }
 }  // namespace panda::ecmascript

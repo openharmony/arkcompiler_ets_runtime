@@ -231,8 +231,6 @@ public:
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
-    GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset,
-        GateRef frameState);
     GateRef PrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param);
     GateRef DeoptCheck(GateRef condition, GateRef frameState);
@@ -243,6 +241,9 @@ public:
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
+    GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
+    GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
+    GateRef GetSuperConstructor(GateRef ctor);
     GateRef GetLexicalEnv(GateRef depend);
     GateRef Arguments(size_t index);
     GateRef Merge(const std::vector<GateRef> &inList);

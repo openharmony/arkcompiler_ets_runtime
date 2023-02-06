@@ -187,7 +187,6 @@ private:
     void LowerTypedArrayCheck(GateRef gate, GateRef glue);
     void LowerFloat32ArrayIndexCheck(GateRef gate);
     void LowerArrayIndexCheck(GateRef gate);
-    void LowerNewObjTypeCheck(GateRef gate);
     void LowerLoadProperty(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate, GateRef glue);
     void LowerLoadArrayLength(GateRef gate);
@@ -200,9 +199,11 @@ private:
     void LowerHeapAllocateInYoung(GateRef gate, GateRef glue);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
                                     GateRef start, GateRef end);
-    void LowerConstruct(GateRef gate, GateRef glue);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
+    void LowerTypedNewAllocateThis(GateRef gate, GateRef glue);
+    void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
+    void LowerGetSuperConstructor(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
 

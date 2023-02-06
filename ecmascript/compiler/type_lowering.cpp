@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
@@ -95,11 +96,17 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::HEAP_ALLOC:
             LowerHeapAllocate(gate, glue);
             break;
-        case OpCode::CONSTRUCT:
-            LowerConstruct(gate, glue);
-            break;
         case OpCode::TYPED_CALL:
             LowerTypedCallBuitin(gate);
+            break;
+        case OpCode::TYPED_NEW_ALLOCATE_THIS:
+            LowerTypedNewAllocateThis(gate, glue);
+            break;
+        case OpCode::TYPED_SUPER_ALLOCATE_THIS:
+            LowerTypedSuperAllocateThis(gate, glue);
+            break;
+        case OpCode::GET_SUPER_CONSTRUCTOR:
+            LowerGetSuperConstructor(gate);
             break;
         default:
             break;
@@ -249,8 +256,6 @@ void TypeLowering::LowerObjectTypeCheck(GateRef gate)
     auto type = acc_.GetParamGateType(gate);
     if (tsManager_->IsClassInstanceTypeKind(type)) {
         LowerClassInstanceCheck(gate);
-    } else if (tsManager_->IsClassTypeKind(type)) {
-        LowerNewObjTypeCheck(gate);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -268,23 +273,6 @@ void TypeLowering::LowerClassInstanceCheck(GateRef gate)
     auto hclassOffset = acc_.GetValueIn(gate, 1);
     GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
     GateRef check = builder_.Equal(receiverHClass, hclass);
-    builder_.DeoptCheck(check, frameState);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void TypeLowering::LowerNewObjTypeCheck(GateRef gate)
-{
-    GateRef frameState = GetFrameState(gate);
-
-    ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
-    GateRef ctor = acc_.GetValueIn(gate, 0);
-    GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
-                                          builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    GateRef hclassOffset = acc_.GetValueIn(gate, 1);
-    GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
-    GateRef check = builder_.Equal(protoOrHclass, hclass);
     builder_.DeoptCheck(check, frameState);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -751,22 +739,6 @@ void TypeLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateR
         builder_.Bind(&endLoop);
         builder_.LoopEnd(&begin);
     }
-}
-
-void TypeLowering::LowerConstruct(GateRef gate, GateRef glue)
-{
-    Environment env(gate, circuit_, &builder_);
-    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
-    GateRef target = builder_.IntPtr(RTSTUB_ID(JSCallNew));
-    size_t num = acc_.GetNumValueIn(gate);
-    std::vector<GateRef> args(num);
-    for (size_t i = 0; i < num; ++i) {
-        args[i] = acc_.GetValueIn(gate, i);
-    }
-    auto depend = builder_.GetDepend();
-    GateRef constructGate = builder_.Call(cs, glue, target, depend, args);
-    builder_.SetDepend(constructGate);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
 void TypeLowering::LowerTypedBinaryOp(GateRef gate)
@@ -2868,5 +2840,79 @@ void TypeLowering::LowerCallTargetCheck(GateRef gate)
     builder_.DeoptCheck(check, frameState);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+
+    DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label allocate(&builder_);
+    Label exit(&builder_);
+
+    GateRef isBase = builder_.IsBase(ctor);
+    builder_.Branch(isBase, &allocate, &exit);
+    builder_.Bind(&allocate);
+    {
+        // add typecheck to detect protoOrHclass is equal with ihclass,
+        // if pass typecheck: 1.no need to check whether hclass is valid 2.no need to check return result
+        GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), ctor,
+                                              builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        GateRef ihclassIndex = acc_.GetValueIn(gate, 1);
+        GateRef ihclass = GetObjectFromConstPool(jsFunc, ihclassIndex);
+        GateRef check = builder_.Equal(protoOrHclass, ihclass);
+        GateRef frameState = GetFrameState(gate);
+        builder_.DeoptCheck(check, frameState);
+
+        NewObjectStubBuilder stubBuilder(&env);
+        stubBuilder.SetGule(glue);
+        stubBuilder.NewJSObject(&thisObj, &exit, protoOrHclass);
+    }
+    builder_.Bind(&exit);
+    builder_.SetDepend(*thisObj);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *thisObj);
+}
+
+void TypeLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef superCtor = acc_.GetValueIn(gate, 0);
+    GateRef newTarget = acc_.GetValueIn(gate, 1);
+
+    DEFVAlUE(thisObj, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label allocate(&builder_);
+    Label exit(&builder_);
+
+    GateRef isBase = builder_.IsBase(superCtor);
+    builder_.Branch(isBase, &allocate, &exit);
+    builder_.Bind(&allocate);
+    {
+        GateRef protoOrHclass = builder_.Load(VariableType::JS_ANY(), newTarget,
+                                              builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        GateRef check = builder_.IsJSHClass(protoOrHclass);
+        GateRef frameState = GetFrameState(gate);
+        builder_.DeoptCheck(check, frameState);
+
+        NewObjectStubBuilder stubBuilder(&env);
+        stubBuilder.SetGule(glue);
+        stubBuilder.NewJSObject(&thisObj, &exit, protoOrHclass);
+    }
+    builder_.Bind(&exit);
+    builder_.SetDepend(*thisObj);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *thisObj);
+}
+
+void TypeLowering::LowerGetSuperConstructor(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef ctor = acc_.GetValueIn(gate, 0);
+    GateRef hclass = builder_.LoadHClass(ctor);
+    GateRef protoOffset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
+    GateRef superCtor = builder_.Load(VariableType::JS_ANY(), hclass, protoOffset);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
 }
 }  // namespace panda::ecmascript

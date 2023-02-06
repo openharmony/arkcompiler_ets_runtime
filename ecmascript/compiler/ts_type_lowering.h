@@ -93,7 +93,6 @@ private:
     void LowerTypedNewObjRange(GateRef gate);
     void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget);
 
-    GateRef GetSuperConstructor(GateRef ctor);
     void LowerCallThis1Imm8V8V8(GateRef gate);
     bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
 
