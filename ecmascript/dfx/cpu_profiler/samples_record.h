@@ -18,8 +18,8 @@
 
 #include <atomic>
 #include <ctime>
-#include <fstream>
 #include <cstring>
+#include <fstream>
 #include <semaphore.h>
 
 #include "ecmascript/compiler/gate_meta_data.h"
@@ -27,11 +27,13 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
+#include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
 const int MAX_NODE_COUNT = 10000; // 10000:the maximum size of the array
 const int MIN_TIME_DELTA = 10; // 10: the minimum value of the time delta
+const int QUEUE_CAPACITY = 11; // the capacity of the circular queue is QUEUE_CAPACITY - 1
 const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in while loop
 const size_t PRE_IDX_RANGE = 5; // 5: length of variable preIdx looping backward
 enum class RunningState : size_t {
@@ -119,12 +121,49 @@ struct FrameInfoTemp {
     struct MethodKey methodKey = {};
 };
 
+struct FrameStackAndInfo {
+    struct FrameInfoTemp frameInfoTemps[MAX_ARRAY_COUNT] = {};
+    struct MethodKey frameStack[MAX_ARRAY_COUNT] = {};
+    int frameInfoTempsLength;
+    int frameStackLength;
+    uint64_t timeStamp;
+};
+
+class SamplesQueue {
+public:
+    SamplesQueue() = default;
+    ~SamplesQueue() = default;
+
+    NO_COPY_SEMANTIC(SamplesQueue);
+    NO_MOVE_SEMANTIC(SamplesQueue);
+
+    void PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStack,
+                   int frameInfoTempsLength, int frameStackLength);
+    void PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps, CVector<MethodKey> &napiFrameStack);
+    FrameStackAndInfo *PopFrame();
+    bool IsEmpty();
+    bool IsFull();
+    int GetSize();
+    int GetFront();
+    int GetRear();
+    void SetFrameStackCallNapi(bool flag);
+    bool GetFrameStackCallNapi();
+    bool CheckAndCopy(char *dest, size_t length, const char *src) const;
+
+private:
+    FrameStackAndInfo frames_[QUEUE_CAPACITY] = {};
+    int front_ = 0;
+    int rear_ = 0;
+    std::atomic_bool isFrameStackCallNapi = false;
+    os::memory::Mutex mtx_;
+};
+
 class SamplesRecord {
 public:
     SamplesRecord();
     virtual ~SamplesRecord();
 
-    void AddSample(uint64_t sampleTimeStamp);
+    void AddSample(FrameStackAndInfo *frame);
     void AddSampleCallNapi(uint64_t *sampleTimeStamp);
     void StringifySampleData();
     int GetMethodNodeCount() const;
@@ -169,7 +208,14 @@ public:
     void FindSampleAndFinetune(size_t findIdx, size_t napiCallIdx, size_t &sampleIdx,
                                uint64_t startSampleTime, uint64_t &sampleTime);
     void FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &sampleTime, bool isEndSample);
+    void PostFrame();
+    void PostNapiFrame();
+    void ResetFrameLength();
+    void SetFrameStackCallNapi(bool flag);
+    uint64_t GetCallTimeStamp();
+    void SetCallTimeStamp(uint64_t timeStamp);
     std::ofstream fileHandle_;
+    SamplesQueue *samplesQueue_ {nullptr};
 
     void SetEnableVMTag(bool flag)
     {
@@ -182,7 +228,7 @@ private:
     void StringifySamples();
     struct FrameInfo GetMethodInfo(struct MethodKey &methodKey);
     std::string AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type);
-    void FrameInfoTempToMap();
+    void FrameInfoTempToMap(FrameInfoTemp *frameInfoTemps, int frameInfoTempLength);
     void NapiFrameInfoTempToMap();
     void StatisticStateTime(int timeDelta, RunningState state);
 
@@ -214,6 +260,7 @@ private:
     CVector<uint64_t> napiCallTimeVec_;
     CVector<std::string> napiCallAddrVec_;
     bool enableVMTag_ {false};
+    uint64_t callTimeStamp_ = 0;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_SAMPLES_RECORD_H

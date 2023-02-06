@@ -45,43 +45,27 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
     uint64_t endTime = startTime;
     generator_->SetThreadStartTime(startTime);
     while (generator_->GetIsStart()) {
-        if (generator_->GetBeforeGetCallNapiStackFlag()) {
-            generator_->SetBeforeGetCallNapiStackFlag(false);
-            while (!generator_->GetAfterGetCallNapiStackFlag()) {
-                usleep(10); // 10: sleep 10 us;
-            }
-            generator_->SetAfterGetCallNapiStackFlag(false);
+        if (pthread_kill(pid_, SIGPROF) != 0) {
+            LOG(ERROR, RUNTIME) << "pthread_kill signal failed";
+            return false;
         }
-        if (!generator_->GetCallNapiFlag()) {
-            if (pthread_kill(pid_, SIGPROF) != 0) {
-                LOG(ERROR, RUNTIME) << "pthread_kill signal failed";
-                return false;
-            }
-            if (generator_->SemWait(0) != 0) {
-                LOG_ECMA(ERROR) << "sem_[0] wait failed";
-                return false;
-            }
-            startTime = GetMicrosecondsTimeStamp();
-            int64_t ts = static_cast<int64_t>(interval_) - static_cast<int64_t>(startTime - endTime);
-            endTime = startTime;
-            if (ts > 0 && !generator_->GetBeforeGetCallNapiStackFlag() && !generator_->GetCallNapiFlag()) {
-                usleep(ts);
-                endTime = GetMicrosecondsTimeStamp();
-            }
-            if (generator_->GetMethodNodeCount() + generator_->GetframeStackLength() >= MAX_NODE_COUNT) {
-                break;
-            }
-            generator_->AddSample(endTime);
-        } else {
-            if (generator_->GetMethodNodeCount() + generator_->GetNapiFrameStackLength() >= MAX_NODE_COUNT) {
-                break;
-            }
-            generator_->AddSampleCallNapi(&endTime);
-            generator_->SetCallNapiFlag(false);
-            if (generator_->SemPost(2) != 0) { // 2: signal 2
-                LOG_ECMA(ERROR) << "sem_[2] post failed";
-                return false;
-            }
+        if (generator_->SemWait(0) != 0) {
+            LOG_ECMA(ERROR) << "sem_[0] wait failed";
+            return false;
+        }
+        startTime = GetMicrosecondsTimeStamp();
+        int64_t ts = static_cast<int64_t>(interval_) - static_cast<int64_t>(startTime - endTime);
+        endTime = startTime;
+        if (ts > 0) {
+            usleep(ts);
+            endTime = GetMicrosecondsTimeStamp();
+        }
+        if (generator_->GetMethodNodeCount() + generator_->GetframeStackLength() >= MAX_NODE_COUNT) {
+            break;
+        }
+        while (!generator_->samplesQueue_->IsEmpty()) {
+            FrameStackAndInfo *frame = generator_->samplesQueue_->PopFrame();
+            generator_->AddSample(frame);
         }
         generator_->SetIsBreakSampleFlag(false);
     }

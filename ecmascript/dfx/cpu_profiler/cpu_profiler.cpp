@@ -295,6 +295,7 @@ void CpuProfiler::GetFrameStack(FrameIterator &it)
 {
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     bool topFrame = true;
+    generator_->ResetFrameLength();
     for (; !it.Done(); it.Advance<>()) {
         auto method = it.CheckAndGetMethod();
         if (method == nullptr) {
@@ -324,10 +325,12 @@ void CpuProfiler::GetFrameStack(FrameIterator &it)
             return;
         }
     }
+    generator_->PostFrame();
 }
 
 bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
 {
+    [[maybe_unused]] CallNapiScope scope(generator_);
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->ClearNapiStack();
     bool topFrame = true;
@@ -363,6 +366,7 @@ bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
             return false;
         }
     }
+    generator_->PostNapiFrame();
     return true;
 }
 
@@ -475,17 +479,7 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
 
 void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread, const std::string &methodAddr)
 {
-    generator_->SetBeforeGetCallNapiStackFlag(true);
-    if (GetFrameStackCallNapi(thread)) {
-        generator_->SetCallNapiFlag(true);
-        generator_->SetAfterGetCallNapiStackFlag(true);
-        if (generator_->SemWait(2) != 0) { // 2: signal 2
-            LOG_ECMA(ERROR) << "sem_[2] wait failed";
-            return;
-        }
-    } else {
-        generator_->SetBeforeGetCallNapiStackFlag(false);
-    }
+    GetFrameStackCallNapi(thread);
     RecordCallNapiInfo(methodAddr);
 }
 
