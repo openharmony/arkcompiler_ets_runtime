@@ -363,7 +363,7 @@ public:
         return CString(fileName);
     }
 
-    void GenerateStaticHClass(JSHandle<TSClassType> classType);
+    void GenerateTSHClass(JSHandle<TSClassType> classType);
 
     JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
 
