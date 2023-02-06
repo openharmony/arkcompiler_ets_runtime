@@ -52,9 +52,7 @@ namespace OHOS {
         std::fstream outputString(filePath, std::ios::out);
         outputString.close();
         outputString.clear();
-        ecmascript::FileStream fileStream(filePath);
-        DFXJSNApi::StopHeapTracking(vm, &fileStream);
-
+        DFXJSNApi::StopHeapTracking(vm, filePath);
         std::remove(filePath.c_str());
         vm->SetEnableForceGC(true);
         JSNApi::DestroyJSVM(vm);
