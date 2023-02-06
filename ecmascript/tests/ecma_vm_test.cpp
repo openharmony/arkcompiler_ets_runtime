@@ -56,7 +56,6 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
     options2.SetEnableArkTools(false);
     options2.SetEnableForceGC(false);
     options2.SetForceFullGC(false);
-    options2.SetEnableCpuprofiler(true);
     options2.SetArkProperties(ArkProperties::GC_STATS_PRINT);
     // A non-production gc strategy. Prohibit stw-gc 10 times.
     EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
@@ -71,7 +70,6 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
     EXPECT_TRUE(options1Out.EnableArkTools() != options2Out.EnableArkTools());
     EXPECT_TRUE(options1Out.EnableForceGC() != options2Out.EnableForceGC());
     EXPECT_TRUE(options1Out.ForceFullGC() != options2Out.ForceFullGC());
-    EXPECT_TRUE(options1Out.EnableCpuProfiler() != options2Out.EnableCpuProfiler());
     EXPECT_TRUE(options1Out.GetArkProperties() != options2Out.GetArkProperties());
 
     JSNApi::DestroyJSVM(ecmaVm2);

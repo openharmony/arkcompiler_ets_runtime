@@ -463,32 +463,7 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
             return;
         }
     }
-    if (extraInfoValue.CheckIsJSNativePointer()) {
-        stream << JSNativePointer::Cast(extraInfoValue.GetTaggedObject())->GetExternalPointer();
-        CheckAndCopy(functionName, size, methodNameStr.c_str());
-        const uint8_t methodNameStrLength = methodNameStr.size();
-        CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(");
-        const uint8_t arkuiBeginLength = 1; // 1:the length of "("
-        CheckAndCopy(functionName + methodNameStrLength + arkuiBeginLength,
-            size - methodNameStrLength - arkuiBeginLength, stream.str().c_str());
-        uint8_t srcLength = stream.str().size();
-        CheckAndCopy(functionName + methodNameStrLength + arkuiBeginLength + srcLength,
-            size - methodNameStrLength - arkuiBeginLength - srcLength, ")");
-        return;
-    }
-    // builtin method
-    auto method = it.CheckAndGetMethod();
-    auto addr = method->GetNativePointer();
-    stream << addr;
     CheckAndCopy(functionName, size, methodNameStr.c_str());
-    const uint8_t methodNameStrLength = methodNameStr.size();
-    CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(");
-    const uint8_t builtinBeginLength = 1; // 1:the length of "("
-    CheckAndCopy(functionName + methodNameStrLength + builtinBeginLength,
-        size - methodNameStrLength - builtinBeginLength, stream.str().c_str());
-    uint8_t srcLength = stream.str().size();
-    CheckAndCopy(functionName + builtinBeginLength + methodNameStrLength + srcLength,
-        size - builtinBeginLength - methodNameStrLength - srcLength, ")");
 }
 
 void CpuProfiler::IsNeedAndGetStack(JSThread *thread)
