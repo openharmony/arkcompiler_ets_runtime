@@ -279,6 +279,35 @@ void TSTypeLowering::ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, G
 
     std::map<GateRef, size_t> deleteMap;
     auto uses = acc_.Uses(hir);
+    bool expFound = false;
+    for (auto tmpUseIt = uses.begin(); tmpUseIt != uses.end(); tmpUseIt++) {
+        if (acc_.GetOpCode(*tmpUseIt) == OpCode::IF_EXCEPTION) {
+            auto expUses = acc_.Uses(*tmpUseIt);
+            for (auto expUseIt = expUses.begin(); expUseIt != expUses.end(); ++expUseIt) {
+                if (acc_.GetOpCode(*expUseIt) == OpCode::MERGE && acc_.GetNumIns(*expUseIt) == 1) {
+                    expFound = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (expFound) {
+        GateRef ifBranch = builder_.Branch(state, builder_.Boolean(false));
+        for (auto it = uses.begin(); it != uses.end();) {
+            if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
+                acc_.SetMetaData(*it, circuit_->IfFalse());
+                it = acc_.ReplaceIn(it, ifBranch);
+            } else {
+                if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
+                    acc_.SetMetaData(*it, circuit_->IfTrue());
+                    it = acc_.ReplaceIn(it, ifBranch);
+                } else {
+                    it++;
+                }
+            }
+        }
+    }
+
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         const OpCode op = acc_.GetOpCode(*useIt);
         if (op == OpCode::IF_SUCCESS) {
