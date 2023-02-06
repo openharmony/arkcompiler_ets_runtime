@@ -879,7 +879,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
 
     constexpr size_t numOps = 0x100;
-    constexpr size_t numThrowOps = 9;
+    constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
     constexpr size_t numDeprecatedOps = 47;
 
@@ -3728,6 +3728,21 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             DISPATCH(THROW_UNDEFINEDIFHOLE_PREF_V8_V8);
         }
         JSTaggedValue obj = GET_VREG_VALUE(v1);
+        ASSERT(obj.IsString());
+        SAVE_PC();
+        SlowRuntimeStub::ThrowUndefinedIfHole(thread, obj);
+        INTERPRETER_GOTO_EXCEPTION_HANDLER();
+    }
+    HANDLE_OPCODE(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16) {
+        JSTaggedValue hole = acc;
+        if (!hole.IsHole()) {
+            DISPATCH(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
+        }
+
+        uint16_t stringId = READ_INST_16_1();
+        LOG_INST() << "intrinsic::throwundefinedifholewithname" << std::hex << stringId;
+        JSTaggedValue constpool = GetConstantPool(sp);
+        JSTaggedValue obj = GET_STR_FROM_CACHE(stringId);
         ASSERT(obj.IsString());
         SAVE_PC();
         SlowRuntimeStub::ThrowUndefinedIfHole(thread, obj);

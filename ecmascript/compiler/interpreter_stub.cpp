@@ -1208,6 +1208,26 @@ DECLARE_ASM_HANDLER(HandleThrowUndefinedifholePrefV8V8)
     DISPATCH_LAST();
 }
 
+DECLARE_ASM_HANDLER(HandleThrowUndefinedifholewithnamePrefId16)
+{
+    auto env = GetEnvironment();
+
+    GateRef hole = acc;
+    Label isHole(env);
+    Label notHole(env);
+    Branch(TaggedIsHole(hole), &isHole, &notHole);
+    Bind(&notHole);
+    {
+        DISPATCH(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
+    }
+    Bind(&isHole);
+    GateRef stringId = ReadInst16_1(pc);
+    GateRef str = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
+    // assert obj.IsString()
+    CallRuntime(glue, RTSTUB_ID(ThrowUndefinedIfHole), { str });
+    DISPATCH_LAST();
+}
+
 DECLARE_ASM_HANDLER(HandleCopydatapropertiesV8)
 {
     GateRef v0 = ReadInst8_0(pc);

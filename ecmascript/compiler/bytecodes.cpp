@@ -205,7 +205,7 @@ Bytecodes::Bytecodes()
         wideBytecodes_[pc] = info;
     }
     last = (static_cast<uint16_t>(Bytecodes::LAST_THROW_OPCODE) & OPCODE_MASK) >> BYTE_SIZE;
-    for (uint8_t pc = 0; pc < last; pc++) {
+    for (uint8_t pc = 0; pc <= last; pc++) {
         std::array<uint8_t, 2> bytecode{THROW_PREFIX_OPCODE_INDEX, pc}; // 2: 2 opcode
         auto info = BytecodeMetaData::InitBytecodeMetaData(&bytecode[0]);
         throwBytecodes_[pc] = info;
@@ -371,6 +371,11 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t v1 = READ_INST_8_2();
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
+        case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16: {
+            uint16_t stringId = READ_INST_16_1();
+            info.inputs.emplace_back(ICSlotId(stringId));
             break;
         }
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8: {
