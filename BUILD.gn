@@ -22,7 +22,7 @@ group("ark_js_packages") {
       "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm",
       "//arkcompiler/ets_runtime/ecmascript/quick_fix:quick_fix",
     ]
-    if (current_cpu == "arm64") {
+    if (current_cpu == "arm64" && is_ohos) {
       deps += [ "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/ohos:ohos_clang_arm64)" ]
     }
   }
@@ -706,13 +706,19 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
     ]
+  } else if ((is_ohos && is_standard_system) || target_os == "android") {
+    ecma_platform_source += [
+      "ecmascript/platform/unix/linux/os.cpp",
+      "ecmascript/platform/unix/ohos/backtrace.cpp",
+    ]
+  } else if (is_linux) {
+    ecma_platform_source += [
+      "ecmascript/platform/unix/linux/os.cpp",
+      "ecmascript/platform/unix/linux/backtrace.cpp",
+    ]
   } else {
-    ecma_platform_source += [ "ecmascript/platform/unix/linux/os.cpp" ]
-    if (is_ohos && is_standard_system) {
-      ecma_platform_source += [ "ecmascript/platform/unix/ohos/backtrace.cpp" ]
-    } else {
-      ecma_platform_source += [ "ecmascript/platform/unix/linux/backtrace.cpp" ]
-    }
+    print("Invalid os!")
+    assert(false)
   }
 }
 
