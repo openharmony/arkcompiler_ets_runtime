@@ -236,13 +236,14 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef pa
     return ret;
 }
 
-GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState)
+GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptType type)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
-        MachineType::I1, { currentControl, currentDepend, condition, frameState}, GateType::NJSValue());
+        MachineType::I1, { currentControl, currentDepend, condition,
+            frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

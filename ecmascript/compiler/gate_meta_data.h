@@ -71,6 +71,25 @@ enum class TypedUnOp : uint8_t {
     TYPED_TOBOOL,
 };
 
+enum class DeoptType : uint8_t {
+    NOTCHECK = 0,
+    NOTINT,
+    NOTDOUBLE,
+    NOTNUMBER,
+    NOTBOOL,
+    NOTARRAY,
+    NOTSARRAY,
+    NOTF32ARRAY,
+    WRONGHCLASS,
+    NOTNEWOBJ,
+    NOTARRAYIDX,
+    NOTF32ARRAYIDX,
+    NOTINCOV,
+    NOTDECOV,
+    NOTNEGOV,
+    NOTCALLTGT,
+};
+
 enum class ICmpCondition : uint8_t {
     EQ = 1,
     UGT,
@@ -170,13 +189,13 @@ std::string MachineTypeToStr(MachineType machineType);
     V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 0, 0)                           \
     V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 0, 1, 0)                       \
     V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 0, 1, 0)                           \
-    V(Deopt, DEOPT, GateFlags::NONE_FLAG, 0, 1, 2)                                      \
+    V(Deopt, DEOPT, GateFlags::NONE_FLAG, 0, 1, 3)                                      \
     V(Load, LOAD, GateFlags::NONE_FLAG, 0, 1, 1)                                        \
     V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                      \
     V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                  \
     V(ArrayCheck, ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                           \
     V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
-    V(DeoptCheck, DEOPT_CHECK, GateFlags::NONE_FLAG, 1, 1, 2)                           \
+    V(DeoptCheck, DEOPT_CHECK, GateFlags::NONE_FLAG, 1, 1, 3)                           \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                        \
     V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                     \
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                               \

@@ -136,7 +136,7 @@ void TypeLowering::LowerIntCheck(GateRef gate)
 
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsInt(value);
-    builder_.DeoptCheck(typeCheck, frameState);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTINT);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -147,7 +147,7 @@ void TypeLowering::LowerDoubleCheck(GateRef gate)
 
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsDouble(value);
-    builder_.DeoptCheck(typeCheck, frameState);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTDOUBLE);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -158,7 +158,7 @@ void TypeLowering::LowerNumberCheck(GateRef gate)
 
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsNumber(value);
-    builder_.DeoptCheck(typeCheck, frameState);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNUMBER);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -169,7 +169,7 @@ void TypeLowering::LowerBooleanCheck(GateRef gate)
 
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsBoolean(value);
-    builder_.DeoptCheck(typeCheck, frameState);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTBOOL);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -189,7 +189,7 @@ void TypeLowering::LowerArrayCheck(GateRef gate, GateRef glue)
         builder_.Load(VariableType::JS_ANY(), arrayFunction,
                       builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     GateRef hcalssCheck = builder_.Equal(receiverHClass, protoOrHclass);
-    builder_.DeoptCheck(hcalssCheck, frameState);
+    builder_.DeoptCheck(hcalssCheck, frameState, DeoptType::NOTARRAY);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -213,7 +213,7 @@ void TypeLowering::LowerStableArrayCheck(GateRef gate, GateRef glue)
     GateRef guardians = builder_.Load(VariableType(MachineType::I64, GateType::BooleanType()), glue, guardiansOffset);
     GateRef guardiansCheck = builder_.Equal(guardians, builder_.TaggedTrue());
     GateRef check = builder_.BoolAnd(hcalssCheck, guardiansCheck);
-    builder_.DeoptCheck(check, frameState);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -244,7 +244,7 @@ void TypeLowering::LowerFloat32ArrayCheck(GateRef gate, GateRef glue)
         builder_.Load(VariableType::JS_ANY(), float32ArrayFunction,
                       builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     GateRef check = builder_.Equal(receiverHClass, protoOrHclass);
-    builder_.DeoptCheck(check, frameState);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTF32ARRAY);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -271,7 +271,7 @@ void TypeLowering::LowerClassInstanceCheck(GateRef gate)
     auto hclassOffset = acc_.GetValueIn(gate, 1);
     GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
     GateRef check = builder_.Equal(receiverHClass, hclass);
-    builder_.DeoptCheck(check, frameState);
+    builder_.DeoptCheck(check, frameState, DeoptType::WRONGHCLASS);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -301,7 +301,7 @@ void TypeLowering::LowerArrayIndexCheck(GateRef gate)
     GateRef lengthCheck = builder_.Int32UnsignedLessThan(hclassIndex, length);
     GateRef nonNegativeCheck = builder_.Int32LessThanOrEqual(builder_.Int32(0), hclassIndex);
     GateRef check = builder_.BoolAnd(lengthCheck, nonNegativeCheck);
-    builder_.DeoptCheck(check, frameState);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTARRAYIDX);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -317,7 +317,7 @@ void TypeLowering::LowerFloat32ArrayIndexCheck(GateRef gate)
     GateRef nonNegativeCheck = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
     GateRef lengthCheck = builder_.Int32UnsignedLessThan(index, length);
     GateRef check = builder_.BoolAnd(nonNegativeCheck, lengthCheck);
-    builder_.DeoptCheck(check, frameState);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTF32ARRAYIDX);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -356,7 +356,7 @@ void TypeLowering::LowerTypedIncOverflowCheck(GateRef gate)
     GateRef intVal = builder_.GetInt64OfTInt(value);
     GateRef max = builder_.Int64(INT32_MAX);
     GateRef rangeCheck = builder_.Int64NotEqual(intVal, max);
-    builder_.DeoptCheck(rangeCheck, frameState);
+    builder_.DeoptCheck(rangeCheck, frameState, DeoptType::NOTINCOV);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -369,7 +369,7 @@ void TypeLowering::LowerTypedDecOverflowCheck(GateRef gate)
     GateRef intVal = builder_.GetInt64OfTInt(value);
     GateRef min = builder_.Int64(INT32_MIN);
     GateRef rangeCheck = builder_.Int64NotEqual(intVal, min);
-    builder_.DeoptCheck(rangeCheck, frameState);
+    builder_.DeoptCheck(rangeCheck, frameState, DeoptType::NOTDECOV);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -385,7 +385,7 @@ void TypeLowering::LowerTypedNegOverflowCheck(GateRef gate)
     GateRef notMin = builder_.Int64NotEqual(intVal, min);
     GateRef notZero = builder_.Int64NotEqual(intVal, zero);
     GateRef rangeCheck = builder_.BoolAnd(notMin, notZero);
-    builder_.DeoptCheck(rangeCheck, frameState);
+    builder_.DeoptCheck(rangeCheck, frameState, DeoptType::NOTNEGOV);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -2810,7 +2810,7 @@ void TypeLowering::LowerCallTargetCheck(GateRef gate)
     GateRef funcheck = lowering.LowerCallTargetCheck(&env, gate);
     GateRef paracheck = lowering.CheckPara(gate);
     GateRef check = builder_.BoolAnd(paracheck, funcheck);
-    builder_.DeoptCheck(check, frameState);
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTCALLTGT);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
