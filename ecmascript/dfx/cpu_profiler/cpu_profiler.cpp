@@ -311,8 +311,12 @@ void CpuProfiler::GetFrameStack(FrameIterator &it)
             }
             topFrame = false;
         }
-        methodKey.methodIdentifier = GetMethodIdentifier(method, it);
-
+        void *methodIdentifier = GetMethodIdentifier(method, it);
+        if (methodIdentifier == nullptr) {
+            generator_->SetIsBreakSampleFlag(true);
+            return;
+        }
+        methodKey.methodIdentifier = methodIdentifier;
         if (stackInfo.count(methodKey) == 0) {
             if (UNLIKELY(!ParseMethodInfo(methodKey, it, jsPandaFile, false))) {
                 generator_->SetIsBreakSampleFlag(true);
@@ -353,7 +357,11 @@ bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
             itNext.Advance<GCVisitedFlag::IGNORED>();
             GetRowAndColumnNumbers(itNext);
         }
-        methodKey.methodIdentifier = GetMethodIdentifier(method, it);
+        void *methodIdentifier = GetMethodIdentifier(method, it);
+        if (methodIdentifier == nullptr) {
+            return false;
+        }
+        methodKey.methodIdentifier = methodIdentifier;
         if (stackInfo.count(methodKey) == 0) {
             if (UNLIKELY(!ParseMethodInfo(methodKey, it, method->GetJSPandaFile(), true))) {
                 return false;
@@ -375,7 +383,7 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
     codeEntry.methodKey = methodKey;
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-    if (extraInfoValue.IsJSNativePointer() || jsPandaFile == nullptr) {
+    if (extraInfoValue.CheckIsJSNativePointer() || jsPandaFile == nullptr) {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
             return false;
         }
@@ -513,6 +521,15 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
     }
     uint64_t pc = 0;
     if (thread->IsAsmInterpreter()) {
+        // If the attempt fails, the callback will be terminated directly to avoid the reentrancy deadlock,
+        // and a sampling will be abandoned. Failures are rare, so the impact on the overall sampling results
+        // is very limited.
+        if (!thread->GetEcmaVM()->GetAOTFileManager()->TryReadLock()) {
+            if (profiler->generator_->SemPost(0) != 0) {
+                LOG_ECMA(ERROR) << "sem_[0] post failed";
+            }
+            return;
+        }
         pc = GetPcFromContext(context);
     }
     if (thread->IsAsmInterpreter() && profiler->IsAddrAtStubOrAot(pc) &&
@@ -677,18 +694,19 @@ bool CpuProfiler::CheckAndCopy(char *dest, size_t length, const char *src) const
 
 void *CpuProfiler::GetMethodIdentifier(Method *method, const FrameIterator &it)
 {
-    MethodLiteral *methodLiteral = method->GetMethodLiteral();
-    if (methodLiteral != nullptr) {
-        return reinterpret_cast<void *>(methodLiteral);
-    }
-
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-    if (extraInfoValue.IsUndefined()) {
+    if (extraInfoValue.CheckIsJSNativePointer()) {
+        JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
+        return reinterpret_cast<void *>(extraInfo->GetData());
+    }
+
+    if (method->GetJSPandaFile() == nullptr) {
         return const_cast<void *>(method->GetNativePointer());
     }
-    JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
-    return reinterpret_cast<void *>(extraInfo->GetData());
+
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    return reinterpret_cast<void *>(methodLiteral);
 }
 
 void CpuProfiler::RecordCallNapiInfo(const std::string &methodAddr)
@@ -709,8 +727,7 @@ void CpuProfiler::GetRowAndColumnNumbers(FrameIterator &itNext)
     if (!extraInfoValue.IsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
         DebugInfoExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
-        panda_file::File::EntityId methodId =
-            reinterpret_cast<MethodLiteral *>(GetMethodIdentifier(nextMethod, itNext))->GetMethodId();
+        panda_file::File::EntityId methodId = nextMethod->GetMethodLiteral()->GetMethodId();
         const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
         const char *tempVariable;
         if (sourceFile.empty()) {
