@@ -377,7 +377,7 @@ public:
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
-    GateRef IsAOTHClass(GateRef hClass);
+    GateRef IsTSHClass(GateRef hClass);
     void SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value);
     GateRef GetObjectSizeFromHClass(GateRef hClass);
     GateRef GetInlinedPropsStartFromHClass(GateRef hClass);

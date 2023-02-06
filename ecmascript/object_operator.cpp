@@ -98,15 +98,15 @@ void ObjectOperator::UpdateHolder()
     }
 }
 
-void ObjectOperator::UpdateIsAOT()
+void ObjectOperator::UpdateIsTSHClass()
 {
     if (!holder_->IsECMAObject()) {
-        SetIsAOT(false);
+        SetIsTSHClass(false);
         return;
     }
     auto hclass = JSHandle<JSObject>::Cast(holder_)->GetClass();
-    if (hclass->IsAOT()) {
-        SetIsAOT(true);
+    if (hclass->IsTS()) {
+        SetIsTSHClass(true);
     }
 }
 
@@ -265,7 +265,7 @@ void ObjectOperator::GlobalLookupProperty()
 void ObjectOperator::LookupProperty()
 {
     while (true) {
-        UpdateIsAOT();
+        UpdateIsTSHClass();
         LookupPropertyInHolder();
         if (IsFound()) {
             return;
@@ -646,7 +646,7 @@ void ObjectOperator::ResetState()
     SetAttr(0);
     SetIsOnPrototype(false);
     SetHasReceiver(false);
-    SetIsAOT(false);
+    SetIsTSHClass(false);
 }
 
 void ObjectOperator::ResetStateForAddProperty()
@@ -733,7 +733,7 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         JSObject::Cast(receiver_.GetTaggedValue())->SetProperty(thread_, hclass, attr, value.GetTaggedValue());
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();
-        SetIsAOT(true);
+        SetIsTSHClass(true);
         SetIsOnPrototype(false);
         SetFound(index, value.GetTaggedValue(), attr.GetValue(), true);
         return;

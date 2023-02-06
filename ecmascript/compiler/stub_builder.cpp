@@ -2661,14 +2661,14 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     }
                     Bind(&writable);
                     {
-                        Label isAOT(env);
-                        Label notAOT(env);
-                        Branch(IsAOTHClass(hclass), &isAOT, &notAOT);
-                        Bind(&isAOT);
+                        Label isTS(env);
+                        Label notTS(env);
+                        Branch(IsTSHClass(hclass), &isTS, &notTS);
+                        Bind(&isTS);
                         {
                             GateRef attrVal = JSObjectGetProperty(*holder, hclass, attr);
                             Label attrValIsHole(env);
-                            Branch(TaggedIsHole(attrVal), &attrValIsHole, &notAOT);
+                            Branch(TaggedIsHole(attrVal), &attrValIsHole, &notTS);
                             Bind(&attrValIsHole);
                             {
                                 Label storeReceiverHoleEntry(env);
@@ -2690,7 +2690,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                                 }
                             }
                         }
-                        Bind(&notAOT);
+                        Bind(&notTS);
                         Label holdEqualsRecv(env);
                         if (useOwn) {
                             Branch(Equal(*holder, receiver), &holdEqualsRecv, &ifEnd);

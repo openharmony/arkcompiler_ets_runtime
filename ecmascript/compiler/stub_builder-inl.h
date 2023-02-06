@@ -1546,12 +1546,12 @@ inline GateRef StubBuilder::GetNumberOfPropsFromHClass(GateRef hClass)
         Int32((1LLU << JSHClass::NumberOfPropsBits::SIZE) - 1));
 }
 
-inline GateRef StubBuilder::IsAOTHClass(GateRef hClass)
+inline GateRef StubBuilder::IsTSHClass(GateRef hClass)
 {
     GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     return Int32NotEqual(Int32And(Int32LSR(bitfield,
-        Int32(JSHClass::IsAOTBit::START_BIT)),
-        Int32((1LU << JSHClass::IsAOTBit::SIZE) - 1)),
+        Int32(JSHClass::IsTSBit::START_BIT)),
+        Int32((1LU << JSHClass::IsTSBit::SIZE) - 1)),
         Int32(0));
 }
 

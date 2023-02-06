@@ -74,7 +74,7 @@ JSHClass *TSObjectType::CreateHClassByProps(JSThread *thread, JSHandle<TSObjLayo
         hclass->SetNumberOfProps(0);
     }
 
-    hclass->SetAOT(true);
+    hclass->SetTS(true);
 
     return *hclass;
 }
@@ -126,7 +126,7 @@ JSHClass *TSObjectType::CreatePrototypeHClassByProps(JSThread *thread, JSHandle<
         hclass->SetNumberOfProps(0);
     }
 
-    hclass->SetAOT(true);
+    hclass->SetTS(true);
     hclass->SetClassPrototype(true);
     hclass->SetIsPrototype(true);
 
