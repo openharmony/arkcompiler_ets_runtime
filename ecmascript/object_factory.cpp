@@ -1026,7 +1026,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_FLOAT64_ARRAY:
         case JSType::JS_BIGINT64_ARRAY:
         case JSType::JS_BIGUINT64_ARRAY:
-            JSTypedArray::Cast(*obj)->SetViewedArrayBuffer(thread_, JSTaggedValue::Undefined());
+            JSTypedArray::Cast(*obj)->SetViewedArrayBufferOrByteArray(thread_, JSTaggedValue::Undefined());
             JSTypedArray::Cast(*obj)->SetTypedArrayName(thread_, JSTaggedValue::Undefined());
             JSTypedArray::Cast(*obj)->SetByteLength(0);
             JSTypedArray::Cast(*obj)->SetByteOffset(0);
@@ -2214,8 +2214,8 @@ JSHandle<ByteArray> ObjectFactory::NewByteArray(uint32_t length, uint32_t size)
         UNREACHABLE();
     }
 
-    array->SetLength(length);
-    array->SetSize(size);
+    array->SetArrayLength(length);
+    array->SetByteLength(size);
     return array;
 }
 

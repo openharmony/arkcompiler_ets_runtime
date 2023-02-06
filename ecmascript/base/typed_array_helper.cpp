@@ -288,7 +288,7 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     // 21. Set O’s [[ByteOffset]] internal slot to 0.
     // 22. Set O’s [[ArrayLength]] internal slot to elementLength.
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
-    jsTypedArray->SetViewedArrayBuffer(thread, data);
+    jsTypedArray->SetViewedArrayBufferOrByteArray(thread, data);
     jsTypedArray->SetByteLength(byteLength);
     jsTypedArray->SetByteOffset(0);
     jsTypedArray->SetArrayLength(elementLength);
@@ -362,7 +362,7 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     // 15. Set O.[[ByteOffset]] to offset.
     // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
-    jsTypedArray->SetViewedArrayBuffer(thread, buffer);
+    jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
     jsTypedArray->SetByteLength(newByteLength);
     jsTypedArray->SetByteOffset(offset);
     jsTypedArray->SetArrayLength(newByteLength / static_cast<int32_t>(elementSize));
@@ -474,7 +474,7 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, 
     // 9. Set O.[[ByteLength]] to byteLength.
     // 10. Set O.[[ByteOffset]] to 0.
     // 11. Set O.[[ArrayLength]] to length.
-    jsTypedArray->SetViewedArrayBuffer(thread, data);
+    jsTypedArray->SetViewedArrayBufferOrByteArray(thread, data);
     jsTypedArray->SetByteLength(byteLength);
     jsTypedArray->SetByteOffset(0);
     jsTypedArray->SetArrayLength(arrayLength);
@@ -553,7 +553,7 @@ JSTaggedValue TypedArrayHelper::ValidateTypedArray(JSThread *thread, const JSHan
     }
     // 3. Let buffer be O.[[ViewedArrayBuffer]].
     // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    JSTaggedValue buffer = JSHandle<JSTypedArray>::Cast(value)->GetViewedArrayBuffer();
+    JSTaggedValue buffer = JSHandle<JSTypedArray>::Cast(value)->GetViewedArrayBufferOrByteArray();
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The ViewedArrayBuffer of O is detached buffer.",
                                     JSTaggedValue::Exception());

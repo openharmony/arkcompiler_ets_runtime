@@ -100,7 +100,7 @@ public:
     static JSTaggedValue GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray);
     static constexpr size_t VIEWED_ARRAY_BUFFER_OFFSET = JSObject::SIZE;
     static DataViewType GetTypeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName);
-    ACCESSORS(ViewedArrayBuffer, VIEWED_ARRAY_BUFFER_OFFSET, TYPED_ARRAY_NAME_OFFSET)
+    ACCESSORS(ViewedArrayBufferOrByteArray, VIEWED_ARRAY_BUFFER_OFFSET, TYPED_ARRAY_NAME_OFFSET)
     ACCESSORS(TypedArrayName, TYPED_ARRAY_NAME_OFFSET, BYTE_LENGTH_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ByteLength, uint32_t, BYTE_LENGTH_OFFSET, BYTE_OFFSET_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ByteOffset, uint32_t, BYTE_OFFSET_OFFSET, ARRAY_LENGTH_OFFSET)

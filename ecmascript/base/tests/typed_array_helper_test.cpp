@@ -227,7 +227,7 @@ HWTEST_F_L0(TypedArrayHelperTest, ValidateTypedArray)
                                                                                       DataViewType::UINT32));
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<JSTaggedValue> buffer(thread, TypedArrayHelper::ValidateTypedArray(thread, uint32Array));
-    JSTaggedValue result = JSHandle<JSTypedArray>::Cast(uint32Array)->GetViewedArrayBuffer();
+    JSTaggedValue result = JSHandle<JSTypedArray>::Cast(uint32Array)->GetViewedArrayBufferOrByteArray();
     EXPECT_EQ(buffer.GetTaggedValue().GetRawData(), result.GetRawData());
 }
 

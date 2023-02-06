@@ -60,7 +60,7 @@ HWTEST_F_L0(AtomicHelperTest, ValidateIntegerTypedArray)
         JSHandle<JSTypedArray>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(func), func));
     JSHandle<JSArrayBuffer> buffer = factory->NewJSArrayBuffer(bufferSize);
     JSHandle<JSTaggedValue> bufferVal = JSHandle<JSTaggedValue>::Cast(buffer);
-    array->SetViewedArrayBuffer(thread, bufferVal);
+    array->SetViewedArrayBufferOrByteArray(thread, bufferVal);
     JSHandle<JSTaggedValue> arrayVal = JSHandle<JSTaggedValue>::Cast(array);
     JSHandle<JSTaggedValue> resultBuffer(thread, AtomicHelper::ValidateIntegerTypedArray(thread, arrayVal, waitable));
     EXPECT_EQ(resultBuffer.GetTaggedValue(), buffer.GetTaggedValue());
@@ -80,7 +80,7 @@ HWTEST_F_L0(AtomicHelperTest, ValidateAtomicAccess)
         JSHandle<JSTypedArray>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(func), func));
     JSHandle<JSArrayBuffer> buffer = factory->NewJSArrayBuffer(bufferSize);
     JSHandle<JSTaggedValue> bufferVal = JSHandle<JSTaggedValue>::Cast(buffer);
-    array->SetViewedArrayBuffer(thread, bufferVal);
+    array->SetViewedArrayBufferOrByteArray(thread, bufferVal);
     array->SetTypedArrayName(thread, globalConst->GetHandledInt8ArrayString()); // test int8 array
     array->SetByteOffset(byteOffset);
     array->SetArrayLength(arrayLength);
@@ -110,7 +110,7 @@ HWTEST_F_L0(AtomicHelperTest, Atomic_Store_Load)
         JSHandle<JSTypedArray>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(func), func));
     JSHandle<JSArrayBuffer> buffer = factory->NewJSArrayBuffer(bufferSize);
     JSHandle<JSTaggedValue> bufferVal = JSHandle<JSTaggedValue>::Cast(buffer);
-    array->SetViewedArrayBuffer(thread, bufferVal);
+    array->SetViewedArrayBufferOrByteArray(thread, bufferVal);
     array->SetTypedArrayName(thread, globalConst->GetHandledUint32ArrayString()); // test uint32_t array
     array->SetByteOffset(byteOffset);
     array->SetArrayLength(arrayLength);

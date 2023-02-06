@@ -2089,7 +2089,7 @@ void JSStringIterator::Dump(std::ostream &os) const
 void JSTypedArray::Dump(std::ostream &os) const
 {
     os << " - viewed-array-buffer: ";
-    GetViewedArrayBuffer().Dump(os);
+    GetViewedArrayBufferOrByteArray().Dump(os);
     os << " - typed-array-name: ";
     GetTypedArrayName().Dump(os);
     os << " - byte-length: " << GetByteLength();
@@ -2100,8 +2100,8 @@ void JSTypedArray::Dump(std::ostream &os) const
 
 void ByteArray::Dump(std::ostream &os) const
 {
-    os << " - length: " << GetLength();
-    os << " - size: " << GetSize();
+    os << " - array-length: " << GetArrayLength();
+    os << " - byte-length: " << GetByteLength();
 }
 
 void JSRegExp::Dump(std::ostream &os) const
@@ -4408,7 +4408,7 @@ void JSTypedArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>
     // please update the NUM_OF_ITEMS if you change the items below
     constexpr int16_t NUM_OF_ITEMS = 5;
     vec.reserve(vec.size() + NUM_OF_ITEMS);
-    vec.emplace_back("viewed-array-buffer", GetViewedArrayBuffer());
+    vec.emplace_back("viewed-array-buffer", GetViewedArrayBufferOrByteArray());
     vec.emplace_back("typed-array-name", GetTypedArrayName());
     vec.emplace_back("byte-length", JSTaggedValue(GetByteLength()));
     vec.emplace_back("byte-offset", JSTaggedValue(GetByteOffset()));
@@ -4417,8 +4417,8 @@ void JSTypedArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>
 
 void ByteArray::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
-    vec.emplace_back("length", JSTaggedValue(GetLength()));
-    vec.emplace_back("size", JSTaggedValue(GetSize()));
+    vec.emplace_back("array-length", JSTaggedValue(GetArrayLength()));
+    vec.emplace_back("byte-length", JSTaggedValue(GetByteLength()));
 }
 
 void JSRegExp::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

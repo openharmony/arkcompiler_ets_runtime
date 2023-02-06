@@ -234,13 +234,13 @@ HWTEST_F_L0(JSTypedArrayTest, TypedArrayCreate)
 
 /*
  * Feature: JSTypedArray
- * Function: SetViewedArrayBuffer
- * SubFunction: GetViewedArrayBuffer/ObjectFactory::NewJSArrayBuffer
+ * Function: SetViewedArrayBufferOrByteArray
+ * SubFunction: GetViewedArrayBufferOrByteArray/ObjectFactory::NewJSArrayBuffer
  * FunctionPoints: Set ViewedArrayBuffer
- * CaseDescription: Check whether the JSArrayBuffer returned through calling GetViewedArrayBuffer function from the
- *                  JSTypedArray changed through calling SetViewedArrayBuffer function is within expectations.
+ * CaseDescription: Check whether the JSArrayBuffer returned through calling GetViewedArrayBufferOrByteArray function from the
+ *                  JSTypedArray changed through calling SetViewedArrayBufferOrByteArray function is within expectations.
  */
-HWTEST_F_L0(JSTypedArrayTest, SetViewedArrayBuffer)
+HWTEST_F_L0(JSTypedArrayTest, SetViewedArrayBufferOrByteArray)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSArrayBuffer> handleArrayBufferFrom = factory->NewJSArrayBuffer(10);
@@ -249,9 +249,9 @@ HWTEST_F_L0(JSTypedArrayTest, SetViewedArrayBuffer)
     for (size_t i = 0; i < cVecJSType.size(); i++) {
         JSHandle<JSTypedArray> handleTypedArray = CreateNumberTypedArray(thread, cVecJSType.at(i));
 
-        EXPECT_EQ(handleTypedArray->GetViewedArrayBuffer(), JSTaggedValue::Undefined());
-        handleTypedArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
-        EXPECT_EQ(handleTypedArray->GetViewedArrayBuffer(), handleTagValArrayBufferFrom.GetTaggedValue());
+        EXPECT_EQ(handleTypedArray->GetViewedArrayBufferOrByteArray(), JSTaggedValue::Undefined());
+        handleTypedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
+        EXPECT_EQ(handleTypedArray->GetViewedArrayBufferOrByteArray(), handleTagValArrayBufferFrom.GetTaggedValue());
     }
 }
 
@@ -358,7 +358,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Int8Array_001)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsInt8Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleInt8Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleInt8Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleInt8Array->SetArrayLength(numElementsInt8Array);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -405,7 +405,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Int8Array_002)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsInt8Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleInt8Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleInt8Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleInt8Array->SetArrayLength(numElementsInt8Array);
 
     int64_t value1 = -129; // to int8 : 127
@@ -455,7 +455,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Uint8Array_001)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsUint8Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleUint8Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleUint8Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleUint8Array->SetArrayLength(numElementsUint8Array);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -502,7 +502,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Uint8Array_002)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsUint8Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleUint8Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleUint8Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleUint8Array->SetArrayLength(numElementsUint8Array);
 
     int64_t value1 = -1; // to uint8 : 255
@@ -552,7 +552,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Uint8ClampedArray_001)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsUint8ClampedArray;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleUint8ClampedArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleUint8ClampedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleUint8ClampedArray->SetArrayLength(numElementsUint8ClampedArray);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -599,7 +599,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Uint8ClampedArray_002)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsUint8ClampedArray;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleUint8ClampedArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleUint8ClampedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleUint8ClampedArray->SetArrayLength(numElementsUint8ClampedArray);
 
     int64_t value1 = -1; // to uint8_clamped : 0
@@ -650,7 +650,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Int16Array_001)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsInt16Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleInt16Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleInt16Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleInt16Array->SetArrayLength(numElementsInt16Array);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -699,7 +699,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Int16Array_002)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsInt16Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleInt16Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleInt16Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleInt16Array->SetArrayLength(numElementsInt16Array);
 
     int64_t value1 = -32769; // to int16 : 32767
@@ -750,7 +750,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Uint16Array_001)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsUint16Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleUint16Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleUint16Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleUint16Array->SetArrayLength(numElementsUint16Array);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -799,7 +799,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Uint16Array_002)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsUint16Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleUint16Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleUint16Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleUint16Array->SetArrayLength(numElementsUint16Array);
 
     int64_t value1 = -1; // to uint16 : 65535
@@ -850,7 +850,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Int32Array_001)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsInt32Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleInt32Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleInt32Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleInt32Array->SetArrayLength(numElementsInt32Array);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -899,7 +899,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Int32Array_002)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsInt32Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleInt32Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleInt32Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleInt32Array->SetArrayLength(numElementsInt32Array);
 
     int64_t value1 = -2147483649; // to int32 : 2147483647
@@ -950,7 +950,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Uint32Array_001)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsUint32Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleUint32Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleUint32Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleUint32Array->SetArrayLength(numElementsUint32Array);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -999,7 +999,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Uint32Array_002)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsUint32Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleUint32Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleUint32Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleUint32Array->SetArrayLength(numElementsUint32Array);
 
     int64_t value1 = -1; // to uint32 : 4294967295
@@ -1049,7 +1049,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Float32Array)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsFloat32Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleFloat32Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleFloat32Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleFloat32Array->SetArrayLength(numElementsFloat32Array);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -1098,7 +1098,7 @@ HWTEST_F_L0(JSTypedArrayTest, IntegerIndexedElementSet_Float64Array)
     int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsFloat64Array;
     JSHandle<JSTaggedValue> handleTagValArrayBufferFrom = JSHandle<JSTaggedValue>::Cast(
         factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-    handleFloat64Array->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+    handleFloat64Array->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
     handleFloat64Array->SetArrayLength(numElementsFloat64Array);
 
     CVector<OperationResult> cVecOpResult = {};
@@ -1157,7 +1157,7 @@ HWTEST_F_L0(JSTypedArrayTest, FastElementGet_TypedArray)
         int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypedArray;
         JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
             JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypedArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+        handleTypedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
         handleTypedArray->SetArrayLength(numElementsTypedArray);
 
         JSHandle<JSTaggedValue> handleTagValValueSet(thread, JSTaggedValue(cVecHandleTagValValueForTypedArray.at(j)));
@@ -1205,7 +1205,7 @@ HWTEST_F_L0(JSTypedArrayTest, DefineOwnProperty_TypedArray)
         int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypedArray;
         JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
             JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypedArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+        handleTypedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
         handleTypedArray->SetArrayLength(numElementsTypedArray);
 
         for (int i = 0; i < numElementsTypedArray; i++) {
@@ -1251,7 +1251,7 @@ HWTEST_F_L0(JSTypedArrayTest, SetProperty_TypedArray)
         int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypedArray;
         JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
             JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypedArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+        handleTypedArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
         handleTypedArray->SetArrayLength(numElementsTypedArray);
 
         for (int i = 0; i < numElementsTypedArray; i++) {
@@ -1293,7 +1293,7 @@ HWTEST_F_L0(JSTypedArrayTest, FastCopyElementToArray_TypedArray)
         JSHandle<JSTaggedValue> handleTagValArrayBuffer =
             JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
         JSHandle<TaggedArray> handleTagArrTo = factory->NewTaggedArray(byteLengthViewdArrayBuffer);
-        handleTypedArrayFrom->SetViewedArrayBuffer(thread, handleTagValArrayBuffer);
+        handleTypedArrayFrom->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBuffer);
         handleTypedArrayFrom->SetArrayLength(numElementsTypedArray);
 
         for (int i = 0; i < numElementsTypedArray; i++) {
@@ -1327,7 +1327,7 @@ HWTEST_F_L0(JSTypedArrayTest, FastGetPropertyByIndex)
         int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypeArray;
         JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
             JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypeArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+        handleTypeArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
         handleTypeArray->SetArrayLength(numElementsTypeArray);
 
         CVector<JSTaggedValue> vec = {};
@@ -1365,7 +1365,7 @@ HWTEST_F_L0(JSTypedArrayTest, FastSetPropertyByIndex)
         int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypeArray;
         JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
             JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypeArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+        handleTypeArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
         handleTypeArray->SetArrayLength(numElementsTypeArray);
 
         CVector<OperationResult> vec = {};
@@ -1402,7 +1402,7 @@ HWTEST_F_L0(JSTypedArrayTest, FastSetAndGetPropertyByIndex)
         int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypeArray;
         JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
             JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypeArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+        handleTypeArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
         handleTypeArray->SetArrayLength(numElementsTypeArray);
 
         CVector<JSTaggedValue> vec = {};
@@ -1428,7 +1428,7 @@ HWTEST_F_L0(JSTypedArrayTest, FastSetAndGetPropertyByIndex)
         int32_t byteLengthViewdArrayBuffer = sizeElement * numElementsTypeArray;
         JSHandle<JSTaggedValue> handleTagValArrayBufferFrom =
             JSHandle<JSTaggedValue>::Cast(factory->NewJSArrayBuffer(byteLengthViewdArrayBuffer));
-        handleTypeArray->SetViewedArrayBuffer(thread, handleTagValArrayBufferFrom);
+        handleTypeArray->SetViewedArrayBufferOrByteArray(thread, handleTagValArrayBufferFrom);
         handleTypeArray->SetArrayLength(numElementsTypeArray);
 
         for (uint32_t i = 0; i < numElementsTypeArray; i++) {
@@ -1475,9 +1475,9 @@ HWTEST_F_L0(JSTypedArrayTest, GetOffHeapBuffer)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSTypedArray> typedArray(int8Array);
-    ASSERT_TRUE(typedArray->GetViewedArrayBuffer().IsByteArray());
+    ASSERT_TRUE(typedArray->GetViewedArrayBufferOrByteArray().IsByteArray());
     JSTypedArray::GetOffHeapBuffer(thread, typedArray);
-    ASSERT_TRUE(typedArray->GetViewedArrayBuffer().IsArrayBuffer());
+    ASSERT_TRUE(typedArray->GetViewedArrayBufferOrByteArray().IsArrayBuffer());
     JSTaggedValue data1 = JSTypedArray::FastGetPropertyByIndex(thread, typedArray.GetTaggedValue(),
                                                                0, JSType::JS_INT8_ARRAY);
     JSTaggedValue data2 = JSTypedArray::FastGetPropertyByIndex(thread, typedArray.GetTaggedValue(),

@@ -188,8 +188,8 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
             break;
         case JSType::BYTE_ARRAY:
-            size = ByteArray::ComputeSize(reinterpret_cast<ByteArray *>(header)->GetSize(),
-                                          reinterpret_cast<ByteArray *>(header)->GetLength());
+            size = ByteArray::ComputeSize(reinterpret_cast<ByteArray *>(header)->GetByteLength(),
+                                          reinterpret_cast<ByteArray *>(header)->GetArrayLength());
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::LINE_STRING:

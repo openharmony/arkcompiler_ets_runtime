@@ -90,7 +90,7 @@ bool JSTypedArray::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &
         JSTaggedValue numericIndex = JSTaggedValue::CanonicalNumericIndexString(thread, key);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (!numericIndex.IsUndefined()) {
-            JSTaggedValue buffer = typedarrayObj->GetViewedArrayBuffer();
+            JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
             if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", false);
             }
@@ -371,7 +371,7 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     ASSERT(typedarray->IsTypedArray());
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer",
@@ -420,7 +420,7 @@ bool JSTypedArray::IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray
     // 1. Assert: O is an Integer-Indexed exotic object.
     // 2. If IsDetachedBuffer(O.[[ViewedArrayBuffer]]) is true, return false.
     JSHandle<JSTypedArray> typedarrayObj(typedArray);
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         return false;
     }
@@ -488,7 +488,7 @@ bool JSTypedArray::FastCopyElementToArray(JSThread *thread, const JSHandle<JSTag
     ASSERT(typedArray->IsTypedArray());
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedArray);
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", false);
@@ -523,7 +523,7 @@ OperationResult JSTypedArray::FastElementGet(JSThread *thread, const JSHandle<JS
     ASSERT(typedarray->IsTypedArray());
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer",
@@ -570,7 +570,7 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     JSHandle<JSTaggedValue> indexHandle(thread, index);
     // 5. If ! IsValidIntegerIndex(O, index) is true, then
     if (IsValidIntegerIndex(typedarray, index)) {
@@ -635,7 +635,7 @@ JSTaggedValue JSTypedArray::FastGetPropertyByIndex(JSThread *thread, const JSTag
     ASSERT(typedarray.IsTypedArray());
     // Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSTypedArray *typedarrayObj = JSTypedArray::Cast(typedarray.GetTaggedObject());
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     // If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", JSTaggedValue::Exception());
@@ -676,7 +676,7 @@ JSTaggedValue JSTypedArray::FastSetPropertyByIndex(JSThread *thread, const JSTag
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBuffer();
+    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
 
     // If ℝ(index) < 0 or ℝ(index) ≥ O.[[ArrayLength]], return false.
     uint32_t arrLen = typedarrayObj->GetArrayLength();
@@ -699,24 +699,24 @@ JSTaggedValue JSTypedArray::FastSetPropertyByIndex(JSThread *thread, const JSTag
 
 JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray)
 {
-    JSTaggedValue arrBuf = typedArray->GetViewedArrayBuffer();
+    JSTaggedValue arrBuf = typedArray->GetViewedArrayBufferOrByteArray();
     if (arrBuf.IsArrayBuffer() || arrBuf.IsSharedArrayBuffer()) {
         return arrBuf;
     }
 
     ByteArray *byteArray = ByteArray::Cast(arrBuf.GetTaggedObject());
-    int32_t length = static_cast<int32_t>(byteArray->GetLength() * byteArray->GetSize());
+    int32_t length = static_cast<int32_t>(byteArray->GetArrayLength() * byteArray->GetByteLength());
     JSHandle<JSArrayBuffer> arrayBuffer = thread->GetEcmaVM()->GetFactory()->NewJSArrayBuffer(length);
 
     if (length > 0) {
         void *fromBuf = reinterpret_cast<void *>(ToUintPtr(
-            ByteArray::Cast(typedArray->GetViewedArrayBuffer().GetTaggedObject())->GetData()));
+            ByteArray::Cast(typedArray->GetViewedArrayBufferOrByteArray().GetTaggedObject())->GetData()));
         JSTaggedValue data = arrayBuffer->GetArrayBufferData();
         void *toBuf = reinterpret_cast<void *>(
             ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer()));
         JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, 0, length);
     }
-    typedArray->SetViewedArrayBuffer(thread, arrayBuffer.GetTaggedValue());
+    typedArray->SetViewedArrayBufferOrByteArray(thread, arrayBuffer.GetTaggedValue());
     typedArray->SetIsOnHeap(false);
 
     return arrayBuffer.GetTaggedValue();
