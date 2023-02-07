@@ -329,6 +329,26 @@ bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
     return (entry != -1);
 }
 
+bool ModuleManager::SkipDefaultBundleFile(const CString &moduleFileName) const
+{
+    // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
+    return !vm_->EnableReportModuleResolvingFailure() &&
+        base::StringHelper::StringStartWith(moduleFileName, PathHelper::BUNDLE_INSTALL_PATH);
+}
+
+JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                                const CString &recordName)
+{
+    // In static parse Phase, due to lack of some parameters, we will create a empty SourceTextModule which will
+    // be marked as INSTANTIATED to skip Dfs traversal of this import branch.
+    if (!vm_->EnableReportModuleResolvingFailure() && (jsPandaFile == nullptr ||
+        (jsPandaFile != nullptr && !jsPandaFile->HasRecord(recordName)))) {
+        return CreateEmptyModule();
+    } else {
+        return ResolveModuleWithMerge(thread, jsPandaFile, recordName);
+    }
+}
+
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const CString &moduleFileName,
                                                                           const CString &recordName)
 {
@@ -341,20 +361,39 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
     if (entry != -1) {
         return JSHandle<JSTaggedValue>(thread, dict->GetValue(entry));
     }
-    std::shared_ptr<JSPandaFile> jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile = SkipDefaultBundleFile(moduleFileName) ? nullptr :
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + moduleFileName + "' failed, recordName '" + recordName + "'";
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        // In Aot Module Instantiate, we miss some runtime parameters from framework like bundleName or moduleName
+        // which may cause wrong recordName parsing and we also can't load files not in this app hap. But in static
+        // phase, these should not be an error, just skip it is ok.
+        if (vm_->EnableReportModuleResolvingFailure()) {
+            CString msg = "Load file with filename '" + moduleFileName + "' failed, recordName '" + recordName + "'";
+            THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        }
     }
 
-    JSHandle<JSTaggedValue> moduleRecord = ResolveModuleWithMerge(thread, jsPandaFile.get(), recordName);
+    JSHandle<JSTaggedValue> moduleRecord = ResolveModuleInMergedABC(thread, jsPandaFile.get(), recordName);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
     resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
                                            moduleRecord, PropertyAttributes::Default()).GetTaggedValue();
 
     return moduleRecord;
+}
+
+JSHandle<JSTaggedValue> ModuleManager::CreateEmptyModule()
+{
+    if (!cachedEmptyModule_.IsHole()) {
+        return JSHandle<JSTaggedValue>(vm_->GetJSThread(), cachedEmptyModule_);
+    }
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<SourceTextModule> tmpModuleRecord = factory->NewSourceTextModule();
+    tmpModuleRecord->SetStatus(ModuleStatus::INSTANTIATED);
+    tmpModuleRecord->SetTypes(ModuleTypes::ECMA_MODULE);
+    tmpModuleRecord->SetIsNewBcVersion(true);
+    cachedEmptyModule_ = tmpModuleRecord.GetTaggedValue();
+    return JSHandle<JSTaggedValue>::Cast(tmpModuleRecord);
 }
 
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &referencingModule)
@@ -574,6 +613,7 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(JSTaggedValue localName,
 void ModuleManager::Iterate(const RootVisitor &v)
 {
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&resolvedModules_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&cachedEmptyModule_)));
 }
 
 CString ModuleManager::GetRecordName(JSTaggedValue module)

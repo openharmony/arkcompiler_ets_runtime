@@ -11,18 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_typeinfer_module_test") {
-  testonly = true
-  test_list = [
-    "module_class",
-    "module_function",
-    "module_function_infer",
-    "module_multi_import",
-    "module_retransmission",
-  ]
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
+host_typeinfer_test_action("module_multi_import") {
   deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}AotTypeInferAction" ]
-  }
+  is_multi_file_tests = true
+  is_enable_es2abc = false
 }

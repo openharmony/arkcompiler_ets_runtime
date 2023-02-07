@@ -459,6 +459,11 @@ public:
     HeapProfilerInterface *GetOrNewHeapProfile();
 #endif
 
+    bool EnableReportModuleResolvingFailure() const
+    {
+        return options_.EnableReportModuleResolvingFailure();
+    }
+
     void SetAssetPath(const CString &assetPath)
     {
         assetPath_ = assetPath;

@@ -20,6 +20,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/subtyping_operator.h"
+#include "ecmascript/ts_types/ts_type_parser.h"
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 #include "ecmascript/vtable.h"
 
@@ -371,6 +372,9 @@ void TSManager::Iterate(const RootVisitor &v)
     snapshotData_.Iterate(v);
     for (auto iter : gtIhcMap_) {
         iter.second.Iterate(v);
+    }
+    for (auto &exportTable : resolvedExportTable_) {
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&resolvedExportTable_.at(exportTable.first))));
     }
 }
 
@@ -1214,6 +1218,15 @@ kungfu::GateType TSManager::TryNarrowUnionType(kungfu::GateType gateType)
         }
     }
     return gateType;
+}
+
+JSHandle<TaggedArray> TSManager::GenerateExportTableFromLiteral(const JSPandaFile *jsPandaFile,
+                                                                const CString &recordName)
+{
+    TSTypeParser parser(this);
+    JSHandle<TaggedArray> typeOfExportedSymbols = parser.GetExportDataFromRecord(jsPandaFile, recordName);
+    AddResolvedExportTable(jsPandaFile, recordName, typeOfExportedSymbols.GetTaggedValue());
+    return typeOfExportedSymbols;
 }
 
 bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const

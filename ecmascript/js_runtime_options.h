@@ -384,6 +384,16 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE) != 0;
     }
 
+    void DisableReportModuleResolvingFailure()
+    {
+        reportModuleResolvingFailure_ = false;
+    }
+
+    bool EnableReportModuleResolvingFailure() const
+    {
+        return reportModuleResolvingFailure_;
+    }
+
     bool WasSetMaxNonmovableSpaceCapacity() const
     {
         return WasOptionSet(OPTION_MAX_NONMOVABLE_SPACE_CAPACITY);
@@ -958,6 +968,7 @@ private:
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
+    bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {2};
     std::string pgoProfilerPath_ {""};
     bool traceDeopt_ {false};

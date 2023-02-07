@@ -119,13 +119,23 @@ enum class BuiltinTypeId : uint8_t {  // keep the same with enum BuiltinType in 
     TYPED_ARRAY_LAST = BIG_UINT64_ARRAY,
 };
 
-struct LocalModuleInfo {
+struct ModuleInfo {
     const JSPandaFile *jsPandaFile {nullptr}; // there may be serval merged abc files.
-    const CString recordName {""}; // distinguish different files which are all merged to a abc file.
-    uint32_t index {0}; // bytecode "ldlocalmodulevar index", importVar index is unique in the same recordName.
-    bool operator < (const LocalModuleInfo &localModuleInfo) const
+    const CString recordName {""}; // distinguish different files which are all merged to one abc file.
+    uint32_t index {0}; // bytecode "stmoudlevar index", exportVar index is unique in the same record.
+    bool operator < (const ModuleInfo &moduleInfo) const
     {
-        return index < localModuleInfo.index;
+        if (index < moduleInfo.index) {
+            return true;
+        }
+        if (index == moduleInfo.index && recordName < moduleInfo.recordName) {
+            return true;
+        }
+        if (index == moduleInfo.index && recordName == moduleInfo.recordName &&
+            jsPandaFile < moduleInfo.jsPandaFile) {
+            return true;
+        }
+        return false;
     }
 };
 
@@ -459,29 +469,52 @@ public:
         return gtLiteralOffsetMap_.at(gt);
     }
 
-    inline void AddTypeToLocalModuleVarGtMap(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                             uint32_t index, GlobalTSTypeRef gt)
+    inline void AddTypeToModuleVarGtMap(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                        uint32_t index, GlobalTSTypeRef gt)
     {
-        LocalModuleInfo key = {jsPandaFile, recordName, index};
-        if (localModuleVarGtMap_.find(key) == localModuleVarGtMap_.end()) {
-            localModuleVarGtMap_.emplace(key, gt);
+        ModuleInfo key = {jsPandaFile, recordName, index};
+        if (moduleVarGtMap_.find(key) == moduleVarGtMap_.end()) {
+            moduleVarGtMap_.emplace(key, gt);
         } else {
-            localModuleVarGtMap_[key] = gt;
+            moduleVarGtMap_[key] = gt;
         }
     }
 
     inline bool HasExportGT(const JSPandaFile *jsPandaFile, const CString &recordName,
-                            uint32_t index)
+                            uint32_t index) const
     {
-        LocalModuleInfo key = {jsPandaFile, recordName, index};
-        return localModuleVarGtMap_.find(key) != localModuleVarGtMap_.end();
+        ModuleInfo key = {jsPandaFile, recordName, index};
+        return moduleVarGtMap_.find(key) != moduleVarGtMap_.end();
     }
 
     inline GlobalTSTypeRef GetGTFromModuleMap(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                              uint32_t index)
+                                              uint32_t index) const
     {
-        LocalModuleInfo key = {jsPandaFile, recordName, index};
-        return localModuleVarGtMap_.at(key);
+        ModuleInfo key = {jsPandaFile, recordName, index};
+        return moduleVarGtMap_.at(key);
+    }
+
+    inline void AddResolvedExportTable(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                       JSTaggedValue exportTable)
+    {
+        auto key = std::make_pair(jsPandaFile, recordName);
+        if (resolvedExportTable_.find(key) == resolvedExportTable_.end()) {
+            resolvedExportTable_.emplace(key, exportTable);
+        } else {
+            resolvedExportTable_[key] = exportTable;
+        }
+    }
+
+    inline bool HasResolvedExportTable(const JSPandaFile *jsPandaFile, const CString &recordName) const
+    {
+        auto key = std::make_pair(jsPandaFile, recordName);
+        return resolvedExportTable_.find(key) != resolvedExportTable_.end();
+    }
+
+    inline JSTaggedValue GetResolvedExportTable(const JSPandaFile *jsPandaFile, const CString &recordName) const
+    {
+        auto key = std::make_pair(jsPandaFile, recordName);
+        return resolvedExportTable_.at(key);
     }
 
     bool IsTSIterator(GlobalTSTypeRef gt) const
@@ -660,6 +693,8 @@ public:
 
     kungfu::GateType TryNarrowUnionType(kungfu::GateType gateType);
 
+    JSHandle<TaggedArray> GenerateExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
+
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
@@ -740,7 +775,7 @@ private:
     std::vector<uint32_t> builtinOffsets_ {};
     JSPandaFile *builtinPandaFile_ {nullptr};
     CString builtinsRecordName_ {""};
-    std::map<LocalModuleInfo, GlobalTSTypeRef> localModuleVarGtMap_{};
+    std::map<ModuleInfo, GlobalTSTypeRef> moduleVarGtMap_{};
     kungfu::CompilationDriver *cmpDriver_ {nullptr};
     std::set<GlobalTSTypeRef> collectedTypeOffsets_ {};  // use for storing types that need to generate hclasses
 
@@ -748,6 +783,8 @@ private:
 
     std::map<std::pair<const JSPandaFile *, uint32_t>, std::string> literalOffsetClassNameMap_ {};
     kungfu::BytecodeInfoCollector *bcInfoCollector_ {nullptr};
+    // use for collect the literal of export type table.
+    CMap<std::pair<const JSPandaFile *, CString>, JSTaggedValue> resolvedExportTable_ {};
 };
 }  // namespace panda::ecmascript
 

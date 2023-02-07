@@ -31,13 +31,12 @@ namespace panda::ecmascript {
  */
 class TSTypeParser {
 public:
-    explicit TSTypeParser(TSManager *tsManager)
-        : tsManager_(tsManager), vm_(tsManager->GetEcmaVM()),
-          thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
-          tableGenerator_(tsManager_) {}
+    explicit TSTypeParser(TSManager *tsManager);
     ~TSTypeParser() = default;
 
     GlobalTSTypeRef PUBLIC_API CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
+
+    JSHandle<TaggedArray> GetExportDataFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
 
     static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
 
@@ -117,8 +116,6 @@ private:
                                   uint32_t startIndex, uint32_t lastIndex,
                                   uint32_t &index);
 
-    JSHandle<TaggedArray> GetExportDataFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
-
     JSHandle<JSTaggedValue> GenerateExportTableFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName,
                                                           const JSHandle<TSTypeTable> &table);
 
@@ -126,13 +123,19 @@ private:
 
     JSHandle<EcmaString> GenerateImportVar(JSHandle<EcmaString> import) const;
 
-    GlobalTSTypeRef GetExportGTByName(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable) const;
+    GlobalTSTypeRef GetExportGTByName(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable,
+                                      const JSPandaFile *jsPandaFile, const CString &recordName,
+                                      std::unordered_set<CString> &markSet);
+
+    GlobalTSTypeRef IterateStarExport(JSHandle<EcmaString> target, const JSPandaFile *jsPandaFile,
+                                      const CString &recordName, std::unordered_set<CString> &markSet);
 
     TSManager *tsManager_ {nullptr};
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     TSTypeTableGenerator tableGenerator_;
+    kungfu::BCInfo *bcInfo_ {nullptr};
 };
 }  // panda::ecmascript
 #endif  // ECMASCRIPT_TS_TYPES_TS_TYPE_PARSER_H
