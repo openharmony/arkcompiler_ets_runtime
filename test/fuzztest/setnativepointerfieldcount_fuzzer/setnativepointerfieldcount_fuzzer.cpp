@@ -39,6 +39,9 @@ namespace OHOS {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
+        if (key <= 0 || key > 1048576) { // 1048576 : 1G in size
+            key = 1048576; // 1048576 : 1G in size
+        }
         Local<ObjectRef> object = ObjectRef::New(vm);
         object->SetNativePointerFieldCount(key);
         JSNApi::DestroyJSVM(vm);
