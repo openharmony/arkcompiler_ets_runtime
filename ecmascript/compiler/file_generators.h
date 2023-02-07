@@ -225,8 +225,8 @@ protected:
 
 class AOTFileGenerator : public FileGenerator {
 public:
-    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList,
-        EcmaVM* vm) : FileGenerator(log, logList), vm_(vm) {}
+    AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList, EcmaVM* vm, const std::string &triple)
+        : FileGenerator(log, logList), vm_(vm), cfg_(triple) {}
 
     ~AOTFileGenerator() override = default;
 
@@ -252,6 +252,7 @@ public:
 private:
     AnFileInfo aotInfo_;
     EcmaVM* vm_;
+    CompilationConfig cfg_;
     // MethodID->EntryIndex
     std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
 

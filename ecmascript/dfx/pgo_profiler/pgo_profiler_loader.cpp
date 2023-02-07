@@ -25,67 +25,132 @@
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
-void PGOProfilerLoader::LoadProfiler(const std::string &inPath, uint32_t hotnessThreshold)
+bool PGOProfilerLoader::Load(const std::string &inPath, uint32_t hotnessThreshold)
 {
     hotnessThreshold_ = hotnessThreshold;
     isLoaded_ = false;
     hotnessMethods_.clear();
     if (inPath.empty()) {
-        return;
+        return false;
     }
     std::string realPath;
     if (!RealPath(inPath, realPath)) {
-        return;
+        return false;
     }
 
     static const std::string endString = ".ap";
     if (realPath.compare(realPath.length() - endString.length(), endString.length(), endString)) {
         LOG_ECMA(ERROR) << "The file path( " << realPath << ") does not end with .ap";
-        return;
+        return false;
     }
     LOG_ECMA(INFO) << "Load profiler from file:" << realPath;
 
-    std::ifstream file(realPath.c_str());
-    if (!file.is_open()) {
-        LOG_ECMA(ERROR) << "File path(" << realPath << ") open failure!";
-        return;
+    fd_t fd = Open(realPath.c_str(), FILE_RDONLY);
+    if (UNLIKELY(fd == INVALID_FD)) {
+        LOG_ECMA(ERROR) << "open file failed";
+        return false;
     }
-    std::string lineString;
-    while (std::getline(file, lineString)) {
-        if (!lineString.empty()) {
-            ParseProfiler(lineString);
-        }
+    int64_t fileSize = GetFileSizeByFd(fd);
+    if (fileSize == -1) {
+        Close(fd);
+        LOG_ECMA(ERROR) << "GetFileSize failed";
+        return false;
     }
 
-    file.close();
+    fd_t extra = INVALID_FD;
+    void *addr = FileMmap(fd, fileSize, 0, &extra);
+    if (addr == nullptr) {
+        Close(fd);
+        LOG_ECMA(ERROR) << "file mmap failed";
+        return false;
+    }
+
+    if (!ParseProfilerHeader(&addr)) {
+        FileUnMap(addr, fileSize, &extra);
+        Close(fd);
+        LOG_ECMA(ERROR) << "Parse profiler header failure";
+        return false;
+    }
+    if (!ParsePandaFileInfo(&addr)) {
+        FileUnMap(addr, fileSize, &extra);
+        Close(fd);
+        LOG_ECMA(ERROR) << "Parse profiler panda file info failure";
+        return false;
+    }
+    ParseProfiler(&addr);
+    FileUnMap(addr, fileSize, &extra);
+    Close(fd);
+
     isLoaded_ = true;
+    return true;
 }
 
-void PGOProfilerLoader::ParseProfiler(const std::string &profilerString)
+bool PGOProfilerLoader::Verify(uint32_t checksum)
 {
-    size_t index = profilerString.find_first_of("[");
-    size_t end = profilerString.find_last_of("]");
-    if (index == std::string::npos || end == std::string::npos || index > end) {
-        LOG_ECMA(ERROR) << "Profiler format error" << profilerString;
-        return;
+    isVerifySuccess_ = false;
+    if (!isLoaded_) {
+        return false;
     }
-    CString recordName = ConvertToString(profilerString.substr(0, index - 1));
-    std::string content = profilerString.substr(index + 1, end - index - 1);
-    std::vector<std::string> hotnessMethodIdStrings = base::StringHelper::SplitString(content, ",");
-    if (hotnessMethodIdStrings.empty()) {
-        LOG_ECMA(INFO) << "hotness method is none";
-        return;
-    }
-    auto hotnessMethodSet = hotnessMethods_.find(recordName);
-    if (hotnessMethodSet != hotnessMethods_.end()) {
-        auto &methodIds = hotnessMethodSet->second;
-        for (auto &method : hotnessMethodIdStrings) {
-            ParseHotMethodInfo(method, methodIds);
+    for (auto info : pandaFileProfilerInfos_) {
+        if (checksum == info.GetChecksum()) {
+            isVerifySuccess_ = true;
+            return true;
         }
-    } else {
+    }
+    return false;
+}
+
+bool PGOProfilerLoader::LoadAndVerify(const std::string &inPath, uint32_t hotnessThreshold, uint32_t checksum)
+{
+    if (Load(inPath, hotnessThreshold)) {
+        if (!Verify(checksum)) {
+            LOG_COMPILER(ERROR) << "Verify profiler failure";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool PGOProfilerLoader::ParseProfilerHeader(void **buffer)
+{
+    memcpy_s(&header_, sizeof(PGOProfilerHeader), *buffer, sizeof(PGOProfilerHeader));
+    *buffer = ToVoidPtr(ToUintPtr(*buffer) + sizeof(PGOProfilerHeader));
+    return header_.Verify();
+}
+
+bool PGOProfilerLoader::ParsePandaFileInfo(void **buffer)
+{
+    uint32_t size = *(reinterpret_cast<uint32_t *>(*buffer));
+    *buffer = ToVoidPtr(ToUintPtr(*buffer) + sizeof(uint32_t));
+    pandaFileProfilerInfos_.resize(size);
+    for (uint32_t i = 0; i < size; i++) {
+        pandaFileProfilerInfos_.emplace_back(*(reinterpret_cast<PandaFileProfilerInfo *>(*buffer)));
+        *buffer = ToVoidPtr(ToUintPtr(*buffer) + sizeof(PandaFileProfilerInfo));
+    }
+    LOG_ECMA(DEBUG) << "Profiler panda file count:" << size;
+    return true;
+}
+
+void PGOProfilerLoader::ParseProfiler(void **buffer)
+{
+    uint32_t recordNameCount = *(reinterpret_cast<uint32_t *>(*buffer));
+    *buffer = ToVoidPtr(ToUintPtr(*buffer) + sizeof(uint32_t));
+    for (uint32_t i = 0; i < recordNameCount; i++) {
+        auto recordName = ConvertToString(reinterpret_cast<char *>(*buffer));
+        *buffer = ToVoidPtr(ToUintPtr(*buffer) + recordName.size() + 1);
         std::unordered_set<EntityId> methodIds;
-        for (auto &method : hotnessMethodIdStrings) {
-            ParseHotMethodInfo(method, methodIds);
+
+        uint32_t methodCount = *(reinterpret_cast<uint32_t *>(*buffer));
+        *buffer = ToVoidPtr(ToUintPtr(*buffer) + sizeof(uint32_t));
+        for (uint32_t j = 0; j < methodCount; j++) {
+            MethodProfilerInfo *info = reinterpret_cast<MethodProfilerInfo *>(*buffer);
+            if (info->GetCount() >= hotnessThreshold_) {
+                methodIds.emplace(info->GetMethodId());
+                LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << "/" << info->GetCount()
+                                << "/" << std::to_string(static_cast<int>(info->GetSampleMode()))
+                                << "/" << info->GetMethodName() << "/" << info->GetMethodLength();
+            }
+            *buffer = ToVoidPtr(ToUintPtr(*buffer) + info->Size());
         }
         if (!methodIds.empty()) {
             hotnessMethods_.emplace(recordName, methodIds);
@@ -93,49 +158,13 @@ void PGOProfilerLoader::ParseProfiler(const std::string &profilerString)
     }
 }
 
-void PGOProfilerLoader::ParseHotMethodInfo(const std::string &methodInfo, std::unordered_set<EntityId> &methodIds)
-{
-    std::vector<std::string> methodCountString = base::StringHelper::SplitString(methodInfo, "/");
-    if (methodCountString.size() < METHOD_INFO_COUNT) {
-        LOG_ECMA(ERROR) << "method info format error " << methodInfo;
-        return;
-    }
-    char *endPtr = nullptr;
-    static constexpr int NUMBER_BASE = 10;
-    SampleMode mode =
-        static_cast<SampleMode>(strtol(methodCountString[METHOD_MODE_INDEX].c_str(), &endPtr, NUMBER_BASE));
-    if (endPtr == methodCountString[METHOD_MODE_INDEX].c_str() || *endPtr != '\0') {
-        LOG_ECMA(ERROR) << "method mode strtol error " << methodCountString[METHOD_MODE_INDEX];
-        return;
-    }
-    bool isHotness = true;
-    if (mode == SampleMode::CALL_MODE) {
-        uint32_t count =
-            static_cast<uint32_t>(strtol(methodCountString[METHOD_COUNT_INDEX].c_str(), &endPtr, NUMBER_BASE));
-        if (endPtr == methodCountString[METHOD_COUNT_INDEX].c_str() || *endPtr != '\0') {
-            LOG_ECMA(ERROR) << "method count strtol error " << methodCountString[METHOD_COUNT_INDEX];
-            return;
-        }
-        if (count < hotnessThreshold_) {
-            isHotness = false;
-        }
-    }
-    if (isHotness) {
-        endPtr = nullptr;
-        uint32_t methodId =
-            static_cast<uint32_t>(strtol(methodCountString[METHOD_ID_INDEX].c_str(), &endPtr, NUMBER_BASE));
-        if (endPtr == methodCountString[METHOD_ID_INDEX].c_str() || *endPtr != '\0') {
-            LOG_ECMA(ERROR) << "method id strtol error " << methodCountString[METHOD_ID_INDEX];
-            return;
-        }
-        methodIds.emplace(methodId);
-    }
-}
-
 bool PGOProfilerLoader::Match(const CString &recordName, EntityId methodId)
 {
     if (!isLoaded_) {
         return true;
+    }
+    if (!isVerifySuccess_) {
+        return false;
     }
     auto hotnessMethodSet = hotnessMethods_.find(recordName);
     if (hotnessMethodSet == hotnessMethods_.end()) {

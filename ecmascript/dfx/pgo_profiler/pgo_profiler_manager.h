@@ -17,10 +17,12 @@
 #define ECMASCRIPT_DFX_PGO_PROFILER_MANAGER_H
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/taskpool/task.h"
@@ -30,6 +32,7 @@ enum class SampleMode : uint8_t {
     HOTNESS_MODE,
     CALL_MODE,
 };
+
 /*
  * Support statistics of JS Function call heat. Save the method ID whose calls are less than MIN_COUNT.
  *
@@ -40,8 +43,20 @@ enum class SampleMode : uint8_t {
  * */
 class MethodProfilerInfo {
 public:
-    MethodProfilerInfo(uint32_t count, const std::string &methodName, SampleMode mode)
-        : count_(count), methodName_(methodName), mode_(mode) {}
+    static constexpr size_t ALIGN_SIZE = 4;
+
+    MethodProfilerInfo(EntityId id, uint32_t count, SampleMode mode, uint16_t length)
+        : id_(id), count_(count), mode_(mode), methodLength_(length) {}
+
+    static int32_t Size(uint32_t length)
+    {
+        return sizeof(MethodProfilerInfo) + AlignUp(length, ALIGN_SIZE);
+    }
+
+    int32_t Size()
+    {
+        return sizeof(MethodProfilerInfo) + AlignUp(methodLength_, ALIGN_SIZE);
+    }
 
     void IncreaseCount()
     {
@@ -56,7 +71,14 @@ public:
     void Merge(const MethodProfilerInfo *info)
     {
         count_ += info->GetCount();
+        methodLength_ = info->GetMethodLength();
         SetSampleMode(info->GetSampleMode());
+        SetMethodName(info->GetMethodName(), info->GetMethodLength());
+    }
+
+    EntityId GetMethodId() const
+    {
+        return id_;
     }
 
     uint32_t GetCount() const
@@ -64,9 +86,22 @@ public:
         return count_;
     }
 
-    const std::string &GetMethodName() const
+    uint16_t GetMethodLength() const
     {
-        return methodName_;
+        return methodLength_;
+    }
+
+    void SetMethodName(const char *methodName, size_t len)
+    {
+        if (memcpy_s(&methodName_, methodLength_, methodName, len) != EOK) {
+            LOG_ECMA(ERROR) << "SetMethodName memcpy_s failed" << methodName << ", len = " << len;
+        }
+        *(&methodName_ + len) = '\0';
+    }
+
+    const char *GetMethodName() const
+    {
+        return &methodName_;
     }
 
     void SetSampleMode(SampleMode mode)
@@ -86,9 +121,50 @@ public:
     NO_MOVE_SEMANTIC(MethodProfilerInfo);
 
 private:
+    EntityId id_;
     uint32_t count_ {0};
-    std::string methodName_;
     SampleMode mode_ {SampleMode::CALL_MODE};
+    uint16_t methodLength_ {0};
+    char methodName_;
+};
+
+class PGOProfilerHeader {
+public:
+    static constexpr size_t MAGIC_SIZE = 8;
+    static constexpr size_t VERSION_SIZE = 4;
+    static constexpr std::array<uint8_t, MAGIC_SIZE> MAGIC = {'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0'};
+    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 1};
+
+    bool Verify()
+    {
+        if (magic != MAGIC) {
+            LOG_ECMA(ERROR) << "Profiler magic error";
+            return false;
+        }
+        if (version > LAST_VERSION) {
+            LOG_ECMA(ERROR) << "Profiler version error";
+            return false;
+        }
+        return true;
+    }
+
+private:
+    std::array<uint8_t, MAGIC_SIZE> magic {MAGIC};
+    std::array<uint8_t, VERSION_SIZE> version {LAST_VERSION};
+};
+
+class PandaFileProfilerInfo {
+public:
+    PandaFileProfilerInfo() = default;
+    PandaFileProfilerInfo(uint32_t checksum) : checksum_(checksum) {}
+
+    uint32_t GetChecksum()
+    {
+        return checksum_;
+    }
+
+private:
+    uint32_t checksum_;
 };
 
 class PGOProfiler {
@@ -131,7 +207,7 @@ public:
     NO_MOVE_SEMANTIC(PGOProfilerManager);
 
     void Initialize(uint32_t hotnessThreshold, const std::string &outDir);
-    void InitializeData();
+    bool InitializeData();
 
     void Destroy();
 
@@ -139,7 +215,7 @@ public:
     PGOProfiler *Build(EcmaVM *vm, bool isEnable)
     {
         if (isEnable) {
-            InitializeData();
+            isEnable = InitializeData();
         }
         return new PGOProfiler(vm, isEnable);
     }
@@ -162,6 +238,7 @@ public:
         }
     }
 
+    void SamplePandaFileInfo(uint32_t checksum);
     void Merge(PGOProfiler *profile);
     void TerminateSaveTask();
     void PostSaveTask();
@@ -189,14 +266,19 @@ private:
 
     void StartSaveTask(SaveTask *task);
     void SaveProfiler(SaveTask *task = nullptr);
+    void ProcessProfileHeader(std::ofstream &fileStream);
+    void ProcessPandaFileInfo(std::ofstream &fileStream);
     void ProcessProfile(std::ofstream &fileStream, SaveTask *task);
 
-    bool isEnable_ {false};
+    bool isInitialized_ {false};
     uint32_t hotnessThreshold_ {2};
     std::string outDir_;
+    std::string realOutPath_;
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
+    PGOProfilerHeader header_;
     ChunkUnorderedMap<CString, ChunkUnorderedMap<EntityId, MethodProfilerInfo *> *> *globalProfilerMap_;
+    ChunkVector<PandaFileProfilerInfo *> *pandaFileProfilerInfos_;
     os::memory::Mutex mutex_;
 };
 
