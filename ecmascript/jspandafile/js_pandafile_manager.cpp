@@ -72,8 +72,8 @@ const JSPandaFile *JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const C
             return jsPandaFile;
         }
     }
-
     auto pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
+
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;

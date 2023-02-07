@@ -15,9 +15,9 @@
 
 #include "ecmascript/ts_types/ts_type_parser.h"
 
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "ecmascript/module/js_module_manager.h"
 
 #include "libpandafile/annotation_data_accessor.h"
 #include "libpandafile/class_data_accessor-inl.h"
@@ -84,10 +84,7 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     CString cstringRelativePath = ConvertToString(*relativePath);
     CString baseFileName = jsPandaFile->GetJSPandaFileDesc();
     CString entryPoint =
-        ModuleManager::ConcatFileNameWithMerge(jsPandaFile,
-                                               baseFileName,
-                                               recordName,
-                                               cstringRelativePath);
+        base::PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFileName, recordName, cstringRelativePath);
     JSHandle<EcmaString> targetVarName = GenerateImportVar(importVarNamePath);
     JSHandle<TaggedArray> arrayWithGT = GenerateExportTableFromRecord(jsPandaFile, entryPoint);
     GlobalTSTypeRef importedGT = GetExportGTByName(targetVarName, arrayWithGT);

@@ -16,6 +16,7 @@
 #include "ecmascript/require/js_cjs_module.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
@@ -27,7 +28,7 @@
 
 namespace panda::ecmascript {
 using BuiltinsJson = builtins::BuiltinsJson;
-
+using PathHelper = base::PathHelper;
 void CjsModule::InitializeModule(JSThread *thread, JSHandle<CjsModule> &module,
                                  JSHandle<JSTaggedValue> &filename, JSHandle<JSTaggedValue> &dirname)
 {
@@ -109,8 +110,8 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     } else {
         CString currentEntryPoint = ConvertToString(entrypointVal.GetTaggedValue());
         CString requestStr = ConvertToString(request.GetTaggedValue());
-        requestEntryPoint = ModuleManager::ConcatFileNameWithMerge(jsPandaFile, mergedFilename,
-                                                                   currentEntryPoint, requestStr);
+        requestEntryPoint = PathHelper::ConcatFileNameWithMerge(jsPandaFile, mergedFilename,
+                                                                currentEntryPoint, requestStr);
         filename.Update(factory->NewFromUtf8(requestEntryPoint));
     }
 

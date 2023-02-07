@@ -72,12 +72,8 @@ public:
         isExecuteBuffer_ = mode;
     }
     void ConcatFileName(std::string &dirPath, std::string &requestPath, std::string &fileName);
-    static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
-                                           CString moduleRecordName, CString moduleRequestName);
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
-    static bool IsImportedPath(const CString &moduleRequestName, size_t &typePos);
-    static void AddIndexToEntryPoint(const JSPandaFile *jsPandaFile, CString &entryPoint, CString &key);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
 private:
     NO_COPY_SEMANTIC(ModuleManager);

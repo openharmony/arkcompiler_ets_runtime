@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_promise_job.h"
 
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -29,6 +30,7 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {
+using PathHelper = base::PathHelper;
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -156,8 +158,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         CString requestModule = ConvertToString(specifier.GetTaggedValue());
         const JSPandaFile *jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
-        entryPoint =
-            ModuleManager::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
+        entryPoint = PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFilename, recordNameStr, requestModule);
         fileNameStr = baseFilename;
         moduleName = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(entryPoint);
     }
