@@ -277,6 +277,7 @@ public:
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
     NO_MOVE_SEMANTIC(BytecodeCircuitBuilder);
     void PUBLIC_API BytecodeToCircuit();
+    int32_t GetJumpOffset(uint32_t bcIndex) const;
     void CollectRegionInfo(uint32_t bcIndex);
 
     [[nodiscard]] Circuit* GetCircuit() const
@@ -379,6 +380,11 @@ public:
     {
         ASSERT(index <= GetLastBcIndex());
         return pcOffsets_[index];
+    }
+
+    const uint8_t *GetFirstPC() const
+    {
+        return GetPCByIndex(0);
     }
 
     const uint8_t *GetLastPC() const

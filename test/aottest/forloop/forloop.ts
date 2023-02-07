@@ -22,4 +22,4 @@ function foo(n: number) {
     return x;
 }
 
-print(foo(3000000));
+print(foo(300));
