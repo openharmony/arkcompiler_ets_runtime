@@ -689,22 +689,22 @@ if (is_mingw) {
 ecma_platform_source = []
 if (is_mingw) {
   ecma_platform_source += [
+    "ecmascript/platform/common/elf.cpp",
     "ecmascript/platform/windows/backtrace.cpp",
     "ecmascript/platform/windows/map.cpp",
     "ecmascript/platform/windows/file.cpp",
     "ecmascript/platform/windows/os.cpp",
     "ecmascript/platform/windows/time.cpp",
-    "ecmascript/platform/windows/elf.cpp",
   ]
 } else {
   ecma_platform_source += [
     "ecmascript/platform/unix/file.cpp",
     "ecmascript/platform/unix/map.cpp",
     "ecmascript/platform/unix/time.cpp",
-    "ecmascript/platform/unix/elf.cpp",
   ]
   if (is_mac || target_os == "ios") {
     ecma_platform_source += [
+      "ecmascript/platform/common/elf.cpp",
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
     ]
@@ -712,11 +712,13 @@ if (is_mingw) {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/ohos/backtrace.cpp",
+      "ecmascript/platform/unix/elf.cpp",
     ]
   } else if (is_linux) {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/linux/backtrace.cpp",
+      "ecmascript/platform/unix/elf.cpp",
     ]
   } else {
     print("Invalid os!")
