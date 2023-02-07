@@ -1386,6 +1386,8 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
         hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
     } else if (JSFunction::IsConstructorKind(kind)) {
         hclass = JSHandle<JSHClass>::Cast(env->GetConstructorFunctionClass());
+    } else if (kind == FunctionKind::CONCURRENT_FUNCTION) {
+        hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
     } else {
         hclass = JSHandle<JSHClass>::Cast(env->GetNormalFunctionClass());
     }

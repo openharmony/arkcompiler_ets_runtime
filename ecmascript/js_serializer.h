@@ -94,7 +94,7 @@ enum class SerializationUID : uint8_t {
     ERROR_MESSAGE_BEGIN,
     ERROR_MESSAGE_END,
     // Function begin
-    JS_FUNCTION,
+    CONCURRENT_FUNCTION,
     JS_METHOD,
     NATIVE_METHOD,
     CONSTANT_POOL,

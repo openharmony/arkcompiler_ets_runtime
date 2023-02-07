@@ -37,6 +37,9 @@ class CopyableGlobal;
 template<typename T>
 class Global;
 class JSNApi;
+template<typename T>
+class Local;
+class JSValueRef;
 class PrimitiveRef;
 class ArrayRef;
 class StringRef;
@@ -64,6 +67,7 @@ using QuickFixQueryCallBack = bool (*)(std::string, std::string &, void **, size
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
+using ConcurrentCallback = void (*)(Local<JSValueRef> val, Local<JSValueRef> hint, void *data);
 
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
@@ -1289,6 +1293,7 @@ public:
     static std::string GetModuleName(EcmaVM *vm);
     static void SetLoop(EcmaVM *vm, void *loop);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
+    static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
 
 private:
     static int vmCount_;
