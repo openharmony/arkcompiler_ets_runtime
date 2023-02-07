@@ -64,8 +64,24 @@ public:
         thread_->SetRuntimeState(oldState_);
     }
 private:
-    bool oldState_;
+    bool oldState_ = false;
     JSThread *thread_ = nullptr;
+};
+
+class CallNapiScope {
+public:
+    inline explicit CallNapiScope(SamplesRecord *generator)
+    {
+        generator_ = generator;
+        generator_->SetFrameStackCallNapi(true);
+    }
+
+    inline ~CallNapiScope()
+    {
+        generator_->SetFrameStackCallNapi(false);
+    }
+private:
+    SamplesRecord *generator_ = nullptr;
 };
 
 class CpuProfiler {
