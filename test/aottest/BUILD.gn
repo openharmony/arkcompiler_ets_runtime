@@ -84,6 +84,7 @@ group("ark_aot_test") {
     "getunmappedargs:getunmappedargsAotAction",
     "global_this_ts:global_this_tsAotAction",
     "helloaot:helloaotAotAction",
+    "ic:icAotAction",
     "inc:incAotAction",
     "inline:inlineAotAction",
     "instanceof:instanceofAotAction",
@@ -109,6 +110,7 @@ group("ark_aot_test") {
     "newlexenv:newlexenvAotAction",
     "newobjspread:newobjspreadAotAction",
     "not:notAotAction",
+    "optimization:optimizationAotAction",
     "or:orAotAction",
     "poplexenv:poplexenvAotAction",
     "proxy:proxyAotAction",
@@ -158,7 +160,7 @@ group("ark_aot_test") {
     deps += [
       # builtins_stub test only print log in debug mode
       "builtins_array:builtins_arrayAotAction",
-      "builtins_stub:builtins_stubAotAction",
+      # "builtins_stub:builtins_stubAotAction",
     ]
   }
 

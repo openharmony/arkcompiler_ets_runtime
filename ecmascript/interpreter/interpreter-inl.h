@@ -806,7 +806,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
 void EcmaInterpreter::NotifyBytecodePcChanged(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
@@ -825,7 +825,7 @@ void EcmaInterpreter::NotifyBytecodePcChanged(JSThread *thread)
 const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
@@ -843,7 +843,9 @@ const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
 JSTaggedValue EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+    JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
+
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
             continue;
         }
@@ -854,7 +856,6 @@ JSTaggedValue EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
         }
         JSTaggedValue func = frameHandler.GetFunction();
         JSHandle<JSTaggedValue> module(thread, JSFunction::Cast(func.GetTaggedObject())->GetModule());
-        JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
 
         if (module->IsSourceTextModule()) {
             recordName.Update(SourceTextModule::Cast(module->GetTaggedObject())->GetEcmaModuleRecordName());
@@ -881,7 +882,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     JSMutableHandle<Method> methodHandle(thread, JSTaggedValue::Undefined());
 
     constexpr size_t numOps = 0x100;
-    constexpr size_t numThrowOps = 9;
+    constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
     constexpr size_t numDeprecatedOps = 47;
 
@@ -3586,7 +3587,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     NOPRINT_HANDLE_OPCODE(EXCEPTION) {
         FrameHandler frameHandler(thread);
         uint32_t pcOffset = panda_file::INVALID_OFFSET;
-        for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
             if (frameHandler.IsEntryFrame()) {
                 return;
             }
@@ -3678,6 +3679,21 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             DISPATCH(THROW_UNDEFINEDIFHOLE_PREF_V8_V8);
         }
         JSTaggedValue obj = GET_VREG_VALUE(v1);
+        ASSERT(obj.IsString());
+        SAVE_PC();
+        SlowRuntimeStub::ThrowUndefinedIfHole(thread, obj);
+        INTERPRETER_GOTO_EXCEPTION_HANDLER();
+    }
+    HANDLE_OPCODE(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16) {
+        JSTaggedValue hole = acc;
+        if (!hole.IsHole()) {
+            DISPATCH(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
+        }
+
+        uint16_t stringId = READ_INST_16_1();
+        LOG_INST() << "intrinsic::throwundefinedifholewithname" << std::hex << stringId;
+        JSTaggedValue constpool = GetConstantPool(sp);
+        JSTaggedValue obj = GET_STR_FROM_CACHE(stringId);
         ASSERT(obj.IsString());
         SAVE_PC();
         SlowRuntimeStub::ThrowUndefinedIfHole(thread, obj);

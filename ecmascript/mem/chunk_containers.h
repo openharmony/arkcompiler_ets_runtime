@@ -47,6 +47,31 @@ public:
     NO_MOVE_SEMANTIC(ChunkVector);
 };
 
+template<typename T>
+class PUBLIC_API ChunkDeque : public std::deque<T, ChunkAllocator<T>> {
+public:
+    explicit ChunkDeque(Chunk *chunk) : std::deque<T, ChunkAllocator<T>>(ChunkAllocator<T>(chunk)) {}
+    ~ChunkDeque() = default;
+};
+
+template<typename T>
+class PUBLIC_API ChunkQueue : public std::queue<T, ChunkDeque<T>> {
+public:
+    explicit ChunkQueue(Chunk *chunk) : std::queue<T, ChunkDeque<T>>(ChunkDeque<T>(chunk)) {}
+    ~ChunkQueue() = default;
+};
+
+template<typename K, typename Compare = std::less<K>>
+class PUBLIC_API ChunkSet : public std::set<K, Compare, ChunkAllocator<K>> {
+public:
+    // Constructs an empty set.
+    explicit ChunkSet(Chunk *chunk)
+        : std::set<K, Compare, ChunkAllocator<K>>(Compare(), ChunkAllocator<K>(chunk))
+    {
+    }
+    ~ChunkSet() = default;
+};
+
 template<typename K, typename V, typename Compare = std::less<K>>
 class PUBLIC_API ChunkMap : public std::map<K, V, Compare, ChunkAllocator<std::pair<const K, V>>> {
 public:
@@ -57,8 +82,6 @@ public:
     {
     }
     ~ChunkMap() = default;
-    NO_COPY_SEMANTIC(ChunkMap);
-    NO_MOVE_SEMANTIC(ChunkMap);
 };
 
 template<typename K, typename V, typename Hash = std::hash<K>, typename KeyEqual = std::equal_to<K>>

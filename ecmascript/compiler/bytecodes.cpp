@@ -30,6 +30,34 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     }
 
     switch (inst.GetOpcode()) {
+        case EcmaOpcode::GETPROPITERATOR:
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+        case EcmaOpcode::LDSYMBOL:
+        case EcmaOpcode::LDGLOBAL:
+        case EcmaOpcode::LDBIGINT_ID16:
+        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::GETMODULENAMESPACE_IMM8:
+        case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
+        case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
+        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
+        default:
+            break;
+    }
+
+    switch (inst.GetOpcode()) {
         case EcmaOpcode::MOV_V4_V4:
         case EcmaOpcode::MOV_V8_V8:
         case EcmaOpcode::MOV_V16_V16:
@@ -177,7 +205,7 @@ Bytecodes::Bytecodes()
         wideBytecodes_[pc] = info;
     }
     last = (static_cast<uint16_t>(Bytecodes::LAST_THROW_OPCODE) & OPCODE_MASK) >> BYTE_SIZE;
-    for (uint8_t pc = 0; pc < last; pc++) {
+    for (uint8_t pc = 0; pc <= last; pc++) {
         std::array<uint8_t, 2> bytecode{THROW_PREFIX_OPCODE_INDEX, pc}; // 2: 2 opcode
         auto info = BytecodeMetaData::InitBytecodeMetaData(&bytecode[0]);
         throwBytecodes_[pc] = info;
@@ -343,6 +371,11 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t v1 = READ_INST_8_2();
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
+            break;
+        }
+        case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16: {
+            uint16_t stringId = READ_INST_16_1();
+            info.inputs.emplace_back(ICSlotId(stringId));
             break;
         }
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8: {

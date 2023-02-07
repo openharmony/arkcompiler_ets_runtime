@@ -35,6 +35,11 @@ public:
         size_ = size;
     }
 
+    void SetGule(GateRef glue)
+    {
+        glue_ = glue;
+    }
+
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
@@ -44,6 +49,8 @@ public:
     void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
                            bool isEmptyArray);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
+    GateRef FastNewThisObject(GateRef glue, GateRef ctor);
+    GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
 private:
     void AllocateInYoung(Variable *result, Label *exit);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,

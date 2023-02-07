@@ -19,9 +19,9 @@
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {
 JSTaggedValue JSArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self)
@@ -357,28 +357,28 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
 JSHandle<JSTaggedValue> JSArray::FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                         uint32_t index)
 {
-    auto result = FastRuntimeStub::FastGetPropertyByIndex(thread, obj.GetTaggedValue(), index);
+    auto result = ObjectFastOperator::FastGetPropertyByIndex(thread, obj.GetTaggedValue(), index);
     return JSHandle<JSTaggedValue>(thread, result);
 }
 
 JSHandle<JSTaggedValue> JSArray::FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                         const JSHandle<JSTaggedValue> &key)
 {
-    auto result = FastRuntimeStub::FastGetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue());
+    auto result = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue());
     return JSHandle<JSTaggedValue>(thread, result);
 }
 
 bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
                                      const JSHandle<JSTaggedValue> &value)
 {
-    return FastRuntimeStub::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
+    return ObjectFastOperator::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), index, value.GetTaggedValue());
 }
 
 bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
-    return FastRuntimeStub::FastSetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
-                                                   value.GetTaggedValue());
+    return ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
+                                                      value.GetTaggedValue());
 }
 
 void JSArray::Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &fn)
@@ -398,12 +398,12 @@ void JSArray::Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHand
     for (int64_t i = 1; i < len; i++) {
         int64_t beginIndex = 0;
         int64_t endIndex = i;
-        presentValue.Update(FastRuntimeStub::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), i));
+        presentValue.Update(ObjectFastOperator::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), i));
         RETURN_IF_ABRUPT_COMPLETION(thread);
         while (beginIndex < endIndex) {
             int64_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
             middleValue.Update(
-                FastRuntimeStub::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), middleIndex));
+                ObjectFastOperator::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), middleIndex));
             RETURN_IF_ABRUPT_COMPLETION(thread);
             int32_t compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
             RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -417,14 +417,14 @@ void JSArray::Sort(JSThread *thread, const JSHandle<JSObject> &obj, const JSHand
         if (endIndex >= 0 && endIndex < i) {
             for (int64_t j = i; j > endIndex; j--) {
                 previousValue.Update(
-                    FastRuntimeStub::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), j - 1));
+                    ObjectFastOperator::FastGetPropertyByIndex<true>(thread, obj.GetTaggedValue(), j - 1));
                 RETURN_IF_ABRUPT_COMPLETION(thread);
-                FastRuntimeStub::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), j,
-                                                        previousValue.GetTaggedValue());
+                ObjectFastOperator::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), j,
+                                                           previousValue.GetTaggedValue());
                 RETURN_IF_ABRUPT_COMPLETION(thread);
             }
-            FastRuntimeStub::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), endIndex,
-                                                    presentValue.GetTaggedValue());
+            ObjectFastOperator::FastSetPropertyByIndex(thread, obj.GetTaggedValue(), endIndex,
+                                                       presentValue.GetTaggedValue());
             RETURN_IF_ABRUPT_COMPLETION(thread);
         }
     }

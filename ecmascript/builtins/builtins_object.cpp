@@ -18,7 +18,6 @@
 #include "ecmascript/builtins/builtins_map.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
@@ -26,6 +25,7 @@
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_realm.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::builtins {
 // 19.1.1.1 Object ( [ value ] )
@@ -113,14 +113,14 @@ JSTaggedValue BuiltinsObject::Assign(EcmaRuntimeCallInfo *argv)
                 if (success && desc.IsEnumerable()) {
                     JSTaggedValue value = desc.GetValue().GetTaggedValue();
                     if (value.IsUndefined() || JSHandle<JSTaggedValue>::Cast(from)->IsJSProxy()) {
-                        value = FastRuntimeStub::FastGetPropertyByValue(thread, from.GetTaggedValue(),
-                                                                        key.GetTaggedValue());
+                        value = ObjectFastOperator::FastGetPropertyByValue(thread, from.GetTaggedValue(),
+                                                                           key.GetTaggedValue());
                     }
                     // ReturnIfAbrupt(prop_value)
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-                    FastRuntimeStub::FastSetPropertyByValue(thread, toAssign.GetTaggedValue(), key.GetTaggedValue(),
-                                                            value);
+                    ObjectFastOperator::FastSetPropertyByValue(thread, toAssign.GetTaggedValue(), key.GetTaggedValue(),
+                                                               value);
                     //  ReturnIfAbrupt(status)
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 }

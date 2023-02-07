@@ -570,7 +570,7 @@ GateRef StubBuilder::CallGetterHelper(GateRef glue, GateRef receiver, GateRef ho
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, getter, Int32(0), 0,
+            auto retValue = JSCallDispatch(glue, getter, Int32(0), 0, Circuit::NullGate(),
                                            JSCallMode::CALL_GETTER, { receiver });
             Label noPendingException(env);
             Branch(HasPendingException(glue), &exit, &noPendingException);
@@ -618,7 +618,7 @@ GateRef StubBuilder::CallSetterHelper(GateRef glue, GateRef receiver, GateRef ac
         }
         Bind(&objNotUndefined);
         {
-            auto retValue = JSCallDispatch(glue, setter, Int32(1), 0,
+            auto retValue = JSCallDispatch(glue, setter, Int32(1), 0, Circuit::NullGate(),
                                            JSCallMode::CALL_SETTER, { receiver, value });
             Label noPendingException(env);
             Branch(HasPendingException(glue), &exit, &noPendingException);
@@ -1615,11 +1615,19 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label handlerInfoNotField(env);
     Label handlerIsTransitionHandler(env);
     Label handlerNotTransitionHandler(env);
+    Label handlerIsTransWithProtoHandler(env);
+    Label handlerNotTransWithProtoHandler(env);
     Label handlerIsPrototypeHandler(env);
     Label handlerNotPrototypeHandler(env);
     Label handlerIsPropertyBox(env);
     Label handlerNotPropertyBox(env);
+    Label handlerIsStoreTSHandler(env);
+    Label handlerNotStoreTSHandler(env);
+    Label aotHandlerInfoIsField(env);
+    Label aotHandlerInfoNotField(env);
     Label cellHasChanged(env);
+    Label cellNotChanged(env);
+    Label aotCellNotChanged(env);
     Label loopHead(env);
     Label loopEnd(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
@@ -1655,15 +1663,28 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             }
             Bind(&handlerNotTransitionHandler);
             {
-                Branch(TaggedIsPrototypeHandler(*handler), &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
-                Bind(&handlerNotPrototypeHandler);
+                Branch(TaggedIsTransWithProtoHandler(*handler), &handlerIsTransWithProtoHandler,
+                    &handlerNotTransWithProtoHandler);
+                Bind(&handlerIsTransWithProtoHandler);
                 {
-                    Branch(TaggedIsPropertyBox(*handler), &handlerIsPropertyBox, &handlerNotPropertyBox);
-                    Bind(&handlerIsPropertyBox);
-                    StoreGlobal(glue, value, *handler);
-                    Jump(&exit);
-                    Bind(&handlerNotPropertyBox);
-                    Jump(&exit);
+                    GateRef cellValue = GetProtoCell(*handler);
+                    Branch(GetHasChanged(cellValue), &cellHasChanged, &cellNotChanged);
+                    Bind(&cellNotChanged);
+                    {
+                        StoreWithTransition(glue, receiver, value, *handler, true);
+                        Jump(&exit);
+                    }
+                }
+                Bind(&handlerNotTransWithProtoHandler);
+                {
+                    Branch(TaggedIsPrototypeHandler(*handler), &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
+                    Bind(&handlerNotPrototypeHandler);
+                    {
+                        Branch(TaggedIsPropertyBox(*handler), &handlerIsPropertyBox, &handlerNotPropertyBox);
+                        Bind(&handlerIsPropertyBox);
+                        StoreGlobal(glue, value, *handler);
+                        Jump(&exit);
+                    }
                 }
             }
         }
@@ -1671,17 +1692,46 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         {
             GateRef cellValue = GetProtoCell(*handler);
             Branch(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
-            Bind(&cellHasChanged);
-            {
-                result = Hole();
-                Jump(&exit);
-            }
             Bind(&loopEnd);
             {
                 holder = GetPrototypeHandlerHolder(*handler);
                 handler = GetPrototypeHandlerHandlerInfo(*handler);
                 LoopEnd(&loopHead);
             }
+        }
+        Bind(&handlerNotPropertyBox);
+        {
+            Branch(TaggedIsStoreTSHandler(*handler), &handlerIsStoreTSHandler, &handlerNotStoreTSHandler);
+            Bind(&handlerIsStoreTSHandler);
+            {
+                GateRef cellValue = GetProtoCell(*handler);
+                Branch(GetHasChanged(cellValue), &cellHasChanged, &aotCellNotChanged);
+                Bind(&aotCellNotChanged);
+                {
+                    holder = GetStoreTSHandlerHolder(*handler);
+                    handler = GetStoreTSHandlerHandlerInfo(*handler);
+                    GateRef handlerInfo = GetInt32OfTInt(*handler);
+                    Branch(IsField(handlerInfo), &aotHandlerInfoIsField, &aotHandlerInfoNotField);
+                    Bind(&aotHandlerInfoIsField);
+                    {
+                        StoreField(glue, receiver, value, handlerInfo);
+                        Jump(&exit);
+                    }
+                    Bind(&aotHandlerInfoNotField);
+                    {
+                        GateRef accessor = LoadFromField(*holder, handlerInfo);
+                        result = CallSetterHelper(glue, receiver, accessor, value);
+                        Jump(&exit);
+                    }
+                }
+            }
+            Bind(&handlerNotStoreTSHandler);
+            Jump(&exit);
+        }
+        Bind(&cellHasChanged);
+        {
+            result = Hole();
+            Jump(&exit);
         }
     }
     Bind(&exit);
@@ -1719,7 +1769,8 @@ void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, Gate
     env->SubCfgExit();
 }
 
-void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler)
+void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
+                                      bool withPrototype)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1730,9 +1781,17 @@ void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef va
     Label handlerInfoNotInlinedProps(env);
     Label indexMoreCapacity(env);
     Label indexLessCapacity(env);
-    GateRef newHClass = GetTransitionFromHClass(handler);
+    GateRef newHClass;
+    GateRef handlerInfo;
+    if (withPrototype) {
+        newHClass = GetTransWithProtoHClass(handler);
+        handlerInfo = GetInt32OfTInt(GetTransWithProtoHandlerInfo(handler));
+    } else {
+        newHClass = GetTransitionHClass(handler);
+        handlerInfo = GetInt32OfTInt(GetTransitionHandlerInfo(handler));
+    }
+
     StoreHClass(glue, receiver, newHClass);
-    GateRef handlerInfo = GetInt32OfTInt(GetTransitionHandlerInfo(handler));
     Branch(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
     Bind(&handlerInfoNotInlinedProps);
     {
@@ -2156,8 +2215,13 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     }
                     Bind(&notAccessor);
                     {
-                        result = value;
-                        Jump(&exit);
+                        Label notHole(env);
+                        Branch(TaggedIsHole(value), &noEntry, &notHole);
+                        Bind(&notHole);
+                        {
+                            result = value;
+                            Jump(&exit);
+                        }
                     }
                 }
                 Bind(&noEntry);
@@ -2479,6 +2543,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     env->SubCfgEntry(&entryPass);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(holder, VariableType::JS_POINTER(), receiver);
+    DEFVARIABLE(receiverHoleEntry, VariableType::INT32(), Int32(-1));
     Label exit(env);
     Label ifEnd(env);
     Label loopHead(env);
@@ -2592,6 +2657,36 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     }
                     Bind(&writable);
                     {
+                        Label isTS(env);
+                        Label notTS(env);
+                        Branch(IsTSHClass(hclass), &isTS, &notTS);
+                        Bind(&isTS);
+                        {
+                            GateRef attrVal = JSObjectGetProperty(*holder, hclass, attr);
+                            Label attrValIsHole(env);
+                            Branch(TaggedIsHole(attrVal), &attrValIsHole, &notTS);
+                            Bind(&attrValIsHole);
+                            {
+                                Label storeReceiverHoleEntry(env);
+                                Label noNeedStore(env);
+                                GateRef checkReceiverHoleEntry = Int32Equal(*receiverHoleEntry, Int32(-1));
+                                GateRef checkHolderEqualsRecv = Equal(*holder, receiver);
+                                Branch(BoolAnd(checkReceiverHoleEntry, checkHolderEqualsRecv),
+                                    &storeReceiverHoleEntry, &noNeedStore);
+                                Bind(&storeReceiverHoleEntry);
+                                {
+                                    receiverHoleEntry = entry;
+                                    Jump(&noNeedStore);
+                                }
+                                Bind(&noNeedStore);
+                                if (useOwn) {
+                                    Jump(&ifEnd);
+                                } else {
+                                    Jump(&loopExit);
+                                }
+                            }
+                        }
+                        Bind(&notTS);
                         Label holdEqualsRecv(env);
                         if (useOwn) {
                             Branch(Equal(*holder, receiver), &holdEqualsRecv, &ifEnd);
@@ -2689,6 +2784,22 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         LoopEnd(&loopHead);
         Bind(&afterLoop);
     }
+
+    Label holeEntryNotNegtiveOne(env);
+    Label holeEntryIfEnd(env);
+    Branch(Int32NotEqual(*receiverHoleEntry, Int32(-1)), &holeEntryNotNegtiveOne, &holeEntryIfEnd);
+    Bind(&holeEntryNotNegtiveOne);
+    {
+        GateRef receiverHClass = LoadHClass(receiver);
+        GateRef receiverLayoutInfo = GetLayoutFromHClass(receiverHClass);
+        GateRef holePropAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
+        GateRef holeAttr = GetInt32OfTInt(holePropAttr);
+        JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, value);
+        result = Undefined();
+        Jump(&exit);
+    }
+    Bind(&holeEntryIfEnd);
+
     Label extensible(env);
     Label inextensible(env);
     Branch(IsExtensible(receiver), &extensible, &inextensible);
@@ -3022,7 +3133,8 @@ GateRef StubBuilder::InstanceOf(GateRef glue, GateRef object, GateRef target)
         Branch(TaggedIsUndefined(instof), &instOfIsUndefined, &instOfNotUndefined);
         Bind(&instOfNotUndefined);
         {
-            GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, JSCallMode::CALL_SETTER, { target, object });
+            GateRef retValue = JSCallDispatch(glue, instof, Int32(1), 0, Circuit::NullGate(),
+                                              JSCallMode::CALL_SETTER, { target, object });
             result =  FastToBoolean(retValue);
             Jump(&exit);
         }
@@ -4359,7 +4471,7 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
 }
 
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
-                                    JSCallMode mode, std::initializer_list<GateRef> args)
+                                    GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -4610,6 +4722,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         if (jumpSize != 0) {
             SaveJumpSizeIfNeeded(glue, jumpSize);
         }
+        SaveHotnessCounterIfNeeded(glue, sp, hotnessCounter, mode);
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
                 result = CallNGCRuntime(glue, RTSTUB_ID(PushCallThisArg0AndDispatch),

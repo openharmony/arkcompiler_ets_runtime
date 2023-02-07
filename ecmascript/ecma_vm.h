@@ -140,6 +140,10 @@ public:
         return factory_;
     }
 
+    void ResetPGOProfiler();
+
+    bool IsEnablePGOProfiler() const;
+
     bool Initialize();
 
     GCStats *GetEcmaGCStats() const
@@ -185,19 +189,24 @@ public:
         return stringTable_;
     }
 
-    ARK_INLINE JSThread *GetJSThread() const
+    void CheckThread() const
     {
         // Exclude GC thread
+        if (thread_ == nullptr) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+        }
+        if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
+            thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
+                LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                                    << " thread:" << thread_->GetThreadId()
+                                    << " currentThread:" << JSThread::GetCurrentThreadId();
+        }
+    }
+
+    ARK_INLINE JSThread *GetJSThread() const
+    {
         if (options_.EnableThreadCheck()) {
-            if (thread_ == nullptr) {
-                LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
-            }
-            if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
-                thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
-                    LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
-                                        << " thread:" << thread_->GetThreadId()
-                                        << " currentThread:" << JSThread::GetCurrentThreadId();
-            }
+            CheckThread();
         }
         return thread_;
     }
@@ -581,7 +590,7 @@ private:
 
     void ClearBufferData();
 
-    void LoadAOTFiles();
+    void LoadAOTFiles(const std::string& aotFileName);
     void LoadStubFile();
 
     void CheckStartCpuProfiler();
@@ -666,13 +675,13 @@ private:
     CVector<JSTaggedValue> internalNativeMethods_;
 
     // For repair patch.
-    QuickFixManager *quickFixManager_;
+    QuickFixManager *quickFixManager_ {nullptr};
 
     // PGO Profiler
-    PGOProfiler *pgoProfiler_;
+    PGOProfiler *pgoProfiler_ {nullptr};
 
     // opt code Profiler
-    OptCodeProfiler *optCodeProfiler_;
+    OptCodeProfiler *optCodeProfiler_ {nullptr};
 
     // For icu objects cache
     struct IcuFormatter {

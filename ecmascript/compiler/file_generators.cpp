@@ -120,7 +120,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     RunLLVMAssembler();
     CollectCodeInfo();
     GenerateMethodToEntryIndexMap();
-    aotInfo_.Save(filename);
+    aotInfo_.Save(filename, cfg_.GetTriple());
     DestoryModule();
 }
 

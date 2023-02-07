@@ -138,6 +138,8 @@ namespace panda::ecmascript {
     V(StoreICWithHandler)           \
     V(StorePrototype)               \
     V(StoreWithTransition)          \
+    V(StoreTransWithProto)          \
+    V(StoreWithAOT)                 \
     V(StoreField)                   \
     V(StoreGlobal)                  \
     V(LoadPrototype)                \
@@ -157,7 +159,7 @@ namespace panda::ecmascript {
     V(FastGetPropertyByName)        \
     V(FastGetPropertyByValue)       \
     V(FastGetPropertyByIndex)       \
-    V(NewLexicalEnv)             \
+    V(NewLexicalEnv)                \
     V(ExecuteNative)                \
     V(Execute)                      \
     V(AsmExecute)                   \
@@ -210,11 +212,11 @@ namespace panda::ecmascript {
     V(EqualWithIC)                  \
     V(NotEqualWithIC)               \
     V(Compare)                      \
-    V(LessWithIC)                \
-    V(LessEqWithIC)              \
-    V(GreaterWithIC)             \
+    V(LessWithIC)                   \
+    V(LessEqWithIC)                 \
+    V(GreaterWithIC)                \
     V(SetPropertyByName)            \
-    V(GreaterEqWithIC)           \
+    V(GreaterEqWithIC)              \
     V(LdBigInt)                     \
     V(Tonumeric)                    \
     V(CreateAsyncGeneratorObj)      \

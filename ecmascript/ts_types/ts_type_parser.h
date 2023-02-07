@@ -102,7 +102,7 @@ private:
                                   uint32_t startIndex, uint32_t lastIndex,
                                   uint32_t &index);
 
-    void GenerateStaticHClass(JSHandle<JSTaggedValue> type);
+    void GenerateTSHClass(JSHandle<JSTaggedValue> type);
 
     JSHandle<TaggedArray> GetExportDataFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
 

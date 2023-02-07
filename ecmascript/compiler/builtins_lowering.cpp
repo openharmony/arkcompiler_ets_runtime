@@ -262,8 +262,6 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
     Label entry(&builder_);
     env->SubCfgEntry(&entry);
 
-    GateRef stateSplit = acc_.GetDep(gate);
-    builder_.SetDepend(acc_.GetDep(stateSplit));
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
     GateRef id = acc_.GetValueIn(gate, 1); // 1: buitin id
     Label isHeapObject(&builder_);

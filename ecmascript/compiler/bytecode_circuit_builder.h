@@ -433,8 +433,7 @@ private:
     void NewByteCode(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     void BuildSubCircuit();
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
-    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc,
-                       std::pair<GateRef, uint32_t> &needReplaceInfo);
+    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);

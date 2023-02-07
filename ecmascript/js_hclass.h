@@ -201,6 +201,8 @@ class ProtoChangeDetails;
         JS_GENERATOR_CONTEXT, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROTOTYPE_HANDLER,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         TRANSITION_HANDLER,   /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
+        TRANS_WITH_PROTO_HANDLER,    /* ///////////////////////////////////////////////////////////////////-PADDING */ \
+        STORE_TS_HANDLER,       /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROPERTY_BOX, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */  \
         PROTO_CHANGE_MARKER, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROTOTYPE_INFO,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -289,7 +291,7 @@ public:
     using ClassConstructorBit = IsLiteralBit::NextFlag;                                    // 21
     using ClassPrototypeBit = ClassConstructorBit::NextFlag;                               // 22
     using GlobalConstOrBuiltinsObjectBit = ClassPrototypeBit::NextFlag;                    // 23
-    using IsAOTBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                             // 24
+    using IsTSBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                              // 24
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
     static constexpr int MAX_CAPACITY_OF_OUT_OBJECTS =
@@ -417,9 +419,9 @@ public:
         IsDictionaryBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
-    inline void SetAOT(bool flag) const
+    inline void SetTS(bool flag) const
     {
-        IsAOTBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        IsTSBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline bool IsJSObject() const
@@ -1009,6 +1011,16 @@ public:
         return GetObjectType() == JSType::TRANSITION_HANDLER;
     }
 
+    inline bool IsTransWithProtoHandler() const
+    {
+        return GetObjectType() == JSType::TRANS_WITH_PROTO_HANDLER;
+    }
+
+    inline bool IsStoreTSHandler() const
+    {
+        return GetObjectType() == JSType::STORE_TS_HANDLER;
+    }
+
     inline bool IsPropertyBox() const
     {
         return GetObjectType() == JSType::PROPERTY_BOX;
@@ -1092,11 +1104,11 @@ public:
         return IsDictionaryBit::Decode(bits);
     }
 
-    // created from AOT
-    inline bool IsAOT() const
+    // created from TypeScript Types
+    inline bool IsTS() const
     {
         uint32_t bits = GetBitField();
-        return IsAOTBit::Decode(bits);
+        return IsTSBit::Decode(bits);
     }
 
     inline bool IsGeneratorFunction() const

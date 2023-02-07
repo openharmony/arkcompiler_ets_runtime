@@ -792,7 +792,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     if (!thread_->IsAsmInterpreter()) {
         FrameHandler frameHandler(thread_);
         if (frameHandler.IsInterpretedEntryFrame()) {
-            thread_->SetCurrentSPFrame(frameHandler.GetPrevInterpretedFrame());
+            thread_->SetCurrentSPFrame(frameHandler.GetPrevJSFrame());
         }
     }
 
@@ -1351,7 +1351,9 @@ void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass, 
 {
     ASSERT(inobjPropCount * JSTaggedValue::TaggedTypeSize() < hclass->GetObjectSize());
     auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
-    JSTaggedType initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
+    // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
+    // to follow ECMA spec.
+    JSTaggedType initVal = hclass->IsTS() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
     for (uint32_t i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
@@ -2994,6 +2996,32 @@ JSHandle<PrototypeHandler> ObjectFactory::NewPrototypeHandler()
         PrototypeHandler::Cast(heap_->AllocateYoungOrHugeObject(
             JSHClass::Cast(thread_->GlobalConstants()->GetPrototypeHandlerClass().GetTaggedObject())));
     JSHandle<PrototypeHandler> handler(thread_, header);
+    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
+    handler->SetHolder(thread_, JSTaggedValue::Undefined());
+    return handler;
+}
+
+JSHandle<TransWithProtoHandler> ObjectFactory::NewTransWithProtoHandler()
+{
+    NewObjectHook();
+    TransWithProtoHandler *header =
+        TransWithProtoHandler::Cast(heap_->AllocateYoungOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetTransWithProtoHandlerClass().GetTaggedObject())));
+    JSHandle<TransWithProtoHandler> handler(thread_, header);
+    handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
+    handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
+    handler->SetTransitionHClass(thread_, JSTaggedValue::Undefined());
+    return handler;
+}
+
+JSHandle<StoreTSHandler> ObjectFactory::NewStoreTSHandler()
+{
+    NewObjectHook();
+    StoreTSHandler *header =
+        StoreTSHandler::Cast(heap_->AllocateYoungOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetStoreTSHandlerClass().GetTaggedObject())));
+    JSHandle<StoreTSHandler> handler(thread_, header);
     handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
     handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
     handler->SetHolder(thread_, JSTaggedValue::Undefined());

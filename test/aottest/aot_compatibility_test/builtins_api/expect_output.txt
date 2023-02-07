@@ -12,6 +12,18 @@
 # limitations under the License.
 
 this.hasOwnProperty: false
-Reflect.has: false
+Object.getOwnPropertyNames: 
+Object.getOwnPropertyDescriptor: undefined
 Object.keys(): 
+Reflect.has: false
 Reflect.ownKeys(): 
+Reflect.get: undefined
+Reflect.getOwnPropertyDescriptor(): undefined
+this.hasOwnProperty: true
+Object.getOwnPropertyNames: b
+Object.getOwnPropertyDescriptor: [object Object]
+Object.keys(): b
+Reflect.has: true
+Reflect.ownKeys(): b
+Reflect.get: abc
+Reflect.getOwnPropertyDescriptor(): [object Object]

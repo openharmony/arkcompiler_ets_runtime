@@ -27,6 +27,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/platform/elf.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::kungfu {
@@ -134,12 +135,6 @@ class Variable;
 
 class CompilationConfig {
 public:
-    enum class Triple {
-        TRIPLE_AMD64,
-        TRIPLE_AARCH64,
-        TRIPLE_ARM32,
-    };
-
     explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false,
                                bool profiling = false)
         : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler),
@@ -230,7 +225,7 @@ public:
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef PrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param);
-    GateRef DeoptCheck(GateRef condition, GateRef frameState);
+    GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type = DeoptType::NOTCHECK);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
     GateRef TypedCallOperator(MachineType type, const std::initializer_list<GateRef>& args);
@@ -238,6 +233,9 @@ public:
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
+    GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
+    GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
+    GateRef GetSuperConstructor(GateRef ctor);
     GateRef GetLexicalEnv(GateRef depend);
     GateRef Arguments(size_t index);
     GateRef Merge(const std::vector<GateRef> &inList);
@@ -361,6 +359,8 @@ public:
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);
     inline GateRef TaggedIsTransitionHandler(GateRef x);
+    inline GateRef TaggedIsStoreTSHandler(GateRef x);
+    inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
     inline GateRef TaggedIsTrue(GateRef x);
     inline GateRef TaggedIsFalse(GateRef x);

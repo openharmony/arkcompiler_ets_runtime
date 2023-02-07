@@ -114,6 +114,7 @@ public:
 
 private:
     JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
+    bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
     void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
     bool EnableTypeLowering() const

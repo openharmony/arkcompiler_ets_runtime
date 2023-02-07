@@ -17,9 +17,9 @@
 
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 
 namespace panda::ecmascript {
@@ -90,9 +90,9 @@ JSTaggedValue JSRegExpIterator::Next(EcmaRuntimeCallInfo *argv)
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 uint32_t nextIndex = BuiltinsRegExp::AdvanceStringIndex(inputStr, thisIndex.ToUint32(),
                                                                         fullUnicode);
-                FastRuntimeStub::FastSetPropertyByValue(thread, regexHandle.GetTaggedValue(),
-                                                        lastIndexString.GetTaggedValue(),
-                                                        JSTaggedValue(nextIndex));
+                ObjectFastOperator::FastSetPropertyByValue(thread, regexHandle.GetTaggedValue(),
+                                                           lastIndexString.GetTaggedValue(),
+                                                           JSTaggedValue(nextIndex));
             }
             // iii. Return ! CreateIterResultObject(match, false).
             return JSIterator::CreateIterResultObject(thread, matchHandle, false).GetTaggedValue();

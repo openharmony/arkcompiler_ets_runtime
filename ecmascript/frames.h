@@ -458,6 +458,7 @@ public:
     }
 
     friend class FrameIterator;
+    friend class FrameHandler;
     void GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const;
     void GetFuncCalleeRegAndOffset(
         const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const;
@@ -1415,6 +1416,24 @@ public:
 
     Method *CheckAndGetMethod() const;
     JSTaggedValue GetFunction() const;
+
+    bool IsLeaveFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::LEAVE_FRAME) || (type == FrameType::LEAVE_FRAME_WITH_ARGV);
+    }
+
+    bool IsOptimizedFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::OPTIMIZED_FRAME);
+    }
+
+    bool IsOptimizedJSFunctionFrame() const
+    {
+        FrameType type = GetFrameType();
+        return (type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    }
 
 private:
     JSTaggedType *current_ {nullptr};

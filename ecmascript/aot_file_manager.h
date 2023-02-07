@@ -345,7 +345,7 @@ class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
-    void Save(const std::string &filename);
+    void Save(const std::string &filename, kungfu::Triple triple);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
@@ -366,9 +366,6 @@ public:
         }
         return static_cast<uintptr_t>(it->second);
     }
-
-    template<size_t Size>
-    bool AnVersionCheck(std::array<uint8_t, Size> anVersion);
 
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
 
@@ -478,10 +475,30 @@ public:
     bool SafeInsideStub(uintptr_t pc);
     bool SafeInsideAOT(uintptr_t pc);
     AOTFileInfo::CallSiteInfo SafeCalCallSiteInfo(uintptr_t retAddr);
-
     void SafeDestoryAllData();
+    const std::string& GetDir() const
+    {
+        return anDir_;
+    }
 
-private:
+    bool IsEnable() const
+    {
+        return anEnable_;
+    }
+
+    // only main thread call this, only call once, no need to lock
+    void SetDir(std::string dir)
+    {
+        anDir_ = dir;
+    }
+
+    void SetEnable(bool enable)
+    {
+        anEnable_ = enable;
+    }
+
+
+public:
     AnFileDataManager() = default;
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
     bool UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *vm);
@@ -491,6 +508,9 @@ private:
     std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_;
     std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};
+    std::string anDir_;
+    bool anEnable_ {false};
+
 };
 
 class AOTFileManager {
@@ -498,14 +518,14 @@ public:
     explicit AOTFileManager(EcmaVM *vm);
     virtual ~AOTFileManager();
 
-    static constexpr size_t AOT_VERSION_SIZE = 4;
-    static constexpr std::array<uint8_t, AOT_VERSION_SIZE> AOT_VERSION {0, 0, 0, 1};
+    static constexpr uint32_t AOT_VERSION = 1;
     static constexpr char FILE_EXTENSION_AN[] = ".an";
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
     static constexpr uint8_t DESERI_CP_ITEM_SIZE = 2;
 
     void LoadStubFile(const std::string &fileName);
     void LoadAnFile(const std::string &fileName);
+    void LoadAnFile(JSPandaFile *jsPandaFile);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool TryReadLock() const;
     bool InsideStub(uintptr_t pc) const;
@@ -521,13 +541,15 @@ public:
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
                                    const AOTLiteralInfo *entryIndexes);
-    void LoadSnapshotFile([[maybe_unused]]const std::string& filename);
+    void LoadAiFile([[maybe_unused]] const std::string& filename);
+    void LoadAiFile(const JSPandaFile *jsPandaFile);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList);
     JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
+    std::string GetAotFileName(EcmaVM *vm, const JSPandaFile *jsPandaFile, const std::string &extensionName) const;
 
 private:
 

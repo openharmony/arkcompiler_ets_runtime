@@ -203,7 +203,7 @@ class ArkTest():
         if args.pgo:
             self.pgo = True
             self.aot_args = (f'{self.aot_args} --enable-pgo-profiler=true --pgo-hotness-threshold={args.pgo_th}'
-                             f' --pgo-profiler-path=pgo_file_name.aprof')
+                             f' --pgo-profiler-path=pgo_file_name.ap')
         if args.aot_args:
             self.aot_args = f'{self.aot_args} {args.aot_args}'
         if args.jsvm_args:
@@ -261,7 +261,7 @@ class ArkTest():
             module_name = self.get_module_name(hap_dir)
         abc_file = f'{os.path.splitext(file)[0]}.abc'
         if self.pgo:
-            pgo_file = os.path.splitext(file)[0]
+            pgo_file = f'{hap_dir}/ap/{module_name}'
             self.aot_args = self.aot_args.replace('pgo_file_name', pgo_file)
         cmd_map = {
             'abc': f'node --expose-gc {self.ts2abc} {file} --merge-abc',

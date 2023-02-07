@@ -35,11 +35,20 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         return false;
     }
 
-    profilerLoader_.LoadProfiler(profilerIn, hotnessThreshold_);
+    if (!profilerLoader_.LoadAndVerify(profilerIn, hotnessThreshold_, jsPandaFile->GetChecksum())) {
+        LOG_COMPILER(ERROR) << "Load and verify profiler failure";
+        return false;
+    }
     bool enableCollectLiteralInfo = EnableTypeInfer() &&
         (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
     BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, maxAotMethodSize_,
         enableCollectLiteralInfo);
+
+    if (!IsReleasedPandaFile(jsPandaFile)) {
+        LOG_COMPILER(ERROR) << "The input panda file [" << fileName
+                            << "] of AOT Compiler is debuggable version, do not use for performance test!";
+    }
+
     ResolveModule(jsPandaFile, fileName);
     auto aotModule = new LLVMModule(fileName, triple_);
     auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
@@ -49,7 +58,6 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     Bytecodes bytecodes;
     auto &bytecodeInfo = bcInfoCollector.GetBytecodeInfo();
     auto lexEnvManager = LexEnvManager(bytecodeInfo);
-    bool enableMethodLog = !log_->NoneMethod();
 
     CompilationDriver cmpDriver(jsPandaFile, profilerLoader_, bytecodeInfo);
     // ts type system
@@ -58,7 +66,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     PassInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_,
         jsPandaFile, &bcInfoCollector, aotModule);
 
-    cmpDriver.Run([this, &fileName, &enableMethodLog, &info]
+    cmpDriver.Run([this, &fileName, &info]
         (const CString recordName, const std::string &methodName, MethodLiteral *methodLiteral,
          uint32_t methodOffset, const MethodPcInfo &methodPCInfo, size_t methodInfoIndex) {
         auto jsPandaFile = info.GetJSPandaFile();
@@ -67,17 +75,19 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         // note: TSManager need to set current constantpool before all pass
         tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
 
-        if (log_->CertainMethod()) {
-            enableMethodLog = logList_->IncludesMethod(fileName, methodName);
-        }
-        log_->SetEnableMethodLog(enableMethodLog);
+        log_->SetMethodLog(fileName, recordName, methodName, logList_);
 
         std::string fullName = methodName + "@" + fileName;
+        bool enableMethodLog = log_->GetEnableMethodLog();
         if (enableMethodLog) {
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName << "] log:" << "\033[0m";
         }
 
         bool hasTypes = jsPandaFile->HasTSTypes(recordName);
+        if (UNLIKELY(!hasTypes)) {
+            LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
+        }
+
         Circuit circuit(vm_->GetNativeAreaAllocator(), cmpCfg->Is64Bit());
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
                                        info.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
@@ -89,7 +99,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
         PassData data(&builder, &circuit, &info, log_, fullName,
                       methodInfoIndex, hasTypes, recordName,
-                      methodLiteral, methodOffset);
+                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator());
         PassRunner<PassData> pipeline(&data);
         if (EnableTypeInfer()) {
             pipeline.RunPass<TypeInferPass>();
@@ -97,7 +107,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         if (EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>();
-            pipeline.RunPass<CheckEliminationPass>();
+            pipeline.RunPass<EarlyEliminationPass>();
             pipeline.RunPass<TypeLoweringPass>();
         }
         pipeline.RunPass<SlowPathLoweringPass>();
@@ -128,6 +138,20 @@ JSPandaFile *PassManager::CreateAndVerifyJSPandaFile(const CString &fileName)
 
     JSPandaFileManager::GetInstance()->InsertJSPandaFile(jsPandaFile);
     return jsPandaFile;
+}
+
+bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const
+{
+    MethodLiteral* methodLiteral = jsPandaFile->GetMethodLiterals();
+    if (methodLiteral == nullptr) {
+        LOG_COMPILER(ERROR) << "There is no mehtod literal in " << jsPandaFile->GetJSPandaFileDesc();
+        return false;
+    }
+
+    panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
+    DebugInfoExtractor *debugInfoExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    LocalVariableTable lvt = debugInfoExtractor->GetLocalVariableTable(methodId);
+    return lvt.empty();
 }
 
 void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName)

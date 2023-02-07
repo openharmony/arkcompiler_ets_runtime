@@ -107,7 +107,7 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
                     key = IntToTaggedInt(*k);
                 }
                 GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *kValue, *key, *thisObj });
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *kValue, *key, *thisObj });
                 Branch(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
                 {
@@ -222,7 +222,7 @@ void ContainersStubBuilder::QueueCommonFuncCall(GateRef glue, GateRef thisValue,
                 index = QueueGetNextPosition(*thisObj, *index);
                 key = IntToTaggedInt(*k);
                 GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *kValue, *key, *thisObj });
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *kValue, *key, *thisObj });
                 Branch(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
                 {
@@ -330,7 +330,7 @@ void ContainersStubBuilder::DequeCommonFuncCall(GateRef glue, GateRef thisValue,
                 kValue = ContainerGetValue(*thisObj, *index, type);
                 key = IntToTaggedInt(*index);
                 GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *kValue, *key, *thisObj });
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *kValue, *key, *thisObj });
                 Branch(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
                 {
@@ -433,8 +433,8 @@ void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef this
             {
                 value = ContainerGetValue(*thisObj, *index, type);
                 key = ContainerGetKey(*thisObj, *index, type);
-                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(3), 0,  // 3: numArgs
-                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *value, *key, *thisObj });
+                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *value, *key, *thisObj });
                 Branch(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
                 {
@@ -553,8 +553,9 @@ void ContainersStubBuilder::ContainersHashCall(GateRef glue, GateRef thisValue,
                     value = Load(VariableType::JS_POINTER(), *node, IntPtr(
                         type == ContainersType::HASHSET_FOREACH ? LinkedNode::KEY_OFFSET : LinkedNode::VALUE_OFFSET));
                     key = Load(VariableType::JS_POINTER(), *node, IntPtr(LinkedNode::KEY_OFFSET));
-                    GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(3), 0,  // 3: numArgs
-                        JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *value, *key, *thisObj });
+                    GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                        Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                        { *thisArg, *value, *key, *thisObj });
                     Branch(HasPendingException(glue), &hasExceptionLinked, &notHasExceptionLinked);
                     Bind(&hasExceptionLinked);
                     {
@@ -680,8 +681,8 @@ void ContainersStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef thisV
                 Branch(TaggedIsHole(*value), &loopEnd, &valueNotHole);
                 Bind(&valueNotHole);
                 key = IntToTaggedInt(*index);
-                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(3), 0,  // 3: numArgs
-                    JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *value, *key, *thisObj });
+                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                    Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { *thisArg, *value, *key, *thisObj });
                 Branch(HasPendingException(glue), &hasException, &notHasException);
                 Bind(&hasException);
                 {

@@ -27,6 +27,7 @@ public:
     static std::string GetFileName(const std::string &filePath);
     static std::string GetFileExtension(const std::string &filePath);
     static std::string GetHapName(const JSPandaFile *jsPandaFile);
+    static std::string GetAotFullPathName(const JSPandaFile *jsPandaFile);
 };
 }
 #endif  // ECMASCRIPT_JSFILE_PATH_H

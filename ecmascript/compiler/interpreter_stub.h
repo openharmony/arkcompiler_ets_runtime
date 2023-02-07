@@ -104,7 +104,6 @@ public:
     inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
 
-    inline void SetHotnessCounter(GateRef glue, GateRef method, GateRef value);
     inline void SetCurrentSpFrame(GateRef glue, GateRef sp);
     inline void SetLastLeaveFrame(GateRef glue, GateRef sp);
     inline void SetPcToFrame(GateRef glue, GateRef frame, GateRef value);

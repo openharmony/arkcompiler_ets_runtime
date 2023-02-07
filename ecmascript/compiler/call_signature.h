@@ -352,6 +352,10 @@ private:
     V(TryStoreICByName)                     \
     V(TryStoreICByValue)                    \
     V(SetValueWithBarrier)                  \
+    V(NewLexicalEnv)                        \
+    V(GetUnmapedArgs)                       \
+    V(NewThisObjectChecked)                 \
+    V(ConstructorCheck)                     \
     V(GetTaggedArrayPtrTest)                \
     V(BytecodeHandler)                      \
     V(Builtins)                             \
@@ -391,6 +395,9 @@ private:
     V(DebugPrintInstruction)                \
     V(PGOProfiler)                          \
     V(FatalPrint)                           \
+    V(OptSetLexicalEnv)                     \
+    V(OptPopLexicalEnv)                     \
+    V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
     V(FloatMod)                             \

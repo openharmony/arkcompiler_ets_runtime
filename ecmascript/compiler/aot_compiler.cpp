@@ -104,7 +104,7 @@ int Main(const int argc, const char **argv)
         CompilerLog log(logOption, isTraceBC);
         log.SetEnableCompilerLogTime(compilerLogTime);
         AotMethodLogList logList(logMethodsList);
-        AOTFileGenerator generator(&log, &logList, vm);
+        AOTFileGenerator generator(&log, &logList, vm, triple);
         std::string profilerIn(runtimeOptions.GetPGOProfilerPath());
         if (runtimeOptions.WasSetEntryPoint()) {
             entrypoint = runtimeOptions.GetEntryPoint();
@@ -120,9 +120,7 @@ int Main(const int argc, const char **argv)
         }
         generator.SaveAOTFile(outputFileName + AOTFileManager::FILE_EXTENSION_AN);
         generator.SaveSnapshotFile();
-        if (log.GetEnableCompilerLogTime()) {
-            log.PrintTime();
-        }
+        log.Print();
     }
 
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");

@@ -74,9 +74,21 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     Bind(&noException);
     {
         StoreHClass(glue_, result->ReadVariable(), hclass);
+        DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
+        Label isTS(env);
+        Label initialize(env);
+        Branch(IsTSHClass(hclass), &isTS, &initialize);
+        Bind(&isTS);
+        {
+            // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
+            // to follow ECMA spec.
+            initValue = Hole();
+            Jump(&initialize);
+        }
+        Bind(&initialize);
         Label afterInitialize(env);
         InitializeWithSpeicalValue(&afterInitialize,
-            result->ReadVariable(), Undefined(), Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_));
+            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_));
         Bind(&afterInitialize);
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
@@ -303,5 +315,83 @@ void NewObjectStubBuilder::AllocStringObject(Variable *result, Label *exit, Gate
     SetLength(glue_, result->ReadVariable(), length, compressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
     Jump(exit);
+}
+
+
+GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isHeapObject(env);
+    Label callRuntime(env);
+    Label checkJSObject(env);
+    Label newObject(env);
+
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+    auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
+        IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    Branch(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &callRuntime);
+    Bind(&isHeapObject);
+    Branch(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
+    Bind(&checkJSObject);
+    auto objectType = GetObjectType(protoOrHclass);
+    Branch(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
+        &newObject, &callRuntime);
+    Bind(&newObject);
+    {
+        SetParameters(glue, 0);
+        NewJSObject(&thisObj, &exit, protoOrHclass);
+    }
+    Bind(&callRuntime);
+    {
+        thisObj = CallRuntime(glue, RTSTUB_ID(NewThisObject), {ctor});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *thisObj;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewThisObjectChecked(GateRef glue, GateRef ctor)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    Label ctorIsHeapObject(env);
+    Label ctorIsJSFunction(env);
+    Label fastPath(env);
+    Label slowPath(env);
+    Label ctorIsBase(env);
+
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+
+    Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
+    Bind(&ctorIsHeapObject);
+    Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
+    Bind(&ctorIsJSFunction);
+    Branch(IsConstructor(ctor), &fastPath, &slowPath);
+    Bind(&fastPath);
+    {
+        Branch(IsBase(ctor), &ctorIsBase, &exit);
+        Bind(&ctorIsBase);
+        {
+            thisObj = FastNewThisObject(glue, ctor);
+            Jump(&exit);
+        }
+    }
+    Bind(&slowPath);
+    {
+        thisObj = Hole();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *thisObj;
+    env->SubCfgExit();
+    return ret;
 }
 }  // namespace panda::ecmascript::kungfu

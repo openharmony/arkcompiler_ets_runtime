@@ -352,13 +352,26 @@ GateRef CircuitBuilder::TaggedIsWeak(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef x)
 {
-    return IsJsType(x, JSType::PROTOTYPE_HANDLER);
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::PROTOTYPE_HANDLER));
 }
 
 GateRef CircuitBuilder::TaggedIsTransitionHandler(GateRef x)
 {
     return LogicAnd(TaggedIsHeapObject(x),
         IsJsType(x, JSType::TRANSITION_HANDLER));
+}
+
+GateRef CircuitBuilder::TaggedIsStoreTSHandler(GateRef x)
+{
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::STORE_TS_HANDLER));
+}
+
+GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef x)
+{
+    return LogicAnd(TaggedIsHeapObject(x),
+        IsJsType(x, JSType::TRANS_WITH_PROTO_HANDLER));
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
@@ -1008,11 +1021,14 @@ GateRef CircuitBuilder::Int32OverflowCheck(GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
 
     uint64_t value = TypedUnaryAccessor::ToValue(GateType::Empty(), Op);
     GateRef ret = GetCircuit()->NewGate(circuit_->Int32OverflowCheck(value),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 } // namespace panda::ecmascript::kungfu

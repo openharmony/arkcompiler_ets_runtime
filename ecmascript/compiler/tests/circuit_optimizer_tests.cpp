@@ -16,6 +16,7 @@
 #include <random>
 
 #include "ecmascript/compiler/circuit_optimizer.h"
+#include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/verifier.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/tests/test_helper.h"
@@ -479,5 +480,98 @@ HWTEST_F_L0(CircuitOptimizerTests, TestSmallWorldGlobalValueNumbering) {
             EXPECT_TRUE(in == gateToKing[in]);
         }
     }
+}
+
+HWTEST_F_L0(CircuitOptimizerTests, TestEarlyElimination) {
+    // construct a circuit
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
+    GateAccessor acc(&circuit);
+    auto receiver = circuit.NewArg(MachineType::I64, 1,
+                                   GateType::AnyType(),
+                                   acc.GetArgRoot());
+    auto index = circuit.NewGate(circuit.Constant(1),
+                                 MachineType::I64, GateType::NJSValue());
+    auto load0 = circuit.NewGate(circuit.LoadElement(0),
+                                MachineType::ANYVALUE,
+                                { acc.GetStateRoot(), acc.GetDependRoot(), receiver, index },
+                                GateType::AnyType());
+    auto load1 = circuit.NewGate(circuit.LoadElement(0),
+                                MachineType::ANYVALUE,
+                                { load0, load0, receiver, index },
+                                GateType::AnyType());
+    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &allocator).Run();
+    EXPECT_FALSE(acc.GetMetaData(load0)->IsNop());
+    EXPECT_TRUE(acc.GetMetaData(load1)->IsNop());
+}
+
+HWTEST_F_L0(CircuitOptimizerTests, TestNotEarlyElimination) {
+    // construct a circuit
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
+    GateAccessor acc(&circuit);
+    auto receiver = circuit.NewArg(MachineType::I64, 1,
+                                   GateType::AnyType(),
+                                   acc.GetArgRoot());
+    auto index = circuit.NewGate(circuit.Constant(1),
+                                 MachineType::I64, GateType::NJSValue());
+    auto load0 = circuit.NewGate(circuit.LoadElement(0),
+                                 MachineType::ANYVALUE,
+                                 { acc.GetStateRoot(), acc.GetDependRoot(), receiver, index },
+                                 GateType::AnyType());
+    auto store = circuit.NewGate(circuit.StoreElement(0),
+                                 MachineType::NOVALUE,
+                                 { load0, load0, receiver, index, index },
+                                 GateType::AnyType());
+    auto load1 = circuit.NewGate(circuit.LoadElement(0),
+                                 MachineType::ANYVALUE,
+                                 { store, store, receiver, index },
+                                 GateType::AnyType());
+    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &allocator).Run();
+    EXPECT_FALSE(acc.GetMetaData(load0)->IsNop());
+    EXPECT_FALSE(acc.GetMetaData(load1)->IsNop());
+}
+
+HWTEST_F_L0(CircuitOptimizerTests, TestMergeEarlyElimination) {
+    // construct a circuit
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
+    GateAccessor acc(&circuit);
+    auto receiver = circuit.NewArg(MachineType::I64, 1,
+                                   GateType::AnyType(),
+                                   acc.GetArgRoot());
+    auto index = circuit.NewGate(circuit.Constant(1),
+                                 MachineType::I64, GateType::NJSValue());
+    auto condition = circuit.NewGate(circuit.Constant(1),
+                                     MachineType::I1, GateType::NJSValue());
+    auto load0 = circuit.NewGate(circuit.LoadElement(0),
+                                 MachineType::ANYVALUE,
+                                 { acc.GetStateRoot(), acc.GetDependRoot(), receiver, index },
+                                 GateType::AnyType());
+    auto ifBranch = circuit.NewGate(circuit.IfBranch(), {load0, condition});
+    auto ifTrue = circuit.NewGate(circuit.IfTrue(), {ifBranch});
+    auto ifFalse = circuit.NewGate(circuit.IfFalse(), {ifBranch});
+    auto ifTrueDepend = circuit.NewGate(circuit.DependRelay(), { ifTrue, load0 });
+    auto ifFalseDepend = circuit.NewGate(circuit.DependRelay(), { ifFalse, load0 });
+    auto load1 = circuit.NewGate(circuit.LoadElement(0),
+                                 MachineType::ANYVALUE,
+                                 { ifTrue, ifTrueDepend, receiver, index },
+                                 GateType::AnyType());
+    auto load2 = circuit.NewGate(circuit.LoadElement(0),
+                                 MachineType::ANYVALUE,
+                                 { ifFalse, ifFalseDepend, receiver, index },
+                                 GateType::AnyType());
+    auto merge = circuit.NewGate(circuit.Merge(2), {load1, load2});
+    auto dependSelector = circuit.NewGate(circuit.DependSelector(2),
+                                          {merge, load1, load2});
+    auto load3 = circuit.NewGate(circuit.LoadElement(0),
+                                 MachineType::ANYVALUE,
+                                 { merge, dependSelector, receiver, index },
+                                 GateType::AnyType());
+    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &allocator).Run();
+    EXPECT_FALSE(acc.GetMetaData(load0)->IsNop());
+    EXPECT_TRUE(acc.GetMetaData(load1)->IsNop());
+    EXPECT_TRUE(acc.GetMetaData(load2)->IsNop());
+    EXPECT_TRUE(acc.GetMetaData(load3)->IsNop());
 }
 } // namespace panda::test

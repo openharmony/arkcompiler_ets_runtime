@@ -16,7 +16,9 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_file_path.h"
 
 namespace panda::ecmascript {
 static const size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory used by the VM declared in options
@@ -121,8 +123,11 @@ JSHandle<Program> JSPandaFileManager::GenerateProgram(
     EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
-    JSHandle<Program> program = PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
-    return program;
+    if (AnFileDataManager::GetInstance()->IsEnable()) {
+        vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
+    }
+
+    return PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
 }
 
 const JSPandaFile *JSPandaFileManager::FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum)
@@ -238,7 +243,9 @@ JSPandaFile *JSPandaFileManager::OpenJSPandaFile(const CString &filename)
 
 JSPandaFile *JSPandaFileManager::NewJSPandaFile(const panda_file::File *pf, const CString &desc)
 {
-    return new JSPandaFile(pf, desc);
+    auto jsPandaFile = new JSPandaFile(pf, desc);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(jsPandaFile->GetChecksum());
+    return jsPandaFile;
 }
 
 void JSPandaFileManager::ReleaseJSPandaFile(const JSPandaFile *jsPandaFile)
@@ -276,7 +283,6 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
     ASSERT(GetJSPandaFile(pf) == nullptr);
     JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc);
     auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
-
     if (aotFM->IsLoad(newJsPandaFile)) {
         uint32_t index = aotFM->GetAnFileIndex(newJsPandaFile);
         newJsPandaFile->SetAOTFileInfoIndex(index);

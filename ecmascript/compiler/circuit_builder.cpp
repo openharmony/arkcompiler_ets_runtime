@@ -143,10 +143,12 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef ind
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate, index}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -155,10 +157,12 @@ GateRef CircuitBuilder::ArrayCheck(GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->ArrayCheck(),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -167,10 +171,12 @@ GateRef CircuitBuilder::StableArrayCheck(GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->StableArrayCheck(),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -179,10 +185,12 @@ GateRef CircuitBuilder::TypedArrayCheck(GateType type, GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -191,10 +199,12 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate, index}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -203,10 +213,12 @@ GateRef CircuitBuilder::PrimitiveTypeCheck(GateType type, GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->PrimitiveTypeCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate}, GateType::NJSValue());
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
@@ -215,20 +227,60 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef pa
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.GetOpCode(currentDepend) == OpCode::STATE_SPLIT);
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
-        MachineType::I1, { currentControl, currentDepend, function, id, param}, GateType::NJSValue());
+        MachineType::I1, { currentControl, currentDepend, function, id, param, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState)
+GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptType type)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
-        MachineType::I1, { currentControl, currentDepend, condition, frameState}, GateType::NJSValue());
+        MachineType::I1, { currentControl, currentDepend, condition,
+            frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedNewAllocateThis(),
+        MachineType::ANYVALUE, {currentControl, currentDepend, ctor, hclassIndex, frameState}, GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedSuperAllocateThis(), MachineType::ANYVALUE,
+        {currentControl, currentDepend, superCtor, newTarget, frameState}, GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::GetSuperConstructor(GateRef ctor)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->GetSuperConstructor(), MachineType::ANYVALUE,
+                                     { currentControl, currentDepend, ctor }, GateType::TaggedValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

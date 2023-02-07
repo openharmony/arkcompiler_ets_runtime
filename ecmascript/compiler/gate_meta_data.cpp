@@ -47,12 +47,10 @@ std::string MachineTypeToStr(MachineType machineType)
 std::string GateMetaData::Str(OpCode opcode)
 {
     const std::map<OpCode, const char *> strMap = {
-#define GATE_NAME_MAP(NAME, OP, R, S, D, V)  { OpCode::OP, #OP },
+#define GATE_NAME_MAP(NAME, OP, R, S, D, V) { OpCode::OP, #OP },
     IMMUTABLE_META_DATA_CACHE_LIST(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_SIZE(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
-    GATE_META_DATA_IN_SAVE_REGISTER(GATE_NAME_MAP)
-    GATE_META_DATA_IN_RESTORE_REGISTER(GATE_NAME_MAP)
 #undef GATE_NAME_MAP
 #define GATE_NAME_MAP(OP) { OpCode::OP, #OP },
         GATE_OPCODE_LIST(GATE_NAME_MAP)
@@ -78,20 +76,20 @@ bool GateMetaData::IsProlog() const
 
 bool GateMetaData::IsFixed() const
 {
-    return (opcode_ == OpCode::VALUE_SELECTOR) || (opcode_ == OpCode::DEPEND_SELECTOR)
-        || (opcode_ == OpCode::DEPEND_RELAY);
+    return (opcode_ == OpCode::VALUE_SELECTOR) || (opcode_ == OpCode::DEPEND_SELECTOR) ||
+        (opcode_ == OpCode::DEPEND_RELAY);
 }
 
 bool GateMetaData::IsSchedulable() const
 {
-    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot())
-        && (!IsFixed()) && (GetStateCount() == 0);
+    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot()) &&
+        (!IsFixed()) && (GetStateCount() == 0);
 }
 
 bool GateMetaData::IsState() const
 {
-    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot())
-        && (!IsFixed()) && (GetStateCount() > 0);
+    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot()) &&
+        (!IsFixed()) && (GetStateCount() > 0);
 }
 
 bool GateMetaData::IsGeneralState() const
@@ -111,8 +109,8 @@ bool GateMetaData::IsGeneralState() const
 
 bool GateMetaData::IsTerminalState() const
 {
-    return ((opcode_ == OpCode::RETURN) || (opcode_ == OpCode::THROW)
-        || (opcode_ == OpCode::RETURN_VOID));
+    return ((opcode_ == OpCode::RETURN) || (opcode_ == OpCode::THROW) ||
+        (opcode_ == OpCode::RETURN_VOID));
 }
 
 bool GateMetaData::IsCFGMerge() const
@@ -122,10 +120,11 @@ bool GateMetaData::IsCFGMerge() const
 
 bool GateMetaData::IsControlCase() const
 {
-    return (opcode_ == OpCode::IF_BRANCH) || (opcode_ == OpCode::SWITCH_BRANCH)
-        || (opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE)
-        || (opcode_ == OpCode::IF_SUCCESS) || (opcode_ == OpCode::IF_EXCEPTION) ||
-           (opcode_ == OpCode::SWITCH_CASE) || (opcode_ == OpCode::DEFAULT_CASE);
+    ASSERT(HasFlag(GateFlags::CONTROL));
+    return (opcode_ == OpCode::IF_BRANCH) || (opcode_ == OpCode::SWITCH_BRANCH) ||
+        (opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE) ||
+        (opcode_ == OpCode::IF_SUCCESS) || (opcode_ == OpCode::IF_EXCEPTION) ||
+        (opcode_ == OpCode::SWITCH_CASE) || (opcode_ == OpCode::DEFAULT_CASE);
 }
 
 bool GateMetaData::IsLoopHead() const
@@ -143,19 +142,26 @@ bool GateMetaData::IsConstant() const
     return (opcode_ == OpCode::CONSTANT || opcode_ == OpCode::CONST_DATA);
 }
 
-bool GateMetaData::IsTypedOperator() const
+bool GateMetaData::IsDependSelector() const
 {
-    return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT)
-        || (opcode_ == OpCode::TYPED_UNARY_OP);
+    return (opcode_ == OpCode::DEPEND_SELECTOR);
 }
 
-bool GateMetaData::IsCheckWithTwoIns() const {
+bool GateMetaData::IsTypedOperator() const
+{
+    return (opcode_ == OpCode::TYPED_BINARY_OP) || (opcode_ == OpCode::TYPE_CONVERT) ||
+        (opcode_ == OpCode::TYPED_UNARY_OP);
+}
+
+bool GateMetaData::IsCheckWithTwoIns() const
+{
     return (opcode_ == OpCode::OBJECT_TYPE_CHECK) ||
            (opcode_ == OpCode::INDEX_CHECK) ||
            (opcode_ == OpCode::TYPED_CALL_CHECK);
 }
 
-bool GateMetaData::IsCheckWithOneIn() const {
+bool GateMetaData::IsCheckWithOneIn() const
+{
     return (opcode_ == OpCode::PRIMITIVE_TYPE_CHECK) ||
            (opcode_ == OpCode::INT32_OVERFLOW_CHECK) ||
            (opcode_ == OpCode::ARRAY_CHECK) ||
@@ -192,7 +198,7 @@ const GateMetaData* GateMetaBuilder::NAME(size_t value)            \
             break;                                                 \
     }                                                              \
     auto meta = new (chunk_) GateMetaData(OpCode::OP, R, S, D, V); \
-    meta->SetKind(GateMetaData::MUTABLE_WITH_SIZE);                \
+    meta->SetKind(GateMetaData::Kind::MUTABLE_WITH_SIZE);          \
     return meta;                                                   \
 }
 GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_META)
@@ -216,7 +222,7 @@ const GateMetaData* GateMetaBuilder::NAME(uint64_t value)                       
             break;                                                                \
     }                                                                             \
     auto meta = new (chunk_) OneParameterMetaData(OpCode::OP, R, S, D, V, value); \
-    meta->SetKind(GateMetaData::MUTABLE_ONE_PARAMETER);                           \
+    meta->SetKind(GateMetaData::Kind::MUTABLE_ONE_PARAMETER);                     \
     return meta;                                                                  \
 }
 GATE_META_DATA_LIST_WITH_VALUE(DECLARE_GATE_META)
@@ -226,7 +232,7 @@ GATE_META_DATA_LIST_WITH_VALUE(DECLARE_GATE_META)
 const GateMetaData* GateMetaBuilder::NAME(uint64_t value)                         \
 {                                                                                 \
     auto meta = new (chunk_) OneParameterMetaData(OpCode::OP, R, S, D, V, value); \
-    meta->SetKind(GateMetaData::MUTABLE_ONE_PARAMETER);                           \
+    meta->SetKind(GateMetaData::Kind::MUTABLE_ONE_PARAMETER);                     \
     return meta;                                                                  \
 }
 GATE_META_DATA_LIST_WITH_GATE_TYPE(DECLARE_GATE_META)
@@ -245,17 +251,8 @@ CACHED_ARG_LIST(DECLARE_CACHED_VALUE_CASE)
             break;
     }
 
-    auto meta = new (chunk_) OneParameterMetaData(OpCode::ARG, true, 0, 0, 0, value);
-    meta->SetKind(GateMetaData::MUTABLE_ONE_PARAMETER);
+    auto meta = new (chunk_) OneParameterMetaData(OpCode::ARG, GateFlags::HAS_ROOT, 0, 0, 0, value);
+    meta->SetKind(GateMetaData::Kind::MUTABLE_ONE_PARAMETER);
     return meta;
 }
-
-#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                               \
-const GateMetaData* GateMetaBuilder::NAME(uint64_t value)                     \
-{                                                                             \
-    auto meta = new (chunk_) SaveRegsMetaData(OpCode::OP, R, S, D, V, value); \
-    return meta;                                                              \
-}
-GATE_META_DATA_IN_SAVE_REGISTER(DECLARE_GATE_META)
-#undef DECLARE_GATE_META
 }  // namespace panda::ecmascript::kungfu
