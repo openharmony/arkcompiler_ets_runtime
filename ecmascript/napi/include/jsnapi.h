@@ -38,6 +38,9 @@ class CopyableGlobal;
 template<typename T>
 class Global;
 class JSNApi;
+template<typename T>
+class Local;
+class JSValueRef;
 class PrimitiveRef;
 class ArrayRef;
 class StringRef;
@@ -65,6 +68,7 @@ using QuickFixQueryCallBack = bool (*)(std::string, std::string &, void **, size
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
+using ConcurrentCallback = void (*)(Local<JSValueRef> val, Local<JSValueRef> hint, void *data);
 
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
@@ -1297,6 +1301,7 @@ public:
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetLoop(EcmaVM *vm, void *loop);
     static std::string GetAssetPath(EcmaVM *vm);
+    static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
     static void SetBundleName(EcmaVM *vm, std::string bundleName);
     static std::string GetBundleName(EcmaVM *vm);

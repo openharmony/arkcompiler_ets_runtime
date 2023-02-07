@@ -1354,6 +1354,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         methodHandle.Update(JSFunction::Cast(state->function.GetTaggedObject())->GetMethod());
         [[maybe_unused]] auto fistPC = methodHandle->GetBytecodeArray();
         UPDATE_HOTNESS_COUNTER(-(pc - fistPC));
+
         JSTaggedType *currentSp = sp;
         sp = state->base.prev;
         ASSERT(sp != nullptr);
@@ -1401,6 +1402,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         methodHandle.Update(JSFunction::Cast(state->function.GetTaggedObject())->GetMethod());
         [[maybe_unused]] auto fistPC = methodHandle->GetBytecodeArray();
         UPDATE_HOTNESS_COUNTER_NON_ACC(-(pc - fistPC));
+
         JSTaggedType *currentSp = sp;
         sp = state->base.prev;
         ASSERT(sp != nullptr);

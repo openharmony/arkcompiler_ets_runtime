@@ -1553,7 +1553,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeFunction)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> jsFunction = factory->NewJSFunction(env);
+    JSHandle<JSFunction> jsFunction = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
     EXPECT_TRUE(jsFunction->IsJSFunction());
 
     JSSerializer *serializer = new JSSerializer(thread);
@@ -1571,9 +1571,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> function1 = env->GetFunctionFunction();
+    JSHandle<JSFunction> function1 = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
     EXPECT_TRUE(function1->IsJSFunction());
-    JSHandle<JSTaggedValue> function2 = env->GetFunctionFunction();
+    JSHandle<JSFunction> function2 = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
     EXPECT_TRUE(function2->IsJSFunction());
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("1"));
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("2"));
@@ -1585,9 +1585,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
     JSHandle<JSTaggedValue> value3(factory->NewFromASCII("value"));
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key1, value1);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key2, function1);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key2, JSHandle<JSTaggedValue>(function1));
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key3, value2);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, function2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, JSHandle<JSTaggedValue>(function2));
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key5, value3);
 
     JSSerializer *serializer = new JSSerializer(thread);

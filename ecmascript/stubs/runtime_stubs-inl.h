@@ -1795,7 +1795,6 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
     FunctionKind kind = methodHandle->GetFunctionKind();
     switch (kind) {
         case FunctionKind::NORMAL_FUNCTION:
-        case FunctionKind::CONCURRENT_FUNCTION:
         case FunctionKind::BASE_CONSTRUCTOR: {
             auto hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
             jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass);
@@ -1811,6 +1810,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<M
             jsFunc = factory->NewJSFunctionByHClass(methodHandle, generatorClass);
             break;
         }
+        case FunctionKind::CONCURRENT_FUNCTION:
         case FunctionKind::ASYNC_FUNCTION: {
             auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
             jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass);
