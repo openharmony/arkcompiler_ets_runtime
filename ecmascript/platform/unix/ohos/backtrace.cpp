@@ -27,7 +27,7 @@
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
 static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
-static const int MAX_STACK_SIZE = 10;
+static const int MAX_STACK_SIZE = 16;
 static const int ALIGN_WIDTH = 2;
 
 using UnwBackTraceFunc = int (*)(void**, int);
