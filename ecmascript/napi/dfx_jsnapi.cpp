@@ -272,12 +272,10 @@ void DFXJSNApi::SetCpuSamplingInterval(const EcmaVM *vm, int interval)
     CpuProfiler *profiler = vm->GetProfiler();
     if (profiler == nullptr) {
         profiler = new CpuProfiler(vm, interval);
-        profiler->SetCallNapiGetStack(false);
         const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
         return;
     }
     profiler->SetCpuSamplingInterval(interval);
-    profiler->SetCallNapiGetStack(false);
 }
 #endif
 

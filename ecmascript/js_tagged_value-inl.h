@@ -966,6 +966,11 @@ inline bool JSTaggedValue::IsJSFunctionBase() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSFunctionBase();
 }
 
+inline bool JSTaggedValue::CheckIsJSFunctionBase() const
+{
+    return IsHeapObject() && GetTaggedObject() != nullptr && GetTaggedObject()->GetClass()->IsJSFunctionBase();
+}
+
 inline bool JSTaggedValue::IsBoundFunction() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJsBoundFunction();

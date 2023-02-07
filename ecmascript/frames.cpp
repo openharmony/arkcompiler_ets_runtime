@@ -48,7 +48,7 @@ int FrameIterator::GetCallSiteDelta(uintptr_t returnAddr) const
 Method *FrameIterator::CheckAndGetMethod() const
 {
     auto function = GetFunction();
-    if (function.IsJSFunctionBase() || function.IsJSProxy()) {
+    if (function.CheckIsJSFunctionBase() || function.IsJSProxy()) {
         return ECMAObject::Cast(function.GetTaggedObject())->GetCallTarget();
     }
     return nullptr;
