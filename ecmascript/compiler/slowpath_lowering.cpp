@@ -53,6 +53,8 @@ void SlowPathLowering::CallRuntimeLowering()
             LowerDeoptCheck(gate);
         } else if (op == OpCode::CONSTRUCT) {
             LowerConstruct(gate);
+        } else if (op == OpCode::UPDATE_HOTNESS) {
+            LowerUpdateHotness(gate);
         }
     }
 
@@ -3673,5 +3675,29 @@ void SlowPathLowering::LowerConstruct(GateRef gate)
     auto depend = builder_.GetDepend();
     GateRef constructGate = builder_.Call(cs, glue_, target, depend, args);
     ReplaceHirToJSCall(gate, constructGate);
+}
+
+void SlowPathLowering::LowerUpdateHotness(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
+    GateRef method = builder_.Load(VariableType::JS_ANY(), jsFunc, builder_.IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef hotness = builder_.Load(VariableType::INT16(), method, builder_.IntPtr(Method::LITERAL_INFO_OFFSET));
+    GateRef value = builder_.ZExtInt16ToInt32(hotness);
+    GateRef offset = acc_.GetValueIn(gate, 0);
+    GateRef newValue = builder_.Int32Add(value, offset);
+    DEFVAlUE(newHotness, (&builder_), VariableType::INT16(), builder_.TruncInt32ToInt16(newValue));
+    Label slowPath(&builder_);
+    Label dispatch(&builder_);
+    builder_.Branch(builder_.Int32LessThan(newValue, builder_.Int32(0)), &slowPath, &dispatch);
+    builder_.Bind(&slowPath);
+    {
+        builder_.CallRuntime(glue_, RTSTUB_ID(UpdateHotnessCounter), Circuit::NullGate(), { jsFunc });
+        newHotness = builder_.Int16(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
+        builder_.Jump(&dispatch);
+    }
+    builder_.Bind(&dispatch);
+    builder_.Store(VariableType::VOID(), glue_, method, builder_.IntPtr(Method::LITERAL_INFO_OFFSET), *newHotness);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript

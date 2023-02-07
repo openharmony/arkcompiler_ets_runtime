@@ -303,6 +303,7 @@ private:
     void LowerConstPoolData(GateRef gate);
     void LowerDeoptCheck(GateRef gate);
     void LowerConstruct(GateRef gate);
+    void LowerUpdateHotness(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};
