@@ -21,7 +21,7 @@ group("ark_js_packages") {
       "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm",
     ]
     if (current_cpu == "arm64") {
-      deps += [ "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/ohos:ohos_clang_arm64)" ]
+      # deps += [ "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/ohos:ohos_clang_arm64)" ]
     }
   }
 }
