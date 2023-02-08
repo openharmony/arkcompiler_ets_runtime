@@ -841,8 +841,11 @@ void TypeLowering::LowerTypedUnaryOp(GateRef gate)
         case TypedUnOp::TYPED_DEC:
             LowerTypedDec(gate, valueType);
             break;
-        case TypedUnOp::TYPED_TOBOOL:
-            LowerTypedToBool(gate, valueType);
+        case TypedUnOp::TYPED_ISFALSE:
+            LowerTypedIsFalse(gate, valueType);
+            break;
+        case TypedUnOp::TYPED_ISTRUE:
+            LowerTypedIsTrue(gate, valueType);
             break;
         default:
             LOG_COMPILER(FATAL) << "unkown TypedUnOp: " << static_cast<int>(op);
@@ -1085,16 +1088,36 @@ void TypeLowering::LowerTypedNeg(GateRef gate, GateType value)
     return;
 }
 
-void TypeLowering::LowerTypedToBool(GateRef gate, GateType value)
+void TypeLowering::LowerTypedIsTrue(GateRef gate, GateType value)
 {
+    GateRef boolValue = Circuit::NullGate();
     if (value.IsNumberType()) {
-        LowerNumberToBool(gate, value);
+        boolValue = ConvertNumberToBool(gate, value);
     } else if (value.IsBooleanType()) {
-        LowerBooleanToBool(gate);
+        boolValue = ConvertBooleanToBool(gate);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
+    GateRef result = builder_.BooleanToTaggedBooleanPtr(boolValue);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypeLowering::LowerTypedIsFalse(GateRef gate, GateType value)
+{
+    GateRef boolValue = Circuit::NullGate();
+    if (value.IsNumberType()) {
+        boolValue = ConvertNumberToBool(gate, value);
+    } else if (value.IsBooleanType()) {
+        boolValue = ConvertBooleanToBool(gate);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    boolValue = builder_.BoolNot(boolValue);
+
+    GateRef result = builder_.BooleanToTaggedBooleanPtr(boolValue);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypeLowering::LowerTypedNot(GateRef gate, GateType value)
@@ -1362,8 +1385,11 @@ void TypeLowering::LowerNumberNeg(GateRef gate, GateType valueType)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-void TypeLowering::LowerNumberToBool(GateRef gate, GateType valueType)
+GateRef TypeLowering::ConvertNumberToBool(GateRef gate, GateType valueType)
 {
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
     GateRef value = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.HoleConstant());
     if (valueType.IsIntType()) {
@@ -1398,14 +1424,16 @@ void TypeLowering::LowerNumberToBool(GateRef gate, GateType valueType)
         }
         builder_.Bind(&exit);
     }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
-void TypeLowering::LowerBooleanToBool(GateRef gate)
+GateRef TypeLowering::ConvertBooleanToBool(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.TaggedIsTrue(value);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    return result;
 }
 
 void TypeLowering::LowerNumberNot(GateRef gate, GateType valueType)
