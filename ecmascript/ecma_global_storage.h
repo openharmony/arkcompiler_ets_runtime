@@ -20,6 +20,9 @@
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/platform/backtrace.h"
+#ifdef HOOK_ENABLE
+#include "memory_trace.h"
+#endif
 
 namespace panda::ecmascript {
 class Node {
@@ -96,6 +99,9 @@ public:
         SetNext(next);
         SetObject(value);
         SetUsing(isUsing);
+#ifdef HOOK_ENABLE
+        memtrace((void *)next, sizeof(Node), "ArkJs", isUsing);
+#endif
     }
 
 private:

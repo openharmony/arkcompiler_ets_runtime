@@ -15,7 +15,7 @@
 
 #include "ecmascript/base/block_hook_scope.h"
 
-#ifdef BLOCK_HOOK
+#ifdef HOOK_ENABLE
 #include "musl_preinit_common.h"
 #endif
 
@@ -23,14 +23,14 @@ namespace panda::ecmascript::base {
 
 BlockHookScope::BlockHookScope()
 {
-#ifdef BLOCK_HOOK
+#ifdef HOOK_ENABLE
    previousState_ = __set_hook_flag(false);
 #endif
 }
 
 BlockHookScope::~BlockHookScope()
 {
-#ifdef BLOCK_HOOK
+#ifdef HOOK_ENABLE
     __set_hook_flag(previousState_);
 #endif
 }

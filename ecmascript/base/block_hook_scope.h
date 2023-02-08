@@ -26,7 +26,7 @@ public:
     NO_COPY_SEMANTIC(BlockHookScope);
     NO_MOVE_SEMANTIC(BlockHookScope);
 
-#ifdef BLOCK_HOOK
+#ifdef HOOK_ENABLE
 private:
     bool previousState_ {true};
 #endif
