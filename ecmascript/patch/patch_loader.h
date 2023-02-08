@@ -24,7 +24,6 @@
 #include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
-using EntityId = panda_file::File::EntityId;
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 using JSRecordInfo = JSPandaFile::JSRecordInfo;
 

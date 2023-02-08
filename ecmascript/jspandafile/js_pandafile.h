@@ -24,6 +24,7 @@
 
 #include "libpandafile/file.h"
 #include "libpandafile/file_items.h"
+#include "libpandafile/literal_data_accessor.h"
 
 namespace panda {
 namespace ecmascript {
@@ -204,9 +205,11 @@ public:
         return pf_->ResolveMethodIndex(id, idx);
     }
 
-    panda_file::File::EntityId GetLiteralArraysId() const
+    panda_file::LiteralDataAccessor GetLiteralDataAccessor() const
     {
-        return pf_->GetLiteralArraysId();
+        EntityId literalArraysId = pf_->GetLiteralArraysId();
+        panda_file::LiteralDataAccessor lda(*pf_, literalArraysId);
+        return lda;
     }
 
     Span<const panda_file::File::EntityId> GetMethodIndex(const panda_file::File::IndexHeader *indexHeader) const

@@ -2498,14 +2498,16 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(EcmaString *string)
 }
 
 // NB! don't do special case for C0 80, it means '\u0000', so don't convert to UTF-8
-EcmaString *ObjectFactory::GetRawStringFromStringTable(const uint8_t *mutf8Data, uint32_t utf16Len,
-                                                       bool canBeCompressed, MemSpaceType type) const
+EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceType type) const
 {
     NewObjectHook();
+    uint32_t utf16Len = sd.utf16_length;
     if (UNLIKELY(utf16Len == 0)) {
         return *GetEmptyString();
     }
 
+    bool canBeCompressed = sd.is_ascii;
+    const uint8_t *mutf8Data = sd.data;
     if (canBeCompressed) {
         return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, true, type);
     }

@@ -21,10 +21,6 @@
 #include "libpandafile/literal_data_accessor-inl.h"
 
 namespace panda::ecmascript {
-using EntityId = panda_file::File::EntityId;
-
-enum class FieldTag : uint8_t { OBJECTLITERAL = 0, ARRAYLITERAL };
-
 class LiteralDataExtractor {
 public:
     LiteralDataExtractor() = default;
@@ -35,31 +31,35 @@ public:
 
     static constexpr uint32_t LITERALARRAY_VALUE_LOW_BOUNDARY = 100;
 
+    // Parameter 'size_t index' is for old isa, and 'EntityId id' for new isa.
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
-    static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
-                                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
-    static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
+    static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
-    static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                    panda_file::File::EntityId index,
+
+    static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                                     JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
-    static JSHandle<JSFunction> DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                      JSHandle<Method> method, FunctionKind kind, uint16_t length,
-                                                      const CString &entryPoint = "");
+    static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
+                                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
-        size_t index, JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
+                                                            size_t index, JSHandle<ConstantPool> constpool,
+                                                            const CString &entryPoint = "");
+
+    static JSHandle<JSFunction> DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                      uint32_t offset, JSHandle<ConstantPool> constpool,
+                                                      FunctionKind kind, uint16_t length,
+                                                      const CString &entryPoint = "");
 
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, size_t index,
                                             std::vector<uint32_t> &methodOffsets);
 
-    static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, panda_file::File::EntityId index,
+    static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, EntityId id,
                                             std::vector<uint32_t> &methodOffsets);
 
     static JSHandle<TaggedArray> PUBLIC_API GetTypeLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                           panda_file::File::EntityId offset);
+                                                           EntityId offset);
 private:
     static JSHandle<TaggedArray> EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
         const JSPandaFile *jsPandaFile, size_t index, JSHandle<ConstantPool> constpool,

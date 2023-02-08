@@ -32,13 +32,12 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
 {
     int moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     ASSERT(moduleIdx != -1);
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
-    panda_file::File::EntityId literalArraysId = jsPandaFile->GetLiteralArraysId();
-    panda_file::LiteralDataAccessor lda(*pf, literalArraysId);
+
     panda_file::File::EntityId moduleId;
     if (jsPandaFile->IsNewVersion()) {  // new pandafile version use new literal offset mechanism
         moduleId = panda_file::File::EntityId(static_cast<uint32_t>(moduleIdx));
     } else {
+        panda_file::LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
         moduleId = lda.GetLiteralArrayId(static_cast<size_t>(moduleIdx));
     }
 
@@ -68,7 +67,7 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     JSHandle<TaggedArray> requestModuleArray = factory->NewTaggedArray(len);
     for (size_t idx = 0; idx < len; idx++) {
         StringData sd = jsPandaFile->GetStringData(panda_file::File::EntityId(requestModules[idx]));
-        JSTaggedValue value(factory->GetRawStringFromStringTable(sd.data, sd.utf16_length, sd.is_ascii));
+        JSTaggedValue value(factory->GetRawStringFromStringTable(sd));
         requestModuleArray->Set(thread, idx, value);
     }
     if (len > 0) {
