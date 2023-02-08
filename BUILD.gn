@@ -23,7 +23,7 @@ group("ark_js_packages") {
       "//arkcompiler/ets_runtime/ecmascript/quick_fix:quick_fix",
     ]
     if (current_cpu == "arm64" && is_ohos) {
-      deps += [ "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/ohos:ohos_clang_arm64)" ]
+      #  deps += [ "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/ohos:ohos_clang_arm64)" ]
     }
   }
 }
