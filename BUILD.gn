@@ -42,9 +42,15 @@ group("ark_js_host_mac_tools_packages") {
   deps = []
   if (host_os == "mac") {
     if (host_cpu == "arm64") {
-      deps += [ "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mac:clang_arm64)" ]
+      deps += [
+        "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mac:clang_arm64)",
+        "ecmascript/js_vm:ark_js_vm($build_root/toolchain/mac:clang_arm64)",
+      ]
     } else {
-      deps += [ "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mac:clang_x64)" ]
+      deps += [
+        "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mac:clang_x64)",
+        "ecmascript/js_vm:ark_js_vm($build_root/toolchain/mac:clang_x64)",
+      ]
     }
   }
 }
@@ -671,20 +677,15 @@ if (!is_mingw && !is_mac && target_os != "ios") {
     "ecmascript/dfx/hprof/heap_snapshot_json_serializer.cpp",
     "ecmascript/dfx/hprof/heap_tracker.cpp",
     "ecmascript/dfx/hprof/string_hashmap.cpp",
-    "ecmascript/snapshot/mem/snapshot.cpp",
-    "ecmascript/snapshot/mem/snapshot_env.cpp",
-    "ecmascript/snapshot/mem/snapshot_processor.cpp",
     "ecmascript/base/block_hook_scope.cpp",
   ]
 }
 
-if (is_mingw) {
-  ecma_profiler_source += [
-    "ecmascript/snapshot/mem/snapshot.cpp",
-    "ecmascript/snapshot/mem/snapshot_env.cpp",
-    "ecmascript/snapshot/mem/snapshot_processor.cpp",
-  ]
-}
+ecma_profiler_source += [
+  "ecmascript/snapshot/mem/snapshot.cpp",
+  "ecmascript/snapshot/mem/snapshot_env.cpp",
+  "ecmascript/snapshot/mem/snapshot_processor.cpp",
+]
 
 ecma_platform_source = []
 if (is_mingw) {

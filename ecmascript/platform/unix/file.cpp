@@ -15,6 +15,7 @@
 
 #include "ecmascript/platform/file.h"
 
+#include <cerrno>
 #include <climits>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -84,7 +85,9 @@ int64_t GetFileSizeByFd(fd_t fd)
 void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, [[maybe_unused]] fd_t *extra)
 {
     void *addr = mmap(nullptr, size, PAGE_PROT_READWRITE, MAP_PRIVATE, fd, offset);
-    LOG_ECMA_IF(addr == nullptr, FATAL) << "mmap fail";
+    if (reinterpret_cast<intptr_t>(addr) == -1) {
+        LOG_ECMA(FATAL) << "mmap failed with error code:" << errno;
+    }
     return addr;
 }
 
