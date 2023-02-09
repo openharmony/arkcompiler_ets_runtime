@@ -751,10 +751,7 @@ source_set("libark_jsruntime_set") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
-  deps += [
-    "$ark_root/libpandafile:arkfile_header_deps",
-    sdk_libc_secshared_dep,
-  ]
+  deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
 
   if (is_ohos && is_standard_system) {
     defines = [ "ENABLE_EXCEPTION_BACKTRACE" ]
@@ -796,10 +793,7 @@ source_set("libark_js_intl_set") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = [
-    "$ark_root/libpandafile:arkfile_header_deps",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
 }
 
 source_set("libark_jsruntime_test_set") {
@@ -814,7 +808,6 @@ source_set("libark_jsruntime_test_set") {
     "$ark_root/libpandafile:arkfile_header_deps",
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    sdk_libc_secshared_dep,
   ]
 
   if (enable_coverage) {
@@ -862,6 +855,7 @@ ohos_shared_library("libark_jsruntime") {
   deps = [
     ":libark_jsruntime_static",
     "$ark_root/libpandafile:libarkfile_static",
+    sdk_libc_secshared_dep,
   ]
 
   if (is_ohos && is_standard_system) {
