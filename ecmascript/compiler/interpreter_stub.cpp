@@ -4378,6 +4378,14 @@ DECLARE_ASM_HANDLER_NOPRINT(HandleDeprecated)
     DispatchWithId(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, jumpIndex);
 }
 
+DECLARE_ASM_HANDLER_NOPRINT(HandleCallRuntime)
+{
+    GateRef opcode = ZExtInt8ToPtr(ReadInst8_0(pc));
+    auto index = IntPtr(kungfu::BytecodeStubCSigns::ID_CallRuntime_Start);
+    auto jumpIndex = PtrAdd(opcode, index);
+    DispatchWithId(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, jumpIndex);
+}
+
 // interpreter helper handler
 DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
 {
@@ -4512,6 +4520,13 @@ DECLARE_ASM_HANDLER(HandleWideStpatchvarPrefImm16)
     GateRef index = ReadInst16_1(pc);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StPatchVar), { Int16ToTaggedInt(index), acc });
     CHECK_EXCEPTION(result, INT_PTR(WIDE_STPATCHVAR_PREF_IMM16));
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeNotifyConcurrentResultPrefNone)
+{
+    GateRef thisObj = GetThisFromFrame(GetFrame(sp));
+    CallRuntime(glue, RTSTUB_ID(NotifyConcurrentResult), {acc, thisObj});
+    DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
 }
 #undef DECLARE_ASM_HANDLER
 #undef DISPATCH

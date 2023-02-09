@@ -198,10 +198,11 @@ public:
     static constexpr uint32_t NUM_BYTECODES = 0xFF;
     static constexpr uint32_t OPCODE_MASK = 0xFF00;
     static constexpr uint32_t BYTE_SIZE = 8;
+    static constexpr uint32_t CALLRUNTIME_PREFIX_OPCODE_INDEX = 251;
     static constexpr uint32_t DEPRECATED_PREFIX_OPCODE_INDEX = 252;
     static constexpr uint32_t WIDE_PREFIX_OPCODE_INDEX = 253;
     static constexpr uint32_t THROW_PREFIX_OPCODE_INDEX = 254;
-    static constexpr uint32_t MIN_PREFIX_OPCODE_INDEX = DEPRECATED_PREFIX_OPCODE_INDEX;
+    static constexpr uint32_t MIN_PREFIX_OPCODE_INDEX = CALLRUNTIME_PREFIX_OPCODE_INDEX;
 
     static constexpr uint32_t LAST_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::NOP);
@@ -211,14 +212,17 @@ public:
         static_cast<uint32_t>(EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16);
     static constexpr uint32_t LAST_THROW_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
+    static constexpr uint32_t LAST_CALLRUNTIME_OPCODE =
+        static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
 
+    static_assert(CALLRUNTIME_PREFIX_OPCODE_INDEX ==
+        static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE));
     static_assert(DEPRECATED_PREFIX_OPCODE_INDEX ==
         static_cast<uint32_t>(EcmaOpcode::DEPRECATED_LDLEXENV_PREF_NONE));
     static_assert(WIDE_PREFIX_OPCODE_INDEX ==
         static_cast<uint32_t>(EcmaOpcode::WIDE_CREATEOBJECTWITHEXCLUDEDKEYS_PREF_IMM16_V8_V8));
     static_assert(THROW_PREFIX_OPCODE_INDEX ==
         static_cast<uint32_t>(EcmaOpcode::THROW_PREF_NONE));
-
 
     Bytecodes();
     Bytecodes(const Bytecodes&) = delete;
@@ -239,7 +243,9 @@ public:
         uint8_t primary = ReadByte(pc);
         if (primary >= MIN_PREFIX_OPCODE_INDEX) {
             uint8_t secondary = ReadByte1(pc);
-            if (primary == DEPRECATED_PREFIX_OPCODE_INDEX) {
+            if (primary == CALLRUNTIME_PREFIX_OPCODE_INDEX) {
+                return callRuntimeBytecodes_[secondary];
+            } else if (primary == DEPRECATED_PREFIX_OPCODE_INDEX) {
                 return deprecatedBytecodes_[secondary];
             } else if (primary == WIDE_PREFIX_OPCODE_INDEX) {
                 return wideBytecodes_[secondary];
@@ -263,6 +269,7 @@ private:
     BytecodeMetaData InitBytecodeMetaData(const uint8_t *pc);
 
     std::array<BytecodeMetaData, NUM_BYTECODES> bytecodes_{};
+    std::array<BytecodeMetaData, NUM_BYTECODES> callRuntimeBytecodes_{};
     std::array<BytecodeMetaData, NUM_BYTECODES> deprecatedBytecodes_{};
     std::array<BytecodeMetaData, NUM_BYTECODES> wideBytecodes_{};
     std::array<BytecodeMetaData, NUM_BYTECODES> throwBytecodes_{};

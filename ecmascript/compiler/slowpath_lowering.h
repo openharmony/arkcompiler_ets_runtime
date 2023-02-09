@@ -295,6 +295,7 @@ private:
     void LowerDeoptCheck(GateRef gate);
     void LowerConstruct(GateRef gate);
     void LowerUpdateHotness(GateRef gate);
+    void LowerNotifyConcurrentResult(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};

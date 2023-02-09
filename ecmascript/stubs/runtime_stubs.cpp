@@ -1874,6 +1874,14 @@ DEF_RUNTIME_STUBS(StPatchVar)
     return RuntimeStPatchVar(thread, idx.GetInt(), value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NotifyConcurrentResult)
+{
+    RUNTIME_STUBS_HEADER(NotifyConcurrentResult);
+    JSTaggedValue result = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue hint = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeNotifyConcurrentResult(thread, result, hint).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
 {
     RUNTIME_STUBS_HEADER(ContainerRBTreeForEach);

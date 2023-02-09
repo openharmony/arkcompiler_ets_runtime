@@ -4735,6 +4735,12 @@ void InterpreterAssembly::HandleDeprecatedLdlexenvPrefNone(
     DISPATCH(DEPRECATED_LDLEXENV_PREF_NONE);
 }
 
+void InterpreterAssembly::HandleCallRuntime(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+}
+
 void InterpreterAssembly::HandleWide(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -4746,6 +4752,7 @@ void InterpreterAssembly::HandleDeprecated(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
 }
+
 void InterpreterAssembly::HandleJnstricteqV8Imm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -5866,6 +5873,13 @@ void InterpreterAssembly::HandleWideStpatchvarPrefImm16(
     INTERPRETER_RETURN_IF_ABRUPT(res);
     RESTORE_ACC();
     DISPATCH(WIDE_STPATCHVAR_PREF_IMM16);
+}
+
+void InterpreterAssembly::HandleCallRuntimeNotifyConcurrentResultPrefNone(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
 }
 
 void InterpreterAssembly::HandleStthisbyvalueImm16V8(

@@ -2548,5 +2548,11 @@ JSTaggedValue RuntimeStubs::RuntimeStPatchVar(JSThread *thread, uint32_t index, 
     env->SetGlobalPatch(thread, globalPatch.GetTaggedValue());
     return JSTaggedValue::True();
 }
+
+JSTaggedValue RuntimeStubs::RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint)
+{
+    thread->GetEcmaVM()->TriggerConcurrentCallback(result, hint);
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

@@ -829,7 +829,8 @@ void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t
     }
     if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecated)) ||
         start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleWide)) ||
-        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow))) {
+        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow)) ||
+        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleCallRuntime))) {
         size_t startSecond = start;
         if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecated))) {
             startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecatedLdlexenvPrefNone));
@@ -838,6 +839,8 @@ void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t
                 HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8));
         } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow))) {
             startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrowPrefNone));
+        } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleCallRuntime))) {
+            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleCallRuntimeNotifyConcurrentResultPrefNone));
         }
         size_t bytecodeSecond = (fullBytecode >> 8) & 0xff;  // 8, 0xff: second last byte
         const char *bytecodeNameSecond = MessageString::GetMessageString(startSecond + bytecodeSecond).c_str();

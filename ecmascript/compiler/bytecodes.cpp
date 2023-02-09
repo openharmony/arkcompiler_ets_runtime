@@ -202,6 +202,9 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::JMP_IMM32:
             kind = BytecodeKind::JUMP_IMM;
             break;
+        case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
+            flags |= BytecodeFlags::READ_THIS_OBJECT;
+            break;
         default:
             break;
     }
@@ -225,14 +228,20 @@ Bytecodes::Bytecodes()
         auto info = BytecodeMetaData::InitBytecodeMetaData(&pc);
         bytecodes_[pc] = info;
     }
-    auto last = (static_cast<uint16_t>(Bytecodes::LAST_DEPRECATED_OPCODE) & OPCODE_MASK) >> BYTE_SIZE;
-    for (uint8_t pc = 0; pc < last; pc++) {
+    auto last = (static_cast<uint16_t>(Bytecodes::LAST_CALLRUNTIME_OPCODE) & OPCODE_MASK) >> BYTE_SIZE;
+    for (uint8_t pc = 0; pc <= last; pc++) {
+        std::array<uint8_t, 2> bytecode{CALLRUNTIME_PREFIX_OPCODE_INDEX, pc}; // 2: 2 opcode
+        auto info = BytecodeMetaData::InitBytecodeMetaData(&bytecode[0]);
+        callRuntimeBytecodes_[pc] = info;
+    }
+    last = (static_cast<uint16_t>(Bytecodes::LAST_DEPRECATED_OPCODE) & OPCODE_MASK) >> BYTE_SIZE;
+    for (uint8_t pc = 0; pc <= last; pc++) {
         std::array<uint8_t, 2> bytecode{DEPRECATED_PREFIX_OPCODE_INDEX, pc}; // 2: 2 opcode
         auto info = BytecodeMetaData::InitBytecodeMetaData(&bytecode[0]);
         deprecatedBytecodes_[pc] = info;
     }
     last = (static_cast<uint16_t>(Bytecodes::LAST_WIDE_OPCODE) & OPCODE_MASK) >> BYTE_SIZE;
-    for (uint8_t pc = 0; pc < last; pc++) {
+    for (uint8_t pc = 0; pc <= last; pc++) {
         std::array<uint8_t, 2> bytecode{WIDE_PREFIX_OPCODE_INDEX, pc}; // 2: 2 opcode
         auto info = BytecodeMetaData::InitBytecodeMetaData(&bytecode[0]);
         wideBytecodes_[pc] = info;
@@ -1327,6 +1336,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
         case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
         case EcmaOpcode::RESUMEGENERATOR:
+        case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             break;
         case EcmaOpcode::LDTHISBYVALUE_IMM8: {
             uint16_t slotId = READ_INST_8_0();
