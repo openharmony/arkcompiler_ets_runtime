@@ -11,6 +11,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+import("./automatedcases/typeinfer_failed_cases.gni")
+
+declare_args() {
+  is_enable_typeinfer_automatedcases = false
+}
+
+if (is_enable_typeinfer_automatedcases) {
+  ts_files = exec_script(rebase_path("./automatedcases/find_ts_files.py"),
+                         [
+                           "automatedcases",
+                           rebase_path("./automatedcases"),
+                         ],
+                         "list lines")
+
+  ts_files -= failed_list
+
+  foreach(file, ts_files) {
+    host_typeinfer_test_action(file) {
+      deps = []
+      is_disable_type_lowering = true
+      is_enable_builtins_dts = true
+    }
+  }
+}
+
 group("ark_typeinfer_test") {
   testonly = true
   deps = [
@@ -74,4 +100,10 @@ group("ark_typeinfer_test") {
     "typeof:typeofAotTypeInferAction",
     "variable_after_loops:variable_after_loopsAotTypeInferAction",
   ]
+
+  if (is_enable_typeinfer_automatedcases) {
+    foreach(file, ts_files) {
+      deps += [ ":${file}AotTypeInferAction" ]
+    }
+  }
 }

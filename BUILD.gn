@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_frontend/ts2panda/ts2abc_config.gni")
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("$build_root/config/sanitizers/sanitizers.gni")
 
@@ -126,6 +127,28 @@ group("ark_unittest") {
         "//arkcompiler/ets_runtime/ecmascript/compiler/tests:host_unittest",
       ]
     }
+  }
+}
+
+if (is_standard_system && !run_with_asan) {
+  _builtins_dts_path_ =
+      rebase_path("./ecmascript/ts_types/lib_ark_builtins.d.ts")
+  _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
+
+  ts2abc_gen_abc("gen_builtins_d_abc") {
+    extra_visibility = [ "*" ]
+
+    # extra_dependencies = _deps_
+    src_js = rebase_path(_builtins_dts_path_)
+    dst_file = rebase_path(_builtins_d_abc_path_)
+    extra_args = [
+      "--merge-abc",
+      "--q",
+      "--b",
+    ]
+
+    in_puts = [ _builtins_dts_path_ ]
+    out_puts = [ _builtins_d_abc_path_ ]
   }
 }
 
