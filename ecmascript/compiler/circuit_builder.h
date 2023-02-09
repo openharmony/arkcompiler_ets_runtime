@@ -104,6 +104,7 @@ class Variable;
     V(TruncInt64ToInt1, Trunc, MachineType::I1)                        \
     V(TruncInt64ToInt16, Trunc, MachineType::I16)                      \
     V(TruncInt32ToInt1, Trunc, MachineType::I1)                        \
+    V(TruncInt32ToInt16, Trunc, MachineType::I16)                      \
     V(TruncFloatToInt64, TruncFloatToInt64, MachineType::I64)          \
     V(ExtFloat32ToDouble, Fext, MachineType::F64)                      \
     V(TruncDoubleToFloat32, Ftrunc, MachineType::F32)                  \
