@@ -113,7 +113,10 @@ bool PGOProfilerLoader::LoadAndVerify(const std::string &inPath, uint32_t hotnes
 
 bool PGOProfilerLoader::ParseProfilerHeader(void **buffer)
 {
-    memcpy_s(&header_, sizeof(PGOProfilerHeader), *buffer, sizeof(PGOProfilerHeader));
+    if (memcpy_s(&header_, sizeof(PGOProfilerHeader), *buffer, sizeof(PGOProfilerHeader)) != EOK) {
+        LOG_FULL(FATAL) << "memcopy_s failed";
+        return false;
+    }
     *buffer = ToVoidPtr(ToUintPtr(*buffer) + sizeof(PGOProfilerHeader));
     return header_.Verify();
 }

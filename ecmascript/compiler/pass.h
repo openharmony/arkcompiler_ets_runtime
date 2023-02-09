@@ -127,7 +127,8 @@ public:
         return recordName_;
     }
 
-    NativeAreaAllocator* GetNativeAreaAllocator() const {
+    NativeAreaAllocator* GetNativeAreaAllocator() const
+    {
         return allocator_;
     }
 
