@@ -225,7 +225,7 @@ class DependChainInfo : public ChunkObject {
 public:
     DependChainInfo(Chunk* chunk) : chunk_(chunk) {};
     ~DependChainInfo() = default;
-    
+
     bool operator == (const DependChainInfo& rhs) const
     {
         return (elementMap_ == rhs.elementMap_) &&
@@ -347,7 +347,6 @@ private:
     void TryEliminateTypedCallCheck(GateRef gate);
     void TryEliminateStateSplitAndFrameState(GateRef gate);
     void TryEliminateDependSelector(GateRef gate);
-    void TryEliminateDependAnd(GateRef gate);
     void TryEliminateOther(GateRef gate);
 
     bool IsTrustedType(GateRef gate) const;
