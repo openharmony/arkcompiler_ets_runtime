@@ -26,6 +26,8 @@
 #include <vector>
 
 #include "ecmascript/base/array_helper.h"
+#include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -39,6 +41,7 @@
 #include "securec.h"
 
 namespace panda::ecmascript {
+using TypedArrayHelper = base::TypedArrayHelper;
 constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
 
@@ -343,6 +346,78 @@ bool JSSerializer::WriteTaggedArray(const JSHandle<JSTaggedValue> &value)
     return true;
 }
 
+bool JSSerializer::WriteByteArray(const JSHandle<JSTaggedValue> &value, DataViewType viewType)
+{
+    JSHandle<ByteArray> byteArray = JSHandle<ByteArray>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::BYTE_ARRAY)) {
+        return false;
+    }
+    uint32_t arrayLength = byteArray->GetLength();
+    if (!WriteInt(arrayLength)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    uint32_t viewTypeIndex = GetDataViewTypeIndex(viewType);
+    if (!WriteInt(viewTypeIndex)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < arrayLength; i++) {
+        val.Update(byteArray->Get(thread_, i, viewType));
+        if (!SerializeJSTaggedValue(val)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    }
+    return true;
+}
+
+uint32_t JSSerializer::GetDataViewTypeIndex(const DataViewType viewType)
+{
+    uint32_t index = 0;
+    switch (viewType) {
+    case DataViewType::INT8:
+        index = 1; // 1 : DataViewType::INT8
+        break;
+    case DataViewType::UINT8:
+        index = 2; // 2 : DataViewType::UINT8
+        break;
+    case DataViewType::UINT8_CLAMPED:
+        index = 3; // 3 : DataViewType::UINT8_CLAMPED
+        break;
+    case DataViewType::INT16:
+        index = 4; // 4 : DataViewType::INT16
+        break;
+    case DataViewType::UINT16:
+        index = 5; // 5 : DataViewType::UINT16
+        break;
+    case DataViewType::INT32:
+        index = 6; // 6 : DataViewType::INT32
+        break;
+    case DataViewType::UINT32:
+        index = 7; // 7 : DataViewType::UINT32
+        break;
+    case DataViewType::FLOAT32:
+        index = 8; // 8 : DataViewType::FLOAT32
+        break;
+    case DataViewType::FLOAT64:
+        index = 9; // 9 : DataViewType::FLOAT64
+        break;
+    case DataViewType::BIGINT64:
+        index = 10; // 10 : DataViewType::BIGINT64
+        break;
+    case DataViewType::BIGUINT64:
+        index = 11; // 11 : DataViewType::BIGUINT64
+        break;
+    default:
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    return index;
+}
+
 bool JSSerializer::WriteConstantPool(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<ConstantPool> constPool = JSHandle<ConstantPool>::Cast(value);
@@ -411,7 +486,7 @@ bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
         return false;
     }
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(value);
-    JSHandle<JSTaggedValue> method = JSHandle<JSTaggedValue>(thread_, func->GetMethod());
+    JSHandle<JSTaggedValue> method(thread_, func->GetMethod());
     if (!SerializeJSTaggedValue(method)) {
         bufferSize_ = oldSize;
         return false;
@@ -658,12 +733,31 @@ bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, Seria
         bufferSize_ = oldSize;
         return false;
     }
+    [[maybe_unused]] DataViewType viewType = TypedArrayHelper::GetType(typedArray);
     // Write ACCESSORS(ViewedArrayBuffer) which is a pointer to an ArrayBuffer
-    JSHandle<JSTaggedValue> viewedArrayBuffer(thread_, typedArray->GetViewedArrayBuffer());
-    if (!WriteJSArrayBuffer(viewedArrayBuffer)) {
-        bufferSize_ = oldSize;
-        return false;
+    JSHandle<JSTaggedValue> viewedArrayBufferOrByteArray(thread_, typedArray->GetViewedArrayBuffer());
+    bool isViewedArrayBuffer = false;
+    if (viewedArrayBufferOrByteArray->IsArrayBuffer()) {
+        isViewedArrayBuffer = true;
+        if (!WriteBoolean(isViewedArrayBuffer)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+        if (!SerializeJSTaggedValue(viewedArrayBufferOrByteArray)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    } else {
+        if (!WriteBoolean(isViewedArrayBuffer)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+        if (!WriteByteArray(viewedArrayBufferOrByteArray, viewType)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
     }
+
     // Write ACCESSORS(TypedArrayName)
     JSHandle<JSTaggedValue> typedArrayName(thread_, typedArray->GetTypedArrayName());
     if (!SerializeJSTaggedValue(typedArrayName)) {
@@ -1151,6 +1245,70 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadTaggedArray()
     return arrayTag;
 }
 
+JSHandle<JSTaggedValue> JSDeserializer::ReadByteArray()
+{
+    int32_t arrayLength = 0;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&arrayLength)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    int32_t viewTypeIndex = 0;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&viewTypeIndex)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    DataViewType viewType = GetDataViewTypeByIndex(viewTypeIndex);
+    uint32_t arrayType = TypedArrayHelper::GetSizeFromType(viewType);
+    JSHandle<ByteArray> byteArray = factory_->NewByteArray(arrayLength, arrayType);
+    for (int32_t i = 0; i < arrayLength; i++) {
+        JSHandle<JSTaggedValue> val = DeserializeJSTaggedValue();
+        byteArray->Set(i, viewType, val.GetTaggedType());
+    }
+    return JSHandle<JSTaggedValue>(byteArray);
+}
+
+DataViewType JSDeserializer::GetDataViewTypeByIndex(uint32_t viewTypeIndex)
+{
+    DataViewType viewType;
+    switch (viewTypeIndex) {
+    case 1: // 1 : DataViewType::INT8
+        viewType = DataViewType::INT8;
+        break;
+    case 2: // 2 : DataViewType::UINT8
+        viewType = DataViewType::UINT8;
+        break;
+    case 3: // 3 : DataViewType::UINT8_CLAMPED
+        viewType = DataViewType::UINT8_CLAMPED;
+        break;
+    case 4: // 4 : DataViewType::INT16
+        viewType = DataViewType::INT16;
+        break;
+    case 5: // 5 : DataViewType::UINT16
+        viewType = DataViewType::UINT16;
+        break;
+    case 6: // 6 : DataViewType::INT32
+        viewType = DataViewType::INT32;
+        break;
+    case 7: // 7 : DataViewType::UINT32
+        viewType = DataViewType::UINT32;
+        break;
+    case 8: // 8 : DataViewType::FLOAT32
+        viewType = DataViewType::FLOAT32;
+        break;
+    case 9: // 9 : DataViewType::FLOAT64
+        viewType = DataViewType::FLOAT64;
+        break;
+    case 10: // 10 : DataViewType::BIGINT64
+        viewType = DataViewType::BIGINT64;
+        break;
+    case 11: // 11 : DataViewType::BIGUINT64
+        viewType = DataViewType::BIGUINT64;
+        break;
+    default:
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    return viewType;
+}
+
 JSHandle<JSTaggedValue> JSDeserializer::ReadConstantPool()
 {
     int32_t len = 0;
@@ -1528,11 +1686,23 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
         return JSHandle<JSTaggedValue>();
     }
 
-    JSHandle<JSTaggedValue> viewedArrayBuffer = DeserializeJSTaggedValue();
-    if (viewedArrayBuffer.IsEmpty()) {
+    bool isViewedArrayBuffer = false;
+    if (!ReadBoolean(&isViewedArrayBuffer)) {
         return JSHandle<JSTaggedValue>();
     }
-    typedArray->SetViewedArrayBuffer(thread_, viewedArrayBuffer);
+    JSHandle<JSTaggedValue> viewedArrayBufferOrByteArray;
+    if (isViewedArrayBuffer) {
+        viewedArrayBufferOrByteArray = DeserializeJSTaggedValue();
+    } else {
+        if (!JudgeType(SerializationUID::BYTE_ARRAY)) {
+            return JSHandle<JSTaggedValue>();
+        }
+        viewedArrayBufferOrByteArray = ReadByteArray();
+    }
+    if (viewedArrayBufferOrByteArray.IsEmpty()) {
+        return JSHandle<JSTaggedValue>();
+    }
+    typedArray->SetViewedArrayBuffer(thread_, viewedArrayBufferOrByteArray);
 
     JSHandle<JSTaggedValue> typedArrayName = DeserializeJSTaggedValue();
     if (typedArrayName.IsEmpty()) {
