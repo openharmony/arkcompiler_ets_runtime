@@ -497,7 +497,6 @@ public:
         anEnable_ = enable;
     }
 
-
 public:
     AnFileDataManager() = default;
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
@@ -510,7 +509,6 @@ public:
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};
     std::string anDir_;
     bool anEnable_ {false};
-
 };
 
 class AOTFileManager {

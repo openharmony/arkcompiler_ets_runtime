@@ -2234,7 +2234,8 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
     for (int i = 1; i < len; i++) {
         int beginIndex = 0;
         int endIndex = i;
-        presentValue.Update(ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), i));
+        presentValue.Update(ObjectFastOperator::FastGetPropertyByIndex<true>(thread,
+            thisObjHandle.GetTaggedValue(), i));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         while (beginIndex < endIndex) {
             int middleIndex = (beginIndex + endIndex) / 2; // 2 : half

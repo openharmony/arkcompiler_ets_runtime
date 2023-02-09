@@ -403,7 +403,6 @@ void AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
     std::string aiFilename = anFileDataManager->GetDir();
     aiFilename += JSFilePath::GetHapName(jsPandaFile) + AOTFileManager::FILE_EXTENSION_AI;
     LoadAiFile(aiFilename);
-
 }
 
 
