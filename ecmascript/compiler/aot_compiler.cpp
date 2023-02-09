@@ -110,11 +110,11 @@ int Main(const int argc, const char **argv)
             entrypoint = runtimeOptions.GetEntryPoint();
         }
         PassManager passManager(vm, entrypoint, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
-                                isEnableTypeLowering, hotnessThreshold);
+                                isEnableTypeLowering, profilerIn, hotnessThreshold);
         for (const auto &fileName : pandaFileNames) {
             auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
             LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
-            if (passManager.Compile(extendedFilePath, generator, profilerIn) == false) {
+            if (passManager.Compile(extendedFilePath, generator) == false) {
                 ret = false;
                 continue;
             }

@@ -15,12 +15,13 @@
 
 #include "gtest/gtest.h"
 
-#include "ecmascript/dfx/pgo_profiler/pgo_profiler_loader.h"
-#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
@@ -62,12 +63,13 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
     // Loader
-    PGOProfilerLoader loader;
-    ASSERT_TRUE(loader.LoadAndVerify("ark-profiler/modules.ap", 2, checksum));
+    PGOProfilerLoader loader("ark-profiler/modules.ap", 2);
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
+    ASSERT_TRUE(loader.LoadAndVerify(checksum));
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
 #else
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
 #endif
     unlink("ark-profiler/modules.ap");
@@ -108,14 +110,15 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerLoader loader;
-    ASSERT_TRUE(loader.LoadAndVerify("ark-profiler1/modules.ap", 2, checksum));
+    PGOProfilerLoader loader("ark-profiler1/modules.ap", 2);
     CString expectRecordName = "test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+    ASSERT_TRUE(loader.LoadAndVerify(checksum));
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(70)));
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(80)));
-#if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(75)));
 #else
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
 #endif
     unlink("ark-profiler1/modules.ap");
@@ -150,13 +153,14 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerLoader loader;
-    ASSERT_TRUE(loader.LoadAndVerify("ark-profiler2/modules.ap", 2, checksum));
+    PGOProfilerLoader loader("ark-profiler2/modules.ap", 2);
     CString expectRecordName = "test";
     CString expectRecordName1 = "test1";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
+    ASSERT_TRUE(loader.LoadAndVerify(checksum));
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
 #else
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
 #endif
     ASSERT_TRUE(loader.Match(expectRecordName1, EntityId(62)));
@@ -171,6 +175,8 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     option.SetEnableProfile(false);
     option.SetProfileDir("ark-profiler3/");
     vm_ = JSNApi::CreateJSVM(option);
+    uint32_t checksum = 304293;
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
@@ -182,9 +188,9 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
-    PGOProfilerLoader loader;
+    PGOProfilerLoader loader("ark-profiler3/modules.ap", 2);
     // path is empty()
-    ASSERT_TRUE(!loader.Load("ark-profiler3/modules.ap", 2));
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
     rmdir("ark-profiler3/");
@@ -223,6 +229,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     currentPath[PATH_MAX + 1] = '\0';
     option.SetProfileDir(currentPath);
     vm_ = JSNApi::CreateJSVM(option);
+    uint32_t checksum = 304293;
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<JSArray> array = vm_->GetFactory()->NewJSArray();
@@ -236,12 +244,13 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerLoader loader;
+    PGOProfilerLoader loader("", 2);
     // path is empty()
-    ASSERT_TRUE(!loader.Load("", 2));
+    ASSERT_TRUE(loader.LoadAndVerify(checksum));
     // path size greater than PATH_MAX
     char path[PATH_MAX + 1] = {'0'};
-    loader.Load(path, 4);
+    PGOProfilerLoader loader1(path, 4);
+    ASSERT_TRUE(!loader1.LoadAndVerify(checksum));
 }
 
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
@@ -252,8 +261,11 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     // outDir is empty
     option.SetProfileDir("ark-profiler5/");
     vm_ = JSNApi::CreateJSVM(option);
+    uint32_t checksum = 304293;
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     auto vm2 = JSNApi::CreateJSVM(option);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm2 != nullptr) << "Cannot create Runtime";
 
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(70));
@@ -277,39 +289,24 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     JSNApi::DestroyJSVM(vm2);
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerLoader loader;
+    PGOProfilerLoader loader("ark-profiler5/profiler", 2);
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    ASSERT_TRUE(!loader.Load("ark-profiler5/profiler", 2));
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
 
-    loader.Load("ark-profiler5/modules.ap", 2);
+    PGOProfilerLoader loader1("ark-profiler5/modules.ap", 2);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(75)));
+    ASSERT_TRUE(loader1.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader1.Match(expectRecordName, EntityId(75)));
 #else
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
+    ASSERT_TRUE(!loader1.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader1.Match(expectRecordName, EntityId(75)));
 #endif
 
     unlink("ark-profiler5/modules.ap");
     rmdir("ark-profiler5/profiler");
     rmdir("ark-profiler5/");
-}
-
-HWTEST_F_L0(PGOProfilerTest, DoubleRecordNameFormat)
-{
-    mkdir("ark-profiler7/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::ofstream file("ark-profiler7/modules.ap");
-    std::string result = "recordName:[123/223/hello]\n";
-    file.write(result.c_str(), result.size());
-    result = "recordName:[1232/3/hello]\n";
-    file.write(result.c_str(), result.size());
-    file.close();
-    PGOProfilerLoader loader;
-    loader.Load("ark-profiler7/modules.ap", 2);
-
-    unlink("ark-profiler7/modules.ap");
-    rmdir("ark-profiler7");
 }
 
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerLoaderNoHotMethod)
@@ -330,12 +327,13 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerLoaderNoHotMethod)
     vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerLoader loader;
-    ASSERT_TRUE(loader.LoadAndVerify("ark-profiler8/modules.ap", 2, checksum));
+    PGOProfilerLoader loader("ark-profiler8/modules.ap", 2);
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
+    ASSERT_TRUE(loader.LoadAndVerify(checksum));
     ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
 #else
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
 #endif
 
@@ -353,11 +351,6 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
 
-    for (int i = 0; i < 5; i++) {
-        PGOProfilerManager::GetInstance()->PostSaveTask();
-        PGOProfilerManager::GetInstance()->TerminateSaveTask();
-    }
-
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     for (int i = 61; i < 91; i++) {
         MethodLiteral *methodLiteral = new MethodLiteral(EntityId(i));
@@ -372,8 +365,12 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
 
     JSNApi::DestroyJSVM(vm_);
 
-    PGOProfilerLoader loader;
-    ASSERT_TRUE(loader.LoadAndVerify("ark-profiler9/modules.ap", 2, checksum));
+    PGOProfilerLoader loader("ark-profiler9/modules.ap", 2);
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+#else
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+#endif
     CString expectRecordName = "test";
     for (int i = 61; i < 91; i++) {
         if (i % 3 == 0) {
@@ -389,5 +386,56 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
 
     unlink("ark-profiler9/modules.ap");
     rmdir("ark-profiler9/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, BinaryToText)
+{
+    mkdir("ark-profiler7/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    std::ofstream file("ark-profiler7/modules.ap");
+
+    PGOProfilerHeader *header = nullptr;
+    PGOProfilerHeader::Build(&header, PGOProfilerHeader::LastSize());
+    std::unique_ptr<PGOPandaFileInfos> pandaFileInfos = std::make_unique<PGOPandaFileInfos>();
+    std::unique_ptr<PGORecordDetailInfos> recordInfos = std::make_unique<PGORecordDetailInfos>(2);
+    pandaFileInfos->Sample(0x34556738);
+    ASSERT_TRUE(recordInfos->AddMethod("test", EntityId(23), "test", SampleMode::CALL_MODE));
+    ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), "test", SampleMode::CALL_MODE));
+    ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), "test", SampleMode::CALL_MODE));
+
+    pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
+    recordInfos->ProcessToBinary(nullptr, file, header->GetRecordInfoSection());
+    header->ProcessToBinary(file);
+    file.close();
+
+    ASSERT_TRUE(PGOProfilerManager::GetInstance()->BinaryToText(
+        "ark-profiler7/modules.ap", "ark-profiler7/modules.text", 2));
+
+    unlink("ark-profiler7/modules.ap");
+    unlink("ark-profiler7/modules.text");
+    rmdir("ark-profiler7");
+}
+
+HWTEST_F_L0(PGOProfilerTest, TextToBinary)
+{
+    mkdir("ark-profiler10/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    std::ofstream file("ark-profiler10/modules.text");
+    std::string result = "Profiler Version: 0.0.0.1\n";
+    file.write(result.c_str(), result.size());
+    result = "\nPanda file sumcheck list: [ 413775942 ]\n";
+    file.write(result.c_str(), result.size());
+    result = "\nrecordName: [ 1232/3/CALL_MODE/hello, 234/100/HOTNESS_MODE/h#ello1 ]\n";
+    file.write(result.c_str(), result.size());
+    file.close();
+
+    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2));
+
+    PGOProfilerLoader loader("ark-profiler10/modules.ap", 2);
+    ASSERT_TRUE(loader.LoadAndVerify(413775942));
+
+    unlink("ark-profiler10/modules.ap");
+    unlink("ark-profiler10/modules.text");
+    rmdir("ark-profiler10");
 }
 }  // namespace panda::test

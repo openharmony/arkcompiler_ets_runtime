@@ -43,10 +43,17 @@ public:
         }
         // update profile and update compile queue
         std::unordered_set<EntityId> fullResolvedMethodSet;
-        std::unordered_set<EntityId> currentResolvedMethodSet {resolvedMethod};
-        uint32_t mainMethodOffset = jsPandaFile_->GetMainMethodIndex(recordName);
-        SearchForCompilation(currentResolvedMethodSet, fullResolvedMethodSet, mainMethodOffset, true);
-        pfLoader_.UpdateProfile(recordName, fullResolvedMethodSet);
+        auto dfs = [this, &fullResolvedMethodSet, resolvedMethod] (const CString &recordName,
+            [[maybe_unused]] const std::unordered_set<EntityId> &oldIds) -> std::unordered_set<EntityId> & {
+                fullResolvedMethodSet.clear();
+                std::unordered_set<EntityId> currentResolvedMethodSet {resolvedMethod};
+                uint32_t mainMethodOffset = jsPandaFile_->GetMainMethodIndex(recordName);
+                SearchForCompilation(currentResolvedMethodSet, fullResolvedMethodSet, mainMethodOffset, true);
+                return fullResolvedMethodSet;
+            };
+
+        pfLoader_.Update(recordName, dfs);
+
         if (fullResolvedMethodSet.size() > 0) {
             bytecodeInfo_.AddRecordName(recordName);
         }
@@ -107,7 +114,7 @@ private:
 
     void InitializeCompileQueue();
 
-    void SearchForCompilation(std::unordered_set<EntityId> &methodSet, std::unordered_set<EntityId> &newMethodSet,
+    void SearchForCompilation(const std::unordered_set<EntityId> &methodSet, std::unordered_set<EntityId> &newMethodSet,
                               uint32_t mainMethodOffset, bool needUpdateCompile)
     {
         auto &methodList = bytecodeInfo_.GetMethodList();

@@ -139,35 +139,21 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
         LOG_FULL(FATAL) << "snapshot file path error";
         UNREACHABLE();
     }
-    fd_t fd = Open(realPath.c_str(), FILE_RDONLY);  // NOLINT(cppcoreguidelines-pro-type-vararg)
-    if (UNLIKELY(fd == INVALID_FD)) {
-        LOG_FULL(FATAL) << "open file failed";
-        UNREACHABLE();
-    }
-    int64_t fileSize = GetFileSizeByFd(fd);
-    if (fileSize == -1) {
-        Close(fd);
-        LOG_FULL(FATAL) << "GetFileSize failed";
-        UNREACHABLE();
-    }
 
     SnapshotProcessor processor(vm_, snapshotFile);
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
     }
 
-    fd_t extra = INVALID_FD;
-    void *addr = FileMmap(fd, fileSize, 0, &extra);
-    if (addr == nullptr) {
-        Close(fd);
+    MemMap fileMap = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READWRITE);
+    if (fileMap.GetOriginAddr() == nullptr) {
         LOG_FULL(FATAL) << "file mmap failed";
         UNREACHABLE();
     }
-    auto readFile = ToUintPtr(addr);
+    auto readFile = ToUintPtr(fileMap.GetOriginAddr());
     auto hdr = *ToNativePtr<const SnapShotHeader>(readFile);
     if (!hdr.Verify()) {
-        FileUnMap(addr, fileSize, &extra);
-        Close(fd);
+        FileUnMap(fileMap);
         LOG_FULL(FATAL) << "file verify failed";
         UNREACHABLE();
     }
@@ -179,15 +165,14 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     uintptr_t stringEnd = stringBegin + hdr.stringSize;
     processor.DeserializeString(stringBegin, stringEnd);
 
-    FileUnMap(addr, hdr.pandaFileBegin, &extra);
+    FileUnMap(MemMap(fileMap.GetOriginAddr(), hdr.pandaFileBegin));
     const JSPandaFile *jsPandaFile = nullptr;
-    if (static_cast<uint32_t>(fileSize) > hdr.pandaFileBegin) {
+    if (static_cast<uint32_t>(fileMap.GetSize()) > hdr.pandaFileBegin) {
         uintptr_t pandaFileMem = readFile + hdr.pandaFileBegin;
         auto pf = panda_file::File::OpenFromMemory(os::mem::ConstBytePtr(ToNativePtr<std::byte>(pandaFileMem),
-            static_cast<uint32_t>(fileSize) - hdr.pandaFileBegin, os::mem::MmapDeleter));
+            static_cast<uint32_t>(fileMap.GetSize()) - hdr.pandaFileBegin, os::mem::MmapDeleter));
         jsPandaFile = JSPandaFileManager::GetInstance()->NewJSPandaFile(pf.release(), "");
     }
-    Close(fd);
     // relocate object field
     processor.Relocate(type, jsPandaFile, hdr.rootObjectSize);
     LOG_COMPILER(INFO) << "loaded ai file: " << snapshotFile.c_str();

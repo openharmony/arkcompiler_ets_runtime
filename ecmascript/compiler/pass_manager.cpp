@@ -26,7 +26,7 @@
 
 namespace panda::ecmascript::kungfu {
 
-bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn)
+bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
     JSPandaFile *jsPandaFile = CreateAndVerifyJSPandaFile(fileName.c_str());
@@ -35,7 +35,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         return false;
     }
 
-    if (!profilerLoader_.LoadAndVerify(profilerIn, hotnessThreshold_, jsPandaFile->GetChecksum())) {
+    if (!profilerLoader_.LoadAndVerify(jsPandaFile->GetChecksum())) {
         LOG_COMPILER(ERROR) << "Load and verify profiler failure";
         return false;
     }

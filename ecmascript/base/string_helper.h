@@ -390,6 +390,17 @@ public:
         std::string subStr = str.substr(str.length() - suffix.length(), str.length());
         return subStr == suffix;
     }
+
+    static bool StrToUInt32(const char *content, uint32_t *result)
+    {
+        const int DEC = 10;
+        char *endPtr = nullptr;
+        *result = std::strtoul(content, &endPtr, DEC);
+        if (endPtr == content || *endPtr != '\0') {
+            return false;
+        }
+        return true;
+    }
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_STRING_HELP_H

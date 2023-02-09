@@ -18,8 +18,8 @@
 
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
-#include "ecmascript/dfx/pgo_profiler/pgo_profiler_loader.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
 
 namespace panda::ecmascript::kungfu {
 class Bytecodes;
@@ -102,15 +102,15 @@ class PassManager {
 public:
     PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
                 CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, bool enableTypeLowering,
-                uint32_t hotnessThreshold)
+                const std::string &profIn, uint32_t hotnessThreshold)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), enableTypeLowering_(enableTypeLowering),
           enableTypeInfer_(enableTypeLowering || vm_->GetTSManager()->AssertTypes()),
-          hotnessThreshold_(hotnessThreshold) {};
+          profilerLoader_(profIn, hotnessThreshold) {};
     PassManager() = default;
     ~PassManager() = default;
 
-    bool Compile(const std::string &fileName, AOTFileGenerator &generator, const std::string &profilerIn);
+    bool Compile(const std::string &fileName, AOTFileGenerator &generator);
 
 private:
     JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
@@ -137,7 +137,6 @@ private:
     size_t maxAotMethodSize_ {0};
     bool enableTypeLowering_ {true};
     bool enableTypeInfer_ {true};
-    uint32_t hotnessThreshold_ {0};
     PGOProfilerLoader profilerLoader_;
 };
 }

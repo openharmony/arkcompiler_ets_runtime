@@ -36,6 +36,18 @@ using fd_t = HANDLE;
 #define FILE_RDONLY GENERIC_READ
 #define FILE_WRONLY GENERIC_WRITE
 #define FILE_RDWR (GENERIC_READ | GENERIC_WRITE)
+
+#ifdef ERROR
+#undef ERROR
+#endif
+
+#ifdef VOID
+#undef VOID
+#endif
+
+#ifdef CONST
+#undef CONST
+#endif
 #else
 using fd_t = int;
 #define INVALID_FD (-1)
@@ -50,13 +62,11 @@ using fd_t = int;
 
 std::string GetFileDelimiter();
 bool RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
-int64_t GetFileSizeByFd(fd_t fd);
-fd_t Open(const char *file, int flag);
 void DPrintf(fd_t fd, const std::string &buffer);
 void Close(fd_t fd);
 void FSync(fd_t fd);
-void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, fd_t *extra);
-int FileUnMap(void *addr, uint64_t size, fd_t *extra);
+MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset = 0);
+int FileUnMap(MemMap addr);
 JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
                                                JSTaggedValue request);
 }  // namespace panda::ecmascript

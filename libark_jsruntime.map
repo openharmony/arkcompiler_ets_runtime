@@ -67,10 +67,15 @@
       panda::ecmascript::JSRuntimeOptions::*;
       panda::ecmascript::Taskpool::*;
       panda::ecmascript::JSThread::*;
+      panda::ecmascript::Chunk::*;
+      panda::ecmascript::PGOProfilerLoader::*;
+      panda::ecmascript::PGOProfilerSaver::*;
+      panda::ecmascript::NativeAreaAllocator::*;
 
       panda::os::thread::*;
       panda::panda_file::File::MAGIC;
       panda::os::unix::memory::*;
+      panda::ecmascript::JSHClass::*;
     };
   local:
     *;

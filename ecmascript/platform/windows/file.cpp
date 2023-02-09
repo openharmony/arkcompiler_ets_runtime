@@ -15,9 +15,11 @@
 
 #include "ecmascript/platform/file.h"
 
+#include <windef.h>
+#include <winbase.h>
+#include <winnt.h>
 #include <climits>
 #include <fileapi.h>
-#include <shlwapi.h>
 
 #ifdef ERROR
 #undef ERROR
@@ -59,13 +61,6 @@ bool RealPath(const std::string &path, std::string &realPath, [[maybe_unused]] b
     return true;
 }
 
-// use CreateFile instead of _open to work with CreateFileMapping
-fd_t Open(const char *file, int flag)
-{
-    fd_t fd = CreateFile(file, flag, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    return fd;
-}
-
 void DPrintf(fd_t fd, const std::string &buffer)
 {
     LOG_ECMA(DEBUG) << "Unsupport dprintf fd(" << fd << ") in windows, buffer:" << buffer;
@@ -81,39 +76,47 @@ void Close(fd_t fd)
     CloseHandle(fd);
 }
 
-int64_t GetFileSizeByFd(fd_t fd)
+MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
 {
-    LARGE_INTEGER size;
-    if (!GetFileSizeEx(fd, &size)) {
-        LOG_ECMA(ERROR) << "GetFileSize failed with error code:" << GetLastError();
-        return -1;
+    fd_t fd = CreateFile(fileName, flag, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (fd == INVALID_FD) {
+        LOG_ECMA(ERROR) << fileName << " file open failed";
+        return MemMap();
     }
-    return size.QuadPart;
-}
 
-void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, fd_t *extra)
-{
-    // 32: high 32 bits
-    *extra = CreateFileMapping(fd, NULL, PAGE_PROT_READ, size >> 32, size & 0xffffffff, nullptr);
-    if (*extra == nullptr) {
-        LOG_ECMA(ERROR) << "CreateFileMapping failed with error code:" << GetLastError();
-        return nullptr;
+    LARGE_INTEGER fileSize;
+    if (!GetFileSizeEx(fd, &fileSize)) {
+        CloseHandle(fd);
+        LOG_ECMA(ERROR) << "GetFileSize failed with error code:" << GetLastError();
+        return MemMap();
     }
+    auto size = fileSize.QuadPart;
+    if (size <= 0) {
+        CloseHandle(fd);
+        LOG_ECMA(ERROR) << fileName << " file is empty";
+        return MemMap();
+    }
+
     // 32: high 32 bits
-    void *addr = MapViewOfFile(*extra, FILE_MAP_READ, offset >> 32, offset & 0xffffffff, size);
+    fd_t extra = CreateFileMapping(fd, NULL, prot, size >> 32, size & 0xffffffff, nullptr);
+    if (extra == nullptr) {
+        CloseHandle(fd);
+        LOG_ECMA(ERROR) << "CreateFileMapping failed with error code:" << GetLastError();
+        return MemMap();
+    }
+    int accessor = (prot == PAGE_PROT_READ) ? FILE_MAP_READ : FILE_MAP_WRITE;
+    void *addr = MapViewOfFile(extra, accessor, offset >> 32, offset & 0xffffffff, size);
+    CloseHandle(extra);
+    CloseHandle(fd);
     if (addr == nullptr) {
         LOG_ECMA(ERROR) << "MapViewOfFile failed with error code:" << GetLastError();
-        CloseHandle(*extra);
     }
-    return addr;
+    return MemMap(addr, size);
 }
 
-int FileUnMap(void *addr, [[maybe_unused]] uint64_t size, fd_t *extra)
+int FileUnMap(MemMap addr)
 {
-    if (UnmapViewOfFile(addr) == 0) {
-        return FILE_FAILED;
-    }
-    if (CloseHandle(*extra) == 0) {
+    if (UnmapViewOfFile(addr.GetOriginAddr()) == 0) {
         return FILE_FAILED;
     }
     return FILE_SUCCESS;

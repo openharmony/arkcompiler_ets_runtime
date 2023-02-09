@@ -33,7 +33,6 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -72,6 +71,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/runtime_call_id.h"
@@ -85,14 +85,6 @@
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
-#ifdef PANDA_TARGET_WINDOWS
-#ifdef ERROR
-#undef ERROR
-#endif
-#ifdef GetObject
-#undef GetObject
-#endif
-#endif
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
