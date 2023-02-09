@@ -392,7 +392,7 @@ config("icu_path_test_config") {
 config("asm_interp_enable_config") {
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac) {
+      !is_mac && !is_emulator) {
     defines = [ "SUPPORT_ENABLE_ASM_INTERP" ]
   }
 }
