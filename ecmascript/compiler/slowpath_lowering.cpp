@@ -754,6 +754,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             LowerStObjByName(gate, jsFunc, true);
             break;
+        case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
+            LowerNotifyConcurrentResult(gate);
+            break;
         default:
             break;
     }
@@ -3677,5 +3680,13 @@ void SlowPathLowering::LowerUpdateHotness(GateRef gate)
     builder_.Bind(&dispatch);
     builder_.Store(VariableType::VOID(), glue_, method, builder_.IntPtr(Method::LITERAL_INFO_OFFSET), *newHotness);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void SlowPathLowering::LowerNotifyConcurrentResult(GateRef gate)
+{
+    const int id = RTSTUB_ID(NotifyConcurrentResult);
+
+    GateRef newGate = LowerCallRuntime(id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
+    ReplaceHirToCall(gate, newGate);
 }
 }  // namespace panda::ecmascript
