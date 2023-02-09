@@ -19,6 +19,59 @@
 #include "ecmascript/compiler/circuit.h"
 
 namespace panda::ecmascript::kungfu {
+
+class StateDepend {
+public:
+    StateDepend()
+        : state_(Circuit::NullGate()), depend_(Circuit::NullGate()) {}
+
+    explicit StateDepend(GateRef state, GateRef depend)
+        : state_(state), depend_(depend) {}
+
+    GateRef State() const
+    {
+        return state_;
+    }
+
+    GateRef Depend() const
+    {
+        return depend_;
+    }
+
+    void SetState(GateRef state)
+    {
+        state_ = state;
+    }
+
+    void SetDepend(GateRef depend)
+    {
+        depend_ = depend;
+    }
+
+private:
+    GateRef state_;
+    GateRef depend_;
+};
+
+class Edge {
+public:
+    explicit Edge(GateRef gate, size_t index) : gate_(gate), index_(static_cast<uint32_t>(index)) {}
+
+    GateRef GetGate() const
+    {
+        return gate_;
+    }
+
+    size_t GetIndex() const
+    {
+        return static_cast<size_t>(index_);
+    }
+
+private:
+    GateRef gate_;
+    uint32_t index_;
+};
+
 class GateAccessor {
 public:
     // do not create new gate or modify self during iteration
@@ -111,6 +164,13 @@ public:
         {
             ASSERT(out_ != nullptr);
             return out_->GetIndex();
+        }
+
+        Edge GetEdge()
+        {
+            ASSERT(out_ != nullptr);
+            UseIterator it = *this;
+            return Edge(*it, GetIndex());
         }
 
         OpCode GetOpCode() const
@@ -331,7 +391,6 @@ public:
     // Add for lowering
     GateType GetGateType(GateRef gate) const;
     void SetGateType(GateRef gate, GateType gt);
-    UseIterator DeleteExceptionDep(const UseIterator &useIt);
     void DeleteIn(GateRef gate, size_t idx);
     UseIterator DeleteGate(const UseIterator &useIt);
     void DecreaseIn(const UseIterator &useIt);
@@ -376,7 +435,7 @@ public:
     bool IsDependIn(const UseIterator &useIt) const;
     bool IsValueIn(const UseIterator &useIt) const;
     bool IsFrameStateIn(const UseIterator &useIt) const;
-    bool IsExceptionState(const UseIterator &useIt) const;
+    bool IsStateIn(GateRef gate, size_t index) const;
     bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
     void GetStateUses(GateRef gate, std::vector<GateRef>& stateUses);
@@ -416,7 +475,17 @@ public:
     const GateMetaData *GetMetaData(GateRef gate) const;
     void SetMetaData(GateRef gate, const GateMetaData* meta);
 
+    void ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success,
+        StateDepend exception, GateRef value);
+    void ReplaceHirDirectly(GateRef hirGate, StateDepend replacement, GateRef value);
+    void ReplaceHirAndDeleteIfException(GateRef hirGate,
+        StateDepend replacement, GateRef value);
+
 private:
+    UseIterator ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state);
+    UseIterator ReplaceHirIfException(const UseIterator &useIt, StateDepend replacement);
+    void ExceptionReturn(GateRef state, GateRef depend);
+
     GateRef GetRoot(OpCode opcode) const;
     ConstUseIterator ConstUseBegin(GateRef gate) const
     {

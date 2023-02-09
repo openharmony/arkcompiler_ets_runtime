@@ -51,10 +51,11 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     Environment env(1, &builder);
     builder.SetEnvironment(&env);
     auto depend = acc.GetDependRoot();
+    auto state = acc.GetStateRoot();
     auto arg0 = builder.Arguments(0);
     auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
     auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
-    auto stateSplit = circuit.NewGate(circuit.StateSplit(), {depend, frameState});
+    auto stateSplit = circuit.NewGate(circuit.StateSplit(), {state, depend, frameState});
     builder.SetDepend(stateSplit);
     auto check = builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
     builder.ReturnVoid(check, depend);
@@ -142,11 +143,12 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
     TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeOpCodeFramework");
     auto depend = acc.GetDependRoot();
+    auto state = acc.GetStateRoot();
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
     auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
     auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
-    auto stateSplit = circuit.NewGate(circuit.StateSplit(), {depend, frameState});
+    auto stateSplit = circuit.NewGate(circuit.StateSplit(), {state, depend, frameState});
     builder.SetDepend(stateSplit);
     builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
     auto convert = builder.PrimitiveToNumber(arg1, arg1Type);

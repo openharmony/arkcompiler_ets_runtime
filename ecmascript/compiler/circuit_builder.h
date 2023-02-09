@@ -273,7 +273,6 @@ public:
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
-    GateRef DependAnd(std::initializer_list<GateRef> args);
     GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
         GateRef left, GateRef right);
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right);
@@ -408,7 +407,6 @@ public:
 
     GateRef IsJSHClass(GateRef obj);
     GateRef HasPendingException(GateRef glue);
-
     // middle ir: operations with any type
     template<TypedBinOp Op>
     inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType);
@@ -510,6 +508,7 @@ public:
     inline Label *GetCurrentLabel() const;
     inline GateRef GetState() const;
     inline GateRef GetDepend() const;
+    inline StateDepend GetStateDepend() const;
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
 
@@ -618,7 +617,6 @@ private:
         Environment *env_;
         GateRef control_;
         GateRef predeControl_ {-1};
-        GateRef dependRelay_ {-1};
         GateRef depend_ {-1};
         GateRef loopDepend_ {-1};
         std::vector<GateRef> otherPredeControls_;

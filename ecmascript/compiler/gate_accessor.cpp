@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/graph_editor.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -442,26 +443,134 @@ void GateAccessor::SetGateType(GateRef gate, GateType gt)
     circuit_->LoadGatePtr(gate)->SetGateType(gt);
 }
 
-UseIterator GateAccessor::DeleteExceptionDep(const UseIterator &useIt)
+UseIterator GateAccessor::ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state)
 {
-    auto next = useIt;
-    next++;
-    ASSERT(GetOpCode(*useIt) == OpCode::RETURN || GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR);
-    if (GetOpCode(*useIt) == OpCode::RETURN) {
-        DeleteGate(useIt);
-    } else {
-        size_t idx = useIt.GetIndex();
-        auto merge = GetState(*useIt, 0);
-        circuit_->DecreaseIn(merge, idx - 1);
-        auto mergeUses = Uses(merge);
-        for (auto useGate : mergeUses) {
-            if (circuit_->GetOpCode(useGate) == OpCode::VALUE_SELECTOR) {
-                circuit_->DecreaseIn(useGate, idx);
-            }
-        }
-        DecreaseIn(useIt);
-    }
+    ASSERT(GetOpCode(*useIt) == OpCode::IF_SUCCESS);
+    auto firstUse = Uses(*useIt).begin();
+    ReplaceIn(*firstUse, firstUse.GetIndex(), state);
+    auto next = DeleteGate(useIt);
     return next;
+}
+
+UseIterator GateAccessor::ReplaceHirIfException(const UseIterator &useIt, StateDepend replacement)
+{
+    ASSERT(GetOpCode(*useIt) == OpCode::IF_EXCEPTION);
+    auto uses = Uses(*useIt);
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (IsStateIn(it)) {
+            it = ReplaceIn(it, replacement.State());
+        } else if (IsDependIn(it)) {
+            it = ReplaceIn(it, replacement.Depend());
+        } else {
+            ASSERT(!IsValueIn(it));
+        }
+    }
+    UseIterator next = useIt;
+    next++;
+    return next;
+}
+
+void GateAccessor::ExceptionReturn(GateRef state, GateRef depend)
+{
+    CircuitBuilder builder(circuit_);
+    auto constant = builder.ExceptionConstant();
+    builder.Return(state, depend, constant);
+}
+
+void GateAccessor::ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success,
+                                          StateDepend exception, GateRef value)
+{
+    auto uses = Uses(hirGate);
+    GateRef ifException = Circuit::NullGate();
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (IsStateIn(it)) {
+            const OpCode op = GetOpCode(*it);
+            if (op == OpCode::IF_SUCCESS) {
+                it = ReplaceHirIfSuccess(it, success.State());
+            } else if (op == OpCode::IF_EXCEPTION) {
+                ifException = *it;
+                it = ReplaceHirIfException(it, exception);
+            } else {
+                ExceptionReturn(exception.State(), exception.Depend());
+                it = ReplaceIn(it, success.State());
+            }
+        } else if (IsDependIn(it)) {
+            const OpCode op = GetOpCode(*it);
+            if (op == OpCode::IF_EXCEPTION) {
+                // ignore it now.
+                it++;
+            } else {
+                it = ReplaceIn(it, success.Depend());
+            }
+        } else {
+            ASSERT(IsValueIn(it));
+            it = ReplaceIn(it, value);
+        }
+    }
+
+    if (ifException != Circuit::NullGate()) {
+        DeleteGate(ifException);
+    }
+
+    // delete old gate
+    DeleteGate(hirGate);
+}
+
+void GateAccessor::ReplaceHirDirectly(GateRef hirGate,
+    StateDepend replacement, GateRef value)
+{
+    auto uses = Uses(hirGate);
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (IsStateIn(it)) {
+            ASSERT(GetOpCode(*it) != OpCode::IF_SUCCESS &&
+                GetOpCode(*it) != OpCode::IF_EXCEPTION);
+            it = ReplaceIn(it, replacement.State());
+        } else if (IsDependIn(it)) {
+            it = ReplaceIn(it, replacement.Depend());
+        } else {
+            ASSERT(IsValueIn(it));
+            it = ReplaceIn(it, value);
+        }
+    }
+
+    // delete old gate
+    DeleteGate(hirGate);
+}
+
+void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
+    StateDepend replacement, GateRef value)
+{
+    GateRef ifException = Circuit::NullGate();
+    auto uses = Uses(hirGate);
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (IsStateIn(it)) {
+            const OpCode op = GetOpCode(*it);
+            if (op == OpCode::IF_SUCCESS) {
+                it = ReplaceHirIfSuccess(it, replacement.State());
+            } else if (op == OpCode::IF_EXCEPTION) {
+                ifException = *it;
+                it = ReplaceIn(it, circuit_->DeadGate());
+            } else {
+                it = ReplaceIn(it, replacement.State());
+            }
+        } else if (IsDependIn(it)) {
+            const OpCode op = GetOpCode(*it);
+            if (op == OpCode::IF_EXCEPTION) {
+                it = ReplaceIn(it, circuit_->DeadGate());
+            } else {
+                it = ReplaceIn(it, replacement.Depend());
+            }
+        } else {
+            ASSERT(IsValueIn(it));
+            it = ReplaceIn(it, value);
+        }
+    }
+
+    // delete old gate
+    DeleteGate(hirGate);
+    if (ifException != Circuit::NullGate()) {
+        GraphEditor::RemoveDeadState(circuit_, ifException);
+    }
 }
 
 UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)
@@ -594,13 +703,11 @@ bool GateAccessor::IsFrameStateIn(const UseIterator &useIt) const
     return IsFrameStateIn(*useIt, index);
 }
 
-bool GateAccessor::IsExceptionState(const UseIterator &useIt) const
+bool GateAccessor::IsStateIn(GateRef gate, size_t index) const
 {
-    auto op = GetOpCode(*useIt);
-    bool isDependSelector = (op == OpCode::DEPEND_SELECTOR) &&
-                            (GetOpCode(GetIn(GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION);
-    bool isReturn = (op == OpCode::RETURN && GetOpCode(GetIn(*useIt, 0)) == OpCode::IF_EXCEPTION);
-    return isDependSelector || isReturn;
+    size_t stateStartIndex = 0;
+    size_t stateEndIndex = stateStartIndex + GetStateCount(gate);
+    return (index >= stateStartIndex && index < stateEndIndex);
 }
 
 bool GateAccessor::IsDependIn(GateRef gate, size_t index) const
