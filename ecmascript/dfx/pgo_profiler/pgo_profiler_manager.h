@@ -125,7 +125,7 @@ private:
     uint32_t count_ {0};
     SampleMode mode_ {SampleMode::CALL_MODE};
     uint16_t methodLength_ {0};
-    char methodName_;
+    char methodName_ {'\0'};
 };
 
 class PGOProfilerHeader {
