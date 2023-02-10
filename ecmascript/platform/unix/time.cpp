@@ -27,7 +27,7 @@ int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal)
         return 0;
     }
     timeMs /= THOUSAND;
-    time_t tv = std::time(reinterpret_cast<time_t *>(&timeMs));
+    time_t tv = timeMs;
     struct tm tm {
     };
     // localtime_r is only suitable for linux.

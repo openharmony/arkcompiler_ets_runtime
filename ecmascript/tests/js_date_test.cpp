@@ -87,84 +87,119 @@ HWTEST_F_L0(JSDateTest, MakeTime)
     EXPECT_EQ(ms, -62167305600000.0);
 }
 
-HWTEST_F_L0(JSDateTest, IsoParseStringToMs)
+HWTEST_F_L0(JSDateTest, GetTimeFromString)
 {
+    // test ISO 8601
     CString str = "2020-11-19T12:18:18.132Z";
-    JSTaggedValue ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    JSTaggedValue ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1605788298132.0);
 
+    str = "1880-12-30T23:59:59";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), -2808633901000.0);
+
     str = "2020-11-19Z";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1605744000000.0);
 
     str = "2020-11";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1604188800000.0);
 
+    str = "2023-1-11";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), 1673366400000.0);
+
     str = "+275760-09-13T00:00:00.000Z";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 8640000000000000.0);
 
     str = "-271821-04-20T00:00:00.000Z";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), -8640000000000000.0);
 
     str = "2020T12:18Z";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1577881080000.0);
 
     str = "2020T12:18:17.231Z";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1577881097231.0);
 
     str = "2020-11T12:18:17.231Z";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1604233097231.0);
 
     str = "1645-11T12:18:17.231+08:00";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), -10229658102769.0);
 
     str = "2020-11-19T12:18-08:12";
-    ms = ecmascript::JSDate::IsoParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1605817800000.0);
-}
 
-HWTEST_F_L0(JSDateTest, LocalParseStringToMs)
-{
-    CString str = "Thu Nov 19 2020 20:18:18 GMT+0800";
-    JSTaggedValue ms = ecmascript::JSDate::LocalParseStringToMs(str);
+    // test Local time
+    str = "Thu Nov 19 2020 20:18:18 GMT+0800";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1605788298000.0);
 
     str = "Thu Nov 19 2020 20:18 GMT-0800";
-    ms = ecmascript::JSDate::LocalParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1605845880000.0);
 
     str = "Thu Nov 03 2093 04:18 GMT";
-    ms = ecmascript::JSDate::LocalParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 3908060280000.0);
 
     str = "Thu Nov 19 1820 GMT+1232";
-    ms = ecmascript::JSDate::LocalParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), -4705734720000.0);
-}
 
-HWTEST_F_L0(JSDateTest, UtcParseStringToMs)
-{
-    CString str = "Thu, 19 Nov 2020 20:18:18 GMT+0800";
-    JSTaggedValue ms = ecmascript::JSDate::UtcParseStringToMs(str);
+    // test UTC time
+    str = "Thu, 19 Nov 2020 20:18:18 GMT+0800";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1605788298000.0);
 
     str = "Thu, 19 Nov 2020 20:18 GMT-0800";
-    ms = ecmascript::JSDate::UtcParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 1605845880000.0);
 
     str = "Thu 03 Jun 2093 04:18 GMT";
-    ms = ecmascript::JSDate::UtcParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), 3894841080000.0);
 
     str = "Thu 19 Nov 1820 GMT+1232";
-    ms = ecmascript::JSDate::UtcParseStringToMs(str);
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
     EXPECT_EQ(ms.GetDouble(), -4705734720000.0);
+
+    // test YYYY-MM-DD HH:MM:ss
+    str = "2020-11-19 12:18:18.132Z";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), 1605788298132.0);
+
+    str = "2020-11-19 12:18:18.132+02:21";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), 1605779838132.0);
+
+    str = "2020-11-19 12:18:18.132-02:21";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), 1605796758132.0);
+
+    str = "+175760-09-13 03:16:02.003Z";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), 5484304811762003.0);
+
+    str = "-171821-04-20 13:08:23.037Z";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), -5484304752696963.0);
+
+    // test Month DD,YYYY HH:MM:SS
+    str = "January 12,2006 22:19:35";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), 1137075575000.0);
+
+    str = "January 12,2006";
+    ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
+    EXPECT_EQ(ms.GetDouble(), 1136995200000.0);
 }
 }  // namespace panda::test
