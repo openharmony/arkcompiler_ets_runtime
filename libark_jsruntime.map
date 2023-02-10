@@ -1,0 +1,76 @@
+{
+  global:
+    extern "C++" {
+      vtable?for?Initializer;
+      vtable?for?panda::LocalScope;
+
+      panda::ecmascript::COMMON_HELP_HEAD_MSG;
+      panda::ecmascript::HELP_OPTION_MSG;
+      panda::ecmascript::HELP_TAIL_MSG;
+
+      panda::ArrayBufferRef::*;
+      panda::ArrayRef::*;
+      panda::BigInt64ArrayRef::*;
+      panda::BigIntRef::*;
+      panda::BigUint64ArrayRef::*;
+      panda::BooleanRef::*;
+      panda::CollatorRef::*;
+      panda::DataTimeFormatRef::*;
+      panda::DataViewRef::*;
+      panda::DateRef::*;
+      panda::Float32ArrayRef::*;
+      panda::Float64ArrayRef::*;
+      panda::MapIteratorRef::*;
+      panda::FunctionRef::*;
+      panda::GeneratorFunctionRef::*;
+      panda::GeneratorObjectRef::*;
+      panda::Int16ArrayRef::*;
+      panda::Int32ArrayRef::*;
+      panda::Int8ArrayRef::*;
+      panda::IntegerRef::*;
+      panda::JSValueRef::*;
+      panda::MapRef::*;
+      panda::NativePointerRef::*;
+      panda::NumberFormatRef::*;
+      panda::NumberRef::*;
+      panda::ObjectRef::*;
+      panda::PrimitiveRef::*;
+      panda::PromiseCapabilityRef::*;
+      panda::PromiseRef::*;
+      panda::PromiseRejectInfo::*;
+      panda::RegExpRef::*;
+      panda::SetIteratorRef::*;
+      panda::SetRef::*;
+      panda::StringRef::*;
+      panda::SymbolRef::*;
+      panda::TypedArrayRef::*;
+      panda::Uint16ArrayRef::*;
+      panda::Uint32ArrayRef::*;
+      panda::Uint8ArrayRef::*;
+      panda::Uint8ClampedArrayRef::*;
+
+      panda::JSNApi::*;
+      panda::DFXJSNApi::*;
+      panda::ecmascript::tooling::DebuggerApi::*;
+      panda::LocalScope::*;
+      panda::EscapeLocalScope::*;
+      panda::Exception::*;
+      panda::JSON::*;
+      panda::JsiRuntimeCallInfo::*;
+      panda::JSExecutionScope::*;
+
+      panda::ecmascript::Log::*;
+      panda::ecmascript::Method::*;
+      panda::ecmascript::JSPandaFileManager::*;
+      panda::ecmascript::DebugInfoExtractor::*;
+      panda::ecmascript::JSRuntimeOptions::*;
+      panda::ecmascript::Taskpool::*;
+      panda::ecmascript::JSThread::*;
+
+      panda::os::thread::*;
+      panda::panda_file::File::MAGIC;
+      panda::os::unix::memory::*;
+    };
+  local:
+    *;
+};
