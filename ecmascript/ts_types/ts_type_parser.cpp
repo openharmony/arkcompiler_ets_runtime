@@ -92,6 +92,12 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     CString baseFileName = jsPandaFile->GetJSPandaFileDesc();
     CString entryPoint =
         base::PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFileName, recordName, cstringRelativePath);
+
+    // skip files without type information
+    if (!jsPandaFile->HasTypeSummaryOffset(entryPoint)) {
+        return GlobalTSTypeRef::Default();
+    }
+
     JSHandle<EcmaString> targetVarName = GenerateImportVar(importVarNamePath);
     JSHandle<TaggedArray> arrayWithGT = GenerateExportTableFromRecord(jsPandaFile, entryPoint);
     GlobalTSTypeRef importedGT = GetExportGTByName(targetVarName, arrayWithGT);
