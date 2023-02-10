@@ -16,6 +16,8 @@
 #include "ecmascript/builtins/builtins_string.h"
 
 #include <algorithm>
+#include <vector>
+#include <map>
 
 #include "ecmascript/base/locale_helper.h"
 #include "ecmascript/base/number_helper.h"
@@ -30,7 +32,6 @@
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_collator.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -41,6 +42,12 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_array.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/js_collator.h"
+#include "ecmascript/js_locale.h"
+#else
+#include "ecmascript/intl/global_intl_helper.h"
+#endif
 
 #include "unicode/normalizer2.h"
 #include "unicode/normlzr.h"
@@ -526,6 +533,7 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 1);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: the second argument
     bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+#ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
         if (collator != nullptr) {
@@ -550,6 +558,18 @@ JSTaggedValue BuiltinsString::LocaleCompare(EcmaRuntimeCallInfo *argv)
     }
     JSTaggedValue result = JSCollator::CompareStrings(icuCollator, thisHandle, thatHandle);
     return result;
+#else
+    intl::GlobalIntlHelper gh(thread, intl::GlobalFormatterType::Collator);
+    auto collator = gh.GetGlobalObject<intl::GlobalCollator>(thread,
+        locales, options, intl::GlobalFormatterType::Collator, cacheable);
+    if (collator == nullptr) {
+        LOG_ECMA(ERROR) << "BuiltinsString::LocaleCompare:collator is nullptr";
+    }
+    ASSERT(collator != nullptr);
+    auto result = collator->Compare(EcmaStringAccessor(thisHandle).ToStdString(),
+        EcmaStringAccessor(thatHandle).ToStdString());
+    return JSTaggedValue(result);
+#endif
 }
 
 // 21.1.3.11

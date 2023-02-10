@@ -19,13 +19,17 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_date.h"
-#include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tagged_array.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/js_date.h"
+#include "ecmascript/js_date_time_format.h"
+#else
+#include "ecmascript/intl/global_intl_helper.h"
+#endif
 
 namespace panda::ecmascript::builtins {
 // constructor
@@ -241,7 +245,6 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // Let x be ? thisTimeValue(this value).
@@ -262,6 +265,7 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
     bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+#ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
             IcuFormatterType::SimpleDateFormatDefault);
@@ -274,7 +278,7 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> dateTimeOptions =
         JSDateTimeFormat::ToDateTimeOptions(thread, options, RequiredOption::ANY, DefaultsOption::ALL);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
     JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
@@ -295,6 +299,19 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, dtf, x);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
+#else
+    intl::GlobalIntlHelper gh(thread, intl::GlobalFormatterType::DateFormatter);
+    auto dateFormatter = gh.GetGlobalObject<intl::GlobalDateFormatter>(thread,
+        locales, options, intl::GlobalFormatterType::DateFormatter, cacheable);
+    if (dateFormatter == nullptr) {
+        LOG_ECMA(ERROR) << "BuiltinsDate::ToLocaleString:dateFormatter is nullptr";
+    }
+    ASSERT(dateFormatter != nullptr);
+    std::string result = dateFormatter->Format(intl::GlobalIntlHelper::DoubleToInt64(x));
+    JSHandle returnValue = factory->NewFromStdString(result);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return returnValue.GetTaggedValue();
+#endif
 }
 
 // ecma 402 16.4.1 Date.prototype.toLocaleString ( [ locales [ , options ] ] )
@@ -304,7 +321,6 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // Let x be ? thisTimeValue(this value).
@@ -325,6 +341,7 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
     bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+#ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
             IcuFormatterType::SimpleDateFormatDate);
@@ -337,7 +354,7 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> dateTimeOptions =
         JSDateTimeFormat::ToDateTimeOptions(thread, options, RequiredOption::DATE, DefaultsOption::DATE);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
     JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
@@ -358,6 +375,19 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, dtf, x);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
+#else
+    intl::GlobalIntlHelper gh(thread, intl::GlobalFormatterType::SimpleDateFormatDate);
+    auto dateFormatter = gh.GetGlobalObject<intl::GlobalDateFormatter>(thread,
+        locales, options, intl::GlobalFormatterType::SimpleDateFormatDate, cacheable);
+    if (dateFormatter == nullptr) {
+        LOG_ECMA(ERROR) << "BuiltinsDate::ToLocaleDateString:dateFormatter is nullptr";
+    }
+    ASSERT(dateFormatter != nullptr);
+    std::string result = dateFormatter->Format(intl::GlobalIntlHelper::DoubleToInt64(x));
+    JSHandle returnValue = factory->NewFromStdString(result);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return returnValue.GetTaggedValue();
+#endif
 }
 
 // ecma 402 16.4.1 Date.prototype.toLocaleString ( [ locales [ , options ] ] )
@@ -367,7 +397,6 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // Let x be ? thisTimeValue(this value).
@@ -388,6 +417,7 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
     bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+#ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
             IcuFormatterType::SimpleDateFormatTime);
@@ -400,7 +430,7 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> dateTimeOptions =
         JSDateTimeFormat::ToDateTimeOptions(thread, options, RequiredOption::TIME, DefaultsOption::TIME);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     // Let dateFormat be ? Construct(%DateTimeFormat%, « locales, options »).
     JSHandle<JSFunction> ctor(env->GetDateTimeFormatFunction());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
@@ -421,5 +451,18 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, dtf, x);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
+#else
+    intl::GlobalIntlHelper gh(thread, intl::GlobalFormatterType::SimpleDateFormatTime);
+    auto dateFormatter = gh.GetGlobalObject<intl::GlobalDateFormatter>(thread,
+        locales, options, intl::GlobalFormatterType::SimpleDateFormatTime, cacheable);
+    if (dateFormatter == nullptr) {
+        LOG_ECMA(ERROR) << "BuiltinsDate::ToLocaleTimeString:dateFormatter is nullptr";
+    }
+    ASSERT(dateFormatter != nullptr);
+    std::string result = dateFormatter->Format(intl::GlobalIntlHelper::DoubleToInt64(x));
+    JSHandle returnValue = factory->NewFromStdString(result);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return returnValue.GetTaggedValue();
+#endif
 }
 }  // namespace panda::ecmascript::builtins

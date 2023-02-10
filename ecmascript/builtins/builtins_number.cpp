@@ -20,13 +20,17 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_number_format.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_hash_table.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/js_number_format.h"
+#else
+#include "ecmascript/intl/global_intl_helper.h"
+#endif
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
@@ -297,15 +301,11 @@ JSTaggedValue BuiltinsNumber::ToLocaleString(EcmaRuntimeCallInfo *argv)
     // 1. Let x be ? thisNumberValue(this value).
     JSHandle<JSTaggedValue> x(thread, ThisNumberValue(thread, argv));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 2. Let numberFormat be ? Construct(%NumberFormat%, « locales, options »).
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    JSHandle<JSFunction> ctor(ecmaVm->GetGlobalEnv()->GetNumberFormatFunction());
-    ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
-    JSHandle<JSNumberFormat> numberFormat = JSHandle<JSNumberFormat>::Cast(obj);
+    
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
     bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+#ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto numberFormatter = JSNumberFormat::GetCachedIcuNumberFormatter(thread, locales);
         if (numberFormatter != nullptr) {
@@ -314,6 +314,12 @@ JSTaggedValue BuiltinsNumber::ToLocaleString(EcmaRuntimeCallInfo *argv)
             return result.GetTaggedValue();
         }
     }
+    // 2. Let numberFormat be ? Construct(%NumberFormat%, « locales, options »).
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    JSHandle<JSFunction> ctor(ecmaVm->GetGlobalEnv()->GetNumberFormatFunction());
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(ctor);
+    JSHandle<JSNumberFormat> numberFormat = JSHandle<JSNumberFormat>::Cast(obj);
     JSNumberFormat::InitializeNumberFormat(thread, numberFormat, locales, options, cacheable);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (cacheable) {
@@ -328,6 +334,21 @@ JSTaggedValue BuiltinsNumber::ToLocaleString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> result = JSNumberFormat::FormatNumeric(thread, numberFormat, x.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
+#else
+    intl::GlobalIntlHelper gh(thread, intl::GlobalFormatterType::NumberFormatter);
+    auto numberFormatter = gh.GetGlobalObject<intl::GlobalNumberFormat>(thread,
+        locales, options, intl::GlobalFormatterType::NumberFormatter, cacheable);
+    if (numberFormatter == nullptr) {
+        LOG_ECMA(ERROR) << "BuiltinsNumber:numberFormatter is nullptr";
+    }
+    ASSERT(numberFormatter != nullptr);
+    std::string result = numberFormatter->Format(x->GetDouble());
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle returnValue = factory->NewFromStdString(result);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return returnValue.GetTaggedValue();
+#endif
 }
 
 // 20.1.3.5
