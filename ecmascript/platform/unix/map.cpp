@@ -15,6 +15,7 @@
 
 #include "ecmascript/platform/map.h"
 
+#include <cerrno>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -29,7 +30,9 @@ MemMap PageMap(size_t size, int prot, size_t alignment)
     ASSERT(alignment == AlignUp(alignment, PageSize()));
     size_t allocSize = size + alignment;
     void *result = mmap(nullptr, allocSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    LOG_ECMA_IF(result == nullptr, FATAL) << "mmap fail";
+    if (reinterpret_cast<intptr_t>(result) == -1) {
+        LOG_ECMA(FATAL) << "mmap failed with error code:" << errno;
+    }
     if (alignment != 0) {
         auto alignResult = AlignUp(reinterpret_cast<uintptr_t>(result), alignment);
         size_t leftSize = alignResult - reinterpret_cast<uintptr_t>(result);

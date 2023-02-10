@@ -31,6 +31,18 @@ config("include_llvm") {
         "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/llvm/include",
         "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/include",
       ]
+    } else if (is_mac) {
+      if (host_cpu == "arm64") {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/build/include",
+        ]
+      } else {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_x64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_x64/build/include",
+        ]
+      }
     } else {
       if (current_cpu == "arm64") {
         include_dirs = [
@@ -125,6 +137,12 @@ source_set("libark_jsoptimizer_set") {
         "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/lib",
         "//prebuilts/mingw-w64/ohos/linux-x86_64/clang-mingw/x86_64-w64-mingw32",
       ]
+    } else if (is_mac) {
+      if (host_cpu == "arm64") {
+        lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/build/lib" ]
+      } else {
+        lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_x64/build/lib" ]
+      }
     } else {
       if (current_cpu == "arm64") {
         lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/lib" ]
@@ -189,7 +207,7 @@ source_set("libark_jsoptimizer_set") {
 
   # Only support compiling aarch64 target at device-side(arm64 platform).
   # So these os-related libs of arm and x86 are not needed on arm64 platform.
-  if (current_cpu != "arm64") {
+  if (is_mac || current_cpu != "arm64") {
     libs += [
       "LLVMARMUtils",
       "LLVMARMCodeGen",

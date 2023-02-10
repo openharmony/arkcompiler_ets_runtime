@@ -106,9 +106,18 @@ public:
           end_(end),
           highWaterMark_(end),
           aliveObject_(0),
-          wasted_(0) {}
+          wasted_(0)
+    {
+        lock_ = new os::memory::Mutex();
+    }
 
-    ~Region() = default;
+    ~Region()
+    {
+        if (lock_ != nullptr) {
+            delete lock_;
+            lock_ = nullptr;
+        }
+    }
     NO_COPY_SEMANTIC(Region);
     NO_MOVE_SEMANTIC(Region);
 
@@ -549,8 +558,8 @@ private:
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingRSet_ {nullptr};
     Span<FreeObjectSet *> freeObjectSets_;
-    alignas(16) os::memory::Mutex lock_;  // 16: 16 bytes align to ensure Mutex occupies 16 bytes
-    alignas(16) uint64_t wasted_;         // 16: 16 bytes align to ensure Mutex occupies 16 bytes
+    os::memory::Mutex *lock_ {nullptr};
+    uint64_t wasted_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;
