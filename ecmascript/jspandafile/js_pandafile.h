@@ -76,7 +76,7 @@ public:
     static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr int PACKAGE_NAME_LEN = 8;
-    static constexpr int DEFAULT_TYPE_SUMMARY_OFFSET = 0;
+    static constexpr int TYPE_SUMMARY_OFFSET_NOT_FOUND = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -327,7 +327,12 @@ public:
         if (it != jsRecordInfo_.end()) {
             return it->second.typeSummaryOffset;
         }
-        return DEFAULT_TYPE_SUMMARY_OFFSET;
+        return TYPE_SUMMARY_OFFSET_NOT_FOUND;
+    }
+
+    bool HasTypeSummaryOffset(const CString &recordName) const
+    {
+        return GetTypeSummaryOffset(recordName) != TYPE_SUMMARY_OFFSET_NOT_FOUND;
     }
 
     void DeleteParsedConstpoolVM(const EcmaVM *vm)
