@@ -187,9 +187,9 @@ void LLVMIRBuilder::InitializeHandlers()
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
-        OpCode::DEAD, OpCode::RETURN_LIST,
+        OpCode::RETURN_LIST,
         OpCode::ARG_LIST, OpCode::THROW,
-        OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY,
+        OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY, OpCode::DEPEND_AND,
         OpCode::FRAME_STATE, OpCode::STATE_SPLIT
     };
 }

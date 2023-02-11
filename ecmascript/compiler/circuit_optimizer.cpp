@@ -477,6 +477,7 @@ bool LatticeUpdateRuleSCCP::Run(GateRef gate)
         {OpCode::VALUE_SELECTOR, [&]() -> bool { return RunValueSelector(gate); }},
         {OpCode::DEPEND_SELECTOR, [&]() -> bool { return RunDependSelector(gate); }},
         {OpCode::DEPEND_RELAY, [&]() -> bool { return RunDependRelay(gate); }},
+        {OpCode::DEPEND_AND, [&]() -> bool { return RunDependAnd(gate); }},
         {OpCode::JS_BYTECODE, [&]() -> bool { return RunJSBytecode(gate); }},
         {OpCode::IF_SUCCESS, [&]() -> bool { return RunIfSuccess(gate); }},
         {OpCode::IF_EXCEPTION, [&]() -> bool { return RunIfException(gate); }},

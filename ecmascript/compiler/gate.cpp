@@ -275,7 +275,7 @@ void Gate::CheckBranchOutput() const
 
 void Gate::CheckNOP() const
 {
-    if (GetOpCode() == OpCode::NOP || GetOpCode() == OpCode::DEAD) {
+    if (GetOpCode() == OpCode::NOP) {
         if (!IsFirstOutNull()) {
             CheckFailed("NOP gate used by other gates", -1);
         }
@@ -696,7 +696,7 @@ std::string Gate::GateTypeStr(GateType gateType) const
 void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) const
 {
     auto opcode = GetOpCode();
-    if (opcode != OpCode::NOP && opcode != OpCode::DEAD) {
+    if (opcode != OpCode::NOP) {
         std::string log("{\"id\":" + std::to_string(id_) + ", \"op\":\"" + GateMetaData::Str(opcode) + "\", ");
         log += ((bytecode.compare("") == 0) ? "" : "\"bytecode\":\"") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : "\", ");
@@ -752,7 +752,7 @@ void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) 
 void Gate::ShortPrint(std::string bytecode, bool inListPreview, size_t highlightIdx) const
 {
     auto opcode = GetOpCode();
-    if (opcode != OpCode::NOP && opcode != OpCode::DEAD) {
+    if (opcode != OpCode::NOP) {
         std::string log("(\"id\"=" + std::to_string(id_) + ", \"op\"=\"" + GateMetaData::Str(opcode) + "\", ");
         log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : ", ");

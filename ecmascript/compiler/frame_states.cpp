@@ -71,13 +71,9 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo
 
 void FrameStateBuilder::BindStateSplit(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo)
 {
-    auto state = gateAcc_.GetState(gate);
     auto depend = gateAcc_.GetDep(gate);
-    if (gateAcc_.GetOpCode(state) == OpCode::IF_SUCCESS) {
-        state = gateAcc_.GetState(state);
-    }
     GateRef frameState = FrameState(pcOffset, stateInfo);
-    GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
+    GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {depend, frameState});
     gateAcc_.ReplaceDependIn(gate, stateSplit);
     if (builder_->IsLogEnabled()) {
         gateAcc_.ShortPrint(frameState);

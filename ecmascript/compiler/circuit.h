@@ -137,11 +137,6 @@ public:
         return LoadGatePtrConst(gate)->GetMetaData();
     }
 
-    GateRef DeadGate()
-    {
-        return dead_ != 0 ? dead_ : NewGate(Dead(), MachineType::NOVALUE, GateType::Empty());
-    }
-
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
 
@@ -191,7 +186,6 @@ private:
 
     Chunk chunk_;
     GateRef root_ { 0 };
-    GateRef dead_ { 0 };
     GateMetaBuilder metaBuilder_;
 #ifndef NDEBUG
     ChunkVector<GateRef> allGates_;

@@ -58,36 +58,6 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     }
 
     switch (inst.GetOpcode()) {
-        case EcmaOpcode::TYPEOF_IMM8:
-        case EcmaOpcode::TYPEOF_IMM16:
-        case EcmaOpcode::ISTRUE:
-        case EcmaOpcode::ISFALSE:
-        case EcmaOpcode::STMODULEVAR_IMM8:
-        case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
-        case EcmaOpcode::POPLEXENV:
-        case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
-        case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
-        case EcmaOpcode::GETRESUMEMODE:
-        case EcmaOpcode::RESUMEGENERATOR:
-        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::STLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::STLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
-        case EcmaOpcode::STRICTEQ_IMM8_V8:
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
-        case EcmaOpcode::CREATEEMPTYOBJECT:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-            flags |= BytecodeFlags::NO_THROW;
-        default:
-            break;
-    }
-
-    switch (inst.GetOpcode()) {
         case EcmaOpcode::MOV_V4_V4:
         case EcmaOpcode::MOV_V8_V8:
         case EcmaOpcode::MOV_V16_V16:

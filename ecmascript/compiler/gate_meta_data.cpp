@@ -94,47 +94,23 @@ bool GateMetaData::IsState() const
 
 bool GateMetaData::IsGeneralState() const
 {
-    switch (opcode_) {
-        case OpCode::IF_TRUE:
-        case OpCode::IF_FALSE:
-        case OpCode::JS_BYTECODE:
-        case OpCode::IF_SUCCESS:
-        case OpCode::IF_EXCEPTION:
-        case OpCode::SWITCH_CASE:
-        case OpCode::DEFAULT_CASE:
-        case OpCode::MERGE:
-        case OpCode::LOOP_BEGIN:
-        case OpCode::ORDINARY_BLOCK:
-        case OpCode::STATE_ENTRY:
-        case OpCode::TYPED_BINARY_OP:
-        case OpCode::TYPE_CONVERT:
-        case OpCode::TYPED_UNARY_OP:
-        case OpCode::TO_LENGTH:
-        case OpCode::HEAP_ALLOC:
-        case OpCode::LOAD_ELEMENT:
-        case OpCode::LOAD_PROPERTY:
-        case OpCode::STORE_ELEMENT:
-        case OpCode::STORE_PROPERTY:
-        case OpCode::TYPED_CALL:
-        case OpCode::DEOPT_CHECK:
-            return true;
-        default:
-            return false;
-    }
+    return ((opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE) ||
+        (opcode_ == OpCode::JS_BYTECODE) || (opcode_ == OpCode::IF_SUCCESS) ||
+        (opcode_ == OpCode::IF_EXCEPTION) || (opcode_ == OpCode::SWITCH_CASE) ||
+        (opcode_ == OpCode::DEFAULT_CASE) || (opcode_ == OpCode::MERGE) ||
+        (opcode_ == OpCode::LOOP_BEGIN) || (opcode_ == OpCode::ORDINARY_BLOCK) ||
+        (opcode_ == OpCode::STATE_ENTRY) || (opcode_ == OpCode::TYPED_BINARY_OP) ||
+        (opcode_ == OpCode::TYPE_CONVERT) || (opcode_ == OpCode::TYPED_UNARY_OP) ||
+        (opcode_ == OpCode::TO_LENGTH) || (opcode_ == OpCode::HEAP_ALLOC) ||
+        (opcode_ == OpCode::LOAD_ELEMENT) || (opcode_ == OpCode::LOAD_PROPERTY) ||
+        (opcode_ == OpCode::STORE_ELEMENT) || (opcode_ == OpCode::STORE_PROPERTY) ||
+        (opcode_ == OpCode::TYPED_CALL)) || (opcode_ == OpCode::DEOPT_CHECK);
 }
 
 bool GateMetaData::IsTerminalState() const
 {
-    switch (opcode_) {
-        case OpCode::RETURN:
-        case OpCode::THROW:
-        case OpCode::RETURN_VOID:
-        case OpCode::GET_EXCEPTION:
-        case OpCode::STATE_SPLIT:
-            return true;
-        default:
-            return false;
-    }
+    return ((opcode_ == OpCode::RETURN) || (opcode_ == OpCode::THROW) ||
+        (opcode_ == OpCode::RETURN_VOID));
 }
 
 bool GateMetaData::IsCFGMerge() const
@@ -145,18 +121,10 @@ bool GateMetaData::IsCFGMerge() const
 bool GateMetaData::IsControlCase() const
 {
     ASSERT(HasFlag(GateFlags::CONTROL));
-    // should add relay
-    switch (opcode_) {
-        case OpCode::IF_BRANCH:
-        case OpCode::SWITCH_BRANCH:
-        case OpCode::IF_TRUE:
-        case OpCode::IF_FALSE:
-        case OpCode::SWITCH_CASE:
-        case OpCode::DEFAULT_CASE:
-            return true;
-        default:
-            return false;
-    }
+    return (opcode_ == OpCode::IF_BRANCH) || (opcode_ == OpCode::SWITCH_BRANCH) ||
+        (opcode_ == OpCode::IF_TRUE) || (opcode_ == OpCode::IF_FALSE) ||
+        (opcode_ == OpCode::IF_SUCCESS) || (opcode_ == OpCode::IF_EXCEPTION) ||
+        (opcode_ == OpCode::SWITCH_CASE) || (opcode_ == OpCode::DEFAULT_CASE);
 }
 
 bool GateMetaData::IsLoopHead() const
@@ -166,7 +134,7 @@ bool GateMetaData::IsLoopHead() const
 
 bool GateMetaData::IsNop() const
 {
-    return (opcode_ == OpCode::NOP || opcode_ == OpCode::DEAD);
+    return (opcode_ == OpCode::NOP);
 }
 
 bool GateMetaData::IsConstant() const
