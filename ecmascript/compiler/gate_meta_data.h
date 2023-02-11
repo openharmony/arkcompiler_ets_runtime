@@ -185,10 +185,11 @@ std::string MachineTypeToStr(MachineType machineType);
     V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, 2, 0, 0)                               \
     V(LoopBack, LOOP_BACK, GateFlags::CONTROL, 1, 0, 0)                                 \
     V(DependRelay, DEPEND_RELAY, GateFlags::FIXED, 1, 1, 0)                             \
+    V(DependAnd, DEPEND_AND, GateFlags::FIXED, 0, 2, 0)                                 \
     V(IfSuccess, IF_SUCCESS, GateFlags::CONTROL, 1, 0, 0)                               \
-    V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                           \
-    V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 1, 1, 0)                       \
-    V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                           \
+    V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 0, 0)                           \
+    V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 0, 1, 0)                       \
+    V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 0, 1, 0)                           \
     V(Deopt, DEOPT, GateFlags::NONE_FLAG, 0, 1, 3)                                      \
     V(Load, LOAD, GateFlags::NONE_FLAG, 0, 1, 1)                                        \
     V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                      \
@@ -206,7 +207,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2) \
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)         \
     V(UpdateHotness, UPDATE_HOTNESS, GateFlags::NO_WRITE, 1, 1, 1)                      \
-    V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                        \
     BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 

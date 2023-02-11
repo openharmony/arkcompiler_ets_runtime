@@ -127,6 +127,11 @@ GateRef CircuitBuilder::DependRelay(GateRef state, GateRef depend)
     return circuit_->NewGate(circuit_->DependRelay(), { state, depend });
 }
 
+GateRef CircuitBuilder::DependAnd(std::initializer_list<GateRef> args)
+{
+    return circuit_->NewGate(circuit_->DependAnd(), args);
+}
+
 GateRef CircuitBuilder::Arguments(size_t index)
 {
     auto argListOfCircuit = circuit_->GetArgRoot();
@@ -405,6 +410,7 @@ GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::v
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
     return result;
 }
 
@@ -415,6 +421,7 @@ GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vec
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
     return result;
 }
 
@@ -425,6 +432,7 @@ GateRef CircuitBuilder::CallBuiltinWithArgv(GateRef glue, GateRef target, const 
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
     return result;
 }
 
@@ -435,6 +443,7 @@ GateRef CircuitBuilder::CallBCDebugger(GateRef glue, GateRef target, const std::
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
     return result;
 }
 
@@ -448,6 +457,7 @@ GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, con
         depend = label->GetDepend();
     }
     GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
     return result;
 }
 
@@ -459,6 +469,7 @@ GateRef CircuitBuilder::CallRuntimeVarargs(GateRef glue, int index, GateRef argc
     auto depend = label->GetDepend();
     ASSERT(cs->IsRuntimeVAStub());
     GateRef result = Call(cs, glue, target, depend, {argc, argv});
+    label->SetDepend(result);
     return result;
 }
 
@@ -473,6 +484,7 @@ GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, 
         depend = label->GetDepend();
     }
     GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
     return result;
 }
 
@@ -484,6 +496,7 @@ GateRef CircuitBuilder::CallStub(GateRef glue, int index, const std::vector<Gate
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
     return result;
 }
 
@@ -503,6 +516,7 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
         depend = label->GetDepend();
     }
     GateRef result = Call(cs, glue, target, depend, args);
+    label->SetDepend(result);
     return result;
 }
 
@@ -536,8 +550,6 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     MachineType machineType = cs->GetReturnType().GetMachineType();
     GateType type = cs->GetReturnType().GetGateType();
     GateRef result = GetCircuit()->NewGate(meta, machineType, inputs.size(), inputs.data(), type);
-    auto label = GetCurrentLabel();
-    label->SetDepend(result);
     return result;
 }
 
@@ -1174,11 +1186,16 @@ void Label::LabelImpl::MergeAllControl()
 
 void Label::LabelImpl::MergeAllDepend()
 {
+    if (IsControlCase()) {
+        // Add depend_relay to current label
+        auto denpendEntry = env_->GetBuilder()->GetCircuit()->GetDependRoot();
+        dependRelay_ = env_->GetBuilder()->DependRelay(predeControl_, denpendEntry);
+    }
+
     if (predecessors_.size() < 2) {  // 2 : Loop Head only support two predecessors_
         depend_ = predecessors_[0]->GetDepend();
-        if (IsControlCase()) {
-            // Add depend_relay to current label
-            depend_ = env_->GetBuilder()->DependRelay(predeControl_, depend_);
+        if (dependRelay_ != -1) {
+            depend_ = env_->GetBuilder()->DependAnd({depend_, dependRelay_});
         }
         return;
     }

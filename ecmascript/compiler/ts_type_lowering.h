@@ -56,6 +56,9 @@ private:
 
     void Lower(GateRef gate);
     void VerifyGuard() const;
+    void DeleteGates(GateRef hir, std::vector<GateRef> &unusedGate);
+    void ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, GateRef depend,
+                        std::vector<GateRef> &unuseGate);
     void LowerTypedAdd(GateRef gate);
     void LowerTypedSub(GateRef gate);
     void LowerTypedMul(GateRef gate);

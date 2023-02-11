@@ -30,9 +30,6 @@ for (x in mycars) {
     finally {
         fin = 1;
     }
-    for (x in mycars) {
-        fin = -1;
-    }
     fin = -1;
 }
 print(fin)

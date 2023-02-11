@@ -544,6 +544,9 @@ void EarlyElimination::TryEliminate(GateRef gate)
         case OpCode::DEPEND_SELECTOR:
             TryEliminateDependSelector(gate);
             break;
+        case OpCode::DEPEND_AND:
+            TryEliminateDependAnd(gate);
+            break;
         case OpCode::DEPEND_ENTRY:
             return;
         default:
@@ -750,6 +753,16 @@ void EarlyElimination::TryEliminateDependSelector(GateRef gate)
         }
     }
     dependInfos_[acc_.GetId(gate)] = dependInfo;
+}
+
+void EarlyElimination::TryEliminateDependAnd(GateRef gate)
+{
+    auto dep0 = acc_.GetDep(gate, 0);
+    auto info0 = dependInfos_[acc_.GetId(dep0)];
+    auto dep1 = acc_.GetDep(gate, 1);
+    auto info1 = dependInfos_[acc_.GetId(dep1)];
+    ASSERT(info0->Empty() || info1->Empty());
+    dependInfos_[acc_.GetId(gate)] = (!info0->Empty()) ? info0 : info1;
 }
 
 void EarlyElimination::RemoveGate(GateRef gate, GateRef value)

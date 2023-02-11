@@ -8,7 +8,7 @@ Circuit IR splits a program into two major parts: [sequential logic](https://en.
 
 * The **sequential logic** part is a subgraph of Circuit IR which is similar to the underlying control flow graph (CFG) of the program, and gates in this part are named **state gates** (since they acted like a [finite state machine](https://en.wikipedia.org/wiki/Finite-state_machine) (FSM)). Wires that connect two state gates represent possible state transitions of the FSM, and they are named **state wires**. Note that every gates that have output state wires are state gates.
 
-* The **combinational logic** part is the other subgraph of Circuit IR which represents all computations in a program using a directed acyclic graph (DAG), and gates in this part are named **computation gates**. A computation gate can do simple things such as adding two integer values, or complex things such as calling a function (and thus make a change to the global memory). Most of **computation gates** will take some values as input and output a value. These values can be transferred by **data wires**. Some computation gates will load from or store to the global memory, so they should be executed non-simultaneously and in some order that will not violate memory dependencies (such as RAW, WAR and WAW). Addressing this issue, **dependency wires** are introduced to constrain the possible execution order of such computations. When a computation gate has multiple dependencies, an auxiliary gate `DEPEND_SELECTOR` is used to merge dependencies. Note that dependency wires are treated like data wires during the scheduling phase, since dependency wires can be viewed as special data wires that transfer huge values representing the whole memory.
+* The **combinational logic** part is the other subgraph of Circuit IR which represents all computations in a program using a directed acyclic graph (DAG), and gates in this part are named **computation gates**. A computation gate can do simple things such as adding two integer values, or complex things such as calling a function (and thus make a change to the global memory). Most of **computation gates** will take some values as input and output a value. These values can be transferred by **data wires**. Some computation gates will load from or store to the global memory, so they should be executed non-simultaneously and in some order that will not violate memory dependencies (such as RAW, WAR and WAW). Addressing this issue, **dependency wires** are introduced to constrain the possible execution order of such computations. When a computation gate has multiple dependencies, an auxiliary gate `DEPEND_AND` is used to merge dependencies. Note that dependency wires are treated like data wires during the scheduling phase, since dependency wires can be viewed as special data wires that transfer huge values representing the whole memory.
 
 In traditional [SSA](https://en.wikipedia.org/wiki/Static_single_assignment_form) form IR (e.g. LLVM IR), each instruction is placed inside a node of CFG (basic block), and all instructions in a basic block are [linearly ordered](https://en.wikipedia.org/wiki/Total_order). However, in Circuit IR, computation gates are not tied to state gates, and they are [partially ordered](https://en.wikipedia.org/wiki/Partially_ordered_set) by wires. Sequential logic part and combinational logic part are loosely coupled, they only interact in three ways:
 
@@ -270,6 +270,19 @@ Represents dependency relay.
 | Root      | Bitfield |
 |-----------|----------|
 | not used  | not used |
+
+#### DEPEND_AND
+
+Represents dependency and operator.
+
+|        | state wires | #dependency wires | data wires |
+|--------|-------------|-------------------|------------|
+| input  | []          | N                 | []         |
+| output | {}          | any               | {}         |
+
+| Root     | Bitfield                        |
+|----------|---------------------------------|
+| not used | number of dependency inputs (N) |
 
 ### HIR instructions
 
