@@ -60,15 +60,6 @@ private:
     static constexpr int MAGIC_ID_INDEX = 0;
     static constexpr int VERSION_ID_INDEX = 1;
 
-    static constexpr int PANDA_FILE_INFO_COUNT = 2;
-    static constexpr int PANDA_FILE_DESC_INDEX = 0;
-    static constexpr int CHECK_SUM_INDEX = 1;
-
-    static constexpr int METHOD_INFO_COUNT = 3;
-    static constexpr int METHOD_ID_INDEX = 0;
-    static constexpr int METHOD_COUNT_INDEX = 1;
-    static constexpr int METHOD_MODE_INDEX = 2;
-
     bool ParseProfilerHeader(void **buffer);
     bool ParsePandaFileInfo(void **buffer);
     void ParseProfiler(void **buffer);

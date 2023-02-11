@@ -40,7 +40,17 @@ public:
     const JSPandaFile *Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins = false);
 
 private:
-    struct Header {
+    struct SnapShotHeader : public base::FileHeader {
+    public:
+        static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 1};
+
+        SnapShotHeader() : base::FileHeader(LAST_VERSION) {}
+
+        bool Verify()
+        {
+            return VerifyInner(LAST_VERSION);
+        }
+
         uint32_t oldSpaceObjSize;
         uint32_t nonMovableObjSize;
         uint32_t machineCodeObjSize;

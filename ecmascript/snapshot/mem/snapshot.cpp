@@ -164,8 +164,14 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
         UNREACHABLE();
     }
     auto readFile = ToUintPtr(addr);
-    auto hdr = *ToNativePtr<const Header>(readFile);
-    uintptr_t oldSpaceBegin = readFile + sizeof(Header);
+    auto hdr = *ToNativePtr<const SnapShotHeader>(readFile);
+    if (!hdr.Verify()) {
+        FileUnMap(addr, fileSize, &extra);
+        Close(fd);
+        LOG_FULL(FATAL) << "file verify failed";
+        UNREACHABLE();
+    }
+    uintptr_t oldSpaceBegin = readFile + sizeof(SnapShotHeader);
     processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
                                              hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
     uintptr_t stringBegin = oldSpaceBegin + hdr.oldSpaceObjSize + hdr.nonMovableObjSize +
@@ -213,9 +219,16 @@ void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
     for (uint32_t objSize : objSizeVector) {
         totalObjSize += objSize;
     }
-    uint32_t pandaFileBegin = RoundUp(totalObjSize + sizeof(Header), Constants::PAGE_SIZE_ALIGN_UP);
-    Header hdr {objSizeVector[0], objSizeVector[1], objSizeVector[2], objSizeVector[3], // 0,1,2,3,4: index of element
-                objSizeVector[4], totalStringSize, pandaFileBegin, static_cast<uint32_t>(size)};
+    uint32_t pandaFileBegin = RoundUp(totalObjSize + sizeof(SnapShotHeader), Constants::PAGE_SIZE_ALIGN_UP);
+    SnapShotHeader hdr;
+    hdr.oldSpaceObjSize = objSizeVector[0];
+    hdr.nonMovableObjSize = objSizeVector[1];
+    hdr.machineCodeObjSize = objSizeVector[2];
+    hdr.snapshotObjSize = objSizeVector[3];
+    hdr.hugeObjSize = objSizeVector[4];
+    hdr.stringSize = totalStringSize;
+    hdr.pandaFileBegin = pandaFileBegin;
+    hdr.rootObjectSize = static_cast<uint32_t>(size);
     writer.write(reinterpret_cast<char *>(&hdr), sizeof(hdr));
 
     processor.WriteObjectToFile(writer);
@@ -227,7 +240,7 @@ void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
         writer.write(reinterpret_cast<char *>(str), strSize);
         writer.flush();
     }
-    ASSERT(static_cast<size_t>(writer.tellp()) == totalObjSize + sizeof(Header));
+    ASSERT(static_cast<size_t>(writer.tellp()) == totalObjSize + sizeof(SnapShotHeader));
     if (jsPandaFile) {
         writer.seekp(pandaFileBegin);
         writer.write(static_cast<const char *>(jsPandaFile->GetHeader()), jsPandaFile->GetFileSize());
