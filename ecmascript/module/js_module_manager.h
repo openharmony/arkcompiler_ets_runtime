@@ -18,6 +18,8 @@
 
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 
 namespace panda::ecmascript {
 class ModuleManager {
@@ -52,6 +54,7 @@ public:
     JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
 
+    JSHandle<SourceTextModule> ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType);
     JSHandle<SourceTextModule> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<SourceTextModule> HostResolveImportedModule(std::string &baseFilename, std::string &moduleFilename);
     JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
@@ -75,6 +78,17 @@ public:
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
+
+    inline static bool IsNativeModule(ModuleTypes moduleType)
+    {
+        return moduleType == ModuleTypes::OHOS_MODULE ||
+               moduleType == ModuleTypes::APP_MODULE ||
+               moduleType == ModuleTypes::NATIVE_MODULE;
+    }
+    static std::pair<bool, ModuleTypes> CheckNativeModule(const CString &moduleRequestName);
+    static void EvaluateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord,
+        const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType);
+
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
@@ -92,6 +106,9 @@ private:
     JSHandle<SourceTextModule> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     JSHandle<SourceTextModule> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                       const CString &recodeName);
+
+    static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
+    static CString GetStrippedModuleName(const CString &moduleRequestName);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 
