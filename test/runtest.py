@@ -56,6 +56,8 @@ def parse_args():
         help=f'aot compile with pgo, default threshold is {DEFAULT_PGO_THRESHOLD}')
     parser.add_argument('--pgo-th', metavar='n', default=DEFAULT_PGO_THRESHOLD, type=int,
         help=f'pgo hotness threshold, default is {DEFAULT_PGO_THRESHOLD}')
+    parser.add_argument('--sign', metavar='name',
+        help='sign level, default is system_core, other is normal, system_basic')
     parser.add_argument('--timeout', metavar='n', default=DEFAULT_TIMEOUT, type=int,
         help=f'specify seconds of test timeout, default is {DEFAULT_TIMEOUT}')
     parser.add_argument('-e', '--env', action='store_true', help='print LD_LIBRARY_PATH')
@@ -83,6 +85,22 @@ def match_list_name(list, name):
         if (found == 0):
             return str
     return ''
+
+def get_module_name(hap_dir):
+    with open(f'{hap_dir}/module.json') as f:
+        data = json.load(f)
+    if len(data):
+        return data['module']['name']
+    else:
+        return 'entry'
+
+def get_bundle_name(hap_dir):
+    with open(f'{hap_dir}/module.json') as f:
+        data = json.load(f)
+    if len(data):
+        return data['app']['bundleName']
+    else:
+        return 'entry'
 
 class ArkTest():
     def __init__(self, args):
@@ -129,16 +147,19 @@ class ArkTest():
         product_dir = f'{self.ohdir}/out/{self.product}'
         libs_dir_x64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
                                 f'{product_dir}/clang_x64/arkcompiler/ets_runtime:'
-                                f'{product_dir}/clang_x64/thirdparty/icu')
+                                f'{product_dir}/clang_x64/thirdparty/icu:'
+                                f'{product_dir}/clang_x64/thirdparty/zlib')
         libs_dir_x64_debug = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
                               f'{product_dir}/clang_x64/exe.unstripped/clang_x64/arkcompiler/ets_runtime:'
                               f'{product_dir}/clang_x64/lib.unstripped/clang_x64/arkcompiler/ets_runtime:'
                               f'{product_dir}/clang_x64/lib.unstripped/clang_x64/test/test:'
-                              f'{product_dir}/clang_x64/lib.unstripped/clang_x64/thirdparty/icu')
+                              f'{product_dir}/clang_x64/lib.unstripped/clang_x64/thirdparty/icu:'
+                              f'{product_dir}/clang_x64/lib.unstripped/clang_x64/thirdparty/zlib')
         libs_dir_arm64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib/aarch64-linux-ohos/c++/:'
                                   f'{product_dir}/arkcompiler/ets_runtime/:'
                                   f'{product_dir}/utils/utils_base/:'
                                   f'{product_dir}/thirdparty/icu:'
+                                  f'{product_dir}/thirdparty/zlib:'
                                   f'{product_dir}/common/dsoftbus/:'
                                   f'{product_dir}/commonlibrary/c_utils:'
                                   f'{product_dir}/systemabilitymgr/samgr:'
@@ -159,12 +180,14 @@ class ArkTest():
                                   f'{product_dir}/communication/dsoftbus:'
                                   f'{product_dir}/startup/startup_l2/:'
                                   f'{product_dir}/security/huks/:'
-                                  f'{product_dir}/clang_x64/thirdparty/icu/:'
+                                  f'{product_dir}/clang_x64/thirdparty/icu:'
+                                  f'{product_dir}/clang_x64/thirdparty/zlib:'
                                   f'{product_dir}/clang_x64/arkcompiler/ets_runtime')
         libs_dir_arm64_debug = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib/aarch64-linux-ohos/c++/:'
                                 f'{product_dir}/lib.unstripped/arkcompiler/ets_runtime/:'
                                 f'{product_dir}/utils/utils_base/:'
                                 f'{product_dir}/thirdparty/icu:'
+                                f'{product_dir}/thirdparty/zlib:'
                                 f'{product_dir}/common/dsoftbus/:'
                                 f'{product_dir}/commonlibrary/c_utils:'
                                 f'{product_dir}/systemabilitymgr/samgr:'
@@ -185,6 +208,7 @@ class ArkTest():
                                 f'{product_dir}/startup/startup_l2/:'
                                 f'{product_dir}/security/huks/:'
                                 f'{product_dir}/clang_x64/thirdparty/icu/:'
+                                f'{product_dir}/clang_x64/thirdparty/zlib/:'
                                 f'{product_dir}/clang_x64/arkcompiler/ets_runtime')
         libs_dir = [[libs_dir_x64_release, libs_dir_x64_debug], [libs_dir_arm64_release, libs_dir_arm64_debug]]
         bins_dir = [['clang_x64/arkcompiler', 'clang_x64/exe.unstripped/clang_x64/arkcompiler'],
@@ -228,6 +252,9 @@ class ArkTest():
             index_dir = os.path.dirname(self.ts2abc)
             os.system(f'cd {index_dir}/.. && npm install')
             sys.exit(0)
+        if args.sign:
+            self.sign_hap(self.args.name)
+            sys.exit(0)
 
     def run_cmd(self, cmd):
         print(cmd)
@@ -235,15 +262,6 @@ class ArkTest():
         if ret[0]:
             print(ret[2])
         return ret
-
-    @staticmethod
-    def get_module_name(hap_dir):
-        with open(f'{hap_dir}/module.json') as f:
-            data = json.load(f)
-        if len(data):
-            return data['module']['name']
-        else:
-            return 'entry'
 
     def run_test(self, file):
         self.test_count += 1
@@ -258,7 +276,7 @@ class ArkTest():
         if self.step == 'hap' or self.step == 'pack':
             hap_dir = os.path.abspath(f'{out_case_dir}/..')
             hap_name = os.path.basename(hap_dir)
-            module_name = self.get_module_name(hap_dir)
+            module_name = get_module_name(hap_dir)
         abc_file = f'{os.path.splitext(file)[0]}.abc'
         if self.pgo:
             pgo_file = f'{hap_dir}/ap/{module_name}'
@@ -303,6 +321,8 @@ class ArkTest():
                 print(cmd)
                 os.system(cmd)
             print(f'packed hap: {hap_name}.hap')
+            print(f'sign --------------------------------------------')
+            self.sign_hap(f'{hap_name}.hap')
             return
         if self.step == 'clean':
             if os.path.isfile(f'{hap_dir}/{self.hap_abc}'):
@@ -393,6 +413,47 @@ class ArkTest():
             self.run_test(file)
             return 0
         return 1
+
+    def sign_hap(self, hap_name):
+        name = os.path.splitext(hap_name)[0]
+        sign_dir = f'{name}.sign'
+        sign_tool_dir = f'{self.ohdir}/developtools/hapsigner/dist'
+        name = os.path.splitext(sign_dir)[0]
+        self_dir = os.path.abspath(sys.argv[0])
+        os.system(f'mkdir -p {sign_dir} && unzip -o -q {hap_name} module.json -d {sign_dir}')
+        bundle_name = get_bundle_name(sign_dir)
+        if not self.args.sign or self.args.sign == 'system_core':
+            bundle_apl = 'system_core'
+            bundle_feature = 'hos_system_app'
+        elif self.args.sign == 'system_basic':
+            bundle_apl = self.args.sign
+            bundle_feature = 'hos_system_app'
+        elif self.args.sign == 'normal':
+            bundle_apl = self.args.sign
+            bundle_feature = 'hos_normal_app'
+        else:
+            print(f'sign not supported input: {self.args.sign}')
+            return 1
+        # modify sign config
+        data_load = []
+        data_save = []
+        sign_config = 'UnsgnedReleasedProfileTemplate.json'
+        with open(f'{sign_tool_dir}/{sign_config}') as f:
+            data_load = json.load(f)
+            data_load['bundle-info']['bundle-name'] = bundle_name
+            data_load['bundle-info']['apl'] = bundle_apl
+            data_load['bundle-info']['app-feature'] = bundle_feature
+            data_save = json.dumps(data_load)
+        with open(f'{sign_dir}/{sign_config}', 'w+') as f:
+            f.write(data_save)
+        # generate cert and sign
+        gen_cert = f'java -jar {sign_tool_dir}/hap-sign-tool.jar sign-profile -keyAlias "openharmony application profile release" -signAlg "SHA256withECDSA" -mode "localSign" -profileCertFile "{sign_tool_dir}/OpenHarmonyProfileRelease.pem" -inFile "{sign_dir}/{sign_config}" -keystoreFile "{sign_tool_dir}/OpenHarmony.p12" -outFile "{sign_dir}/openharmony.p7b" -keyPwd "123456" -keystorePwd "123456"'
+        sign_hap = f'java -jar {sign_tool_dir}/hap-sign-tool.jar sign-app -keyAlias "openharmony application release" -signAlg "SHA256withECDSA" -mode "localSign" -appCertFile "{sign_tool_dir}/OpenHarmonyApplication.pem" -profileFile "{sign_dir}/openharmony.p7b" -inFile "{hap_name}" -keystoreFile "{sign_tool_dir}/OpenHarmony.p12" -outFile "{name}.sign.hap" -keyPwd "123456" -keystorePwd "123456"'
+        print(gen_cert)
+        print(sign_hap)
+        os.system(gen_cert)
+        os.system(sign_hap)
+        print(f'signed of {bundle_apl} for hap: {name}.sign.hap')
 
     def test(self):
         # run single test by name
