@@ -74,11 +74,20 @@ if (is_standard_system) {
             "/thirdparty/bounds_checking_function/libsec_shared${dylib_suffix}",
       ]
 
+      # Add dynamic library "libshared_libz"
+      zlib_path =
+          get_label_info("//third_party/zlib:shared_libz", "root_out_dir")
+      deps += [ "//third_party/zlib:shared_libz" ]
+      sources +=
+          [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
+
       # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-win/bin/{{source_file_part}}" ]
       module_source_dir =
           target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-win/bin/"
       module_install_name = ""
+      part_name = "ets_runtime"
+      subsystem_name = "arkcompiler"
     }
 
     ohos_copy("copy_ark_aot_builtins_win") {
@@ -144,11 +153,20 @@ if (is_standard_system) {
             "/thirdparty/bounds_checking_function/libsec_shared${dylib_suffix}",
       ]
 
+      # Add dynamic library "libshared_libz"
+      zlib_path =
+          get_label_info("//third_party/zlib:shared_libz", "root_out_dir")
+      deps += [ "//third_party/zlib:shared_libz" ]
+      sources +=
+          [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
+
       # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/bin/{{source_file_part}}" ]
       module_source_dir =
           target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/bin/"
       module_install_name = ""
+      part_name = "ets_runtime"
+      subsystem_name = "arkcompiler"
     }
     ohos_copy("copy_ark_aot_builtins") {
       deps = []
@@ -200,6 +218,13 @@ if (is_standard_system) {
         sec_path +
             "/thirdparty/bounds_checking_function/libsec_shared${dylib_suffix}",
       ]
+
+      # Add dynamic library "libshared_libz"
+      zlib_path =
+          get_label_info("//third_party/zlib:shared_libz", "root_out_dir")
+      deps += [ "//third_party/zlib:shared_libz" ]
+      sources +=
+          [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
 
       # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-mac/bin/{{source_file_part}}" ]
