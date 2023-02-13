@@ -425,7 +425,7 @@ public:
         return res;
     }
 
-    static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
+    static CString ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile, CString &baseFilename,
                                            CString recordName, CString requestName)
     {
         CString entryPoint;
@@ -440,13 +440,15 @@ public:
         } else {
             entryPoint = ParseThirdPartyPackge(jsPandaFile, recordName, requestName);
         }
-        if (!entryPoint.empty()) {
-            return entryPoint;
+        if (entryPoint.empty()) {
+            LOG_ECMA(ERROR) << "Failed to resolve the requested entryPoint. BaseFilename : '" << baseFilename <<
+                "'. RecordName : '" <<  recordName << "'. RequestName : '" <<  requestName << "'.";
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            CString msg = "Failed to load file '" + requestName + "'. Please check the target path.";
+            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, entryPoint);
         }
-        LOG_ECMA(FATAL) << "Failed to resolve the requested entryPoint. BaseFilename : '" << baseFilename <<
-                           "'. RecordName : '" <<  recordName <<
-                           "'. RequestName : '" <<  requestName << "'.";
-        UNREACHABLE();
+        return entryPoint;
     }
 };
 }  // namespace panda::ecmascript::base

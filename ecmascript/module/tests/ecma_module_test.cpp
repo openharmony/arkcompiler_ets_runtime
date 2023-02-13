@@ -299,13 +299,14 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
     CString moduleRecordName = "moduleTest1";
     CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
     CString result = "com.bundleName.test/moduleName/requestModuleName1";
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf, baseFilename, moduleRecordName,
+                                                             moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 
     // Test cross application
     moduleRecordName = "@bundle:com.bundleName1.test/moduleName/requestModuleName1";
     CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.abc";
-    PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    PathHelper::ConcatFileNameWithMerge(thread, pf, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(baseFilename, newBaseFileName);
 }
 
@@ -330,7 +331,8 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
     CString moduleRequestName = "./requestModule.js";
     CString result = "requestModule";
     pf->InsertJSRecordInfo(result);
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf, baseFilename, moduleRecordName,
+                                                             moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 
     // Test moduleRecordName with "/"
@@ -338,7 +340,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
     moduleRequestName = "./requestModule.js";
     result = "moduleName/requestModule";
     pf->InsertJSRecordInfo(result);
-    entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 }
 
@@ -364,7 +366,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     CString result = "secord";
     CString requestFileName = "secord.abc";
     CString entryPoint =
-        PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+        PathHelper::ConcatFileNameWithMerge(thread, pf, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
 
@@ -377,7 +379,8 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     moduleRequestName = "./test/secord.js";
     result = "secord";
     requestFileName = "test/test/secord.abc";
-    entryPoint = PathHelper::ConcatFileNameWithMerge(pf2, baseFilename, moduleRecordName, moduleRequestName);
+    entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf2, baseFilename, moduleRecordName,
+                                                     moduleRequestName);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
 }
@@ -406,7 +409,8 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
     info.npmPackageName = "node_modules/0/moduleTest4";
     const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({moduleRecordName, info});
     const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({result, info});
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf, baseFilename, moduleRecordName,
+                                                             moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 }
 
@@ -431,7 +435,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge5)
     CString moduleRequestName = "@module:moduleName/requestModuleName1";
     CString result = "com.bundleName.test/moduleName/requestModuleName1";
     CString newBaseFileName = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(pf, baseFilename, moduleRecordName, moduleRequestName);
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf, baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(result, entryPoint);
     EXPECT_EQ(baseFilename, newBaseFileName);
 }
