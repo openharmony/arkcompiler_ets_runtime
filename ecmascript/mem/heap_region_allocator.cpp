@@ -32,8 +32,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     }
     RegionSpaceFlag flags = space->GetRegionFlag();
     bool isRegular = (flags != RegionSpaceFlag::IN_HUGE_OBJECT_SPACE);
-    int prot = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE) ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
-    auto pool = MemMapAllocator::GetInstance()->Allocate(capacity, DEFAULT_REGION_SIZE, isRegular, prot);
+    bool isMachineCode = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE);
+    auto pool = MemMapAllocator::GetInstance()->Allocate(capacity, DEFAULT_REGION_SIZE, isRegular, isMachineCode);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
         LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
@@ -66,6 +66,7 @@ void HeapRegionAllocator::FreeRegion(Region *region)
 
     DecreaseAnnoMemoryUsage(size);
     region->Invalidate();
+    region->ClearMembers();
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     if (memset_s(ToVoidPtr(allocateBase), size, INVALID_VALUE, size) != EOK) {
         LOG_FULL(FATAL) << "memset_s failed";

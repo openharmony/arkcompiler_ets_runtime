@@ -48,6 +48,11 @@ private:
     size_t size_ {0};
 };
 
+enum class PageTagType : uint8_t {
+    HEAP,
+    MACHINE_CODE,
+};
+
 #ifdef PANDA_TARGET_WINDOWS
 #define PAGE_PROT_NONE 0x01
 #define PAGE_PROT_READ 0x02
@@ -65,7 +70,9 @@ void PUBLIC_API PageUnmap(MemMap it);
 MemMap PUBLIC_API MachineCodePageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0);
 void PUBLIC_API MachineCodePageUnmap(MemMap it);
 void PageRelease(void *mem, size_t size);
-void PageTag(void *mem, size_t size, bool remove = false);
+void PageTag(void *mem, size_t size, PageTagType type);
+void PageClearTag(void *mem, size_t size);
+const char *GetPageTagString(PageTagType type);
 void PageProtect(void *mem, size_t size, int prot);
 size_t PageSize();
 }  // namespace panda::ecmascript

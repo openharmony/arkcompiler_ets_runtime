@@ -68,13 +68,13 @@ void PageUnmap(MemMap it)
 MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
 {
     MemMap memMap = PageMap(size, prot, alignment);
-    PageTag(memMap.GetMem(), memMap.GetSize());
+    PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MACHINE_CODE);
     return memMap;
 }
 
 void MachineCodePageUnmap(MemMap it)
 {
-    PageTag(it.GetMem(), it.GetSize(), true);
+    PageClearTag(it.GetMem(), it.GetSize());
     PageUnmap(it);
 }
 
@@ -82,7 +82,11 @@ void PageRelease([[maybe_unused]] void *mem, [[maybe_unused]] size_t size)
 {
 }
 
-void PageTag([[maybe_unused]] void *mem, [[maybe_unused]] size_t size, [[maybe_unused]] bool remove)
+void PageTag([[maybe_unused]] void *mem, [[maybe_unused]] size_t size, [[maybe_unused]] PageTagType type)
+{
+}
+
+void PageClearTag([[maybe_unused]] void *mem, [[maybe_unused]] size_t size)
 {
 }
 
