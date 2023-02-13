@@ -244,127 +244,6 @@ void TSTypeLowering::Lower(GateRef gate)
     }
 }
 
-void TSTypeLowering::DeleteGates(GateRef hir, std::vector<GateRef> &unusedGate)
-{
-    for (auto &gate : unusedGate) {
-        auto uses = acc_.Uses(gate);
-        for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
-            if (acc_.GetOpCode(gate) == OpCode::IF_EXCEPTION && acc_.GetOpCode(*useIt) == OpCode::MERGE) {
-                // handle exception merge has only one input, using state entry and depend entry to replace merge and
-                // dependselector.
-                if (acc_.GetNumIns(*useIt) == 1) {
-                    GateRef stateEntry = circuit_->GetStateRoot();
-                    GateRef dependEntry = circuit_->GetDependRoot();
-                    auto mergeUses = acc_.Uses(*useIt);
-                    for (auto mergeUseIt = mergeUses.begin(); mergeUseIt != uses.end(); ++mergeUseIt) {
-                        if (acc_.GetOpCode(*mergeUseIt) == OpCode::DEPEND_SELECTOR) {
-                            auto dependSelectorUses = acc_.Uses(*mergeUseIt);
-                            acc_.ReplaceIn(*dependSelectorUses.begin(), 0, dependEntry);
-                            acc_.DeleteGate(*mergeUseIt);
-                            break;
-                        }
-                    }
-                    acc_.ReplaceIn(*useIt, 0, stateEntry);
-                } else {
-                    acc_.DecreaseIn(useIt);
-                }
-            }
-        }
-        acc_.DeleteGate(gate);
-    }
-    acc_.DeleteGate(hir);
-}
-
-void TSTypeLowering::ReplaceHIRGate(GateRef hir, GateRef outir, GateRef state, GateRef depend,
-                                    std::vector<GateRef> &unusedGate)
-{
-    if (outir != Circuit::NullGate()) {
-        auto type = acc_.GetGateType(hir);
-        if (!type.IsAnyType()) {
-            acc_.SetGateType(outir, type);
-        }
-    }
-
-    std::map<GateRef, size_t> deleteMap;
-    auto uses = acc_.Uses(hir);
-    bool expFound = false;
-    for (auto tmpUseIt = uses.begin(); tmpUseIt != uses.end(); tmpUseIt++) {
-        if (acc_.GetOpCode(*tmpUseIt) == OpCode::IF_EXCEPTION) {
-            auto expUses = acc_.Uses(*tmpUseIt);
-            for (auto expUseIt = expUses.begin(); expUseIt != expUses.end(); ++expUseIt) {
-                if (acc_.GetOpCode(*expUseIt) == OpCode::MERGE && acc_.GetNumIns(*expUseIt) == 1) {
-                    expFound = true;
-                    break;
-                }
-            }
-        }
-    }
-    if (expFound) {
-        GateRef ifBranch = builder_.Branch(state, builder_.Boolean(false));
-        for (auto it = uses.begin(); it != uses.end();) {
-            if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS) {
-                acc_.SetMetaData(*it, circuit_->IfFalse());
-                it = acc_.ReplaceIn(it, ifBranch);
-            } else {
-                if (acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
-                    acc_.SetMetaData(*it, circuit_->IfTrue());
-                    it = acc_.ReplaceIn(it, ifBranch);
-                } else {
-                    it++;
-                }
-            }
-        }
-    }
-
-    for (auto useIt = uses.begin(); useIt != uses.end();) {
-        const OpCode op = acc_.GetOpCode(*useIt);
-        if (op == OpCode::IF_SUCCESS) {
-            // success path use fastpath state
-            unusedGate.emplace_back(*useIt);
-            auto successUse = acc_.Uses(*useIt).begin();
-            acc_.ReplaceIn(successUse, state);
-            ++useIt;
-        } else if (op == OpCode::IF_EXCEPTION) {
-            // exception path needs to delete all related nodes
-            unusedGate.emplace_back(*useIt);
-            auto exceptionUse = acc_.Uses(*useIt);
-            auto exceptionUseIt = exceptionUse.begin();
-            if (acc_.GetOpCode(*exceptionUseIt) == OpCode::MERGE) {
-                auto mergeUse = acc_.Uses(*exceptionUseIt);
-                // handle exception->merge->value_selector/depend_selector
-                for (auto mergeUseIt = mergeUse.begin(); mergeUseIt != mergeUse.end();) {
-                    if (acc_.GetOpCode(*mergeUseIt) == OpCode::VALUE_SELECTOR ||
-                        acc_.GetOpCode(*mergeUseIt) == OpCode::DEPEND_SELECTOR) {
-                        deleteMap[*mergeUseIt] = exceptionUseIt.GetIndex() + 1;
-                    }
-                    ++mergeUseIt;
-                }
-            } else if (acc_.GetOpCode(*exceptionUseIt) == OpCode::RETURN) {
-                unusedGate.emplace_back(*exceptionUseIt);
-            }
-            ++useIt;
-        } else if (op == OpCode::DEPEND_SELECTOR) {
-            if (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*useIt, 0), useIt.GetIndex() - 1)) == OpCode::IF_EXCEPTION) {
-                ++useIt;
-            } else {
-                useIt = acc_.ReplaceIn(useIt, depend);
-            }
-        } else {
-            if (acc_.IsValueIn(useIt)) {
-                useIt = acc_.ReplaceIn(useIt, outir);
-            } else if (acc_.IsDependIn(useIt)) {
-                useIt = acc_.ReplaceIn(useIt, depend);
-            } else {
-                useIt = acc_.ReplaceIn(useIt, state);
-            }
-        }
-    }
-
-    for (auto it = deleteMap.begin(); it != deleteMap.end(); it++) {
-        acc_.DecreaseIn(it->first, it->second);
-    }
-}
-
 void TSTypeLowering::LowerTypedAdd(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -622,10 +501,7 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType);
-
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 bool TSTypeLowering::NeedInt32OverflowCheck(TypedUnOp op) const
@@ -652,9 +528,7 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, gateType);
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
@@ -678,9 +552,7 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSTypeLowering::LowerConditionJump(GateRef gate)
@@ -730,11 +602,8 @@ void TSTypeLowering::LowerTypedLdArrayLength(GateRef gate)
     builder_.ArrayCheck(array);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
-    GateRef loadLength = builder_.LoadArrayLength(array);
-
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, loadLength, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    GateRef result = builder_.LoadArrayLength(array);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
@@ -780,9 +649,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.LoadProperty(receiver, propertyOffsetGate);
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
@@ -829,9 +696,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     builder_.StoreProperty(receiver, propertyOffsetGate, value);
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, Circuit::NullGate(), builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
@@ -865,9 +730,7 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
         UNREACHABLE();
     }
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
@@ -903,9 +766,7 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
         UNREACHABLE();
     }
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, Circuit::NullGate(), builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
@@ -939,9 +800,7 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
@@ -967,9 +826,7 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
         result = builder_.TypedUnaryOp<TypedUnOp::TYPED_ISTRUE>(value, valueType, GateType::TaggedValue());
     }
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
@@ -1002,7 +859,6 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
     args.emplace_back(bcIndex);
 
     GateRef constructGate = builder_.Construct(args);
-
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
@@ -1036,7 +892,6 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
     args.emplace_back(bcIndex);
 
     GateRef constructGate = builder_.Construct(args);
-
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
@@ -1049,9 +904,7 @@ void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID i
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedCallBuiltin(a0, id);
 
-    std::vector<GateRef> removedGate;
-    ReplaceHIRGate(gate, result, builder_.GetState(), builder_.GetDepend(), removedGate);
-    DeleteGates(gate, removedGate);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func, GateRef receiver)
