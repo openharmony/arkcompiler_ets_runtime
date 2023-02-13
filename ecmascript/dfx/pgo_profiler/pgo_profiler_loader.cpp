@@ -97,18 +97,21 @@ bool PGOProfilerLoader::Verify(uint32_t checksum)
             return true;
         }
     }
+    LOG_ECMA(ERROR) << "Verify profiler failure";
     return false;
 }
 
 bool PGOProfilerLoader::LoadAndVerify(const std::string &inPath, uint32_t hotnessThreshold, uint32_t checksum)
 {
-    if (Load(inPath, hotnessThreshold)) {
-        if (!Verify(checksum)) {
-            LOG_COMPILER(ERROR) << "Verify profiler failure";
-            return false;
-        }
+    // When the file name is empty, Enter full compiler mode.
+    if (inPath.empty()) {
+        return true;
     }
-    return true;
+
+    if (Load(inPath, hotnessThreshold) && Verify(checksum)) {
+        return true;
+    }
+    return false;
 }
 
 bool PGOProfilerLoader::ParseProfilerHeader(void **buffer)

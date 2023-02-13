@@ -20,6 +20,7 @@
 #include <cstring>
 #include <memory>
 
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/log_wrapper.h"
@@ -128,29 +129,16 @@ private:
     char methodName_;
 };
 
-class PGOProfilerHeader {
+class PGOProfilerHeader : public base::FileHeader {
 public:
-    static constexpr size_t MAGIC_SIZE = 8;
-    static constexpr size_t VERSION_SIZE = 4;
-    static constexpr std::array<uint8_t, MAGIC_SIZE> MAGIC = {'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0'};
     static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 1};
+
+    PGOProfilerHeader() : base::FileHeader(LAST_VERSION) {}
 
     bool Verify()
     {
-        if (magic != MAGIC) {
-            LOG_ECMA(ERROR) << "Profiler magic error";
-            return false;
-        }
-        if (version > LAST_VERSION) {
-            LOG_ECMA(ERROR) << "Profiler version error";
-            return false;
-        }
-        return true;
+        return VerifyInner(LAST_VERSION);
     }
-
-private:
-    std::array<uint8_t, MAGIC_SIZE> magic {MAGIC};
-    std::array<uint8_t, VERSION_SIZE> version {LAST_VERSION};
 };
 
 class PandaFileProfilerInfo {
