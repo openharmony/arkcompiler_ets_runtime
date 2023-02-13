@@ -15,6 +15,12 @@ if (!defined(ark_standalone_build)) {
   ark_standalone_build = false
 }
 
+declare_args() {
+  # If true, use icu to implement Intl APIs.
+  # If false, use @ohos.intl APIs to implement Intl APIs.
+  enable_ark_intl = true
+}
+
 if (!ark_standalone_build) {
   build_root = "//build"
   ark_third_party_root = "//third_party"
@@ -25,6 +31,7 @@ if (!ark_standalone_build) {
 }
 ark_root = "//arkcompiler/runtime_core"
 js_root = "//arkcompiler/ets_runtime"
+global_root = "//base/global/i18n"
 compile_llvm_online = false
 run_with_asan = false
 enable_leak_check = false

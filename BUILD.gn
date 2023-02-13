@@ -237,6 +237,9 @@ intl_sources = [
   "ecmascript/js_plural_rules.cpp",
   "ecmascript/js_relative_time_format.cpp",
 ]
+if (!enable_ark_intl) {
+  intl_sources += [ "ecmascript/intl/global_intl_helper.cpp" ]
+}
 
 config("ark_jsruntime_compiler_config") {
   configs = [ "$js_root:ark_jsruntime_common_config" ]
@@ -389,6 +392,11 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_AMD64",
       "PANDA_USE_32_BIT_POINTER",
     ]
+  }
+  if (enable_ark_intl) {
+    defines += [ "ARK_SUPPORT_INTL" ]
+  } else {
+    configs = [ "$global_root/frameworks/intl:intl_util_config" ]
   }
 }
 
@@ -900,6 +908,13 @@ ohos_shared_library("libark_jsruntime") {
     if (enable_hilog) {
       external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
     }
+  }
+
+  if (!enable_ark_intl) {
+    if (!defined(external_deps)) {
+      external_deps = []
+    }
+    external_deps += [ "i18n:intl_util" ]
   }
 
   install_enable = true
