@@ -51,7 +51,8 @@ enum BytecodeKind : uint32_t {
     CONDITIONAL_JUMP,
     MOV,
     SET_CONSTANT,
-    GENERATOR,
+    SUSPEND,
+    RESUME,
     DISCARDED,
 };
 
@@ -117,6 +118,11 @@ public:
         return GetKind() == BytecodeKind::JUMP_IMM;
     }
 
+    bool IsSuspend() const
+    {
+        return GetKind() == BytecodeKind::SUSPEND;
+    }
+
     bool IsSetConstant() const
     {
         return GetKind() == BytecodeKind::SET_CONSTANT;
@@ -139,7 +145,7 @@ public:
 
     bool IsGeneratorRelative() const
     {
-        return GetKind() == BytecodeKind::GENERATOR;
+        return (GetKind() == BytecodeKind::RESUME) || (GetKind() == BytecodeKind::SUSPEND);
     }
 
     bool IsDiscarded() const
@@ -479,6 +485,11 @@ public:
     bool IsThrow() const
     {
         return metaData_.IsThrow();
+    }
+
+    bool IsSuspend() const
+    {
+        return metaData_.IsSuspend();
     }
 
     bool IsDiscarded() const

@@ -142,9 +142,11 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             break;
         case EcmaOpcode::SUSPENDGENERATOR_V8:
             flags |= BytecodeFlags::READ_THIS_OBJECT;
-            [[fallthrough]];
+        case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
+            kind = BytecodeKind::SUSPEND;
+            break;
         case EcmaOpcode::RESUMEGENERATOR:
-            kind = BytecodeKind::GENERATOR;
+            kind = BytecodeKind::RESUME;
             break;
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::NOP:
@@ -176,7 +178,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
 
     if (kind == BytecodeKind::GENERAL ||
         kind == BytecodeKind::THROW_BC ||
-        kind == BytecodeKind::GENERATOR) {
+        kind == BytecodeKind::RESUME ||
+        kind == BytecodeKind::SUSPEND) {
         flags |= BytecodeFlags::GENERAL_BC;
     }
     auto size = inst.GetSize();
