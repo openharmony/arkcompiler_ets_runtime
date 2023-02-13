@@ -141,12 +141,12 @@ public:
             ASSERT(pos != CString::npos);
             CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
             if (moduleName != vm->GetModuleName()) {
-                outFileName = CString(BUNDLE_INSTALL_PATH) + moduleName + CString(MERGE_ABC_ETS_MODULES);
+                outFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
             }
             entryPoint = vm->GetBundleName() + "/" + inputFileName.substr(startStrLen);
         } else {
             // Temporarily handle the relative path sent by arkui
-            if (inputFileName.find("@bundle:") != CString::npos) {
+            if (StringStartWith(inputFileName, PREFIX_BUNDLE, PREFIX_BUNDLE_LEN)) {
                 entryPoint = inputFileName.substr(PREFIX_BUNDLE_LEN);
                 outFileName = ParseNewPagesUrl(vm, entryPoint);
             } else {
@@ -292,17 +292,18 @@ public:
         return entryPoint;
     }
 
-    static CString MakeNewRecord(const JSPandaFile *jsPandaFile, CString &baseFilename, CString &moduleRecordName,
-                                 CString &moduleRequestName)
+    static CString MakeNewRecord(const JSPandaFile *jsPandaFile, CString &baseFilename, const CString &recordName,
+                                 const CString &requestName)
     {
         CString entryPoint;
+        CString moduleRequestName = RemoveSuffix(requestName);
         size_t pos = moduleRequestName.find("./");
         if (pos == 0) {
             moduleRequestName = moduleRequestName.substr(2); // 2 means jump "./"
         }
-        pos = moduleRecordName.rfind('/');
+        pos = recordName.rfind('/');
         if (pos != CString::npos) {
-            entryPoint = moduleRecordName.substr(0, pos + 1) + moduleRequestName;
+            entryPoint = recordName.substr(0, pos + 1) + moduleRequestName;
         } else {
             entryPoint = moduleRequestName;
         }
@@ -315,7 +316,10 @@ public:
         if (jsPandaFile->HasRecord(entryPoint)) {
             return entryPoint;
         }
-
+        entryPoint = ParseThirdPartyPackge(jsPandaFile, recordName, requestName);
+        if (jsPandaFile->HasRecord(entryPoint)) {
+            return entryPoint;
+        }
         // Execute abc locally
         pos = baseFilename.rfind('/');
         if (pos != CString::npos) {
@@ -393,17 +397,32 @@ public:
         return ParseThirdPartyPackge(jsPandaFile, recordName, requestName, NPM_PATH_SEGMENT);
     }
 
-    static bool CheckAndRemoveSuffix(CString &moduleRequestName)
+    static bool IsImportFile(const CString &moduleRequestName)
     {
+        if (moduleRequestName[0] == '.') {
+            return true;
+        }
         size_t pos = moduleRequestName.rfind('.');
         if (pos != CString::npos) {
             CString suffix = moduleRequestName.substr(pos);
-            if (suffix == EXT_NAME_ETS || suffix == EXT_NAME_TS || suffix == EXT_NAME_JS || suffix == EXT_NAME_JSON) {
-                moduleRequestName.erase(pos, suffix.length());
+            if (suffix == EXT_NAME_JS || suffix == EXT_NAME_TS || suffix == EXT_NAME_ETS || suffix == EXT_NAME_JSON) {
                 return true;
             }
         }
-        return moduleRequestName.find("./") == 0 || moduleRequestName.find("../") == 0;
+        return false;
+    }
+
+    static CString RemoveSuffix(const CString &requestName)
+    {
+        CString res = requestName;
+        size_t pos = res.rfind('.');
+        if (pos != CString::npos) {
+            CString suffix = res.substr(pos);
+            if (suffix == EXT_NAME_JS || suffix == EXT_NAME_TS || suffix == EXT_NAME_ETS || suffix == EXT_NAME_JSON) {
+                res.erase(pos, suffix.length());
+            }
+        }
+        return res;
     }
 
     static CString ConcatFileNameWithMerge(const JSPandaFile *jsPandaFile, CString &baseFilename,
@@ -416,7 +435,7 @@ public:
             entryPoint = ParsePreixModule(baseFilename, recordName, requestName);
         } else if (StringStartWith(requestName, PREFIX_PACKAGE, PREFIX_PACKAGE_LEN)) {
             entryPoint = requestName.substr(PREFIX_PACKAGE_LEN);
-        } else if (CheckAndRemoveSuffix(requestName)) {
+        } else if (IsImportFile(requestName)) {
             entryPoint = MakeNewRecord(jsPandaFile, baseFilename, recordName, requestName);
         } else {
             entryPoint = ParseThirdPartyPackge(jsPandaFile, recordName, requestName);
