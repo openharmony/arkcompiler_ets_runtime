@@ -88,9 +88,17 @@ public:
     {
         return type_;
     }
+    void SetType(NodeType type)
+    {
+        type_ = type;
+    }
     size_t GetSelfSize() const
     {
         return size_;
+    }
+    void SetSelfSize(size_t size)
+    {
+        size_ = size;
     }
     size_t GetEdgeCount() const
     {
@@ -107,6 +115,10 @@ public:
     Address GetAddress() const
     {
         return address_;
+    }
+    void SetAddress(Address address)
+    {
+        address_ = address;
     }
     bool IsLive() const
     {
@@ -367,7 +379,7 @@ public:
     bool Verify();
 
     void PrepareSnapshot();
-    void UpdateNode(bool isInFinish = false);
+    void UpdateNodes(bool isInFinish = false);
     Node *AddNode(TaggedObject *address, size_t size);
     void MoveNode(uintptr_t address, TaggedObject *forwardAddress, size_t size);
     void RecordSampleTime();

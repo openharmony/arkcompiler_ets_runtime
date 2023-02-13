@@ -43,7 +43,7 @@ public:
     /*
      * The ID is the seat number in JSON file Range from 0~string_table_.size()
      */
-    StringId GetStringId(const CString *string) const;
+    StringId GetStringId(const CString *cstr) const;
     /*
      * Get all keys sorted by insert order
      */
@@ -63,12 +63,12 @@ public:
     /*
      * For external call to use this StringTable
      */
-    CString *GetString(CString as);
+    CString *GetString(const CString &cstr);
 
 private:
-    StringKey GenerateStringKey(const CString *string) const;
-    CString *FindOrInsertString(CString *string);
-    CString *FormatString(CString *string) const;
+    StringKey GenerateStringKey(const CString *cstr) const;
+    CString *FindOrInsertString(const CString *cstr);
+    CString *FormatString(CString *cstr) const;
     /*
      * Free all memory
      */
