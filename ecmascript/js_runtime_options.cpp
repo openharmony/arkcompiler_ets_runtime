@@ -442,6 +442,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_PGO_PROFILER_PATH:
+                if (*optarg == '\0') {
+                    return false;
+                }
                 SetPGOProfilerPath(optarg);
                 break;
             case OPTION_PGO_HOTNESS_THRESHOLD:
