@@ -339,7 +339,7 @@ ohos_executable("ark_stub_compiler") {
     "$ark_root/libpandafile:libarkfile_static",
   ]
 
-  if (!ark_standalone_build && host_os != mac) {
+  if (!ark_standalone_build && host_os != "mac") {
     ldflags = [ "-Wl,--lto-O0" ]
   }
   install_enable = false
