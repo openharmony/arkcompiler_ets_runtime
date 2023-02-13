@@ -304,9 +304,6 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_UNIX",
       "PANDA_USE_FUTEX",
     ]
-    if (host_os == "mac") {
-      defines += [ "DISABLE_ASM_INTERPRETER" ]
-    }
   } else if (target_os == "ios") {
     defines += [
       "PANDA_TARGET_IOS",
@@ -841,7 +838,7 @@ source_set("libark_jsruntime_test_set") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios" && host_os != "mac") {
+      !is_mac && target_os != "ios") {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
@@ -868,7 +865,7 @@ source_set("libark_jsruntime_static") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios" && host_os != "mac") {
+      !is_mac && target_os != "ios") {
     deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
