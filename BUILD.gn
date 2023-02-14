@@ -883,7 +883,9 @@ ohos_shared_library("libark_jsruntime") {
   ]
 
   if (is_ohos && is_standard_system) {
-    version_script = "libark_jsruntime.map"
+    if (!is_debug) {
+      version_script = "libark_jsruntime.map"
+    }
     if (enable_dump_in_faultlog || enable_bytrace || enable_hitrace ||
         enable_hilog) {
       external_deps = []
