@@ -81,6 +81,13 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
     if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
         return moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue());
     }
+
+    CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
+    auto [isNative, moduleType] = ModuleManager::CheckNativeModule(moduleRequestName);
+    if (isNative) {
+        return moduleManager->ResolveNativeModule(moduleRequestName, moduleType);
+    }
+
     ASSERT(module->GetEcmaModuleFilename().IsHeapObject());
     CString baseFilename =
         ConvertToString(EcmaString::Cast(module->GetEcmaModuleFilename().GetTaggedObject()));
@@ -90,7 +97,6 @@ JSHandle<SourceTextModule> SourceTextModule::HostResolveImportedModuleWithMerge(
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
 
-    CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
     CString entryPoint =
         PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -746,13 +752,21 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
                 ASSERT(moduleRecordName.IsString());
                 requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
             }
-            // c. Set index to ? InnerModuleEvaluation(requiredModule, stack, index).
-            JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
+            ModuleTypes moduleType = requiredModule->GetTypes();
+            if (ModuleManager::IsNativeModule(moduleType)) {
+                if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
+                    ModuleManager::EvaluateNativeModule(thread, requiredModule, required, moduleType);
+                    requiredModule->SetStatus(ModuleStatus::EVALUATED);
+                }
+                continue;
+            }
             // if requiredModule is jsonModule, then don't need to execute.
-            if (requiredModule->GetTypes() == ModuleTypes::JSONMODULE) {
+            if (requiredModule->GetTypes() == ModuleTypes::JSON_MODULE) {
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
             }
+            // c. Set index to ? InnerModuleEvaluation(requiredModule, stack, index).
+            JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
             index = SourceTextModule::InnerModuleEvaluation(thread, requiredModuleRecord, stack, index);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             // d. Assert: requiredModule.[[Status]] is either "evaluating" or "evaluated".
@@ -772,7 +786,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
                 module->SetDFSAncestorIndex(dfsAncIdx);
             }
             // if requiredModule is CommonJS Module, instantiate here (after CommonJS execution).
-            if ((requiredModule->GetTypes() == ModuleTypes::CJSMODULE)) {
+            if ((requiredModule->GetTypes() == ModuleTypes::CJS_MODULE)) {
                 CJSInstantiate(thread, module, requiredModule);
             }
         }
@@ -825,16 +839,24 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
                 ASSERT(moduleRecordName.IsString());
                 requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
             }
-            JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
-            if (requiredModule->GetTypes() == ModuleTypes::JSONMODULE) {
+            ModuleTypes moduleType = requiredModule->GetTypes();
+            if (ModuleManager::IsNativeModule(moduleType)) {
+                if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
+                    ModuleManager::EvaluateNativeModule(thread, requiredModule, required, moduleType);
+                    requiredModule->SetStatus(ModuleStatus::EVALUATED);
+                }
+                continue;
+            }
+            if (requiredModule->GetTypes() == ModuleTypes::JSON_MODULE) {
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
             }
+            JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
             index = SourceTextModule::InnerModuleEvaluation(thread, requiredModuleRecord, stack, index);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             [[maybe_unused]] ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
             ASSERT(requiredModuleStatus == ModuleStatus::EVALUATED);
-            if ((requiredModule->GetTypes() == ModuleTypes::CJSMODULE)) {
+            if ((requiredModule->GetTypes() == ModuleTypes::CJS_MODULE)) {
                 CJSInstantiate(thread, module, requiredModule);
             }
         }
@@ -1177,7 +1199,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
         // a. If SameValue(exportName, e.[[ExportName]]) is true, then
         // if module == CommonJS, export first, check after execution.
         if ((JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue())) ||
-            (module->GetTypes() == ModuleTypes::CJSMODULE)) {
+            (module->GetTypes() == ModuleTypes::CJS_MODULE)) {
             // Adapter new module
             if (module->GetIsNewBcVersion()) {
                 return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, idx));
