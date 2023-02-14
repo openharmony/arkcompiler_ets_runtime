@@ -84,6 +84,7 @@ group("ark_aot_test") {
     "getunmappedargs:getunmappedargsAotAction",
     "global_this_ts:global_this_tsAotAction",
     "helloaot:helloaotAotAction",
+    "helloconcurrent:helloconcurrentAotAction",
     "ic:icAotAction",
     "inc:incAotAction",
     "inline:inlineAotAction",

@@ -2723,6 +2723,13 @@ void JSNApi::SetLoop(EcmaVM *vm, void *loop)
     vm->SetLoop(loop);
 }
 
+bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
+{
+    vm->SetConcurrentCallback(cb, data);
+
+    return true;
+}
+
 bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
 {
     [[maybe_unused]] LocalScope scope(vm);

@@ -633,3 +633,7 @@ groups:
         acc: out:top
         prefix: ecma
         format: [pref_op_v1_8_v2_8]
+      - sig: ecma.notifyconcurrentresult
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_none]

@@ -311,6 +311,7 @@ namespace panda::ecmascript::kungfu {
     V(DEPRECATED_LDHOMEOBJECT_PREF_NONE) \
     V(DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16) \
     V(DEPRECATED_DYNAMICIMPORT_PREF_V8)        \
+    V(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE)   \
 
 inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
 {
