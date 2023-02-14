@@ -97,7 +97,9 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
 
     CString entryPoint =
-        PathHelper::ConcatFileNameWithMerge(jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+        PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
     if (entryPoint == PathHelper::PREVIEW_OF_ACROSS_HAP_FLAG) {
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());

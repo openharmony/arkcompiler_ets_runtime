@@ -113,8 +113,9 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     } else {
         CString currentEntryPoint = ConvertToString(entrypointVal.GetTaggedValue());
         CString requestStr = ConvertToString(request.GetTaggedValue());
-        requestEntryPoint = PathHelper::ConcatFileNameWithMerge(jsPandaFile, mergedFilename,
+        requestEntryPoint = PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, mergedFilename,
                                                                 currentEntryPoint, requestStr);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         filename.Update(factory->NewFromUtf8(requestEntryPoint));
     }
 
