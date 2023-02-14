@@ -17,7 +17,7 @@
 #define ECMASCRIPT_PLATFORM_ELF_H
 
 #include <stdint.h>
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <elf.h>
 #else
 typedef uint16_t Elf64_Half;

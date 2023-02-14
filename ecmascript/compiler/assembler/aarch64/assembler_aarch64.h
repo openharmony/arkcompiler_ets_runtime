@@ -319,7 +319,6 @@ public:
     void And(const Register &rd, const Register &rn, const LogicalImmediate &imm);
     void Ands(const Register &rd, const Register &rn, const LogicalImmediate &imm);
     void Lsr(const Register &rd, const Register &rn, unsigned shift);
-    void Lsl(const Register &rd, const Register &rn, unsigned shift);
     void Lsl(const Register &rd, const Register &rn, const Register &rm);
     void Lsr(const Register &rd, const Register &rn, const Register &rm);
     void Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
