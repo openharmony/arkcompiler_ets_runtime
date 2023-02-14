@@ -39,6 +39,13 @@ HeapProfiler::~HeapProfiler()
     jsonSerializer_ = nullptr;
 }
 
+void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
+{
+    vm_->CollectGarbage(TriggerGCType::OLD_GC);
+    vm_->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
+    snapshot->UpdateNodes();
+}
+
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
                                     bool isVmMode, bool isPrivate)
 {
@@ -71,6 +78,7 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
         return false;
     }
 
+    UpdateHeapObjects(snapshot);
     heapTracker_ = std::make_unique<HeapTracker>(snapshot, timeInterval, stream);
     const_cast<EcmaVM *>(vm_)->StartHeapTracking(heapTracker_.get());
 
@@ -88,11 +96,9 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
         return false;
     }
 
-    vm_->CollectGarbage(TriggerGCType::OLD_GC);
-    vm_->GetHeap()->GetSweeper()->EnsureAllTaskFinished();
-    snapshot->UpdateNode();
-
     snapshot->RecordSampleTime();
+    UpdateHeapObjects(snapshot);
+
     if (stream != nullptr) {
         snapshot->PushHeapStat(stream);
     }
@@ -185,7 +191,7 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
 
 HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate, bool traceAllocation)
 {
-    LOG_ECMA(ERROR) << "HeapProfiler::MakeHeapSnapshot";
+    LOG_ECMA(INFO) << "HeapProfiler::MakeHeapSnapshot";
     DISALLOW_GARBAGE_COLLECTION;
     const_cast<Heap *>(vm_->GetHeap())->Prepare();
     switch (sampleType) {

@@ -111,7 +111,7 @@ void HeapSnapshot::PrepareSnapshot()
     }
 }
 
-void HeapSnapshot::UpdateNode(bool isInFinish)
+void HeapSnapshot::UpdateNodes(bool isInFinish)
 {
     for (Node *node : nodes_) {
         node->SetLive(false);
@@ -119,7 +119,12 @@ void HeapSnapshot::UpdateNode(bool isInFinish)
     FillNodes(isInFinish);
     for (auto iter = nodes_.begin(); iter != nodes_.end();) {
         if (!(*iter)->IsLive()) {
-            entryMap_.FindAndEraseNode((*iter)->GetAddress());
+            Node *node = entryMap_.FindAndEraseNode((*iter)->GetAddress());
+            ASSERT(*iter == node);
+            if (node != nullptr) {
+                DecreaseNodeSize(node->GetSelfSize());
+                chunk_->Delete(node);
+            }
             iter = nodes_.erase(iter);
             nodeCount_--;
         } else {
@@ -130,7 +135,7 @@ void HeapSnapshot::UpdateNode(bool isInFinish)
 
 bool HeapSnapshot::FinishSnapshot()
 {
-    UpdateNode(true);
+    UpdateNodes(true);
     FillEdges();
     AddSyntheticRoot();
     return Verify();
@@ -178,24 +183,47 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
     stream->UpdateLastSeenObjectId(sequenceId);
 }
 
-Node *HeapSnapshot::AddNode(TaggedObject* address, size_t size)
+Node *HeapSnapshot::AddNode(TaggedObject *address, size_t size)
 {
     return GenerateNode(JSTaggedValue(address), size);
 }
 
-void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject* forwardAddress, size_t size)
+void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, size_t size)
 {
-    int sequenceId = -1;
-    uint64_t traceNodeId = 0;
-    Node *node = entryMap_.FindEntry(address);
+    if (address == reinterpret_cast<uintptr_t>(forwardAddress)) {
+        return;
+    }
+
+    Node *node = entryMap_.FindAndEraseNode(address);
     if (node != nullptr) {
         ASSERT(node->GetId() <= static_cast<uint64_t>(INT_MAX));
-        sequenceId = static_cast<int>(node->GetId());
-        traceNodeId = node->GetStackTraceId();
-    }
-    node = GenerateNode(JSTaggedValue(forwardAddress), size, sequenceId);
-    if (node != nullptr) {
-        node->SetTraceId(traceNodeId);
+
+        entryMap_.FindAndEraseNode(Node::NewAddress(forwardAddress));
+
+        // Size and name may change during its life for some types(such as string, array and etc).
+        if (forwardAddress->GetClass() != nullptr) {
+            node->SetName(GenerateNodeName(forwardAddress));
+        }
+        auto value = JSTaggedValue(forwardAddress);
+        if (value.IsString()) {
+            node->SetSelfSize(EcmaStringAccessor(forwardAddress).ObjectSize());
+        } else {
+            node->SetSelfSize(size);
+        }
+        node->SetAddress(Node::NewAddress(forwardAddress));
+        if (value.IsHeapObject()) {
+            if (value.IsString()) {
+                node->SetType(NodeType::PRIM_STRING);
+            } else {
+                node->SetType(GenerateNodeType(forwardAddress));
+            }
+        } else {
+            node->SetType(NodeType::JS_PRIMITIVE_REF);
+        }
+
+        entryMap_.InsertEntry(node);
+    } else {
+        GenerateNode(JSTaggedValue(forwardAddress), size, -1);
     }
 }
 
@@ -557,7 +585,7 @@ void HeapSnapshot::FillNodes(bool isInFinish)
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
-        heap->IterateOverObjects([this, &isInFinish](TaggedObject *obj) {
+        heap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
             GenerateNode(JSTaggedValue(obj), 0, -1, isInFinish);
         });
     }
@@ -601,13 +629,11 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceI
                 ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
             } else {
                 existNode->SetLive(true);
-                return nullptr;
+                return existNode;
             }
         }
     } else {
         CString primitiveName;
-        // A primitive value with tag will be regarded as a pointer
-        auto *obj = reinterpret_cast<TaggedObject *>(entry.GetRawData());
         if (entry.IsInt()) {
             primitiveName.append("Int:");
             if (!isPrivate_) {
@@ -632,6 +658,14 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceI
             primitiveName.append("Undefined");
         } else {
             primitiveName.append("Illegal_Primitive");
+        }
+
+        // A primitive value with tag will be regarded as a pointer
+        auto *obj = reinterpret_cast<TaggedObject *>(entry.GetRawData());
+        Node *existNode = entryMap_.FindEntry(reinterpret_cast<Address>(obj));
+        if (existNode != nullptr) {
+            existNode->SetLive(true);
+            return existNode;
         }
 
         node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(primitiveName), NodeType::JS_PRIMITIVE_REF, 0,
@@ -812,7 +846,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, int seq
             existNode->SetName(GetString(EntryVisitor::ConvertKey(entry)));
         }
         existNode->SetLive(true);
-        return nullptr;
+        return existNode;
     }
     // Allocation Event will generate string node for "".
     // When we need to serialize and isFinish is true, the nodeName will be given the actual string content.
@@ -953,6 +987,7 @@ void HeapSnapshot::EraseNodeUnique(Node *node)
     auto iter = std::find(nodes_.begin(), nodes_.end(), node);
     if (iter != nodes_.end()) {
         DecreaseNodeSize(node->GetSelfSize());
+        chunk_->Delete(node);
         nodes_.erase(iter);
         nodeCount_--;
     }
