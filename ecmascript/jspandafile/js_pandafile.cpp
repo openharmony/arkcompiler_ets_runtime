@@ -64,7 +64,8 @@ void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
         return;
     }
     for (auto info : jsRecordInfo_) {
-        if (info.first.find(NPM_PATH_SEGMENT) != CString::npos) {
+        if (info.first.find(PACKAGE_PATH_SEGMENT) != CString::npos ||
+            info.first.find(NPM_PATH_SEGMENT) != CString::npos) {
             continue;
         }
         CString recordName = info.first;

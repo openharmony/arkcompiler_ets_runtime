@@ -81,6 +81,7 @@ public:
     static constexpr char PACKAGE_NAME[] = "pkgName@";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
+    static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int MODULE_PREFIX_LENGTH = 8;
