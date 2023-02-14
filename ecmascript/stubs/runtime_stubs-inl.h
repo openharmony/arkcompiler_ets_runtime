@@ -375,7 +375,9 @@ JSTaggedValue RuntimeStubs::RuntimeCopyDataProperties(JSThread *thread, const JS
                                                       const JSHandle<JSTaggedValue> &src)
 {
     if (!src->IsNull() && !src->IsUndefined()) {
-        JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, src);
+        // 2. Let from be ! ToObject(source).
+        JSHandle<JSTaggedValue> from(JSTaggedValue::ToObject(thread, src));
+        JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, from);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -383,7 +385,7 @@ JSTaggedValue RuntimeStubs::RuntimeCopyDataProperties(JSThread *thread, const JS
         for (uint32_t i = 0; i < keysLen; i++) {
             PropertyDescriptor desc(thread);
             key.Update(keys->Get(i));
-            bool success = JSTaggedValue::GetOwnProperty(thread, src, key, desc);
+            bool success = JSTaggedValue::GetOwnProperty(thread, from, key, desc);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
             if (success && desc.IsEnumerable()) {
