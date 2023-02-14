@@ -739,7 +739,7 @@ bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, Seria
     // Write ACCESSORS(ViewedArrayBuffer) which is a pointer to an ArrayBuffer
     JSHandle<JSTaggedValue> viewedArrayBufferOrByteArray(thread_, typedArray->GetViewedArrayBufferOrByteArray());
     bool isViewedArrayBuffer = false;
-    if (viewedArrayBufferOrByteArray->IsArrayBuffer()) {
+    if (viewedArrayBufferOrByteArray->IsArrayBuffer() || viewedArrayBufferOrByteArray->IsSharedArrayBuffer()) {
         isViewedArrayBuffer = true;
         if (!WriteBoolean(isViewedArrayBuffer)) {
             bufferSize_ = oldSize;
