@@ -54,7 +54,7 @@ public:
 
     static void DestoryBuf(ExeMem &exeMem)
     {
-        PageUnmap(MemMap(exeMem.addr_, exeMem.size_));
+        MachineCodePageUnmap(MemMap(exeMem.addr_, exeMem.size_));
     }
 };
 

@@ -247,7 +247,7 @@ public:
 
     static MemMapAllocator *GetInstance();
 
-    MemMap Allocate(size_t size, size_t alignment, bool regular, int prot);
+    MemMap Allocate(size_t size, size_t alignment, bool regular, bool isMachineCode);
 
     void Free(void *mem, size_t size, bool isRegular);
 

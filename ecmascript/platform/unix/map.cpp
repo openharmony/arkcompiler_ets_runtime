@@ -53,13 +53,13 @@ void PageUnmap(MemMap it)
 MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
 {
     MemMap memMap = PageMap(size, prot, alignment);
-    PageTag(memMap.GetMem(), memMap.GetSize());
+    PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MACHINE_CODE);
     return memMap;
 }
 
 void MachineCodePageUnmap(MemMap it)
 {
-    PageTag(it.GetMem(), it.GetSize(), true);
+    PageClearTag(it.GetMem(), it.GetSize());
     PageUnmap(it);
 }
 
@@ -68,13 +68,15 @@ void PageRelease(void *mem, size_t size)
     madvise(mem, size, MADV_DONTNEED);
 }
 
-void PageTag(void *mem, size_t size, bool remove)
+void PageTag(void *mem, size_t size, PageTagType type)
 {
-    if (remove) {
-        PrctlSetVMA(mem, size, nullptr);
-    } else {
-        PrctlSetVMA(mem, size, "ArkJS Heap");
-    }
+    const char *tag = GetPageTagString(type);
+    PrctlSetVMA(mem, size, tag);
+}
+
+void PageClearTag(void *mem, size_t size)
+{
+    PrctlSetVMA(mem, size, nullptr);
 }
 
 void PageProtect(void *mem, size_t size, int prot)

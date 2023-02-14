@@ -111,13 +111,8 @@ public:
         lock_ = new os::memory::Mutex();
     }
 
-    ~Region()
-    {
-        if (lock_ != nullptr) {
-            delete lock_;
-            lock_ = nullptr;
-        }
-    }
+    ~Region() = default;
+
     NO_COPY_SEMANTIC(Region);
     NO_MOVE_SEMANTIC(Region);
 
@@ -234,6 +229,14 @@ public:
     static Region *ObjectAddressToRange(uintptr_t objAddress)
     {
         return reinterpret_cast<Region *>(objAddress & ~DEFAULT_REGION_MASK);
+    }
+
+    void ClearMembers()
+    {
+        if (lock_ != nullptr) {
+            delete lock_;
+            lock_ = nullptr;
+        }
     }
 
     void Invalidate()

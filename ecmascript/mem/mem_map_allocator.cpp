@@ -24,7 +24,7 @@ MemMapAllocator *MemMapAllocator::GetInstance()
     return vmAllocator_;
 }
 
-MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, int prot)
+MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bool isMachineCode)
 {
     if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
         LOG_GC(ERROR) << "memory map overflow";
@@ -36,8 +36,10 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, in
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
             memMapTotalSize_ += size;
+            int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
+            PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
             PageProtect(mem.GetMem(), mem.GetSize(), prot);
-            PageTag(mem.GetMem(), size);
+            PageTag(mem.GetMem(), size, type);
             return mem;
         }
         mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
@@ -47,8 +49,10 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, in
         mem = memMapFreeList_.GetMemFromList(size);
     }
     if (mem.GetMem() != nullptr) {
+        int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
+        PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
         PageProtect(mem.GetMem(), mem.GetSize(), prot);
-        PageTag(mem.GetMem(), mem.GetSize());
+        PageTag(mem.GetMem(), mem.GetSize(), type);
         memMapTotalSize_ += mem.GetSize();
     }
     return mem;
@@ -57,7 +61,7 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, in
 void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 {
     memMapTotalSize_ -= size;
-    PageTag(mem, size, true);
+    PageClearTag(mem, size);
     PageProtect(mem, size, PAGE_PROT_NONE);
     PageRelease(mem, size);
     if (isRegular) {
