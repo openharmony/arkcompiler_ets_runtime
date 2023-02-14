@@ -282,7 +282,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(StPatchVar)                         \
     V(DeoptHandler)                       \
     V(ContainerRBTreeForEach)             \
-    V(SlowFlattenString)
+    V(SlowFlattenString)                  \
+    V(NotifyConcurrentResult)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -643,6 +644,8 @@ private:
     static inline JSTaggedValue RuntimeLdPatchVar(JSThread *thread, uint32_t index);
     static inline JSTaggedValue RuntimeStPatchVar(JSThread *thread, uint32_t index,
                                                   const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
+        JSTaggedValue hint);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

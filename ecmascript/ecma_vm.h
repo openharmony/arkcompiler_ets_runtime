@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_ECMA_VM_H
 #define ECMASCRIPT_ECMA_VM_H
 
+#include <mutex>
+
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
 #include "ecmascript/js_handle.h"
@@ -23,9 +25,9 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/waiter_list.h"
-#include <mutex>
 
 namespace panda {
 class JSNApi;
@@ -371,6 +373,14 @@ public:
         return resolveBufferCallback_;
     }
 
+    void SetConcurrentCallback(ConcurrentCallback callback, void *data)
+    {
+        concurrentCallback_ = callback;
+        concurrentData_ = data;
+    }
+
+    void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
+
     void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
 
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
@@ -654,6 +664,10 @@ private:
     // CJS resolve path Callbacks
     ResolvePathCallback resolvePathCallback_ {nullptr};
     ResolveBufferCallback resolveBufferCallback_ {nullptr};
+
+    // Concurrent taskpool callback and data
+    ConcurrentCallback concurrentCallback_ {nullptr};
+    void *concurrentData_ {nullptr};
 
     // vm parameter configurations
     EcmaParamConfiguration ecmaParamConfiguration_;

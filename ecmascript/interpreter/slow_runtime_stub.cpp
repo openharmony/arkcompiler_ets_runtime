@@ -1161,4 +1161,10 @@ JSTaggedValue SlowRuntimeStub::StPatchVar(JSThread *thread, uint32_t index, JSTa
     JSHandle<JSTaggedValue> valueHandle(thread, value);
     return RuntimeStubs::RuntimeStPatchVar(thread, index, valueHandle);
 }
+
+JSTaggedValue SlowRuntimeStub::NotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint)
+{
+    INTERPRETER_TRACE(thread, NotifyConcurrentResult);
+    return RuntimeStubs::RuntimeNotifyConcurrentResult(thread, result, hint);
+}
 }  // namespace panda::ecmascript

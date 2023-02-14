@@ -178,6 +178,8 @@ public:
     static JSTaggedValue LdPatchVar(JSThread *thread, uint32_t index);
     static JSTaggedValue StPatchVar(JSThread *thread, uint32_t index, JSTaggedValue value);
 
+    static JSTaggedValue NotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint);
+
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);

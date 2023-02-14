@@ -310,7 +310,7 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
             return WritePlainObject(value);
         case JSType::JS_NATIVE_POINTER:
             return WriteNativePointer(value);
-        case JSType::JS_FUNCTION:
+        case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return WriteJSFunction(value);
         case JSType::METHOD:
             return WriteMethod(value);
@@ -483,7 +483,7 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
 {
     size_t oldSize = bufferSize_;
-    if (!WriteType(SerializationUID::JS_FUNCTION)) {
+    if (!WriteType(SerializationUID::CONCURRENT_FUNCTION)) {
         return false;
     }
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(value);
@@ -1229,7 +1229,7 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
             return ReadJSArrayBuffer();
         case SerializationUID::TAGGED_OBJECT_REFERNCE:
             return ReadReference();
-        case SerializationUID::JS_FUNCTION:
+        case SerializationUID::CONCURRENT_FUNCTION:
             return ReadJSFunction();
         case SerializationUID::TAGGED_ARRAY:
             return ReadTaggedArray();
@@ -1382,7 +1382,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadNativeMethod()
 JSHandle<JSTaggedValue> JSDeserializer::ReadJSFunction()
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> func = factory_->NewJSFunction(env);
+    JSHandle<JSFunction> func = factory_->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
     JSHandle<JSTaggedValue> funcTag(func);
     referenceMap_.emplace(objectId_++, funcTag);
     JSHandle<JSTaggedValue> methodVal = DeserializeJSTaggedValue();

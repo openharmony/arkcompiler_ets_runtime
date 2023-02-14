@@ -2699,6 +2699,13 @@ std::string JSNApi::GetAssetPath(EcmaVM *vm)
     return vm->GetAssetPath().c_str();
 }
 
+bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
+{
+    vm->SetConcurrentCallback(cb, data);
+
+    return true;
+}
+
 bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
 {
     [[maybe_unused]] LocalScope scope(vm);

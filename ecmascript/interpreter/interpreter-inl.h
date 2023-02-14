@@ -109,6 +109,12 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         goto *deprecatedDispatchTable[opcode]; \
     } while (false)
 
+#define DISPATCH_CALLRUNTIME()                  \
+    do {                                        \
+        opcode = *(pc + 1);                     \
+        goto *callRuntimeDispatchTable[opcode]; \
+    } while (false)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GET_FRAME(CurrentSp) \
     (reinterpret_cast<InterpretedFrame *>(CurrentSp) - 1)  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -881,6 +887,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
+    constexpr size_t numCallRuntimeOps = 1;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -893,6 +900,10 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
     static std::array<const void *, numWideOps> wideDispatchTable {
 #include "templates/wide_instruction_dispatch.inl"
+    };
+
+    static std::array<const void *, numCallRuntimeOps> callRuntimeDispatchTable {
+#include "templates/call_runtime_instruction_dispatch.inl"
     };
 
     static std::array<const void *, numDeprecatedOps> deprecatedDispatchTable {
@@ -1354,6 +1365,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         methodHandle.Update(JSFunction::Cast(state->function.GetTaggedObject())->GetMethod());
         [[maybe_unused]] auto fistPC = methodHandle->GetBytecodeArray();
         UPDATE_HOTNESS_COUNTER(-(pc - fistPC));
+
         JSTaggedType *currentSp = sp;
         sp = state->base.prev;
         ASSERT(sp != nullptr);
@@ -1401,6 +1413,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         methodHandle.Update(JSFunction::Cast(state->function.GetTaggedObject())->GetMethod());
         [[maybe_unused]] auto fistPC = methodHandle->GetBytecodeArray();
         UPDATE_HOTNESS_COUNTER_NON_ACC(-(pc - fistPC));
+
         JSTaggedType *currentSp = sp;
         sp = state->base.prev;
         ASSERT(sp != nullptr);
@@ -3674,6 +3687,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     NOPRINT_HANDLE_OPCODE(DEPRECATED) {
         DISPATCH_DEPRECATED();
+    }
+    NOPRINT_HANDLE_OPCODE(CALLRUNTIME) {
+        DISPATCH_CALLRUNTIME();
     }
     HANDLE_OPCODE(THROW_PREF_NONE) {
         LOG_INST() << "intrinsics::throw";
@@ -7070,6 +7086,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
         DISPATCH(DEPRECATED_DYNAMICIMPORT_PREF_V8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE) {
+        LOG_INST() << "intrinsics::callruntime.notifyconcurrentresult";
+        JSTaggedValue thisObject = GetThis(sp);
+        SlowRuntimeStub::NotifyConcurrentResult(thread, acc, thisObject);
+        DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
     }
 #include "templates/debugger_instruction_handler.inl"
 }

@@ -21,8 +21,6 @@
 namespace panda::ecmascript {
 enum class FunctionKind : uint8_t {
     NORMAL_FUNCTION = 0,
-    // Concurrent function is normal function with concurrent property
-    CONCURRENT_FUNCTION,
     // BEGIN accessors
     GETTER_FUNCTION,
     SETTER_FUNCTION,
@@ -32,19 +30,18 @@ enum class FunctionKind : uint8_t {
     // BEGIN async functions
     ASYNC_ARROW_FUNCTION,
     // END arrow functions
+    // Concurrent function is async function with concurrent property
+    CONCURRENT_FUNCTION,
     ASYNC_FUNCTION,
     // END async functions
     // BEGIN base constructors
     BASE_CONSTRUCTOR,
-    // BEGIN default constructors
-    DEFAULT_BASE_CONSTRUCTOR,
     // BEGIN class constructors
     CLASS_CONSTRUCTOR,
     // END base constructors
     // BEGIN constructable functions
     BUILTIN_PROXY_CONSTRUCTOR,
     BUILTIN_CONSTRUCTOR,
-    // END default constructors
     DERIVED_CONSTRUCTOR,
     // END class constructors
     GENERATOR_FUNCTION,

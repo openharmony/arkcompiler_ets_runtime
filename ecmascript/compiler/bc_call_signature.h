@@ -59,7 +59,6 @@ namespace panda::ecmascript::kungfu {
     T(HandleOverflowF8)                                 \
     T(HandleOverflowF9)                                 \
     T(HandleOverflowFA)                                 \
-    T(HandleOverflowFB)
 
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
@@ -279,6 +278,7 @@ namespace panda::ecmascript::kungfu {
     T(HandleStownbynamewithnamesetImm16Id16V8)                            \
     T(HandleNop)                                                          \
     ASM_UNUSED_BC_STUB_LIST(T)                                            \
+    T(HandleCallRuntime)                                                  \
     T(HandleDeprecated)                                                   \
     T(HandleWide)                                                         \
     T(HandleThrow)                                                        \
@@ -370,6 +370,10 @@ namespace panda::ecmascript::kungfu {
     T(HandleThrowIfsupernotcorrectcallPrefImm16)                          \
     T(HandleThrowUndefinedifholewithnamePrefId16)
 
+// V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
+#define ASM_INTERPRETER_CALLRUNTIME_STUB_LIST(V, T, D)                    \
+    T(HandleCallRuntimeNotifyConcurrentResultPrefNone)                    \
+
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \
     V(BCDebuggerEntry)                                  \
@@ -381,13 +385,15 @@ namespace panda::ecmascript::kungfu {
     ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)         \
     ASM_INTERPRETER_DEPRECATED_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V) \
     ASM_INTERPRETER_WIDE_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)       \
-    ASM_INTERPRETER_THROW_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)
+    ASM_INTERPRETER_THROW_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)      \
+    ASM_INTERPRETER_CALLRUNTIME_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)
 
 #define INTERPRETER_BC_STUB_LIST(V)                            \
     ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, V, V)         \
     ASM_INTERPRETER_DEPRECATED_STUB_LIST(IGNORE_BC_STUB, V, V) \
     ASM_INTERPRETER_WIDE_STUB_LIST(IGNORE_BC_STUB, V, V)       \
-    ASM_INTERPRETER_THROW_STUB_LIST(IGNORE_BC_STUB, V, V)
+    ASM_INTERPRETER_THROW_STUB_LIST(IGNORE_BC_STUB, V, V)      \
+    ASM_INTERPRETER_CALLRUNTIME_STUB_LIST(IGNORE_BC_STUB, V, V)
 
 #define ASM_INTERPRETER_BC_STUB_ID_LIST(V) \
     ASM_INTERPRETER_BC_STUB_LIST(V, V, V)
@@ -395,7 +401,8 @@ namespace panda::ecmascript::kungfu {
 #define ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(V) \
     ASM_INTERPRETER_WIDE_STUB_LIST(V, V, V)       \
     ASM_INTERPRETER_THROW_STUB_LIST(V, V, V)      \
-    ASM_INTERPRETER_DEPRECATED_STUB_LIST(V, V, V)
+    ASM_INTERPRETER_DEPRECATED_STUB_LIST(V, V, V) \
+    ASM_INTERPRETER_CALLRUNTIME_STUB_LIST(V, V, V)
 
 class BytecodeStubCSigns {
 public:
@@ -423,6 +430,10 @@ public:
         ASM_INTERPRETER_DEPRECATED_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
         NUM_OF_DEPRECATED_STUBS
     };
+    enum CallRuntimeID {
+        ASM_INTERPRETER_CALLRUNTIME_STUB_LIST(DEF_BC_STUB_ID, DEF_BC_STUB_ID, DEF_BC_STUB_ID)
+        NUM_OF_CALLRUNTIME_STUBS
+    };
 #undef DEF_BC_STUB_ID
 
 #define DEF_BC_STUB_ID(name) ID_##name,
@@ -436,6 +447,7 @@ public:
         ID_Wide_Start = lastOpcode + 1,
         ID_Throw_Start = ID_Wide_Start + NUM_OF_WIDE_STUBS,
         ID_Deprecated_Start = ID_Throw_Start + NUM_OF_THROW_STUBS,
+        ID_CallRuntime_Start = ID_Deprecated_Start + NUM_OF_DEPRECATED_STUBS
     };
 #undef DEF_BC_STUB_ID
 

@@ -955,4 +955,26 @@ JSTaggedValue EcmaVM::GetMethodByIndex(MethodIndex idx)
     ASSERT(index < internalNativeMethods_.size());
     return internalNativeMethods_[index];
 }
+
+void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
+{
+    if (concurrentCallback_ == nullptr) {
+        LOG_ECMA(INFO) << "Only trigger concurrent callback in taskpool thread";
+        return;
+    }
+
+    if (result.IsJSPromise()) {
+        // Async concurrent will return Promise
+        auto promise = JSPromise::Cast(result.GetTaggedObject());
+        if (promise->GetPromiseState() == PromiseState::PENDING) {
+            LOG_ECMA(ERROR) << "Promise is in pending state, don't return";
+            return;
+        }
+        result = promise->GetPromiseResult();
+    }
+
+    auto ret = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result));
+    auto data = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, hint));
+    concurrentCallback_(ret, data, concurrentData_);
+}
 }  // namespace panda::ecmascript
