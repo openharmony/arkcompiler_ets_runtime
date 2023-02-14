@@ -37,11 +37,14 @@ void AsyncFunctionLowering::ProcessJumpTable()
 {
     GateRef newTarget = argAccessor_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     GateRef isEqual = builder_.Equal(newTarget, builder_.Undefined());
-    GateRef stateEntryState = *accessor_.ConstUses(stateEntry_).begin();
+    auto firstUse = accessor_.ConstUses(stateEntry_).begin();
     GateRef ifBranchCondition = builder_.Branch(stateEntry_, isEqual);
     GateRef ifTrueCondition = builder_.IfTrue(ifBranchCondition);
     GateRef ifFalseCondition = builder_.IfFalse(ifBranchCondition);
-    accessor_.ReplaceStateIn(stateEntryState, ifTrueCondition);
+    if (accessor_.GetOpCode(*firstUse) == OpCode::STATE_SPLIT) {
+        firstUse++;
+    }
+    accessor_.ReplaceStateIn(*firstUse, ifTrueCondition);
 
     GateRef contextOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET);
     GateRef val = builder_.PtrAdd(newTarget, contextOffset);

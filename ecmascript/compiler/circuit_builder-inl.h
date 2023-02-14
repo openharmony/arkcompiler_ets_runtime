@@ -877,6 +877,11 @@ GateRef CircuitBuilder::GetDepend() const
     return GetCurrentLabel()->GetDepend();
 }
 
+StateDepend CircuitBuilder::GetStateDepend() const
+{
+    return StateDepend(GetState(), GetDepend());
+}
+
 void CircuitBuilder::SetDepend(GateRef depend)
 {
     GetCurrentLabel()->SetDepend(depend);

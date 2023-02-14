@@ -583,8 +583,8 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
         EnumerateBlock(bb, [&noThrow, &bb]
         (const BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsGeneral()) {
-                noThrow = false;
-                if (!bb.catchs.empty()) {
+                if (!bb.catchs.empty() && !bytecodeInfo.NoThrow()) {
+                    noThrow = false;
                     bb.catchs.at(0)->numOfStatePreds++;
                 }
             }
@@ -831,6 +831,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         gate = circuit_->NewGate(meta, MachineType::NOVALUE, inList.size(),
                                  inList.data(), GateType::Empty());
     }
+    byteCodeToJSGate_[iterator.Index()] = gate;
     if (bytecodeInfo.IsSuspend()) {
         auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
                                                     GetJumpOffset(iterator.Index()),
@@ -843,13 +844,30 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         gateAcc_.NewIn(gate, 1, depend);
     }
     state = gate;
-    if (!bb.catchs.empty()) {
+    if (bytecodeInfo.IsThrow()) {
+        depend = gate;
+
+        if (!bb.catchs.empty()) {
+            auto &bbNext = bb.catchs.at(0);
+            auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
+            SetBlockPred(*bbNext, gate, gate, isLoopBack);
+            bbNext->expandedPreds.push_back({bb.id, iterator.Index(), true});
+        } else {
+            auto constant = circuit_->GetConstantGate(MachineType::I64,
+                                                      JSTaggedValue::VALUE_EXCEPTION,
+                                                      GateType::TaggedValue());
+            circuit_->NewGate(circuit_->Return(),
+                { state, depend, constant, circuit_->GetReturnRoot() });
+        }
+        return;
+    }
+    if (!bb.catchs.empty() && !bytecodeInfo.NoThrow()) {
         auto ifSuccess = circuit_->NewGate(circuit_->IfSuccess(), {gate});
-        auto ifException = circuit_->NewGate(circuit_->IfException(), {gate});
+        auto ifException = circuit_->NewGate(circuit_->IfException(), {gate, gate});
 
         auto &bbNext = bb.catchs.at(0);
         auto isLoopBack = bbNext->loopbackBlocks.count(bb.id);
-        SetBlockPred(*bbNext, ifException, gate, isLoopBack);
+        SetBlockPred(*bbNext, ifException, ifException, isLoopBack);
         if (bytecodeInfo.GetOpcode() == EcmaOpcode::CREATEASYNCGENERATOROBJ_V8) {
             bbNext->expandedPreds.push_back({bb.id, iterator.Index() + 1, true}); // 1: next pc
         } else {
@@ -857,7 +875,6 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         }
         state = ifSuccess;
     }
-    byteCodeToJSGate_[iterator.Index()] = gate;
     if (bytecodeInfo.IsGeneratorRelative()) {
         if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8) {
             auto hole = circuit_->GetConstantGate(MachineType::I64,
@@ -873,14 +890,6 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         suspendAndResumeGates_.emplace_back(gate);
     }
     depend = gate;
-    if (bytecodeInfo.IsThrow()) {
-        auto constant = circuit_->GetConstantGate(MachineType::I64,
-                                                  JSTaggedValue::VALUE_EXCEPTION,
-                                                  GateType::TaggedValue());
-        circuit_->NewGate(circuit_->Return(),
-            { state, depend, constant, circuit_->GetReturnRoot() });
-        return;
-    }
     if (iterator.Index() == bb.end) {
         auto &bbNext = graph_[bb.id + 1];
         auto isLoopBack = bbNext.loopbackBlocks.count(bb.id);
@@ -1036,7 +1045,7 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         ASSERT(dependCur != Circuit::NullGate());
         if (!bb.trys.empty()) {
             dependCur = circuit_->NewGate(circuit_->GetException(),
-                MachineType::I64, {dependCur}, GateType::Empty());
+                MachineType::I64, {stateCur, dependCur}, GateType::Empty());
         }
         EnumerateBlock(bb, [this, &stateCur, &dependCur, &bb]
             (const BytecodeInfo &bytecodeInfo) -> bool {

@@ -116,7 +116,6 @@ public:
         : tsManager_(tsManager), methodLiteral_(methodLiteral),
           circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(circuit->GetDependRoot()),
           enableLog_(enableLog), methodName_(name), glue_(acc_.GetGlueFromArgList())
     {
         traceBc_ = cmpCfg->IsTraceBC();
@@ -146,16 +145,8 @@ private:
         return methodName_;
     }
 
-    GateAccessor::UseIterator ReplaceHirControlGate(const GateAccessor::UseIterator &useIt, GateRef newGate,
-                                                    bool noThrow = false);
-    void ReplaceHirToSubCfg(GateRef hir, GateRef outir,
-                       const std::vector<GateRef> &successControl,
-                       const std::vector<GateRef> &exceptionControl,
-                       bool noThrow = false);
-    void ExceptionReturn(GateRef state, GateRef depend);
-    void ReplaceHirWithIfBranch(GateRef hirGate, GateRef callGate, GateRef ifBranch);
-    void ReplaceHirToCall(GateRef hirGate, GateRef callGate, bool noThrow = false);
-    void ReplaceHirToJSCall(GateRef hirGate, GateRef callGate);
+    void ReplaceHirWithPendingException(GateRef hirGate, GateRef state, GateRef depend, GateRef value);
+    void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);
     void LowerExceptionHandler(GateRef hirGate);
     // environment must be initialized
@@ -311,7 +302,6 @@ private:
     GateAccessor acc_;
     ArgumentAccessor argAcc_;
     CircuitBuilder builder_;
-    GateRef dependEntry_;
     bool enableLog_ {false};
     bool traceBc_ {false};
     bool profiling_ {false};
