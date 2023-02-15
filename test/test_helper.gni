@@ -61,6 +61,7 @@ template("host_unittest_action") {
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/test/test:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       "--timeout-limit",
       "1200",
@@ -209,6 +210,7 @@ template("host_moduletest_action") {
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
           rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
@@ -257,6 +259,7 @@ template("host_moduletest_action") {
       rebase_path(_test_expect_path_),
       "--env-path",      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
           rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
@@ -306,6 +309,7 @@ template("host_moduletest_action") {
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
           rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
@@ -385,6 +389,7 @@ if (!ark_standalone_build) {
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
             rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       ]
 
@@ -437,6 +442,7 @@ if (!ark_standalone_build) {
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
             rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       ]
 
@@ -540,6 +546,7 @@ if (!ark_standalone_build) {
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
             rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       ]
 
@@ -592,6 +599,7 @@ if (!ark_standalone_build) {
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
             rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       ]
 
@@ -686,6 +694,7 @@ if (!ark_standalone_build) {
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
             rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       ]
 
@@ -927,6 +936,7 @@ template("host_quickfix_test_action") {
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
           rebase_path(_root_out_dir_) +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
     ]
