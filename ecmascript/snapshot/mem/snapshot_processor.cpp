@@ -1393,7 +1393,7 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
             break;
         }
         case SnapshotType::AI: {
-            JSTaggedValue item = JSTaggedValue(rootObjectAddr);
+            JSTaggedValue item = JSTaggedValue(static_cast<JSTaggedType>(rootObjectAddr));
             if (!isRootObjRelocate_ && item.IsTaggedArray()) {
                 vm_->GetAOTFileManager()->AddConstantPool(fileName_, item);
                 isRootObjRelocate_ = true;

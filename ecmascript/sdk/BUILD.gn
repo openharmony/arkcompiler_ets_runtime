@@ -41,14 +41,6 @@ if (is_standard_system) {
         "$ark_aot_compiler_path/arkcompiler/ets_runtime/ark_aot_compiler.exe",
       ]
 
-      # Add dynamic library "ark_jsruntime"
-      ark_js_path = get_label_info("//arkcompiler/ets_runtime:libark_jsruntime",
-                                   "root_out_dir")
-      deps += [ "//arkcompiler/ets_runtime:libark_jsruntime" ]
-      sources += [
-        "$ark_js_path/arkcompiler/ets_runtime/libark_jsruntime${dylib_suffix}",
-      ]
-
       # Add dynamic library "hilog"
       hilog_path = get_label_info(
               "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_windows",
@@ -119,14 +111,6 @@ if (is_standard_system) {
       sources +=
           [ "$ark_aot_compiler_path/arkcompiler/ets_runtime/ark_aot_compiler" ]
 
-      # Add dynamic library "ark_jsruntime"
-      ark_js_path = get_label_info("//arkcompiler/ets_runtime:libark_jsruntime",
-                                   "root_out_dir")
-      deps += [ "//arkcompiler/ets_runtime:libark_jsruntime" ]
-      sources += [
-        "$ark_js_path/arkcompiler/ets_runtime/libark_jsruntime${dylib_suffix}",
-      ]
-
       # Add dynamic library "hilog"
       hilog_path = get_label_info(
               "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_linux",
@@ -182,6 +166,50 @@ if (is_standard_system) {
       module_install_name = ""
     }
   } else if (is_mac) {
+    # Both x86_64 and arm64 are supported
+    ohos_copy("copy_ark_aot_compiler_library_darwin") {
+      deps = []
+      sources = []
+
+      # Add executable "ark_aot_compiler"
+      deps += [ "$js_root/ecmascript/compiler:ark_aot_compiler" ]
+      ark_aot_compiler_path =
+          get_label_info("$js_root/ecmascript/compiler:ark_aot_compiler",
+                         "root_out_dir")
+      sources +=
+          [ "$ark_aot_compiler_path/arkcompiler/ets_runtime/ark_aot_compiler" ]
+
+      # Add dynamic library "icu"
+      icu_path =
+          get_label_info("//third_party/icu/icu4c:shared_icuuc", "root_out_dir")
+      deps += [
+        "//third_party/icu/icu4c:shared_icui18n",
+        "//third_party/icu/icu4c:shared_icuuc",
+      ]
+      sources += [
+        "$icu_path/thirdparty/icu/libhmicui18n${dylib_suffix}",
+        "$icu_path/thirdparty/icu/libhmicuuc${dylib_suffix}",
+      ]
+
+      # Add dynamic library "libsec_shared"
+      sec_path =
+          get_label_info("//third_party/bounds_checking_function:libsec_shared",
+                         "root_out_dir")
+      deps += [ "//third_party/bounds_checking_function:libsec_shared" ]
+      sources += [
+        sec_path +
+            "/thirdparty/bounds_checking_function/libsec_shared${dylib_suffix}",
+      ]
+
+      # Set the output directory for all dynamic libraries.
+      outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-mac/bin/{{source_file_part}}" ]
+      module_source_dir =
+          target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-mac/bin/"
+      module_install_name = ""
+      part_name = "ets_runtime"
+      subsystem_name = "arkcompiler"
+    }
+
     ohos_copy("copy_ark_aot_builtins_mac") {
       deps = []
       sources = []
@@ -195,8 +223,8 @@ if (is_standard_system) {
           target_out_dir +
           "/ets/build-tools/ets-loader/bin/ark/build-mac/aot/src/"
       module_install_name = ""
-      subsystem_name = "developtools"
       part_name = "ets_runtime"
+      subsystem_name = "arkcompiler"
     }
   }
 }
