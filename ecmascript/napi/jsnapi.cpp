@@ -267,11 +267,12 @@ void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
     thread->SetException(JSNApiHelper::ToJSTaggedValue(*error));
 }
 
-#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
 #if !defined(PANDA_TARGET_IOS)
-bool JSNApi::StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId,
-    const DebuggerPostTask &debuggerPostTask)
+bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unused]] EcmaVM *vm,
+                           [[maybe_unused]] bool isDebugMode, [[maybe_unused]] int32_t instanceId,
+                           [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     const auto &handler = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
     if (handler.IsValid()) {
         return false;
@@ -297,10 +298,15 @@ bool JSNApi::StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode
         vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
     }
     return ret;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-bool JSNApi::StopDebugger(EcmaVM *vm)
+bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     if (vm == nullptr) {
         return false;
     }
@@ -317,19 +323,31 @@ bool JSNApi::StopDebugger(EcmaVM *vm)
     reinterpret_cast<StopDebug>(sym.Value())("PandaDebugger");
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 #else
-bool JSNApi::StartDebugger(EcmaVM *vm, bool isDebugMode, int32_t instanceId, const DebuggerPostTask &debuggerPostTask)
+bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] bool isDebugMode,
+                           [[maybe_unused]] int32_t instanceId,
+                           [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(DEBUGGER_NAME, vm, isDebugMode, instanceId, debuggerPostTask);
     if (ret) {
         vm->GetJsDebuggerManager()->SetDebugMode(isDebugMode);
     }
     return ret;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-bool JSNApi::StopDebugger(EcmaVM *vm)
+bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     if (vm == nullptr) {
         return false;
     }
@@ -337,19 +355,31 @@ bool JSNApi::StopDebugger(EcmaVM *vm)
     OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
-#endif
+#endif // PANDA_TARGET_IOS
 
-bool JSNApi::IsMixedDebugEnabled(const EcmaVM *vm)
+bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     return vm->GetJsDebuggerManager()->IsMixedDebugEnabled();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif
 }
 
-void JSNApi::NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress)
+void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const void *nativeAddress)
 {
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     vm->GetJsDebuggerManager()->GetNotificationManager()->NativeCallingEvent(nativeAddress);
-}
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
 #endif
+}
 
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &hapPath)
 {

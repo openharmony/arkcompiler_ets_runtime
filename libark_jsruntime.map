@@ -60,6 +60,7 @@
       panda::JSExecutionScope::*;
 
       panda::ecmascript::Log::*;
+      panda::ecmascript::AndroidLog*;
       panda::ecmascript::Method::*;
       panda::ecmascript::JSPandaFileManager::*;
       panda::ecmascript::DebugInfoExtractor::*;

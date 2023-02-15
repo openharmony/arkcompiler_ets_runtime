@@ -143,37 +143,37 @@ void Log::Initialize(const JSRuntimeOptions &options)
 #ifdef PANDA_TARGET_ANDROID
 const char *tag = "ArkCompiler";
 template<>
-AndroidLog<VERBOSE>::~AndroidLog()
+PUBLIC_API AndroidLog<VERBOSE>::~AndroidLog()
 {
     __android_log_write(ANDROID_LOG_VERBOSE, tag, stream_.str().c_str());
 }
 
 template<>
-AndroidLog<DEBUG>::~AndroidLog()
+PUBLIC_API AndroidLog<DEBUG>::~AndroidLog()
 {
     __android_log_write(ANDROID_LOG_DEBUG, tag, stream_.str().c_str());
 }
 
 template<>
-AndroidLog<INFO>::~AndroidLog()
+PUBLIC_API AndroidLog<INFO>::~AndroidLog()
 {
     __android_log_write(ANDROID_LOG_INFO, tag, stream_.str().c_str());
 }
 
 template<>
-AndroidLog<WARN>::~AndroidLog()
+PUBLIC_API AndroidLog<WARN>::~AndroidLog()
 {
     __android_log_write(ANDROID_LOG_WARN, tag, stream_.str().c_str());
 }
 
 template<>
-AndroidLog<ERROR>::~AndroidLog()
+PUBLIC_API AndroidLog<ERROR>::~AndroidLog()
 {
     __android_log_write(ANDROID_LOG_ERROR, tag, stream_.str().c_str());
 }
 
 template<>
-AndroidLog<FATAL>::~AndroidLog()
+PUBLIC_API AndroidLog<FATAL>::~AndroidLog()
 {
     __android_log_write(ANDROID_LOG_FATAL, tag, stream_.str().c_str());
     std::abort();
