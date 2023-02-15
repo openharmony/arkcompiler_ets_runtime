@@ -252,7 +252,7 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
     auto acc = reinterpret_cast<GeneratorReEnterInterpEntry>(entry)(thread->GetGlueAddr(), context.GetTaggedType());
     return JSTaggedValue(acc);
 }
-
+#ifndef EXCLUDE_C_INTERPRETER
 void InterpreterAssembly::HandleMovV4V4(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -7411,6 +7411,7 @@ void InterpreterAssembly::ExceptionHandler(
     }
 ASM_UNUSED_BC_STUB_LIST(DECLARE_UNUSED_ASM_HANDLE)
 #undef DECLARE_UNUSED_ASM_HANDLE
+#endif
 
 inline void InterpreterAssembly::InterpreterFrameCopyArgs(
     JSTaggedType *newSp, uint32_t numVregs, uint32_t numActualArgs, uint32_t numDeclaredArgs, bool haveExtraArgs)
