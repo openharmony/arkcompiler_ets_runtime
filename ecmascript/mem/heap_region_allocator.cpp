@@ -66,6 +66,7 @@ void HeapRegionAllocator::FreeRegion(Region *region)
 
     DecreaseAnnoMemoryUsage(size);
     region->Invalidate();
+    region->ClearMembers();
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     if (memset_s(ToVoidPtr(allocateBase), size, INVALID_VALUE, size) != EOK) {
         LOG_FULL(FATAL) << "memset_s failed";

@@ -35,7 +35,7 @@ inline RememberedSet *Region::CreateRememberedSet()
 inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
 {
     if (UNLIKELY(crossRegionSet_ == nullptr)) {
-        os::memory::LockHolder lock(lock_);
+        os::memory::LockHolder lock(*lock_);
         if (crossRegionSet_ == nullptr) {
             crossRegionSet_ = CreateRememberedSet();
         }
@@ -46,7 +46,7 @@ inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
 inline RememberedSet *Region::GetOrCreateOldToNewRememberedSet()
 {
     if (UNLIKELY(packedData_.oldToNewSet_ == nullptr)) {
-        os::memory::LockHolder lock(lock_);
+        os::memory::LockHolder lock(*lock_);
         if (packedData_.oldToNewSet_ == nullptr) {
             if (sweepingRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
                 packedData_.oldToNewSet_ = sweepingRSet_;
