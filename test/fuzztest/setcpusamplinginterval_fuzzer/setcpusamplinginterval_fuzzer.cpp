@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-#include "setnativepointerfieldcount_fuzzer.h"
+#include "setcpusamplinginterval_fuzzer.h"
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-    void SetNativePointerFieldCountFuzzTest(const uint8_t* data, size_t size)
+    void SetCpuSamplingIntervalFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -30,7 +31,7 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        int32_t key = 0;
+        int key = 0;
         size_t maxByteLen = 4;
         if (size > maxByteLen) {
             size = maxByteLen;
@@ -42,8 +43,10 @@ namespace OHOS {
         if (key <= 0 || key > 1024) { // 1024 : 1M in size
             key = 1024; // 1024 : 1M in size
         }
-        Local<ObjectRef> object = ObjectRef::New(vm);
-        object->SetNativePointerFieldCount(key);
+#ifndef ECMASCRIPT_SUPPORT_CPUPROFILER
+#define ECMASCRIPT_SUPPORT_CPUPROFILER
+        DFXJSNApi::SetCpuSamplingInterval(vm, key);
+#endif
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -52,6 +55,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::SetNativePointerFieldCountFuzzTest(data, size);
+    OHOS::SetCpuSamplingIntervalFuzzTest(data, size);
     return 0;
 }

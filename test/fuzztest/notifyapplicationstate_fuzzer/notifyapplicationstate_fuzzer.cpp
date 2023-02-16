@@ -13,16 +13,19 @@
  * limitations under the License.
  */
 
-#include "setnativepointerfieldcount_fuzzer.h"
+#include "notifyapplicationstate_fuzzer.h"
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
+
+#define MAXBYTELEN sizeof(int)
 
 using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-    void SetNativePointerFieldCountFuzzTest(const uint8_t* data, size_t size)
+    void NotifyApplicationStateFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -30,20 +33,19 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        int32_t key = 0;
-        size_t maxByteLen = 4;
-        if (size > maxByteLen) {
-            size = maxByteLen;
+        if (size > MAXBYTELEN) {
+            size = MAXBYTELEN;
         }
-        if (memcpy_s(&key, maxByteLen, data, size) != EOK) {
+        int input = 0;
+        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        if (key <= 0 || key > 1024) { // 1024 : 1M in size
-            key = 1024; // 1024 : 1M in size
+        bool inBackground = false;
+        if (input % 2 == 0) { // 2 : determine whether the type is bool or true
+            inBackground = true;
         }
-        Local<ObjectRef> object = ObjectRef::New(vm);
-        object->SetNativePointerFieldCount(key);
+        DFXJSNApi::NotifyApplicationState(vm, inBackground);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -52,6 +54,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::SetNativePointerFieldCountFuzzTest(data, size);
+    OHOS::NotifyApplicationStateFuzzTest(data, size);
     return 0;
 }
