@@ -94,13 +94,13 @@ int64_t GetFileSizeByFd(fd_t fd)
 void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, fd_t *extra)
 {
     // 32: high 32 bits
-    *extra = CreateFileMapping(fd, NULL, PAGE_PROT_READWRITE, size >> 32, size & 0xffffffff, nullptr);
+    *extra = CreateFileMapping(fd, NULL, PAGE_PROT_READ, size >> 32, size & 0xffffffff, nullptr);
     if (*extra == nullptr) {
         LOG_ECMA(ERROR) << "CreateFileMapping failed with error code:" << GetLastError();
         return nullptr;
     }
     // 32: high 32 bits
-    void *addr = MapViewOfFile(*extra, FILE_MAP_ALL_ACCESS, offset >> 32, offset & 0xffffffff, size);
+    void *addr = MapViewOfFile(*extra, FILE_MAP_READ, offset >> 32, offset & 0xffffffff, size);
     if (addr == nullptr) {
         LOG_ECMA(ERROR) << "MapViewOfFile failed with error code:" << GetLastError();
         CloseHandle(*extra);
