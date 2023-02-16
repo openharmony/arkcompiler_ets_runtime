@@ -616,12 +616,10 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
 
-    // print exception information
-    if (thread_->HasPendingException()) {
-        HandleUncaughtException(thread_->GetException());
+    if (!thread_->HasPendingException()) {
+        // Collecting module.exports : exports ---> module.exports --->Module._cache
+        RequireManager::CollectExecutedExp(thread_, cjsInfo);
     }
-    // Collecting module.exports : exports ---> module.exports --->Module._cache
-    RequireManager::CollectExecutedExp(thread_, cjsInfo);
 }
 
 void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index)
