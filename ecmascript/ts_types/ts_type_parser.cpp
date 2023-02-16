@@ -72,8 +72,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     GlobalTSTypeRef gt = GetGT(jsPandaFile, table, moduleId, typeId, recordName);
     JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind, typeId);
     SetTSType(table, type, gt);
-
-    GenerateTSHClass(type);
+    tsManager_->CollectTypeOffsets(gt);  // collect types that need to generate hclasses
     return gt;
 }
 
@@ -392,20 +391,6 @@ void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile, cons
         };
 
         layOut->AddKeyAndType(thread_, key.GetTaggedValue(), value.GetTaggedValue());
-    }
-}
-
-void TSTypeParser::GenerateTSHClass(JSHandle<JSTaggedValue> type)
-{
-    if (type->IsTSClassType()) {
-        JSHandle<TSClassType> classType(type);
-        if (!classType->GetHasLinked()) {
-            tsManager_->RecursivelyMergeClassField(classType);
-        }
-        auto gt = classType->GetGT();
-        if (tsManager_->IsUserDefinedClassTypeKind(gt)) {
-            tsManager_->GenerateTSHClass(classType);
-        }
     }
 }
 

@@ -102,8 +102,6 @@ private:
                                   uint32_t startIndex, uint32_t lastIndex,
                                   uint32_t &index);
 
-    void GenerateTSHClass(JSHandle<JSTaggedValue> type);
-
     JSHandle<TaggedArray> GetExportDataFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
 
     JSHandle<TaggedArray> GenerateExportTableFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
