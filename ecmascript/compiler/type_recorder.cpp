@@ -30,6 +30,7 @@ TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *
         return;
     }
     LoadTypes(jsPandaFile, methodLiteral, tsManager, recordName);
+    tsManager->GenerateTSHClasses();
 }
 
 void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,

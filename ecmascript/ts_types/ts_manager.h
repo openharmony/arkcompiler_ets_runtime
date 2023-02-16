@@ -365,6 +365,8 @@ public:
 
     void GenerateTSHClass(JSHandle<TSClassType> classType);
 
+    void GenerateTSHClasses();
+
     JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
@@ -648,6 +650,13 @@ public:
         return name;
     }
 
+    inline void CollectTypeOffsets(GlobalTSTypeRef classGT)
+    {
+        if (IsClassTypeKind(classGT)) {
+            collectedTypeOffsets_.insert(classGT);
+        }
+    }
+
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
@@ -735,6 +744,7 @@ private:
     CString builtinsRecordName_ {""};
     std::map<LocalModuleInfo, GlobalTSTypeRef> localModuleVarGtMap_{};
     kungfu::CompilationDriver *cmpDriver_ {nullptr};
+    std::set<GlobalTSTypeRef> collectedTypeOffsets_ {};  // use for storing types that need to generate hclasses
 
     friend class EcmaVM;
 

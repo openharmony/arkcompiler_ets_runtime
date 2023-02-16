@@ -653,13 +653,33 @@ void TSManager::GenerateTSHClass(JSHandle<TSClassType> classType)
     gtIhcMap_.insert({gt, IHClassData(JSTaggedValue(ihc).GetRawData())});
 }
 
+void TSManager::GenerateTSHClasses()
+{
+    for (const auto &gt : collectedTypeOffsets_) {
+        JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+        if (tsType->IsUndefined()) {
+            continue;
+        }
+        ASSERT(tsType->IsTSClassType());
+        JSHandle<TSClassType> classType(tsType);
+        if (!classType->GetHasLinked()) {
+            RecursivelyMergeClassField(classType);
+        }
+        if (IsUserDefinedClassTypeKind(gt)) {
+            GenerateTSHClass(classType);
+        }
+    }
+    collectedTypeOffsets_.clear();
+}
+
 JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
 {
     uint32_t moduleId = gt.GetModuleId();
     uint32_t localId = gt.GetLocalId();
 
-    if (moduleId == TSModuleTable::BUILTINS_TABLE_ID && !IsBuiltinsDTSEnabled()) {
-        return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
+    if ((moduleId == TSModuleTable::BUILTINS_TABLE_ID && !IsBuiltinsDTSEnabled()) ||
+        (moduleId == TSModuleTable::PRIMITIVE_TABLE_ID)) {
+        return thread_->GlobalConstants()->GetHandledUndefined();
     }
 
     JSHandle<TSModuleTable> mTable = GetTSModuleTable();
