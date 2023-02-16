@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-#include "setnativepointerfieldcount_fuzzer.h"
+#include "buildjsstacktrace_fuzzer.h"
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-    void SetNativePointerFieldCountFuzzTest(const uint8_t* data, size_t size)
+    void BuildJsStackTraceFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -30,20 +31,8 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        int32_t key = 0;
-        size_t maxByteLen = 4;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&key, maxByteLen, data, size) != EOK) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        if (key <= 0 || key > 1024) { // 1024 : 1M in size
-            key = 1024; // 1024 : 1M in size
-        }
-        Local<ObjectRef> object = ObjectRef::New(vm);
-        object->SetNativePointerFieldCount(key);
+        std::string filePath(data, data + size);
+        DFXJSNApi::BuildJsStackTrace(vm, filePath);
         JSNApi::DestroyJSVM(vm);
     }
 }
@@ -52,6 +41,6 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
-    OHOS::SetNativePointerFieldCountFuzzTest(data, size);
+    OHOS::BuildJsStackTraceFuzzTest(data, size);
     return 0;
 }
