@@ -18,10 +18,20 @@ print patch str :patch
 print patch new :a
 print patch str :base
 print patch new :undefined
+test cold patch
+print patch str :patch
+print patch new :a
+print patch str :patch
+print patch new :a
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch
 QuickFix unload patch success
 print base str :base
 print base str :base
+test cold patch
+print patch str :patch
+print patch new :a
+print patch str :patch
+print patch new :a
 QuickFix Execute end

@@ -18,6 +18,8 @@ patch foo
 anonymous: patch A
 {"a":1,"b":{"a":1,"b":"patch"}}
 1,2,patch
+test cold patch
+patch f
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch
@@ -26,4 +28,6 @@ base foo
 anonymous: base A
 {"a":1,"b":{"a":1,"b":"base"}}
 1,2,base
+test cold patch
+patch f
 QuickFix Execute end

@@ -24,6 +24,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 
 #include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/index_accessor.h"
@@ -43,17 +44,20 @@ public:
     DECL_DUMP()
 };
 
-/*
- *       ConstantPool
- *      +------------+
- *      |  hClass    +
- *      +------------+
- *      |  length    |
- *      +------------+
- *      |  cache...  |
- *      +------------+
- *      |js_pandafile|
- *      +------------+
+/*                  ConstantPool
+ *      +--------------------------------+----
+ *      |             cache              |  ^
+ *      |              ...               |  |
+ *      |        string(EcmaString)      |  |
+ *      |        method(Method)          |cacheLength
+ *      |     array literal(JSArray)     |  |
+ *      |    object literal(JSObject)    |  |
+ *      |   class literal(TaggedArray)   |  v
+ *      +--------------------------------+----
+ *      |           IndexHeader          |
+ *      +--------------------------------+
+ *      |           JSPandaFile          |
+ *      +--------------------------------+
  */
 class ConstantPool : public TaggedArray {
 public:
@@ -174,36 +178,32 @@ public:
             val = JSTaggedValue::Hole();
         }
 
-        if (val.IsHole()) {
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-            JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-            EcmaVM *vm = thread->GetEcmaVM();
-            ObjectFactory *factory = vm->GetFactory();
-
-            ASSERT(jsPandaFile->IsNewVersion());
-            panda_file::File::EntityId id = constpoolHandle->GetEntityId(index);
-            MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
-            ASSERT(methodLiteral != nullptr);
-            JSHandle<Method> method = factory->NewMethod(methodLiteral);
-
-            JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(jsPandaFile, id);
-            method->SetConstantPool(thread, newConstpool);
-            if (isLoadedAOT && hasEntryIndex) {
-                vm->GetAOTFileManager()->SetAOTFuncEntry(jsPandaFile, *method, entryIndex);
-            }
-
-            val = method.GetTaggedValue();
-            constpoolHandle->SetObjectToCache(thread, index, val);
+        if (!val.IsHole()) {
+            return val;
         }
 
-        return val;
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+        ASSERT(jsPandaFile->IsNewVersion());
+        JSHandle<ConstantPool> constpoolHandle(thread, constpool);
+        EcmaVM *vm = thread->GetEcmaVM();
+
+        EntityId id = constpoolHandle->GetEntityId(index);
+        MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
+        ASSERT(methodLiteral != nullptr);
+        JSHandle<Method> method = Method::Create(thread, jsPandaFile, methodLiteral);
+
+        if (isLoadedAOT && hasEntryIndex) {
+            vm->GetAOTFileManager()->SetAOTFuncEntry(jsPandaFile, *method, entryIndex);
+        }
+        constpoolHandle->SetObjectToCache(thread, index, method.GetTaggedValue());
+        return method.GetTaggedValue();
     }
 
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
                                                   uint32_t literal, CString entry)
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        auto val = constpool->Get(literal);
+        auto val = constpool->GetObjectFromCache(literal);
         JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
 
         // For AOT
@@ -237,7 +237,7 @@ public:
         static_assert(type == ConstPoolType::OBJECT_LITERAL || type == ConstPoolType::ARRAY_LITERAL);
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-        auto val = taggedPool->Get(index);
+        auto val = taggedPool->GetObjectFromCache(index);
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
 
         // For AOT

@@ -393,6 +393,7 @@ public:
 
     JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
                                                             panda_file::File::EntityId id);
+    void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
     {

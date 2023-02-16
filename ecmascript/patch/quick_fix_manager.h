@@ -37,6 +37,8 @@ public:
     bool IsQuickFixCausedException(JSThread *thread,
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
+    JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
+
 private:
     // check whether the callback is registered.
     bool HasQueryQuickFixInfoFunc() const
@@ -46,13 +48,11 @@ private:
 
     // check whether the patch is loaded.
     bool HasLoadedPatch(const std::string &patchFileName, const std::string &baseFileName) const;
-    std::string GetBaseFileName(const std::string &patchFileName) const;
 
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
 
-    // key: patchFileName:baseFileName
-    // value: base method info <BaseMethodIndex, base MethodLiteral>
-    CMap<std::string, CMap<BaseMethodIndex, MethodLiteral *>> methodInfos_ {};
+    // key: baseFileName
+    CMap<CString, PatchInfo> methodInfos_ {};
     QuickFixQueryCallBack callBack_ {nullptr};
 };
 }  // namespace panda::ecmascript

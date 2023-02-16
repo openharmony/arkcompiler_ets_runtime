@@ -424,6 +424,12 @@ public:
     DECL_VISIT_OBJECT(CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET);
 
     DECL_DUMP()
+
+private:
+    static JSHandle<Method> Create(JSThread *thread, const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral);
+
+    friend class ConstantPool;
+    friend class LiteralDataExtractor;
 };
 }  // namespace panda::ecmascript
 

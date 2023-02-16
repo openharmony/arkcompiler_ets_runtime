@@ -212,6 +212,11 @@ public:
         return lda;
     }
 
+    uint32_t GetConstpoolNum() const
+    {
+        return pf_->GetHeader()->num_indexes;
+    }
+
     Span<const panda_file::File::EntityId> GetMethodIndex(const panda_file::File::IndexHeader *indexHeader) const
     {
         return pf_->GetMethodIndex(indexHeader);

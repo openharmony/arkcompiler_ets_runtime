@@ -13,4 +13,15 @@
  * limitations under the License.
  */
 
-export var nop = undefined
+class D {
+    constructor() {
+    }
+    PrintBase() {
+        print("print base patch" );
+    }
+}
+
+function E() {
+    var d = new D()
+    d.PrintBase()
+}
