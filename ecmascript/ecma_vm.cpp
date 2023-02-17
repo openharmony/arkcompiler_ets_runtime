@@ -888,7 +888,7 @@ void EcmaVM::LoadAOTFiles(const std::string& aotFileName)
     aotFileManager_->LoadAiFile(aiFile);
 }
 
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
 void EcmaVM::DeleteHeapProfile()
 {
     if (heapProfile_ == nullptr) {

@@ -467,7 +467,7 @@ public:
         isBundlePack_ = value;
     }
 
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void DeleteHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
 #endif

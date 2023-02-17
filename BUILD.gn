@@ -204,9 +204,10 @@ config("ark_jsruntime_public_config") {
       "ECMASCRIPT_SUPPORT_SNAPSHOT",
       "ECMASCRIPT_SUPPORT_DEBUGGER",
     ]
-  } else if (target_os == "android") {
+  } else if (target_os == "android" && ark_compile_mode == "debug") {
     defines += [
       "ECMASCRIPT_SUPPORT_CPUPROFILER",
+      "ECMASCRIPT_SUPPORT_HEAPPROFILER",
       "ECMASCRIPT_SUPPORT_DEBUGGER",
     ]
   } else if (target_os == "ios") {
@@ -680,11 +681,6 @@ ecma_source = [
   "ecmascript/require/js_require_manager.cpp",
 ]
 
-if (!is_mingw && !is_mac && target_os != "ios") {
-  ecma_source += [ "ecmascript/napi/dfx_jsnapi.cpp" ]
-  ecma_source += [ "ecmascript/dfx/hprof/file_stream.cpp" ]
-}
-
 hitrace_scope_source = []
 if (is_ohos && is_standard_system && enable_hitrace) {
   hitrace_scope_source += [ "ecmascript/jobs/hitrace_scope.cpp" ]
@@ -696,21 +692,24 @@ ecma_debugger_source = [
   "ecmascript/debugger/hot_reload_manager.cpp",
 ]
 
-ecma_profiler_source = []
+ecma_profiler_source = [ "ecmascript/napi/dfx_jsnapi.cpp" ]
 if (!is_mingw && !is_mac && target_os != "ios") {
-  ecma_profiler_source += [
-    "ecmascript/dfx/cpu_profiler/cpu_profiler.cpp",
-    "ecmascript/dfx/cpu_profiler/sampling_processor.cpp",
-    "ecmascript/dfx/cpu_profiler/samples_record.cpp",
-    "ecmascript/dfx/hprof/heap_profiler.cpp",
-    "ecmascript/dfx/hprof/heap_profiler_interface.cpp",
-    "ecmascript/dfx/hprof/heap_root_visitor.cpp",
-    "ecmascript/dfx/hprof/heap_snapshot.cpp",
-    "ecmascript/dfx/hprof/heap_snapshot_json_serializer.cpp",
-    "ecmascript/dfx/hprof/heap_tracker.cpp",
-    "ecmascript/dfx/hprof/string_hashmap.cpp",
-    "ecmascript/base/block_hook_scope.cpp",
-  ]
+  if (ark_compile_mode == "debug") {
+    ecma_profiler_source += [
+      "ecmascript/dfx/cpu_profiler/cpu_profiler.cpp",
+      "ecmascript/dfx/cpu_profiler/sampling_processor.cpp",
+      "ecmascript/dfx/cpu_profiler/samples_record.cpp",
+      "ecmascript/dfx/hprof/file_stream.cpp",
+      "ecmascript/dfx/hprof/heap_profiler.cpp",
+      "ecmascript/dfx/hprof/heap_profiler_interface.cpp",
+      "ecmascript/dfx/hprof/heap_root_visitor.cpp",
+      "ecmascript/dfx/hprof/heap_snapshot.cpp",
+      "ecmascript/dfx/hprof/heap_snapshot_json_serializer.cpp",
+      "ecmascript/dfx/hprof/heap_tracker.cpp",
+      "ecmascript/dfx/hprof/string_hashmap.cpp",
+      "ecmascript/base/block_hook_scope.cpp",
+    ]
+  }
 }
 
 ecma_profiler_source += [
@@ -782,7 +781,7 @@ source_set("libark_jsruntime_set") {
     defines = [ "ECMASCRIPT_SUPPORT_DEBUGGER" ]
   }
   cflags_cc = []
-  if (is_standard_system) {
+  if (is_standard_system || target_os == "android") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
@@ -931,6 +930,7 @@ ohos_shared_library("libark_jsruntime") {
 
   if (target_os == "android") {
     aosp_deps = [ "shared_library:liblog" ]
+    version_script = "libark_jsruntime.map"
   }
   if (is_mingw && !ark_standalone_build) {
     deps += [

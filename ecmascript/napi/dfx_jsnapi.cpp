@@ -47,30 +47,41 @@ using ecmascript::FileDescriptorStream;
 using ecmascript::Stream;
 using ecmascript::CMap;
 
-void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat,
-                                 const std::string &path, bool isVmMode, bool isPrivate)
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
+                                 [[maybe_unused]] const std::string &path, [[maybe_unused]] bool isVmMode,
+                                 [[maybe_unused]] bool isPrivate)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     FileStream stream(path);
     DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif
 }
 
-void DFXJSNApi::DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress,
-                                 bool isVmMode, bool isPrivate)
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
+                                 [[maybe_unused]] Stream *stream, [[maybe_unused]] Progress *progress,
+                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress, isVmMode, isPrivate);
     ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif
 }
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     DFXJSNApi::StopCpuProfilerForFile(vm);
-#endif
+#endif // ECMASCRIPT_SUPPORT_CPUPROFILER
     auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
     options.SwitchStartGlobalLeakCheck();
     if (options.EnableGlobalLeakCheck() && options.IsStartGlobalLeakCheck()) {
@@ -89,7 +100,10 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     }
     FileDescriptorStream stream(fd);
     DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate);
-#endif
+#endif // ENABLE_DUMP_IN_FAULTLOG
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
 bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
@@ -123,31 +137,50 @@ bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
     return true;
 }
 
-bool DFXJSNApi::StartHeapTracking(const EcmaVM *vm, double timeInterval, bool isVmMode,
-                                  Stream *stream, bool traceAllocation, bool newThread)
+bool DFXJSNApi::StartHeapTracking([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] double timeInterval,
+                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] Stream *stream,
+                                  [[maybe_unused]] bool traceAllocation, [[maybe_unused]] bool newThread)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     return heapProfile->StartHeapTracking(timeInterval, isVmMode, stream, traceAllocation, newThread);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap tracking";
+    return false;
+#endif
 }
 
-bool DFXJSNApi::UpdateHeapTracking(const EcmaVM *vm, Stream *stream)
+bool DFXJSNApi::UpdateHeapTracking([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] Stream *stream)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     return heapProfile->UpdateHeapTracking(stream);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap tracking";
+    return false;
+#endif
 }
 
-bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, const std::string &filePath, bool newThread)
+bool DFXJSNApi::StopHeapTracking([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &filePath,
+                                 [[maybe_unused]] bool newThread)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     FileStream stream(filePath);
     return StopHeapTracking(vm, &stream, nullptr, newThread);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap tracking";
+    return false;
+#endif
 }
 
-bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, Stream* stream, Progress *progress, bool newThread)
+bool DFXJSNApi::StopHeapTracking([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] Stream* stream,
+                                 [[maybe_unused]] Progress *progress, [[maybe_unused]] bool newThread)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
     bool result = false;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
@@ -155,6 +188,10 @@ bool DFXJSNApi::StopHeapTracking(const EcmaVM *vm, Stream* stream, Progress *pro
     result = heapProfile->StopHeapTracking(stream, progress, newThread);
     ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
     return result;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap tracking";
+    return false;
+#endif
 }
 
 void DFXJSNApi::PrintStatisticResult(const EcmaVM *vm)
@@ -202,9 +239,11 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
 {
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
 }
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-void DFXJSNApi::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName, const int interval)
+
+void DFXJSNApi::StartCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &fileName,
+                                        [[maybe_unused]] int interval)
 {
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (vm == nullptr) {
         return;
     }
@@ -214,10 +253,14 @@ void DFXJSNApi::StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fil
         const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
     }
     profiler->StartCpuProfilerForFile(fileName);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+#endif
 }
 
-void DFXJSNApi::StopCpuProfilerForFile(const EcmaVM *vm)
+void DFXJSNApi::StopCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (vm == nullptr) {
         return;
     }
@@ -229,10 +272,14 @@ void DFXJSNApi::StopCpuProfilerForFile(const EcmaVM *vm)
     delete profiler;
     profiler = nullptr;
     const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+#endif
 }
 
-void DFXJSNApi::StartCpuProfilerForInfo(const EcmaVM *vm, const int interval)
+void DFXJSNApi::StartCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (vm == nullptr) {
         return;
     }
@@ -242,10 +289,14 @@ void DFXJSNApi::StartCpuProfilerForInfo(const EcmaVM *vm, const int interval)
         const_cast<EcmaVM *>(vm)->SetProfiler(profiler);
     }
     profiler->StartCpuProfilerForInfo();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+#endif
 }
 
-std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo(const EcmaVM *vm)
+std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (vm == nullptr) {
         return nullptr;
     }
@@ -261,10 +312,15 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo(const EcmaVM *vm)
     profiler = nullptr;
     const_cast<EcmaVM *>(vm)->SetProfiler(nullptr);
     return profile;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+    return nullptr;
+#endif
 }
 
-void DFXJSNApi::SetCpuSamplingInterval(const EcmaVM *vm, int interval)
+void DFXJSNApi::SetCpuSamplingInterval([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     LOG_ECMA(INFO) << "SetCpuProfilerSamplingInterval, Sampling interval is: " << interval;
     if (vm == nullptr) {
         return;
@@ -276,8 +332,10 @@ void DFXJSNApi::SetCpuSamplingInterval(const EcmaVM *vm, int interval)
         return;
     }
     profiler->SetCpuSamplingInterval(interval);
-}
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
 #endif
+}
 
 bool DFXJSNApi::SuspendVM(const EcmaVM *vm)
 {
