@@ -26,4 +26,26 @@ const url = 'https://designcloud.uiplus.huawei.com/tool//materialServer/upload/i
 const data = url.match(/(?<=\/)\w+(.jpg)$/);
 print(data);
 
+// Test 2 - RegExp $1 .. $9 is read only
+try{
+    RegExp.$1 = "b";
+    print(RegExp.$1);
+} catch(error) {
+    print("RegExp $1 is read-only");
+}
+
+// Test 3 - RegExp $1 .. $9 match the lastest successful results
+var reg = /t(e)(st(\d?))/g;
+const str = "test1test2";
+const array = [...str.matchAll(reg)];
+print(RegExp.$2);
+
+// Test 4 - RegExp $1..$9 reset all and refill the results
+"abc".match(/(a)/);
+print(RegExp.$1);
+print(RegExp.$2);
+
+// Test 5 - RegExp $10 is undefined
+print(RegExp.$10);
+
 print("builtins regexp end");
