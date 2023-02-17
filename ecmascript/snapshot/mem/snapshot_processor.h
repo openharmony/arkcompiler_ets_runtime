@@ -59,6 +59,8 @@ public:
     void SerializePandaFileMethod();
     EncodeBit EncodeTaggedObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
+    EncodeBit GetObjectEncode(JSTaggedValue object, CQueue<TaggedObject *> *queue,
+                              std::unordered_map<uint64_t, ObjectEncode> *data);
     void EncodeTaggedObjectRange(ObjectSlot start, ObjectSlot end, CQueue<TaggedObject *> *queue,
                                  std::unordered_map<uint64_t, ObjectEncode> *data);
     void DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, size_t oldSpaceObjSize, size_t nonMovableObjSize,
