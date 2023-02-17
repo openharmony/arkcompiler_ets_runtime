@@ -4443,7 +4443,8 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
                                            RTSTUB_ID(JumpToCInterpreter),
                                            { constpool, profileTypeInfo, acc,
                                              IntToTaggedInt(hotnessCounter)}));
-    varPc = GetPcFromFrame(frame);
+    GateRef frameAfter = GetFrame(*varSp);
+    varPc = GetPcFromFrame(frameAfter);
     Label shouldReturn(env);
     Label shouldContinue(env);
 
@@ -4455,8 +4456,8 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
     }
     Bind(&shouldContinue);
     {
-        varAcc = GetAccFromFrame(frame);
-        GateRef function = GetFunctionFromFrame(frame);
+        varAcc = GetAccFromFrame(frameAfter);
+        GateRef function = GetFunctionFromFrame(frameAfter);
         GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
         varConstpool = GetConstpoolFromMethod(method);

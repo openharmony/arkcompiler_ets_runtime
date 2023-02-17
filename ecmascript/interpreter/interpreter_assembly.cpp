@@ -484,7 +484,7 @@ void InterpreterAssembly::HandleReturn(
 
     AsmInterpretedFrame *prevState = GET_ASM_FRAME(sp);
     pc = prevState->pc;
-    thread->SetCurrentSPFrame(sp);
+    thread->SetCurrentFrame(sp);
     // entry frame
     if (pc == nullptr) {
         state->acc = acc;
@@ -512,7 +512,7 @@ void InterpreterAssembly::HandleReturnundefined(
 
     AsmInterpretedFrame *prevState = GET_ASM_FRAME(sp);
     pc = prevState->pc;
-    thread->SetCurrentSPFrame(sp);
+    thread->SetCurrentFrame(sp);
     // entry frame
     if (pc == nullptr) {
         state->acc = JSTaggedValue::Undefined();
@@ -6588,12 +6588,12 @@ void InterpreterAssembly::HandleDefinefuncImm8Id16Imm8(
     JSFunction *jsFunc = JSFunction::Cast(res.GetTaggedObject());
 
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
-    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    AsmInterpretedFrame *state = (reinterpret_cast<AsmInterpretedFrame *>(sp) - 1);
     JSTaggedValue envHandle = state->env;
     jsFunc->SetLexicalEnv(thread, envHandle);
 
     JSFunction *currentFunc =
-        JSFunction::Cast(((reinterpret_cast<InterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
+        JSFunction::Cast(((reinterpret_cast<AsmInterpretedFrame *>(sp) - 1)->function).GetTaggedObject());
     jsFunc->SetModule(thread, currentFunc->GetModule());
     jsFunc->SetHomeObject(thread, currentFunc->GetHomeObject());
     SET_ACC(JSTaggedValue(jsFunc));
