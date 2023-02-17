@@ -762,13 +762,13 @@ void SamplesQueue::PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStac
     if (!IsFull()) {
         // frameInfoTemps
         for (int i = 0; i < frameInfoTempsLength; i++) {
-            CheckAndCopy(frameInfoTemps[i].functionName,
-                sizeof(frameInfoTemps[i].functionName), frameInfoTemps[i].functionName);
+            CheckAndCopy(frames_[rear_].frameInfoTemps[i].functionName,
+                sizeof(frames_[rear_].frameInfoTemps[i].functionName), frameInfoTemps[i].functionName);
             frames_[rear_].frameInfoTemps[i].columnNumber = frameInfoTemps[i].columnNumber;
             frames_[rear_].frameInfoTemps[i].lineNumber = frameInfoTemps[i].lineNumber;
             frames_[rear_].frameInfoTemps[i].scriptId = frameInfoTemps[i].scriptId;
-            CheckAndCopy(frameInfoTemps[i].url,
-                sizeof(frameInfoTemps[i].url), frameInfoTemps[i].url);
+            CheckAndCopy(frames_[rear_].frameInfoTemps[i].url,
+                sizeof(frames_[rear_].frameInfoTemps[i].url), frameInfoTemps[i].url);
             frames_[rear_].frameInfoTemps[i].methodKey.methodIdentifier = frameInfoTemps[i].methodKey.methodIdentifier;
             frames_[rear_].frameInfoTemps[i].methodKey.state = frameInfoTemps[i].methodKey.state;
             frames_[rear_].frameInfoTemps[i].methodKey.napiCallCount = frameInfoTemps[i].methodKey.napiCallCount;
