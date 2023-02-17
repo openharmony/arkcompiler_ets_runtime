@@ -161,6 +161,10 @@ void StubFileInfo::Save(const std::string &filename)
         return;
     }
 
+    if (totalCodeSize_ == 0) {
+        LOG_COMPILER(FATAL) << "error: code size of generated stubs is empty!";
+    }
+
     std::ofstream file(realPath.c_str(), std::ofstream::binary);
     SetStubNum(entries_.size());
     file.write(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
@@ -192,6 +196,11 @@ bool StubFileInfo::Load()
     binBufparser.ParseBuffer(&moduleNum_, sizeof(moduleNum_));
     des_.resize(moduleNum_);
     binBufparser.ParseBuffer(&totalCodeSize_, sizeof(totalCodeSize_));
+
+    if (totalCodeSize_ == 0) {
+        LOG_COMPILER(ERROR) << "error: code in the binary stub is empty!";
+        return false;
+    }
 
     ExecutedMemoryAllocator::AllocateBuf(totalCodeSize_, exeMem_);
     uint64_t codeAddress = reinterpret_cast<uint64_t>(exeMem_.addr_);
@@ -226,6 +235,11 @@ void AnFileInfo::Save(const std::string &filename, kungfu::Triple triple)
     if (!RealPath(filename, realPath, false)) {
         return;
     }
+
+    if (totalCodeSize_ == 0) {
+        LOG_COMPILER(FATAL) << "error: code size of generated an file is empty!";
+    }
+
     std::ofstream file(realPath.c_str(), std::ofstream::binary);
     SetStubNum(entries_.size());
 
@@ -310,6 +324,11 @@ bool AnFileInfo::Load(const std::string &filename)
     des_.resize(moduleNum_);
     file.read(reinterpret_cast<char *>(&totalCodeSize_), sizeof(totalCodeSize_));
 
+    if (totalCodeSize_ == 0) {
+        file.close();
+        LOG_COMPILER(ERROR) << "error: code in the an file is empty!";
+        return false;
+    }
     ExecutedMemoryAllocator::AllocateBuf(totalCodeSize_, exeMem_);
     uint64_t codeAddress = reinterpret_cast<uint64_t>(exeMem_.addr_);
     uint32_t curUnitOffset = 0;
