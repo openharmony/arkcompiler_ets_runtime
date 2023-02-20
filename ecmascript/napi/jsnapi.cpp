@@ -81,7 +81,7 @@
 
 #include "libpandabase/os/mutex.h"
 
-#if defined(PANDA_TARGET_IOS)
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && defined(PANDA_TARGET_IOS)
 namespace OHOS::ArkCompiler::Toolchain {
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 extern "C" {

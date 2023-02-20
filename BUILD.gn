@@ -196,24 +196,6 @@ config("ark_jsruntime_public_config") {
     sdk_libc_secshared_config,
   ]
 
-  defines = []
-  if (!is_mingw && !is_mac && target_os != "android" && target_os != "ios") {
-    defines += [
-      "ECMASCRIPT_SUPPORT_CPUPROFILER",
-      "ECMASCRIPT_SUPPORT_HEAPPROFILER",
-      "ECMASCRIPT_SUPPORT_SNAPSHOT",
-      "ECMASCRIPT_SUPPORT_DEBUGGER",
-    ]
-  } else if (target_os == "android" && ark_compile_mode == "debug") {
-    defines += [
-      "ECMASCRIPT_SUPPORT_CPUPROFILER",
-      "ECMASCRIPT_SUPPORT_HEAPPROFILER",
-      "ECMASCRIPT_SUPPORT_DEBUGGER",
-    ]
-  } else if (target_os == "ios") {
-    defines += [ "ECMASCRIPT_SUPPORT_DEBUGGER" ]
-  }
-
   include_dirs = [
     "$js_root",
 
@@ -284,6 +266,16 @@ config("ark_jsruntime_common_config") {
     defines += [ "IS_PUBLIC_VERSION" ]
   }
 
+  ark_profiler_features = [
+    "ECMASCRIPT_SUPPORT_CPUPROFILER",
+    "ECMASCRIPT_SUPPORT_HEAPPROFILER",
+    "ECMASCRIPT_SUPPORT_SNAPSHOT",
+  ]
+  if (ark_compile_mode != "release") {
+    defines += [ "ECMASCRIPT_SUPPORT_DEBUGGER" ]
+    defines += ark_profiler_features
+  }
+
   if (is_linux) {
     defines += [
       "PANDA_TARGET_UNIX",
@@ -300,11 +292,21 @@ config("ark_jsruntime_common_config") {
       "_CRTBLD",
       "__LIBMSVCRT__",
     ]
+
+    # not support profiler on Windows yet
+    if (ark_compile_mode != "release") {
+      defines -= ark_profiler_features
+    }
   } else if (is_mac) {
     defines += [
       "PANDA_TARGET_UNIX",
       "PANDA_TARGET_MACOS",
     ]
+
+    # not support profiler on MacOS yet
+    if (ark_compile_mode != "release") {
+      defines -= ark_profiler_features
+    }
   } else if (target_os == "android") {
     defines += [
       "PANDA_TARGET_ANDROID",
@@ -317,6 +319,11 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_IOS",
       "PANDA_TARGET_UNIX",
     ]
+
+    # not support profiler on MacOS yet
+    if (ark_compile_mode != "release") {
+      defines -= ark_profiler_features
+    }
   } else {
     defines += [
       "PANDA_TARGET_UNIX",
@@ -777,11 +784,8 @@ source_set("libark_jsruntime_set") {
   if (is_mingw) {
     public_configs += [ ":ark_jsruntime_windows_config" ]
   }
-  if (is_mingw || is_mac) {
-    defines = [ "ECMASCRIPT_SUPPORT_DEBUGGER" ]
-  }
   cflags_cc = []
-  if (is_standard_system || target_os == "android") {
+  if (is_standard_system || target_os == "android" || target_os == "ios") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
