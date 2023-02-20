@@ -496,8 +496,8 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
-    builder_.PrimitiveTypeCheck(leftType, left);
-    builder_.PrimitiveTypeCheck(rightType, right);
+    builder_.TryPrimitiveTypeCheck(leftType, left);
+    builder_.TryPrimitiveTypeCheck(rightType, right);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType);
@@ -520,7 +520,7 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
     GateType valueType = acc_.GetGateType(value);
     GateType gateType = acc_.GetGateType(gate);
 
-    builder_.PrimitiveTypeCheck(valueType, value);
+    builder_.TryPrimitiveTypeCheck(valueType, value);
     if (valueType.IsIntType() && NeedInt32OverflowCheck(Op)) {
         builder_.Int32OverflowCheck<Op>(value);
     }
@@ -547,7 +547,7 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-    builder_.PrimitiveTypeCheck(srcType, src);
+    builder_.TryPrimitiveTypeCheck(srcType, src);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
@@ -599,7 +599,7 @@ void TSTypeLowering::LowerTypedLdArrayLength(GateRef gate)
 {
     AddProfiling(gate);
     GateRef array = acc_.GetValueIn(gate, 2);
-    builder_.ArrayCheck(array);
+    builder_.StableArrayCheck(array);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.LoadArrayLength(array);
@@ -756,7 +756,7 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     }
     GateRef index = acc_.GetValueIn(gate, 1);
     builder_.IndexCheck(receiverType, receiver, index);
-    builder_.PrimitiveTypeCheck(valueType, value);
+    builder_.TryPrimitiveTypeCheck(valueType, value);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
@@ -786,14 +786,14 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     }
     GateType receiverType = acc_.GetGateType(receiver);
     GateType propKeyType = acc_.GetGateType(propKey);
-    if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsIntType()) { // slowpath
+    if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsNumberType()) { // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
 
     AddProfiling(gate);
 
-    builder_.PrimitiveTypeCheck(propKeyType, propKey);
+    builder_.TryPrimitiveTypeCheck(GateType::IntType(), propKey);
     builder_.StableArrayCheck(receiver);
     builder_.IndexCheck(receiverType, receiver, propKey);
 
@@ -815,7 +815,7 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
 
     AddProfiling(gate);
 
-    builder_.PrimitiveTypeCheck(valueType, value);
+    builder_.TryPrimitiveTypeCheck(valueType, value);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
 

@@ -44,4 +44,4 @@ private:
     ChunkVector<Edge> workList_;
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_COMMON_STUBEXPRESSION_ELIMINATING_H
+#endif  // ECMASCRIPT_COMPILER_GRAPH_VISITOR_H

@@ -203,8 +203,11 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     return ret;
 }
 
-GateRef CircuitBuilder::PrimitiveTypeCheck(GateType type, GateRef gate)
+GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
 {
+    if (acc_.GetOpCode(gate) == OpCode::CONSTANT) {
+        return Circuit::NullGate();
+    }
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();

@@ -93,6 +93,7 @@ source_set("libark_jsoptimizer_set") {
     "gate_accessor.cpp",
     "gate_meta_data.cpp",
     "graph_editor.cpp",
+    "graph_visitor.cpp",
     "ic_stub_builder.cpp",
     "interpreter_stub.cpp",
     "llvm_codegen.cpp",

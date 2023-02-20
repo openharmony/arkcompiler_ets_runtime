@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/circuit_optimizer.h"
 #include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -486,6 +487,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestEarlyElimination) {
     // construct a circuit
     ecmascript::NativeAreaAllocator allocator;
     Circuit circuit(&allocator);
+    ecmascript::Chunk chunk(&allocator);
     GateAccessor acc(&circuit);
     auto receiver = circuit.NewArg(MachineType::I64, 1,
                                    GateType::AnyType(),
@@ -500,7 +502,8 @@ HWTEST_F_L0(CircuitOptimizerTests, TestEarlyElimination) {
                                 MachineType::ANYVALUE,
                                 { load0, load0, receiver, index },
                                 GateType::AnyType());
-    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &allocator).Run();
+    circuit.NewGate(circuit.ReturnVoid(), { acc.GetStateRoot(), load1, acc.GetReturnRoot() });
+    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &chunk).Run();
     EXPECT_FALSE(acc.GetMetaData(load0)->IsNop());
     EXPECT_TRUE(acc.GetMetaData(load1)->IsNop());
 }
@@ -509,6 +512,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestNotEarlyElimination) {
     // construct a circuit
     ecmascript::NativeAreaAllocator allocator;
     Circuit circuit(&allocator);
+    ecmascript::Chunk chunk(&allocator);
     GateAccessor acc(&circuit);
     auto receiver = circuit.NewArg(MachineType::I64, 1,
                                    GateType::AnyType(),
@@ -527,7 +531,8 @@ HWTEST_F_L0(CircuitOptimizerTests, TestNotEarlyElimination) {
                                  MachineType::ANYVALUE,
                                  { store, store, receiver, index },
                                  GateType::AnyType());
-    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &allocator).Run();
+    circuit.NewGate(circuit.ReturnVoid(), { acc.GetStateRoot(), load1, acc.GetReturnRoot() });
+    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &chunk).Run();
     EXPECT_FALSE(acc.GetMetaData(load0)->IsNop());
     EXPECT_FALSE(acc.GetMetaData(load1)->IsNop());
 }
@@ -536,6 +541,7 @@ HWTEST_F_L0(CircuitOptimizerTests, TestMergeEarlyElimination) {
     // construct a circuit
     ecmascript::NativeAreaAllocator allocator;
     Circuit circuit(&allocator);
+    ecmascript::Chunk chunk(&allocator);
     GateAccessor acc(&circuit);
     auto receiver = circuit.NewArg(MachineType::I64, 1,
                                    GateType::AnyType(),
@@ -568,7 +574,8 @@ HWTEST_F_L0(CircuitOptimizerTests, TestMergeEarlyElimination) {
                                  MachineType::ANYVALUE,
                                  { merge, dependSelector, receiver, index },
                                  GateType::AnyType());
-    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &allocator).Run();
+    circuit.NewGate(circuit.ReturnVoid(), { merge, load3, acc.GetReturnRoot() });
+    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &chunk).Run();
     EXPECT_FALSE(acc.GetMetaData(load0)->IsNop());
     EXPECT_TRUE(acc.GetMetaData(load1)->IsNop());
     EXPECT_TRUE(acc.GetMetaData(load2)->IsNop());
