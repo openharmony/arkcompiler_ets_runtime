@@ -15,12 +15,14 @@
 
 #include "ecmascript/platform/backtrace.h"
 
+#include <cstring>
+#include <cinttypes>
 #include <dlfcn.h>
 #include <iomanip>
 #include <ios>
-#include <cstring>
 #include <map>
 #include <unwind.h>
+#include "securec.h"
 
 #include "ecmascript/mem/mem.h"
 
@@ -28,7 +30,7 @@ namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
 static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
 static const int MAX_STACK_SIZE = 16;
-static const int ALIGN_WIDTH = 2;
+static const int LOG_BUF_LEN = 1024;
 
 using UnwBackTraceFunc = int (*)(void**, int);
 
@@ -70,9 +72,18 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
             }
         }
         const char *file =  info.dli_fname ? info.dli_fname : "";
-        uintptr_t offset = info.dli_fbase ? ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase) : 0;
-        stack << std::endl << "#" << std::setw(ALIGN_WIDTH) << std::dec << i << ":  " <<
-            file << "(" << "+" << std::hex << offset << ")";
+        uint64_t offset = info.dli_fbase ? ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase) : 0;
+        char buf[LOG_BUF_LEN] = {0};
+        char frameFormatWithMapName[] = "#%02zu pc %016" PRIx64 " %s";
+        int ret = 0;
+        ret = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, frameFormatWithMapName, \
+            i, offset, file);
+        if (ret <= 0) {
+            LOG_ECMA(ERROR) << "Backtrace snprintf_s failed";
+            return;
+        }
+        stack << std::endl;
+        stack << std::string(buf, strlen(buf));
     }
 }
 } // namespace panda::ecmascript
