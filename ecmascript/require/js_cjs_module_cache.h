@@ -124,11 +124,10 @@ public:
         SetValue(thread, entry, valueValue);
     }
 
-    static JSHandle<CjsModuleCache> PutIfAbsent(const JSThread *thread,
-                                                const JSHandle<CjsModuleCache> &dictionary,
-                                                const JSHandle<JSTaggedValue> &key,
-                                                const JSHandle<JSTaggedValue> &value);
-
+    static JSHandle<CjsModuleCache> PutIfAbsentAndReset(const JSThread *thread,
+                                                        const JSHandle<CjsModuleCache> &dictionary,
+                                                        const JSHandle<JSTaggedValue> &key,
+                                                        const JSHandle<JSTaggedValue> &value);
     static JSHandle<CjsModuleCache> ResetModule(const JSThread *thread,
                                                 const JSHandle<CjsModuleCache> &dictionary,
                                                 const JSHandle<JSTaggedValue> &key,

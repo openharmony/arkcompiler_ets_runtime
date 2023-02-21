@@ -86,8 +86,8 @@ void CjsModule::PutIntoCache(JSThread *thread, JSHandle<CjsModule> &module, JSHa
                                                           JSTaggedValue::Undefined());
     JSHandle<CjsModuleCache> moduleCache = JSHandle<CjsModuleCache>(thread, modCache);
     JSHandle<JSTaggedValue> moduleHandle = JSHandle<JSTaggedValue>::Cast(module);
-    JSHandle<CjsModuleCache> newCache = CjsModuleCache::PutIfAbsent(thread, moduleCache, filename,
-                                                                    moduleHandle);
+    JSHandle<CjsModuleCache> newCache = CjsModuleCache::PutIfAbsentAndReset(thread, moduleCache, filename,
+        moduleHandle);
     SlowRuntimeStub::StObjByName(thread, moduleObj.GetTaggedValue(), cacheName.GetTaggedValue(),
                                  newCache.GetTaggedValue());
 }

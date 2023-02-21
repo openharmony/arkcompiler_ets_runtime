@@ -80,8 +80,8 @@ HWTEST_F_L0(CjsModuleTest, SearchFromModuleCache)
     SlowRuntimeStub::StObjByName(thread, module2.GetTaggedValue(), exportsName.GetTaggedValue(),
                                  exports.GetTaggedValue());
 
-    cache = CjsModuleCache::PutIfAbsent(thread, cache, fileName1, JSHandle<JSTaggedValue>(module1));
-    cache = CjsModuleCache::PutIfAbsent(thread, cache, fileName2, JSHandle<JSTaggedValue>(module2));
+    cache = CjsModuleCache::PutIfAbsentAndReset(thread, cache, fileName1, JSHandle<JSTaggedValue>(module1));
+    cache = CjsModuleCache::PutIfAbsentAndReset(thread, cache, fileName2, JSHandle<JSTaggedValue>(module2));
     JSHandle<JSTaggedValue> moduleObj(env->GetCjsModuleFunction());
     JSHandle<JSTaggedValue> cacheName = globalConst->GetHandledCjsCacheString();
     SlowRuntimeStub::StObjByName(thread, moduleObj.GetTaggedValue(), cacheName.GetTaggedValue(),

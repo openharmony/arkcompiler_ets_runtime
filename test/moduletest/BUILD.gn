@@ -60,6 +60,7 @@ group("ark_js_moduletest") {
     "objectcloneproperties:objectclonepropertiesAction",
     "objoperate:objoperateAction",
     "promise:promiseAction",
+    "protobuf:protobufAction",
     "proxy:proxyAction",
     "regexpcallthrow:regexpcallthrowAction",
     "require:requireAction",
