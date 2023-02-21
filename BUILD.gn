@@ -320,7 +320,7 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_UNIX",
     ]
 
-    # not support profiler on MacOS yet
+    # not support profiler on iOS yet
     if (ark_compile_mode != "release") {
       defines -= ark_profiler_features
     }
