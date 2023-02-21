@@ -2084,11 +2084,15 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     res = SlowRuntimeStub::InstanceofByHandler(thread, target, object, instOfHandler);
                 } else if (!firstValue.IsHole()) {
                     // IC Miss
+                    SAVE_ACC();
                     profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
                     profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                     EcmaVM *vm = thread->GetEcmaVM();
                     JSTaggedValue key = vm->GetGlobalEnv()->GetHasInstanceSymbol().GetTaggedValue();
                     instOfHandler = ICRuntimeStub::LoadICByName(thread, profileTypeArray, target, key, slotId);
+                    RESTORE_ACC();
+                    target = GET_ACC();
+                    object = GET_VREG_VALUE(v0);
                     res = SlowRuntimeStub::InstanceofByHandler(thread, target, object, instOfHandler);
                 }
                 if (LIKELY(!res.IsHole())) {
