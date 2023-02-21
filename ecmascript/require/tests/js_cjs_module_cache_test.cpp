@@ -66,9 +66,9 @@ HWTEST_F_L0(CjsModuleCacheTest, PutIfAbsent)
     JSHandle<JSTaggedValue> fileName(factory->NewFromUtf8("ark/js_runtime/test.js"));
     JSHandle<JSTaggedValue> dirName(factory->NewFromUtf8("ark/js_runtime"));
     CjsModule::InitializeModule(thread, module, fileName, dirName);
-    JSHandle<CjsModuleCache> newCacheTested = CjsModuleCache::PutIfAbsent(thread, cache,
-                                                  JSHandle<JSTaggedValue>::Cast(fileName),
-                                                  JSHandle<JSTaggedValue>(module));
+    JSHandle<CjsModuleCache> newCacheTested = CjsModuleCache::PutIfAbsentAndReset(thread, cache,
+                                              JSHandle<JSTaggedValue>::Cast(fileName),
+                                              JSHandle<JSTaggedValue>(module));
     JSHandle<CjsModule> moduleTested = JSHandle<CjsModule>(thread,
                                            newCacheTested->GetModule(fileName.GetTaggedValue()));
 
@@ -96,9 +96,9 @@ HWTEST_F_L0(CjsModuleCacheTest, ResetModule)
     CjsModule::InitializeModule(thread, module, fileName, dirName);
     CjsModule::InitializeModule(thread, moduleWithNewExp, fileName, dirName);
     moduleWithNewExp->SetExports(thread, test);
-    JSHandle<CjsModuleCache> newCache = CjsModuleCache::PutIfAbsent(thread, cache,
-                                            JSHandle<JSTaggedValue>::Cast(fileName),
-                                            JSHandle<JSTaggedValue>(module));
+    JSHandle<CjsModuleCache> newCache = CjsModuleCache::PutIfAbsentAndReset(thread, cache,
+                                        JSHandle<JSTaggedValue>::Cast(fileName),
+                                        JSHandle<JSTaggedValue>(module));
     JSHandle<CjsModuleCache> newCacheTested = CjsModuleCache::ResetModule(thread, newCache, fileName,
                                                   JSHandle<JSTaggedValue>::Cast(moduleWithNewExp));
     JSHandle<CjsModule> moduleTested = JSHandle<CjsModule>(thread,

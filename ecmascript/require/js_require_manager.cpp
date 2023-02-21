@@ -51,9 +51,8 @@ void RequireManager::InitializeCommonJS(JSThread *thread, CJSInfo cjsInfo)
         SlowRuntimeStub::LdObjByName(thread, moduleObj.GetTaggedValue(),
                                      cacheKey.GetTaggedValue(), false, JSTaggedValue::Undefined());
     JSHandle<CjsModuleCache> moduleCache = JSHandle<CjsModuleCache>(thread, modCache);
-    JSHandle<CjsModuleCache> newCache = CjsModuleCache::PutIfAbsent(thread, moduleCache,
-                                                                    JSHandle<JSTaggedValue>::Cast(filename),
-                                                                    JSHandle<JSTaggedValue>(module));
+    JSHandle<CjsModuleCache> newCache = CjsModuleCache::PutIfAbsentAndReset(thread, moduleCache,
+        JSHandle<JSTaggedValue>::Cast(filename), JSHandle<JSTaggedValue>(module));
     SlowRuntimeStub::StObjByName(thread, moduleObj.GetTaggedValue(), cacheKey.GetTaggedValue(),
                                  newCache.GetTaggedValue());
 }
