@@ -45,3 +45,11 @@ for (let i = 300; i > 0; --i) {
         }
     }
 }
+
+let e = new Error("instanceof ic failed")
+for (let index = 0; index <= 30; index++) {
+    if ((e instanceof URIError) === true){
+        continue
+    }
+}
+print("test success")
