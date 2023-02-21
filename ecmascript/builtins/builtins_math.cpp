@@ -589,7 +589,6 @@ JSTaggedValue BuiltinsMath::Random(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Math, Random);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     Float64Union dataU;
-    RandomGenerator::InitRandom();
     uint64_t &randomState = RandomGenerator::GetRandomState();
     uint64_t val = RandomGenerator::XorShift64(&randomState);
     dataU.u64 = ((uint64_t)base::USE_LEFT << base::LEFT52) | (val >> base::RIGHT12);
