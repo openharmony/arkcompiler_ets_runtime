@@ -77,7 +77,7 @@ LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/arkcompiler/ets_runtime:out/hispark
 
 ```
 
-更多使用说明请参考：[方舟运行时使用指南](https://gitee.com/openharmony/arkcompiler_ets_runtime/blob/master/docs/ARK-Runtime-Usage-Guide-zh.md)
+更多使用说明请参考：[方舟运行时使用指南](/docs/README_zh.md)
 
 ## 相关仓<a name="section1371113476307"></a>
 
