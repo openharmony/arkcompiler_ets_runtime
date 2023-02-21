@@ -112,8 +112,9 @@ int Main(const int argc, const char **argv)
         PassManager passManager(vm, entrypoint, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
                                 isEnableTypeLowering, hotnessThreshold);
         for (const auto &fileName : pandaFileNames) {
-            LOG_COMPILER(INFO) << "AOT compile: " << fileName;
-            if (passManager.Compile(fileName, generator, profilerIn) == false) {
+            auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
+            LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
+            if (passManager.Compile(extendedFilePath, generator, profilerIn) == false) {
                 ret = false;
                 continue;
             }
