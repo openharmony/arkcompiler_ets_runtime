@@ -39,13 +39,16 @@ def parse_args():
     parser.add_argument('name', metavar='file|path', type=str, help='test case name: file or path')
     parser.add_argument('-a', '--all', action='store_true', help='run all test cases on path')
     parser.add_argument('-p', '--product', metavar='name',
-        help='product name, default is hispark_taurus on x64, rk3568 on arm64')
+        help='product name, default is hispark_taurus on x64, rk3568 on arm64, baltimore on arm64')
     parser.add_argument('-t', '--tool', metavar='opt',
-        help='run tool supported opt: aot, int(c interpreter tool), asmint(asm interpreter tool)')
+        help='run tool supported opt: aot, int(c interpreter tool), asmint(asm interpreter tool), node(v8), qjs, hermes')
+    parser.add_argument('-f', '--frontend', metavar='opt',
+        help='run frontend supported opt: ts2abc (slow), es2abc (quick not released)')
     parser.add_argument('-s', '--step', metavar='opt',
         help='run step supported opt: abc, pack, aot, aotd, run, rund, asmint, asmintd, int, intd')
     parser.add_argument('-d', '--debug', action='store_true', help='run on debug mode')
     parser.add_argument('--arm64', action='store_true', help='run on arm64 platform')
+    parser.add_argument('--frontend-args', metavar='args', help='pass to frontend args')
     parser.add_argument('--aot-args', metavar='args', help='pass to aot compiler args')
     parser.add_argument('--jsvm-args', metavar='args', help='pass to jsvm args')
     parser.add_argument('-i', '--info', action='store_true', help='add log level of info to args')
@@ -217,8 +220,15 @@ class ArkTest():
         self.libs_dir = libs_dir[self.arm64][args.debug]
         self.compiler = f'{product_dir}/{bins_dir[0][args.debug]}/ets_runtime/ark_aot_compiler'
         self.jsvm = f'{product_dir}/{bins_dir[self.arm64][args.debug]}/ets_runtime/ark_js_vm'
-        self.ts2abc = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/build/src/index.js'
-        self.builtin
+        self.ts2abc = f'node --expose-gc {product_dir}/clang_x64/arkcompiler/ets_frontend/build/src/index.js'
+        self.es2abc = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/es2abc'
+        self.frontend = self.ts2abc
+        self.abcmode = '-m --merge-abc'
+        if args.frontend == 'es2abc':
+            self.frontend = self.es2abc
+            self.abcmode = '--module --merge-abc'
+        self.builtin = ''
+        self.frontend_args = ''
         self.aot_args = ''
         self.jsvm_args = icu_arg
         if self.builtin:
@@ -228,6 +238,8 @@ class ArkTest():
             self.pgo = True
             self.aot_args = (f'{self.aot_args} --enable-pgo-profiler=true --pgo-hotness-threshold={args.pgo_th}'
                              f' --pgo-profiler-path=pgo_file_name.ap')
+        if args.frontend_args:
+            self.frontend_args = f'{self.frontend_args} {args.frontend_args}'
         if args.aot_args:
             self.aot_args = f'{self.aot_args} {args.aot_args}'
         if args.jsvm_args:
@@ -249,7 +261,7 @@ class ArkTest():
             print(f'export LD_LIBRARY_PATH={self.libs_dir}')
             sys.exit(0)
         if args.npm:
-            index_dir = os.path.dirname(self.ts2abc)
+            index_dir = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/build/src'
             os.system(f'cd {index_dir}/.. && npm install')
             sys.exit(0)
         if args.sign:
@@ -282,7 +294,10 @@ class ArkTest():
             pgo_file = f'{hap_dir}/ap/{module_name}'
             self.aot_args = self.aot_args.replace('pgo_file_name', pgo_file)
         cmd_map = {
-            'abc': f'node --expose-gc {self.ts2abc} {file} --merge-abc',
+            'node': f'node {self.frontend_args} {file}',
+            'qjs': f'qjs {self.frontend_args} {file}',
+            'hermes': f'hermes {self.frontend_args} {file}',
+            'abc': f'{self.frontend} {self.frontend_args} {self.abcmode} --output {abc_file} {file}',
             'pack': [f'mkdir -p {out_case_dir}/../an/arm64-v8a',
                      f'mv {out_case_dir}/{name}.an {hap_dir}/an/arm64-v8a/{module_name}.an',
                      f'mv {out_case_dir}/{name}.ai {hap_dir}/an/arm64-v8a/{module_name}.ai',
@@ -311,9 +326,9 @@ class ArkTest():
             print(cmd)
             os.system(cmd)
             perf_end = time.perf_counter()
-            abc_size = os.path.getsize(file) / 1024
-            an_size = os.path.getsize(f'{out_case_dir}/{name}.an') / 1024
-            print(f'test: {file}  abc_size: {abc_size: .1f}KB  an_size: {an_size:.1f}KB  '
+            abc_size = os.path.getsize(file) / 1024 / 1024
+            an_size = os.path.getsize(f'{out_case_dir}/{name}.an') / 1024 / 1024
+            print(f'test: {file}  abc_size: {abc_size: .1f}MB  an_size: {an_size:.1f}MB  '
                   f'expand: {an_size / abc_size: .1f}  time: {perf_end - perf_start: .1f}s')
             self.step = 'pack'
         if self.step == 'pack':
@@ -327,6 +342,23 @@ class ArkTest():
         if self.step == 'clean':
             if os.path.isfile(f'{hap_dir}/{self.hap_abc}'):
                 self.step = 'cleanhap'
+        if self.args.tool == 'node':
+            ret = self.run_cmd(cmd_map['node'])
+            self.judge_test(file, ret)
+            return
+        if self.args.tool == 'qjs':
+            ret = self.run_cmd(cmd_map['qjs'])
+            self.judge_test(file, ret)
+            return
+        if self.args.tool == 'hermes':
+            ret = self.run_cmd(cmd_map['hermes'])
+            self.judge_test(file, ret)
+            return
+        if not self.args.tool:
+            self.args.tool = 'aot'
+        if self.args.tool not in ['aot', 'asmint' 'int']:
+            print(f'not supported tool: {self.args.tool}')
+            sys.exit(1)
         if self.step != 'all':
             # gdb should use the os.system
             cmd = cmd_map[self.step]
@@ -340,7 +372,7 @@ class ArkTest():
         if ret[0]:
             self.judge_test(file, ret)
             return
-        if (not self.args.tool) or (self.args.tool == 'aot'):
+        if self.args.tool == 'aot':
             ret = self.run_cmd(cmd_map['aot'])
             if ret[0] and ret[2].find('aot compile success') < 0:
                 self.judge_test(file, ret)
