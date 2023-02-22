@@ -139,6 +139,7 @@ using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
 using OOMError = builtins::BuiltinsOOMError;
 using ErrorType = base::ErrorType;
+using RandomGenerator = base::RandomGenerator;
 using Global = builtins::BuiltinsGlobal;
 using BuiltinsString = builtins::BuiltinsString;
 using StringIterator = builtins::BuiltinsStringIterator;
@@ -1496,6 +1497,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<JSHClass> mathClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> mathObject = factory_->NewJSObjectWithInit(mathClass);
+    RandomGenerator::InitRandom();
     SetFunction(env, mathObject, "abs", Math::Abs, FunctionLength::ONE, BUILTINS_STUB_ID(ABS));
     SetFunction(env, mathObject, "acos", Math::Acos, FunctionLength::ONE, BUILTINS_STUB_ID(ACOS));
     SetFunction(env, mathObject, "acosh", Math::Acosh, FunctionLength::ONE);
