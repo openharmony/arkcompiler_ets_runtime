@@ -182,9 +182,9 @@ public:
         return aotOutputFile_;
     }
 
-    void SetAOTOutputFile(std::string value)
+    void SetAOTOutputFile(const std::string& value)
     {
-        aotOutputFile_ = std::move(value);
+        aotOutputFile_ = panda::os::file::File::GetExtendedFilePath(value);
     }
 
     bool WasAOTOutputFileSet() const
@@ -603,9 +603,9 @@ public:
         printAnyTypes_ = value;
     }
 
-    void SetBuiltinsDTS(std::string value)
+    void SetBuiltinsDTS(const std::string& value)
     {
-        builtinsDTS_ = std::move(value);
+        builtinsDTS_ = panda::os::file::File::GetExtendedFilePath(value);
     }
 
     bool WasSetBuiltinsDTS() const
@@ -809,9 +809,9 @@ public:
         return pgoProfilerPath_;
     }
 
-    void SetPGOProfilerPath(std::string value)
+    void SetPGOProfilerPath(const std::string& value)
     {
-        pgoProfilerPath_ = std::move(value);
+        pgoProfilerPath_ = panda::os::file::File::GetExtendedFilePath(value);
     }
 
     void SetEnableTypeLowering(bool value)
