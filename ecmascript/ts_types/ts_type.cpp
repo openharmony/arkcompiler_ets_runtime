@@ -355,7 +355,9 @@ GlobalTSTypeRef TSInterfaceType::GetPropTypeGT(JSThread *thread, JSHandle<TSInte
         uint32_t gtRawData = static_cast<uint32_t>(extendsValue.GetInt());
         GlobalTSTypeRef extendsGT = GlobalTSTypeRef(gtRawData);
         JSHandle<JSTaggedValue> extendsType = tsManager->GetTSType(extendsGT);
-
+        if (extendsType->IsUndefined()) {
+            return GlobalTSTypeRef::Default();
+        }
         ASSERT(extendsType->IsTSType());
 
         if (extendsType->IsTSClassType()) {

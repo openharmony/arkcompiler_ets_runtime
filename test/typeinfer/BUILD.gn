@@ -92,6 +92,7 @@ group("ark_typeinfer_test") {
     "stlettoglobalrecord:stlettoglobalrecordAotTypeInferAction",
     "sub2dyn:sub2dynAotTypeInferAction",
     "supercall:supercallAotTypeInferAction",
+    "superclass:superclassAotTypeInferAction",
     "throwdyn_1:throwdyn_1AotTypeInferAction",
     "throwdyn_2:throwdyn_2AotTypeInferAction",
     "tryldglobalbyname:tryldglobalbynameAotTypeInferAction",
