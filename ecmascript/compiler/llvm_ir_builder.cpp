@@ -183,7 +183,6 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::DEOPT, &LLVMIRBuilder::HandleDeopt},
         {OpCode::TRUNC_FLOAT_TO_INT64, &LLVMIRBuilder::HandleTruncFloatToInt},
-        {OpCode::GET_ENV, &LLVMIRBuilder::HandleGetEnv},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -334,7 +333,7 @@ void LLVMIRBuilder::GenPrologue()
                                            std::to_string(reservedSlotsSize).c_str());
         SaveFrameTypeOnFrame(frameType);
     } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-        reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedEnvOffset(slotSize_);
+        reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
         auto ArgList = circuit_->GetArgRoot();
@@ -342,9 +341,7 @@ void LLVMIRBuilder::GenPrologue()
         for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
             int argth = static_cast<int>(acc_.TryGetValue(*useIt));
             LLVMValueRef value = LLVMGetParam(function_, argth);
-            if (argth == static_cast<int>(CommonArgIdx::LEXENV)) {
-                SaveLexicalEnvOnOptJSFuncFrame(value);
-            } else if (argth == static_cast<int>(CommonArgIdx::FUNC)) {
+            if (argth == static_cast<int>(CommonArgIdx::FUNC)) {
                 SaveJSFuncOnOptJSFuncFrame(value);
                 SaveFrameTypeOnFrame(frameType);
             }
@@ -1140,20 +1137,6 @@ void LLVMIRBuilder::VisitParameter(GateRef gate)
     ASSERT(value != nullptr);
 }
 
-void LLVMIRBuilder::SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value)
-{
-    ASSERT(circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
-    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
-    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
-    size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedEnvOffset(slotSize_);
-    LLVMValueRef frameEnvSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
-        reservedOffset, false), "");
-    LLVMValueRef envAddr = LLVMBuildIntToPtr(builder_, frameEnvSlotAddr,
-        LLVMPointerType(slotType_, 0), "env.Addr");
-    LLVMValueRef envValue = LLVMBuildPtrToInt(builder_, value, slotType_, "cast_to_i64");
-    LLVMBuildStore(builder_, envValue, envAddr);
-}
-
 void LLVMIRBuilder::SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value)
 {
     ASSERT(circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
@@ -1459,27 +1442,6 @@ void LLVMIRBuilder::VisitTruncFloatToInt(GateRef gate, GateRef e1)
         UNREACHABLE();
     }
     gate2LValue_[gate] = result;
-}
-
-void LLVMIRBuilder::HandleGetEnv(GateRef gate)
-{
-    VisitGetEnv(gate);
-}
-
-void LLVMIRBuilder::VisitGetEnv(GateRef gate)
-{
-    LLVMTypeRef returnType;
-    returnType = ConvertLLVMTypeFromGate(gate);
-    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
-    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
-    size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedEnvOffset(slotSize_);
-    LLVMValueRef frameEnvSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
-        reservedOffset, false), "");
-    LLVMValueRef envAddr = LLVMBuildIntToPtr(builder_, frameEnvSlotAddr, LLVMPointerType(slotType_, 0), "env.Addr");
-    envAddr = LLVMBuildPointerCast(builder_, envAddr,
-        LLVMPointerType(returnType, LLVMGetPointerAddressSpace(LLVMTypeOf(envAddr))), "");
-    LLVMValueRef env = LLVMBuildLoad(builder_, envAddr, "");
-    gate2LValue_[gate] = env;
 }
 
 bool IsAddIntergerType(MachineType machineType)
@@ -2011,18 +1973,24 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 
     const size_t numValueIn = acc_.GetNumValueIn(frameState);
+    const size_t envIndex = numValueIn - 3; // 3: env valueIn index
     const size_t accIndex = numValueIn - 2; // 2: acc valueIn index
     const size_t pcIndex = numValueIn - 1;
+    GateRef env = acc_.GetValueIn(frameState, envIndex);
     GateRef acc = acc_.GetValueIn(frameState, accIndex);
     GateRef pc = acc_.GetValueIn(frameState, pcIndex);
     std::vector<LLVMValueRef> values;
-    for (size_t i = 0; i < accIndex; i++) {
+    for (size_t i = 0; i < envIndex; i++) {
         GateRef vregValue = acc_.GetValueIn(frameState, i);
         if (acc_.IsConstantValue(vregValue, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
             continue;
         }
         values.emplace_back(LLVMConstInt(LLVMInt32Type(), i, false));
         values.emplace_back(gate2LValue_.at(vregValue));
+    }
+    if (!acc_.IsConstantValue(env, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
+        values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ENV_INDEX), false));
+        values.emplace_back(gate2LValue_.at(env));
     }
     if (!acc_.IsConstantValue(acc, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
         values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ACC_INDEX), false));

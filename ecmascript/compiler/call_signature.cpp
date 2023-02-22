@@ -1350,33 +1350,6 @@ DEF_CALL_SIGNATURE(FatalPrint)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(OptSetLexicalEnv)
-{
-    // 2 : 2 input parameters
-    CallSignature index("OptSetLexicalEnv", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = index;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(OptPopLexicalEnv)
-{
-    CallSignature index("OptPopLexicalEnv", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = index;
-    std::array<VariableType, 1> params = {
-        VariableType::NATIVE_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(GetActualArgvNoGC)
 {
     CallSignature index("GetActualArgvNoGC", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::NATIVE_POINTER());

@@ -421,7 +421,7 @@ void BytecodeCircuitBuilder::InsertPhi()
         EnumerateBlock(bb, [this, &defsitesInfo, &bb]
             (const BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
-                auto numVRegs = method_->GetNumberVRegs();
+                auto numVRegs = GetNumberVRegsWithEnv();
                 for (size_t i = 0; i < numVRegs; i++) {
                     defsitesInfo[i].insert(bb.id);
                 }
@@ -474,7 +474,7 @@ void BytecodeCircuitBuilder::InsertExceptionPhi(std::unordered_map<uint16_t, std
         EnumerateBlock(bb, [this, &vregs]
         (const BytecodeInfo &bytecodeInfo) -> bool {
             if (bytecodeInfo.IsBc(EcmaOpcode::RESUMEGENERATOR)) {
-                auto numVRegs = method_->GetNumberVRegs();
+                auto numVRegs = GetNumberVRegsWithEnv();
                 for (size_t i = 0; i < numVRegs; i++) {
                     vregs.insert(i);
                 }
@@ -881,7 +881,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
             auto hole = circuit_->GetConstantGate(MachineType::I64,
                                                   JSTaggedValue::VALUE_HOLE,
                                                   GateType::TaggedValue());
-            uint32_t numRegs = method_->GetNumberVRegs();
+            uint32_t numRegs = GetNumberVRegsWithEnv();
             std::vector<GateRef> vec(numRegs + 1, hole);
             vec[0] = depend;
             GateRef saveRegs =
@@ -1190,7 +1190,11 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
     if (ans == Circuit::NullGate() && IsEntryBlock(bbId)) { // entry block
         // find def-site in function args
         ASSERT(!tmpAcc);
-        ans = argAcc_.GetArgGate(tmpReg);
+        if (tmpReg == GetEnvVregIdx()) {
+            ans = argAcc_.GetCommonArgGate(CommonArgIdx::LEXENV);
+        } else {
+            ans = argAcc_.GetArgGate(tmpReg);
+        }
         return ans;
     }
     if (ans == Circuit::NullGate()) {
@@ -1243,7 +1247,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
             [[maybe_unused]] size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
             [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount();
             ASSERT(numValueInputs == valueCount);
-            ASSERT(numValueOutputs <= 1);
+            ASSERT(numValueOutputs <= 1 + (bytecodeInfo.EnvOut() ? 1 : 0));
             auto valueStarts = gateAcc_.GetInValueStarts(gate);
             for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {
                 auto inIdx = valueIdx + valueStarts;
@@ -1252,7 +1256,12 @@ void BytecodeCircuitBuilder::BuildCircuit()
                 }
                 if (valueIdx < bytecodeInfo.inputs.size()) {
                     auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
-                    GateRef defVreg = ResolveDef(bbIndex, bcIndex - 1, vregId, false);
+                    GateRef defVreg = Circuit::NullGate();
+                    if (IsFirstBCEnvIn(bbIndex, bcIndex, vregId)) {
+                        defVreg = argAcc_.GetCommonArgGate(CommonArgIdx::LEXENV);
+                    } else {
+                        defVreg = ResolveDef(bbIndex, bcIndex - 1, vregId, false);
+                    }
                     gateAcc_.NewIn(gate, inIdx, defVreg);
                 } else {
                     GateRef defAcc = ResolveDef(bbIndex, bcIndex - 1, 0, true);

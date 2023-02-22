@@ -900,7 +900,7 @@ bool TypeInfer::InferStLexVarDyn(GateRef gate)
     auto slot = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
     auto type = lexEnvManager_->GetLexEnvElementType(methodId_, level, slot);
     if (type.IsAnyType() || type.IsUndefinedType()) {
-        auto valueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));
+        auto valueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 3));
         if (!valueType.IsAnyType()) {
             lexEnvManager_->SetLexEnvElementType(methodId_, level, slot, valueType);
             return true;

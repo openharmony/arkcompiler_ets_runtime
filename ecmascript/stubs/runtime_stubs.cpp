@@ -1937,24 +1937,6 @@ JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
     return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
 }
 
-void RuntimeStubs::OptSetLexicalEnv(uintptr_t argGlue, JSTaggedType lexicalEnv)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    RuntimeOptSetLexEnvNoGC(thread, JSTaggedValue(lexicalEnv));
-}
-
-void RuntimeStubs::OptPopLexicalEnv(uintptr_t argGlue)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
-    FrameIterator it(current, thread);
-    ASSERT(it.IsOptimizedJSFunctionFrame());
-    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
-    JSTaggedValue currentLexenv = optimizedJSFunctionFrame->GetEnv();
-    JSTaggedValue parentLexenv = LexicalEnv::Cast(currentLexenv.GetTaggedObject())->GetParentEnv();
-    optimizedJSFunctionFrame->SetEnv(parentLexenv);
-}
-
 JSTaggedType RuntimeStubs::FloatMod(double x, double y)
 {
     double result = std::fmod(x, y);

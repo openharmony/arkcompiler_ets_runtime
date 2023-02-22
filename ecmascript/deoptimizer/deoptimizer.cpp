@@ -98,7 +98,11 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
             v = JSTaggedType(static_cast<int64_t>(std::get<kungfu::OffsetType>(deopt.value)));
         }
         if (id != static_cast<kungfu::OffsetType>(SpecVregIndex::PC_INDEX)) {
-            deoptVregs_[id] = JSTaggedValue(v);
+            if (id == static_cast<kungfu::OffsetType>(SpecVregIndex::ENV_INDEX)) {
+                env_ = JSTaggedValue(v);
+            } else {
+                deoptVregs_[id] = JSTaggedValue(v);
+            }
         } else {
             pc_ = static_cast<uint32_t>(v);
         }
@@ -123,7 +127,6 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBun
                 auto preFrameSp = frame->ComputePrevFrameSp(it);
                 frameArgc_ = frame->GetArgc(preFrameSp);
                 frameArgvs_ = frame->GetArgv(preFrameSp);
-                env_ = frame->GetEnv();
                 stackContext_.callFrameTop_ = it.GetPrevFrameCallSiteSp();
                 stackContext_.returnAddr_ = frame->GetReturnAddr();
                 stackContext_.callerFp_ = reinterpret_cast<uintptr_t>(frame->GetPrevFrameFp());

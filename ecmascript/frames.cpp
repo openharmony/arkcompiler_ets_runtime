@@ -485,11 +485,11 @@ ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
     OptimizedJSFunctionFrame *frame = OptimizedJSFunctionFrame::GetFrameFromSp(it.GetSp());
     uintptr_t *jsFuncPtr = reinterpret_cast<uintptr_t *>(frame);
     uintptr_t jsFuncSlot = ToUintPtr(jsFuncPtr);
-    uintptr_t envslot = jsFuncSlot + sizeof(uintptr_t);
     visitor(Root::ROOT_FRAME, ObjectSlot(jsFuncSlot));
-    visitor(Root::ROOT_FRAME, ObjectSlot(envslot));
 
     uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);
+    uintptr_t envSlot = ToUintPtr(preFrameSp);
+    visitor(Root::ROOT_FRAME, ObjectSlot(envSlot));
 
     auto argc = frame->GetArgc(preFrameSp);
     JSTaggedType *argv = frame->GetArgv(reinterpret_cast<uintptr_t *>(preFrameSp));

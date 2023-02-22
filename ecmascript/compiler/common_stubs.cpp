@@ -271,7 +271,6 @@ void NewLexicalEnvStubBuilder::GenerateCircuit()
     Label afterNew(env);
     newBuilder.NewLexicalEnv(&result, &afterNew, numVars, parent);
     Bind(&afterNew);
-    CallNGCRuntime(glue, RTSTUB_ID(OptSetLexicalEnv), {glue, *result});
     Return(*result);
 }
 

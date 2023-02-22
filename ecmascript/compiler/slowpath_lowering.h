@@ -288,7 +288,7 @@ private:
     void LowerAsyncGeneratorReject(GateRef gate);
     void LowerSetGeneratorState(GateRef gate, GateRef jsFunc);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
-    void AddProfiling(GateRef gate);
+    void AddProfiling(GateRef gate, bool skipGenerator = true);
     GateRef FastStrictEqual(GateRef left, GateRef right);
     void LowerWideLdPatchVar(GateRef gate);
     void LowerWideStPatchVar(GateRef gate);

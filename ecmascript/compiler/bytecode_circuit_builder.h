@@ -366,6 +366,16 @@ public:
         return static_cast<size_t>(method_->GetNumberVRegs());
     }
 
+    size_t GetNumberVRegsWithEnv() const
+    {
+        return GetNumberVRegs() + 1; // 1: env variable
+    }
+
+    size_t GetEnvVregIdx() const
+    {
+        return GetNumberVRegs();
+    }
+
     Bytecodes *GetBytecodes() const
     {
         return bytecodes_;
@@ -453,6 +463,11 @@ private:
     inline bool IsEntryBlock(const size_t bbId) const
     {
         return bbId == 0;
+    }
+
+    inline bool IsFirstBCEnvIn(const size_t bbId, const size_t bcIndex, const uint16_t reg) const
+    {
+        return (IsEntryBlock(bbId) && bcIndex == 0 && reg == GetNumberVRegs());
     }
 
     TSManager *tsManager_;
