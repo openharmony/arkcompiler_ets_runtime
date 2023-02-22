@@ -55,8 +55,8 @@ struct AsmInterParsedOption {
 
 extern const std::string PUBLIC_API COMMON_HELP_HEAD_MSG;
 extern const std::string PUBLIC_API STUB_HELP_HEAD_MSG;
+extern const std::string PUBLIC_API COMPILER_HELP_HEAD_MSG;
 extern const std::string PUBLIC_API HELP_OPTION_MSG;
-extern const std::string PUBLIC_API HELP_TAIL_MSG;
 
 enum CommandValues {
     OPTION_DEFAULT,
