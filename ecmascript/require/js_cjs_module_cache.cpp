@@ -20,14 +20,14 @@
 #include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript {
-JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsent(const JSThread *thread,
-                                                     const JSHandle<CjsModuleCache> &dictionary,
-                                                     const JSHandle<JSTaggedValue> &key,
-                                                     const JSHandle<JSTaggedValue> &value)
+JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsentAndReset(const JSThread *thread,
+                                                             const JSHandle<CjsModuleCache> &dictionary,
+                                                             const JSHandle<JSTaggedValue> &key,
+                                                             const JSHandle<JSTaggedValue> &value)
 {
     int entry = dictionary->FindEntry(key.GetTaggedValue());
     if (entry != -1) {
-        return dictionary;
+        return ResetModule(thread, dictionary, key, value);
     }
 
     // Check whether the dictionary should be extended.
@@ -41,6 +41,7 @@ JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsent(const JSThread *thread,
 
     return newDictionary;
 }
+
 JSHandle<CjsModuleCache> CjsModuleCache::ResetModule(const JSThread *thread,
                                                      const JSHandle<CjsModuleCache> &dictionary,
                                                      const JSHandle<JSTaggedValue> &key,
