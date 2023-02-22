@@ -96,6 +96,7 @@
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
+using RandomGenerator = base::RandomGenerator;
 /* static */
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config)
 {
@@ -136,6 +137,7 @@ void EcmaVM::PreFork()
 
 void EcmaVM::PostFork()
 {
+    RandomGenerator::InitRandom();
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->SetThreadId();
     heap_->EnableParallelGC();
