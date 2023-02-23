@@ -48,7 +48,7 @@ JSHClass *TSObjectType::CreateHClassByProps(JSThread *thread, JSHandle<TSObjLayo
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
-    uint32_t numOfProps = propType->NumberOfElements();
+    uint32_t numOfProps = propType->GetNumOfProperties();
     JSHandle<JSHClass> hclass;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -85,7 +85,7 @@ JSHClass *TSObjectType::CreatePrototypeHClassByProps(JSThread *thread, JSHandle<
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
-    uint32_t numOfProps = propType->NumberOfElements();
+    uint32_t numOfProps = propType->GetNumOfProperties();
     JSHandle<JSHClass> hclass;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
@@ -276,7 +276,8 @@ GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSHandle<TSObjectType> objectType, J
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSObjLayoutInfo *layout = TSObjLayoutInfo::Cast(objectType->GetObjLayoutInfo().GetTaggedObject());
-    for (uint32_t i = 0; i < layout->NumberOfElements(); ++i) {
+    uint32_t numOfProps = layout->GetNumOfProperties();
+    for (uint32_t i = 0; i < numOfProps; ++i) {
         EcmaString* propKey = EcmaString::Cast(layout->GetKey(i).GetTaggedObject());
         if (!EcmaStringAccessor::StringsAreEqual(propKey, *propName)) {
             continue;

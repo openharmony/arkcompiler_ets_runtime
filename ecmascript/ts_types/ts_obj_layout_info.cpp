@@ -15,13 +15,11 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
 namespace panda::ecmascript {
-void TSObjLayoutInfo::SetKeyAndType(const JSThread *thread, [[maybe_unused]] int index,
-    const JSTaggedValue &key, const JSTaggedValue &typeIdVal)
+void TSObjLayoutInfo::AddKeyAndType(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &typeIdVal)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    int number = static_cast<int>(NumberOfElements());
-    ASSERT(number == index);
-    SetNumberOfElements(thread, number + 1);
+    int number = static_cast<int>(GetNumOfProperties());
+    SetNumOfProperties(thread, number + 1);
     SetKey(thread, number, key);
     SetTypeId(thread, number, typeIdVal);
 }

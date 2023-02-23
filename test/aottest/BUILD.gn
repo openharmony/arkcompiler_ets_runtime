@@ -69,6 +69,7 @@ group("ark_aot_test") {
     "destructuring:destructuringAotAction",
     "div:divAotAction",
     "duplicatefunctions:duplicatefunctionsAotAction",
+    "duplicatekey:duplicatekeyAotAction",
     "exceptionhandler:exceptionhandlerAotAction",
     "exp:expAotAction",
     "forloop:forloopAotAction",

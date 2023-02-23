@@ -366,7 +366,7 @@ void TSTypeParser::FillPropertyTypes(const JSPandaFile *jsPandaFile, const CStri
             gt = tsManager_->CreateClassInstanceType(gt);
         }
         value.Update(JSTaggedValue(gt.GetType()));
-        layOut->SetKeyAndType(thread_, fieldIndex, key.GetTaggedValue(), value.GetTaggedValue());
+        layOut->AddKeyAndType(thread_, key.GetTaggedValue(), value.GetTaggedValue());
         if (isField) {
             index += 2;  // 2: ignore accessFlag and readonly
         }
@@ -391,7 +391,7 @@ void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile, cons
             key.Update(functionType->GetName());
         };
 
-        layOut->SetKeyAndType(thread_, methodIndex, key.GetTaggedValue(), value.GetTaggedValue());
+        layOut->AddKeyAndType(thread_, key.GetTaggedValue(), value.GetTaggedValue());
     }
 }
 
