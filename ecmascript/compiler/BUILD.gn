@@ -395,7 +395,7 @@ ohos_executable("ark_aot_compiler") {
     }
   }
 
-  install_enable = false
+  install_enable = true
 
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
