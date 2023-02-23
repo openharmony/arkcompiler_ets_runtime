@@ -66,6 +66,7 @@ public:
     }
 
     void InsertJSPandaFile(const JSPandaFile *jsPandaFile);
+    void ClearCache();
 
     const JSPandaFile *FindJSPandaFile(const CString &filename);
 private:

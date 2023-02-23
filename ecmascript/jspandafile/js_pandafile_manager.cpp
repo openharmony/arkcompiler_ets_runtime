@@ -244,6 +244,11 @@ void JSPandaFileManager::ObsoleteLoadedJSPandaFile(const CString &filename)
     loadedJSPandaFiles_.erase(iter);
 }
 
+void JSPandaFileManager::ClearCache()
+{
+    loadedJSPandaFiles_.clear();
+}
+
 JSPandaFile *JSPandaFileManager::OpenJSPandaFile(const CString &filename)
 {
     auto pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
