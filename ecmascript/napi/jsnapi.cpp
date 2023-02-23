@@ -2748,6 +2748,10 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
     ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     ecmascript::CString recordName = method->GetRecordName();
 
+    // for debugger, to notify the script loaded and parsed which the concurrent function is in
+    auto *notificationMgr = vm->GetJsDebuggerManager()->GetNotificationManager();
+    notificationMgr->LoadModuleEvent(moduleName, recordName);
+
     bool isModule = jsPandaFile->IsModule(recordName);
     if (isModule) {
         ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
