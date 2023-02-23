@@ -48,6 +48,9 @@ def parse_args():
         help='run step supported opt: abc, pack, aot, aotd, run, rund, asmint, asmintd, int, intd')
     parser.add_argument('-d', '--debug', action='store_true', help='run on debug mode')
     parser.add_argument('--arm64', action='store_true', help='run on arm64 platform')
+    parser.add_argument('--device', action='store_true', help='run on device')
+    parser.add_argument('--copy-path', metavar='path', help='copy bins to device')
+    parser.add_argument('-m', '--module', action='store_true', help='frontend compile with module')
     parser.add_argument('--frontend-args', metavar='args', help='pass to frontend args')
     parser.add_argument('--aot-args', metavar='args', help='pass to aot compiler args')
     parser.add_argument('--jsvm-args', metavar='args', help='pass to jsvm args')
@@ -66,6 +69,10 @@ def parse_args():
     parser.add_argument('-e', '--env', action='store_true', help='print LD_LIBRARY_PATH')
     arguments = parser.parse_args()
     return arguments
+
+def run_and_print(cmd):
+    print(cmd)
+    os.system(cmd)
 
 def run_command(cmd, timeout=DEFAULT_TIMEOUT):
     proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
@@ -111,7 +118,7 @@ class ArkTest():
         self.self_dir = os.path.abspath(sys.argv[0])
         self.hap_abc = 'ets/modules.abc'
         self.place_dir = 'arkcompiler/ets_runtime/test'
-        if self.self_dir.find(self.place_dir) < 0:
+        if not args.device and self.self_dir.find(self.place_dir) < 0:
             print(f'pls place this script at: {self.place_dir}')
             sys.exit(1)
 
@@ -134,18 +141,19 @@ class ArkTest():
         if args.clean:
             self.step = 'clean'
         self.expect = 'expect_output.txt'
+        search_type_list = ['.ts', '.js', '.abc']
         self.types = {'all': ['.ts', '.js'],
                       'abc': ['.ts', '.js'],
                       'pack': ['.an'],
-                      'aot': ['.abc'],
-                      'aotd': ['.abc'],
-                      'run': ['.abc'],
-                      'rund': ['.abc'],
-                      'asmint': ['.abc'],
-                      'asmintd': ['.abc'],
-                      'int': ['.abc'],
-                      'intd': ['.abc'],
-                      'clean': ['.abc']}
+                      'aot': search_type_list,
+                      'aotd': search_type_list,
+                      'run': search_type_list,
+                      'rund': search_type_list,
+                      'asmint': search_type_list,
+                      'asmintd': search_type_list,
+                      'int': search_type_list,
+                      'intd': search_type_list,
+                      'clean': search_type_list}
 
         product_dir = f'{self.ohdir}/out/{self.product}'
         libs_dir_x64_release = (f'{self.ohdir}/prebuilts/clang/ohos/linux-x86_64/llvm/lib:'
@@ -223,14 +231,22 @@ class ArkTest():
         self.ts2abc = f'node --expose-gc {product_dir}/clang_x64/arkcompiler/ets_frontend/build/src/index.js'
         self.es2abc = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/es2abc'
         self.frontend = self.ts2abc
-        self.abcmode = '-m --merge-abc'
+        if not args.frontend:
+            args.frontend = 'ts2abc'
+        if args.frontend not in ['ts2abc', 'es2abc']:
+            print(f'not supported frontend: {args.frontend}')
+            sys.exit(1)
         if args.frontend == 'es2abc':
             self.frontend = self.es2abc
-            self.abcmode = '--module --merge-abc'
+        abcmode = {'ts2abc': ['--merge-abc', '--merge-abc -m'],
+                   'es2abc': ['--merge-abc', '--merge-abc --module']}
+        self.abcmode = abcmode[args.frontend][args.module]
         self.builtin = ''
         self.frontend_args = ''
         self.aot_args = ''
         self.jsvm_args = icu_arg
+        if args.device:
+            self.jsvm_args = ''
         if self.builtin:
             self.aot_args = f'{self.aot_args} --builtins-dts={self.builtin}.abc'
         self.pgo = False
@@ -249,7 +265,7 @@ class ArkTest():
             self.jsvm_args = f'{self.jsvm_args} --log-level=info'
         self.runner = ''
         self.runnerd = 'gdb --args'
-        if self.arm64:
+        if self.arm64 or args.device:
             if self.step[:3] != 'aot':
                 self.runner = 'qemu-aarch64'
                 self.runnerd = 'qemu-aarch64 -cpu max,sve=off -g 123456'
@@ -259,6 +275,13 @@ class ArkTest():
         os.environ['LD_LIBRARY_PATH'] = self.libs_dir
         if args.env:
             print(f'export LD_LIBRARY_PATH={self.libs_dir}')
+            sys.exit(0)
+        if args.copy_path:
+            run_and_print(f'hdc shell mount -o remount,rw /')
+            run_and_print(f'hdc file send {args.copy_path}\\ark_aot_compiler /system/bin/')
+            run_and_print(f'hdc shell chmod a+x /system/bin/ark_aot_compiler')
+            run_and_print(f'hdc file send {args.copy_path}\\ark_js_vm /system/bin/')
+            run_and_print(f'hdc shell chmod a+x /system/bin/ark_js_vm')
             sys.exit(0)
         if args.npm:
             index_dir = f'{product_dir}/clang_x64/arkcompiler/ets_frontend/build/src'
@@ -356,9 +379,12 @@ class ArkTest():
             return
         if not self.args.tool:
             self.args.tool = 'aot'
-        if self.args.tool not in ['aot', 'asmint' 'int']:
+        if self.args.tool not in ['aot', 'asmint', 'int']:
             print(f'not supported tool: {self.args.tool}')
             sys.exit(1)
+        if self.args.device:
+            ret = self.run_test_on_device(file)
+            return
         if self.step != 'all':
             # gdb should use the os.system
             cmd = cmd_map[self.step]
@@ -382,6 +408,31 @@ class ArkTest():
             ret = self.run_cmd(cmd_map[self.args.tool])
         self.judge_test(file, ret)
 
+    def run_test_on_device(self, file):
+        basename = os.path.basename(f'{file}')
+        name = os.path.splitext(basename)[0]
+        out_case_dir = '/data/test'
+        send_abc_file = f'{os.path.splitext(file)[0]}.abc'.replace('/', '\\')
+        abc_file = f'{out_case_dir}/{name}.abc'
+        cmd_map = {'abc': f'hdc file send {send_abc_file} {out_case_dir}/',
+                   'aot': f'hdc shell ark_aot_compiler {self.aot_args} --aot-file={out_case_dir}/{name} {abc_file}',
+                   'run': f'hdc shell ark_js_vm {self.jsvm_args} --aot-file={out_case_dir}/{name} --entry-point={name} {abc_file}',
+                   'asmint': f'hdc shell ark_js_vm {self.jsvm_args} --entry-point={name} {abc_file}',
+                   'int': f'hdc shell ark_js_vm {self.jsvm_args} --asm-interpreter=0 --entry-point={name} {abc_file}'}
+        if self.step != 'all':
+            run_and_print(cmd_map[self.step])
+            return
+        run_and_print(cmd_map['abc'])
+        if self.args.tool == 'aot':
+            ret = self.run_cmd(cmd_map['aot'])
+            if ret[0] and ret[2].find('aot compile success') < 0:
+                self.judge_test(file, ret)
+                return
+            ret = self.run_cmd(cmd_map['run'])
+        else:
+            ret = self.run_cmd(cmd_map[self.args.tool])
+        self.judge_test(file, ret)
+    
     def judge_test(self, file, out):
         if out[0]:
             self.fail_cases.append(file)
@@ -391,7 +442,7 @@ class ArkTest():
         if os.path.exists(expect_file):
             with open(expect_file, mode='r') as infile:
                 expect = ''.join(infile.readlines()[13:])
-            if out[1] != expect:
+            if out[1].replace('\r', '') != expect.replace('\r', ''):
                 self.fail_cases.append(file)
                 print(f'expect: [{expect}]\nbut got: [{out[1]}]')
                 print_fail(f'FAIL: {file}')
@@ -498,6 +549,7 @@ class ArkTest():
             if len(files):
                 self.run_test(files[0])
             elif self.test_hap():
+                print(f'only support file type: {self.types[self.step]}')
                 print(f'input path no test case: {self.args.name}')
                 return 1
             return 0
