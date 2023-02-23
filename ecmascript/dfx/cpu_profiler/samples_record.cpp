@@ -169,11 +169,13 @@ void SamplesRecord::StringifyNodes()
     for (size_t i = 0; i < nodeCount; i++) {
         struct CpuProfileNode node = profileInfo_->nodes[i];
         struct FrameInfo codeEntry = node.codeEntry;
+        std::string url = codeEntry.url;
+        replace(url.begin(), url.end(), '\\', '/');
         sampleData_ += "{\"id\":"
         + std::to_string(node.id) + ",\"callFrame\":{\"functionName\":\""
         + codeEntry.functionName + "\",\"scriptId\":\""
         + std::to_string(codeEntry.scriptId) + "\",\"url\":\""
-        + codeEntry.url + "\",\"lineNumber\":"
+        + url + "\",\"lineNumber\":"
         + std::to_string(codeEntry.lineNumber) + ",\"columnNumber\":"
         + std::to_string(codeEntry.columnNumber) + "},\"hitCount\":"
         + std::to_string(node.hitCount) + ",\"children\":[";
