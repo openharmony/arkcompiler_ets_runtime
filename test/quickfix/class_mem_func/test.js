@@ -14,3 +14,5 @@
  */
 
 A()
+print("test cold patch")
+E()

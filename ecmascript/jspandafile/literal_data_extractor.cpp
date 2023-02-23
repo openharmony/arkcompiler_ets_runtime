@@ -21,6 +21,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
@@ -220,11 +221,11 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     auto methodLiteral = jsPandaFile->FindMethodLiteral(offset);
     ASSERT(methodLiteral != nullptr);
     methodLiteral->SetFunctionKind(kind);
-    JSHandle<Method> method = factory->NewMethod(methodLiteral);
+    JSHandle<Method> method;
     if (jsPandaFile->IsNewVersion()) {
-        JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(jsPandaFile, EntityId(offset));
-        method->SetConstantPool(thread, newConstpool);
+        method = Method::Create(thread, jsPandaFile, methodLiteral);
     } else {
+        method = factory->NewMethod(methodLiteral);
         method->SetConstantPool(thread, constpool);
     }
 

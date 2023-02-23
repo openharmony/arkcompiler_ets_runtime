@@ -577,6 +577,19 @@ JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaF
     return JSHandle<ConstantPool>(thread_, constpool);
 }
 
+void EcmaVM::CreateAllConstpool(const JSPandaFile *jsPandaFile)
+{
+    auto headers = jsPandaFile->GetPandaFile()->GetIndexHeaders();
+    uint32_t index = 0;
+    for (const auto &header : headers) {
+        auto constpoolSize = header.method_idx_size;
+        JSHandle<ConstantPool> constpool = factory_->NewConstantPool(constpoolSize);
+        constpool->SetJSPandaFile(jsPandaFile);
+        constpool->SetIndexHeader(&header);
+        AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index++);
+    }
+}
+
 void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                           const JSPandaFile *jsPandaFile)
 {

@@ -17,7 +17,6 @@
 #define ECMASCRIPT_PATCH_PATCH_LOADER_H
 
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
@@ -46,6 +45,16 @@ struct BaseMethodIndex {
     }
 };
 
+struct PatchInfo {
+    // patch file name.
+    CString patchFileName;
+    // patch methodLiterals for load patch, <recordName, <methodName, MethodLiteral>>
+    CMap<CString, CMap<CString, MethodLiteral*>> patchMethodLiterals;
+    // base method info for unload patch, <BaseMethodIndex, base MethodLiteral>
+    CMap<BaseMethodIndex, MethodLiteral *> baseMethodInfo;
+    // save base constpool in global for avoid gc.
+    CVector<JSHandle<JSTaggedValue>> baseConstpools;
+};
 class PatchLoader {
 public:
     PatchLoader() = default;
@@ -53,35 +62,28 @@ public:
     NO_COPY_SEMANTIC(PatchLoader);
     NO_MOVE_SEMANTIC(PatchLoader);
 
-    static PatchErrorCode LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile, const JSPandaFile *patchFile,
-                                            CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
+    static PatchErrorCode LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,
+                                            const JSPandaFile *patchFile, PatchInfo &patchInfo);
     static PatchErrorCode UnloadPatchInternal(JSThread *thread, const CString &patchFileName,
-                                              const CString &baseFileName,
-                                              const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
+                                              const CString &baseFileName, PatchInfo &patchInfo);
+
+    static MethodLiteral *FindSameMethod(PatchInfo &patchInfo, const JSPandaFile *baseFile, EntityId baseMethodId);
 
 private:
-    static bool FindAndReplaceSameMethod(JSThread *thread,
+    static PatchInfo GeneratePatchInfo(const JSPandaFile *patchFile);
+    static void FindAndReplaceSameMethod(JSThread *thread,
                                          const JSPandaFile *baseFile,
                                          const JSPandaFile *patchFile,
-                                         CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
+                                         PatchInfo &patchInfo);
+    static void SaveBaseMethodInfo(PatchInfo &patchInfo, const JSPandaFile *baseFile,
+                                   EntityId baseMethodId, const BaseMethodIndex &indexs);
     static void ReplaceMethod(JSThread *thread,
                               Method *destMethod,
                               MethodLiteral *srcMethodLiteral,
                               JSTaggedValue srcConstpool);
-    static void InsertMethodInfo(BaseMethodIndex methodIndex, MethodLiteral *base,
-                                 CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
-
-    static void ParseConstpoolWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                        const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos,
-                                        const JSPandaFile *baseFile = nullptr);
-    static void GenerateConstpoolCache(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                       const CUnorderedMap<CString, JSRecordInfo> &patchRecordInfos,
-                                       const JSPandaFile *baseFile = nullptr);
-    static void FillExternalMethod(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
-                                   JSHandle<ConstantPool> patchConstpool, uint32_t id);
 
     static bool ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFile, const JSPandaFile *baseFile,
-                                 const CMap<BaseMethodIndex, MethodLiteral *> &baseMethodInfo);
+                                 PatchInfo &patchInfo);
 
     static void ClearPatchInfo(JSThread *thread, const CString &patchFileName);
 

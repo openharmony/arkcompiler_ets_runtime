@@ -16,3 +16,8 @@
 const a = new A();
 a.PrintStr();
 AA.PrintStr()
+
+print("test cold patch")
+const b = new B();
+b.PrintStr();
+BB.PrintStr()

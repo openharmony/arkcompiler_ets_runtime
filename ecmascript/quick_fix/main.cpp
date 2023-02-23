@@ -113,7 +113,17 @@ int Main(const int argc, const char **argv)
         std::string baseFileName = fileNames[0];
         bool isMergeAbc = runtimeOptions.GetMergeAbc();
         JSNApi::SetBundle(vm, !isMergeAbc);
-        auto res = JSNApi::Execute(vm, baseFileName, entry);
+
+        arg_list_t entryList = base::StringHelper::SplitString(entry, ":");
+        uint32_t size = entryList.size(); 
+        if (size != 2) {
+            std::cout << "Must include 2 entries and with ':' to spilt" << std::endl;
+            JSNApi::DestroyJSVM(vm);
+            return -1;
+        }
+
+        // cold patch.
+        auto res = JSNApi::Execute(vm, baseFileName, entryList[0]);
         if (!res) {
             std::cout << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;
             JSNApi::DestroyJSVM(vm);
@@ -132,6 +142,9 @@ int Main(const int argc, const char **argv)
                 break;
             }
             std::cout << "QuickFix load patch success" << std::endl;
+
+            // cold patch
+            res = JSNApi::Execute(vm, baseFileName, entryList[1]); // 1: second entrypoint, for cold patch.
 
             res = JSNApi::Execute(vm, testLoadFileName, TEST_ENTRY_POINT);
             if (!res) {

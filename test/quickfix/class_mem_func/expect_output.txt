@@ -20,4 +20,6 @@ QuickFix have exception.
 QuickFix start unload patch
 QuickFix unload patch success
 print base
+test cold patch
+print base patch
 QuickFix Execute end

@@ -21,6 +21,14 @@ patch: 4
 patch: 12
 patch: 13
 patch: 14
+test cold patch
+patch: -1
+patch: 2
+patch: 3
+patch: 4
+patch: 12
+patch: 13
+patch: 14
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch
@@ -28,4 +36,12 @@ QuickFix unload patch success
 base: -1
 base: 1
 base: 11
+test cold patch
+patch: -1
+patch: 2
+patch: 3
+patch: 4
+patch: 12
+patch: 13
+patch: 14
 QuickFix Execute end

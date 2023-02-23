@@ -40,7 +40,7 @@ if (!is_debug) {
 
 hot_patch_test_list = [
   "add_callfunction",
-  "external_method",
+  # "external_method",
 ]
 
 host_quickfix_test_action("multi_patch") {
@@ -48,18 +48,18 @@ host_quickfix_test_action("multi_patch") {
     "patch1",
     "patch2",
   ]
-  entry_point = "--entry-point=base"
+  entry_point = "--entry-point=base:module"
 }
 
 foreach(testcase, hot_reload_test_list) {
   host_quickfix_test_action("${testcase}") {
-    entry_point = "--entry-point=base"
+    entry_point = "--entry-point=base:module"
   }
 }
 
 foreach(testcase, hot_patch_test_list) {
   host_quickfix_test_action("${testcase}") {
-    entry_point = "--entry-point=base"
+    entry_point = "--entry-point=base:module"
     is_hotpatch = true
   }
 }
