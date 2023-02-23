@@ -3142,7 +3142,7 @@ JSHandle<TSObjLayoutInfo> ObjectFactory::CreateTSObjLayoutInfo(int propNum, JSTa
 {
     uint32_t arrayLength = TSObjLayoutInfo::ComputeArrayLength(propNum);
     JSHandle<TSObjLayoutInfo> tsPropInfoHandle = JSHandle<TSObjLayoutInfo>::Cast(NewTaggedArray(arrayLength, initVal));
-    tsPropInfoHandle->SetNumberOfElements(thread_, 0);
+    tsPropInfoHandle->SetNumOfProperties(thread_, 0);
     return tsPropInfoHandle;
 }
 

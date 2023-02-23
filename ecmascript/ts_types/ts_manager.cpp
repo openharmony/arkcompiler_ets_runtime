@@ -84,11 +84,11 @@ void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType)
 
     JSHandle<TSObjectType> field(thread_, classType->GetInstanceType());
     JSHandle<TSObjLayoutInfo> layout(thread_, field->GetObjLayoutInfo());
-    uint32_t numSelfTypes = layout->NumberOfElements();
+    uint32_t numSelfTypes = layout->GetNumOfProperties();
 
     JSHandle<TSObjectType> extendField(thread_, extendClassType->GetInstanceType());
     JSHandle<TSObjLayoutInfo> extendLayout(thread_, extendField->GetObjLayoutInfo());
-    uint32_t numExtendTypes = extendLayout->NumberOfElements();
+    uint32_t numExtendTypes = extendLayout->GetNumOfProperties();
 
     uint32_t numTypes = numSelfTypes + numExtendTypes;
 
@@ -98,7 +98,7 @@ void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType)
     for (uint32_t index = 0; index < numExtendTypes; index++) {
         JSTaggedValue key = extendLayout->GetKey(index);
         JSTaggedValue type = extendLayout->GetTypeId(index);
-        newLayout->SetKeyAndType(thread_, index, key, type);
+        newLayout->AddKeyAndType(thread_, key, type);
     }
 
     for (uint32_t index = 0; index < numSelfTypes; index++) {
@@ -107,7 +107,7 @@ void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType)
             continue;
         }
         JSTaggedValue type = layout->GetTypeId(index);
-        newLayout->SetKeyAndType(thread_, numExtendTypes + index, key, type);
+        newLayout->AddKeyAndType(thread_, key, type);
     }
 
     field->SetObjLayoutInfo(thread_, newLayout);
@@ -119,7 +119,7 @@ bool TSManager::IsDuplicatedKey(JSHandle<TSObjLayoutInfo> extendLayout, JSTagged
     ASSERT_PRINT(key.IsString(), "TS class field key is not a string");
     EcmaString *keyString = EcmaString::Cast(key.GetTaggedObject());
 
-    uint32_t length = extendLayout->NumberOfElements();
+    uint32_t length = extendLayout->GetNumOfProperties();
     for (uint32_t i = 0; i < length; ++i) {
         JSTaggedValue extendKey = extendLayout->GetKey(i);
         ASSERT_PRINT(extendKey.IsString(), "TS class field key is not a string");
@@ -1378,7 +1378,7 @@ void TSModuleTable::FillLayoutTypes(JSThread *thread, JSHandle<TSObjLayoutInfo> 
         key.Update(prop[index]);
         ASSERT(key->IsString());
         value.Update(JSTaggedValue(propType[index].GetType()));
-        layOut->SetKeyAndType(thread, index, key.GetTaggedValue(), value.GetTaggedValue());
+        layOut->AddKeyAndType(thread, key.GetTaggedValue(), value.GetTaggedValue());
     }
 }
 
