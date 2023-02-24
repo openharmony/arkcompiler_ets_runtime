@@ -64,7 +64,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), needUpdate);
     if (jsPandaFile == nullptr) {
-        return Unexpected(false);
+        CString msg = "Load file with filename '" + name + "' failed";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
         const_cast<JSPandaFile *>(jsPandaFile)->CheckIsNewRecord(vm);
@@ -109,7 +110,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
-        return Unexpected(false);
+        CString msg = "Load file with filename '" + normalName + "' failed";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
 
     CString entry = entryPoint.data();

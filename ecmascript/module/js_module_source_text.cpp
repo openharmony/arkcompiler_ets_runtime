@@ -95,6 +95,11 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     CString moduleRecordName = ConvertToString(module->GetEcmaModuleRecordName());
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
+    if (jsPandaFile == nullptr) {
+        CString msg = "Faild to load file with filename '" + baseFilename + "' and moduleRecordName '"
+            + moduleRecordName + "'";
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+    }
 
     CString entryPoint =
         PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
