@@ -21,6 +21,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_symbol.h"
+#include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
@@ -69,7 +70,44 @@ JSHandle<JSTaggedValue> JSIterator::GetIterator(JSThread *thread, const JSHandle
         THROW_TYPE_ERROR_AND_RETURN(thread, "", undefined);
     }
     return iter;
-}  // namespace panda::ecmascript
+}
+
+JSHandle<JSTaggedValue> JSIterator::GetAsyncIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
+{
+    // 3.If method is not present, then
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> asynciteratorSymbol = env->GetAsyncIteratorSymbol();
+    // i. Set method to ? GetMethod(obj, @@asyncIterator).
+    // ii. If method is undefined, then
+    JSHandle<JSTaggedValue> method = JSObject::GetMethod(thread, obj, asynciteratorSymbol);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, obj);
+    if (method->IsUndefined()) {
+        JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+        JSHandle<JSTaggedValue> func = JSObject::GetMethod(thread, obj, iteratorSymbol);
+        JSHandle<JSTaggedValue> syncIterator = GetIterator(thread, obj, func);
+        JSHandle<JSTaggedValue> nextStr = thread->GlobalConstants()->GetHandledNextString();
+        JSHandle<JSTaggedValue> nextMethod = JSTaggedValue::GetProperty(thread, syncIterator, nextStr).GetValue();
+        JSHandle<AsyncIteratorRecord> syncIteratorRecord =
+            factory->NewAsyncIteratorRecord(syncIterator, nextMethod, false);
+        JSHandle<JSTaggedValue> asyncIterator =
+            JSAsyncFromSyncIterator::CreateAsyncFromSyncIterator(thread, syncIteratorRecord);
+        return asyncIterator;
+    }
+    
+    // 4.Let iterator be Call(method,obj).
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, method, obj, undefined, 0);
+    JSTaggedValue ret = JSFunction::Call(info);
+    JSHandle<JSTaggedValue> iterator(thread, ret);
+    // 5.If Type(iterator) is not Object, throw a TypeError exception
+    if (!iterator->IsECMAObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "", undefined);
+    }
+    return iterator;
+}
+
+
 // 7.4.2
 JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter)
 {
@@ -101,6 +139,46 @@ JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iter, undefined, 1);
     info->SetCallArg(value.GetTaggedValue());
+    JSTaggedValue ret = JSFunction::Call(info);
+    // 3.ReturnIfAbrupt(result)
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, undefined);
+    // 4.If Type(result) is not Object, throw a TypeError exception.
+    if (!ret.IsECMAObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not Object", undefined);
+    }
+    JSHandle<JSTaggedValue> result(thread, ret);
+    return result;
+}
+
+JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandle<AsyncIteratorRecord> &iter,
+                                                 const JSHandle<JSTaggedValue> &value)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    // 2.Let result be Invoke(iterator, "next", «‍value»).
+    JSHandle<JSTaggedValue> iterator(thread, iter->GetIterator());
+    JSHandle<JSTaggedValue> next(thread, iter->GetNextMethod());
+    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iterator, undefined, 1);
+    info->SetCallArg(value.GetTaggedValue());
+    JSTaggedValue ret = JSFunction::Call(info);
+    // 3.ReturnIfAbrupt(result)
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, undefined);
+    // 4.If Type(result) is not Object, throw a TypeError exception.
+    if (!ret.IsECMAObject()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Is not Object", undefined);
+    }
+    JSHandle<JSTaggedValue> result(thread, ret);
+    return result;
+}
+
+JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandle<AsyncIteratorRecord> &iter)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    // 2.Let result be Invoke(iterator, "next", «‍value»).
+    JSHandle<JSTaggedValue> iterator(thread, iter->GetIterator());
+    JSHandle<JSTaggedValue> next(thread, iter->GetNextMethod());
+    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iterator, undefined, 0);
     JSTaggedValue ret = JSFunction::Call(info);
     // 3.ReturnIfAbrupt(result)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, undefined);

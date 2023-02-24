@@ -169,6 +169,9 @@ private:
 
     void InitializeStringIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
+    void InitializeAsyncFromSyncIterator(const JSHandle<GlobalEnv> &env,
+                                         const JSHandle<JSHClass> &iteratorFuncClass) const;
+
     void InitializeForinIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeMapIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;

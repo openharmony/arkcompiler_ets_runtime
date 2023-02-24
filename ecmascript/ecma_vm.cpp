@@ -945,7 +945,8 @@ void *EcmaVM::InternalMethodTable[] = {
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::valueThunkFunction),
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::throwerFunction),
     reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorFulfilledFunc),
-    reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorRejectedFunc)
+    reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorRejectedFunc),
+    reinterpret_cast<void *>(JSAsyncFromSyncIterator::AsyncFromSyncIterUnwarpFunction)
 };
 
 void EcmaVM::GenerateInternalNativeMethods()

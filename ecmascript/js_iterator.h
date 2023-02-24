@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JS_ITERATOR_H
 #define ECMASCRIPT_JS_ITERATOR_H
 
+#include "ecmascript/accessor_data.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -24,6 +25,23 @@ enum class IterationKind : uint8_t {
     KEY = 0,
     VALUE,
     KEY_AND_VALUE
+};
+
+class AsyncIteratorRecord final : public Record {
+public:
+    CAST_CHECK(AsyncIteratorRecord, IsAsyncIteratorRecord);
+
+    static constexpr size_t ITERATOR_OFFSET = Record::SIZE;
+    ACCESSORS(Iterator, ITERATOR_OFFSET, NEXTMETHOD_OFFSET);
+    ACCESSORS(NextMethod, NEXTMETHOD_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
+    static constexpr size_t DONE_BITS = 1;
+    FIRST_BIT_FIELD(BitField, Done, bool, DONE_BITS)
+
+    DECL_VISIT_OBJECT(ITERATOR_OFFSET, BIT_FIELD_OFFSET)
+    DECL_DUMP()
 };
 
 class JSIterator final {
@@ -37,9 +55,16 @@ public:
 
     static JSHandle<JSTaggedValue> GetIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                const JSHandle<JSTaggedValue> &method);
+
+    static JSHandle<JSTaggedValue> GetAsyncIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     // 7.4.2
     static JSHandle<JSTaggedValue> IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter,
                                            const JSHandle<JSTaggedValue> &value);
+
+    static JSHandle<JSTaggedValue> IteratorNext(JSThread *thread, const JSHandle<AsyncIteratorRecord> &iter,
+                                                 const JSHandle<JSTaggedValue> &value);
+
+    static JSHandle<JSTaggedValue> IteratorNext(JSThread *thread, const JSHandle<AsyncIteratorRecord> &iter);
 
     static JSHandle<JSTaggedValue> IteratorNext(JSThread *thread, const JSHandle<JSTaggedValue> &iter);
     // 7.4.3

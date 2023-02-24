@@ -22,8 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowD6)                                 \
-    T(HandleOverflowD7)                                 \
     T(HandleOverflowD8)                                 \
     T(HandleOverflowD9)                                 \
     T(HandleOverflowDA)                                 \
@@ -277,6 +275,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleLdbigintId16)                                                 \
     T(HandleStownbynamewithnamesetImm16Id16V8)                            \
     T(HandleNop)                                                          \
+    T(HandleSetgeneratorstateImm8)                                        \
+    T(HandleGetasynciteratorImm8)                                         \
     ASM_UNUSED_BC_STUB_LIST(T)                                            \
     T(HandleCallRuntime)                                                  \
     T(HandleDeprecated)                                                   \

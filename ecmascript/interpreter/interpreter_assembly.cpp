@@ -828,6 +828,20 @@ void InterpreterAssembly::HandleGetiteratorImm8(
     DISPATCH(GETITERATOR_IMM8);
 }
 
+void InterpreterAssembly::HandleGetasynciteratorImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    LOG_INST() << "intrinsics::getasynciterator";
+    JSTaggedValue obj = GET_ACC();
+    // slow path
+    SAVE_PC();
+    JSTaggedValue res = SlowRuntimeStub::GetAsyncIterator(thread, obj);
+    INTERPRETER_RETURN_IF_ABRUPT(res);
+    SET_ACC(res);
+    DISPATCH(GETASYNCITERATOR_IMM8);
+}
+
 void InterpreterAssembly::HandleThrowConstassignmentPrefV8(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -2688,7 +2702,27 @@ void InterpreterAssembly::HandleAsyncgeneratorresolveV8V8V8(
     JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorResolve(thread, asyncGenerator, value, flag);
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
-    DISPATCH(ASYNCGENERATORRESOLVE_V8_V8_V8);
+
+    InterpretedFrame *state = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+    [[maybe_unused]] auto fistPC = method->GetBytecodeArray();
+    UPDATE_HOTNESS_COUNTER(-(pc - fistPC));
+    LOG_INST() << "Exit: AsyncGeneratorresolve " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
+                            << std::hex << reinterpret_cast<uintptr_t>(state->pc);
+    sp = state->base.prev;
+    ASSERT(sp != nullptr);
+    InterpretedFrame *prevState = (reinterpret_cast<InterpretedFrame *>(sp) - 1);
+    pc = prevState->pc;
+    // entry frame
+    if (FrameHandler::IsEntryFrame(pc)) {
+        state->acc = acc;
+        return;
+    }
+
+    thread->SetCurrentSPFrame(sp);
+
+    size_t jumpSize = GetJumpSizeAfterCall(pc);
+    DISPATCH_OFFSET(jumpSize);
 }
 
 void InterpreterAssembly::HandleAsyncgeneratorrejectV8(
@@ -2705,6 +2739,21 @@ void InterpreterAssembly::HandleAsyncgeneratorrejectV8(
     INTERPRETER_RETURN_IF_ABRUPT(res);
     SET_ACC(res);
     DISPATCH(ASYNCGENERATORREJECT_V8);
+}
+
+void InterpreterAssembly::HandleSetgeneratorstateImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    uint32_t index = READ_INST_8_0();
+    LOG_INST() << "intrinsics::setgeneratorstate index" << index;
+    JSTaggedValue objVal = GET_ACC();
+
+    SAVE_PC();
+    SAVE_ACC();
+    SlowRuntimeStub::SetGeneratorState(thread, objVal, index);
+    RESTORE_ACC();
+    DISPATCH(SETGENERATORSTATE_IMM8);
 }
 
 void InterpreterAssembly::HandleDeprecatedAsyncgeneratorrejectPrefV8V8(

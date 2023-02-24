@@ -82,6 +82,7 @@ class PromiseCapability;
 class PromiseIteratorRecord;
 class JSAsyncFuncObject;
 class JSAsyncFunction;
+class JSAsyncFromSyncIterUnwarpFunction;
 class PromiseRecord;
 class JSLocale;
 class ResolvingFunctionsRecord;
@@ -149,6 +150,7 @@ class ResolvedBinding;
 class ResolvedIndexBinding;
 class BigInt;
 class AsyncGeneratorRequest;
+class AsyncIteratorRecord;
 class JSAsyncGeneratorFunction;
 class JSAsyncGeneratorObject;
 class CellRecord;
@@ -285,6 +287,9 @@ public:
     JSHandle<PromiseRecord> NewPromiseRecord();
     JSHandle<AsyncGeneratorRequest> NewAsyncGeneratorRequest();
 
+    JSHandle<AsyncIteratorRecord> NewAsyncIteratorRecord(const JSHandle<JSTaggedValue> &itor,
+                                                         const JSHandle<JSTaggedValue> &next, bool done);
+
     JSHandle<ResolvingFunctionsRecord> NewResolvingFunctionsRecord();
 
     JSHandle<PromiseIteratorRecord> NewPromiseIteratorRecord(const JSHandle<JSTaggedValue> &itor, bool done);
@@ -413,6 +418,8 @@ public:
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> NewJSAsyGenResNextRetProRstFulfilledFtn();
 
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> NewJSAsyGenResNextRetProRstRejectedFtn();
+
+    JSHandle<JSAsyncFromSyncIterUnwarpFunction> NewJSAsyncFromSyncIterUnwarpFunction();
 
     JSHandle<JSObject> CloneObjectLiteral(JSHandle<JSObject> object, const JSHandle<JSTaggedValue> &env,
                                           bool canShareHClass = true);

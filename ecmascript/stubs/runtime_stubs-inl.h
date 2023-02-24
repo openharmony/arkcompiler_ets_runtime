@@ -354,6 +354,9 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorResolve(JSThread *thread, JSHan
 
     JSHandle<JSAsyncGeneratorObject> asyncGeneratorObjHandle(asyncFuncObj);
     JSHandle<JSTaggedValue> valueHandle(value);
+    JSHandle<GeneratorContext> genContextHandle(thread, asyncGeneratorObjHandle->GetGeneratorContext());
+    // save stack, should copy cur_frame, function execute over will free cur_frame
+    SaveFrameToContext(thread, genContextHandle);
 
     ASSERT(flag.IsBoolean());
     bool done = flag.IsTrue();
@@ -990,8 +993,6 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
 
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
-            generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::SUSPENDED_YIELD);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             return value.GetTaggedValue();
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1015,6 +1016,35 @@ JSTaggedValue RuntimeStubs::RuntimeSuspendGenerator(JSThread *thread, const JSHa
     }
 
     return RuntimeThrowTypeError(thread, "RuntimeSuspendGenerator failed");
+}
+
+void RuntimeStubs::RuntimeSetGeneratorState(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
+                                            const int32_t index)
+{
+    JSHandle<JSAsyncGeneratorObject> generatorObjectHandle(genObj);
+    JSHandle<GeneratorContext> genContextHandle(thread, generatorObjectHandle->GetGeneratorContext());
+
+    // change state
+    switch (index) {
+        case static_cast<int32_t>(JSAsyncGeneratorState::SUSPENDED_START):
+            generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::SUSPENDED_START);
+            break;
+        case static_cast<int32_t>(JSAsyncGeneratorState::SUSPENDED_YIELD):
+            generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::SUSPENDED_YIELD);
+            break;
+        case static_cast<int32_t>(JSAsyncGeneratorState::EXECUTING):
+            generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::EXECUTING);
+            break;
+        case static_cast<int32_t>(JSAsyncGeneratorState::COMPLETED):
+            generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::COMPLETED);
+            break;
+        case static_cast<int32_t>(JSAsyncGeneratorState::AWAITING_RETURN):
+            generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::AWAITING_RETURN);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index)
@@ -1148,6 +1178,12 @@ JSTaggedValue RuntimeStubs::RuntimeGetIterator(JSThread *thread, const JSHandle<
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, valuesFunc, obj, undefined, 0);
     return EcmaInterpreter::Execute(info);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeGetAsyncIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
+{
+    JSHandle<JSTaggedValue> asyncit = JSIterator::GetAsyncIterator(thread, obj);
+    return asyncit.GetTaggedValue();
 }
 
 void RuntimeStubs::RuntimeThrow(JSThread *thread, JSTaggedValue value)

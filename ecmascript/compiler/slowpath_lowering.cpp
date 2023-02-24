@@ -314,6 +314,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::GETITERATOR_IMM16:
             LowerGetIterator(gate);
             break;
+        case EcmaOpcode::GETASYNCITERATOR_IMM8:
+            LowerGetAsyncIterator(gate);
+            break;
         case EcmaOpcode::NEWOBJAPPLY_IMM8_V8:
         case EcmaOpcode::NEWOBJAPPLY_IMM16_V8:
             LowerNewObjApply(gate);
@@ -423,6 +426,9 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::STMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
             LowerStModuleVar(gate, jsFunc);
+            break;
+        case EcmaOpcode::SETGENERATORSTATE_IMM8:
+            LowerSetGeneratorState(gate, jsFunc);
             break;
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM16:
@@ -900,6 +906,12 @@ void SlowPathLowering::LowerStGlobalVar(GateRef gate, GateRef jsFunc)
 void SlowPathLowering::LowerGetIterator(GateRef gate)
 {
     auto result = LowerCallRuntime(RTSTUB_ID(GetIterator), {acc_.GetValueIn(gate, 0)}, true);
+    ReplaceHirWithValue(gate, result);
+}
+
+void SlowPathLowering::LowerGetAsyncIterator(GateRef gate)
+{
+    auto result = LowerCallRuntime(RTSTUB_ID(GetAsyncIterator), {acc_.GetValueIn(gate, 0)}, true);
     ReplaceHirWithValue(gate, result);
 }
 
@@ -1703,6 +1715,16 @@ void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef jsFunc)
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     auto result = LowerCallRuntime(RTSTUB_ID(StModuleVarByIndexOnJSFunc),
+        {index, acc_.GetValueIn(gate, 1), jsFunc}, true);
+    ReplaceHirWithValue(gate, result, true);
+}
+
+void SlowPathLowering::LowerSetGeneratorState(GateRef gate, GateRef jsFunc)
+{
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    auto result = LowerCallRuntime(RTSTUB_ID(SetGeneratorState),
         {index, acc_.GetValueIn(gate, 1), jsFunc}, true);
     ReplaceHirWithValue(gate, result, true);
 }

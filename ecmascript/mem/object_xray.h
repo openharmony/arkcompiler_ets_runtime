@@ -19,6 +19,7 @@
 #include <cstdint>
 
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -137,6 +138,9 @@ public:
             case JSType::JS_ITERATOR:
                 JSObject::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
+                JSAsyncFromSyncIterator::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::JS_GLOBAL_OBJECT:
                 JSGlobalObject::Cast(object)->VisitRangeSlot(visitor);
                 break;
@@ -173,6 +177,11 @@ public:
             case JSType::JS_PROMISE_EXECUTOR_FUNCTION: {
                 auto jsPromiseExecutorFunction = JSPromiseExecutorFunction::Cast(object);
                 jsPromiseExecutorFunction->VisitRangeSlot(visitor);
+                break;
+            }
+            case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION: {
+                auto jsAsyncFromSyncIterUnwarpFunction = JSAsyncFromSyncIterUnwarpFunction::Cast(object);
+                jsAsyncFromSyncIterUnwarpFunction->VisitRangeSlot(visitor);
                 break;
             }
             case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION: {
@@ -381,6 +390,9 @@ public:
                 break;
             case JSType::ASYNC_GENERATOR_REQUEST:
                 AsyncGeneratorRequest::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::ASYNC_ITERATOR_RECORD:
+                AsyncIteratorRecord::Cast(object)->VisitRangeSlot(visitor);
                 break;
             case JSType::PROMISE_RECORD:
                 PromiseRecord::Cast(object)->VisitRangeSlot(visitor);

@@ -201,6 +201,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(GetPropIterator)                    \
     V(AsyncFunctionEnter)                 \
     V(GetIterator)                        \
+    V(GetAsyncIterator)                   \
+    V(SetGeneratorState)                  \
     V(ThrowThrowNotExists)                \
     V(ThrowPatternNonCoercible)           \
     V(ThrowDeleteSuperProperty)           \
@@ -488,6 +490,9 @@ private:
     static inline JSTaggedValue RuntimeGetPropIterator(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeAsyncFunctionEnter(JSThread *thread);
     static inline JSTaggedValue RuntimeGetIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static inline JSTaggedValue RuntimeGetAsyncIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static inline void RuntimeSetGeneratorState(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
+                                                        const int32_t index);
     static inline void RuntimeThrow(JSThread *thread, JSTaggedValue value);
     static inline void RuntimeThrowThrowNotExists(JSThread *thread);
     static inline void RuntimeThrowPatternNonCoercible(JSThread *thread);

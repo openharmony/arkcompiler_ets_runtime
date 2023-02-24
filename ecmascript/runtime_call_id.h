@@ -227,7 +227,8 @@ namespace panda::ecmascript {
     V(LdPatchVar)                   \
     V(StPatchVar)                   \
     V(AsyncGeneratorReject)         \
-    V(NotifyConcurrentResult)
+    V(NotifyConcurrentResult)       \
+    V(SetGeneratorState)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define BUILTINS_API_LIST(V)                   \

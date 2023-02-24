@@ -406,6 +406,17 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, SIZE, SIZE)
     DECL_DUMP()
 };
+
+class JSAsyncFromSyncIterUnwarpFunction : public JSFunction {
+public:
+    CAST_CHECK(JSAsyncFromSyncIterUnwarpFunction, IsJSAsyncFromSyncIterUnwarpFunction);
+    static constexpr size_t DONE_OFFSET = JSFunction::SIZE;
+    ACCESSORS(Done, DONE_OFFSET, SIZE);
+
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, DONE_OFFSET, SIZE);
+    DECL_DUMP()
+};
+
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JSFUNCTION_H

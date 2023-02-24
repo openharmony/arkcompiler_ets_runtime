@@ -52,6 +52,7 @@ class JSThread;
     V(JSTaggedValue, CompletionRecordClass, COMPLETION_RECORD_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, GeneratorContextClass, GENERATOR_CONTEST_INDEX, ecma_roots_class)                                \
     V(JSTaggedValue, AsyncGeneratorRequestRecordClass, ASYNC_GENERATOR_REQUEST_CLASS_INDEX, ecma_roots_class)         \
+    V(JSTaggedValue, AsyncIteratorRecordClass, ASYNC_ITERATOR_RECORD_CLASS_INDEX, ecma_roots_class)                   \
     V(JSTaggedValue, CapabilityRecordClass, CAPABILITY_RECORD_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, ReactionsRecordClass, REACTIONS_RECORD_CLASS_INDEX, ecma_roots_class)                            \
     V(JSTaggedValue, PromiseIteratorRecordClass, PROMISE_ITERATOR_RECORD_CLASS_INDEX, ecma_roots_class)               \

@@ -3026,7 +3026,24 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         JSTaggedValue res = SlowRuntimeStub::AsyncGeneratorResolve(thread, asyncGenerator, value, flag);
         INTERPRETER_RETURN_IF_ABRUPT(res);
         SET_ACC(res);
-        DISPATCH(ASYNCGENERATORRESOLVE_V8_V8_V8);
+
+        InterpretedFrame *state = GET_FRAME(sp);
+        Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
+        auto fistPC = method->GetBytecodeArray();
+        UPDATE_HOTNESS_COUNTER(-(pc - fistPC));
+        LOG_INST() << "Exit: AsyncGeneratorResolve " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
+                   << std::hex << reinterpret_cast<uintptr_t>(state->pc);
+        sp = state->base.prev;
+        ASSERT(sp != nullptr);
+        InterpretedFrame *prevState = GET_FRAME(sp);
+        pc = prevState->pc;
+        // entry frame
+        if (FrameHandler::IsEntryFrame(pc)) {
+            state->acc = acc;
+            return;
+        }
+        thread->SetCurrentSPFrame(sp);
+        INTERPRETER_HANDLE_RETURN();
     }
     HANDLE_OPCODE(ASYNCGENERATORREJECT_V8) {
         uint16_t v0 = READ_INST_8_0();
@@ -4337,6 +4354,16 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         SET_ACC(res);
         DISPATCH(GETITERATOR_IMM16);
     }
+    HANDLE_OPCODE(GETASYNCITERATOR_IMM8) {
+        LOG_INST() << "intrinsics::getasynciterator";
+        JSTaggedValue obj = GET_ACC();
+        // slow path
+        SAVE_PC();
+        JSTaggedValue res = SlowRuntimeStub::GetAsyncIterator(thread, obj);
+        HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        SET_ACC(res);
+        DISPATCH(GETASYNCITERATOR_IMM8);
+    }
     HANDLE_OPCODE(DEPRECATED_GETITERATORNEXT_PREF_V8_V8) {
         uint16_t v0 = READ_INST_8_1();
         uint16_t v1 = READ_INST_8_2();
@@ -5050,6 +5077,16 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         thread->SetCurrentSPFrame(sp);
 
         INTERPRETER_HANDLE_RETURN();
+    }
+    HANDLE_OPCODE(SETGENERATORSTATE_IMM8) {
+        uint16_t index = READ_INST_8_0();
+        LOG_INST() << "intrinsics::setgeneratorstate index" << index;
+        JSTaggedValue objVal = GET_ACC();
+        SAVE_PC();
+        SAVE_ACC();
+        SlowRuntimeStub::SetGeneratorState(thread, objVal, index);
+        RESTORE_ACC();
+        DISPATCH(SETGENERATORSTATE_IMM8);
     }
     HANDLE_OPCODE(ASYNCFUNCTIONAWAITUNCAUGHT_V8) {
         uint16_t v0 = READ_INST_8_0();

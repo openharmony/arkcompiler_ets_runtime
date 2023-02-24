@@ -127,6 +127,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
     SetConstant(ConstantIndex::ASYNC_GENERATOR_REQUEST_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, AsyncGeneratorRequest::SIZE,
                                                  JSType::ASYNC_GENERATOR_REQUEST));
+    SetConstant(ConstantIndex::ASYNC_ITERATOR_RECORD_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, AsyncIteratorRecord::SIZE, JSType::ASYNC_ITERATOR_RECORD));
     SetConstant(ConstantIndex::CAPABILITY_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, PromiseCapability::SIZE, JSType::PROMISE_CAPABILITY));
     SetConstant(ConstantIndex::REACTIONS_RECORD_CLASS_INDEX,
