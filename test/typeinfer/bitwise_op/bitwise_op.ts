@@ -27,14 +27,14 @@ declare function AssertType(value:any, type:string):void;
     AssertType(xorRes, "number");
 
     let shlRes = x << y;
-    AssertType(shlRes, "number");
+    AssertType(shlRes, "int");
 
     let ashrRes = x >> y;
-    AssertType(ashrRes, "number");
+    AssertType(ashrRes, "int");
 
     let shrRes = x >>> y;
-    AssertType(shrRes, "number");
+    AssertType(shrRes, "int");
 
     let notRes = ~x;
-    AssertType(notRes, "number");
+    AssertType(notRes, "int");
 }

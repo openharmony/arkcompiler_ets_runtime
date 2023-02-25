@@ -22,14 +22,10 @@
 namespace panda::ecmascript::kungfu {
 void TypeInfer::TraverseCircuit()
 {
-    size_t gateCount = circuit_->GetGateCount();
-    std::vector<bool> inQueue(gateCount, true);
-    std::vector<bool> visited(gateCount, false);
-    std::queue<GateRef> pendingQueue;
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
     for (auto gate : gateList) {
-        pendingQueue.push(gate);
+        pendingQueue_.push(gate);
     }
     // init jsgateToBytecode
     BytecodeIterator iterator(builder_, 0, builder_->GetLastBcIndex());
@@ -40,20 +36,7 @@ void TypeInfer::TraverseCircuit()
             jsgateToBytecode_[gate] = index;
         }
     }
-
-    while (!pendingQueue.empty()) {
-        auto curGate = pendingQueue.front();
-        inQueue[gateAccessor_.GetId(curGate)] = false;
-        pendingQueue.pop();
-        auto uses = gateAccessor_.ConstUses(curGate);
-        for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
-            auto gateId = gateAccessor_.GetId(*useIt);
-            if (Infer(*useIt) && !inQueue[gateId]) {
-                inQueue[gateId] = true;
-                pendingQueue.push(*useIt);
-            }
-        }
-    }
+    TraverseInfer();
 
     if (IsLogEnabled()) {
         PrintAllByteCodesTypes();
@@ -76,6 +59,54 @@ void TypeInfer::TraverseCircuit()
                            << "\033[0m";
         circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
+}
+
+void TypeInfer::TraverseInfer()
+{
+    bool needUpdateForLoopPhi = true;
+    // main type infer for all gates
+    while (!pendingQueue_.empty()) {
+        auto curGate = pendingQueue_.front();
+        inQueue_[gateAccessor_.GetId(curGate)] = false;
+        pendingQueue_.pop();
+        auto uses = gateAccessor_.ConstUses(curGate);
+        for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+            auto gateId = gateAccessor_.GetId(*useIt);
+            if (Infer(*useIt) && !inQueue_[gateId]) {
+                inQueue_[gateId] = true;
+                pendingQueue_.push(*useIt);
+            }
+        }
+        if (pendingQueue_.empty() && needUpdateForLoopPhi) {
+            // only for loop begin phi
+            UpdateQueueForLoopPhi();
+            needUpdateForLoopPhi = false;
+        }
+    }
+}
+
+void TypeInfer::UpdateQueueForLoopPhi()
+{
+    for (auto it = loopPhiState_.begin(); it != loopPhiState_.end(); it++) {
+        auto curGate = it->first;
+        auto loopType = gateAccessor_.GetGateType(curGate);
+        auto loopBackGate = gateAccessor_.GetValueIn(curGate, 1);
+        auto loopBackType = gateAccessor_.GetGateType(loopBackGate);
+        // if loopBack Gate is finally AnyType, loop-begin phi gate should be changed to any
+        if (!loopType.IsAnyType() && loopBackType.IsAnyType()) {
+            gateAccessor_.SetGateType(curGate, GateType::AnyType());
+            loopPhiState_[curGate] = InferState::ANY_INFERED;
+            pendingQueue_.push(curGate);
+            inQueue_[gateAccessor_.GetId(curGate)] = true;
+        }
+        // if loopBack Gate is finally not same number Type, loop-begin phi gate should be promoted
+        if (loopType.IsNumberType() && loopBackType.IsNumberType() && loopType != loopBackType) {
+            gateAccessor_.SetGateType(curGate, GateType::NumberType());
+            loopPhiState_[curGate] = InferState::NUMBER_INFERED;
+            pendingQueue_.push(curGate);
+            inQueue_[gateAccessor_.GetId(curGate)] = true;
+        }
     }
 }
 
@@ -152,19 +183,20 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::LDNAN:
         case EcmaOpcode::LDINFINITY:
         case EcmaOpcode::MOD2_IMM8_V8:
-        case EcmaOpcode::SHL2_IMM8_V8:
-        case EcmaOpcode::ASHR2_IMM8_V8:
-        case EcmaOpcode::SHR2_IMM8_V8:
         case EcmaOpcode::AND2_IMM8_V8:
         case EcmaOpcode::OR2_IMM8_V8:
         case EcmaOpcode::XOR2_IMM8_V8:
         case EcmaOpcode::TONUMBER_IMM8:
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::NEG_IMM8:
-        case EcmaOpcode::NOT_IMM8:
         case EcmaOpcode::EXP_IMM8_V8:
         case EcmaOpcode::STARRAYSPREAD_V8_V8:
             return SetNumberType(gate);
+        case EcmaOpcode::SHL2_IMM8_V8:
+        case EcmaOpcode::ASHR2_IMM8_V8:
+        case EcmaOpcode::SHR2_IMM8_V8:
+        case EcmaOpcode::NOT_IMM8:
+            return SetIntType(gate);
         case EcmaOpcode::LDBIGINT_ID16:
             return SetBigIntType(gate);
         case EcmaOpcode::LDTRUE:
@@ -314,7 +346,6 @@ bool TypeInfer::InferPhiGate(GateRef gate)
         }
         auto valueInType = gateAccessor_.GetGateType(*it);
         if (valueInType.IsAnyType()) {
-            phiState_[gate] = InferState::ANY_INFERED; // phi gate has been marked as any
             return UpdateType(gate, valueInType, false);
         }
         if (valueInType.IsNumberType()) {
@@ -323,7 +354,6 @@ bool TypeInfer::InferPhiGate(GateRef gate)
             typeList.emplace_back(valueInType.GetGTRef());
         }
     }
-    phiState_[gate] = InferState::NORMAL_INFERED; // phi gate has been marked as normal type(non any)
     // deduplicate
     std::sort(typeList.begin(), typeList.end());
     auto deduplicateIndex = std::unique(typeList.begin(), typeList.end());
@@ -339,6 +369,12 @@ bool TypeInfer::InferPhiGate(GateRef gate)
     }
     auto type = typeList.at(0);
     return UpdateType(gate, type, false);
+}
+
+bool TypeInfer::SetIntType(GateRef gate)
+{
+    auto intType = GateType::IntType();
+    return UpdateType(gate, intType);
 }
 
 bool TypeInfer::SetNumberType(GateRef gate)
@@ -407,7 +443,7 @@ bool TypeInfer::InferTypeOf(GateRef gate)
  * Type Infer rule(satisfy commutative law):
  * number + number = number
  * int    + number = number
- * double + number = number
+ * double + number = double
  * int    + int    = int
  * int    + double = double
  * double + double = double
@@ -422,9 +458,8 @@ bool TypeInfer::InferAdd2(GateRef gate)
     if (firInType.IsStringType() || secInType.IsStringType()) {
         return UpdateType(gate, GateType::StringType());
     }
-    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
-        (firInType.IsDoubleType() && secInType.IsIntType()) ||
-        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+    if ((firInType.IsNumberType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsNumberType())) {
         return UpdateType(gate, GateType::DoubleType());
     }
     if ((firInType.IsIntType() && secInType.IsIntType())) {
@@ -440,7 +475,7 @@ bool TypeInfer::InferAdd2(GateRef gate)
  * Type Infer rule(satisfy commutative law):
  * number - number = number
  * int    - number = number
- * double - number = number
+ * double - number = double
  * int    - int    = int
  * int    - double = double
  * double - double = double
@@ -451,9 +486,8 @@ bool TypeInfer::InferSub2(GateRef gate)
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
-    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
-        (firInType.IsDoubleType() && secInType.IsIntType()) ||
-        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+    if ((firInType.IsNumberType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsNumberType())) {
         return UpdateType(gate, GateType::DoubleType());
     }
     if ((firInType.IsIntType() && secInType.IsIntType())) {
@@ -466,7 +500,7 @@ bool TypeInfer::InferSub2(GateRef gate)
  * Type Infer rule(satisfy commutative law):
  * number * number = number
  * int    * number = number
- * double * number = number
+ * double * number = double
  * int    * int    = int
  * int    * double = double
  * double * double = double
@@ -477,9 +511,8 @@ bool TypeInfer::InferMul2(GateRef gate)
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
-    if ((firInType.IsIntType() && secInType.IsDoubleType()) ||
-        (firInType.IsDoubleType() && secInType.IsIntType()) ||
-        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+    if ((firInType.IsNumberType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsNumberType())) {
         return UpdateType(gate, GateType::DoubleType());
     }
     if ((firInType.IsIntType() && secInType.IsIntType())) {
@@ -490,12 +523,16 @@ bool TypeInfer::InferMul2(GateRef gate)
 
 /*
  * Type Infer rule(satisfy commutative law):
- * number / number = number
- * int    / number = number
- * double / number = number
+ * in type lowering, both elements will be changed to float64 firstly.
+ * number / number = double
+ * int    / number = double
+ * double / number = double
  * int    / int    = double
  * int    / double = double
  * double / double = double
+ * any    / any    = number
+ * any    / number = number
+ * number / any    = number
  */
 bool TypeInfer::InferDiv2(GateRef gate)
 {
@@ -503,10 +540,7 @@ bool TypeInfer::InferDiv2(GateRef gate)
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
-    if ((firInType.IsIntType() && secInType.IsIntType()) ||
-        (firInType.IsIntType() && secInType.IsDoubleType()) ||
-        (firInType.IsDoubleType() && secInType.IsIntType()) ||
-        (firInType.IsDoubleType() && secInType.IsDoubleType())) {
+    if (firInType.IsNumberType() && secInType.IsNumberType()) {
         return UpdateType(gate, GateType::DoubleType());
     }
     return UpdateType(gate, GateType::NumberType());
@@ -641,7 +675,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
 bool TypeInfer::InferNewObject(GateRef gate)
 {
     auto objType = gateAccessor_.GetGateType(gate);
-    if (!tsManager_->IsClassInstanceTypeKind(objType)) {
+    if (!tsManager_->IsClassInstanceTypeKind(objType) && !tsManager_->IsArrayTypeKind(objType)) {
         ASSERT(gateAccessor_.GetNumValueIn(gate) > 0);
         auto classType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
         if (tsManager_->IsClassTypeKind(classType)) {
@@ -663,6 +697,12 @@ bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t inde
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     JSTaggedValue name = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index);
+    if (tsManager_->IsBuiltinArrayType(objType) || tsManager_->IsTypedArrayType(objType)) {
+        JSTaggedValue lengthKey = thread->GlobalConstants()->GetLengthString();
+        if (JSTaggedValue::SameValue(name, lengthKey)) {
+            return SetIntType(gate);
+        }
+    }
     auto type = GetPropType(objType, name);
     if (tsManager_->IsGetterSetterFunc(type)) {
         auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
@@ -859,7 +899,7 @@ bool TypeInfer::InferStLexVarDyn(GateRef gate)
     auto level = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     auto slot = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
     auto type = lexEnvManager_->GetLexEnvElementType(methodId_, level, slot);
-    if (type.IsAnyType()) {
+    if (type.IsAnyType() || type.IsUndefinedType()) {
         auto valueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));
         if (!valueType.IsAnyType()) {
             lexEnvManager_->SetLexEnvElementType(methodId_, level, slot, valueType);
@@ -898,26 +938,23 @@ bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
     // loop-begin phi gate has 3 ins: loop_begin(stateWire), loopInGate(valueWire), loopBackGate(valueWire)
     auto loopInGate = gateAccessor_.GetValueIn(gate);
     auto loopInType = gateAccessor_.GetGateType(loopInGate);
-    auto loopBackGate = gateAccessor_.GetValueIn(gate, 1);
-    auto loopBackType = gateAccessor_.GetGateType(loopBackGate);
     // loop-begin phi will be initialized as loopInTytpe
     // type of loop-back phi should be infered correctly only after loop-begin has actual type
     // if loop-in phi is actual any type, loop-begin phi must be any
-    if (phiState_.find(gate) == phiState_.end()) {
-        phiState_[loopBackGate] = InferState::INITAILIZED;
+    if (loopPhiState_.find(gate) == loopPhiState_.end()) {
         if (!loopInType.IsAnyType()) {
-            phiState_[gate] = InferState::INITAILIZED;
+            loopPhiState_[gate] = InferState::NORMAL_INFERED;
         }
         return UpdateType(gate, loopInType, false);
     }
-    // if loopBackType has been inferred to any, not initialized to any, the loop-begin phi should be marked as any
-    if (loopBackType.IsAnyType() && phiState_.find(loopBackGate) != phiState_.end() &&
-        phiState_[loopBackGate] == InferState::ANY_INFERED) {
+    // if loop phi has been marked as ANY_INFERED, it's in the second round infer for loop
+    if (loopPhiState_[gate] == InferState::ANY_INFERED) {
         return UpdateType(gate, GateType::AnyType(), false);
     }
     // if loopInType and loopBackType both have non-any type, we need special treatment for the situation
-    // in which loopInType and loopBackType both are numberType(int/double/number)
-    if (loopInType.IsNumberType() && loopBackType.IsNumberType() && loopInType != loopBackType) {
+    // in which loopInType and loopBackType both are numberType(int/double/number).
+    // However, we should avoid excessive type promotion which may cause endless loop in few IR situations.
+    if (loopPhiState_[gate] == InferState::NUMBER_INFERED) {
         return UpdateType(gate, GateType::NumberType(), false);
     }
     return UpdateType(gate, loopInType, false);

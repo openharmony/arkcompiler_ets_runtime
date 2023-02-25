@@ -25,10 +25,12 @@
 
 namespace panda::ecmascript::kungfu {
 enum InferState : uint8_t {
-    NOT_INFERED = 0, // gate has not been infered
-    INITAILIZED, // infer-state has been reseted, either any or non-any
-    NORMAL_INFERED, // gate has been infered to non-any type
-    ANY_INFERED, // gate has been infered to any, not a final result
+    // loop-begin gate has been infered to non-any type
+    NORMAL_INFERED = 0,
+    // loop-begin gate has been fixed to any type manually and it should not be infered to other types
+    ANY_INFERED,
+    // the number-types of loop-begin gate under this state should be promoted to number type
+    NUMBER_INFERED,
 };
 
 class TypeInfer {
@@ -41,7 +43,8 @@ public:
           tsManager_(info->GetTSManager()),
           lexEnvManager_(info->GetLexEnvManager()),
           methodId_(methodId), enableLog_(enableLog),
-          methodName_(name), recordName_(recordName)
+          methodName_(name), recordName_(recordName),
+          inQueue_(circuit_->GetGateCount(), true)
     {
     }
 
@@ -69,6 +72,7 @@ private:
     bool ShouldInfer(const GateRef gate) const;
     bool Infer(GateRef gate);
     bool InferPhiGate(GateRef gate);
+    bool SetIntType(GateRef gate);
     bool SetNumberType(GateRef gate);
     bool SetBigIntType(GateRef gate);
     bool SetBooleanType(GateRef gate);
@@ -110,6 +114,8 @@ private:
     bool GetObjPropWithName(GateRef gate, GateType objType, uint64_t index);
     bool GetSuperProp(GateRef gate, uint64_t index, bool isString = true);
     GlobalTSTypeRef ConvertPrimitiveToBuiltin(const GateType &gateType);
+    void UpdateQueueForLoopPhi();
+    void TraverseInfer();
 
     inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
     {
@@ -169,8 +175,10 @@ private:
     std::string methodName_;
     std::map<uint16_t, GateType> stringIdToGateType_;
     std::unordered_map<GateRef, uint32_t> jsgateToBytecode_ {};
-    std::map<GateRef, InferState> phiState_;
+    std::map<GateRef, InferState> loopPhiState_ {};
     const CString &recordName_;
+    std::vector<bool> inQueue_;
+    std::queue<GateRef> pendingQueue_ {};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H

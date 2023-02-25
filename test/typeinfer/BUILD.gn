@@ -42,6 +42,7 @@ group("ark_typeinfer_test") {
   deps = [
     "add2dyn:add2dynAotTypeInferAction",
     "assertTypeRules:assertTypeRulesAotTypeInferAction",
+    "binarysearch:binarysearchAotTypeInferAction",
     "bitwise_op:bitwise_opAotTypeInferAction",
     "builtins:builtinsAotTypeInferAction",
     "callarg0dyn:callarg0dynAotTypeInferAction",
