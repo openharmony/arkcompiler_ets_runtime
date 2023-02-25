@@ -434,7 +434,8 @@ public:
     bool WithinInt32() const;
     bool IsZero() const;
     static bool IsPropertyKey(const JSHandle<JSTaggedValue> &key);
-    static JSHandle<JSTaggedValue> RequireObjectCoercible(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
+    static JSHandle<JSTaggedValue> RequireObjectCoercible(JSThread *thread, const JSHandle<JSTaggedValue> &tagged,
+                                                          const char *message = "RequireObjectCoercible throw Error");
     static bool SameValue(const JSTaggedValue &x, const JSTaggedValue &y);
     static bool SameValue(const JSHandle<JSTaggedValue> &xHandle, const JSHandle<JSTaggedValue> &yHandle);
     static bool SameValueZero(const JSTaggedValue &x, const JSTaggedValue &y);
