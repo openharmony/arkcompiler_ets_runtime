@@ -487,13 +487,20 @@ JSTaggedValue RuntimeStubs::RuntimeLdObjByValue(JSThread *thread, const JSHandle
                                                 const JSHandle<JSTaggedValue> &prop, bool callGetter,
                                                 JSTaggedValue receiver)
 {
+    // Ecma Spec 2015 12.3.2.1
+    // 7. Let bv be RequireObjectCoercible(baseValue).
+    // 8. ReturnIfAbrupt(bv).
+    JSHandle<JSTaggedValue> object =
+        JSTaggedValue::RequireObjectCoercible(thread, obj, "Cannot load property of null or undefined");
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
     JSTaggedValue res;
     if (callGetter) {
-        res = JSObject::CallGetter(thread, AccessorData::Cast(receiver.GetTaggedObject()), obj);
+        res = JSObject::CallGetter(thread, AccessorData::Cast(receiver.GetTaggedObject()), object);
     } else {
         JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, prop);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        res = JSTaggedValue::GetProperty(thread, obj, propKey).GetValue().GetTaggedValue();
+        res = JSTaggedValue::GetProperty(thread, object, propKey).GetValue().GetTaggedValue();
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return res;
@@ -503,10 +510,17 @@ JSTaggedValue RuntimeStubs::RuntimeStObjByValue(JSThread *thread, const JSHandle
                                                 const JSHandle<JSTaggedValue> &prop,
                                                 const JSHandle<JSTaggedValue> &value)
 {
+    // Ecma Spec 2015 12.3.2.1
+    // 7. Let bv be RequireObjectCoercible(baseValue).
+    // 8. ReturnIfAbrupt(bv).
+    JSHandle<JSTaggedValue> object =
+        JSTaggedValue::RequireObjectCoercible(thread, obj, "Cannot store property of null or undefined");
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
     JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, prop));
 
     // strict mode is true
-    JSTaggedValue::SetProperty(thread, obj, propKey, value, true);
+    JSTaggedValue::SetProperty(thread, object, propKey, value, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue::True();
 }

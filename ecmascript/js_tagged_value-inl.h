@@ -274,11 +274,11 @@ inline JSTaggedNumber JSTaggedValue::ToLength(JSThread *thread, const JSHandle<J
 
 // ecma6 7.2 Testing and Comparison Operations
 inline JSHandle<JSTaggedValue> JSTaggedValue::RequireObjectCoercible(JSThread *thread,
-                                                                     const JSHandle<JSTaggedValue> &tagged)
+                                                                     const JSHandle<JSTaggedValue> &tagged,
+                                                                     const char *message)
 {
     if (tagged->IsUndefined() || tagged->IsNull()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "RequireObjectCoercible",
-                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
+        THROW_TYPE_ERROR_AND_RETURN(thread, message, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
     return tagged;
 }
