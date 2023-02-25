@@ -1533,6 +1533,12 @@ uint64_t SnapshotProcessor::SerializeTaggedField(JSTaggedType *tagged, CQueue<Ta
 {
     JSTaggedValue taggedValue(*tagged);
     if (taggedValue.IsWeak()) {
+        taggedValue.RemoveWeakTag();
+        if (taggedValue.IsJSHClass()) {
+            EncodeBit encodeBit = GetObjectEncode(taggedValue, queue, data);
+            encodeBit.SetTSWeakObject();
+            return encodeBit.GetValue();
+        }
         EncodeBit special(JSTaggedValue::Undefined().GetRawData());
         special.SetObjectSpecial();
         return special.GetValue();
@@ -1548,13 +1554,7 @@ uint64_t SnapshotProcessor::SerializeTaggedField(JSTaggedType *tagged, CQueue<Ta
         return taggedValue.GetRawData();  // not object
     }
 
-    EncodeBit encodeBit(0);
-    if (data->find(*tagged) == data->end()) {
-        encodeBit = EncodeTaggedObject(taggedValue.GetTaggedObject(), queue, data);
-    } else {
-        ObjectEncode objectEncodePair = data->find(taggedValue.GetRawData())->second;
-        encodeBit = objectEncodePair.second;
-    }
+    EncodeBit encodeBit = GetObjectEncode(taggedValue, queue, data);
 
     if (taggedValue.IsString()) {
         encodeBit.SetReferenceToString(true);
@@ -1672,7 +1672,14 @@ uintptr_t SnapshotProcessor::TaggedObjectEncodeBitToAddr(EncodeBit taggedBit)
     }
     Region *region = regionIndexMap_.find(regionIndex)->second;
     size_t objectOffset = taggedBit.GetObjectOffsetInRegion();
-    return ToUintPtr(region) + objectOffset;
+
+    uintptr_t addr = ToUintPtr(region) + objectOffset;
+    if (taggedBit.IsTSWeakObject()) {
+        JSTaggedValue object(addr);
+        object.CreateWeakRef();
+        addr = object.GetRawData();
+    }
+    return addr;
 }
 
 void SnapshotProcessor::DeserializeNativePointer(uint64_t *value)
@@ -1796,6 +1803,21 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
         }
     }
     data->emplace(ToUintPtr(objectHeader), std::make_pair(newObj, encodeBit));
+    return encodeBit;
+}
+
+EncodeBit SnapshotProcessor::GetObjectEncode(JSTaggedValue object, CQueue<TaggedObject *> *queue,
+                                             std::unordered_map<uint64_t, ObjectEncode> *data)
+{
+    JSTaggedType addr = object.GetRawData();
+    EncodeBit encodeBit(0);
+
+    if (data->find(addr) == data->end()) {
+        encodeBit = EncodeTaggedObject(object.GetTaggedObject(), queue, data);
+    } else {
+        ObjectEncode objectEncodePair = data->find(object.GetRawData())->second;
+        encodeBit = objectEncodePair.second;
+    }
     return encodeBit;
 }
 
