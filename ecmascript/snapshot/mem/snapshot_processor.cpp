@@ -1675,7 +1675,7 @@ uintptr_t SnapshotProcessor::TaggedObjectEncodeBitToAddr(EncodeBit taggedBit)
 
     uintptr_t addr = ToUintPtr(region) + objectOffset;
     if (taggedBit.IsTSWeakObject()) {
-        JSTaggedValue object(addr);
+        JSTaggedValue object(static_cast<JSTaggedType>(addr));
         object.CreateWeakRef();
         addr = object.GetRawData();
     }
