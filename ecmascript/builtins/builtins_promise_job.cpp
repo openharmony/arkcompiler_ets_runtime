@@ -42,6 +42,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     ASSERT(value->IsPromiseReaction());
     JSHandle<PromiseReaction> reaction = JSHandle<PromiseReaction>::Cast(value);
+    JSHandle<JSTaggedValue> argument = GetCallArg(argv, 1);
 
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 2. Let promiseCapability be reaction.[[Capabilities]].
@@ -57,7 +58,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
         // 4. If handler is "Identity", let handlerResult be NormalCompletion(argument).
         // 5. Else if handler is "Thrower", let handlerResult be Completion{[[type]]: throw, [[value]]: argument,
         // [[target]]: empty}.
-
+        runtimeInfo->SetCallArg(argument.GetTaggedValue());
         if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(),
             JSHandle<EcmaString>(handler), JSHandle<EcmaString>(globalConst->GetHandledThrowerString()))) {
             runtimeInfo->SetFunction(capability->GetReject());
@@ -66,7 +67,6 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
         // 6. Else, let handlerResult be Call(handler, undefined, «argument»).
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, handler, undefined, undefined, argsLength);
-        JSHandle<JSTaggedValue> argument = GetCallArg(argv, 1);
         info->SetCallArg(argument.GetTaggedValue());
         JSTaggedValue taggedValue = JSFunction::Call(info);
         // 7. If handlerResult is an abrupt completion, then
