@@ -27,7 +27,6 @@
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
-#include "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -73,6 +72,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/regexp/regexp_parser.h"
@@ -756,7 +756,7 @@ void JSNApi::DestroyMemMapAllocator()
 void JSNApi::InitializePGOProfiler(const ecmascript::JSRuntimeOptions &options)
 {
     ecmascript::PGOProfilerManager::GetInstance()->Initialize(
-        options.GetPGOHotnessThreshold(), options.GetPGOProfilerPath());
+        options.GetPGOProfilerPath(), options.GetPGOHotnessThreshold());
 }
 
 void JSNApi::DestroyPGOProfiler()

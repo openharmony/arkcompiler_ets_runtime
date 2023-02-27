@@ -44,16 +44,11 @@ bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
             realPath = path;
             return true;
         }
-        LOG_ECMA(ERROR) << "File path" << path << " realpath failure";
+        LOG_ECMA(ERROR) << "File path:" << path << " realpath failure";
         return false;
     }
     realPath = std::string(buffer);
     return true;
-}
-
-fd_t Open(const char *file, int flag)
-{
-    return open(file, flag);
 }
 
 void DPrintf(fd_t fd, const std::string &buffer)
@@ -77,23 +72,29 @@ void Close(fd_t fd)
     close(fd);
 }
 
-int64_t GetFileSizeByFd(fd_t fd)
+MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
 {
-    return lseek(fd, 0, SEEK_END);
-}
-
-void *FileMmap(fd_t fd, uint64_t size, uint64_t offset, [[maybe_unused]] fd_t *extra)
-{
-    void *addr = mmap(nullptr, size, PAGE_PROT_READWRITE, MAP_PRIVATE, fd, offset);
-    if (reinterpret_cast<intptr_t>(addr) == -1) {
-        LOG_ECMA(FATAL) << "mmap failed with error code:" << errno;
+    fd_t fd = open(fileName, flag);
+    if (fd == INVALID_FD) {
+        LOG_ECMA(ERROR) << fileName << " file open failed";
+        return MemMap();
     }
-    return addr;
+
+    size_t size = lseek(fd, 0, SEEK_END);
+    if (size <= 0) {
+        close(fd);
+        LOG_ECMA(ERROR) << fileName << " file is empty";
+        return MemMap();
+    }
+
+    void *addr = mmap(nullptr, size, prot, MAP_PRIVATE, fd, offset);
+    close(fd);
+    return MemMap(addr, size);
 }
 
-int FileUnMap(void *addr, uint64_t size, [[maybe_unused]] fd_t *extra)
+int FileUnMap(MemMap addr)
 {
-    return munmap(addr, size);
+    return munmap(addr.GetOriginAddr(), addr.GetSize());
 }
 
 JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,

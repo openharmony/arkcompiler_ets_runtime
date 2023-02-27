@@ -40,16 +40,34 @@ protected:
         }
         if (version_ > lastVersion) {
             LOG_ECMA(ERROR) << "version error, expected version should be less or equal than "
-                            << ConvToStr(lastVersion) << ", but got " << GetVersion();
+                            << ConvToStr(lastVersion) << ", but got " << GetVersionInner();
             return false;
         }
-        LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << GetVersion();
+        LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << GetVersionInner();
         return true;
     }
 
-    std::string GetVersion() const
+    std::string GetVersionInner() const
     {
         return ConvToStr(version_);
+    }
+
+    bool SetVersionInner(std::string version)
+    {
+        std::vector<std::string> versionNumber = StringHelper::SplitString(version, ".");
+        if (versionNumber.size() != VERSION_SIZE) {
+            LOG_ECMA(ERROR) << "version: " << version << " format error";
+            return false;
+        }
+        for (uint32_t i = 0; i < VERSION_SIZE; i++) {
+            uint32_t result;
+            if (!StringHelper::StrToUInt32(versionNumber[i].c_str(), &result)) {
+                LOG_ECMA(ERROR) << "version: " << version << " format error";
+                return false;
+            }
+            version_[i] = static_cast<uint8_t>(result);
+        }
+        return true;
     }
 
 private:

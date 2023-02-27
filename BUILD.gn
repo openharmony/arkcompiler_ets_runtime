@@ -27,7 +27,10 @@ group("ark_js_packages") {
     ]
     if (is_clang && clang_version != "9.0.3" && current_cpu == "arm64" &&
         is_ohos) {
-      deps += [ "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/ohos:ohos_clang_arm64)" ]
+      deps += [
+        "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/ohos:ohos_clang_arm64)",
+        "ecmascript/pgo_profiler/prof_dump:profdump($build_root/toolchain/ohos:ohos_clang_arm64)",
+      ]
     }
   }
 }
@@ -36,6 +39,7 @@ group("ark_js_host_windows_tools_packages") {
   deps = []
   if (host_os != "mac" && target_os != "android") {
     deps += [
+      "ecmascript/pgo_profiler/prof_dump:profdump($build_root/toolchain/mingw:mingw_x86_64)",
       "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mingw:mingw_x86_64)",
       "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)",
     ]
@@ -49,11 +53,13 @@ group("ark_js_host_mac_tools_packages") {
       deps += [
         "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mac:clang_arm64)",
         "ecmascript/js_vm:ark_js_vm($build_root/toolchain/mac:clang_arm64)",
+        "ecmascript/pgo_profiler/prof_dump:profdump($build_root/toolchain/mac:clang_arm64)",
       ]
     } else {
       deps += [
         "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mac:clang_x64)",
         "ecmascript/js_vm:ark_js_vm($build_root/toolchain/mac:clang_x64)",
+        "ecmascript/pgo_profiler/prof_dump:profdump($build_root/toolchain/mac:clang_x64)",
       ]
     }
   }
@@ -68,6 +74,7 @@ group("ark_js_host_linux_tools_packages") {
     ]
     if (is_standard_system) {
       deps += [
+        "ecmascript/pgo_profiler/prof_dump:profdump(${host_toolchain})",
         "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})",
         "//arkcompiler/ets_runtime/ecmascript/compiler:ark_stub_compiler(${host_toolchain})",
       ]
@@ -80,12 +87,12 @@ group("ark_js_unittest") {
   deps = []
   if (host_os != "mac") {
     deps += [
+      "ecmascript/pgo_profiler/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/base/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/builtins/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/containers/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/debugger/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests:unittest",
-      "//arkcompiler/ets_runtime/ecmascript/dfx/pgo_profiler/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/ic/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/jobs/tests:unittest",
       "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests:unittest",
@@ -115,11 +122,11 @@ group("ark_unittest") {
   if (host_os != "mac") {
     # js unittest
     deps += [
+      "ecmascript/pgo_profiler/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/base/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/builtins/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/containers/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/dfx/pgo_profiler/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/ic/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/jobs/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests:host_unittest",
@@ -514,8 +521,6 @@ ecma_source = [
   "ecmascript/date_parse.cpp",
   "ecmascript/deoptimizer/calleeReg.cpp",
   "ecmascript/deoptimizer/deoptimizer.cpp",
-  "ecmascript/dfx/pgo_profiler/pgo_profiler_loader.cpp",
-  "ecmascript/dfx/pgo_profiler/pgo_profiler_manager.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
   "ecmascript/dfx/vmstat/opt_code_profiler.cpp",
@@ -654,6 +659,10 @@ ecma_source = [
   "ecmascript/object_operator.cpp",
   "ecmascript/patch/patch_loader.cpp",
   "ecmascript/patch/quick_fix_manager.cpp",
+  "ecmascript/pgo_profiler/pgo_profiler.cpp",
+  "ecmascript/pgo_profiler/pgo_profiler_info.cpp",
+  "ecmascript/pgo_profiler/pgo_profiler_loader.cpp",
+  "ecmascript/pgo_profiler/pgo_profiler_saver.cpp",
   "ecmascript/stackmap/ark_stackmap_builder.cpp",
   "ecmascript/stackmap/ark_stackmap_parser.cpp",
   "ecmascript/stackmap/llvm_stackmap_parser.cpp",

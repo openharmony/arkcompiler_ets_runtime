@@ -23,10 +23,17 @@
 namespace panda::ecmascript {
 class MemMap {
 public:
-    MemMap() : mem_(nullptr), size_(0) {}
+    MemMap() : originAddr_(nullptr), mem_(nullptr), size_(0) {}
     MemMap(void *mem, size_t size) : originAddr_(mem), mem_(mem), size_(size) {};
     MemMap(void *originAddr, void *mem, size_t size) : originAddr_(originAddr), mem_(mem), size_(size) {};
     ~MemMap() = default;
+
+    void Reset()
+    {
+        originAddr_ = nullptr;
+        mem_ = nullptr;
+        size_ = 0;
+    }
 
     inline void *GetMem() const
     {

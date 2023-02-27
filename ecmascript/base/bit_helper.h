@@ -29,6 +29,29 @@ union Data {
 };
 
 template <typename T>
+inline T ReadBuffer(void **buffer)
+{
+    T result = *(reinterpret_cast<T *>(*buffer));
+    *buffer = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(*buffer) + result.offset_);
+    return result;
+}
+
+inline char *ReadBuffer(void **buffer)
+{
+    auto result = reinterpret_cast<char *>(*buffer);
+    *buffer = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(*buffer) + strlen(result) + 1);
+    return result;
+}
+
+template <typename T>
+inline T *ReadBufferInSize(void **buffer)
+{
+    T *result = reinterpret_cast<T *>(*buffer);
+    *buffer = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(*buffer) + result->Size());
+    return result;
+}
+
+template <typename T>
 inline constexpr uint32_t CountLeadingZeros(T value)
 {
     constexpr size_t RADIX = 2;
