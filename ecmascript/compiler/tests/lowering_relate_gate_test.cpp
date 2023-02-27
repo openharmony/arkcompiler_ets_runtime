@@ -57,7 +57,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
     auto stateSplit = circuit.NewGate(circuit.StateSplit(), {state, depend, frameState});
     builder.SetDepend(stateSplit);
-    auto check = builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
+    auto check = builder.TryPrimitiveTypeCheck(GateType::NumberType(), arg0);
     builder.ReturnVoid(check, depend);
 
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
@@ -150,7 +150,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
     auto stateSplit = circuit.NewGate(circuit.StateSplit(), {state, depend, frameState});
     builder.SetDepend(stateSplit);
-    builder.PrimitiveTypeCheck(GateType::NumberType(), arg0);
+    builder.TryPrimitiveTypeCheck(GateType::NumberType(), arg0);
     auto convert = builder.PrimitiveToNumber(arg1, arg1Type);
     auto result = builder.NumberBinaryOp<TypedBinOp::TYPED_ADD>(arg0, convert);
     builder.Return(result);

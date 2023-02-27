@@ -61,6 +61,13 @@ public:
     ~ChunkQueue() = default;
 };
 
+template<typename T>
+class PUBLIC_API ChunkStack : public std::stack<T, ChunkDeque<T>> {
+public:
+    explicit ChunkStack(Chunk *chunk) : std::stack<T, ChunkDeque<T>>(ChunkDeque<T>(chunk)) {}
+    ~ChunkStack() = default;
+};
+
 template<typename K, typename Compare = std::less<K>>
 class PUBLIC_API ChunkSet : public std::set<K, Compare, ChunkAllocator<K>> {
 public:

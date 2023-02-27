@@ -67,6 +67,11 @@ public:
         return static_cast<size_t>(index_);
     }
 
+    void SetIndex(size_t index)
+    {
+        index_ = static_cast<uint32_t>(index);
+    }
+
 private:
     GateRef gate_;
     uint32_t index_;

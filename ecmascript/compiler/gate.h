@@ -44,7 +44,8 @@ class Gate;
 class BytecodeCircuitBuilder;
 
 enum MarkCode : GateMark {
-    NO_MARK,
+    NO_MARK = 0,
+    PREVISIT,
     VISITED,
     FINISHED,
 };

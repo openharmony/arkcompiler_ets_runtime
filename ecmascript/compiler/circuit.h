@@ -139,7 +139,16 @@ public:
 
     GateRef DeadGate()
     {
-        return dead_ != 0 ? dead_ : NewGate(Dead(), MachineType::NOVALUE, GateType::Empty());
+        if (dead_ == 0) {
+            dead_ = NewGate(Dead(), MachineType::NOVALUE, GateType::Empty());
+        }
+        return dead_;
+    }
+
+    size_t GetMaxGateId() const
+    {
+        ASSERT(gateCount_ != 0);
+        return static_cast<size_t>(gateCount_ - 1);
     }
 
 private:

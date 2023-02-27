@@ -249,8 +249,9 @@ public:
     bool Run(PassData* data)
     {
         TimeScope timescope("EarlyEliminationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        EarlyElimination(data->GetCircuit(), enableLog, data->GetMethodName(), data->GetNativeAreaAllocator()).Run();
+        EarlyElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
