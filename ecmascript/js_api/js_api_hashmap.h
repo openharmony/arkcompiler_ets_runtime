@@ -56,7 +56,7 @@ public:
 
 private:
     static void SetAllLinkedNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSMutableHandle<LinkedNode> node);
-    static void SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSMutableHandle<RBTreeNode> node);
+    static void SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSHandle<RBTreeNode> node);
     static bool HasValueLinkedNode(JSTaggedValue node, JSTaggedValue value);
     static bool HasValueRBTreeNode(JSTaggedValue node, JSTaggedValue value);
 };

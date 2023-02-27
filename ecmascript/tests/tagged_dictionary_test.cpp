@@ -84,7 +84,7 @@ HWTEST_F_L0(TaggedDictionaryTest, NameDictionary_addKeyAndValue)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<NameDictionary> dictJShandle(NameDictionary::Create(thread, numOfElement));
     EXPECT_TRUE(*dictJShandle != nullptr);
-    JSMutableHandle<NameDictionary> dictHandle(dictJShandle);
+    JSMutableHandle<NameDictionary> dictHandle(thread, dictJShandle);
     JSHandle<JSTaggedValue> objFun = GetGlobalEnv(thread)->GetObjectFunction();
 
     // create key and values
@@ -160,7 +160,7 @@ HWTEST_F_L0(TaggedDictionaryTest, NameDictionary_GrowCapacity)
 HWTEST_F_L0(TaggedDictionaryTest, NameDictionary_ShrinkCapacity)
 {
     int numOfElement = 64;
-    JSMutableHandle<NameDictionary> dictHandle(NameDictionary::Create(thread, numOfElement));
+    JSMutableHandle<NameDictionary> dictHandle(thread, NameDictionary::Create(thread, numOfElement));
     EXPECT_TRUE(*dictHandle != nullptr);
     // create key and values
     uint8_t keyArray[7] = "hello";
@@ -218,7 +218,7 @@ HWTEST_F_L0(TaggedDictionaryTest, NumberDictionary_addKeyAndValue)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<NumberDictionary> dictJShandle = NumberDictionary::Create(thread, numOfElement);
     EXPECT_TRUE(*dictJShandle != nullptr);
-    JSMutableHandle<NumberDictionary> dictHandle(dictJShandle);
+    JSMutableHandle<NumberDictionary> dictHandle(thread, dictJShandle);
     JSHandle<JSTaggedValue> objFun = GetGlobalEnv(thread)->GetObjectFunction();
 
     // create key and values
@@ -319,7 +319,7 @@ HWTEST_F_L0(TaggedDictionaryTest, NumberDictionary_GrowCapacity)
 HWTEST_F_L0(TaggedDictionaryTest, NumberDictionary_ShrinkCapacity)
 {
     int numOfElement = 64;
-    JSMutableHandle<NumberDictionary> dictHandle(NumberDictionary::Create(thread, numOfElement));
+    JSMutableHandle<NumberDictionary> dictHandle(thread, NumberDictionary::Create(thread, numOfElement));
     EXPECT_TRUE(*dictHandle != nullptr);
     // create key and values
     for (int i = 0; i < 10; i++) {

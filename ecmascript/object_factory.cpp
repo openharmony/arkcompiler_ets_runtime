@@ -1090,6 +1090,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
             JSAsyncFromSyncIterUnwarpFunction::Cast(*obj)->SetDone(thread_, JSTaggedValue::Undefined());
+            break;
         case JSType::JS_ARRAY_BUFFER:
             JSArrayBuffer::Cast(*obj)->SetArrayBufferData(thread_, JSTaggedValue::Undefined());
             JSArrayBuffer::Cast(*obj)->SetArrayBufferByteLength(0);

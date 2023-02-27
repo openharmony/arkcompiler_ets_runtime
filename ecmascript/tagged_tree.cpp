@@ -538,13 +538,12 @@ JSTaggedValue TaggedTreeMap::SetAll(JSThread *thread, JSHandle<TaggedTreeMap> &d
 {
     CQueue<int> entries;
     entries.push(src->GetRootEntries());
-    JSMutableHandle<TaggedTreeMap> map(dst);
+    JSHandle<TaggedTreeMap> map = dst;
     while (!entries.empty()) {
         int parent = entries.front();
-        auto tmap = Insert(thread, map, JSHandle<JSTaggedValue>(thread, src->GetKey(parent)),
+        map = Insert(thread, map, JSHandle<JSTaggedValue>(thread, src->GetKey(parent)),
                            JSHandle<JSTaggedValue>(thread, src->GetValue(parent)));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        map.Update(tmap.GetTaggedValue());
         int left = src->GetLeftChildIndex(parent);
         if (left >= 0) {
             entries.push(left);

@@ -279,9 +279,9 @@ JSTaggedValue JSFunction::Construct(EcmaRuntimeCallInfo *info)
 
     JSThread *thread = info->GetThread();
     JSHandle<JSTaggedValue> func(info->GetFunction());
-    JSMutableHandle<JSTaggedValue> target(info->GetNewTarget());
+    JSHandle<JSTaggedValue> target = info->GetNewTarget();
     if (target->IsUndefined()) {
-        target.Update(func.GetTaggedValue());
+        target = func;
         info->SetNewTarget(target.GetTaggedValue());
     }
     if (!(func->IsConstructor() && target->IsConstructor())) {

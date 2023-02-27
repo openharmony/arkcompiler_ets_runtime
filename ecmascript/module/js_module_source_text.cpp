@@ -1089,11 +1089,11 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTagge
     if (data->IsUndefined()) {
         data.Update(NameDictionary::Create(thread, DEFAULT_DICTIONART_CAPACITY));
     }
-    JSMutableHandle<NameDictionary> dataDict(data);
-    dataDict.Update(NameDictionary::Put(thread, dataDict, key, value,
+    JSHandle<NameDictionary> dataDict = JSHandle<NameDictionary>::Cast(data);
+    data.Update(NameDictionary::Put(thread, dataDict, key, value,
                                         PropertyAttributes::Default()));
 
-    module->SetNameDictionary(thread, dataDict);
+    module->SetNameDictionary(thread, data);
 }
 
 void SourceTextModule::SetExportName(JSThread *thread, const JSHandle<JSTaggedValue> &moduleRequest,

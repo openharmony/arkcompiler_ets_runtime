@@ -425,7 +425,7 @@ JSTaggedValue ContainersTreeMap::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPITreeMap> tmap = JSHandle<JSAPITreeMap>::Cast(self);
     JSMutableHandle<TaggedTreeMap> iteratedMap(thread, tmap->GetTreeMap());
     int elements = iteratedMap->NumberOfElements();
-    JSMutableHandle<TaggedArray> entries(TaggedTreeMap::GetArrayFromMap(thread, iteratedMap));
+    JSHandle<TaggedArray> entries = TaggedTreeMap::GetArrayFromMap(thread, iteratedMap);
     int index = 0;
     size_t length = entries->GetLength();
     const int32_t argsLength = 3;
@@ -445,7 +445,7 @@ JSTaggedValue ContainersTreeMap::ForEach(EcmaRuntimeCallInfo *argv)
         // check entries should be update, size will be update in tmap set or remove.
         if (tmap->GetSize() != static_cast<int>(length)) {
             iteratedMap.Update(tmap->GetTreeMap());
-            entries.Update(TaggedTreeMap::GetArrayFromMap(thread, iteratedMap).GetTaggedValue());
+            entries = TaggedTreeMap::GetArrayFromMap(thread, iteratedMap);
             elements = iteratedMap->NumberOfElements();
             length = entries->GetLength();
         }
