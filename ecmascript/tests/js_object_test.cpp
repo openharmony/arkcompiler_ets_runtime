@@ -856,7 +856,7 @@ HWTEST_F_L0(JSObjectTest, FastToSlow)
     JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj1 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
 
-    JSMutableHandle<EcmaString> key(factory->NewFromASCII("x"));
+    JSMutableHandle<EcmaString> key(thread, factory->NewFromASCII("x"));
     JSMutableHandle<JSTaggedValue> number(thread, JSTaggedValue(0));
     JSMutableHandle<JSTaggedValue> newkey(thread, JSTaggedValue(0));
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
@@ -894,7 +894,7 @@ HWTEST_F_L0(JSObjectTest, DeleteMiddle)
     JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
     JSHandle<JSObject> obj1 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
 
-    JSMutableHandle<EcmaString> key(factory->NewFromASCII("x"));
+    JSMutableHandle<EcmaString> key(thread, factory->NewFromASCII("x"));
     JSMutableHandle<JSTaggedValue> number(thread, JSTaggedValue(0));
     JSMutableHandle<JSTaggedValue> newkey(thread, JSTaggedValue(0));
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
@@ -909,7 +909,7 @@ HWTEST_F_L0(JSObjectTest, DeleteMiddle)
 
     EXPECT_FALSE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
 
-    JSMutableHandle<JSTaggedValue> key5(factory->NewFromASCII("x5"));
+    JSMutableHandle<JSTaggedValue> key5(thread, factory->NewFromASCII("x5"));
     JSObject::DeleteProperty(thread, (obj1), key5);
 
     EXPECT_TRUE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());

@@ -158,9 +158,9 @@ void JSAPIHashMap::SetAll(JSThread *thread, JSHandle<JSAPIHashMap> dst, JSHandle
             continue;
         }
         if (node->IsLinkedNode()) {
-            SetAllLinkedNode(thread, dst, JSMutableHandle<LinkedNode>(node));
+            SetAllLinkedNode(thread, dst, JSMutableHandle<LinkedNode>::Cast(node));
         } else {
-            SetAllRBTreeNode(thread, dst, JSMutableHandle<RBTreeNode>(node));
+            SetAllRBTreeNode(thread, dst, JSHandle<RBTreeNode>(node));
         }
     }
 }
@@ -180,7 +180,7 @@ void JSAPIHashMap::SetAllLinkedNode(JSThread *thread, JSHandle<JSAPIHashMap> has
     }
 }
 
-void JSAPIHashMap::SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSMutableHandle<RBTreeNode> node)
+void JSAPIHashMap::SetAllRBTreeNode(JSThread *thread, JSHandle<JSAPIHashMap> hashMap, JSHandle<RBTreeNode> node)
 {
     ASSERT(node.GetTaggedValue().IsRBTreeNode());
     JSMutableHandle<JSTaggedValue> key(thread, node->GetKey());

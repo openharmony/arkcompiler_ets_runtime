@@ -53,6 +53,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
             flags |= BytecodeFlags::NO_SIDE_EFFECTS;
+            break;
         default:
             break;
     }
@@ -84,6 +85,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
         case EcmaOpcode::SETGENERATORSTATE_IMM8:
             flags |= BytecodeFlags::NO_THROW;
+            break;
         default:
             break;
     }
@@ -173,6 +175,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             break;
         case EcmaOpcode::SUSPENDGENERATOR_V8:
             flags |= BytecodeFlags::READ_THIS_OBJECT;
+            U_FALLTHROUGH;
         case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
             kind = BytecodeKind::SUSPEND;
             break;

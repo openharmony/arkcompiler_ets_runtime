@@ -375,7 +375,7 @@ JSTaggedValue ContainersTreeSet::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPITreeSet> tset = JSHandle<JSAPITreeSet>::Cast(self);
     JSMutableHandle<TaggedTreeSet> iteratedSet(thread, tset->GetTreeSet());
     int elements = iteratedSet->NumberOfElements();
-    JSMutableHandle<TaggedArray> entries(TaggedTreeSet::GetArrayFromSet(thread, iteratedSet));
+    JSHandle<TaggedArray> entries = TaggedTreeSet::GetArrayFromSet(thread, iteratedSet);
     int index = 0;
     size_t length = entries->GetLength();
     const int32_t argsLength = 3;
@@ -393,7 +393,7 @@ JSTaggedValue ContainersTreeSet::ForEach(EcmaRuntimeCallInfo *argv)
         // check entries should be update, size will be update by set add and remove.
         if (tset->GetSize() != static_cast<int>(length)) {
             iteratedSet.Update(tset->GetTreeSet());
-            entries.Update(TaggedTreeSet::GetArrayFromSet(thread, iteratedSet).GetTaggedValue());
+            entries = TaggedTreeSet::GetArrayFromSet(thread, iteratedSet);
             elements = iteratedSet->NumberOfElements();
             length = entries->GetLength();
         }

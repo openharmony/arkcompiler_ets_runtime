@@ -1053,7 +1053,7 @@ void TSManager::GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cp
                                                                     SnapshotData::SNAPSHOT_CP_LIST_ITEM_SIZE);
     snapshotData_.SetSnapshotCPList(snapshotCPList.GetTaggedValue());
 
-    JSMutableHandle<ConstantPool> oldCP(thread_->GlobalConstants()->GetHandledUndefined());
+    JSMutableHandle<ConstantPool> oldCP(thread_, thread_->GlobalConstants()->GetUndefined());
     uint32_t pos = 0;
     for (auto &iter : oldCPValues) {
         int32_t oldCPID = iter.first;
@@ -1161,8 +1161,8 @@ void TSManager::AddHClassToSnapshotConstantPoolList(const std::map<int32_t, uint
                                                     kungfu::BytecodeInfoCollector *bcInfoCollector)
 {
     const JSPandaFile *jsPandaFile = bcInfoCollector->GetJSPandaFile();
-    JSMutableHandle<ConstantPool> oldCP(thread_->GlobalConstants()->GetHandledUndefined());
-    JSMutableHandle<ConstantPool> newCP(thread_->GlobalConstants()->GetHandledUndefined());
+    JSMutableHandle<ConstantPool> oldCP(thread_, thread_->GlobalConstants()->GetUndefined());
+    JSMutableHandle<ConstantPool> newCP(thread_, thread_->GlobalConstants()->GetUndefined());
     for (auto &iter : cpListIndexMap) {
         int32_t oldCPID = iter.first;
         oldCP.Update(vm_->FindConstpool(jsPandaFile, oldCPID));

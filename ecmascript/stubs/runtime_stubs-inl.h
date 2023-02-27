@@ -540,7 +540,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByValue(JSThread *thread, const JSHandle
     bool enumerable = !(obj->IsClassPrototype() || obj->IsClassConstructor());
 
     PropertyDescriptor desc(thread, value, true, enumerable, true);
-    JSMutableHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, obj, propKey, desc);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "StOwnByValue failed");
@@ -850,7 +850,7 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     ASSERT(ctor->IsJSFunction());
-    JSMutableHandle<JSTaggedValue> parent(base);
+    JSHandle<JSTaggedValue> parent = base;
 
     /*
      *         class A / class A extends null                             class A extends B
@@ -871,11 +871,11 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
     if (parent->IsHole()) {
         method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
         parentPrototype = env->GetObjectFunctionPrototype();
-        parent.Update(env->GetFunctionPrototype().GetTaggedValue());
+        parent = env->GetFunctionPrototype();
     } else if (parent->IsNull()) {
         method->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
         parentPrototype = JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null());
-        parent.Update(env->GetFunctionPrototype().GetTaggedValue());
+        parent = env->GetFunctionPrototype();
     } else if (!parent->IsConstructor()) {
         return RuntimeThrowTypeError(thread, "parent class is not constructor");
     } else {
@@ -943,14 +943,14 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByValueWithNameSet(JSThread *thread, con
     bool enumerable = !(obj->IsClassPrototype() || obj->IsClassConstructor());
 
     PropertyDescriptor desc(thread, value, true, enumerable, true);
-    JSMutableHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, obj, propKey, desc);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "StOwnByValueWithNameSet failed");
     }
     if (value->IsJSFunction()) {
         if (propKey->IsNumber()) {
-            propKey.Update(base::NumberHelper::NumberToString(thread, propKey.GetTaggedValue()).GetTaggedValue());
+            propKey = JSHandle<JSTaggedValue>(base::NumberHelper::NumberToString(thread, propKey.GetTaggedValue()));
         }
         JSFunctionBase::SetFunctionName(thread, JSHandle<JSFunctionBase>::Cast(value), propKey,
                                         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));

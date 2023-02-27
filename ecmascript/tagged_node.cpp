@@ -397,7 +397,7 @@ JSTaggedValue RBTreeNode::GetTreeNode(JSThread *thread, JSHandle<JSTaggedValue> 
                                       int hash, JSHandle<JSTaggedValue> key)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSMutableHandle<TaggedQueue> queue(factory->NewTaggedQueue(0));
+    JSMutableHandle<TaggedQueue> queue(thread, factory->NewTaggedQueue(0));
     queue.Update(JSTaggedValue(TaggedQueue::Push(thread, queue, treeNodeVa)));
     JSMutableHandle<RBTreeNode> root(thread, JSTaggedValue::Hole());
     JSMutableHandle<JSTaggedValue> currentKey(thread, JSTaggedValue::Hole());

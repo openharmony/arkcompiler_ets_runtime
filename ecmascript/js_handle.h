@@ -204,10 +204,15 @@ public:
         : JSHandle<T>(thread, handle.GetTaggedValue())
     {
     }
+    inline explicit JSMutableHandle(uintptr_t slot) : JSHandle<T>(slot)
+    {
+    }
 
     template <typename S>
-    explicit JSMutableHandle(const JSHandle<S> &handle) : JSHandle<T>(handle)
+    inline static JSMutableHandle<T> Cast(const JSMutableHandle<S> &handle)
     {
+        JSHandle<T>::Cast(handle);
+        return JSMutableHandle<T>(handle.GetAddress());
     }
 
     void Update(JSTaggedValue value)
