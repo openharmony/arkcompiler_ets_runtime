@@ -89,7 +89,8 @@ public:
     bool InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entryDuration, uint64_t headerSize,
                         uint64_t tailSize) const;
     bool IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const;
-    void GetStackBeforeCallNapi(JSThread *thread, const std::string &methodAddr);
+    void GetStackBeforeCallNapi(JSThread *thread);
+    void GetStackAfterCallNapi();
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
     void StartCpuProfilerForInfo();
@@ -118,6 +119,7 @@ private:
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
     bool GetFrameStackCallNapi(JSThread *thread);
+    bool GetFrameStackAfterCallNapi();
     void GetRowAndColumnNumbers(FrameIterator &itNext);
     void *GetMethodIdentifier(Method *method, const FrameIterator &it);
     RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool topFrame) const;

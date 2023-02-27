@@ -33,7 +33,7 @@ namespace panda::ecmascript {
 const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
 const int MAX_NODE_COUNT = 10000; // 10000:the maximum size of the array
 const int MIN_TIME_DELTA = 10; // 10: the minimum value of the time delta
-const int QUEUE_CAPACITY = 11; // the capacity of the circular queue is QUEUE_CAPACITY - 1
+const int QUEUE_CAPACITY = 51; // the capacity of the circular queue is QUEUE_CAPACITY - 1
 const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in while loop
 const size_t PRE_IDX_RANGE = 5; // 5: length of variable preIdx looping backward
 enum class RunningState : size_t {
@@ -124,9 +124,9 @@ struct FrameInfoTemp {
 struct FrameStackAndInfo {
     struct FrameInfoTemp frameInfoTemps[MAX_ARRAY_COUNT] = {};
     struct MethodKey frameStack[MAX_ARRAY_COUNT] = {};
-    int frameInfoTempsLength;
-    int frameStackLength;
-    uint64_t timeStamp;
+    int frameInfoTempsLength {};
+    int frameStackLength {};
+    uint64_t timeStamp{};
 };
 
 class SamplesQueue {
@@ -139,7 +139,9 @@ public:
 
     void PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStack,
                    int frameInfoTempsLength, int frameStackLength);
-    void PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps, CVector<MethodKey> &napiFrameStack);
+    void PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
+                       CVector<MethodKey> &napiFrameStack,
+                       bool isAfterCallNapi);
     FrameStackAndInfo *PopFrame();
     bool IsEmpty();
     bool IsFull();
@@ -209,7 +211,7 @@ public:
                                uint64_t startSampleTime, uint64_t &sampleTime);
     void FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &sampleTime, bool isEndSample);
     void PostFrame();
-    void PostNapiFrame();
+    void PostNapiFrame(bool isAfterCallNapi = false);
     void ResetFrameLength();
     void SetFrameStackCallNapi(bool flag);
     uint64_t GetCallTimeStamp();
