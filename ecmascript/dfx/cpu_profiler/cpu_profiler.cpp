@@ -156,8 +156,6 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
         LOG_ECMA(ERROR) << "sem_[1] wait failed";
         return profileInfo;
     }
-    generator_->FinetuneSampleData();
-    generator_->ClearNapiCall();
     profileInfo = generator_->GetProfileInfo();
     return profileInfo;
 }
@@ -199,8 +197,6 @@ void CpuProfiler::StopCpuProfilerForFile()
         LOG_ECMA(ERROR) << "sem_[1] wait failed";
         return;
     }
-    generator_->FinetuneSampleData();
-    generator_->ClearNapiCall();
     generator_->StringifySampleData();
     std::string fileData = generator_->GetSampleData();
     generator_->fileHandle_ << fileData;
@@ -378,6 +374,20 @@ bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
     return true;
 }
 
+bool CpuProfiler::GetFrameStackAfterCallNapi()
+{
+    [[maybe_unused]] CallNapiScope scope(generator_);
+    uint64_t callTimeStamp = generator_->GetCallTimeStamp();
+    uint64_t currentTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+    int64_t ts = static_cast<int64_t>(interval_) - static_cast<int64_t>(currentTimeStamp - callTimeStamp);
+    if (callTimeStamp != 0 && ts > 0) {
+        return false;
+    }
+    generator_->SetCallTimeStamp(currentTimeStamp);
+    generator_->PostNapiFrame(true);
+    return true;
+}
+
 bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
                                   const FrameIterator &it,
                                   const JSPandaFile *jsPandaFile,
@@ -485,10 +495,14 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
     CheckAndCopy(functionName, size, methodNameStr.c_str());
 }
 
-void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread, const std::string &methodAddr)
+void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread)
 {
     GetFrameStackCallNapi(thread);
-    RecordCallNapiInfo(methodAddr);
+}
+
+void CpuProfiler::GetStackAfterCallNapi()
+{
+    GetFrameStackAfterCallNapi();
 }
 
 void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *siginfo, void *context)

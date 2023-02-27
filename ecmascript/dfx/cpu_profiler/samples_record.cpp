@@ -725,9 +725,9 @@ void SamplesRecord::PostFrame()
     samplesQueue_->PostFrame(frameInfoTemps_, frameStack_, frameInfoTempLength_, frameStackLength_);
 }
 
-void SamplesRecord::PostNapiFrame()
+void SamplesRecord::PostNapiFrame(bool isAfterCallNapi)
 {
-    samplesQueue_->PostNapiFrame(napiFrameInfoTemps_, napiFrameStack_);
+    samplesQueue_->PostNapiFrame(napiFrameInfoTemps_, napiFrameStack_, isAfterCallNapi);
 }
 
 void SamplesRecord::ResetFrameLength()
@@ -790,14 +790,17 @@ void SamplesQueue::PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStac
     }
 }
 
-void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps, CVector<MethodKey> &napiFrameStack)
+void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
+                                 CVector<MethodKey> &napiFrameStack,
+                                 bool isAfterCallNapi)
 {
     os::memory::LockHolder holder(mtx_);
     if (!IsFull()) {
         int frameInfoTempsLength = napiFrameInfoTemps.size();
         int frameStackLength = napiFrameStack.size();
+        int startIdx = isAfterCallNapi ? 1 : 0;
         // napiFrameInfoTemps
-        for (int i = 0; i < frameInfoTempsLength; i++) {
+        for (int i = startIdx; i < frameInfoTempsLength; i++) {
             CheckAndCopy(frames_[rear_].frameInfoTemps[i].functionName,
                 sizeof(frames_[rear_].frameInfoTemps[i].functionName), napiFrameInfoTemps[i].functionName);
             frames_[rear_].frameInfoTemps[i].columnNumber = napiFrameInfoTemps[i].columnNumber;
@@ -811,7 +814,7 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps, CVe
             frames_[rear_].frameInfoTemps[i].methodKey.napiCallCount = napiFrameInfoTemps[i].methodKey.napiCallCount;
         }
         // napiFrameStack
-        for (int i = 0; i < frameStackLength; i++) {
+        for (int i = startIdx; i < frameStackLength; i++) {
             frames_[rear_].frameStack[i].methodIdentifier = napiFrameStack[i].methodIdentifier;
             frames_[rear_].frameStack[i].state = napiFrameStack[i].state;
             frames_[rear_].frameStack[i].napiCallCount = napiFrameStack[i].napiCallCount;
