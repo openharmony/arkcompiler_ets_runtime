@@ -56,8 +56,8 @@ config("include_llvm") {
         ]
       }
     }
-    cflags_cc = [ "-DARK_GC_SUPPORT" ]
   }
+  cflags_cc = [ "-DARK_GC_SUPPORT" ]
 }
 
 source_set("libark_jsoptimizer_set") {

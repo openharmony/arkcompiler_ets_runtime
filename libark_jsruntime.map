@@ -6,7 +6,6 @@
 
       panda::ecmascript::COMMON_HELP_HEAD_MSG;
       panda::ecmascript::HELP_OPTION_MSG;
-      panda::ecmascript::HELP_TAIL_MSG;
 
       panda::ArrayBufferRef::*;
       panda::ArrayRef::*;

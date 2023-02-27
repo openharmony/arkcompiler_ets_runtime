@@ -33,9 +33,8 @@ namespace panda::ecmascript::kungfu {
 std::string GetHelper()
 {
     std::string str;
-    str.append(COMMON_HELP_HEAD_MSG);
+    str.append(COMPILER_HELP_HEAD_MSG);
     str.append(HELP_OPTION_MSG);
-    str.append(HELP_TAIL_MSG);
     return str;
 }
 int Main(const int argc, const char **argv)
