@@ -75,7 +75,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     bool isModule = jsPandaFile->IsModule(thread, entry.c_str());
     if (thread->HasPendingException()) {
         vm->HandleUncaughtException(thread->GetException());
-        return JSTaggedValue::Undefined();
+        return Unexpected(false);
     }
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
@@ -91,7 +91,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
             if (!excuteFromJob) {
                 vm->HandleUncaughtException(thread->GetException());
             }
-            return JSTaggedValue::Undefined();
+            return Unexpected(false);
         }
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         module->SetStatus(ModuleStatus::INSTANTIATED);
@@ -178,7 +178,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
         vm->HandleUncaughtException(thread->GetException());
-        return JSTaggedValue::Undefined();
+        return Unexpected(false);
     }
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
