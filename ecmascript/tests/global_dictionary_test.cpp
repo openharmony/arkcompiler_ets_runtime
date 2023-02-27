@@ -222,7 +222,7 @@ HWTEST_F_L0(GlobalDictionaryTest, GetAllKeys)
                                     "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"};
     JSHandle<GlobalDictionary> handleDict = GlobalDictionary::Create(thread, numberofElements);
     EXPECT_TRUE(*handleDict != nullptr);
-    JSMutableHandle<GlobalDictionary> dictHandle(handleDict);
+    JSMutableHandle<GlobalDictionary> dictHandle(thread, handleDict);
     for (int i = 0; i < numberofElements; i++) {
         JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(i));
         JSHandle<JSTaggedValue> handleNameKey(factory->NewFromASCII(nameKey[i]));
@@ -263,7 +263,7 @@ HWTEST_F_L0(GlobalDictionaryTest, GetEnumAllKeys)
                                     "g", "h", "i", "j", "k", "l", "m", "n", "o", "q"};
     JSHandle<GlobalDictionary> handleDict = GlobalDictionary::Create(thread, numberofElements);
     EXPECT_TRUE(*handleDict != nullptr);
-    JSMutableHandle<GlobalDictionary> dictHandle(handleDict);
+    JSMutableHandle<GlobalDictionary> dictHandle(thread, handleDict);
     bool enumerable;
     for (int i = 0; i < numberofElements; i++) {
         JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(i));
@@ -284,7 +284,7 @@ HWTEST_F_L0(GlobalDictionaryTest, GetEnumAllKeys)
     // keyArray capacity must be enough for dictionary
     uint32_t arraySize = static_cast<uint32_t>(numberofElements) + offset;
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(arraySize);
-    handleDict->GetEnumAllKeys(thread, offset, *keyArray, &keys);
+    dictHandle->GetEnumAllKeys(thread, offset, *keyArray, &keys);
     EXPECT_EQ(keys, 8U);
     JSHandle<EcmaString> resultFirstKey(thread, keyArray->Get(offset));
     JSHandle<EcmaString> resultLastKey(thread, keyArray->Get(offset + keys - 1U));
