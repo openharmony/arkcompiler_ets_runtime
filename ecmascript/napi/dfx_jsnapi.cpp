@@ -29,7 +29,7 @@
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #endif
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
-#include "include/faultloggerd_client.h"
+#include "faultloggerd_client.h"
 #endif
 
 namespace panda {
@@ -240,7 +240,8 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
 }
 
-void DFXJSNApi::StartCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &fileName,
+void DFXJSNApi::StartCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm,
+                                        [[maybe_unused]] const std::string &fileName,
                                         [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -337,28 +338,47 @@ void DFXJSNApi::SetCpuSamplingInterval([[maybe_unused]] const EcmaVM *vm, [[mayb
 #endif
 }
 
-bool DFXJSNApi::SuspendVM(const EcmaVM *vm)
+bool DFXJSNApi::SuspendVM([[maybe_unused]] const EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::VmThreadControl* vmThreadControl = vm->GetAssociatedJSThread()->GetVmThreadControl();
     return vmThreadControl->NotifyVMThreadSuspension();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler snapshot";
+    return false;
+#endif
 }
 
-void DFXJSNApi::ResumeVM(const EcmaVM *vm)
+void DFXJSNApi::ResumeVM([[maybe_unused]] const EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::VmThreadControl* vmThreadControl = vm->GetAssociatedJSThread()->GetVmThreadControl();
     vmThreadControl->ResumeVM();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler snapshot";
+#endif
 }
 
-bool DFXJSNApi::IsSuspended(const EcmaVM *vm)
+bool DFXJSNApi::IsSuspended([[maybe_unused]] const EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::VmThreadControl* vmThreadControl = vm->GetAssociatedJSThread()->GetVmThreadControl();
     return vmThreadControl->IsSuspended();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler snapshot";
+    return false;
+#endif
 }
 
-bool DFXJSNApi::CheckSafepoint(const EcmaVM *vm)
+bool DFXJSNApi::CheckSafepoint([[maybe_unused]] const EcmaVM *vm)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::JSThread* thread = vm->GetJSThread();
     return thread->CheckSafepoint();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler snapshot";
+    return false;
+#endif
 }
 
 bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames)

@@ -205,9 +205,7 @@ config("ark_jsruntime_public_config") {
 
   include_dirs = [
     "$js_root",
-
-    # Dependent on runtime_core include
-    "$ark_root",
+    "$js_root/ecmascript/napi/include",
   ]
 }
 
@@ -240,11 +238,6 @@ config("ark_jsruntime_compiler_config") {
 
 config("ark_jsruntime_windows_config") {
   ldflags = [ "-lshlwapi" ]
-  if (enable_hilog && !ark_standalone_build) {
-    defines = [ "ENABLE_HILOG" ]
-    include_dirs =
-        [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
-  }
 }
 
 config("ark_jsruntime_common_config") {
@@ -778,16 +771,17 @@ if (is_mingw) {
   }
 }
 
-source_set("libark_jsruntime_set") {
+ohos_source_set("libark_jsruntime_set") {
   sources = ecma_source
   sources += ecma_profiler_source
   sources += ecma_debugger_source
   sources += hitrace_scope_source
   sources += ecma_platform_source
 
-  public_configs = [
+  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+
+  configs = [
     "$js_root:ark_jsruntime_common_config",
-    "$js_root:ark_jsruntime_public_config",
     "$js_root:asm_interp_enable_config",
   ]
 
@@ -804,25 +798,26 @@ source_set("libark_jsruntime_set") {
 
   if (is_ohos && is_standard_system) {
     defines = [ "ENABLE_EXCEPTION_BACKTRACE" ]
-    include_dirs = []
+    if (enable_dump_in_faultlog || enable_bytrace || enable_hitrace ||
+        enable_hilog) {
+      external_deps = []
+    }
+    if (enable_dump_in_faultlog) {
+      defines += [ "ENABLE_DUMP_IN_FAULTLOG" ]
+      external_deps += [ "faultloggerd:libfaultloggerd" ]
+    }
     if (enable_bytrace) {
       defines += [ "ENABLE_BYTRACE" ]
-      include_dirs += [ "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter" ]
+      external_deps += [ "hitrace_native:hitrace_meter" ]
       cflags_cc += [ "-Wno-gnu-zero-variadic-macro-arguments" ]
     }
     if (enable_hitrace) {
       defines += [ "ENABLE_HITRACE" ]
-      include_dirs +=
-          [ "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include" ]
-    }
-    if (enable_dump_in_faultlog) {
-      defines += [ "ENABLE_DUMP_IN_FAULTLOG" ]
-      include_dirs += [ "//base/hiviewdfx/faultloggerd/interfaces/innerkits/faultloggerd_client" ]
+      external_deps += [ "hitrace_native:libhitracechain" ]
     }
     if (enable_hilog) {
       defines += [ "ENABLE_HILOG" ]
-      include_dirs +=
-          [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
+      external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
     }
     if (enable_leak_check) {
       defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
@@ -834,18 +829,17 @@ source_set("libark_jsruntime_set") {
   }
 }
 
-source_set("libark_js_intl_set") {
+ohos_source_set("libark_js_intl_set") {
   sources = intl_sources
 
-  public_configs = [
-    "$js_root:ark_jsruntime_common_config",
-    "$js_root:ark_jsruntime_public_config",
-  ]
+  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+
+  configs = [ "$js_root:ark_jsruntime_common_config" ]
 
   deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
 }
 
-source_set("libark_jsruntime_test_set") {
+ohos_source_set("libark_jsruntime_test_set") {
   sources = ecma_source
   sources += intl_sources
   sources += ecma_profiler_source
@@ -876,20 +870,23 @@ source_set("libark_jsruntime_test_set") {
     defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
   }
 
-  public_configs = [
+  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+
+  configs = [
     "$js_root:ark_jsruntime_common_config",
-    "$js_root:ark_jsruntime_public_config",
     "$js_root:asm_interp_enable_config",
     "$js_root:icu_path_test_config",
   ]
 }
 
-source_set("libark_jsruntime_static") {
+ohos_source_set("libark_jsruntime_static") {
   deps = [
     ":libark_js_intl_set",
     ":libark_jsruntime_set",
     "$ark_root/libpandafile:arkfile_header_deps",
   ]
+
+  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
@@ -906,6 +903,8 @@ ohos_shared_library("libark_jsruntime") {
     "$ark_root/libpandafile:libarkfile_static",
     sdk_libc_secshared_dep,
   ]
+
+  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
   if (is_ohos && is_standard_system) {
     if (!is_debug) {
