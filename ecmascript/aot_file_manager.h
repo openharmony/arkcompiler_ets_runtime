@@ -376,6 +376,8 @@ public:
         return isLoad_;
     }
 
+    void RewriteRelcateDeoptHandler(EcmaVM *vm);
+
 private:
     bool Load(const std::string &filename);
     void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
@@ -467,7 +469,7 @@ public:
     static AnFileDataManager *GetInstance();
     ~AnFileDataManager();
 
-    bool SafeLoad(const std::string &fileName, Type type);
+    bool SafeLoad(const std::string &fileName, Type type, EcmaVM *vm = nullptr);
     uint32_t SafeGetFileInfoIndex(const std::string &fileName);
     std::shared_ptr<AnFileInfo> SafeGetAnFileInfo(uint32_t index);
     std::shared_ptr<StubFileInfo> SafeGetStubFileInfo();
@@ -501,7 +503,7 @@ public:
 public:
     AnFileDataManager() = default;
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
-    bool UnsafeLoadFromAOT(const std::string &fileName);
+    bool UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *vm);
     bool UnsafeLoadFromStub();
 
     os::memory::RWLock lock_;
@@ -552,6 +554,12 @@ public:
     std::string GetAotFileName(EcmaVM *vm, const JSPandaFile *jsPandaFile, const std::string &extensionName) const;
 
 private:
+
+    void RewriteRelcateDeoptHandler(EcmaVM *vm, AnFileInfo AOTFileInfo)
+    {
+        AOTFileInfo.RewriteRelcateDeoptHandler(vm);
+    }
+
     void PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry);
     void InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs);
     void AdjustBCStubAndDebuggerStubEntries(JSThread *thread, const std::vector<AOTFileInfo::FuncEntryDes> &stubs,
