@@ -135,10 +135,14 @@ void CommonCall::PushUndefinedWithArgc(ExtendedAssembler *assembler, Register gl
 void CommonCall::StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register currentSlot,
     Register numArgs, Register op, Label *stackOverflow)
 {
+    __ Ldr(op, MemoryOperand(glue, JSThread::GlueData::GetAllowCrossThreadExecutionOffset(false)));
+    Label skipThrow;
+    __ Cbnz(op, &skipThrow);
     __ Ldr(op, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
     __ Sub(op, currentSlot, Operand(op, UXTX, 0));
     __ Cmp(op, Operand(numArgs, LSL, 3));  // 3: each args occupies 8 bytes
     __ B(Condition::LE, stackOverflow);
+    __ Bind(&skipThrow);
 }
 #undef __
 }  // panda::ecmascript::aarch64
