@@ -137,9 +137,9 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     auto ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSTaggedValue> ctor = BuiltinsBase::GetConstructor(argv);
-    JSMutableHandle<JSTaggedValue> newTarget(BuiltinsBase::GetNewTarget(argv));
+    JSHandle<JSTaggedValue> newTarget = BuiltinsBase::GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
-        newTarget.Update(ctor.GetTaggedValue());
+        newTarget = ctor;
     }
     JSHandle<JSTaggedValue> message = BuiltinsBase::GetCallArg(argv, 0);
 
