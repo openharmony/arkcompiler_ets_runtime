@@ -59,6 +59,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "snapshot space";
         case COMPRESS_SPACE:
             return "compress space";
+        case LOCAL_SPACE:
+            return "local space";
         case READ_ONLY_SPACE:
             return "read only space";
         case APPSPAWN_SPACE:
