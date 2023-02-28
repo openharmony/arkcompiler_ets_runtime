@@ -93,7 +93,7 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
     auto size = fileSize.QuadPart;
     if (size <= 0) {
         CloseHandle(fd);
-        LOG_ECMA(ERROR) << fileName << " file is empty";
+        LOG_HOST_TOOL_ERROR << fileName << " file is empty";
         return MemMap();
     }
 

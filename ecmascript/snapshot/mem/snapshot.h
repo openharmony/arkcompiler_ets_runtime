@@ -49,7 +49,7 @@ private:
 
         bool Verify()
         {
-            return VerifyInner(LAST_VERSION);
+            return VerifyInner("snapshot file", LAST_VERSION);
         }
 
         uint32_t oldSpaceObjSize;
