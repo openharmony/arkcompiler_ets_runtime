@@ -63,14 +63,17 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
         if (generator_->GetMethodNodeCount() + generator_->GetframeStackLength() >= MAX_NODE_COUNT) {
             break;
         }
-        while (!generator_->samplesQueue_->IsEmpty()) {
-            FrameStackAndInfo *frame = generator_->samplesQueue_->PopFrame();
-            generator_->AddSample(frame);
+        if (generator_->samplesQueue_->IsEmpty()) {
+            generator_->AddRootSample();
+        } else {
+            while (!generator_->samplesQueue_->IsEmpty()) {
+                FrameStackAndInfo *frame = generator_->samplesQueue_->PopFrame();
+                generator_->AddSample(frame);
+            }
         }
         generator_->SetIsBreakSampleFlag(false);
     }
-    uint64_t stopTime = GetMicrosecondsTimeStamp();
-    generator_->SetThreadStopTime(stopTime);
+    generator_->SetThreadStopTime();
     pthread_setname_np(tid, "GC_WorkerThread");
     if (generator_->SemPost(1) != 0) {
         LOG_ECMA(ERROR) << "sem_[1] post failed";

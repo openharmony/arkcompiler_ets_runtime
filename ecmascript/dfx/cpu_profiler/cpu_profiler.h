@@ -27,6 +27,7 @@
 namespace panda::ecmascript {
 using JSTaggedType = uint64_t;
 class SamplesRecord;
+
 struct CurrentProcessInfo {
     uint64_t nowTimeStamp = 0;
     uint64_t tts = 0;
@@ -86,11 +87,12 @@ private:
 
 class CpuProfiler {
 public:
+    static const int CPUPROFILER_DEFAULT_INTERVAL = 500; // 500:Default Sampling interval 500 microseconds
+
     bool InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entryDuration, uint64_t headerSize,
                         uint64_t tailSize) const;
     bool IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const;
-    void GetStackBeforeCallNapi(JSThread *thread);
-    void GetStackAfterCallNapi();
+    void GetStackCallNapi(JSThread *thread, bool beforeCallNapi);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
     void StartCpuProfilerForInfo();
@@ -100,14 +102,14 @@ public:
     void SetCpuSamplingInterval(int interval);
     void SetCallNapiGetStack(bool getStack);
     void RecordCallNapiInfo(const std::string &methodAddr);
-    explicit CpuProfiler(const EcmaVM *vm, const int interval = 500); // 500:Default Sampling interval 500 microseconds
+    explicit CpuProfiler(const EcmaVM *vm, const int interval = CPUPROFILER_DEFAULT_INTERVAL);
     virtual ~CpuProfiler();
 
     static CMap<pthread_t, const EcmaVM *> profilerMap_;
 private:
     static os::memory::Mutex synchronizationMutex_;
 
-    void GetFrameStack(FrameIterator &it);
+    void GetStack(FrameIterator &it);
     bool ParseMethodInfo(struct MethodKey &methodKey, const FrameIterator &it,
                          const JSPandaFile *jsPandaFile, bool isCallNapi);
     void GetNativeStack(const FrameIterator &it, char *functionName, size_t size);
@@ -118,12 +120,9 @@ private:
     void GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo);
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
-    bool GetFrameStackCallNapi(JSThread *thread);
-    bool GetFrameStackAfterCallNapi();
-    void GetRowAndColumnNumbers(FrameIterator &itNext);
+    void GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeEntry);
     void *GetMethodIdentifier(Method *method, const FrameIterator &it);
     RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool topFrame) const;
-    uint32_t napiCallCount_ = 0;
     bool isProfiling_ = false;
     bool outToFile_ = false;
     std::string fileName_ = "";
@@ -132,9 +131,6 @@ private:
     const EcmaVM *vm_ = nullptr;
     uint32_t interval_ = 0;
     bool callNapiGetStack_ = true;
-    int line_ = 0;
-    int column_ = 0;
-    char url_[500] = {0}; // 500:the maximum size of the url
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_CPU_PROFILE_H
