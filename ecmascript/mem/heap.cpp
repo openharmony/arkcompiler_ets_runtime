@@ -241,13 +241,6 @@ void Heap::Prepare()
 
 void Heap::Resume(TriggerGCType gcType)
 {
-    if (gcType == TriggerGCType::FULL_GC) {
-        compressSpace_->SetInitialCapacity(oldSpace_->GetInitialCapacity());
-        auto *oldSpace = compressSpace_;
-        compressSpace_ = oldSpace_;
-        oldSpace_ = oldSpace;
-    }
-
     if (mode_ != HeapMode::SPAWN &&
         activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC())) {
         // if activeSpace capacity changes， oldSpace maximumCapacity should change, too.
