@@ -64,7 +64,10 @@ static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 
 using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
-using QuickFixQueryCallBack = bool (*)(std::string, std::string &, void **, size_t);
+using QuickFixQueryCallBack = bool (*)(std::string baseFileName,
+                                       std::string &patchFileName,
+                                       void **patchBuffer,
+                                       size_t &patchSize);
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
@@ -1290,8 +1293,9 @@ public:
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
 
     static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
-    static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer,
-                                    size_t patchSize, const std::string &baseFileName);
+    static PatchErrorCode LoadPatch(EcmaVM *vm,
+                                    const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                                    const std::string &baseFileName, const void *baseBuffer, size_t baseSize);
     static PatchErrorCode UnloadPatch(EcmaVM *vm, const std::string &patchFileName);
     // check whether the exception is caused by quickfix methods.
     static bool IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName);

@@ -22,17 +22,20 @@ namespace panda::ecmascript {
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 class QuickFixManager {
 public:
-    using QuickFixQueryCallBack = bool (*)(std::string, std::string &, void **, size_t);
+    using QuickFixQueryCallBack = bool (*)(std::string baseFileName,
+                                           std::string &patchFileName,
+                                           void **patchBuffer,
+                                           size_t &patchSize);
 
     QuickFixManager() = default;
     ~QuickFixManager();
 
     void RegisterQuickFixQueryFunc(const QuickFixQueryCallBack callBack);
-    void LoadPatchIfNeeded(JSThread *thread, const std::string &baseFileName);
+    void LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *baseFile);
     PatchErrorCode LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
-    PatchErrorCode LoadPatch(JSThread *thread, const std::string &patchFileName,
-                             const void *patchBuffer, size_t patchSize,
-                             const std::string &baseFileName);
+    PatchErrorCode LoadPatch(JSThread *thread,
+                             const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                             const std::string &baseFileName, const void *baseBuffer, size_t baseSize);
     PatchErrorCode UnloadPatch(JSThread *thread, const std::string &patchFileName);
     bool IsQuickFixCausedException(JSThread *thread,
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
@@ -45,9 +48,6 @@ private:
     {
         return callBack_ != nullptr;
     }
-
-    // check whether the patch is loaded.
-    bool HasLoadedPatch(const std::string &patchFileName, const std::string &baseFileName) const;
 
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);
 
