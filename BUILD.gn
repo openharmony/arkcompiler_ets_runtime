@@ -256,6 +256,7 @@ config("ark_jsruntime_common_config") {
     "-fasynchronous-unwind-tables",
     "-Wformat=2",
     "-std=c++17",
+    "-Wno-unused-but-set-variable",
   ]
 
   if (use_musl) {
