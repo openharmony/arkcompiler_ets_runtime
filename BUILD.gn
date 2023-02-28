@@ -521,6 +521,7 @@ ecma_source = [
   "ecmascript/date_parse.cpp",
   "ecmascript/deoptimizer/calleeReg.cpp",
   "ecmascript/deoptimizer/deoptimizer.cpp",
+  "ecmascript/deoptimizer/relocator.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
   "ecmascript/dfx/vmstat/opt_code_profiler.cpp",
