@@ -155,10 +155,12 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
     }
     int32_t preChunkSize = stream->GetSize();
     int32_t sequenceId = 0;
+    int64_t timeStampUs = 0;
     auto iter = nodes_.begin();
     for (size_t timeIndex = 0; timeIndex < timeStamps_.size(); ++timeIndex) {
         TimeStamp& timeStamp = timeStamps_[timeIndex];
         sequenceId = timeStamp.GetLastSequenceId();
+        timeStampUs = timeStamp.GetTimeStamp();
         int32_t nodesSize = 0;
         int32_t nodesCount = 0;
         while (iter != nodes_.end() && (*iter)->GetId() <= static_cast<uint32_t>(sequenceId)) {
@@ -180,7 +182,7 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
         stream->UpdateHeapStats(&statsBuffer.front(), static_cast<int32_t>(statsBuffer.size()));
         statsBuffer.clear();
     }
-    stream->UpdateLastSeenObjectId(sequenceId);
+    stream->UpdateLastSeenObjectId(sequenceId, timeStampUs);
 }
 
 Node *HeapSnapshot::AddNode(TaggedObject *address, size_t size)
