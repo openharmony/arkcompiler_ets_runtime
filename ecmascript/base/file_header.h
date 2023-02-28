@@ -34,12 +34,13 @@ protected:
     bool VerifyInner(const std::array<uint8_t, VERSION_SIZE> &lastVersion) const
     {
         if (magic_ != MAGIC) {
+            LOG_HOST_TOOL_ERROR << "Magic mismatch, please make sure apPath file and the code are matched";
             LOG_ECMA(ERROR) << "magic error, expected magic is " << ConvToStr(MAGIC)
                             << ", but got " << ConvToStr(magic_);
             return false;
         }
         if (version_ > lastVersion) {
-            LOG_ECMA(ERROR) << "version error, expected version should be less or equal than "
+            LOG_HOST_TOOL_ERROR << "version error, expected version should be less or equal than "
                             << ConvToStr(lastVersion) << ", but got " << GetVersionInner();
             return false;
         }
