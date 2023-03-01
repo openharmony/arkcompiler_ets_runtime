@@ -100,6 +100,11 @@ public:
         }
         return JSTaggedValue::Undefined();
     }
+    static int ComputeCompactSize([[maybe_unused]] const JSHandle<SymbolTable> &table, int computeHashTableSize,
+        [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
+    {
+        return computeHashTableSize;
+    }
     static constexpr int ENTRY_KEY_INDEX = 0;
     static constexpr int ENTRY_VALUE_INDEX = 1;
     static constexpr int ENTRY_SIZE = 2;

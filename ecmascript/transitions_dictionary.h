@@ -111,7 +111,12 @@ public:
         SetKey(thread, entry, key);
         JSTaggedValue weakValue = JSTaggedValue(value.CreateAndGetWeakRef());
         SetValue(thread, entry, weakValue);
-        SetAttributes(thread, entry, metaData);
+        if (!metaData.IsHeapObject()) {
+            SetAttributes(thread, entry, metaData);
+            return;
+        }
+        JSTaggedValue weakMetaData = JSTaggedValue(metaData.CreateAndGetWeakRef());
+        SetAttributes(thread, entry, weakMetaData);
     }
 
     inline void RemoveElement(const JSThread *thread, int entry)
@@ -132,10 +137,33 @@ public:
                                                   const JSHandle<JSTaggedValue> &key, const JSTaggedValue &metaData);
     void Rehash(const JSThread *thread, TransitionsDictionary *newTable);
 
+    static bool CheckWeakExist(const JSTaggedValue &value)
+    {
+        if (value == JSTaggedValue::Undefined()) {
+            return false;
+        }
+        return true;
+    }
+
+    static int ComputeCompactSize(const JSHandle<TransitionsDictionary> &table, int computeHashTableSize,
+        int tableSize, int addedElements)
+    {
+        int realEntryCount = 0;
+        for (int i = 0; i < tableSize; i++) {
+            // value is weak reference, if not use will be set undefined.
+            if (TransitionsDictionary::CheckWeakExist(table->GetValue(i))) {
+                realEntryCount++;
+            }
+        }
+        return std::min(computeHashTableSize,
+            static_cast<int>(helpers::math::GetPowerOfTwoValue32(realEntryCount + addedElements) * HASH_TABLE_BUFFER));
+    }
+
     static constexpr int ENTRY_SIZE = 3;
     static constexpr int ENTRY_KEY_INDEX = 0;
     static constexpr int ENTRY_VALUE_INDEX = 1;
     static constexpr int ENTRY_DETAILS_INDEX = 2;
+    static constexpr int HASH_TABLE_BUFFER = 2;
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript
