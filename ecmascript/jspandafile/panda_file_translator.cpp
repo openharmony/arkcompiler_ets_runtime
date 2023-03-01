@@ -199,7 +199,9 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
             size_t index = static_cast<size_t>(it.first);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreTypeForClass(
                 thread, jsPandaFile, index, constpool);
-            constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), literal.GetTaggedValue());
+            JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
+            classLiteral->SetArray(thread, literal);
+            constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), classLiteral.GetTaggedValue());
         } else {
             ASSERT(type == ConstPoolType::BASE_FUNCTION || type == ConstPoolType::NC_FUNCTION ||
                    type == ConstPoolType::GENERATOR_FUNCTION || type == ConstPoolType::ASYNC_FUNCTION ||
@@ -266,7 +268,9 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
             size_t index = static_cast<size_t>(it.first);
             JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreTypeForClass(
                 thread, jsPandaFile, index, constpool, entryPoint);
-            constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), literal.GetTaggedValue());
+            JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
+            classLiteral->SetArray(thread, literal);
+            constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), classLiteral.GetTaggedValue());
         } else {
             ASSERT(type == ConstPoolType::BASE_FUNCTION || type == ConstPoolType::NC_FUNCTION ||
                    type == ConstPoolType::GENERATOR_FUNCTION || type == ConstPoolType::ASYNC_FUNCTION ||

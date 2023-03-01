@@ -608,6 +608,7 @@ public:
     bool IsJSDisplayNames() const;
     bool IsJSListFormat() const;
     bool IsMethod() const;
+    bool IsClassLiteral() const;
 
     // non ECMA standard jsapis
     bool IsJSAPIArrayList() const;

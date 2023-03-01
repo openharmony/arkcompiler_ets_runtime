@@ -34,6 +34,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -3987,5 +3988,20 @@ JSHandle<AOTLiteralInfo> ObjectFactory::NewAOTLiteralInfo(uint32_t length, JSTag
     JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
     aotLiteralInfo->InitializeWithSpecialValue(initVal, length);
     return aotLiteralInfo;
+}
+
+JSHandle<ClassLiteral> ObjectFactory::NewClassLiteral()
+{
+    NewObjectHook();
+
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetClassLiteralClass().GetTaggedObject()));
+    JSHandle<TaggedArray> emptyArray = EmptyArray();
+
+    JSHandle<ClassLiteral> classLiteral(thread_, header);
+    classLiteral->SetArray(thread_, emptyArray);
+    classLiteral->SetIsAOTUsed(false);
+
+    return classLiteral;
 }
 }  // namespace panda::ecmascript

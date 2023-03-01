@@ -662,6 +662,11 @@ inline bool JSTaggedValue::IsMethod() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsMethod();
 }
 
+inline bool JSTaggedValue::IsClassLiteral() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsClassLiteral();
+}
+
 inline bool JSTaggedValue::IsJSAPIArrayList() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAPIArrayList();

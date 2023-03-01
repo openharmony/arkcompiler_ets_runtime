@@ -802,10 +802,11 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
     auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
-    JSHandle<TaggedArray> literalHandle(thread, literalObj);
+    JSHandle<ClassLiteral> classLiteral(thread, literalObj);
+    JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literalHandle);
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
     JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
@@ -830,10 +831,17 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
     auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
-    JSHandle<TaggedArray> literalHandle(thread, literalObj);
+    JSHandle<ClassLiteral> classLiteral(thread, literalObj);
+    if (classLiteral->GetIsAOTUsed()) {
+        // the prototype of IHClass can only use once
+        return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool, methodId, literalId, module);
+    } else {
+        classLiteral->SetIsAOTUsed(true);
+    }
+    JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, literalHandle);
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
     JSHandle<JSFunction> cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihclass);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);

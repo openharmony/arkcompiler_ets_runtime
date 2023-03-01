@@ -28,6 +28,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
@@ -1325,6 +1326,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN: {
                 CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncGeneratorResNextRetProRstFtn::SIZE, 1U);
+                break;
+            }
+            case JSType::CLASS_LITERAL: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ClassLiteral::SIZE, 2U);
+                JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
+                DUMP_FOR_HANDLE(classLiteral)
                 break;
             }
             default:
