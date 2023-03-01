@@ -65,7 +65,7 @@ public:
     {
     }
 
-    void UpdateLastSeenObjectId([[maybe_unused]] int32_t lastSeenObjectId) override
+    void UpdateLastSeenObjectId([[maybe_unused]] int32_t lastSeenObjectId, [[maybe_unused]]int64_t timeStampUs) override
     {
     }
 
@@ -456,7 +456,7 @@ HWTEST_F_L0(HeapTrackerTest, StreamWriterEnd)
     CVector<HeapStat> statsBuffer;
     statsBuffer.emplace_back(1, 2, 4);
     stream.UpdateHeapStats(&statsBuffer.front(), static_cast<int32_t>(statsBuffer.size()));
-    stream.UpdateLastSeenObjectId(1);
+    stream.UpdateLastSeenObjectId(1, 1677567644913058);
 
     TestProgress testProgress;
     heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true);
@@ -523,7 +523,7 @@ HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamWriteChunk)
     CVector<HeapStat> statsBuffer;
     statsBuffer.emplace_back(1, 2, 4);
     testFileStream.UpdateHeapStats(&statsBuffer.front(), static_cast<int32_t>(statsBuffer.size()));
-    testFileStream.UpdateLastSeenObjectId(1);
+    testFileStream.UpdateLastSeenObjectId(1, 1677567644913058);
     testFileStream.GetSize();
     std::string testString = "Hello!";
     int strSize = testString.size();
