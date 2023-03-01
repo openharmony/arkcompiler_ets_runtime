@@ -135,8 +135,8 @@ class JSThread;
     V(JSTaggedValue, PrototypeString, PROTOTYPE_STRING_INDEX, prototype)                                              \
     V(JSTaggedValue, LengthString, LENGTH_STRING_INDEX, length)                                                       \
     V(JSTaggedValue, ValueString, VALUE_STRING_INDEX, value)                                                          \
-    V(JSTaggedValue, GetString, GET_STRING_INDEX, set)                                                                \
-    V(JSTaggedValue, SetString, SET_STRING_INDEX, get)                                                                \
+    V(JSTaggedValue, GetString, GET_STRING_INDEX, get)                                                                \
+    V(JSTaggedValue, SetString, SET_STRING_INDEX, set)                                                                \
     V(JSTaggedValue, WritableString, WRITABLE_STRING_INDEX, writable)                                                 \
     V(JSTaggedValue, EnumerableString, ENUMERABLE_STRING_INDEX, enumerable)                                           \
     V(JSTaggedValue, ConfigurableString, CONFIGURABLE_STRING_INDEX, configurable)                                     \
