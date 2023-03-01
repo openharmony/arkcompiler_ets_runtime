@@ -133,14 +133,17 @@ HWTEST_F_L0(QuickFixTest, HotReload_MultiHap)
 HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
 {
     const char *baseFileName = "__base.pa";
+    const char *baseData = R"(
+        .function void foo() {}
+    )";
     const char *patchFileName = "__patch.pa";
-    const char *data = R"(
+    const char *patchData = R"(
         .function void foo() {}
     )";
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     Parser parser;
-    auto res = parser.Parse(data);
+    auto res = parser.Parse(patchData);
     std::unique_ptr<const File> basePF = pandasm::AsmEmitter::Emit(res.Value());
     std::unique_ptr<const File> patchPF = pandasm::AsmEmitter::Emit(res.Value());
     JSPandaFile *baseFile = pfManager->NewJSPandaFile(basePF.release(), CString(baseFileName));
@@ -148,7 +151,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
     pfManager->InsertJSPandaFile(baseFile);
     pfManager->InsertJSPandaFile(patchFile);
 
-    auto result = JSNApi::LoadPatch(instance, patchFileName, (void *)data, sizeof(data), baseFileName);
+    auto result = JSNApi::LoadPatch(instance, patchFileName, (void *)patchData, sizeof(patchData),
+                                    baseFileName, (void *)baseData, sizeof(baseData));
     EXPECT_FALSE(result == PatchErrorCode::SUCCESS);
 
     pfManager->RemoveJSPandaFile((void *)baseFile);
@@ -156,7 +160,7 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
 }
 
 bool QuickFixQueryFunc(
-    std::string baseFileName, std::string &patchFileName, void ** patchBuffer, size_t patchBufferSize)
+    std::string baseFileName, std::string &patchFileName, void ** patchBuffer, size_t &patchBufferSize)
 {
     if (baseFileName != QUICKFIX_ABC_PATH "multi_file/base/merge.abc") {
         return false;
@@ -173,7 +177,9 @@ bool QuickFixQueryFunc(
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     JSPandaFile *patchFile = pfManager->NewJSPandaFile(patchPF.release(), patchFileName.c_str());
     pfManager->InsertJSPandaFile(patchFile);
-    patchBuffer = (void **) data;
+
+    void *bufferData = reinterpret_cast<void *>((const_cast<char *>(data)));
+    *patchBuffer = &bufferData;
     patchBufferSize = sizeof(data);
     return true;
 }
@@ -184,12 +190,14 @@ HWTEST_F_L0(QuickFixTest, HotReload_RegisterQuickFixQueryFunc)
     std::string patchFileName = "__index.pa";
     JSNApi::RegisterQuickFixQueryFunc(instance, QuickFixQueryFunc);
 
-    QuickFixManager *quickFixManager = instance->GetQuickFixManager();
-    quickFixManager->LoadPatchIfNeeded(thread, baseFileName);
-
-    const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName.c_str());
-    const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName.c_str());
+    const JSPandaFile *baseFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFileName.c_str(), "");
     EXPECT_TRUE(baseFile != nullptr);
+
+    QuickFixManager *quickFixManager = instance->GetQuickFixManager();
+    quickFixManager->LoadPatchIfNeeded(thread, baseFile);
+
+    const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName.c_str());
     EXPECT_TRUE(patchFile != nullptr);
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();

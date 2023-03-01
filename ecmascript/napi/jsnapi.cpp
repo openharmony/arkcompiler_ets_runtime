@@ -2674,12 +2674,14 @@ PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, c
     return quickFixManager->LoadPatch(thread, patchFileName, baseFileName);
 }
 
-PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, const void *patchBuffer,
-                                 size_t patchSize, const std::string &baseFileName)
+PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm,
+                                 const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                                 const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
 {
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     JSThread *thread = vm->GetJSThread();
-    return quickFixManager->LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
+    return quickFixManager->LoadPatch(
+        thread, patchFileName, patchBuffer, patchSize, baseFileName, baseBuffer, baseSize);
 }
 
 PatchErrorCode JSNApi::UnloadPatch(EcmaVM *vm, const std::string &patchFileName)

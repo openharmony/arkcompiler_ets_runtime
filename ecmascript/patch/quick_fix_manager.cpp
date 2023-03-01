@@ -29,18 +29,43 @@ void QuickFixManager::RegisterQuickFixQueryFunc(const QuickFixQueryCallBack call
     callBack_ = callBack;
 }
 
-void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const std::string &baseFileName)
+void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *baseFile)
 {
     // callback and load patch.
+    if (!HasQueryQuickFixInfoFunc()) {
+        return;
+    }
+
     std::string patchFileName;
     void *patchBuffer = nullptr;
     size_t patchSize = 0;
-    if (HasQueryQuickFixInfoFunc()) {
-        bool needLoadPatch = callBack_(baseFileName, patchFileName, &patchBuffer, patchSize);
-        if (needLoadPatch && !HasLoadedPatch(patchFileName, baseFileName)) {
-            LoadPatch(thread, patchFileName, patchBuffer, patchSize, baseFileName);
-        }
+    CString baseFileName = baseFile->GetJSPandaFileDesc();
+    bool needLoadPatch = callBack_(baseFileName.c_str(), patchFileName, &patchBuffer, patchSize);
+    if (!needLoadPatch) {
+        LOG_ECMA(ERROR) << "do not need load patch!";
+        return;
     }
+
+    if (methodInfos_.find(baseFileName) != methodInfos_.end()) {
+        LOG_ECMA(ERROR) << "Cannot repeat load patch!";
+        return;
+    }
+
+    const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+        thread, patchFileName.c_str(), "", patchBuffer, patchSize);
+    if (patchFile == nullptr) {
+        LOG_ECMA(ERROR) << "load patch jsPandafile failed";
+        return;
+    }
+
+    PatchInfo patchInfo;
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile, patchInfo);
+    if (ret != PatchErrorCode::SUCCESS) {
+        LOG_ECMA(ERROR) << "Load patch fail!";
+        return;
+    }
+
+    methodInfos_.emplace(baseFileName, patchInfo);
 }
 
 PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName,
@@ -56,7 +81,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFileName.c_str(), "");
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
-        return PatchErrorCode::FILE_NOT_EXECUTED;
+        return PatchErrorCode::FILE_NOT_FOUND;
     }
 
     // The entry point is not work for merge abc.
@@ -79,19 +104,21 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
     return PatchErrorCode::SUCCESS;
 }
 
-PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName,
-                                          const void *patchBuffer, size_t patchSize, const std::string &baseFileName)
+PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread,
+                                          const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
+                                          const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
 {
     LOG_ECMA(INFO) << "Load patch, patch: " << patchFileName << ", base:" << baseFileName;
-    if (HasLoadedPatch(patchFileName, baseFileName)) {
+    if (methodInfos_.find(baseFileName.c_str()) != methodInfos_.end()) {
         LOG_ECMA(ERROR) << "Cannot repeat load patch!";
         return PatchErrorCode::PATCH_HAS_LOADED;
     }
 
-    const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName.c_str());
+    const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+        thread, baseFileName.c_str(), "", baseBuffer, baseSize);
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
-        return PatchErrorCode::FILE_NOT_EXECUTED;
+        return PatchErrorCode::FILE_NOT_FOUND;
     }
 
     const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
@@ -137,19 +164,6 @@ PatchErrorCode QuickFixManager::UnloadPatch(JSThread *thread, const std::string 
     methodInfos_.erase(baseFileName.c_str());
     LOG_ECMA(INFO) << "Unload patch success!";
     return PatchErrorCode::SUCCESS;
-}
-
-bool QuickFixManager::HasLoadedPatch(const std::string &patchFileName, const std::string &baseFileName) const
-{
-    auto iter = methodInfos_.find(baseFileName.c_str());
-    if (iter == methodInfos_.end()) {
-        return false;
-    }
-
-    if (iter->second.patchFileName != patchFileName.c_str()) {
-        return false;
-    }
-    return true;
 }
 
 JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId)
