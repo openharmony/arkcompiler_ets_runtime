@@ -16,10 +16,6 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/file.h"
-
-#ifdef VOID
-#undef VOID
-#endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
 #endif

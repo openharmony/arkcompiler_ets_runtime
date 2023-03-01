@@ -18,21 +18,18 @@
 namespace panda::ecmascript::kungfu {
 void CompilationDriver::UpdatePGO()
 {
-    if (!IsPGOLoaded()) {
-        return;
-    }
-    const auto &previousHotList = pfLoader_.GetProfile();
-    for (auto pgoIndex = previousHotList.begin(); pgoIndex != previousHotList.end(); pgoIndex++) {
-        const CString &recordName = pgoIndex->first;
-        if (!jsPandaFile_->HasTSTypes(recordName)) {
-            continue;
-        }
-        auto methodSet = pgoIndex->second;
-        std::unordered_set<EntityId> newMethodSet;
-        uint32_t mainMethodOffset = jsPandaFile_->GetMainMethodIndex(recordName);
-        SearchForCompilation(methodSet, newMethodSet, mainMethodOffset, false);
-        pfLoader_.UpdateProfile(recordName, newMethodSet);
-    }
+    std::unordered_set<EntityId> newMethodIds;
+    auto dfs = [this, &newMethodIds] (const CString &recordName,
+        const std::unordered_set<EntityId> &oldIds) -> std::unordered_set<EntityId> & {
+            newMethodIds.clear();
+            if (!jsPandaFile_->HasTSTypes(recordName)) {
+                return newMethodIds;
+            }
+            uint32_t mainMethodOffset = jsPandaFile_->GetMainMethodIndex(recordName);
+            SearchForCompilation(oldIds, newMethodIds, mainMethodOffset, false);
+            return newMethodIds;
+        };
+    pfLoader_.Update(dfs);
 }
 
 void CompilationDriver::InitializeCompileQueue()

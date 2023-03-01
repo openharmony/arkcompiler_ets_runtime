@@ -37,12 +37,12 @@ public:
     NO_COPY_SEMANTIC(Task);
     NO_MOVE_SEMANTIC(Task);
 
-    virtual TaskType GetTaskType()
+    virtual TaskType GetTaskType() const
     {
         return TaskType::ALL;
     }
 
-    int32_t GetId()
+    int32_t GetId() const
     {
         return id_;
     }
@@ -52,7 +52,7 @@ public:
         terminate_ = true;
     }
 
-    bool IsTerminate()
+    bool IsTerminate() const
     {
         return terminate_;
     }
