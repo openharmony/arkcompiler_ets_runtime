@@ -701,6 +701,7 @@ ecma_source = [
   "ecmascript/ts_types/ts_manager.cpp",
   "ecmascript/ts_types/ts_obj_layout_info.cpp",
   "ecmascript/ts_types/ts_type_parser.cpp",
+  "ecmascript/ts_types/ts_type_table_generator.cpp",
   "ecmascript/stubs/test_runtime_stubs.cpp",
   "ecmascript/builtins/builtins_cjs_module.cpp",
   "ecmascript/builtins/builtins_cjs_require.cpp",

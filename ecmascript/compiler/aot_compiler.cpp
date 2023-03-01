@@ -37,6 +37,15 @@ std::string GetHelper()
     str.append(HELP_OPTION_MSG);
     return str;
 }
+
+void AOTInitialize(EcmaVM *vm)
+{
+    BytecodeStubCSigns::Initialize();
+    CommonStubCSigns::Initialize();
+    RuntimeStubCSigns::Initialize();
+    vm->GetTSManager()->Initialize();
+}
+
 int Main(const int argc, const char **argv)
 {
     auto startTime =
@@ -97,9 +106,7 @@ int Main(const int argc, const char **argv)
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
         bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
-        BytecodeStubCSigns::Initialize();
-        CommonStubCSigns::Initialize();
-        RuntimeStubCSigns::Initialize();
+        AOTInitialize(vm);
 
         CompilerLog log(logOption, isTraceBC);
         log.SetEnableCompilerLogTime(compilerLogTime);

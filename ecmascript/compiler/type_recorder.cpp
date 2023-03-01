@@ -68,6 +68,9 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
                 int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
                 uint32_t typeId = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
                 GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
+                if (gt.IsDefault()) {
+                    continue;
+                }
 
                 // The type of a function is recorded as (-1, funcTypeId). If the function is a member of a class,
                 // the type of the class or its instance is is recorded as (-2, classTypeId). If it is a static
@@ -82,9 +85,6 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
                     continue;
                 }
                 auto type = GateType(gt);
-                if (type.IsAnyType()) {
-                    continue;
-                }
                 bcOffsetGtMap_.emplace(bcOffset, type);
             }
             LoadArgTypes(tsManager, funcGT, thisGT);
