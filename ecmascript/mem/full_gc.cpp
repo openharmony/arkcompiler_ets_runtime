@@ -155,12 +155,15 @@ void FullGC::Sweep()
 void FullGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Finish");
+    if (!forAppSpawn_) {
+        heap_->SwapOldSpace();
+    }
+    youngAndOldAliveSize_ = workManager_->Finish();
     if (forAppSpawn_) {
         heap_->ResumeForAppSpawn();
     } else {
         heap_->Resume(FULL_GC);
     }
-    youngAndOldAliveSize_ = workManager_->Finish();
     heap_->GetSweeper()->TryFillSweptRegion();
 }
 
