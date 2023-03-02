@@ -164,7 +164,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
         }
 
-        entryPoint = PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, baseFilename, recordNameStr, requestModule);
+        entryPoint =
+            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, baseFilename, recordNameStr, requestModule);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         fileNameStr = baseFilename;
         moduleName = vm->GetFactory()->NewFromUtf8(entryPoint);
@@ -181,7 +182,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
-            LOG_ECMA(ERROR) << "Try to load record " << entryPoint << " in abc : " << fileNameStr;
+            LOG_ECMA(INFO) << "Try to load record " << entryPoint << " in abc : " << fileNameStr;
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
