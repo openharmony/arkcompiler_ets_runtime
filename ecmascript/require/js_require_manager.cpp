@@ -22,42 +22,6 @@
 #include "ecmascript/ecma_string.h"
 
 namespace panda::ecmascript {
-void RequireManager::ResolveCurrentPath(JSThread *thread,
-                                        JSMutableHandle<JSTaggedValue> &dirPath,
-                                        JSMutableHandle<JSTaggedValue> &fileName,
-                                        const JSPandaFile *jsPandaFile)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    CString fullName = jsPandaFile->GetJSPandaFileDesc();
-    // find last '/'
-    int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
-    if (foundPos == -1) {
-        RETURN_IF_ABRUPT_COMPLETION(thread);
-    }
-    CString dirPathStr = fullName.substr(0, foundPos + 1);
-    JSHandle<EcmaString> dirPathName = factory->NewFromUtf8(dirPathStr);
-    dirPath.Update(dirPathName.GetTaggedValue());
-
-    // Get filename from JSPandaFile
-    JSHandle<EcmaString> cbFileName = factory->NewFromUtf8(fullName);
-    fileName.Update(cbFileName.GetTaggedValue());
-}
-
-void RequireManager::ResolveDirPath(JSThread *thread,
-                                    JSMutableHandle<JSTaggedValue> &dirPath,
-                                    JSHandle<JSTaggedValue> &fileName)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    CString fullName = ConvertToString(fileName.GetTaggedValue());
-    // find last '/'
-    int foundPos = static_cast<int>(fullName.find_last_of("/\\"));
-    if (foundPos == -1) {
-        RETURN_IF_ABRUPT_COMPLETION(thread);
-    }
-    CString dirPathStr = fullName.substr(0, foundPos + 1);
-    dirPath.Update((factory->NewFromUtf8(dirPathStr)).GetTaggedValue());
-}
-
 void RequireManager::InitializeCommonJS(JSThread *thread, CJSInfo cjsInfo)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

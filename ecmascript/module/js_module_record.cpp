@@ -20,8 +20,7 @@ namespace panda::ecmascript {
 int32_t ModuleRecord::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &module)
 {
     if (module->IsSourceTextModule()) {
-        JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
-        return SourceTextModule::Instantiate(thread, moduleRecord);
+        return SourceTextModule::Instantiate(thread, module);
     }
     UNREACHABLE();
 }

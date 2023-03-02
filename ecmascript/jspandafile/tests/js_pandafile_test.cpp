@@ -271,8 +271,8 @@ HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs)
     )";
     const CString fileName1 = "test1.pa";
     JSPandaFile *pf1 = CreateJSPandaFile(source1, fileName1);
-    EXPECT_EQ(pf1->IsModule(), false);
-    EXPECT_EQ(pf1->IsCjs(), false);
+    EXPECT_EQ(pf1->IsModule(thread), false);
+    EXPECT_EQ(pf1->IsCjs(thread), false);
     JSPandaFileManager::RemoveJSPandaFile(pf1);
 }
 

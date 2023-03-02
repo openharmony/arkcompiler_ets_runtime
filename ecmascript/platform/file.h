@@ -27,7 +27,8 @@
 #include <string>
 
 #include "ecmascript/platform/map.h"
-
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/js_tagged_value.h"
 namespace panda::ecmascript {
 #ifdef PANDA_TARGET_WINDOWS
 using fd_t = HANDLE;
@@ -67,5 +68,7 @@ void Close(fd_t fd);
 void FSync(fd_t fd);
 MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset = 0);
 int FileUnMap(MemMap addr);
+JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
+                                               JSTaggedValue request);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H

@@ -311,6 +311,21 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, errorType, type, message)    \
+    do {                                                                       \
+        if ((thread)->HasPendingException()) {                                 \
+            return JSHandle<type>(thread, JSTaggedValue::Exception());         \
+        }                                                                      \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();         \
+        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message);  \
+        (thread)->SetException(_error.GetTaggedValue());                       \
+        if ((thread)->IsPrintBCOffset()) {                                     \
+            (thread)->CollectBCOffsetInfo();                                   \
+        }                                                                      \
+        return JSHandle<type>(thread, JSTaggedValue::Exception());             \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, errorType, message, value) \
     do {                                                                             \
         if ((thread)->HasPendingException()) {                                       \
