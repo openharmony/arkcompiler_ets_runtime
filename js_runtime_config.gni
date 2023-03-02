@@ -32,6 +32,7 @@ if (!ark_standalone_build) {
 ark_root = "//arkcompiler/runtime_core"
 js_root = "//arkcompiler/ets_runtime"
 global_root = "//base/global/i18n"
+hilog_root = "//base/hiviewdfx/hilog/interfaces/native/innerkits"
 compile_llvm_online = false
 run_with_asan = false
 enable_leak_check = false

@@ -367,9 +367,7 @@ ohos_executable("ark_aot_compiler") {
   ]
 
   if (is_mingw && !ark_standalone_build) {
-    deps += [
-      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_windows",
-    ]
+    deps += [ "$hilog_root:libhilog_windows" ]
   }
 
   if (target_os == "ios") {

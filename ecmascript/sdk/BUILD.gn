@@ -42,12 +42,9 @@ if (is_standard_system) {
       ]
 
       # Add dynamic library "hilog"
-      hilog_path = get_label_info(
-              "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_windows",
-              "root_out_dir")
-      deps += [
-        "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_windows",
-      ]
+      hilog_path =
+          get_label_info("$hilog_root:libhilog_windows", "root_out_dir")
+      deps += [ "$hilog_root:libhilog_windows" ]
       sources += [
         "${hilog_path}/hiviewdfx/hilog_native/libhilog_windows${dylib_suffix}",
       ]
@@ -121,12 +118,8 @@ if (is_standard_system) {
           [ "$ark_aot_compiler_path/arkcompiler/ets_runtime/ark_aot_compiler" ]
 
       # Add dynamic library "hilog"
-      hilog_path = get_label_info(
-              "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_linux",
-              "root_out_dir")
-      deps += [
-        "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_linux",
-      ]
+      hilog_path = get_label_info("$hilog_root:libhilog_linux", "root_out_dir")
+      deps += [ "$hilog_root:libhilog_linux" ]
       sources += [
         "${hilog_path}/hiviewdfx/hilog_native/libhilog_linux${dylib_suffix}",
       ]
