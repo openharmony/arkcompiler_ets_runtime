@@ -13,20 +13,17 @@
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
-source_set("prof_dump_set") {
+ohos_executable("profdump") {
   sources = [ "main.cpp" ]
+
+  deps = [
+    "$ark_root/libpandabase:libarkbase_static",
+    "$js_root:libark_jsruntime",
+  ]
 
   public_configs = [
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
-  ]
-}
-
-ohos_executable("profdump") {
-  deps = [
-    ":prof_dump_set",
-    "$ark_root/libpandabase:libarkbase_static",
-    "$js_root:libark_jsruntime",
   ]
 
   install_enable = true
