@@ -1266,6 +1266,14 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFi
     object->SetNativePointerFieldCount(input);
     int32_t res = object->GetNativePointerFieldCount();
     ASSERT_EQ(res, input);
+    NativePointerCallback callBack = nullptr;
+    void *vp1 = static_cast<void*>(new std::string("test"));
+    void *vp2 = static_cast<void*>(new std::string("test"));
+    std::string *sp1 = static_cast<std::string*>(vp1);
+    object->SetNativePointerField(33, vp1, callBack, vp2);
+    void *res1 = object->GetNativePointerField(33);
+    std::string *sp2 = static_cast<std::string*>(res1);
+    ASSERT_EQ(sp1, sp2);
 }
 
 HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
@@ -1335,5 +1343,169 @@ HWTEST_F_L0(JSNApiTests, GeneratorObjectRef_IsGenerator)
     Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
     Local<JSValueRef> res = genObjectRef->GetGeneratorFunction(vm_);
     ASSERT_TRUE(res->IsGeneratorFunction());
+}
+
+HWTEST_F_L0(JSNApiTests, BigIntToInt64)
+{
+    LocalScope scope(vm_);
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    EXPECT_TRUE(maxBigintUint64->IsBigInt());
+    int64_t num = -11;
+    int64_t num1 = num;
+    bool lossless = true;
+    maxBigintUint64->BigIntToInt64(vm_, &num, &lossless);
+    EXPECT_TRUE(num != num1);
+}
+
+HWTEST_F_L0(JSNApiTests, BigIntToUint64)
+{
+    LocalScope scope(vm_);
+    uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
+    Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
+    EXPECT_TRUE(maxBigintUint64->IsBigInt());
+    uint64_t  num = -11;
+    uint64_t  num1 = num;
+    bool lossless = true;
+    maxBigintUint64->BigIntToUint64(vm_, &num, &lossless);
+    EXPECT_TRUE(num != num1);
+}
+
+HWTEST_F_L0(JSNApiTests, BooleanRef_New)
+{
+    LocalScope scope(vm_);
+    bool input = true;
+    Local<BooleanRef> res = BooleanRef::New(vm_, input);
+    EXPECT_TRUE(res->IsBoolean());
+    EXPECT_TRUE(res->BooleaValue());
+}
+
+HWTEST_F_L0(JSNApiTests, NewFromUnsigned)
+{
+    LocalScope scope(vm_);
+    unsigned int input = 1;
+    [[maybe_unused]] Local<IntegerRef> res = IntegerRef::NewFromUnsigned(vm_, input);
+    EXPECT_TRUE(res->IntegerValue(vm_) == 1);
+    EXPECT_TRUE(res->Value() == 1);
+}
+
+HWTEST_F_L0(JSNApiTests, SetBundleName_GetBundleName)
+{
+    LocalScope scope(vm_);
+    std::string str = "11";
+    JSNApi::SetBundleName(vm_, str);
+    std::string res = JSNApi::GetBundleName(vm_);
+    ASSERT_EQ(str, res);
+}
+
+HWTEST_F_L0(JSNApiTests, SetModuleName_GetModuleName)
+{
+    LocalScope scope(vm_);
+    std::string str = "11";
+    JSNApi::SetModuleName(vm_, str);
+    std::string res = JSNApi::GetModuleName(vm_);
+    ASSERT_EQ(str, res);
+}
+
+HWTEST_F_L0(JSNApiTests, IsBundle)
+{
+    LocalScope scope(vm_);
+    bool res = JSNApi::IsBundle(vm_);
+    ASSERT_EQ(res, true);
+}
+
+HWTEST_F_L0(JSNApiTests, MapRef_GetSize_GetTotalElements_Get_GetKey_GetValue_New_Set)
+{
+    LocalScope scope(vm_);
+    Local<MapRef> map = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    map->Set(vm_, key, value);
+    Local<JSValueRef> res = map->Get(vm_, key);
+    ASSERT_EQ(res->ToString(vm_)->ToString(), value->ToString(vm_)->ToString());
+    int32_t num = map->GetSize();
+    int32_t num1 = map->GetTotalElements();
+    ASSERT_EQ(num, 1);
+    ASSERT_EQ(num1, 1);
+    Local<JSValueRef> res1 = map->GetKey(vm_, 0);
+    ASSERT_EQ(res1->ToString(vm_)->ToString(), key->ToString(vm_)->ToString());
+    Local<JSValueRef> res2 = map->GetValue(vm_, 0);
+    ASSERT_EQ(res2->ToString(vm_)->ToString(), value->ToString(vm_)->ToString());
+}
+
+HWTEST_F_L0(JSNApiTests, GetSourceCode)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    bool res = callback->IsNative(vm_);
+    EXPECT_TRUE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, ObjectRef_Delete)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    PropertyAttribute attribute(value, true, true, true);
+    ASSERT_TRUE(object->DefineProperty(vm_, key, attribute));
+    ASSERT_TRUE(object->Delete(vm_, key));
+    ASSERT_FALSE(object->Has(vm_, key));
+}
+
+HWTEST_F_L0(JSNApiTests, ObjectRef_Set1)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-123.3");
+    Local<JSValueRef> toValue(toString);
+    bool res = object->Set(vm_, 12, toValue);
+    ASSERT_TRUE(res);
+    Local<JSValueRef> res1 = object->Get(vm_, 12);
+    ASSERT_EQ(res1->ToString(vm_)->ToString(), toValue->ToString(vm_)->ToString());
+}
+
+HWTEST_F_L0(JSNApiTests, NativePointerRef_New)
+{
+    LocalScope scope(vm_);
+    NativePointerCallback callBack = nullptr;
+    void *vp1 = static_cast<void*>(new std::string("test"));
+    void *vp2 = static_cast<void*>(new std::string("test"));
+    Local<NativePointerRef> res =  NativePointerRef::New(vm_, vp1, callBack, vp2, 0);
+    ASSERT_EQ(res->Value(), vp1);
+}
+
+HWTEST_F_L0(JSNApiTests, ObjectRef_Has_Delete)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    uint32_t num = 10;
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-123.3");
+    Local<JSValueRef> toValue(toString);
+    bool res = object->Set(vm_, num, toValue);
+    ASSERT_TRUE(res);
+    bool res1 = object->Has(vm_, num);
+    ASSERT_TRUE(res1);
+    bool res2 = object->Delete(vm_, num);
+    ASSERT_TRUE(res2);
+    bool res3 = object->Has(vm_, num);
+    ASSERT_FALSE(res3);
+}
+
+HWTEST_F_L0(JSNApiTests, PromiseRejectInfo_GetData)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm_, "-123.3");
+    Local<JSValueRef> promise(toString);
+    Local<StringRef> toString1 = StringRef::NewFromUtf8(vm_, "123.3");
+    Local<JSValueRef> reason(toString1);
+    void *data = static_cast<void*>(new std::string("test"));
+    PromiseRejectInfo  promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    Local<JSValueRef> promise_res = promisereject.GetPromise();
+    Local<JSValueRef> reason_res = promisereject.GetReason();
+    ASSERT_EQ(promise_res->ToString(vm_)->ToString(), promise->ToString(vm_)->ToString());
+    ASSERT_EQ(reason_res->ToString(vm_)->ToString(), reason->ToString(vm_)->ToString());
+    void* dataRes = promisereject.GetData();
+    ASSERT_EQ(dataRes, data);
 }
 }  // namespace panda::test
