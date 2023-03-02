@@ -44,9 +44,11 @@ public:
 
     void Destroy()
     {
-        saver_->Save();
-        saver_->Destroy();
-        saver_.reset();
+        if (saver_) {
+            saver_->Save();
+            saver_->Destroy();
+            saver_.reset();
+        }
     }
 
     // Factory
