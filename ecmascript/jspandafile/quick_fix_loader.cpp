@@ -514,7 +514,8 @@ bool QuickFixLoader::CheckIsInvalidPatch(const JSPandaFile *baseFile, const JSPa
         ASSERT(baseRecordInfos.find(baseRecordName) != baseRecordInfos.end());
 
         JSHandle<SourceTextModule> patchModule =
-            moduleManager->ResolveModuleWithMerge(thread, patchFile, patchRecordName);
+            JSHandle<SourceTextModule>::Cast(moduleManager->ResolveModuleWithMerge(thread, 
+            patchFile, patchRecordName));
         JSHandle<SourceTextModule> baseModule = moduleManager->HostGetImportedModule(baseRecordName);
 
         if (CheckIsModuleMismatch(thread, patchModule, baseModule)) {

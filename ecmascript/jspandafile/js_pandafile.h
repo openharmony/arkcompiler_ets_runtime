@@ -201,9 +201,9 @@ public:
         return pf_->GetClasses();
     }
 
-    bool PUBLIC_API IsModule(const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool PUBLIC_API IsModule(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
-    bool IsCjs(const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool IsCjs(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
     bool IsJson(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 
@@ -273,7 +273,7 @@ public:
     void CheckIsBundlePack();
     void CheckIsNewRecord(EcmaVM *vm);
 
-    CString FindEntryPoint(const CString &record) const;
+    CString FindNpmEntryPoint(const CString &record) const;
 
     bool IsSystemLib() const
     {

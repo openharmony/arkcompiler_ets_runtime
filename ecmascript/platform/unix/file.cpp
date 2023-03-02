@@ -20,6 +20,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/map.h"
 
@@ -93,5 +95,41 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
 int FileUnMap(MemMap addr)
 {
     return munmap(addr.GetOriginAddr(), addr.GetSize());
+}
+
+JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
+                                               JSTaggedValue request)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    CString fullname;
+    CString resolvedFilename;
+    CString dirnameStr = ConvertToString(EcmaString::Cast(dirname.GetTaggedObject()));
+    CString requestStr = ConvertToString(EcmaString::Cast(request.GetTaggedObject()));
+
+    if (requestStr.find("./") == 0) {
+        requestStr = requestStr.substr(2); // 2 : delete './'
+    }
+    int suffixEnd = static_cast<int>(requestStr.find_last_of('.'));
+    if (suffixEnd == -1) {
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
+    }
+    if (requestStr[0] == '/') { // absolute FilePath
+        fullname = requestStr.substr(0, suffixEnd) + ".abc";
+    } else {
+        int pos = static_cast<int>(dirnameStr.find_last_of('/'));
+        if (pos == -1) {
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
+        }
+        fullname = dirnameStr.substr(0, pos + 1) + requestStr.substr(0, suffixEnd) + ".abc";
+    }
+
+    std::string relativePath = CstringConvertToStdString(fullname);
+    std::string absPath = "";
+    if (RealPath(relativePath, absPath)) {
+        resolvedFilename = ConvertToString(absPath);
+        return factory->NewFromUtf8(resolvedFilename);
+    }
+    CString msg = "resolve absolute path fail";
+    THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, EcmaString, msg.c_str());
 }
 }  // namespace panda::ecmascript

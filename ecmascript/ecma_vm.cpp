@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_vm.h"
 
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
@@ -87,6 +88,7 @@
 
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
+using PathHelper = base::PathHelper;
 /* static */
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config)
 {
@@ -493,7 +495,7 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
 
     JSHandle<JSFunction> func = JSHandle<JSFunction>(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
-    if (jsPandaFile->IsModule(entryPoint.data())) {
+    if (jsPandaFile->IsModule(thread_, entryPoint.data())) {
         global = JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
         CString moduleName = jsPandaFile->GetJSPandaFileDesc();
         if (!jsPandaFile->IsBundlePack()) {
@@ -514,8 +516,10 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
         EcmaRuntimeStatScope runtimeStatScope(this);
         result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
     } else {
-        if (jsPandaFile->IsCjs(entryPoint.data())) {
-            CJSExecution(func, global, jsPandaFile);
+        if (jsPandaFile->IsCjs(thread_, entryPoint.data())) {
+            if (!thread_->HasPendingException()) {
+                CJSExecution(func, global, jsPandaFile);
+            }
         } else {
             JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =
@@ -588,11 +592,11 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
     if (jsPandaFile->IsBundlePack()) {
-        RequireManager::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+        PathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
     } else {
         filename.Update(JSFunction::Cast(func.GetTaggedValue().GetTaggedObject())->GetModule());
         ASSERT(filename->IsString());
-        RequireManager::ResolveDirPath(thread_, dirname, filename);
+        dirname.Update(PathHelper::ResolveDirPath(thread_, filename));
     }
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);

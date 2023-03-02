@@ -55,11 +55,10 @@ public:
     bool IsImportedModuleLoaded(JSTaggedValue referencing);
 
     JSHandle<SourceTextModule> ResolveNativeModule(const CString &moduleRequestName, ModuleTypes moduleType);
-    JSHandle<SourceTextModule> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
-    JSHandle<SourceTextModule> HostResolveImportedModule(std::string &baseFilename, std::string &moduleFilename);
-    JSHandle<SourceTextModule> HostResolveImportedModule(const CString &referencingModule);
-    JSHandle<SourceTextModule> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
-                                                                             const CString &recordName);
+    JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
+    JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule);
+    JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
+                                                                          const CString &recordName);
 
     JSTaggedValue GetCurrentModule();
 
@@ -74,7 +73,6 @@ public:
     {
         isExecuteBuffer_ = mode;
     }
-    void ConcatFileName(std::string &dirPath, std::string &requestPath, std::string &fileName);
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
@@ -103,8 +101,8 @@ private:
                                   JSTaggedValue key, JSTaggedValue value);
     // deprecated end
 
-    JSHandle<SourceTextModule> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
-    JSHandle<SourceTextModule> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
+    JSHandle<JSTaggedValue> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
+    JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                       const CString &recodeName);
 
     static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
