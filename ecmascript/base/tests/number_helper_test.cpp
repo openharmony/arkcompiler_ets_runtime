@@ -537,4 +537,29 @@ HWTEST_F_L0(NumberHelperTest, NumberToString)
     JSHandle<EcmaString> target1 = factory->NewFromASCII("0.30000000000000004");
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, result1, target1), 0);
 }
+
+/**
+ * @tc.name: DoubleToInt64
+ * @tc.desc: The abstract operation DoubleToInt64 converts a double value to int64_t
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(NumberHelperTest, DoubleToInt64)
+{
+    int64_t d = NumberHelper::DoubleToInt64(std::numeric_limits<double>::max());
+    EXPECT_EQ(d, std::numeric_limits<int64_t>::max());
+
+    int64_t d1 = NumberHelper::DoubleToInt64(static_cast<double>(std::numeric_limits<int64_t>::max()));
+    EXPECT_EQ(d1, std::numeric_limits<int64_t>::max());
+    int64_t d2 = NumberHelper::DoubleToInt64(static_cast<double>(std::numeric_limits<int64_t>::min()));
+    EXPECT_EQ(d2, std::numeric_limits<int64_t>::min());
+
+    int64_t d3 = NumberHelper::DoubleToInt64(static_cast<double>(std::numeric_limits<int64_t>::max()) + 1);
+    EXPECT_EQ(d3, std::numeric_limits<int64_t>::max());
+    int64_t d4 = NumberHelper::DoubleToInt64(static_cast<double>(std::numeric_limits<int64_t>::min()) - 1);
+    EXPECT_EQ(d4, std::numeric_limits<int64_t>::min());
+
+    int64_t d5 = NumberHelper::DoubleToInt64(0);
+    EXPECT_EQ(d5, 0);
+}
 } // namespace panda::ecmascript

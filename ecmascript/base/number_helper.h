@@ -98,6 +98,7 @@ public:
     static bool IsEmptyString(const uint8_t *start, const uint8_t *end);
     static JSHandle<EcmaString> NumberToString(const JSThread *thread, JSTaggedValue number);
     static double TruncateDouble(double d);
+    static int64_t DoubleToInt64(double d);
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags = NO_FLAGS);
     static int32_t DoubleToInt(double d, size_t bits);
     static int32_t DoubleInRangeInt32(double d);
