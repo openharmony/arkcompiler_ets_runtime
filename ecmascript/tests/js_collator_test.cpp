@@ -115,9 +115,9 @@ HWTEST_F_L0(JSCollatorTest, InitializeCollatorAndGetIcuCollator)
     JSHandle<JSCollator> collator =
         JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
     JSHandle<JSTaggedValue> localeStr = thread->GlobalConstants()->GetHandledEnUsString();
-    JSHandle<JSTaggedValue> undefindedHandle(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
 
-    JSHandle<JSCollator> initCollator = JSCollator::InitializeCollator(thread, collator, localeStr, undefindedHandle);
+    JSHandle<JSCollator> initCollator = JSCollator::InitializeCollator(thread, collator, localeStr, undefinedHandle);
     EXPECT_EQ(JSTaggedValue::SameValue(collator.GetTaggedValue(), initCollator.GetTaggedValue()), true);
     // check attributes
     EXPECT_TRUE(initCollator->GetBoundCompare().IsUndefined());

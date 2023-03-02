@@ -395,21 +395,6 @@ public:
                                                             panda_file::File::EntityId id);
     void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
-    void StoreBCOffsetInfo(const std::string& methodName, int32_t bcOffset)
-    {
-        exceptionBCList_.emplace_back(std::pair<std::string, int32_t>(methodName, bcOffset));
-    }
-
-    std::vector<std::pair<std::string, int32_t>> GetBCOffsetInfoList() const
-    {
-        return exceptionBCList_;
-    }
-
-    void ClearExceptionBCList()
-    {
-        exceptionBCList_.clear();
-    }
-
     void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
     {
         os::memory::LockHolder lock(mutex_);
@@ -660,7 +645,6 @@ private:
 	// atomics
     bool AllowAtomicWait_ {true};
     WaiterListNode waiterListNode_;
-    std::vector<std::pair<std::string, int32_t>> exceptionBCList_;
 
     // CJS resolve path Callbacks
     ResolvePathCallback resolvePathCallback_ {nullptr};

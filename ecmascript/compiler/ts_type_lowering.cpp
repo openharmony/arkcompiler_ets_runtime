@@ -855,8 +855,6 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
     for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
-    GateRef bcIndex = builder_.Int64(acc_.GetBytecodeIndex(gate));
-    args.emplace_back(bcIndex);
 
     GateRef constructGate = builder_.Construct(args);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
@@ -888,8 +886,6 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
     for (size_t i = 0; i < range; ++i) {
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
-    GateRef bcIndex = builder_.Int64(acc_.GetBytecodeIndex(gate));
-    args.emplace_back(bcIndex);
 
     GateRef constructGate = builder_.Construct(args);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
@@ -955,7 +951,7 @@ void TSTypeLowering::AddProfiling(GateRef gate)
         GateRef mode =
             builder_.Int32ToTaggedInt(builder_.Int32(static_cast<int32_t>(OptCodeProfiler::Mode::TYPED_PATH)));
         GateRef profiling = builder_.CallRuntime(glue_, RTSTUB_ID(ProfileOptimizedCode), acc_.GetDep(current),
-                                                 {constOpcode, mode});
+                                                 { constOpcode, mode }, gate);
         acc_.SetDep(current, profiling);
         builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
     }

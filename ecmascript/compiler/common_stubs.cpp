@@ -100,6 +100,24 @@ void NotEqualStubBuilder::GenerateCircuit()
     Return(operationBuilder.NotEqual(glue, x, y));
 }
 
+void StrictEqualStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.StrictEqual(glue, x, y));
+}
+
+void StrictNotEqualStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef x = TaggedArgument(1);
+    GateRef y = TaggedArgument(2); // 2: 3rd argument
+    OperationsStubBuilder operationBuilder(this);
+    Return(operationBuilder.StrictNotEqual(glue, x, y));
+}
+
 void LessStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -640,6 +658,30 @@ void ConstructorCheckStubBuilder::GenerateCircuit()
     GateRef value = TaggedArgument(2); // 2 : 3rd para
     GateRef thisObj = TaggedArgument(3); // 3 : 4th para
     Return(ConstructorCheck(glue, ctor, value, thisObj));
+}
+
+void CreateEmptyArrayStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    NewObjectStubBuilder newBuilder(this);
+    Return(newBuilder.CreateEmptyArray(glue));
+}
+
+void CreateArrayWithBufferStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef index = Int32Argument(1);
+    GateRef jsFunc = TaggedArgument(2); // 2 : 3rd para
+    NewObjectStubBuilder newBuilder(this);
+    Return(newBuilder.CreateArrayWithBuffer(glue, index, jsFunc));
+}
+
+void NewJSObjectStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef hclass = TaggedArgument(1);
+    NewObjectStubBuilder newBuilder(this);
+    Return(newBuilder.NewJSObject(glue, hclass));
 }
 
 void JsProxyCallInternalStubBuilder::GenerateCircuit()

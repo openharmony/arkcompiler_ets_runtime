@@ -314,6 +314,8 @@ private:
     V(TypeOf)                               \
     V(Equal)                                \
     V(NotEqual)                             \
+    V(StrictEqual)                          \
+    V(StrictNotEqual)                       \
     V(Less)                                 \
     V(LessEq)                               \
     V(Greater)                              \
@@ -356,6 +358,9 @@ private:
     V(GetUnmapedArgs)                       \
     V(NewThisObjectChecked)                 \
     V(ConstructorCheck)                     \
+    V(CreateEmptyArray)                     \
+    V(CreateArrayWithBuffer)                \
+    V(NewJSObject)                          \
     V(GetTaggedArrayPtrTest)                \
     V(BytecodeHandler)                      \
     V(Builtins)                             \

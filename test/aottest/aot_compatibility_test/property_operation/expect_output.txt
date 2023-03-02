@@ -27,4 +27,3 @@ true
 true
 xxxx
 TypeError: CallObj is NonCallable
-Exception at function func_main_0: 310

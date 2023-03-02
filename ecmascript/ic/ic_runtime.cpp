@@ -168,7 +168,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
     if (!op.IsFound() && kind == ICKind::NamedGlobalTryLoadIC) {
-        return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not definded");
+        return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not defined");
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
     // ic-switch

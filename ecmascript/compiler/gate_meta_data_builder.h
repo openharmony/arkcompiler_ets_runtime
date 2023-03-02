@@ -108,9 +108,9 @@ public:
 #undef DECLARE_GATE_META
 
     explicit GateMetaBuilder(Chunk* chunk);
-    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex, GateFlags flags)
+    const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t pcOffset, GateFlags flags)
     {
-        return new (chunk_) JSBytecodeMetaData(valuesIn, opcode, bcIndex, flags);
+        return new (chunk_) JSBytecodeMetaData(valuesIn, opcode, pcOffset, flags);
     }
 
     const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp)

@@ -105,6 +105,23 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     }
 }
 
+GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    SetGlue(glue);
+    NewJSObject(&result, &exit, hclass);
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
     GateRef sp, GateRef startIdx, GateRef numArgs)
 {
@@ -391,6 +408,60 @@ GateRef NewObjectStubBuilder::NewThisObjectChecked(GateRef glue, GateRef ctor)
     }
     Bind(&exit);
     auto ret = *thisObj;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    auto hclass = Load(VariableType::JS_POINTER(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef size = GetObjectSizeFromHClass(hclass);
+    auto emptyArray = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+
+    SetParameters(glue, size);
+    NewJSArrayLiteral(&result, &exit, RegionSpaceFlag::IN_YOUNG_SPACE, emptyArray, hclass, true);
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc)
+{
+    (void)glue;
+    (void)index;
+    (void)jsFunc;
+
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef method = GetMethodFromFunction(jsFunc);
+    GateRef constPool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    GateRef module = GetModuleFromFunction(jsFunc);
+
+    auto obj = GetArrayLiteralFromConstPool(glue, constPool, index, module);
+    auto hclass = LoadHClass(obj);
+    GateRef size = GetObjectSizeFromHClass(hclass);
+
+    SetParameters(glue, size);
+    NewJSArrayLiteral(&result, &exit, RegionSpaceFlag::IN_YOUNG_SPACE, obj, hclass, false);
+
+    Bind(&exit);
+    auto ret = *result;
     env->SubCfgExit();
     return ret;
 }

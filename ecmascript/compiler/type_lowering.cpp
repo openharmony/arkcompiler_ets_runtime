@@ -392,15 +392,16 @@ void TypeLowering::LowerTypedNegOverflowCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-GateRef TypeLowering::LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel)
+GateRef TypeLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+                                       bool useLabel)
 {
     if (useLabel) {
-        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args);
+        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate);
         return result;
     } else {
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
         GateRef target = builder_.IntPtr(index);
-        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args);
+        GateRef result = builder_.Call(cs, glue, target, dependEntry_, args, hirGate);
         return result;
     }
 }
@@ -694,7 +695,7 @@ void TypeLowering::LowerHeapAllocateInYoung(GateRef gate, GateRef glue)
     }
     builder_.Bind(&callRuntime);
     {
-        result = LowerCallRuntime(glue, RTSTUB_ID(AllocateInYoung),  {builder_.ToTaggedInt(size)}, true);
+        result = LowerCallRuntime(glue, gate, RTSTUB_ID(AllocateInYoung),  {builder_.ToTaggedInt(size)}, true);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -2586,7 +2587,8 @@ GateRef TypeLowering::ModNumbers(GateRef left, GateRef right, GateType leftType,
                 {
                     GateRef glue = acc_.GetGlueFromArgList();
                     result = builder_.CallNGCRuntime(
-                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, {*doubleLeft, *doubleRight});
+                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, {*doubleLeft, *doubleRight},
+                        Circuit::NullGate());
                     builder_.Jump(&exit);
                 }
             }
@@ -2896,9 +2898,8 @@ void TypeLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
         GateRef frameState = GetFrameState(gate);
         builder_.DeoptCheck(check, frameState);
 
-        NewObjectStubBuilder stubBuilder(&env);
-        stubBuilder.SetGule(glue);
-        stubBuilder.NewJSObject(&thisObj, &exit, protoOrHclass);
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, protoOrHclass });
+        builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
     builder_.SetDepend(*thisObj);
@@ -2925,9 +2926,8 @@ void TypeLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
         GateRef frameState = GetFrameState(gate);
         builder_.DeoptCheck(check, frameState);
 
-        NewObjectStubBuilder stubBuilder(&env);
-        stubBuilder.SetGule(glue);
-        stubBuilder.NewJSObject(&thisObj, &exit, protoOrHclass);
+        thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, protoOrHclass });
+        builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
     builder_.SetDepend(*thisObj);

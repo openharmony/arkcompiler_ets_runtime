@@ -461,9 +461,9 @@ inline std::ostream& operator<<(std::ostream& os, OpCode opcode)
 
 class JSBytecodeMetaData : public GateMetaData {
 public:
-    explicit JSBytecodeMetaData(size_t valuesIn, EcmaOpcode opcode, uint32_t bcIndex, GateFlags flags)
+    explicit JSBytecodeMetaData(size_t valuesIn, EcmaOpcode opcode, uint32_t pcOffset, GateFlags flags)
         : GateMetaData(OpCode::JS_BYTECODE, flags, 1, 1, valuesIn),
-        opcode_(opcode), bcIndex_(bcIndex)
+        opcode_(opcode), pcOffset_(pcOffset)
     {
         SetKind(GateMetaData::Kind::JSBYTECODE);
     }
@@ -474,9 +474,9 @@ public:
         return static_cast<const JSBytecodeMetaData*>(meta);
     }
 
-    uint32_t GetBytecodeIndex() const
+    uint32_t GetPcOffset() const
     {
-        return bcIndex_;
+        return pcOffset_;
     }
 
     EcmaOpcode GetByteCodeOpcode() const
@@ -485,7 +485,7 @@ public:
     }
 private:
     EcmaOpcode opcode_;
-    uint32_t bcIndex_;
+    uint32_t pcOffset_;
 };
 
 class OneParameterMetaData : public GateMetaData {

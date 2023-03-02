@@ -81,6 +81,46 @@ GateRef OperationsStubBuilder::NotEqual(GateRef glue, GateRef left, GateRef righ
     return ret;
 }
 
+GateRef OperationsStubBuilder::StrictEqual(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label notStrictEqual(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
+    Branch(FastStrictEqual(glue, left, right), &exit, &notStrictEqual);
+    Bind(&notStrictEqual);
+    {
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef OperationsStubBuilder::StrictNotEqual(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label strictEqual(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
+    Branch(FastStrictEqual(glue, left, right), &strictEqual, &exit);
+    Bind(&strictEqual);
+    {
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right)
 {
     auto env = GetEnvironment();

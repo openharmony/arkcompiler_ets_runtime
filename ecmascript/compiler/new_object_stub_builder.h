@@ -35,13 +35,14 @@ public:
         size_ = size;
     }
 
-    void SetGule(GateRef glue)
+    void SetGlue(GateRef glue)
     {
         glue_ = glue;
     }
 
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass);
+    GateRef NewJSObject(GateRef glue, GateRef hclass);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
     void AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
@@ -51,6 +52,9 @@ public:
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
+    GateRef CreateEmptyArray(GateRef glue);
+    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc);
+
 private:
     void AllocateInYoung(Variable *result, Label *exit);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,

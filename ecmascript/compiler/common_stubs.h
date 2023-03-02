@@ -28,6 +28,8 @@ namespace panda::ecmascript::kungfu {
     V(Mod)                            \
     V(Equal)                          \
     V(NotEqual)                       \
+    V(StrictEqual)                    \
+    V(StrictNotEqual)                 \
     V(Less)                           \
     V(LessEq)                         \
     V(Greater)                        \
@@ -71,6 +73,9 @@ namespace panda::ecmascript::kungfu {
     V(GetUnmapedArgs)                 \
     V(NewThisObjectChecked)           \
     V(ConstructorCheck)               \
+    V(CreateEmptyArray)               \
+    V(CreateArrayWithBuffer)          \
+    V(NewJSObject)                    \
     V(JsProxyCallInternal)
 
 #define COMMON_STUB_ID_LIST(V)          \

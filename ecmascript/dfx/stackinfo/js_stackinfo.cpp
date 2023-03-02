@@ -67,17 +67,18 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset)
 std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
 {
     std::string data;
-    FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
-        if (!frameHandler.IsJSFrame()) {
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    FrameIterator it(current, thread);
+    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+        if (!it.IsJSFrame()) {
             continue;
         }
-        auto method = frameHandler.CheckAndGetMethod();
+        auto method = it.CheckAndGetMethod();
         if (method == nullptr) {
             continue;
         }
         if (!method->IsNativeWithCallField()) {
-            auto pcOffset = frameHandler.GetBytecodeOffset();
+            auto pcOffset = it.GetBytecodeOffset();
             data += BuildMethodTrace(method, pcOffset);
         } else if (needNative) {
             auto addr = method->GetNativePointer();
@@ -98,14 +99,15 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
 
 std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
 {
-    FrameHandler frameHandler(thread);
     std::vector<struct JsFrameInfo> jsframe;
     uintptr_t *native = nullptr;
-    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
-        if (!frameHandler.IsJSFrame()) {
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    FrameIterator it(current, thread);
+    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+        if (!it.IsJSFrame()) {
             continue;
         }
-        auto method = frameHandler.CheckAndGetMethod();
+        auto method = it.CheckAndGetMethod();
         if (method == nullptr) {
             continue;
         }
@@ -142,14 +144,14 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
                 return true;
             };
             panda_file::File::EntityId methodId = method->GetMethodId();
-            uint32_t offset = frameHandler.GetBytecodeOffset();
+            uint32_t offset = it.GetBytecodeOffset();
             if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
                 !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
                 frameInfo.pos = "?";
             }
             jsframe.push_back(frameInfo);
         } else {
-            JSTaggedValue function = frameHandler.GetFunction();
+            JSTaggedValue function = it.GetFunction();
             JSHandle<JSTaggedValue> extraInfoValue(
                 thread, JSFunction::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
             if (extraInfoValue->IsJSNativePointer()) {

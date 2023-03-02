@@ -302,8 +302,9 @@ private:
                              const std::string &realName = "") const;
     LLVMValueRef GetFunctionFromGlobalValue(LLVMValueRef glue, const CallSignature *signature,
         LLVMValueRef reloc) const;
-    bool IsInterpreted();
-    bool IsOptimized();
+    bool IsInterpreted() const;
+    bool IsOptimized() const;
+    bool IsOptimizedJSFunction() const;
     void SetGCLeafFunction(LLVMValueRef call);
     void SetCallConvAttr(const CallSignature *calleeDescriptor, LLVMValueRef call);
     bool IsHeapPointerType(LLVMTypeRef valueType);
@@ -316,8 +317,8 @@ private:
         FIRST_PARAMETER
     };
     enum class CallExceptionKind : bool {
-        HAS_BC_OFFSET = true,
-        NO_BC_OFFSET = false
+        HAS_PC_OFFSET = true,
+        NO_PC_OFFSET = false
     };
     LLVMRealPredicate ConvertLLVMPredicateFromFCMP(FCmpCondition cond);
     LLVMIntPredicate ConvertLLVMPredicateFromICMP(ICmpCondition cond);
@@ -330,7 +331,7 @@ private:
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBaseOffset(GateRef gate, LLVMValueRef glue);
     CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
-    void ComputeArgCountAndBCOffset(size_t &actualNumArgs, LLVMValueRef &bcOffset, const std::vector<GateRef> &inList,
+    void ComputeArgCountAndPCOffset(size_t &actualNumArgs, LLVMValueRef &pcOffset, const std::vector<GateRef> &inList,
                                     CallExceptionKind kind);
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
     void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);

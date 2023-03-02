@@ -89,6 +89,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
 
         Circuit circuit(vm_->GetNativeAreaAllocator(), cmpCfg->Is64Bit());
+        circuit.SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
                                        info.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
                                        EnableTypeLowering(), fullName, recordName);
