@@ -159,6 +159,7 @@ using ecmascript::JSNumberFormat;
 using ecmascript::RegExpParser;
 using ecmascript::DebugInfoExtractor;
 using ecmascript::PatchErrorCode;
+using ecmascript::base::NumberHelper;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -2233,9 +2234,17 @@ bool JSValueRef::BooleaValue()
 int64_t JSValueRef::IntegerValue(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
-    JSTaggedNumber number = JSTaggedValue::ToInteger(thread, JSNApiHelper::ToJSHandle(this));
+    JSHandle<JSTaggedValue> tagged = JSNApiHelper::ToJSHandle(this);
+    if (tagged->IsNumber()) {
+        if (!NumberHelper::IsFinite(tagged.GetTaggedValue()) || NumberHelper::IsNaN(tagged.GetTaggedValue())) {
+            return 0;
+        } else {
+            return NumberHelper::DoubleToInt64(tagged->GetNumber());
+        }
+    }
+    JSTaggedNumber number = JSTaggedValue::ToInteger(thread, tagged);
     RETURN_VALUE_IF_ABRUPT(thread, 0);
-    return number.GetNumber();
+    return NumberHelper::DoubleToInt64(number.GetNumber());
 }
 
 uint32_t JSValueRef::Uint32Value(const EcmaVM *vm)

@@ -597,8 +597,15 @@ void BigInt::BigIntToUint64(JSThread *thread, JSHandle<JSTaggedValue> bigint, ui
 JSHandle<BigInt> BigInt::CreateBigWords(JSThread *thread, bool sign, uint32_t size, const uint64_t *words)
 {
     ASSERT(words != nullptr);
+    if (size == 0) {
+        return Uint64ToBigInt(thread, 0);
+    }
     const uint32_t MULTIPLE = 2;
     uint32_t needLen = size * MULTIPLE;
+    if (needLen > MAXSIZE) {
+        JSHandle<BigInt> bigint(thread, JSTaggedValue::Exception());
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Maximum BigInt size exceeded", bigint);
+    }
     JSHandle<BigInt> bigint = CreateBigint(thread, needLen);
     for (uint32_t index = 0; index < size; ++index) {
         uint32_t lowBits = static_cast<uint32_t>(words[index] & 0xffffffff);
