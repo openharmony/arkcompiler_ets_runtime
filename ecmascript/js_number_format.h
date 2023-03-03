@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JS_NUMBER_FORMAT_H
 #define ECMASCRIPT_JS_NUMBER_FORMAT_H
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_hclass.h"

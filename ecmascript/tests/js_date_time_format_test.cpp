@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_date_time_format.h"
@@ -23,6 +23,7 @@
 using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
+using LocaleHelper = panda::ecmascript::intl::LocaleHelper;
 
 namespace panda::test {
 class JSDateTimeFormatTest : public testing::Test {
@@ -671,7 +672,7 @@ HWTEST_F_L0(JSDateTimeFormatTest, GainAvailableLocales)
 
     const char *key = "calendar";
     const char *path = nullptr;
-    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = intl::LocaleHelper::GetAvailableLocales(thread, key, path);
     JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     env->SetDateTimeFormatLocales(thread, availableLocales);
     JSHandle<TaggedArray> gainLocales1 = JSDateTimeFormat::GainAvailableLocales(thread);

@@ -20,7 +20,9 @@
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_number_format.h"
 #else
+#ifndef ARK_NOT_SUPPORT_INTL_GLOBAL
 #include "ecmascript/intl/global_intl_helper.h"
+#endif
 #endif
 
 namespace panda::ecmascript::builtins {
@@ -91,12 +93,12 @@ JSTaggedValue BuiltinsBigInt::ToLocaleString(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let x be ? ThisBigIntValue(this value).
     JSTaggedValue value = ThisBigIntValue(argv);
-    JSHandle<JSTaggedValue> x(thread, value);
+    [[maybe_unused]] JSHandle<JSTaggedValue> x(thread, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> options = GetCallArg(argv, 1);
-    bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
+    [[maybe_unused]] bool cacheable = (locales->IsUndefined() || locales->IsString()) && options->IsUndefined();
 #ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto numberFormatter = JSNumberFormat::GetCachedIcuNumberFormatter(thread, locales);
@@ -127,6 +129,9 @@ JSTaggedValue BuiltinsBigInt::ToLocaleString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
 #else
+#ifdef ARK_NOT_SUPPORT_INTL_GLOBAL
+    ARK_SUPPORT_INTL_RETURN_JSVALUE(thread, "LocaleCompare");
+#else
     intl::GlobalIntlHelper gh(thread, intl::GlobalFormatterType::NumberFormatter);
     auto numberFormatter = gh.GetGlobalObject<intl::GlobalNumberFormat>(thread,
         locales, options, intl::GlobalFormatterType::NumberFormatter, cacheable);
@@ -140,6 +145,7 @@ JSTaggedValue BuiltinsBigInt::ToLocaleString(EcmaRuntimeCallInfo *argv)
     JSHandle returnValue = factory->NewFromStdString(result);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return returnValue.GetTaggedValue();
+#endif
 #endif
 }
 

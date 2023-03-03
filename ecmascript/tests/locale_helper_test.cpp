@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_collator.h"
@@ -21,6 +21,7 @@
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
+using LocaleHelper = panda::ecmascript::intl::LocaleHelper;
 
 namespace panda::test {
 class LocaleHelperTest : public testing::Test {

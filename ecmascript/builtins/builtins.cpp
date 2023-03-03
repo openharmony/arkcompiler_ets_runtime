@@ -30,34 +30,25 @@
 #include "ecmascript/builtins/builtins_cjs_module.h"
 #include "ecmascript/builtins/builtins_cjs_require.h"
 #include "ecmascript/builtins/builtins_cjs_exports.h"
-#include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_dataview.h"
 #include "ecmascript/builtins/builtins_date.h"
-#include "ecmascript/builtins/builtins_date_time_format.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/builtins/builtins_finalization_registry.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_generator.h"
 #include "ecmascript/builtins/builtins_global.h"
-#include "ecmascript/builtins/builtins_intl.h"
 #include "ecmascript/builtins/builtins_iterator.h"
 #include "ecmascript/builtins/builtins_json.h"
-#include "ecmascript/builtins/builtins_locale.h"
 #include "ecmascript/builtins/builtins_map.h"
 #include "ecmascript/builtins/builtins_math.h"
 #include "ecmascript/builtins/builtins_number.h"
-#include "ecmascript/builtins/builtins_number_format.h"
 #include "ecmascript/builtins/builtins_object.h"
-#include "ecmascript/builtins/builtins_plural_rules.h"
-#include "ecmascript/builtins/builtins_displaynames.h"
-#include "ecmascript/builtins/builtins_list_format.h"
 #include "ecmascript/builtins/builtins_promise.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_promise_job.h"
 #include "ecmascript/builtins/builtins_proxy.h"
 #include "ecmascript/builtins/builtins_reflect.h"
 #include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/builtins/builtins_relative_time_format.h"
 #include "ecmascript/builtins/builtins_set.h"
 #include "ecmascript/builtins/builtins_sharedarraybuffer.h"
 #include "ecmascript/builtins/builtins_string.h"
@@ -74,26 +65,18 @@
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
-#include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
-#include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_locale.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
-#include "ecmascript/js_number_format.h"
-#include "ecmascript/js_plural_rules.h"
-#include "ecmascript/js_displaynames.h"
-#include "ecmascript/js_list_format.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_regexp_iterator.h"
-#include "ecmascript/js_relative_time_format.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
@@ -111,6 +94,25 @@
 #include "ecmascript/require/js_cjs_exports.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/builtins/builtins_collator.h"
+#include "ecmascript/builtins/builtins_date_time_format.h"
+#include "ecmascript/builtins/builtins_displaynames.h"
+#include "ecmascript/builtins/builtins_intl.h"
+#include "ecmascript/builtins/builtins_list_format.h"
+#include "ecmascript/builtins/builtins_locale.h"
+#include "ecmascript/builtins/builtins_number_format.h"
+#include "ecmascript/builtins/builtins_plural_rules.h"
+#include "ecmascript/builtins/builtins_relative_time_format.h"
+#include "ecmascript/js_collator.h"
+#include "ecmascript/js_date_time_format.h"
+#include "ecmascript/js_displaynames.h"
+#include "ecmascript/js_list_format.h"
+#include "ecmascript/js_locale.h"
+#include "ecmascript/js_number_format.h"
+#include "ecmascript/js_plural_rules.h"
+#include "ecmascript/js_relative_time_format.h"
+#endif
 
 #include "ohos/init_data.h"
 
@@ -161,6 +163,7 @@ using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
 using ErrorType = base::ErrorType;
 using DataView = builtins::BuiltinsDataView;
+#ifdef ARK_SUPPORT_INTL
 using Intl = builtins::BuiltinsIntl;
 using Locale = builtins::BuiltinsLocale;
 using DateTimeFormat = builtins::BuiltinsDateTimeFormat;
@@ -170,6 +173,7 @@ using Collator = builtins::BuiltinsCollator;
 using PluralRules = builtins::BuiltinsPluralRules;
 using DisplayNames = builtins::BuiltinsDisplayNames;
 using ListFormat = builtins::BuiltinsListFormat;
+#endif
 using BuiltinsCjsModule = builtins::BuiltinsCjsModule;
 using BuiltinsCjsExports = builtins::BuiltinsCjsExports;
 using BuiltinsCjsRequire = builtins::BuiltinsCjsRequire;
@@ -310,6 +314,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializeAsyncGeneratorFunction(env, objFuncClass);
     InitializePromise(env, objFuncClass);
     InitializePromiseJob(env);
+#ifdef ARK_SUPPORT_INTL
     InitializeIntl(env, objFuncPrototypeVal);
     InitializeLocale(env);
     InitializeDateTimeFormat(env);
@@ -319,7 +324,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializePluralRules(env);
     InitializeDisplayNames(env);
     InitializeListFormat(env);
-
+#endif
     InitializeModuleNamespace(env, objFuncClass);
     InitializeCjsModule(env);
     InitializeCjsExports(env);
@@ -3061,7 +3066,7 @@ void Builtins::SetGetter(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedV
     PropertyAttributes attr = PropertyAttributes::DefaultAccessor(false, false, true);
     JSObject::AddAccessor(thread_, JSHandle<JSTaggedValue>::Cast(obj), key, accessor, attr);
 }
-
+#ifdef ARK_SUPPORT_INTL
 JSHandle<JSFunction> Builtins::NewIntlConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
                                                   EcmaEntrypoint ctorFunc, const char *name, int length)
 {
@@ -3429,7 +3434,7 @@ void Builtins::InitializeListFormat(const JSHandle<GlobalEnv> &env)
     // 13.4.5 Intl.ListFormat.prototype.resolvedOptions()
     SetFunction(env, lfPrototype, "resolvedOptions", ListFormat::ResolvedOptions, FunctionLength::ZERO);
 }
-
+#endif
 JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) const
 {
     JSHandle<JSObject> tools = factory_->NewEmptyJSObject();

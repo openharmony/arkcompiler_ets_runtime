@@ -552,4 +552,15 @@
 #define BUILTINS_ENTRY_DEBUG_LOG() static_cast<void>(0)
 #endif
 
+#if defined(ARK_NOT_SUPPORT_INTL_GLOBAL)
+#define ARK_SUPPORT_INTL_RETURN_STR(msg) "Please use import intl lib "#msg
+#define ARK_SUPPORT_INTL_RETURN(thread, message)                            \
+    THROW_TYPE_ERROR(thread, ARK_SUPPORT_INTL_RETURN_STR(message))
+#define ARK_SUPPORT_INTL_RETURN_JSVALUE(thread, message)                                                        \
+    THROW_TYPE_ERROR_AND_RETURN(thread,                                                                         \
+        ARK_SUPPORT_INTL_RETURN_STR(message), JSTaggedValue::Exception())
+#else
+#define ARK_SUPPORT_INTL_RETURN(thread, message) static_cast<void>(0)
+#define ARK_SUPPORT_INTL_RETURN_JSVALUE(thread, message) static_cast<void>(0)
+#endif
 #endif  // ECMASCRIPT_ECMA_MACROS_H

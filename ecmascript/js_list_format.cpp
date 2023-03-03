@@ -18,7 +18,7 @@
 #include <cstring>
 #include <vector>
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
@@ -78,7 +78,7 @@ JSHandle<TaggedArray> JSListFormat::GetAvailableLocales(JSThread *thread)
     }
     const char *key = "listPattern";
     const char *path = nullptr;
-    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = intl::LocaleHelper::GetAvailableLocales(thread, key, path);
     JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     env->SetListFormatLocales(thread, availableLocales);
     return availableLocales;
@@ -96,7 +96,7 @@ JSHandle<JSListFormat> JSListFormat::InitializeListFormat(JSThread *thread,
     auto globalConst = thread->GlobalConstants();
 
     // 3. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSListFormat, thread);
 
     // 4. Let options be ? GetOptionsObject(options).
@@ -133,7 +133,7 @@ JSHandle<JSListFormat> JSListFormat::InitializeListFormat(JSThread *thread,
 
     // 10. Set listFormat.[[Locale]] to r.[[locale]].
     icu::Locale icuLocale = r.localeData;
-    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     listFormat->SetLocale(thread, localeStr.GetTaggedValue());
 
     // 11. Let type be ? GetOption(options, "type", "string", « "conjunction", "disjunction", "unit" », "conjunction").
@@ -265,7 +265,7 @@ namespace {
             JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, listArray, k);
             ASSERT(kValue->IsString());
             JSHandle<EcmaString> kValueString = JSTaggedValue::ToString(thread, kValue);
-            std::string stdString = base::LocaleHelper::ConvertToStdString(kValueString);
+            std::string stdString = intl::LocaleHelper::ConvertToStdString(kValueString);
             icu::StringPiece sp(stdString);
             icu::UnicodeString uString = icu::UnicodeString::fromUTF8(sp);
             result.push_back(uString);
@@ -299,13 +299,13 @@ namespace {
             int32_t start = cfpo.getStart();
             int32_t limit = cfpo.getLimit();
             if (static_cast<UListFormatterField>(fieldId) == ULISTFMT_ELEMENT_FIELD) {
-                JSHandle<EcmaString> substring = base::LocaleHelper::UStringToString(thread, listString, start, limit);
+                JSHandle<EcmaString> substring = intl::LocaleHelper::UStringToString(thread, listString, start, limit);
                 typeString.Update(globalConst->GetElementString());
                 JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 index++;
             } else {
-                JSHandle<EcmaString> substring = base::LocaleHelper::UStringToString(thread, listString, start, limit);
+                JSHandle<EcmaString> substring = intl::LocaleHelper::UStringToString(thread, listString, start, limit);
                 typeString.Update(globalConst->GetLiteralString());
                 JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
                 RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -371,7 +371,7 @@ JSHandle<EcmaString> JSListFormat::FormatList(JSThread *thread, const JSHandle<J
     if (U_FAILURE(status)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "formatted list toString failed", stringValue);
     }
-    stringValue = base::LocaleHelper::UStringToString(thread, result);
+    stringValue = intl::LocaleHelper::UStringToString(thread, result);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, stringValue);
     // 4. Return result
     return stringValue;

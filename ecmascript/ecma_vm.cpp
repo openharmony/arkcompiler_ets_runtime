@@ -19,10 +19,12 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
-#include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/builtins/builtins_number_format.h"
+#endif
+#include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_promise.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
@@ -919,9 +921,11 @@ void *EcmaVM::InternalMethodTable[] = {
     reinterpret_cast<void *>(builtins::BuiltinsGlobal::CallJsBoundFunction),
     reinterpret_cast<void *>(builtins::BuiltinsGlobal::CallJsProxy),
     reinterpret_cast<void *>(builtins::BuiltinsObject::CreateDataPropertyOnObjectFunctions),
+#ifdef ARK_SUPPORT_INTL
     reinterpret_cast<void *>(builtins::BuiltinsCollator::AnonymousCollator),
     reinterpret_cast<void *>(builtins::BuiltinsDateTimeFormat::AnonymousDateTimeFormat),
     reinterpret_cast<void *>(builtins::BuiltinsNumberFormat::NumberFormatInternalFormatNumber),
+#endif
     reinterpret_cast<void *>(builtins::BuiltinsProxy::InvalidateProxyFunction),
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AsyncAwaitFulfilled),
     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AsyncAwaitRejected),

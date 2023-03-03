@@ -19,7 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_locale.h"
 
-namespace panda::ecmascript::base {
+namespace panda::ecmascript::intl {
 constexpr uint8_t INTL_INDEX_TWO = 2;
 constexpr uint8_t INTL_INDEX_THREE = 3;
 constexpr uint8_t INTL_INDEX_FOUR = 4;

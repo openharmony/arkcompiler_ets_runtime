@@ -288,7 +288,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
         if (EcmaStringAccessor(currencyStr).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "not a utf-8", fractionDigitsOption);
         }
-        std::string currencyCStr = base::LocaleHelper::ConvertToStdString(currencyStr);
+        std::string currencyCStr = intl::LocaleHelper::ConvertToStdString(currencyStr);
         if (!JSLocale::IsWellFormedCurrencyCode(currencyCStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "not a wellformed code", fractionDigitsOption);
         }
@@ -334,7 +334,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
         if (EcmaStringAccessor(unitStr).IsUtf16()) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "Unit input is illegal", fractionDigitsOption);
         }
-        std::string str = base::LocaleHelper::ConvertToStdString(unitStr);
+        std::string str = intl::LocaleHelper::ConvertToStdString(unitStr);
         if (!IsWellFormedUnitIdentifier(str, icuUnit, icuPerUnit)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "Unit input is illegal", fractionDigitsOption);
         }
@@ -362,7 +362,7 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
     UErrorCode status = U_ZERO_ERROR;
     if (style == StyleOption::CURRENCY) {
         JSHandle<EcmaString> currencyStr = JSHandle<EcmaString>::Cast(currency);
-        std::string currencyCStr = base::LocaleHelper::ConvertToStdString(currencyStr);
+        std::string currencyCStr = intl::LocaleHelper::ConvertToStdString(currencyStr);
         std::transform(currencyCStr.begin(), currencyCStr.end(), currencyCStr.begin(), toupper);
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSTaggedValue> currencyValue = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(currencyCStr));
@@ -442,7 +442,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     // 1. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
 
     // 2. If options is undefined, then
     //      a. Let options be ObjectCreate(null).
@@ -481,7 +481,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
         if (EcmaStringAccessor(numberingSystemEcmaString).IsUtf16()) {
             THROW_ERROR(thread, ErrorType::RANGE_ERROR, "invalid numberingSystem");
         }
-        numberingSystemStr = base::LocaleHelper::ConvertToStdString(numberingSystemEcmaString);
+        numberingSystemStr = intl::LocaleHelper::ConvertToStdString(numberingSystemEcmaString);
         if (!JSLocale::IsNormativeNumberingSystem(numberingSystemStr)) {
             THROW_ERROR(thread, ErrorType::RANGE_ERROR, "invalid numberingSystem");
         }
@@ -503,7 +503,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
 
     // 12. Set numberFormat.[[Locale]] to r.[[locale]].
     icu::Locale icuLocale = r.localeData;
-    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     numberFormat->SetLocale(thread, localeStr.GetTaggedValue());
 
     // Set numberingSystemStr to UnicodeKeyWord "nu"
@@ -738,7 +738,7 @@ JSHandle<JSTaggedValue> JSNumberFormat::FormatNumeric(JSThread *thread,
         JSHandle<JSTaggedValue> errorResult(thread, JSTaggedValue::Exception());
         THROW_RANGE_ERROR_AND_RETURN(thread, "formatted number toString failed", errorResult);
     }
-    JSHandle<EcmaString> stringValue = base::LocaleHelper::UStringToString(thread, result);
+    JSHandle<EcmaString> stringValue = intl::LocaleHelper::UStringToString(thread, result);
     return JSHandle<JSTaggedValue>::Cast(stringValue);
 }
 
@@ -790,14 +790,14 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
         // Special case when fieldId is UNUM_GROUPING_SEPARATOR_FIELD
         if (static_cast<UNumberFormatFields>(fieldId) == UNUM_GROUPING_SEPARATOR_FIELD) {
             JSHandle<EcmaString> substring =
-                base::LocaleHelper::UStringToString(thread, formattedText, previousLimit, start);
+                intl::LocaleHelper::UStringToString(thread, formattedText, previousLimit, start);
             typeString.Update(globalConst->GetIntegerString());
             JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
             RETURN_IF_ABRUPT_COMPLETION(thread);
             index++;
             {
                 typeString.Update(JSLocale::GetNumberFieldType(thread, x, fieldId).GetTaggedValue());
-                substring = base::LocaleHelper::UStringToString(thread, formattedText, start, limit);
+                substring = intl::LocaleHelper::UStringToString(thread, formattedText, start, limit);
                 JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 index++;
@@ -808,7 +808,7 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
             continue;
         } else if (start > previousLimit) {
             JSHandle<EcmaString> substring =
-                base::LocaleHelper::UStringToString(thread, formattedText, previousLimit, start);
+                intl::LocaleHelper::UStringToString(thread, formattedText, previousLimit, start);
             JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
             RETURN_IF_ABRUPT_COMPLETION(thread);
             index++;
@@ -823,7 +823,7 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
         } else {
             typeString.Update(JSLocale::GetNumberFieldType(thread, x, fieldId).GetTaggedValue());
         }
-        JSHandle<EcmaString> substring = base::LocaleHelper::UStringToString(thread, formattedText, start, limit);
+        JSHandle<EcmaString> substring = intl::LocaleHelper::UStringToString(thread, formattedText, start, limit);
         JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
         RETURN_IF_ABRUPT_COMPLETION(thread);
         index++;
@@ -834,7 +834,7 @@ void GroupToParts(JSThread *thread, const icu::number::FormattedNumber &formatte
     if (formattedText.length() > previousLimit) {
         typeString.Update(globalConst->GetLiteralString());
         JSHandle<EcmaString> substring =
-            base::LocaleHelper::UStringToString(thread, formattedText, previousLimit, formattedText.length());
+            intl::LocaleHelper::UStringToString(thread, formattedText, previousLimit, formattedText.length());
         JSLocale::PutElement(thread, index, receiver, typeString, JSHandle<JSTaggedValue>::Cast(substring));
     }
 }
@@ -902,7 +902,7 @@ JSHandle<TaggedArray> JSNumberFormat::GetAvailableLocales(JSThread *thread)
     }
     const char *key = "NumberElements";
     const char *path = nullptr;
-    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = intl::LocaleHelper::GetAvailableLocales(thread, key, path);
     JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     env->SetNumberFormatLocales(thread, availableLocales);
     return availableLocales;

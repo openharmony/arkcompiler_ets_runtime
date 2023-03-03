@@ -209,27 +209,32 @@ config("ark_jsruntime_public_config") {
   ]
 }
 
-intl_sources = [
-  "ecmascript/builtins/builtins_collator.cpp",
-  "ecmascript/builtins/builtins_date_time_format.cpp",
-  "ecmascript/builtins/builtins_displaynames.cpp",
-  "ecmascript/builtins/builtins_intl.cpp",
-  "ecmascript/builtins/builtins_list_format.cpp",
-  "ecmascript/builtins/builtins_locale.cpp",
-  "ecmascript/builtins/builtins_number_format.cpp",
-  "ecmascript/builtins/builtins_plural_rules.cpp",
-  "ecmascript/builtins/builtins_relative_time_format.cpp",
-  "ecmascript/js_collator.cpp",
-  "ecmascript/js_date_time_format.cpp",
-  "ecmascript/js_displaynames.cpp",
-  "ecmascript/js_list_format.cpp",
-  "ecmascript/js_locale.cpp",
-  "ecmascript/js_number_format.cpp",
-  "ecmascript/js_plural_rules.cpp",
-  "ecmascript/js_relative_time_format.cpp",
-]
-if (!enable_ark_intl) {
-  intl_sources += [ "ecmascript/intl/global_intl_helper.cpp" ]
+intl_sources = []
+
+if (enable_ark_intl) {
+  intl_sources += [
+    "ecmascript/builtins/builtins_collator.cpp",
+    "ecmascript/builtins/builtins_date_time_format.cpp",
+    "ecmascript/builtins/builtins_displaynames.cpp",
+    "ecmascript/builtins/builtins_intl.cpp",
+    "ecmascript/builtins/builtins_list_format.cpp",
+    "ecmascript/builtins/builtins_locale.cpp",
+    "ecmascript/builtins/builtins_number_format.cpp",
+    "ecmascript/builtins/builtins_plural_rules.cpp",
+    "ecmascript/builtins/builtins_relative_time_format.cpp",
+    "ecmascript/js_collator.cpp",
+    "ecmascript/js_date_time_format.cpp",
+    "ecmascript/js_displaynames.cpp",
+    "ecmascript/js_list_format.cpp",
+    "ecmascript/js_locale.cpp",
+    "ecmascript/js_number_format.cpp",
+    "ecmascript/js_plural_rules.cpp",
+    "ecmascript/js_relative_time_format.cpp",
+  ]
+} else {
+  if (target_os != "android" && target_os != "ios") {
+    intl_sources += [ "ecmascript/intl/global_intl_helper.cpp" ]
+  }
 }
 
 config("ark_jsruntime_compiler_config") {
@@ -409,7 +414,11 @@ config("ark_jsruntime_common_config") {
   if (enable_ark_intl) {
     defines += [ "ARK_SUPPORT_INTL" ]
   } else {
-    configs = [ "$global_root/frameworks/intl:intl_util_config" ]
+    if (target_os == "android" || target_os == "ios") {
+      defines += [ "ARK_NOT_SUPPORT_INTL_GLOBAL" ]
+    } else {
+      configs = [ "$global_root/frameworks/intl:intl_util_config" ]
+    }
   }
 }
 
@@ -455,7 +464,6 @@ ecma_source = [
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
-  "ecmascript/base/locale_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
   "ecmascript/base/utf_helper.cpp",
@@ -545,6 +553,7 @@ ecma_source = [
   "ecmascript/interpreter/interpreter.cpp",
   "ecmascript/interpreter/interpreter_assembly.cpp",
   "ecmascript/interpreter/slow_runtime_stub.cpp",
+  "ecmascript/intl/locale_helper.cpp",
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",
   "ecmascript/jspandafile/js_pandafile_manager.cpp",

@@ -15,7 +15,7 @@
 
 #include "builtins_displaynames.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_displaynames.h"
@@ -65,7 +65,7 @@ JSTaggedValue BuiltinsDisplayNames::SupportedLocalesOf(EcmaRuntimeCallInfo *argv
 
     // 2. Let requestedLocales be ? CanonicaliezLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
-    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Return ? SupportedLocales(availableLocales, requestedLocales, options).
@@ -99,7 +99,7 @@ JSTaggedValue BuiltinsDisplayNames::Of(EcmaRuntimeCallInfo *argv)
     JSHandle<JSDisplayNames> displayNames = JSHandle<JSDisplayNames>::Cast(thisValue);
     TypednsOption typeOpt = displayNames->GetType();
     JSHandle<EcmaString> code = JSDisplayNames::CanonicalCodeForDisplayNames(thread, displayNames, typeOpt, codeTemp);
-    std::string codeString = base::LocaleHelper::ConvertToStdString(code);
+    std::string codeString = intl::LocaleHelper::ConvertToStdString(code);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (codeString.size()) {
         JSHandle<JSTaggedValue> codeStr = JSHandle<JSTaggedValue>::Cast(code);

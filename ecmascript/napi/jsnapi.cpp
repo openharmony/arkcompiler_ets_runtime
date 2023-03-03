@@ -41,18 +41,14 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
-#include "ecmascript/js_bigint.h"
-#include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/byte_array.h"
-#include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
-#include "ecmascript/js_number_format.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_regexp.h"
@@ -76,6 +72,12 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/regexp/regexp_parser.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/js_bigint.h"
+#include "ecmascript/js_collator.h"
+#include "ecmascript/js_date_time_format.h"
+#include "ecmascript/js_number_format.h"
+#endif
 
 #include "ohos/init_data.h"
 
@@ -153,9 +155,11 @@ using ecmascript::JSIterator;
 using ecmascript::JSGeneratorFunction;
 using ecmascript::JSGeneratorObject;
 using ecmascript::GeneratorContext;
+#ifdef ARK_SUPPORT_INTL
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
+#endif
 using ecmascript::RegExpParser;
 using ecmascript::DebugInfoExtractor;
 using ecmascript::PatchErrorCode;
@@ -273,12 +277,12 @@ void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
     thread->SetException(JSNApiHelper::ToJSTaggedValue(*error));
 }
 
-#if !defined(PANDA_TARGET_IOS)
 bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unused]] EcmaVM *vm,
                            [[maybe_unused]] bool isDebugMode, [[maybe_unused]] int32_t instanceId,
                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+#if !defined(PANDA_TARGET_IOS)
     if (vm == nullptr) {
         return false;
     }
@@ -312,6 +316,13 @@ bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unu
     }
     return ret;
 #else
+    bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(DEBUGGER_NAME, vm, isDebugMode, instanceId, debuggerPostTask);
+    if (ret) {
+        vm->GetJsDebuggerManager()->SetDebugMode(isDebugMode);
+    }
+    return ret;
+#endif // PANDA_TARGET_IOS
+#else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
     return false;
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
@@ -320,6 +331,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unu
 bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+#if !defined(PANDA_TARGET_IOS)
     if (vm == nullptr) {
         return false;
     }
@@ -339,30 +351,6 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
 #else
-    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
-    return false;
-#endif // ECMASCRIPT_SUPPORT_DEBUGGER
-}
-#else
-bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] bool isDebugMode,
-                           [[maybe_unused]] int32_t instanceId,
-                           [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
-{
-#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(DEBUGGER_NAME, vm, isDebugMode, instanceId, debuggerPostTask);
-    if (ret) {
-        vm->GetJsDebuggerManager()->SetDebugMode(isDebugMode);
-    }
-    return ret;
-#else
-    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
-    return false;
-#endif // ECMASCRIPT_SUPPORT_DEBUGGER
-}
-
-bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
-{
-#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     if (vm == nullptr) {
         return false;
     }
@@ -370,12 +358,12 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
+#endif // PANDA_TARGET_IOS
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
     return false;
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
-#endif // PANDA_TARGET_IOS
 
 bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
 {
@@ -2104,28 +2092,44 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorReceiver(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<GeneratorObjectRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 }
 
+
 Local<JSValueRef> CollatorRef::GetCompareFunction(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
+#ifdef ARK_SUPPORT_INTL
     JSHandle<JSCollator> jsCollator(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue jsTagValue = jsCollator->GetBoundCompare();
     return JSNApiHelper::ToLocal<CollatorRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler intl";
+    return JSNApiHelper::ToLocal<CollatorRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+#endif
 }
 
 Local<JSValueRef> DataTimeFormatRef::GetFormatFunction(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
+#ifdef ARK_SUPPORT_INTL
     JSHandle<JSDateTimeFormat> jsDateTimeFormat(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue jsTagValue = jsDateTimeFormat->GetBoundFormat();
     return JSNApiHelper::ToLocal<DataTimeFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler intl";
+    return JSNApiHelper::ToLocal<DataTimeFormatRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+#endif
 }
 
 Local<JSValueRef> NumberFormatRef::GetFormatFunction(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
+#ifdef ARK_SUPPORT_INTL
     JSHandle<JSNumberFormat> jsNumberFormat(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue jsTagValue = jsNumberFormat->GetBoundFormat();
     return JSNApiHelper::ToLocal<NumberFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler intl";
+    return JSNApiHelper::ToLocal<NumberFormatRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+#endif
 }
 
 // ----------------------------------- FunctionCallback ---------------------------------

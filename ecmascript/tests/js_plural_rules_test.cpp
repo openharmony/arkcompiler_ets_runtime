@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/js_plural_rules.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/global_env.h"
@@ -74,12 +74,12 @@ HWTEST_F_L0(JSPluralRulesTest, GetIcuPluralRules)
     UPluralType icuType = UPLURAL_TYPE_CARDINAL; // Plural rules for cardinal numbers
     icu::PluralRules *icuPluralRules(icu::PluralRules::forLocale(icuLocale, icuType, status));
     icu::UnicodeString result1 = icuPluralRules->select(0);
-    JSHandle<EcmaString> stringValue1 = base::LocaleHelper::UStringToString(thread, result1);
+    JSHandle<EcmaString> stringValue1 = intl::LocaleHelper::UStringToString(thread, result1);
 
     JSPluralRules::SetIcuPluralRules(thread, pluralRules, *icuPluralRules, JSPluralRules::FreeIcuPluralRules);
     icu::PluralRules *getPluralRules = pluralRules->GetIcuPluralRules();
     icu::UnicodeString result2 = getPluralRules->select(0);
-    JSHandle<EcmaString> stringValue2 = base::LocaleHelper::UStringToString(thread, result2);
+    JSHandle<EcmaString> stringValue2 = intl::LocaleHelper::UStringToString(thread, result2);
     EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*stringValue1, *stringValue2), true);
     delete icuPluralRules;
 }

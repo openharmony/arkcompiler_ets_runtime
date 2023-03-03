@@ -15,7 +15,7 @@
 
 #include "ecmascript/js_collator.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/barriers-inl.h"
@@ -41,7 +41,7 @@ JSHandle<TaggedArray> JSCollator::GetAvailableLocales(JSThread *thread)
 {
     const char *key = nullptr;
     const char *path = JSCollator::uIcuDataColl.c_str();
-    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = intl::LocaleHelper::GetAvailableLocales(thread, key, path);
     JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     return availableLocales;
 }
@@ -74,7 +74,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     ObjectFactory *factory = ecmaVm->GetFactory();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 1. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
 
     // 2. If options is undefined, then
@@ -113,7 +113,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     std::string collationStr;
     if (!collation->IsUndefined()) {
         JSHandle<EcmaString> collationEcmaStr = JSHandle<EcmaString>::Cast(collation);
-        collationStr = base::LocaleHelper::ConvertToStdString(collationEcmaStr);
+        collationStr = intl::LocaleHelper::ConvertToStdString(collationEcmaStr);
         if (!JSLocale::IsWellAlphaNumList(collationStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid collation", collator);
         }
@@ -148,7 +148,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     ResolvedLocale r =
         JSLocale::ResolveLocale(thread, availableLocales, requestedLocales, matcher, relevantExtensionKeys);
     icu::Locale icuLocale = r.localeData;
-    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     collator->SetLocale(thread, localeStr.GetTaggedValue());
     ASSERT_PRINT(!icuLocale.isBogus(), "icuLocale is bogus");
 
