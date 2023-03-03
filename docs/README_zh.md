@@ -16,7 +16,7 @@
 
 #### 搭建Ubuntu环境
 
-- 初始环境软件安装（Ubuntu版本要求18.04或20.04）
+- 初始环境软件安装（Ubuntu版本推荐18.04或20.04）
 
   ```
   sudo apt-get update
@@ -108,12 +108,21 @@ print("Hello World!!!");
    ```
    node --expose-gc /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/build/src/index.js hello-world.js
    ```
+   **注意**：使用node编译abc过程遇到ENOENT错误，运行如下命令进行修复
+
+    ```
+    npm cache clean --force
+    cd /your_code_path/arkcompiler/ets_frontend/ts2panda
+    npm install
+    cd /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/build
+    npm install
+    ```
 2. 执行hello-world.abc文件：
 
    1. 设置搜索路径：
 
       ```
-      export LD_LIBRARY_PATH= /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime:/your_code_path/out/rk3568/clang_x64/global/i18n_standard:/your_code_path/prebuilts/clang/ohos/linux-x86_64/llvm/lib:/your_code_path/out/rk3568/clang_x64/thirdparty/zlib
+      export LD_LIBRARY_PATH=/your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime:/your_code_path/out/rk3568/clang_x64/global/i18n_standard:/your_code_path/prebuilts/clang/ohos/linux-x86_64/llvm/lib:/your_code_path/out/rk3568/clang_x64/thirdparty/zlib
       ```
    2. 执行ark\_js\_vm：
 
@@ -398,7 +407,7 @@ print('Hello World!!!')
    1. 设置搜索路径：
 
       ```
-      export LD_LIBRARY_PATH=/your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime:/your_code_path/out/rk3568/clang_x64/global/i18n_standard:/your_code_path/prebuilts/clang/ohos/linux-x86_64/llvm/lib:/your_code_path/out/rk3568/clang_x64/thirdparty/zlib
+      export LD_LIBRARY_PATH=/your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime:/your_code_path/out/rk3568/clang_x64/global/i18n_standard:/your_code_path/prebuilts/clang/ohos/linux-x86_64/llvm/lib:/your_code_path/out/rk3568/clang_x64/thirdparty/icu:/your_code_path/out/rk3568/clang_x64/thirdparty/zlib
       ```
    2. 通过AOT编译器生成an和ai文件：
 
@@ -408,24 +417,14 @@ print('Hello World!!!')
    3. 执行ark\_js\_vm：
 
       ```
-      /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_js_vm --icu-data-path=/your_code_path/third_party/icu/ohos_icu4j/data --aot-file=./hello-world --entry-point=hello-world hello-world.abc
+      /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_runtime/ark_js_vm --aot-file=./hello-world --entry-point=hello-world hello-world.abc
       ```
 
-   执行结果如下：
+      执行结果如下：
 
-   ```
-   Hello World!!!
-   ```
-
-**注意**：使用node编译abc过程遇到ENOENT错误，运行如下命令进行修复
-
-```
-npm cache clean --force
-cd /your_code_path/arkcompiler/ets_frontend/ts2panda
-npm install
-cd /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/build
-npm install
-```
+      ```
+      Hello World!!!
+      ```
 
 **说明**：此处“_your_code_path_”为源码目录路径。
 
@@ -636,12 +635,12 @@ ark_disasm [选项] 输入文件 输出文件
 
 ### AOT工具概述
 
-AOT为Ahead Of Time的简称，也即提前编译，能够在Host端将字节码提前编译成Target端可运行的机器码，这样字节码可以获得充分编译优化，放到Target端运行的时候就可以获得加速。
+AOT为Ahead Of Time的简称，也即提前编译，能够在Host端将字节码提前编译成Target端可运行的机器码，这样字节码可以获得充分编译优化，从而加速Target端的运行速度。
 
 编译生成aot编译器：
 
 ```
-./build.sh --product-name rk3568  --build-target ets_frontend_build --build-target ark_js_host_linux_tools_packages --build-target ark_host_linux_tools_packages
+./build.sh --product-name rk3568 --build-target ark_js_host_linux_tools_packages
 ```
 
 命令行格式：
@@ -652,11 +651,59 @@ ark_aot_compiler [选项] 输入文件
 
 | 选项                    | 描述                                                                                |
 | ----------------------- | ----------------------------------------------------------------------------------- |
-| --aot-file              | aot输出文件的路径（不需要文件后缀）。默认值：“aot_file”                           |
-| --enable-pgo-profiler   | 启用pgo分析器以对jsfunction调用进行采样并输出到文件。默认值：false”                |
-| --pgo-hotness-threshold | 在aot编译中为pgo设置热阈值。默认值：2”                                             |
-| --pgo-profiler-path     | 应用程序或ark_js_vm运行时的pgo采样文件输出目录，或AOT PGO编译器的采样文件输入目录。 |
+| --aot-file              | AOT输出文件的路径（不需要文件后缀）。默认值：“aot_file”                           |
+| --enable-type-lowering  | 利用类型信息，生成优化级别更高的机器码。默认值：“true”                             |
+| --maxAotMethodSize      | 设置AOT编译方法的大小阈值，当方法的大小超过该值时，则不进行编译。默认值：“32KB”               |
+| --opt-level             | 设置LLVM的优化级别。默认值：“3”                                                  |
+| --compiler-log          | AOT的日志选项，可打印出AOT生成的IR图、汇编码等信息。默认值“none”                   |
+| --compiler-log-snapshot | 打印与序列化有关的日志信息。默认值“false”                                         |
+| --compiler-log-time     | 打印AOT过程中各个优化pass的耗时情况。默认值值“false”                               |
+
 
 输入文件：二进制格式的方舟字节码
 
-输出文件：直接执行的机器码的an文件、存储序列化后constPool的ai文件（输出文件路径需使用--aot-file选项指定）
+输出文件：直接执行的机器码的an文件、存储序列化后ConstPool的ai文件（输出文件路径需使用--aot-file选项指定）
+
+### PGO工具概述
+
+PGO为Profile-guided optimization的简称，也即配置文件引导的优化。该工具能够记录应用启动和性能场景中的高频（热点）函数，并将信息记录于对应的PGO Profiler文件。AOT编译器则可通过这些信息决策部分函数进行编译，从而在基本不影响应用运行性能的情况下，缩短编译时间，减少.an文件的大小。
+
+编译生成aot编译器和ark js虚拟机
+
+```
+./build.sh --product-name rk3568 --build-target ark_js_host_linux_tools_packages
+```
+
+### 生成PGO Profiler文件
+
+命令行格式：
+
+```
+ark_js_vm [选项] 输入文件
+```
+
+| 选项                    | 描述                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| --enable-pgo-profiler   | 开启pgo工具。默认值：“false”                                                    |
+| --pgo-profiler-path     | pgo profiler文件的保存路径。默认值：当前路径                                     |
+| --pgo-hotness-threshold | 热点函数的阈值，当函数的调用次数大于该值，则认为是热点函数。默认值：“2”             |
+
+输入文件：二进制格式的方舟字节码
+
+输出文件：保存有热点函数信息的ap文件
+
+### 基于PGO Profiler的AOT编译
+
+命令行格式：
+
+```
+ark_aot_compiler [选项] 输入文件
+```
+| 选项                    | 描述                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| --pgo-profiler-path     | pgo profiler文件路径。默认值：“none”                                     |
+| --pgo-hotness-threshold | 使能pgo编译的函数调用次数阈值，profile文件中记录的调用次数大于该阈值的函数才会进行编译。默认值：“2”|
+
+输入文件：二进制格式的方舟字节码，ap文件
+
+输出文件：直接执行的机器码的an文件（基于pgo）
