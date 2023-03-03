@@ -555,18 +555,6 @@ public:
 
     bool IsLegalSp(uintptr_t sp) const;
 
-    bool IsPrintBCOffset() const
-    {
-        return enablePrintBCOffset_;
-    }
-
-    void SetPrintBCOffset(bool flag)
-    {
-        enablePrintBCOffset_ = flag;
-    }
-
-    void CollectBCOffsetInfo();
-
     void SetCheckAndCallEnterState(bool state)
     {
         finalizationCheckState_ = state;
@@ -861,7 +849,6 @@ private:
     bool runtimeState_ {false};
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
-    bool enablePrintBCOffset_ {false};
     bool stableArrayElementsGuardians_ {true};
 
     bool finalizationCheckState_ {false};

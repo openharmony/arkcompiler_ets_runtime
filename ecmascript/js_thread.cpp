@@ -493,12 +493,6 @@ bool JSThread::CpuProfilerCheckJSTaggedType(JSTaggedType value) const
     return true;
 }
 
-void JSThread::CollectBCOffsetInfo()
-{
-    FrameBcCollector collector(this);
-    collector.CollectBCOffsetInfo();
-}
-
 // static
 size_t JSThread::GetAsmStackLimit()
 {

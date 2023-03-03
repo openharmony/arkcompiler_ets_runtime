@@ -204,7 +204,8 @@ private:
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);
 
-    GateRef LowerCallRuntime(GateRef glue, int index, const std::vector<GateRef> &args, bool useLabel = false);
+    GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+                             bool useLabel = false);
 
     template<OpCode Op>
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);

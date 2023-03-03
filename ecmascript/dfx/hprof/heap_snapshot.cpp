@@ -744,19 +744,21 @@ void HeapSnapshot::AddTraceNodeId(MethodLiteral *methodLiteral)
 int HeapSnapshot::AddTraceNode(int sequenceId, int size)
 {
     traceNodeIndex_.clear();
-    FrameHandler frameHandler(vm_->GetAssociatedJSThread());
-    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
-        if (!frameHandler.IsJSFrame()) {
+    auto thread = vm_->GetJSThread();
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    FrameIterator it(current, thread);
+    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+        if (!it.IsJSFrame()) {
             continue;
         }
-        auto method = frameHandler.CheckAndGetMethod();
+        auto method = it.CheckAndGetMethod();
         if (method == nullptr || method->IsNativeWithCallField()) {
             continue;
         }
 
         MethodLiteral *methodLiteral = method->GetMethodLiteral();
         if (stackInfo_.count(methodLiteral) == 0) {
-            AddMethodInfo(methodLiteral, frameHandler, method->GetJSPandaFile(), sequenceId);
+            AddMethodInfo(methodLiteral, it, method->GetJSPandaFile(), sequenceId);
         }
         AddTraceNodeId(methodLiteral);
     }
@@ -775,7 +777,7 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
 }
 
 void HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
-                                 const FrameHandler &frameHandler,
+                                 const FrameIterator &it,
                                  const JSPandaFile *jsPandaFile,
                                  int sequenceId)
 {
@@ -819,7 +821,7 @@ void HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
         columnNumber = column + 1;
         return true;
     };
-    uint32_t offset = frameHandler.GetBytecodeOffset();
+    uint32_t offset = it.GetBytecodeOffset();
     if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
         !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
         codeEntry.lineNumber = 0;

@@ -403,45 +403,50 @@ GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRe
 
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
+    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = BytecodeStubCSigns::BCHandler();
     ASSERT(cs->IsBCStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
     return result;
 }
 
 GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
+    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
     ASSERT(cs->IsBuiltinsStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
     return result;
 }
 
 GateRef CircuitBuilder::CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
+    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
     ASSERT(cs->IsBuiltinsWithArgvStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
     return result;
 }
 
 GateRef CircuitBuilder::CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args)
 {
+    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = BytecodeStubCSigns::BCDebuggerHandler();
     ASSERT(cs->IsBCDebuggerStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
     return result;
 }
 
-GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args)
+GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args,
+                                    GateRef hirGate)
 {
     GateRef target = IntPtr(index);
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
@@ -450,23 +455,29 @@ GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, con
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
     }
-    GateRef result = Call(cs, glue, target, depend, args);
+    GateRef filteredHirGate = Circuit::NullGate();
+    if (GetCircuit()->IsOptimizedJSFunctionFrame()) {
+        ASSERT(hirGate != Circuit::NullGate());
+        filteredHirGate = hirGate;
+    }
+    GateRef result = Call(cs, glue, target, depend, args, filteredHirGate);
     return result;
 }
 
 GateRef CircuitBuilder::CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv)
 {
+    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntimeWithArgv));
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     ASSERT(cs->IsRuntimeVAStub());
-    GateRef result = Call(cs, glue, target, depend, {argc, argv});
+    GateRef result = Call(cs, glue, target, depend, {argc, argv}, Circuit::NullGate());
     return result;
 }
 
-// call operation
-GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args)
+GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args,
+                                       GateRef hirGate)
 {
     const CallSignature *cs = RuntimeStubCSigns::Get(index);
     ASSERT(cs->IsRuntimeNGCStub());
@@ -475,23 +486,35 @@ GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, 
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
     }
-    GateRef result = Call(cs, glue, target, depend, args);
+    GateRef filteredHirGate = Circuit::NullGate();
+    if (GetCircuit()->IsOptimizedJSFunctionFrame() && RuntimeStubCSigns::IsAsmStub(index)) {
+        ASSERT(hirGate != Circuit::NullGate());
+        filteredHirGate = hirGate;
+    }
+    GateRef result = Call(cs, glue, target, depend, args, filteredHirGate);
     return result;
 }
 
-GateRef CircuitBuilder::CallStub(GateRef glue, int index, const std::vector<GateRef> &args)
+GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args)
 {
     const CallSignature *cs = CommonStubCSigns::Get(index);
     ASSERT(cs->IsCommonStub());
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args);
+    GateRef result;
+    if (GetCircuit()->IsOptimizedJSFunctionFrame()) {
+        ASSERT(hirGate != Circuit::NullGate());
+        result = Call(cs, glue, target, depend, args, hirGate);
+    } else {
+        result = Call(cs, glue, target, depend, args, Circuit::NullGate());
+    }
     return result;
 }
 
 GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew)
 {
+    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     int index = 0;
     if (!isNew) {
         index = static_cast<int>(RTSTUB_ID(PushCallArgsAndDispatchNative));
@@ -505,16 +528,23 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
     }
-    GateRef result = Call(cs, glue, target, depend, args);
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
     return result;
 }
 
 GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
-                             const std::vector<GateRef> &args)
+                             const std::vector<GateRef> &args, GateRef hirGate)
 {
     std::vector<GateRef> inputs { depend, target, glue };
     inputs.insert(inputs.end(), args.begin(), args.end());
     auto numValuesIn = args.size() + 2; // 2: target & glue
+    if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate != Circuit::NullGate()) {
+        GateRef pcOffset = (acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE) ?
+            Int64(acc_.GetPcOffset(hirGate)) : Int64(0);
+        inputs.emplace_back(pcOffset);
+        numValuesIn += 1;
+    }
+
     const GateMetaData* meta = nullptr;
     if (cs->IsCommonStub()) {
         meta = circuit_->Call(numValuesIn);
@@ -554,7 +584,7 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
         MachineType::NOVALUE, { depend, value, ptr }, type.GetGateType());
     label->SetDepend(result);
     if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
-        CallStub(glue, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
+        CallStub(glue, base, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
     }
 }
 
@@ -736,15 +766,16 @@ GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
     return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
 }
 
-GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type)
+GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
+                                               ConstPoolType type)
 {
     GateRef constPool = GetConstPool(jsFunc);
     GateRef module = GetModuleFromFunction(jsFunc);
-    return GetObjectFromConstPool(glue, constPool, module, index, type);
+    return GetObjectFromConstPool(glue, hirGate, constPool, module, index, type);
 }
 
-GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, GateRef module, GateRef index,
-                                               ConstPoolType type)
+GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module,
+                                               GateRef index, ConstPoolType type)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -759,16 +790,16 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, 
     {
         if (type == ConstPoolType::STRING) {
             result = CallRuntime(glue, RTSTUB_ID(GetStringFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) });
+                { constPool, Int32ToTaggedInt(index) }, hirGate);
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
             result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index), module });
+                { constPool, Int32ToTaggedInt(index), module }, hirGate);
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index), module });
+                { constPool, Int32ToTaggedInt(index), module }, hirGate);
         } else {
             result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) });
+                { constPool, Int32ToTaggedInt(index) }, hirGate);
         }
         Jump(&exit);
     }
@@ -780,7 +811,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, 
             Bind(&isInt);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index) });
+                    { constPool, Int32ToTaggedInt(index) }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
@@ -789,7 +820,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, 
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index), module });
+                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
@@ -798,7 +829,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef constPool, 
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index), module });
+                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else {
@@ -838,6 +869,7 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
 
 GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
 {
+    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     Label subentry(env_);
     SubCfgEntry(&subentry);
     Label noRawHashcode(env_);
@@ -847,7 +879,8 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value)
     Branch(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
-        hashcode = GetInt32OfTInt(CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }));
+        hashcode = GetInt32OfTInt(
+            CallRuntime(glue, RTSTUB_ID(ComputeHashcode), Gate::InvalidGateRef, { value }, Circuit::NullGate()));
         Store(VariableType::INT32(), glue, value, IntPtr(EcmaString::HASHCODE_OFFSET), *hashcode);
         Jump(&exit);
     }

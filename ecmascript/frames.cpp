@@ -379,6 +379,15 @@ uint32_t FrameIterator::GetBytecodeOffset() const
             auto offset = frame->GetPc() - method->GetBytecodeArray();
             return static_cast<uint32_t>(offset);
         }
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+            auto frame = this->GetFrame<OptimizedJSFunctionFrame>();
+            kungfu::ConstInfo constInfo;
+            frame->CollectPcOffsetInfo(*this, constInfo);
+            if (!constInfo.empty()) {
+                return constInfo[0];
+            }
+            LOG_ECMA(FATAL) << "error: empty pcOffset in stackmap!";
+        }
         default: {
             return 0;
         }
@@ -437,7 +446,7 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
     }
 }
 
-void FrameIterator::CollectBCOffsetInfo(kungfu::ConstInfo &info) const
+void FrameIterator::CollectPcOffsetInfo(kungfu::ConstInfo &info) const
 {
     arkStackMapParser_->GetConstInfo(optimizedReturnAddr_, info, stackMapAddr_);
 }
@@ -463,9 +472,9 @@ ARK_INLINE uintptr_t* OptimizedJSFunctionFrame::ComputePrevFrameSp(const FrameIt
 }
 
 
-void OptimizedJSFunctionFrame::CollectBCOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const
+void OptimizedJSFunctionFrame::CollectPcOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const
 {
-    it.CollectBCOffsetInfo(info);
+    it.CollectPcOffsetInfo(info);
 }
 
 ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,

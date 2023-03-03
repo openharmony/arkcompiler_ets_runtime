@@ -4331,23 +4331,29 @@ GateRef StubBuilder::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRe
 GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
     GateRef module = Circuit::NullGate();
-    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::STRING);
+    GateRef hirGate = Circuit::NullGate();
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::STRING);
 }
 
 GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
     GateRef module = Circuit::NullGate();
-    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::METHOD);
+    GateRef hirGate = Circuit::NullGate();
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::METHOD);
 }
 
 GateRef StubBuilder::GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
 {
-    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::ARRAY_LITERAL);
+    GateRef hirGate = Circuit::NullGate();
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index,
+                                                      ConstPoolType::ARRAY_LITERAL);
 }
 
 GateRef StubBuilder::GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module)
 {
-    return env_->GetBuilder()->GetObjectFromConstPool(glue, constpool, module, index, ConstPoolType::OBJECT_LITERAL);
+    GateRef hirGate = Circuit::NullGate();
+    return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index,
+                                                      ConstPoolType::OBJECT_LITERAL);
 }
 
 GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)

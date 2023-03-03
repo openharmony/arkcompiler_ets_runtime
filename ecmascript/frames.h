@@ -412,7 +412,7 @@ public:
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor) const;
-    void CollectBCOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const;
+    void CollectPcOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const;
 
     inline JSTaggedValue GetEnv() const
     {
@@ -1409,7 +1409,7 @@ public:
         return thread_;
     }
     bool IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
-    void CollectBCOffsetInfo(kungfu::ConstInfo &info) const;
+    void CollectPcOffsetInfo(kungfu::ConstInfo &info) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;
@@ -1429,10 +1429,26 @@ public:
         return (type == FrameType::OPTIMIZED_FRAME);
     }
 
+    bool IsInterpretedFrame(FrameType type) const
+    {
+        return (type >= FrameType::INTERPRETER_FIRST) && (type <= FrameType::INTERPRETER_LAST);
+    }
+
+    bool IsJSFrame() const
+    {
+        FrameType type = GetFrameType();
+        return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type);
+    }
+
+    bool IsOptimizedJSFunctionFrame(FrameType type) const
+    {
+        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+    }
+
     bool IsOptimizedJSFunctionFrame() const
     {
         FrameType type = GetFrameType();
-        return (type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+        return IsOptimizedJSFunctionFrame(type);
     }
 
 private:

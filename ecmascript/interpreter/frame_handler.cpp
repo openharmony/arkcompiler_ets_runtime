@@ -127,7 +127,7 @@ JSTaggedValue FrameHandler::GetAcc() const
 
 uint32_t FrameHandler::GetBytecodeOffset() const
 {
-    ASSERT(IsJSFrame());
+    ASSERT(IsInterpretedFrame());
     Method *method = GetMethod();
     auto offset = GetPc() - method->GetBytecodeArray();
     return static_cast<uint32_t>(offset);
@@ -429,60 +429,6 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
             case FrameType::OPTIMIZED_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_BRIDGE_FRAME: {
-                break;
-            }
-            default: {
-                LOG_FULL(FATAL) << "frame type error!";
-                UNREACHABLE();
-            }
-        }
-    }
-}
-
-std::string FrameBcCollector::GetAotExceptionFuncName(JSTaggedType* argv) const
-{
-    JSTaggedValue func = JSTaggedValue(*(argv)); // 3: skip returnaddr and argc
-    Method *method = JSFunction::Cast(func.GetTaggedObject())->GetCallTarget();
-    return method->GetMethodName();
-}
-
-void FrameBcCollector::CollectBCOffsetInfo()
-{
-    thread_->GetEcmaVM()->ClearExceptionBCList();
-    JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
-    FrameIterator it(current, thread_);
-    it.Advance<GCVisitedFlag::VISITED>();
-
-    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
-        FrameType type = it.GetFrameType();
-        switch (type) {
-            case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
-                auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
-                kungfu::ConstInfo constInfo;
-                frame->CollectBCOffsetInfo(it, constInfo);
-                if (!constInfo.empty()) {
-                    auto name = GetAotExceptionFuncName(frame->GetArgv(it));
-                    thread_->GetEcmaVM()->StoreBCOffsetInfo(name, constInfo[0]);
-                }
-                break;
-            }
-            case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
-            case FrameType::BUILTIN_CALL_LEAVE_FRAME:
-            case FrameType::LEAVE_FRAME:
-            case FrameType::OPTIMIZED_ENTRY_FRAME:
-            case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
-            case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
-            case FrameType::ASM_INTERPRETER_FRAME:
-            case FrameType::INTERPRETER_CONSTRUCTOR_FRAME:
-            case FrameType::INTERPRETER_FRAME:
-            case FrameType::INTERPRETER_FAST_NEW_FRAME:
-            case FrameType::OPTIMIZED_FRAME:
-            case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
-            case FrameType::LEAVE_FRAME_WITH_ARGV:
-            case FrameType::BUILTIN_FRAME_WITH_ARGV:
-            case FrameType::BUILTIN_ENTRY_FRAME:
-            case FrameType::BUILTIN_FRAME:
-            case FrameType::INTERPRETER_ENTRY_FRAME: {
                 break;
             }
             default: {

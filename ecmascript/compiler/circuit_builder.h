@@ -293,12 +293,12 @@ public:
     GateRef CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args);
     GateRef CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args);
     GateRef CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv);
-    GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
-    GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args);
-    GateRef CallStub(GateRef glue, int index, const std::vector<GateRef> &args);
+    GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args, GateRef hirGate);
+    GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args, GateRef hirGate);
+    GateRef CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args);
     GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew = false);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
-                 const std::vector<GateRef> &args);
+                 const std::vector<GateRef> &args, GateRef hirGate);
 
     // memory
     inline GateRef Load(VariableType type, GateRef base, GateRef offset);
@@ -469,8 +469,8 @@ public:
         GateRef value, GateRef attrOffset, VariableType type);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetConstPool(GateRef jsFunc);
-    GateRef GetObjectFromConstPool(GateRef glue, GateRef jsFunc, GateRef index, ConstPoolType type);
-    GateRef GetObjectFromConstPool(GateRef glue, GateRef constPool, GateRef module, GateRef index,
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
+    GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
     void SetEnvironment(Environment *env)
     {

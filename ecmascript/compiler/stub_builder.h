@@ -503,6 +503,8 @@ public:
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv);
     GateRef GetGlobalObject(GateRef glue);
+    GateRef GetMethodFromFunction(GateRef function);
+    GateRef GetModuleFromFunction(GateRef function);
     GateRef GetEntryIndexOfGlobalDictionary(GateRef entry);
     GateRef GetBoxFromGlobalDictionary(GateRef object, GateRef entry);
     GateRef GetValueFromGlobalDictionary(GateRef object, GateRef entry);

@@ -37,7 +37,19 @@ public:
         NUM_OF_RTSTUBS_WITHOUT_GC
     };
 
+    enum AsmStubID {
+#define DEF_RUNTIME_STUB_ID(name) ASM_STUB_ID_##name,
+        RUNTIME_ASM_STUB_LIST(DEF_RUNTIME_STUB_ID)
+#undef DEF_RUNTIME_STUB_ID
+        NUM_OF_ASM_STUBS
+    };
+
     static void Initialize();
+
+    static bool IsAsmStub(uint32_t index)
+    {
+        return index < AsmStubID::NUM_OF_ASM_STUBS;
+    }
 
     static void GetASMCSigns(std::vector<const CallSignature*>& callSigns);
 
@@ -63,6 +75,10 @@ RUNTIME_STUB_LIST(DEF_STUB_NAME)
 private:
     static CallSignature callSigns_[NUM_OF_RTSTUBS_WITHOUT_GC];
 };
+static_assert(static_cast<int>(kungfu::RuntimeStubCSigns::ID_CallRuntime) ==
+              static_cast<int>(kungfu::RuntimeStubCSigns::ASM_STUB_ID_CallRuntime));
+static_assert(static_cast<int>(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry) ==
+              static_cast<int>(kungfu::RuntimeStubCSigns::ASM_STUB_ID_AsmInterpreterEntry));
 #define RTSTUB_ID(name) kungfu::RuntimeStubCSigns::ID_##name
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_RT_CALL_SIGNATURE_H

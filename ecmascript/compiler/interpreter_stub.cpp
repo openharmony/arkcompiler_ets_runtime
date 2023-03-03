@@ -399,16 +399,16 @@ DECLARE_ASM_HANDLER(HandleCreateemptyobject)
 DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateEmptyArray), {});
-    varAcc = res;
+    NewObjectStubBuilder newBuilder(this);
+    varAcc = newBuilder.CreateEmptyArray(glue);
     DISPATCH_WITH_ACC(CREATEEMPTYARRAY_IMM8);
 }
 
 DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateEmptyArray), {});
-    varAcc = res;
+    NewObjectStubBuilder newBuilder(this);
+    varAcc = newBuilder.CreateEmptyArray(glue);
     DISPATCH_WITH_ACC(CREATEEMPTYARRAY_IMM16);
 }
 
@@ -892,55 +892,25 @@ DECLARE_ASM_HANDLER(HandleInstanceofImm8V8)
 
 DECLARE_ASM_HANDLER(HandleStrictnoteqImm8V8)
 {
-    auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
 
-    Label strictEqual(env);
-    Label notStrictEqual(env);
-    Label dispatch(env);
-    Branch(FastStrictEqual(glue, left, acc), &strictEqual, &notStrictEqual);
-    Bind(&strictEqual);
-    {
-        varAcc = TaggedFalse();
-        Jump(&dispatch);
-    }
-
-    Bind(&notStrictEqual);
-    {
-        varAcc = TaggedTrue();
-        Jump(&dispatch);
-    }
-    Bind(&dispatch);
+    OperationsStubBuilder builder(this);
+    varAcc = builder.StrictNotEqual(glue, left, acc);
     DISPATCH_WITH_ACC(STRICTNOTEQ_IMM8_V8);
 }
 
 DECLARE_ASM_HANDLER(HandleStricteqImm8V8)
 {
-    auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
 
-    Label strictEqual(env);
-    Label notStrictEqual(env);
-    Label dispatch(env);
-    Branch(FastStrictEqual(glue, left, acc), &strictEqual, &notStrictEqual);
-    Bind(&strictEqual);
-    {
-        varAcc = TaggedTrue();
-        Jump(&dispatch);
-    }
-
-    Bind(&notStrictEqual);
-    {
-        varAcc = TaggedFalse();
-        Jump(&dispatch);
-    }
-    Bind(&dispatch);
+    OperationsStubBuilder builder(this);
+    varAcc = builder.StrictEqual(glue, left, acc);
     DISPATCH_WITH_ACC(STRICTEQ_IMM8_V8);
 }
 
@@ -3780,9 +3750,9 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Id16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef result = GetArrayLiteralFromConstPool(glue, constpool, imm, module);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
+
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM8_ID16));
 }
 
@@ -3790,9 +3760,9 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm16Id16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_2(pc));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef result = GetArrayLiteralFromConstPool(glue, constpool, imm, module);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
+
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM16_ID16));
 }
 
@@ -3800,9 +3770,9 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef result = GetArrayLiteralFromConstPool(glue, constpool, imm, module);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateArrayWithBuffer), { result });
+
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16));
 }
 

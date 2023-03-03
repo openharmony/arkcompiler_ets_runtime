@@ -36,6 +36,8 @@ public:
     // binary op
     GateRef Equal(GateRef glue, GateRef left, GateRef right);
     GateRef NotEqual(GateRef glue, GateRef left, GateRef right);
+    GateRef StrictEqual(GateRef glue, GateRef left, GateRef right);
+    GateRef StrictNotEqual(GateRef glue, GateRef left, GateRef right);
     GateRef Less(GateRef glue, GateRef left, GateRef right);
     GateRef LessEq(GateRef glue, GateRef left, GateRef right);
     GateRef Greater(GateRef glue, GateRef left, GateRef right);

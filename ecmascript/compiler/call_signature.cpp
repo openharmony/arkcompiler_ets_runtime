@@ -84,6 +84,16 @@ DEF_CALL_SIGNATURE(NotEqual)
     BINARY_CALL_SIGNATURE(NotEqual)
 }
 
+DEF_CALL_SIGNATURE(StrictEqual)
+{
+    BINARY_CALL_SIGNATURE(StrictEqual)
+}
+
+DEF_CALL_SIGNATURE(StrictNotEqual)
+{
+    BINARY_CALL_SIGNATURE(StrictNotEqual)
+}
+
 DEF_CALL_SIGNATURE(Less)
 {
     BINARY_CALL_SIGNATURE(Less)
@@ -627,6 +637,51 @@ DEF_CALL_SIGNATURE(ConstructorCheck)
         VariableType::JS_ANY(),          // ctor
         VariableType::JS_ANY(),          // result
         VariableType::JS_ANY(),          // thisObj
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(CreateEmptyArray)
+{
+    // 1 : 1 input parameters
+    CallSignature signature("CreateEmptyArray", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(CreateArrayWithBuffer)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("CreateArrayWithBuffer", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::INT32(),           // index
+        VariableType::JS_ANY(),          // jsFunc
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(NewJSObject)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("NewJSObject", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // hclass
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

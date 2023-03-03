@@ -84,6 +84,12 @@ public:
         return IsJSFrame(type);
     }
 
+    bool IsOptimizedJSFunctionFrame() const
+    {
+        FrameType type = GetFrameType();
+        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+    }
+
     bool IsJSFrame(FrameType type) const
     {
         return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type);
@@ -252,19 +258,6 @@ public:
 private:
     JSThread *thread_ {nullptr};
     const JSTaggedType *oldSp_ {nullptr};
-};
-
-class FrameBcCollector {
-public:
-    explicit FrameBcCollector(const JSThread *thread) : thread_(thread)
-    {
-    }
-    ~FrameBcCollector() = default;
-    // for collecting bc offset in aot
-    void CollectBCOffsetInfo();
-private:
-    std::string GetAotExceptionFuncName(JSTaggedType* fp) const;
-    const JSThread *thread_ {nullptr};
 };
 }; // namespace ecmascript
 }  // namespace panda

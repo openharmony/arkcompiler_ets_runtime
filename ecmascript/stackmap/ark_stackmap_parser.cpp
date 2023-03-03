@@ -75,7 +75,7 @@ void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr, ConstInfo &info, ui
     }
 
     ARKDeopt target;
-    OffsetType id = static_cast<OffsetType>(SpecVregIndex::BC_OFFSET_INDEX);
+    OffsetType id = static_cast<OffsetType>(SpecVregIndex::PC_OFFSET_INDEX);
     target.Id = id;
     auto it = std::lower_bound(deopts.begin(), deopts.end(), target,
         [](const ARKDeopt& a, const ARKDeopt& b) {

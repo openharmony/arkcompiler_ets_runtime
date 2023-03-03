@@ -92,7 +92,7 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
                     LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
             }
-            result = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value});
+            result = builder_.CallNGCRuntime(glue, index, Gate::InvalidGateRef, {value}, gate);
             builder_.Jump(&exit);
         }
         builder_.Bind(&IsNan);
@@ -191,7 +191,7 @@ GateRef BuiltinLowering::TypedSqrt(GateRef gate)
                 {
                     GateRef glue = acc_.GetGlueFromArgList();
                     result = builder_.CallNGCRuntime(
-                        glue, RTSTUB_ID(FloatSqrt), Gate::InvalidGateRef, {*value});
+                        glue, RTSTUB_ID(FloatSqrt), Gate::InvalidGateRef, {*value}, gate);
                     builder_.Jump(&exit);
                 }
                 // If value is NaN, the result is NaN

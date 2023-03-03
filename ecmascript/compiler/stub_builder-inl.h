@@ -194,7 +194,7 @@ inline void StubBuilder::Bind(Label *label)
 inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
     SavePcIfNeeded(glue);
-    GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args);
+    GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args, Circuit::NullGate());
     return result;
 }
 
@@ -207,14 +207,14 @@ inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, GateRef argc, G
 
 inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
-    GateRef result = env_->GetBuilder()->CallNGCRuntime(glue, index, Gate::InvalidGateRef, args);
+    GateRef result = env_->GetBuilder()->CallNGCRuntime(glue, index, Gate::InvalidGateRef, args, Circuit::NullGate());
     return result;
 }
 
 inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
     SavePcIfNeeded(glue);
-    GateRef result = env_->GetBuilder()->CallStub(glue, index, args);
+    GateRef result = env_->GetBuilder()->CallStub(glue, Circuit::NullGate(), index, args);
     return result;
 }
 
@@ -2019,6 +2019,16 @@ inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));
     return Load(VariableType::JS_ANY(), glue, offset);
+}
+
+inline GateRef StubBuilder::GetMethodFromFunction(GateRef function)
+{
+    return env_->GetBuilder()->GetMethodFromFunction(function);
+}
+
+inline GateRef StubBuilder::GetModuleFromFunction(GateRef function)
+{
+    return env_->GetBuilder()->GetModuleFromFunction(function);
 }
 
 inline GateRef StubBuilder::GetEntryIndexOfGlobalDictionary(GateRef entry)

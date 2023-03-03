@@ -121,10 +121,10 @@ public:
     }
 
     const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode,
-        uint32_t bcIndex, bool writable)
+        uint32_t pcOffset, bool writable)
     {
         GateFlags flags = writable ? GateFlags::NONE_FLAG : GateFlags::NO_WRITE;
-        return metaBuilder_.JSBytecode(valuesIn, opcode, bcIndex, flags);
+        return metaBuilder_.JSBytecode(valuesIn, opcode, pcOffset, flags);
     }
 
     const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp)
@@ -149,6 +149,11 @@ public:
     {
         ASSERT(gateCount_ != 0);
         return static_cast<size_t>(gateCount_ - 1);
+    }
+
+    bool IsOptimizedJSFunctionFrame() const
+    {
+        return frameType_ == panda::ecmascript::FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
     }
 
 private:
