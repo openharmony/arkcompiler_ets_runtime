@@ -889,6 +889,7 @@ void Heap::TriggerIdleCollection(int idleMicroSec)
             idleTime_ = curTime;
             if (idleData_->CheckIsRest() && heapObjectSize > triggerRestIdleSize_) {
                 CollectGarbage(TriggerGCType::FULL_GC);
+                DisableNotifyIdle();
                 couldIdleGC_ = false;
                 triggerRestIdleSize_ = GetHeapObjectSize() + REST_HEAP_GROWTH_LIMIT;
                 return;

@@ -40,6 +40,8 @@ class PartialGC;
 class STWYoungGC;
 class JSNativePointer;
 
+using IdleNotifyStatusCallback = std::function<void(bool)>;
+
 enum class MarkType : uint8_t {
     MARK_YOUNG,
     MARK_FULL
@@ -397,6 +399,28 @@ public:
     }
 
     /*
+     * Receive callback function to control idletime.
+     */
+    void InitializeIdleStatusControl(std::function<void(bool)> callback)
+    {
+        notifyIdleStatusCallback = callback;
+    }
+
+    void DisableNotifyIdle()
+    {
+        if (notifyIdleStatusCallback != nullptr) {
+            notifyIdleStatusCallback(true);
+        }
+    }
+
+    void EnableNotifyIdle()
+    {
+        if (notifyIdleStatusCallback != nullptr) {
+            notifyIdleStatusCallback(false);
+        }
+    }
+
+    /*
      * Heap tracking will be used by tools like heap profiler etc.
      */
 
@@ -666,6 +690,7 @@ private:
     HeapTracker *tracker_ {nullptr};
 
     IdleData *idleData_;
+    IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
 
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool isVerifying_ {false};

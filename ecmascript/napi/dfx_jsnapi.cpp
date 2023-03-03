@@ -230,6 +230,11 @@ void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->ChangeGCParams(inBackground);
 }
 
+void DFXJSNApi::NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->InitializeIdleStatusControl(callback);
+}
+
 void DFXJSNApi::NotifyIdleTime(const EcmaVM *vm, int idleMicroSec)
 {
     const_cast<ecmascript::Heap *>(vm->GetHeap())->TriggerIdleCollection(idleMicroSec);
