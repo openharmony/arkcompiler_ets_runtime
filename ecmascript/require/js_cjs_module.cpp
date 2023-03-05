@@ -17,7 +17,6 @@
 
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/base/path_helper.h"
-#include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/platform/file.h"
@@ -26,9 +25,9 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/module/module_data_extractor.h"
 
 namespace panda::ecmascript {
-using BuiltinsJson = builtins::BuiltinsJson;
 
 using PathHelper = base::PathHelper;
 void CjsModule::InitializeModule(JSThread *thread, JSHandle<CjsModule> &module,
@@ -134,7 +133,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
 
     if (jsPandaFile->IsJson(thread, requestEntryPoint)) {
         JSHandle<JSTaggedValue> result = JSHandle<JSTaggedValue>(thread,
-            ModuleManager::JsonParse(thread, jsPandaFile, requestEntryPoint));
+            ModuleDataExtractor::JsonParse(thread, jsPandaFile, requestEntryPoint));
         // Set module.exports ---> exports
         JSHandle<JSTaggedValue> exportsKey = thread->GlobalConstants()->GetHandledCjsExportsString();
         SlowRuntimeStub::StObjByName(thread, module.GetTaggedValue(), exportsKey.GetTaggedValue(),

@@ -13,19 +13,21 @@
  * limitations under the License.
  */
 
-#include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/accessor/module_data_accessor.h"
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/module_data_extractor.h"
 
 #include "libpandafile/literal_data_accessor-inl.h"
 
 namespace panda::ecmascript {
 using StringData = panda_file::StringData;
+using BuiltinsJson = builtins::BuiltinsJson;
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                          const CString &descriptor, const CString &moduleFilename)
@@ -109,7 +111,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
-    JSTaggedValue jsonData = ModuleManager::JsonParse(thread, jsPandaFile, recordName);
+    JSTaggedValue jsonData = JsonParse(thread, jsPandaFile, recordName);
     moduleRecord->StoreModuleValue(thread, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
 
     JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
@@ -140,5 +142,17 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
     moduleRecord->StoreModuleValue(thread, 0, thread->GlobalConstants()->GetHandledUndefined());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
+}
+
+JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint)
+{
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        EcmaInterpreter::NewRuntimeCallInfo(
+            thread, undefined, undefined, undefined, 1); // 1 : argument numbers
+    CString value = jsPandaFile->GetJsonStringId(thread, entryPoint);
+    JSHandle<JSTaggedValue> arg0(thread->GetEcmaVM()->GetFactory()->NewFromASCII(value));
+    info->SetCallArg(arg0.GetTaggedValue());
+    return BuiltinsJson::Parse(info);
 }
 }  // namespace panda::ecmascript

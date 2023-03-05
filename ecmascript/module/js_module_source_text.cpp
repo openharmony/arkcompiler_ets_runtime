@@ -20,10 +20,10 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_namespace.h"
+#include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_dictionary.h"
 

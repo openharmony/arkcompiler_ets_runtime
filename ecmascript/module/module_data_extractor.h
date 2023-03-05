@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_JSPANDAFILE_MODULE_DATA_EXTRACTOR_H
-#define ECMASCRIPT_JSPANDAFILE_MODULE_DATA_EXTRACTOR_H
+#ifndef ECMASCRIPT_MODULE_MODULE_DATA_EXTRACTOR_H
+#define ECMASCRIPT_MODULE_MODULE_DATA_EXTRACTOR_H
 
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/module/js_module_source_text.h"
@@ -41,6 +41,7 @@ public:
         const CString &moduleFilename, const CString &recordName = nullptr);
     static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread,
         const CString &moduleRequestName, ModuleTypes moduleType);
+    static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_JSPANDAFILE_MODULE_DATA_EXTRACTOR_H
+#endif  // ECMASCRIPT_MODULE_MODULE_DATA_EXTRACTOR_H

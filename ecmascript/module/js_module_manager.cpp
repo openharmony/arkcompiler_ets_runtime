@@ -16,17 +16,16 @@
 
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/base/path_helper.h"
-#include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/require/js_cjs_module.h"
 #ifdef PANDA_TARGET_WINDOWS
@@ -34,7 +33,6 @@
 #endif
 
 namespace panda::ecmascript {
-using BuiltinsJson = builtins::BuiltinsJson;
 using PathHelper = base::PathHelper;
 
 namespace {
@@ -572,18 +570,6 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
         }
     }
     return index;
-}
-
-JSTaggedValue ModuleManager::JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint)
-{
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(
-            thread, undefined, undefined, undefined, 1); // 1 : argument numbers
-    CString value = jsPandaFile->GetJsonStringId(thread, entryPoint);
-    JSHandle<JSTaggedValue> arg0(thread->GetEcmaVM()->GetFactory()->NewFromASCII(value));
-    info->SetCallArg(arg0.GetTaggedValue());
-    return BuiltinsJson::Parse(info);
 }
 
 std::pair<bool, ModuleTypes> ModuleManager::CheckNativeModule(const CString &moduleRequestName)
