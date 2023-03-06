@@ -74,7 +74,9 @@ public:
             }
             return table;
         }
-        int newSize = ComputeHashTableSize(table->Size() + numOfAddedElements);
+        int newSize = Derived::ComputeCompactSize(table, ComputeHashTableSize(table->Size() + numOfAddedElements),
+            table->Size(), numOfAddedElements);
+        newSize = std::max(newSize, MIN_SHRINK_SIZE);
         int length = Derived::GetEntryIndex(newSize);
         JSHandle<Derived> newTable(thread->GetEcmaVM()->GetFactory()->NewDictionaryArray(length));
         newTable->SetHashTableSize(thread, newSize);
@@ -486,6 +488,12 @@ public:
             return attrA.GetDictionaryOrder() < attrB.GetDictionaryOrder();
         });
         return result;
+    }
+
+    static int ComputeCompactSize([[maybe_unused]] const JSHandle<Derived> &table, int computeHashTableSize,
+        [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
+    {
+        return computeHashTableSize;
     }
 
     static const int NEXT_ENUMERATION_INDEX = HashTableT::SIZE_INDEX + 1;

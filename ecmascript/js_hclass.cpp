@@ -71,7 +71,7 @@ int TransitionsDictionary::FindEntry(const JSTaggedValue &key, const JSTaggedVal
             return -1;
         }
 
-        if (TransitionsDictionary::IsMatch(key, metaData, element, GetAttributes(entry))) {
+        if (TransitionsDictionary::IsMatch(key, metaData, element, GetAttributes(entry).GetWeakRawValue())) {
             return static_cast<int>(entry);
         }
     }
@@ -95,27 +95,29 @@ JSHandle<TransitionsDictionary> TransitionsDictionary::Remove(const JSThread *th
 void TransitionsDictionary::Rehash(const JSThread *thread, TransitionsDictionary *newTable)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    if ((newTable == nullptr) || (newTable->Size() < EntriesCount())) {
+    if (newTable == nullptr) {
         return;
     }
     int size = this->Size();
     // Rehash elements to new table
+    int entryCount = 0;
     for (int i = 0; i < size; i++) {
         int fromIndex = GetEntryIndex(i);
         JSTaggedValue k = this->GetKey(i);
-        if (!IsKey(k)) {
-            continue;
-        }
-        int hash = TransitionsDictionary::Hash(k, this->GetAttributes(i));
-        int insertionIndex = GetEntryIndex(newTable->FindInsertIndex(hash));
-        JSTaggedValue tv = Get(fromIndex);
-        newTable->Set(thread, insertionIndex, tv);
-        for (int j = 1; j < TransitionsDictionary::ENTRY_SIZE; j++) {
-            tv = Get(fromIndex + j);
-            newTable->Set(thread, insertionIndex + j, tv);
+        JSTaggedValue v = this->GetValue(i);
+        if (IsKey(k) && TransitionsDictionary::CheckWeakExist(v)) {
+            int hash = TransitionsDictionary::Hash(k, this->GetAttributes(i));
+            int insertionIndex = GetEntryIndex(newTable->FindInsertIndex(hash));
+            JSTaggedValue tv = Get(fromIndex);
+            newTable->Set(thread, insertionIndex, tv);
+            for (int j = 1; j < TransitionsDictionary::ENTRY_SIZE; j++) {
+                tv = Get(fromIndex + j);
+                newTable->Set(thread, insertionIndex + j, tv);
+            }
+            entryCount++;
         }
     }
-    newTable->SetEntriesCount(thread, EntriesCount());
+    newTable->SetEntriesCount(thread, entryCount);
     newTable->SetHoleEntriesCount(thread, 0);
 }
 
