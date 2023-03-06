@@ -311,6 +311,29 @@ bool DebuggerApi::SetGlobalValue(const EcmaVM *vm, Local<StringRef> name, Local<
     return false;
 }
 
+JSTaggedValue DebuggerApi::GetCurrentModule(const EcmaVM *ecmaVm)
+{
+    JSThread *thread = ecmaVm->GetJSThread();
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevInterpretedFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        // Skip builtins method
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        JSTaggedValue func = frameHandler.GetFunction();
+        JSTaggedValue module = JSFunction::Cast(func.GetTaggedObject())->GetModule();
+        if (module.IsUndefined()) {
+            continue;
+        }
+        return module;
+    }
+    UNREACHABLE();
+}
+
 void DebuggerApi::GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleObj, JSThread *thread)
 {
     JSTaggedValue currentModule = vm->GetModuleManager()->GetCurrentModule();
@@ -323,38 +346,36 @@ void DebuggerApi::GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleO
         return;
     }
 
-    constexpr uint32_t MAX_ARRAY_LENGTH = 4; // two pairs of key and value
-    if (dictionary.IsTaggedArray() &&
-        TaggedArray::Cast(dictionary.GetTaggedObject())->GetLength() <= MAX_ARRAY_LENGTH) {
-        TaggedArray *dict = TaggedArray::Cast(dictionary.GetTaggedObject());
-        uint32_t length = dict->GetLength();
-        for (uint32_t idx = 0; idx < length; idx += 2) { // 2 means skip value
-            JSTaggedValue key = dict->Get(idx);
-            if (key.IsString()) {
-                Local<JSValueRef> name = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, key));
-                JSTaggedValue moduleValue = dict->Get(idx + 1);
-                Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(
-                    JSHandle<JSTaggedValue>(thread, moduleValue));
-                PropertyAttribute descriptor(value, true, true, true);
-                moduleObj->DefineProperty(vm, name, descriptor);
-            }
+    JSMutableHandle<JSTaggedValue> name(thread, thread->GlobalConstants()->GetUndefined());
+    JSMutableHandle<JSTaggedValue> value(thread, thread->GlobalConstants()->GetUndefined());
+    if (dictionary.IsTaggedArray()) {
+        JSTaggedValue localExportEntries = SourceTextModule::Cast(
+            currentModule.GetTaggedObject())->GetLocalExportEntries();
+        ASSERT(localExportEntries.IsTaggedArray());
+        JSHandle<TaggedArray> localExportArray = JSHandle<TaggedArray>(
+            thread, TaggedArray::Cast(localExportEntries.GetTaggedObject()));
+        uint32_t exportEntriesLen = localExportArray->GetLength();
+        JSHandle<TaggedArray> dict = JSHandle<TaggedArray>(thread, TaggedArray::Cast(dictionary.GetTaggedObject()));
+        uint32_t valueLen = dict->GetLength();
+        if (exportEntriesLen != valueLen) {
+            LOG_FULL(FATAL) << "Key does not match value";
         }
-    } else {
-        NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
-        ObjectFactory *factory = vm->GetFactory();
-        JSHandle<TaggedArray> moduleArray = factory->NewTaggedArray(dict->GetLength());
-        TaggedArray *keyArray = TaggedArray::Cast(moduleArray.GetTaggedValue().GetTaggedObject());
-        dict->GetAllKeys(thread, 0, keyArray);
-        uint32_t length = keyArray->GetLength();
-        for (uint32_t idx = 0; idx < length; idx++) {
-            JSTaggedValue key = keyArray->Get(idx);
+
+        JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
+        for (uint32_t idx = 0; idx < exportEntriesLen; idx++) {
+            ee.Update(localExportArray->Get(idx));
+            JSTaggedValue key = ee->GetLocalName();
+            name.Update(key);
+            JSTaggedValue moduleValue = dict->Get(idx);
+            if (moduleValue.IsHole()) {
+                moduleValue = JSTaggedValue::Undefined();
+            }
+            value.Update(moduleValue);
             if (key.IsString()) {
-                Local<JSValueRef> name = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, key));
-                JSTaggedValue moduleValue = vm->GetModuleManager()->GetModuleValueInner(key);
-                Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(
-                    JSHandle<JSTaggedValue>(thread, moduleValue));
-                PropertyAttribute descriptor(value, true, true, true);
-                moduleObj->DefineProperty(vm, name, descriptor);
+                Local<JSValueRef> variableName = JSNApiHelper::ToLocal<JSValueRef>(name);
+                Local<JSValueRef> variableValue = JSNApiHelper::ToLocal<JSValueRef>(value);
+                PropertyAttribute descriptor(variableValue, true, true, true);
+                moduleObj->DefineProperty(vm, variableName, descriptor);
             }
         }
     }
