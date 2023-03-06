@@ -240,7 +240,6 @@ public:
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
     GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
     GateRef GetSuperConstructor(GateRef ctor);
-    GateRef GetLexicalEnv(GateRef depend);
     GateRef Arguments(size_t index);
     GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,

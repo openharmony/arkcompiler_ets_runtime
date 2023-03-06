@@ -284,11 +284,6 @@ GateRef CircuitBuilder::GetSuperConstructor(GateRef ctor)
     return ret;
 }
 
-GateRef CircuitBuilder::GetLexicalEnv(GateRef depend)
-{
-    return GetCircuit()->NewGate(circuit_->GetEnv(), MachineType::I64, {depend}, GateType::TaggedValue());
-}
-
 GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                             std::vector<GateRef> inList, GateType gateType)
 {

@@ -2221,7 +2221,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewLexicalEnvWithName(JSThread *thread, ui
     newEnv->SetScopeInfo(thread, scopeInfo);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue taggedEnv = newEnv.GetTaggedValue();
-    RuntimeOptSetLexEnv(thread, taggedEnv);
     return taggedEnv;
 }
 
@@ -2474,32 +2473,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptNewObjRange(JSThread *thread, uintptr_t ar
                                     JSTaggedValue::Exception());
     }
     return object;
-}
-
-JSTaggedValue RuntimeStubs::RuntimeOptGetLexEnv(JSThread *thread)
-{
-    [[maybe_unused]] DisallowGarbageCollection noGc;
-    auto optimizedJSFunctionFrame = GetOptimizedJSFunctionFrame(thread);
-    return optimizedJSFunctionFrame->GetEnv();
-}
-
-void RuntimeStubs::RuntimeOptSetLexEnv(JSThread *thread, JSTaggedValue lexEnv)
-{
-    auto optimizedJSFunctionFrame = GetOptimizedJSFunctionFrame(thread);
-    optimizedJSFunctionFrame->SetEnv(lexEnv);
-}
-
-JSTaggedValue RuntimeStubs::RuntimeOptGetLexEnvNoGC(JSThread *thread)
-{
-    [[maybe_unused]] DisallowGarbageCollection noGc;
-    auto optimizedJSFunctionFrame = GetOptimizedJSFunctionFrameNoGC(thread);
-    return optimizedJSFunctionFrame->GetEnv();
-}
-
-void RuntimeStubs::RuntimeOptSetLexEnvNoGC(JSThread *thread, JSTaggedValue lexEnv)
-{
-    auto optimizedJSFunctionFrame = GetOptimizedJSFunctionFrameNoGC(thread);
-    optimizedJSFunctionFrame->SetEnv(lexEnv);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeOptGenerateScopeInfo(JSThread *thread, uint16_t scopeId, JSTaggedValue func)

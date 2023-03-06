@@ -359,14 +359,11 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       call-target        |               |
-//               |--------------------------|               |
-//               |       lexEnv             |               v
+//               |       call-target        |               v
 //               +--------------------------+ ---------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
-                                                             JSTaggedValue,
                                                              JSTaggedValue,
                                                              base::AlignedPointer,
                                                              base::AlignedPointer,
@@ -374,8 +371,7 @@ struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::Tagg
 public:
     static constexpr size_t ENV_SLOT_DIFF = 2;
     enum class Index : size_t {
-        EnvIndex = 0,
-        JSFuncIndex,
+        JSFuncIndex = 0,
         TypeIndex,
         PrevFpIndex,
         ReturnAddrIndex,
@@ -414,16 +410,6 @@ public:
         const RootBaseAndDerivedVisitor &derivedVisitor) const;
     void CollectPcOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const;
 
-    inline JSTaggedValue GetEnv() const
-    {
-        return env;
-    }
-
-    inline void SetEnv(JSTaggedValue lexEnv)
-    {
-        env = lexEnv;
-    }
-
     inline JSTaggedValue GetFunction() const
     {
         return jsFunc;
@@ -443,12 +429,6 @@ public:
     static size_t GetPrevOffset()
     {
         return MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp);
-    }
-
-    static size_t ComputeReservedEnvOffset(size_t slotSize)
-    {
-        size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::EnvIndex);
-        return slotSize * slotOffset;
     }
 
     static size_t ComputeReservedJSFuncOffset(size_t slotSize)
@@ -472,7 +452,6 @@ private:
     }
 
     // dynamic callee saveregisters for x86-64
-    alignas(EAS) JSTaggedValue env {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue jsFunc {JSTaggedValue::Undefined()};
     [[maybe_unused]] alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};

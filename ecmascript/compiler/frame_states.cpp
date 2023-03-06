@@ -19,8 +19,8 @@ namespace panda::ecmascript::kungfu {
 FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
     Circuit *circuit, const MethodLiteral *literal)
     : builder_(builder),
-      numVregs_(literal->GetNumberVRegs() + 1), // 1: +acc
-      accumulatorIndex_(literal->GetNumberVRegs()),
+      numVregs_(literal->GetNumberVRegs() + 2), // 2: env and acc
+      accumulatorIndex_(literal->GetNumberVRegs() + 1), // 1: acc
       circuit_(circuit),
       gateAcc_(circuit),
       argAcc_(circuit)

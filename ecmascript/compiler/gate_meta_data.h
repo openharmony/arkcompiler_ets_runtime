@@ -199,7 +199,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                        \
     V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                     \
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                               \
-    V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 1, 0)                                   \
     V(DefaultCase, DEFAULT_CASE, GateFlags::CONTROL, 1, 0, 0)                           \
     V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                 \
     V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)     \

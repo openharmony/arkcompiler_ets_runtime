@@ -31,6 +31,7 @@ enum class SpecVregIndex: int {
     PC_INDEX = -1,
     ACC_INDEX = -2,
     PC_OFFSET_INDEX = -3,
+    ENV_INDEX = -4,
 };
 
 struct Context {
