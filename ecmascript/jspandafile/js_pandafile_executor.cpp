@@ -155,7 +155,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
             PathHelper::CroppingRecord(entry);
         }
     }
-    ASSERT(jsPandaFile->IsModule(entry.c_str()));
     return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);
 }
 
