@@ -273,12 +273,12 @@ void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
     thread->SetException(JSNApiHelper::ToJSTaggedValue(*error));
 }
 
-#if !defined(PANDA_TARGET_IOS)
 bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unused]] EcmaVM *vm,
                            [[maybe_unused]] bool isDebugMode, [[maybe_unused]] int32_t instanceId,
                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+#if !defined(PANDA_TARGET_IOS)
     if (vm == nullptr) {
         return false;
     }
@@ -312,6 +312,13 @@ bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unu
     }
     return ret;
 #else
+    bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(DEBUGGER_NAME, vm, isDebugMode, instanceId, debuggerPostTask);
+    if (ret) {
+        vm->GetJsDebuggerManager()->SetDebugMode(isDebugMode);
+    }
+    return ret;
+#endif // PANDA_TARGET_IOS
+#else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
     return false;
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
@@ -320,6 +327,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unu
 bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+#if !defined(PANDA_TARGET_IOS)
     if (vm == nullptr) {
         return false;
     }
@@ -339,30 +347,6 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
 #else
-    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
-    return false;
-#endif // ECMASCRIPT_SUPPORT_DEBUGGER
-}
-#else
-bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] bool isDebugMode,
-                           [[maybe_unused]] int32_t instanceId,
-                           [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
-{
-#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
-    bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(DEBUGGER_NAME, vm, isDebugMode, instanceId, debuggerPostTask);
-    if (ret) {
-        vm->GetJsDebuggerManager()->SetDebugMode(isDebugMode);
-    }
-    return ret;
-#else
-    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
-    return false;
-#endif // ECMASCRIPT_SUPPORT_DEBUGGER
-}
-
-bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
-{
-#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     if (vm == nullptr) {
         return false;
     }
@@ -370,12 +354,12 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
     OHOS::ArkCompiler::Toolchain::StopDebug(DEBUGGER_NAME);
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     return true;
+#endif // PANDA_TARGET_IOS
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
     return false;
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
-#endif // PANDA_TARGET_IOS
 
 bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
 {
