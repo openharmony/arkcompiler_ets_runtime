@@ -42,6 +42,8 @@ void TypeInfer::TraverseCircuit()
         PrintAllByteCodesTypes();
     }
 
+    VerifyTypePercent();
+
     if (tsManager_->AssertTypes()) {
         Verify();
     }
@@ -113,7 +115,7 @@ void TypeInfer::UpdateQueueForLoopPhi()
 bool TypeInfer::UpdateType(GateRef gate, const GateType type, bool savePreType)
 {
     GateType preType = gateAccessor_.GetGateType(gate);
-
+    needInferGates_.insert(gate);
     // When the type after type inference is any and you want to save previous type, it wolud not update.
     if (savePreType && type.IsAnyType()) {
         return false;
@@ -159,7 +161,8 @@ bool TypeInfer::ShouldInfer(const GateRef gate) const
      * panda::ecmascript::kungfu::LexEnv which are created during the building of IR. So in the type inference,
      * newlexenv is ignored.
      */
-    if (opcode != OpCode::CONSTANT && opcode != OpCode::RETURN && opcode != OpCode::JS_BYTECODE) {
+    if (opcode != OpCode::CONSTANT && opcode != OpCode::CONST_DATA &&
+        opcode != OpCode::RETURN && opcode != OpCode::JS_BYTECODE) {
         return false;
     }
     if (jsgateToBytecode_.find(gate) == jsgateToBytecode_.end()) {
@@ -587,7 +590,7 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
         auto type = GetPropType(inValueType, key);
         return UpdateType(gate, type);
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
@@ -627,7 +630,7 @@ bool TypeInfer::InferLdGlobalVar(GateRef gate)
     if (iter != stringIdToGateType_.end()) {
         return UpdateType(gate, iter->second);
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferReturnUndefined(GateRef gate)
@@ -649,7 +652,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 3);
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 2));  // 2: the third parameter is receiver
     if (objType.IsAnyType()) {
-        return false;
+        return UpdateType(gate, GateType::AnyType());
     }
 
     if (ShouldConvertToBuiltinArray(objType)) {
@@ -669,7 +672,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
         uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 1)).GetId();
         return GetObjPropWithName(gate, objType, index);
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferNewObject(GateRef gate)
@@ -683,7 +686,7 @@ bool TypeInfer::InferNewObject(GateRef gate)
             return UpdateType(gate, classInstanceType);
         }
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferLdStr(GateRef gate)
@@ -755,7 +758,7 @@ bool TypeInfer::InferCallFunction(GateRef gate)
         // For simplicity, calling and constructing are considered equivalent.
         return UpdateType(gate, tsManager_->CreateClassInstanceType(funcType));
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferLdObjByValue(GateRef gate)
@@ -780,7 +783,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
             return GetObjPropWithName(gate, objType, index);
         }
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferGetNextPropName(GateRef gate)
@@ -805,7 +808,7 @@ bool TypeInfer::InferSuperCall(GateRef gate)
         auto classInstanceType = tsManager_->CreateClassInstanceType(classType);
         return UpdateType(gate, classInstanceType);
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferSuperPropertyByName(GateRef gate)
@@ -827,7 +830,7 @@ bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
 
         return GetSuperProp(gate, index, false);
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
@@ -852,7 +855,7 @@ bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
         }
         return UpdateType(gate, type);
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferGetIterator(GateRef gate)
@@ -866,7 +869,7 @@ bool TypeInfer::InferGetIterator(GateRef gate)
     } else if (inValueType.IsStringType()) {
         elementGt.SetType(GateType::StringType().Value());
     } else {
-        return false;
+        return UpdateType(gate, GateType::AnyType());
     }
     GlobalTSTypeRef iteratorInstanceType = tsManager_->GetOrCreateTSIteratorInstanceType(
         TSRuntimeType::ITERATOR, elementGt);
@@ -883,7 +886,7 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
     if (iter != stringIdToGateType_.end()) {
         return UpdateType(gate, iter->second);
     }
-    return false;
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferLdLexVarDyn(GateRef gate)
@@ -1167,5 +1170,32 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
 
     log += "\n[compiler] ";
     return log;
+}
+
+void TypeInfer::VerifyTypePercent()
+{
+    shouldInferNum_ = needInferGates_.size();
+    for (auto gate : needInferGates_) {
+        if (!gateAccessor_.GetGateType(gate).IsAnyType()) {
+            normalInferNum_++;
+        }
+    }
+    double rate = (double)normalInferNum_ / (double)shouldInferNum_;
+    auto typeThreshold = tsManager_->GetTypeThreshold();
+    if (rate <= typeThreshold) {
+        methodInfo_->SetTypeInferAbort(true);
+    }
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "[TypeCoverage] print method type coverage: \n"
+                           << "[compiler] [TypeCoverage] [ShouldInferedGate]: " << shouldInferNum_
+                           << " || [NormalInferedGate]: " << normalInferNum_ << "\n"
+                           << "[compiler] [TypeCoverage] [TypeCoverage Percentage]: "
+                           << std::fixed << std::setprecision(PERCENT_LENS) << rate * HUNDRED_TIME << "%";
+        if (rate <= typeThreshold) {
+            LOG_COMPILER(INFO) << "[TypeCoverage] TypeCoverage Percentage is lower than threshold: ["
+                               << typeThreshold << "]";
+        }
+    }
 }
 }  // namespace panda::ecmascript

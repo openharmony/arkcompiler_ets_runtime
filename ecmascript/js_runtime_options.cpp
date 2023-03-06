@@ -60,6 +60,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Default: 'none'\n"
     "--compiler-log-methods:               Specific method list for compiler log, only used when compiler-log."
                                            "Default: 'none'\n"
+    "--compiler-type-threshold: enable to skip methods whose type coverage is no more than threshold.. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
@@ -133,6 +134,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
+        {"compiler-type-threshold", required_argument, nullptr, OPTION_COMPILER_TYPE_THRESHOLD},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"trace-bc", required_argument, nullptr, OPTION_TRACE_BC},
         {"trace-deopt", required_argument, nullptr, OPTION_TRACE_DEOPT},
@@ -183,6 +185,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
     uint32_t argUint32 = 0;
     int argInt = 0;
     bool argBool = false;
+    double argDouble = 0.0;
     static std::string COLON = ":";
 
     if (argc <= 1) {
@@ -404,6 +407,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_TYPE_THRESHOLD:
+                ret = ParseDoubleParam("compiler-type-threshold", &argDouble);
+                if (ret) {
+                    SetTypeThreshold(argDouble);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_MAX_NONMOVABLE_SPACE_CAPACITY:
                 ret = ParseUint32Param("maxNonmovableSpaceCapacity", &argUint32);
                 if (ret) {
@@ -544,7 +555,18 @@ bool JSRuntimeOptions::ParseBoolParam(bool* argBool)
     return true;
 }
 
-bool JSRuntimeOptions::ParseIntParam(const std::string &option, int* argInt)
+bool JSRuntimeOptions::ParseDoubleParam(const std::string &option, double *argDouble)
+{
+    *argDouble = std::stod(optarg, nullptr);
+    if (errno == ERANGE) {
+        std::cerr << "getopt: \"" << option << "\" argument has invalid parameter value \""
+            << optarg <<"\"\n" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool JSRuntimeOptions::ParseIntParam(const std::string &option, int *argInt)
 {
     if (StartsWith(optarg, "0x")) {
         const int HEX = 16;
@@ -554,7 +576,7 @@ bool JSRuntimeOptions::ParseIntParam(const std::string &option, int* argInt)
     }
 
     if (errno == ERANGE) {
-        std::cerr << "getopt: \"" << option <<"\" argument has invalid parameter value \""
+        std::cerr << "getopt: \"" << option << "\" argument has invalid parameter value \""
             << optarg <<"\"\n" << std::endl;
         return false;
     }
@@ -572,7 +594,7 @@ bool JSRuntimeOptions::ParseUint32Param(const std::string &option, uint32_t *arg
     }
 
     if (errno == ERANGE) {
-        std::cerr << "getopt: \"" << option <<"\" argument has invalid parameter value \""
+        std::cerr << "getopt: \"" << option << "\" argument has invalid parameter value \""
             << optarg <<"\"\n" << std::endl;
         return false;
     }
@@ -590,7 +612,7 @@ bool JSRuntimeOptions::ParseUint64Param(const std::string &option, uint64_t *arg
     }
 
     if (errno == ERANGE) {
-        std::cerr << "getopt: \"" << option <<"\" argument has invalid parameter value \""
+        std::cerr << "getopt: \"" << option << "\" argument has invalid parameter value \""
             << optarg <<"\"\n" << std::endl;
         return false;
     }

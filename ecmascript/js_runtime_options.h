@@ -82,6 +82,7 @@ enum CommandValues {
     OPTION_STARTUP_TIME,
     OPTION_COMPILER_LOG_OPT,
     OPTION_COMPILER_LOG_METHODS,
+    OPTION_COMPILER_TYPE_THRESHOLD,
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_ASSERT_TYPES,
     OPTION_PRINT_ANY_TYPES,
@@ -749,6 +750,16 @@ public:
         maxAotMethodSize_ = value;
     }
 
+    double GetTypeThreshold() const
+    {
+        return typeThreshold_;
+    }
+
+    void SetTypeThreshold(double threshold)
+    {
+        typeThreshold_ = threshold;
+    }
+
     std::string GetEntryPoint() const
     {
         return entryPoint_;
@@ -870,6 +881,7 @@ private:
     }
 
     bool ParseBoolParam(bool* argBool);
+    bool ParseDoubleParam(const std::string &option, double* argDouble);
     bool ParseIntParam(const std::string &option, int* argInt);
     bool ParseUint32Param(const std::string &option, uint32_t *argUInt32);
     bool ParseUint64Param(const std::string &option, uint64_t *argUInt64);
@@ -915,6 +927,7 @@ private:
     arg_list_t logComponents_ {{"all"}};
     bool enableAOT_ {false};
     uint32_t maxAotMethodSize_ {32_KB};
+    double typeThreshold_ {-1};
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};

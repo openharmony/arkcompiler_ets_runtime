@@ -37,13 +37,15 @@ class TypeInfer {
 public:
     TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
               PassInfo *info, size_t methodId, bool enableLog,
-              const std::string& name, const CString &recordName)
+              const std::string &name, const CString &recordName,
+              MethodInfo *methodInfo)
         : builder_(builder), circuit_(circuit),
           gateAccessor_(circuit),
           tsManager_(info->GetTSManager()),
           lexEnvManager_(info->GetLexEnvManager()),
           methodId_(methodId), enableLog_(enableLog),
           methodName_(name), recordName_(recordName),
+          methodInfo_(methodInfo),
           inQueue_(circuit_->GetGateCount(), true)
     {
     }
@@ -66,6 +68,9 @@ public:
     }
 
 private:
+    static constexpr int PERCENT_LENS = 2;
+    static constexpr int HUNDRED_TIME = 100;
+
     // savePreType: save the previous type, which is true by default
     bool UpdateType(GateRef gate, const GateType type, bool savePreType = true);
     bool UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef, bool savePreType = true);
@@ -148,6 +153,7 @@ private:
 
     void PrintAllByteCodesTypes() const;
     void Verify() const;
+    void VerifyTypePercent();
     void TypeCheck(GateRef gate) const;
     void FilterAnyTypeGates() const;
 
@@ -177,7 +183,11 @@ private:
     std::unordered_map<GateRef, uint32_t> jsgateToBytecode_ {};
     std::map<GateRef, InferState> loopPhiState_ {};
     const CString &recordName_;
+    size_t shouldInferNum_ {0};
+    size_t normalInferNum_ {0};
+    MethodInfo *methodInfo_ {nullptr};
     std::vector<bool> inQueue_;
+    std::unordered_set<GateRef> needInferGates_ {};
     std::queue<GateRef> pendingQueue_ {};
 };
 }  // namespace panda::ecmascript::kungfu

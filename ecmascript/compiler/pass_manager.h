@@ -104,7 +104,8 @@ public:
                 CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, bool enableTypeLowering,
                 const std::string &profIn, uint32_t hotnessThreshold)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
-          logList_(logList), maxAotMethodSize_(maxAotMethodSize), enableTypeLowering_(enableTypeLowering),
+          logList_(logList), maxAotMethodSize_(maxAotMethodSize),
+          enableTypeLowering_(enableTypeLowering),
           enableTypeInfer_(enableTypeLowering || vm_->GetTSManager()->AssertTypes()),
           profilerLoader_(profIn, hotnessThreshold) {};
     PassManager() = default;

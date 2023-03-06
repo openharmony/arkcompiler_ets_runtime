@@ -352,6 +352,11 @@ public:
         return printAnyTypes_;
     }
 
+    double PUBLIC_API GetTypeThreshold() const
+    {
+        return typeThreshold_;
+    }
+
     bool IsBuiltinsDTSEnabled() const
     {
         return vm_->GetJSOptions().WasSetBuiltinsDTS();
@@ -730,6 +735,7 @@ private:
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
     bool assertTypes_ {false};
     bool printAnyTypes_ {false};
+    double typeThreshold_ {-1};
 
     // when the passmanager iterates each method, the curCP_ and curCPID_ should be updated
     // so that subsequent passes (type_infer, ts_type_lowering) can obtain the correct constpool.

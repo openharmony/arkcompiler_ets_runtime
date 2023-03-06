@@ -196,25 +196,63 @@ public:
 
     bool IsPGO() const
     {
-        return isPgoMarked_;
+        return CompileStateBit::PGOBit::Decode(compileState_.value_);
     }
 
     void SetIsPGO(bool pgoMark)
     {
-        isPgoMarked_ = pgoMark;
+        CompileStateBit::PGOBit::Set<uint8_t>(pgoMark, &compileState_.value_);
     }
 
     bool IsCompiled() const
     {
-        return isCompiled_;
+        return CompileStateBit::CompiledBit::Decode(compileState_.value_);
     }
 
     void SetIsCompiled(bool isCompiled)
     {
-        isCompiled_ = isCompiled;
+        CompileStateBit::CompiledBit::Set<uint8_t>(isCompiled, &compileState_.value_);
+    }
+
+    bool IsTypeInferAbort() const
+    {
+        return CompileStateBit::TypeInferAbortBit::Decode(compileState_.value_);
+    }
+
+    void SetTypeInferAbort(bool halfCompiled)
+    {
+        CompileStateBit::TypeInferAbortBit::Set<uint8_t>(halfCompiled, &compileState_.value_);
+    }
+
+    bool IsResolvedMethod() const
+    {
+        return CompileStateBit::ResolvedMethodBit::Decode(compileState_.value_);
+    }
+
+    void SetResolvedMethod(bool isDeoptResolveNeed)
+    {
+        CompileStateBit::ResolvedMethodBit::Set<uint8_t>(isDeoptResolveNeed, &compileState_.value_);
     }
 
 private:
+    class CompileStateBit {
+    public:
+        explicit CompileStateBit(uint8_t value) : value_(value) {}
+        CompileStateBit() = default;
+        ~CompileStateBit() = default;
+        DEFAULT_COPY_SEMANTIC(CompileStateBit);
+        DEFAULT_MOVE_SEMANTIC(CompileStateBit);
+
+        static constexpr size_t BOOL_FLAG_BIT_LENGTH = 1;
+        using PGOBit = panda::BitField<bool, 0, BOOL_FLAG_BIT_LENGTH>;
+        using CompiledBit = PGOBit::NextField<bool, BOOL_FLAG_BIT_LENGTH>;
+        using TypeInferAbortBit = CompiledBit::NextField<bool, BOOL_FLAG_BIT_LENGTH>;
+        using ResolvedMethodBit = TypeInferAbortBit::NextField<bool, BOOL_FLAG_BIT_LENGTH>;
+
+    private:
+        uint8_t value_ {0};
+        friend class MethodInfo;
+    };
     // used to record the index of the current MethodInfo to speed up the lookup of lexEnv
     uint32_t methodInfoIndex_ { 0 };
     // used to obtain MethodPcInfo from the vector methodPcInfos of struct BCInfo
@@ -224,8 +262,7 @@ private:
     uint32_t outerMethodOffset_ { MethodInfo::DEFAULT_OUTMETHOD_OFFSET };
     uint32_t numOfLexVars_ { 0 };
     LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
-    bool isPgoMarked_ {false};
-    bool isCompiled_ {false};
+    CompileStateBit compileState_ { 0 };
 };
 
 
