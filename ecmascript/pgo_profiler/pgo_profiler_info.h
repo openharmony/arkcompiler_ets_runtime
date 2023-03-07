@@ -96,7 +96,7 @@ public:
 
     bool Verify() const
     {
-        return VerifyInner(LAST_VERSION);
+        return VerifyInner("apPath file", LAST_VERSION);
     }
 
     static void Build(PGOProfilerHeader **header, size_t size)
