@@ -13,17 +13,23 @@
 
 group("aot_type_test") {
   testonly = true
-  deps = [
-    "arraylength:arraylengthAotAction",
-    "float32Array:float32ArrayAotAction",
-    "typeadd:typeaddAotAction",
-    "typediv:typedivAotAction",
-    "typeequal:typeequalAotAction",
-    "typelogicalop:typelogicalopAotAction",
-    "typemod:typemodAotAction",
-    "typemul:typemulAotAction",
-    "typenewsuper:typenewsuperAotAction",
-    "typenotequal:typenotequalAotAction",
-    "typesub:typesubAotAction",
+
+  test_list = [
+    "arraylength",
+    "float32Array",
+    "typeadd",
+    "typediv",
+    "typeequal",
+    "typelogicalop",
+    "typemod",
+    "typemul",
+    "typenewsuper",
+    "typenotequal",
+    "typesub",
   ]
+
+  deps = []
+  foreach(test, test_list) {
+    deps += [ "${test}:${test}AotAction" ]
+  }
 }

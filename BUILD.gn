@@ -138,7 +138,7 @@ group("ark_unittest") {
       "//arkcompiler/ets_runtime/ecmascript/tests:host_unittest",
       "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:host_unittest",
     ]
-    if (is_standard_system && !run_with_asan) {
+    if (!run_with_asan) {
       deps += [
         "//arkcompiler/ets_runtime/ecmascript/compiler/tests:host_unittest",
       ]
@@ -146,7 +146,7 @@ group("ark_unittest") {
   }
 }
 
-if (is_standard_system && !run_with_asan) {
+if (!run_with_asan) {
   _builtins_dts_path_ =
       rebase_path("./ecmascript/ts_types/lib_ark_builtins.d.ts")
   _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
@@ -182,9 +182,8 @@ group("ark_runtime_host_unittest") {
     deps += [ "//arkcompiler/ets_runtime/test/quickfix:ark_quickfix_test" ]
 
     # ts aot test and asm test
-    if (is_standard_system && !run_with_asan) {
+    if (!run_with_asan) {
       deps += [
-        "//arkcompiler/ets_runtime/test/aottest:ark_aot_js_test",
         "//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
 
         #"//arkcompiler/ets_runtime/test/moduletest:ark_asm_single_step_test",

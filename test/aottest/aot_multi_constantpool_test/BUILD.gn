@@ -13,11 +13,19 @@
 
 group("aot_multi_constantpool_test") {
   testonly = true
-  deps = [
-    "multi_constantpool_class:multi_constantpool_classAotAction",
-    "multi_constantpool_closure:multi_constantpool_closureAotAction",
-    "multi_constantpool_constructor:multi_constantpool_constructorAotAction",
-    "multi_constantpool_func:multi_constantpool_funcAotAction",
-    "multi_constantpool_funccall:multi_constantpool_funccallAotAction",
-  ]
+
+  deps = []
+  if (!is_debug) {
+    release_test_list = [
+      "multi_constantpool_class",
+      "multi_constantpool_closure",
+      "multi_constantpool_constructor",
+      "multi_constantpool_func",
+      "multi_constantpool_funccall",
+    ]
+
+    foreach(test, release_test_list) {
+      deps += [ "${test}:${test}AotAction" ]
+    }
+  }
 }

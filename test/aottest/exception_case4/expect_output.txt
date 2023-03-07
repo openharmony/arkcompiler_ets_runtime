@@ -12,6 +12,6 @@
 # limitations under the License.
 
 RangeError: The length is out of range.
-exceptionhandler.js:18:18
-exceptionhandler.js:20:1
+exception_case4.js:18:18
+exception_case4.js:20:1
 
