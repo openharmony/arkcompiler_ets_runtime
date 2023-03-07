@@ -13,12 +13,18 @@
 
 group("aot_compatibility_test") {
   testonly = true
-  deps = [
-    "base_verification:base_verificationAotAction",
-    "prototype_accessor:prototype_accessorAotAction",
-    "prototype_base_verification:prototype_base_verificationAotAction",
 
-    # "builtins_api:builtins_apiAotAction",
-    # "property_operation:property_operationAotAction",
+  test_list = [
+    "base_verification",
+    "prototype_accessor",
+    "prototype_base_verification",
+
+    #"builtins_api",
+    #"property_operation",
   ]
+
+  deps = []
+  foreach(test, test_list) {
+    deps += [ "${test}:${test}AotAction" ]
+  }
 }

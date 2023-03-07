@@ -12,7 +12,7 @@
 # limitations under the License.
 
 SyntaxError: Unexpected Array in JSON
-exceptionhandler.js:18:18
-exceptionhandler.js:22:22
-exceptionhandler.js:24:1
+exception_case8.js:18:18
+exception_case8.js:22:22
+exception_case8.js:24:1
 
