@@ -22,9 +22,9 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/jspandafile/module_data_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/linked_hash_table.h"
 

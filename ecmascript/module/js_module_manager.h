@@ -77,7 +77,6 @@ public:
 
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
-    static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
 
     inline static bool IsNativeModule(ModuleTypes moduleType)
     {
