@@ -48,4 +48,16 @@ print(RegExp.$2);
 // Test 5 - RegExp $10 is undefined
 print(RegExp.$10);
 
+// Test 6 - RegExp cache
+var pattern = /[A-Z]{3}/g;
+var testStr = "AAAA";
+var res1 = testStr.match(pattern);
+print(res1[0]);
+res1[0] = "BB";
+var res2 = testStr.match(pattern);
+print(res2[0]);
+res2[0] = "C";
+var res3 = testStr.match(pattern);
+print(res3[0]);
+
 print("builtins regexp end");
