@@ -16,5 +16,4 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 host_typeinfer_test_action("callprimitivebuiltin") {
   deps = []
   is_enable_builtins_dts = true
-  is_disable_type_lowering = true
 }
