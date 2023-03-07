@@ -80,6 +80,7 @@ public:
 
     // JSThread
     static Local<JSValueRef> GetAndClearException(const EcmaVM *ecmaVm);
+    static JSTaggedValue GetCurrentModule(const EcmaVM *ecmaVm);
     static void GetModuleVariables(const EcmaVM *vm, Local<ObjectRef> &moduleObj, JSThread *thread);
     static void SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception);
     static void ClearException(const EcmaVM *ecmaVm);
