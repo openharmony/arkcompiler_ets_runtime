@@ -1872,6 +1872,11 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread, const JS
     JSHandle<JSTaggedValue> lastIndexHandle = thread->GlobalConstants()->GetHandledLastIndexString();
     ObjectFastOperator::FastSetPropertyByValue(thread, regexp.GetTaggedValue(), lastIndexHandle.GetTaggedValue(),
                                                Get(index + LAST_INDEX_INDEX));
+    if (result.IsJSArray()) {
+        JSHandle<JSArray> resultHandle(thread, JSArray::Cast(result));
+        JSHandle<JSArray> copyArray = thread->GetEcmaVM()->GetFactory()->CloneArrayLiteral(resultHandle);
+        return copyArray.GetTaggedValue();
+    }
     return result;
 }
 
@@ -1883,6 +1888,15 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
 {
     if (!pattern->IsString() || !flags->IsInt() || !input->IsString()) {
         return;
+    }
+
+    JSHandle<JSTaggedValue> resultArrayCopy;
+    if (resultArray->IsJSArray()) {
+        JSHandle<JSArray> copyArray = thread->GetEcmaVM()->GetFactory()
+                                            ->CloneArrayLiteral(JSHandle<JSArray>(resultArray));
+        resultArrayCopy = JSHandle<JSTaggedValue>(copyArray);
+    } else {
+        resultArrayCopy = JSHandle<JSTaggedValue>(resultArray);
     }
 
     JSTaggedValue patternValue = pattern.GetTaggedValue();
@@ -1899,9 +1913,9 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
     if (cache->Get(index).IsUndefined()) {
         cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
         cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue, lastIndexValue, extend);
-        cache->UpdateResultArray(thread, entry, resultArray.GetTaggedValue(), type);
+        cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
     } else if (cache->Match(entry, patternValue, flagsValue, inputValue, extend)) {
-        cache->UpdateResultArray(thread, entry, resultArray.GetTaggedValue(), type);
+        cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
     } else {
         uint32_t entry2 = (entry + 1) & static_cast<uint32_t>(cache->GetCacheLength() - 1);
         ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
@@ -1923,15 +1937,15 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
         if (cache->Get(index2).IsUndefined()) {
             cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
             cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue, lastIndexValue, extendValue);
-            cache->UpdateResultArray(thread, entry2, resultArray.GetTaggedValue(), type);
+            cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
         } else if (cache->Match(entry2, patternValue, flagsValue, inputValue, extendValue)) {
-            cache->UpdateResultArray(thread, entry2, resultArray.GetTaggedValue(), type);
+            cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
         } else {
             cache->SetConflictCount(thread, cache->GetConflictCount() > 1 ? (cache->GetConflictCount() - 1) : 0);
             cache->SetCacheCount(thread, cache->GetCacheCount() - 1);
             cache->ClearEntry(thread, entry2);
             cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue, lastIndexValue, extendValue);
-            cache->UpdateResultArray(thread, entry, resultArray.GetTaggedValue(), type);
+            cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
         }
     }
 }
