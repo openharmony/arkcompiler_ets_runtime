@@ -196,5 +196,6 @@ group("ark_aot_test") {
     "aot_compatibility_test:aot_compatibility_test",
     "aot_multi_constantpool_test:aot_multi_constantpool_test",
     "aot_type_test:aot_type_test",
+    "vtable:vtable_test",
   ]
 }
