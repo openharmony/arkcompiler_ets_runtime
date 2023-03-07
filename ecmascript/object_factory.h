@@ -154,6 +154,8 @@ class AsyncIteratorRecord;
 class JSAsyncGeneratorFunction;
 class JSAsyncGeneratorObject;
 class CellRecord;
+class ClassLiteral;
+
 namespace job {
 class MicroJobQueue;
 class PendingJob;
@@ -478,6 +480,7 @@ public:
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const uint8_t *data);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
+    JSHandle<ClassLiteral> NewClassLiteral();
 
     // ----------------------------------- new TSType ----------------------------------------
     JSHandle<TSObjLayoutInfo> CreateTSObjLayoutInfo(int propNum, JSTaggedValue initVal = JSTaggedValue::Hole());

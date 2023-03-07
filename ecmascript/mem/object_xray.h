@@ -26,6 +26,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
@@ -609,6 +610,9 @@ public:
                 break;
             case JSType::METHOD:
                 Method::Cast(object)->VisitRangeSlot(visitor);
+                break;
+            case JSType::CLASS_LITERAL:
+                ClassLiteral::Cast(object)->VisitRangeSlot(visitor);
                 break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";

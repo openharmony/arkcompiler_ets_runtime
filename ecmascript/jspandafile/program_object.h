@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
@@ -52,7 +53,7 @@ public:
  *      |        method(Method)          |cacheLength
  *      |     array literal(JSArray)     |  |
  *      |    object literal(JSObject)    |  |
- *      |   class literal(TaggedArray)   |  v
+ *      |   class literal(ClassLiteral)  |  v
  *      +--------------------------------+----
  *      |           IndexHeader          |
  *      +--------------------------------+
@@ -216,15 +217,18 @@ public:
 
         if (val.IsHole()) {
             EcmaVM *vm = thread->GetEcmaVM();
+            ObjectFactory *factory = vm->GetFactory();
             ASSERT(jsPandaFile->IsNewVersion());
             panda_file::File::EntityId literalId = constpool->GetEntityId(literal);
             JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
                 thread, jsPandaFile, literalId, constpool, entry);
+            JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
+            classLiteral->SetArray(thread, literalArray);
             if (isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined()) {
                 vm->GetAOTFileManager()->SetAOTFuncEntryForLiteral(jsPandaFile, *literalArray, *entryIndexes);
             }
 
-            val = literalArray.GetTaggedValue();
+            val = classLiteral.GetTaggedValue();
             constpool->SetObjectToCache(thread, literal, val);
         }
 

@@ -16,6 +16,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ts_types/ts_type_table.h"
@@ -1114,11 +1115,12 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
         JSHandle<ConstantPool> oldCP(thread_, vm_->FindConstpool(jsPandaFile, oldCPID));
 
         auto literalObj = ConstantPool::GetClassLiteralFromCache(thread_, oldCP, data.index, *data.recordName);
-        JSHandle<TaggedArray> literalHandle(thread_, literalObj);
+        JSHandle<ClassLiteral> classLiteral(thread_, literalObj);
+        JSHandle<TaggedArray> arrayHandle(thread_, classLiteral->GetArray());
 
         uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
         JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
-        CollectLiteralInfo(literalHandle, data.index, newCP, bcInfoCollector);
+        CollectLiteralInfo(arrayHandle, data.index, newCP, bcInfoCollector);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
                                                std::make_pair(cpListIndex, data.index));
     });

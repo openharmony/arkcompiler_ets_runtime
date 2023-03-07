@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_METHOD_LITERAL_H
-#define ECMASCRIPT_METHOD_LITERAL_H
+#ifndef ECMASCRIPT_JSPANDAFILE_METHOD_LITERAL_H
+#define ECMASCRIPT_JSPANDAFILE_METHOD_LITERAL_H
 
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/compiler/gate_meta_data.h"
@@ -335,4 +335,4 @@ private:
 STATIC_ASSERT_EQ_ARCH(sizeof(MethodLiteral), MethodLiteral::SizeArch32, MethodLiteral::SizeArch64);
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_METHOD_LITERAL_H
+#endif  // ECMASCRIPT_JSPANDAFILE_METHOD_LITERAL_H

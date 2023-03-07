@@ -212,6 +212,7 @@ class ProtoChangeDetails;
         TEMPLATE_MAP,       /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROGRAM,       /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         METHOD,     /* ////////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        CLASS_LITERAL,      /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         PROMISE_CAPABILITY, /* JS_RECORD_FIRST //////////////////////////////////////////////////////////////////// */ \
         PROMISE_RECORD,     /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -813,6 +814,11 @@ public:
     inline bool IsMethod() const
     {
         return GetObjectType() == JSType::METHOD;
+    }
+
+    inline bool IsClassLiteral() const
+    {
+        return GetObjectType() == JSType::CLASS_LITERAL;
     }
 
     // non ECMA standard jsapi containers.

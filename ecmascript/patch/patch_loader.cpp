@@ -174,8 +174,9 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
             ASSERT(value.IsMethod());
             patchMethod = Method::Cast(value.GetTaggedObject());
         } else {
-            TaggedArray *classLiteral = TaggedArray::Cast(baseConstpool->GetObjectFromCache(constpoolIndex));
-            JSTaggedValue value = classLiteral->Get(thread, literalIndex);
+            ClassLiteral *classLiteral = ClassLiteral::Cast(baseConstpool->GetObjectFromCache(constpoolIndex));
+            TaggedArray *literalArray = TaggedArray::Cast(classLiteral->GetArray());
+            JSTaggedValue value = literalArray->Get(thread, literalIndex);
             ASSERT(value.IsJSFunctionBase());
             JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
             patchMethod = Method::Cast(func->GetMethod().GetTaggedObject());
@@ -531,7 +532,7 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
         uint32_t baseConstpoolSize = baseConstpool->GetCacheLength();
         for (uint32_t constpoolIndex = 0; constpoolIndex < baseConstpoolSize; constpoolIndex++) {
             JSTaggedValue constpoolValue = baseConstpool->GetObjectFromCache(constpoolIndex);
-            if (!constpoolValue.IsMethod() && !constpoolValue.IsTaggedArray()) {
+            if (!constpoolValue.IsMethod() && !constpoolValue.IsClassLiteral()) {
                 continue;
             }
 
@@ -549,12 +550,13 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
 
                 BaseMethodIndex indexs = {constpoolNum, constpoolIndex};
                 SaveBaseMethodInfo(patchInfo, baseFile, baseMethodId, indexs);
-            } else if (constpoolValue.IsTaggedArray()) {
+            } else if (constpoolValue.IsClassLiteral()) {
                 // For class literal.
-                TaggedArray *classLiteral = TaggedArray::Cast(constpoolValue.GetTaggedObject());
-                uint32_t literalLength = classLiteral->GetLength();
+                ClassLiteral *classLiteral = ClassLiteral::Cast(constpoolValue);
+                TaggedArray *literalArray = TaggedArray::Cast(classLiteral->GetArray());
+                uint32_t literalLength = literalArray->GetLength();
                 for (uint32_t literalIndex = 0; literalIndex < literalLength; literalIndex++) {
-                    JSTaggedValue literalItem = classLiteral->Get(thread, literalIndex);
+                    JSTaggedValue literalItem = literalArray->Get(thread, literalIndex);
                     if (!literalItem.IsJSFunctionBase()) {
                         continue;
                     }

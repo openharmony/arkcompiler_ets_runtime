@@ -29,6 +29,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jobs/pending_job.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
@@ -434,6 +435,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Method";
         case JSType::AOT_LITERAL_INFO:
             return "AOTLiteralInfo";
+        case JSType::CLASS_LITERAL:
+            return "ClassLiteral";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);
@@ -1008,6 +1011,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::METHOD:
             Method::Cast(obj)->Dump(os);
+            break;
+        case JSType::CLASS_LITERAL:
+            ClassLiteral::Cast(obj)->Dump(os);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -3472,6 +3478,17 @@ void Method::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void ClassLiteral::Dump(std::ostream &os) const
+{
+    os << " - ClassLiteral: ";
+    os << "\n";
+    os << " - IsAOTUsed: " << std::boolalpha << GetIsAOTUsed();
+    os << "\n";
+    os << " - Array: ";
+    GetArray().Dump(os);
+    os << "\n";
+}
+
 // ########################################################################################
 // Dump for Snapshot
 // ########################################################################################
@@ -3951,6 +3968,9 @@ static void DumpObject(TaggedObject *obj,
                 return;
             case JSType::METHOD:
                 Method::Cast(obj)->DumpForSnapshot(vec);
+                return;
+            case JSType::CLASS_LITERAL:
+                ClassLiteral::Cast(obj)->DumpForSnapshot(vec);
                 return;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -5219,5 +5239,11 @@ void CjsRequire::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> 
 {
     vec.emplace_back("Cache", GetCache());
     vec.emplace_back("Parent", GetParent());
+}
+
+void ClassLiteral::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.emplace_back("Array", GetArray());
+    vec.emplace_back("IsAOTUsed", GetIsAOTUsed());
 }
 }  // namespace panda::ecmascript
