@@ -81,20 +81,24 @@ public:
     // JSThread
     static Local<JSValueRef> GetAndClearException(const EcmaVM *ecmaVm);
     static JSTaggedValue GetCurrentModule(const EcmaVM *ecmaVm);
-    static JSTaggedValue GetImportModule(const EcmaVM *ecmaVm, JSTaggedValue currentModule, std::string &name);
-    static int32_t GetModuleVariableIndex(const EcmaVM *ecmaVm, JSTaggedValue currentModule, std::string &name);
-    static int32_t GetRequestModuleIndex(const EcmaVM *ecmaVm, JSTaggedValue moduleRequest,
-                                         JSTaggedValue currentModule);
-    static Local<JSValueRef> GetModuleValue(const EcmaVM *ecmaVm, JSTaggedValue currentModule,
+    static JSHandle<JSTaggedValue> GetImportModule(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
+                                                   std::string &name);
+    static int32_t GetModuleVariableIndex(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
+                                          std::string &name);
+    static int32_t GetRequestModuleIndex(const EcmaVM *ecmaVm, const JSTaggedValue moduleRequest,
+                                         const JSHandle<JSTaggedValue> &currentModule);
+    static Local<JSValueRef> GetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
                                             std::string &name);
-    static bool SetModuleValue(const EcmaVM *ecmaVm, JSTaggedValue currentModule,
+    static bool SetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
                                std::string &name, Local<JSValueRef> value);
     static void InitializeExportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &moduleObj,
-                                          JSTaggedValue currentModule);
-    static void GetLocalExportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &moduleObj, JSTaggedValue currentModule);
+                                          const JSHandle<JSTaggedValue> &currentModule);
+    static void GetLocalExportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &moduleObj,
+                                        const JSHandle<JSTaggedValue> &currentModule, bool isImportStar);
     static void GetIndirectExportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &moduleObj,
-                                           JSTaggedValue currentModule);
-    static void GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &moduleObj, JSTaggedValue currentModule);
+                                           const JSHandle<JSTaggedValue> &currentModule);
+    static void GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &moduleObj,
+                                   const JSHandle<JSTaggedValue> &currentModule);
     static void SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception);
     static void ClearException(const EcmaVM *ecmaVm);
     static bool IsExceptionCaught(const EcmaVM *ecmaVm);
