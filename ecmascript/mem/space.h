@@ -226,6 +226,7 @@ public:
     void ReclaimHugeRegion();
 
 private:
+    static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 8;
     EcmaList<Region> hugeNeedFreeList_ {};
     Heap* heap_;
 };
