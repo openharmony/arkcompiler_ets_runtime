@@ -16,20 +16,22 @@
 #include "ecmascript/compiler/type_recorder.h"
 
 #include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 #include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
 TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
-                           TSManager *tsManager, const CString &recordName)
+                           TSManager *tsManager, const CString &recordName, PGOProfilerLoader *loader)
     : argTypes_(methodLiteral->GetNumArgsWithCallField() + static_cast<size_t>(TypedArgIdx::NUM_OF_TYPED_ARGS),
-                GateType::AnyType())
+    GateType::AnyType()), loader_(loader)
 {
     if (!jsPandaFile->HasTSTypes(recordName)) {
         return;
     }
     LoadTypes(jsPandaFile, methodLiteral, tsManager, recordName);
+    LoadTypesFromPGO(methodLiteral, recordName);
     tsManager->GenerateTSHClasses();
 }
 
@@ -90,6 +92,16 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
             LoadArgTypes(tsManager, funcGT, thisGT);
         }
     });
+}
+
+void TypeRecorder::LoadTypesFromPGO(const MethodLiteral *methodLiteral, const CString &recordName)
+{
+    auto callback = [this] (uint32_t offset, PGOSampleType type) {
+        bcOffsetPGOTypeMap_[offset] = type;
+    };
+    if (loader_ != nullptr) {
+        loader_->GetTypeInfo(recordName, methodLiteral->GetMethodId(), callback);
+    }
 }
 
 void TypeRecorder::LoadArgTypes(const TSManager *tsManager, GlobalTSTypeRef funcGT, GlobalTSTypeRef thisGT)
@@ -166,5 +178,13 @@ GateType TypeRecorder::UpdateType(const int32_t offset, const GateType &type) co
         return tempType;
     }
     return type;
+}
+
+PGOSampleType TypeRecorder::GetPGOType(const int32_t offset) const
+{
+    if (bcOffsetPGOTypeMap_.find(offset) != bcOffsetPGOTypeMap_.end()) {
+        return bcOffsetPGOTypeMap_.at(offset);
+    }
+    return PGOSampleType::NoneType();
 }
 }  // namespace panda::ecmascript

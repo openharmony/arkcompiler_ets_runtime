@@ -716,13 +716,14 @@ GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
 }
 
 template<TypedBinOp Op>
-GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType)
+GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType,
+    PGOSampleType sampleType)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op, xType, yType,
-                                              {currentControl, currentDepend, x, y}, gateType);
+                                              {currentControl, currentDepend, x, y}, gateType, sampleType);
     currentLabel->SetControl(numberBinaryOp);
     currentLabel->SetDepend(numberBinaryOp);
     return numberBinaryOp;
@@ -778,7 +779,8 @@ GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)
     auto currentDepend = currentLabel->GetDepend();
     auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op,
                                               GateType::NumberType(), GateType::NumberType(),
-                                              {currentControl, currentDepend, x, y}, GateType::AnyType());
+                                              {currentControl, currentDepend, x, y}, GateType::AnyType(),
+                                              PGOSampleType::Type::NONE);
     currentLabel->SetControl(numberBinaryOp);
     currentLabel->SetDepend(numberBinaryOp);
     return numberBinaryOp;

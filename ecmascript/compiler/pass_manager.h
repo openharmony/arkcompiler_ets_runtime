@@ -100,10 +100,11 @@ private:
 
 class PassOptions {
 public:
-    PassOptions(bool enableTypeLowering, bool enableTypeInfer, bool enableOptInlining)
+    PassOptions(bool enableTypeLowering, bool enableTypeInfer, bool enableOptInlining, bool enableOptPGOType)
         : enableTypeLowering_(enableTypeLowering),
           enableTypeInfer_(enableTypeInfer),
-          enableOptInlining_(enableOptInlining)
+          enableOptInlining_(enableOptInlining),
+          enableOptPGOType_(enableOptPGOType)
         {
         }
 
@@ -121,10 +122,16 @@ public:
     {
         return enableOptInlining_;
     }
+
+    bool EnableOptPGOType() const
+    {
+        return enableOptPGOType_;
+    }
 private:
     bool enableTypeLowering_ {false};
     bool enableTypeInfer_ {false};
     bool enableOptInlining_ {false};
+    bool enableOptPGOType_ {false};
 };
 
 class PassManager {

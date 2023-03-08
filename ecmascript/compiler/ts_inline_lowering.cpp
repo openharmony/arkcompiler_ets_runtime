@@ -155,7 +155,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
                                    info_->GetByteCodes(), true, IsLogEnabled(),
-                                   hasTyps, fullName, recordName);
+                                   hasTyps, fullName, recordName, nullptr);
     {
         TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log);
         builder.BytecodeToCircuit();

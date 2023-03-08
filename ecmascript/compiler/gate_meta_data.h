@@ -23,6 +23,7 @@
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
 
+#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
@@ -528,6 +529,16 @@ public:
         return pcOffset_;
     }
 
+    void SetType(PGOSampleType type)
+    {
+        type_ = type;
+    }
+
+    PGOSampleType GetType() const
+    {
+        return type_;
+    }
+
     EcmaOpcode GetByteCodeOpcode() const
     {
         return opcode_;
@@ -535,6 +546,7 @@ public:
 private:
     EcmaOpcode opcode_;
     uint32_t pcOffset_;
+    PGOSampleType type_;
 };
 
 class OneParameterMetaData : public GateMetaData {
@@ -563,9 +575,9 @@ private:
 
 class TypedBinaryMegaData : public OneParameterMetaData {
 public:
-    TypedBinaryMegaData(uint64_t value, TypedBinOp binOp)
+    TypedBinaryMegaData(uint64_t value, TypedBinOp binOp, PGOSampleType type)
         : OneParameterMetaData(OpCode::TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2, value), // 2: valuesIn
-        binOp_(binOp)
+        binOp_(binOp), type_(type)
     {
         SetKind(GateMetaData::Kind::TYPED_BINARY_OP);
     }
@@ -580,8 +592,14 @@ public:
     {
         return binOp_;
     }
+
+    PGOSampleType GetType() const
+    {
+        return type_;
+    }
 private:
     TypedBinOp binOp_;
+    PGOSampleType type_;
 };
 
 class StringMetaData : public GateMetaData {

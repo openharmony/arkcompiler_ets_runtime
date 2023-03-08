@@ -445,10 +445,10 @@ GateRef CircuitBuilder::GetSuperConstructor(GateRef ctor)
 }
 
 GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
-                                            std::vector<GateRef> inList, GateType gateType)
+                                            std::vector<GateRef> inList, GateType gateType, PGOSampleType sampleType)
 {
     uint64_t operandTypes = GatePairTypeAccessor::ToValue(typeLeft, typeRight);
-    return GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, binOp),
+    return GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, binOp, sampleType),
         type, inList.size(), inList.data(), gateType);
 }
 

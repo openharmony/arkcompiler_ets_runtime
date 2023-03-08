@@ -124,6 +124,29 @@ TypedBinOp GateAccessor::GetTypedBinaryOp(GateRef gate) const
     return gatePtr->GetTypedBinaryMegaData()->GetTypedBinaryOp();
 }
 
+PGOSampleType GateAccessor::GetTypedBinaryType(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetTypedBinaryMegaData()->GetType();
+}
+
+bool GateAccessor::HasNumberType(GateRef gate) const
+{
+    auto sampleType = GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        return true;
+    }
+    if (sampleType.IsNone()) {
+        GateType leftType = GetLeftType(gate);
+        GateType rightType = GetRightType(gate);
+        if (leftType.IsNumberType() && rightType.IsNumberType()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
@@ -220,6 +243,25 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
             break;
     }
     return 0;
+}
+
+PGOSampleType GateAccessor::TryGetPGOType(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        return gatePtr->GetJSBytecodeMetaData()->GetType();
+    }
+    return PGOSampleType::NoneType();
+}
+
+void GateAccessor::TrySetPGOType(GateRef gate, PGOSampleType type)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetType(type);
+    }
 }
 
 EcmaOpcode GateAccessor::GetByteCodeOpcode(GateRef gate) const

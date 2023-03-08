@@ -82,6 +82,7 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     }
     propertiesCache_ = new PropertiesCache();
     vmThreadControl_ = new VmThreadControl(this);
+    SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
 }
 
 JSThread::~JSThread()
@@ -454,6 +455,31 @@ void JSThread::CheckSwitchDebuggerBCStub()
             glueData_.bcStubEntries_.Set(i, stubEntry);
             glueData_.bcDebuggerStubEntries_.Set(i, debuggerStubEbtry);
         }
+    }
+}
+
+void JSThread::CheckOrSwitchPGOStubs()
+{
+    bool isSwitch = false;
+    if (IsPGOProfilerEnable()) {
+        if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
+            SetBCStubStatus(BCStubStatus::PROFILE_BC_STUB);
+            isSwitch = true;
+        }
+    } else {
+        if (GetBCStubStatus() == BCStubStatus::PROFILE_BC_STUB) {
+            SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
+            isSwitch = true;
+        }
+    }
+    if (isSwitch) {
+        Address curAddress;
+#define SWITCH_PGO_STUB_ENTRY(fromName, toName)                                                             \
+        curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##fromName);                                     \
+        SetBCStubEntry(BytecodeStubCSigns::ID_##fromName, GetBCStubEntry(BytecodeStubCSigns::ID_##toName)); \
+        SetBCStubEntry(BytecodeStubCSigns::ID_##toName, curAddress);
+        ASM_INTERPRETER_BC_PROFILER_STUB_LIST(SWITCH_PGO_STUB_ENTRY)
+#undef SWITCH_PGO_STUB_ENTRY
     }
 }
 

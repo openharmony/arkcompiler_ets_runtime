@@ -39,7 +39,7 @@ bool PGOProfilerLoader::Load()
     if (!recordSimpleInfos_) {
         recordSimpleInfos_ = std::make_unique<PGORecordSimpleInfos>(hotnessThreshold_);
     }
-    recordSimpleInfos_->ParseFromBinary(addr, header_->GetRecordInfoSection());
+    recordSimpleInfos_->ParseFromBinary(addr, header_);
     UnLoadAPBinaryFile();
 
     isLoaded_ = true;
@@ -88,7 +88,7 @@ bool PGOProfilerLoader::LoadFull()
     if (!recordDetailInfos_) {
         recordDetailInfos_ = std::make_unique<PGORecordDetailInfos>(hotnessThreshold_);
     }
-    recordDetailInfos_->ParseFromBinary(addr, header_->GetRecordInfoSection());
+    recordDetailInfos_->ParseFromBinary(addr, header_);
 
     isLoaded_ = true;
     return true;

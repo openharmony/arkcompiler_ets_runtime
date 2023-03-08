@@ -146,6 +146,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"enable-type-lowering", required_argument, nullptr, OPTION_ENABLE_TYPE_LOWERING},
         {"enable-opt-inlining", required_argument, nullptr, OPTION_ENABLE_OPT_INLINING},
+        {"enable-opt-pgotype", required_argument, nullptr, OPTION_ENABLE_OPT_PGOTYPE},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
         {"gcThreadNum", required_argument, nullptr, OPTION_GC_THREADNUM},
@@ -528,6 +529,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableOptInlining(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_OPT_PGOTYPE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableOptPGOType(argBool);
                 } else {
                     return false;
                 }

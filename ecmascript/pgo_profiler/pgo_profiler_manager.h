@@ -114,7 +114,7 @@ public:
         }
         bool ret = saver.LoadAPTextFile(inPath);
         if (ret) {
-            saver.Save();
+            ret = saver.Save();
         }
         saver.Destroy();
         return ret;

@@ -28,31 +28,31 @@ public:
     NO_COPY_SEMANTIC(OperationsStubBuilder);
     void GenerateCircuit() override {}
     // unary op
-    GateRef Inc(GateRef glue, GateRef value);
-    GateRef Dec(GateRef glue, GateRef value);
-    GateRef Neg(GateRef glue, GateRef value);
-    GateRef Not(GateRef glue, GateRef value);
+    GateRef Inc(GateRef glue, GateRef value, ProfileOperation callback = nullptr);
+    GateRef Dec(GateRef glue, GateRef value, ProfileOperation callback = nullptr);
+    GateRef Neg(GateRef glue, GateRef value, ProfileOperation callback = nullptr);
+    GateRef Not(GateRef glue, GateRef value, ProfileOperation callback = nullptr);
 
     // binary op
-    GateRef Equal(GateRef glue, GateRef left, GateRef right);
-    GateRef NotEqual(GateRef glue, GateRef left, GateRef right);
-    GateRef StrictEqual(GateRef glue, GateRef left, GateRef right);
-    GateRef StrictNotEqual(GateRef glue, GateRef left, GateRef right);
-    GateRef Less(GateRef glue, GateRef left, GateRef right);
-    GateRef LessEq(GateRef glue, GateRef left, GateRef right);
-    GateRef Greater(GateRef glue, GateRef left, GateRef right);
-    GateRef GreaterEq(GateRef glue, GateRef left, GateRef right);
-    GateRef Add(GateRef glue, GateRef left, GateRef right);
-    GateRef Sub(GateRef glue, GateRef left, GateRef right);
-    GateRef Mul(GateRef glue, GateRef left, GateRef right);
-    GateRef Div(GateRef glue, GateRef left, GateRef right);
-    GateRef Mod(GateRef glue, GateRef left, GateRef right);
-    GateRef Shl(GateRef glue, GateRef left, GateRef right);
-    GateRef Shr(GateRef glue, GateRef left, GateRef right);
-    GateRef Ashr(GateRef glue, GateRef left, GateRef right);
-    GateRef And(GateRef glue, GateRef left, GateRef right);
-    GateRef Or(GateRef glue, GateRef left, GateRef right);
-    GateRef Xor(GateRef glue, GateRef left, GateRef right);
+    GateRef Equal(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef NotEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef StrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef StrictNotEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Less(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef LessEq(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Greater(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef GreaterEq(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Add(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Sub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Mul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Div(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Mod(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Shl(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Shr(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Ashr(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef And(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Or(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Xor(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_OPERATIONS_STUB_BUILDER_H

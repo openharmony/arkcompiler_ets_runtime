@@ -34,28 +34,56 @@
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
-#define DECLARE_ASM_HANDLER_BASE(name, needPrint)                                         \
-void name##StubBuilder::GenerateCircuit()                                                 \
-{                                                                                         \
-    GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));      \
-    GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));          \
-    GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));          \
-    GateRef constpool = TaggedPointerArgument(                                            \
-        static_cast<size_t>(InterpreterHandlerInputs::CONSTPOOL));                        \
-    GateRef profileTypeInfo = TaggedPointerArgument(                                      \
-        static_cast<size_t>(InterpreterHandlerInputs::PROFILE_TYPE_INFO));                \
-    GateRef acc = TaggedArgument(static_cast<size_t>(InterpreterHandlerInputs::ACC));     \
-    GateRef hotnessCounter = Int32Argument(                                               \
-        static_cast<size_t>(InterpreterHandlerInputs::HOTNESS_COUNTER));                  \
-    DebugPrintInstruction<needPrint>();                                                   \
-    GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);   \
-}                                                                                         \
-void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,         \
-                                     GateRef constpool, GateRef profileTypeInfo,          \
-                                     GateRef acc, GateRef hotnessCounter)
+#define DECLARE_ASM_HANDLER_BASE(name, needPrint, V)                                              \
+void name##StubBuilder::GenerateCircuit()                                                         \
+{                                                                                                 \
+    GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));              \
+    GateRef sp = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::SP));                  \
+    GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));                  \
+    GateRef constpool = TaggedPointerArgument(                                                    \
+        static_cast<size_t>(InterpreterHandlerInputs::CONSTPOOL));                                \
+    GateRef profileTypeInfo = TaggedPointerArgument(                                              \
+        static_cast<size_t>(InterpreterHandlerInputs::PROFILE_TYPE_INFO));                        \
+    GateRef acc = TaggedArgument(static_cast<size_t>(InterpreterHandlerInputs::ACC));             \
+    GateRef hotnessCounter = Int32Argument(                                                       \
+        static_cast<size_t>(InterpreterHandlerInputs::HOTNESS_COUNTER));                          \
+    DebugPrintInstruction<needPrint>();                                                           \
+    V()                                                                                           \
+    GenerateCircuitImpl(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, callback); \
+}
 
-#define DECLARE_ASM_HANDLER(name) DECLARE_ASM_HANDLER_BASE(name, true)
-#define DECLARE_ASM_HANDLER_NOPRINT(name) DECLARE_ASM_HANDLER_BASE(name, false)
+#define DECLARE_ASM_HANDLE_IMPLEMENT(name)                                           \
+void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc,    \
+                                     GateRef constpool, GateRef profileTypeInfo,     \
+                                     GateRef acc, GateRef hotnessCounter,            \
+                                     [[maybe_unused]] ProfileOperation callback)
+
+#define REGISTER_PROFILE_TYPE_CALL_BACK()                                              \
+    ProfileOperation callback = [this, glue, sp, pc, profileTypeInfo] (GateRef type) { \
+        PGOTypeProfiler(glue, sp, pc, profileTypeInfo, type);                          \
+    };
+
+#define REGISTER_PROFILE_FUNC_CALL_BACK()                     \
+    ProfileOperation callback = [this, glue] (GateRef func) { \
+        PGOFuncProfiler(glue, func);                          \
+    };
+
+#define REGISTER_NULL_CALL_BACK() \
+    ProfileOperation callback = nullptr;
+
+#define DECLARE_ASM_HANDLER(name)                                 \
+    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_NULL_CALL_BACK) \
+    DECLARE_ASM_HANDLE_IMPLEMENT(name)
+
+#define DECLARE_ASM_HANDLER_NOPRINT(name)                          \
+    DECLARE_ASM_HANDLER_BASE(name, false, REGISTER_NULL_CALL_BACK) \
+    DECLARE_ASM_HANDLE_IMPLEMENT(name)
+
+#define DECLARE_ASM_HANDLER_TYPE_PROFILE(name, ...) \
+    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_TYPE_CALL_BACK)
+
+#define DECLARE_ASM_HANDLER_FUNC_PROFILE(name, ...) \
+    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_FUNC_CALL_BACK)
 
 // TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
@@ -92,7 +120,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define DISPATCH_LAST_WITH_ACC()                                                          \
     DispatchLast(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter)       \
 
-#define UPDATE_HOTNESS(_sp)                                                                                    \
+#define UPDATE_HOTNESS(_sp, callback)                                                                          \
     varHotnessCounter = Int32Add(offset, *varHotnessCounter);                                                  \
     Branch(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                                 \
     Bind(&slowPath);                                                                                           \
@@ -106,7 +134,11 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             Int8(VmThreadControl::VM_NEED_SUSPENSION))), &callRuntime, &dispatch);                             \
         Bind(&callRuntime);                                                                                    \
         {                                                                                                      \
-            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });                 \
+            if (callback) {                                                                                    \
+                varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });     \
+            } else {                                                                                           \
+                varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });             \
+            }                                                                                                  \
         }                                                                                                      \
         Jump(&dispatch);                                                                                       \
     }                                                                                                          \
@@ -462,7 +494,7 @@ DECLARE_ASM_HANDLER(HandleMul2Imm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Mul(glue, left, acc);
+    GateRef result = builder.Mul(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(MUL2_IMM8_V8));
 }
 
@@ -470,7 +502,7 @@ DECLARE_ASM_HANDLER(HandleDiv2Imm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Div(glue, left, acc);
+    GateRef result = builder.Div(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DIV2_IMM8_V8));
 }
 
@@ -478,7 +510,7 @@ DECLARE_ASM_HANDLER(HandleMod2Imm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Mod(glue, left, acc);
+    GateRef result = builder.Mod(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(MOD2_IMM8_V8));
 }
 
@@ -486,7 +518,7 @@ DECLARE_ASM_HANDLER(HandleEqImm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Equal(glue, left, acc);
+    GateRef result = builder.Equal(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(EQ_IMM8_V8));
 }
 
@@ -504,7 +536,7 @@ DECLARE_ASM_HANDLER(HandleNoteqImm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.NotEqual(glue, left, acc);
+    GateRef result = builder.NotEqual(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NOTEQ_IMM8_V8));
 }
 
@@ -512,7 +544,7 @@ DECLARE_ASM_HANDLER(HandleLessImm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Less(glue, left, acc);
+    GateRef result = builder.Less(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LESS_IMM8_V8));
 }
 
@@ -520,7 +552,7 @@ DECLARE_ASM_HANDLER(HandleLesseqImm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.LessEq(glue, left, acc);
+    GateRef result = builder.LessEq(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(LESSEQ_IMM8_V8));
 }
 
@@ -528,7 +560,7 @@ DECLARE_ASM_HANDLER(HandleGreaterImm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Greater(glue, left, acc);
+    GateRef result = builder.Greater(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GREATER_IMM8_V8));
 }
 
@@ -536,7 +568,7 @@ DECLARE_ASM_HANDLER(HandleGreatereqImm8V8)
 {
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.GreaterEq(glue, left, acc);
+    GateRef result = builder.GreaterEq(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(GREATEREQ_IMM8_V8));
 }
 
@@ -570,7 +602,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm8)
     Label dispatch(env);
     Label slowPath(env);
 
-    UPDATE_HOTNESS(sp);
+    UPDATE_HOTNESS(sp, callback);
     DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
@@ -584,7 +616,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm16)
     Label dispatch(env);
     Label slowPath(env);
 
-    UPDATE_HOTNESS(sp);
+    UPDATE_HOTNESS(sp, callback);
     DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
@@ -597,7 +629,7 @@ DECLARE_ASM_HANDLER(HandleJmpImm32)
     GateRef offset = ReadInstSigned32_0(pc);
     Label dispatch(env);
     Label slowPath(env);
-    UPDATE_HOTNESS(sp);
+    UPDATE_HOTNESS(sp, callback);
     DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
 }
 
@@ -844,7 +876,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedStlexvarPrefImm4Imm4V8)
 DECLARE_ASM_HANDLER(HandleIncImm8)
 {
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Inc(glue, acc);
+    GateRef result = builder.Inc(glue, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(INC_IMM8));
 }
 
@@ -859,7 +891,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedIncPrefV8)
 DECLARE_ASM_HANDLER(HandleDecImm8)
 {
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Dec(glue, acc);
+    GateRef result = builder.Dec(glue, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(DEC_IMM8));
 }
 
@@ -906,7 +938,7 @@ DECLARE_ASM_HANDLER(HandleStrictnoteqImm8V8)
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
 
     OperationsStubBuilder builder(this);
-    varAcc = builder.StrictNotEqual(glue, left, acc);
+    varAcc = builder.StrictNotEqual(glue, left, acc, callback);
     DISPATCH_WITH_ACC(STRICTNOTEQ_IMM8_V8);
 }
 
@@ -918,7 +950,7 @@ DECLARE_ASM_HANDLER(HandleStricteqImm8V8)
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
 
     OperationsStubBuilder builder(this);
-    varAcc = builder.StrictEqual(glue, left, acc);
+    varAcc = builder.StrictEqual(glue, left, acc, callback);
     DISPATCH_WITH_ACC(STRICTEQ_IMM8_V8);
 }
 
@@ -1598,7 +1630,7 @@ DECLARE_ASM_HANDLER(HandleWideStownbyindexPrefV8Imm32)
 DECLARE_ASM_HANDLER(HandleNegImm8)
 {
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Neg(glue, acc);
+    GateRef result = builder.Neg(glue, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NEG_IMM8));
 }
 
@@ -1613,7 +1645,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedNegPrefV8)
 DECLARE_ASM_HANDLER(HandleNotImm8)
 {
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Not(glue, acc);
+    GateRef result = builder.Not(glue, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(NOT_IMM8));
 }
 
@@ -1630,7 +1662,7 @@ DECLARE_ASM_HANDLER(HandleAnd2Imm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.And(glue, left, acc);
+    GateRef result = builder.And(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(AND2_IMM8_V8));
 }
 
@@ -1639,7 +1671,7 @@ DECLARE_ASM_HANDLER(HandleOr2Imm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Or(glue, left, acc);
+    GateRef result = builder.Or(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(OR2_IMM8_V8));
 }
 
@@ -1648,7 +1680,7 @@ DECLARE_ASM_HANDLER(HandleXor2Imm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Xor(glue, left, acc);
+    GateRef result = builder.Xor(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(XOR2_IMM8_V8));
 }
 
@@ -1657,7 +1689,7 @@ DECLARE_ASM_HANDLER(HandleAshr2Imm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Ashr(glue, left, acc);
+    GateRef result = builder.Ashr(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ASHR2_IMM8_V8));
 }
 
@@ -1666,7 +1698,7 @@ DECLARE_ASM_HANDLER(HandleShr2Imm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Shr(glue, left, acc);
+    GateRef result = builder.Shr(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(SHR2_IMM8_V8));
 }
 
@@ -1675,7 +1707,7 @@ DECLARE_ASM_HANDLER(HandleShl2Imm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Shl(glue, left, acc);
+    GateRef result = builder.Shl(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(SHL2_IMM8_V8));
 }
 
@@ -2044,7 +2076,7 @@ DECLARE_ASM_HANDLER(HandleJeqzImm8)
         Label dispatch(env);
         Label slowPath(env);
         GateRef offset = ReadInstSigned8_0(pc);
-        UPDATE_HOTNESS(sp);
+        UPDATE_HOTNESS(sp, callback);
         DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
@@ -2085,7 +2117,7 @@ DECLARE_ASM_HANDLER(HandleJeqzImm16)
         Label dispatch(env);
         Label slowPath(env);
         GateRef offset = ReadInstSigned16_0(pc);
-        UPDATE_HOTNESS(sp);
+        UPDATE_HOTNESS(sp, callback);
         DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
@@ -2126,7 +2158,7 @@ DECLARE_ASM_HANDLER(HandleJeqzImm32)
         Label dispatch(env);
         Label slowPath(env);
         GateRef offset = ReadInstSigned32_0(pc);
-        UPDATE_HOTNESS(sp);
+        UPDATE_HOTNESS(sp, callback);
         DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
@@ -2167,7 +2199,7 @@ DECLARE_ASM_HANDLER(HandleJnezImm8)
         Label dispatch(env);
         Label slowPath(env);
         GateRef offset = ReadInstSigned8_0(pc);
-        UPDATE_HOTNESS(sp);
+        UPDATE_HOTNESS(sp, callback);
         DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
@@ -2208,7 +2240,7 @@ DECLARE_ASM_HANDLER(HandleJnezImm16)
         Label dispatch(env);
         Label slowPath(env);
         GateRef offset = ReadInstSigned16_0(pc);
-        UPDATE_HOTNESS(sp);
+        UPDATE_HOTNESS(sp, callback);
         DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
@@ -2249,7 +2281,7 @@ DECLARE_ASM_HANDLER(HandleJnezImm32)
         Label dispatch(env);
         Label slowPath(env);
         GateRef offset = ReadInstSigned32_0(pc);
-        UPDATE_HOTNESS(sp);
+        UPDATE_HOTNESS(sp, callback);
         DISPATCH_BAK(JUMP, SExtInt32ToPtr(offset));
     }
     Bind(&last);
@@ -2283,7 +2315,7 @@ DECLARE_ASM_HANDLER(HandleReturn)
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
-        UPDATE_HOTNESS(*varSp);
+        UPDATE_HOTNESS(*varSp, callback);
         SetHotnessCounter(glue, method, *varHotnessCounter);
         Jump(&tryContinue);
     }
@@ -2342,7 +2374,7 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
-        UPDATE_HOTNESS(*varSp);
+        UPDATE_HOTNESS(*varSp, callback);
         SetHotnessCounter(glue, method, *varHotnessCounter);
         Jump(&tryContinue);
     }
@@ -2414,7 +2446,7 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
-        UPDATE_HOTNESS(*varSp);
+        UPDATE_HOTNESS(*varSp, callback);
         SetHotnessCounter(glue, method, *varHotnessCounter);
         Jump(&tryContinue);
     }
@@ -2485,7 +2517,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
-        UPDATE_HOTNESS(*varSp);
+        UPDATE_HOTNESS(*varSp, callback);
         SetHotnessCounter(glue, method, *varHotnessCounter);
         Jump(&tryContinue);
     }
@@ -2674,7 +2706,7 @@ DECLARE_ASM_HANDLER(HandleAdd2Imm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Add(glue, left, acc);
+    GateRef result = builder.Add(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ADD2_IMM8_V8));
 }
 
@@ -2683,7 +2715,7 @@ DECLARE_ASM_HANDLER(HandleSub2Imm8V8)
     GateRef v0 = ReadInst8_1(pc);
     GateRef left = GetVregValue(sp, ZExtInt8ToPtr(v0));
     OperationsStubBuilder builder(this);
-    GateRef result = builder.Sub(glue, left, acc);
+    GateRef result = builder.Sub(glue, left, acc, callback);
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(SUB2_IMM8_V8));
 }
 
@@ -2789,7 +2821,7 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     Label tryContinue(env);
     Label dispatch(env);
     Label slowPath(env);
-    
+
     GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_0(pc)));
     GateRef value = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef flag = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_2(pc)));
@@ -2814,7 +2846,7 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
         GateRef fistPC = Load(VariableType::NATIVE_POINTER(), method,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = Int32Not(TruncPtrToInt32(PtrSub(*varPc, fistPC)));
-        UPDATE_HOTNESS(*varSp);
+        UPDATE_HOTNESS(*varSp, callback);
         SetHotnessCounter(glue, method, *varHotnessCounter);
         Jump(&tryContinue);
     }
@@ -3512,7 +3544,8 @@ DECLARE_ASM_HANDLER(HandleCallarg0Imm8)
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG0);
     GateRef func = acc;
     GateRef jumpSize = INT_PTR(CALLARG0_IMM8);
-    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter, JSCallMode::CALL_ARG0, {});
+    GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
+                                 JSCallMode::CALL_ARG0, {}, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3523,7 +3556,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallarg0PrefV8)
     GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLARG0_PREF_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::DEPRECATED_CALL_ARG0, {});
+                                 JSCallMode::DEPRECATED_CALL_ARG0, {}, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3535,7 +3568,7 @@ DECLARE_ASM_HANDLER(HandleCallarg1Imm8V8)
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = INT_PTR(CALLARG1_IMM8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_ARG1, { a0Value });
+                                 JSCallMode::CALL_ARG1, { a0Value }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3548,7 +3581,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallarg1PrefV8V8)
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLARG1_PREF_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::DEPRECATED_CALL_ARG1, { a0Value });
+                                 JSCallMode::DEPRECATED_CALL_ARG1, { a0Value }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3562,7 +3595,7 @@ DECLARE_ASM_HANDLER(HandleCallargs2Imm8V8V8)
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef jumpSize = INT_PTR(CALLARGS2_IMM8_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_ARG2, { a0Value, a1Value });
+                                 JSCallMode::CALL_ARG2, { a0Value, a1Value }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3577,7 +3610,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallargs2PrefV8V8V8)
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLARGS2_PREF_V8_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::DEPRECATED_CALL_ARG2, { a0Value, a1Value });
+                                 JSCallMode::DEPRECATED_CALL_ARG2, { a0Value, a1Value }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3593,7 +3626,7 @@ DECLARE_ASM_HANDLER(HandleCallargs3Imm8V8V8V8)
     GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
     GateRef jumpSize = INT_PTR(CALLARGS3_IMM8_V8_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_ARG3, { a0Value, a1Value, a2Value });
+                                 JSCallMode::CALL_ARG3, { a0Value, a1Value, a2Value }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3610,7 +3643,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallargs3PrefV8V8V8V8)
     GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::DEPRECATED_CALL_ARG3, { a0Value, a1Value, a2Value });
+                                 JSCallMode::DEPRECATED_CALL_ARG3, { a0Value, a1Value, a2Value }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3622,7 +3655,7 @@ DECLARE_ASM_HANDLER(HandleCallrangeImm8Imm8V8)
     GateRef jumpSize = INT_PTR(CALLRANGE_IMM8_IMM8_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_WITH_ARGV, { numArgs, argv });
+                                 JSCallMode::CALL_WITH_ARGV, { numArgs, argv }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3634,7 +3667,7 @@ DECLARE_ASM_HANDLER(HandleWideCallrangePrefImm16V8)
     GateRef jumpSize = INT_PTR(WIDE_CALLRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_WITH_ARGV, { numArgs, argv });
+                                 JSCallMode::CALL_WITH_ARGV, { numArgs, argv }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3648,7 +3681,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallrangePrefImm16V8)
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::DEPRECATED_CALL_WITH_ARGV, { numArgs, argv });
+                                 JSCallMode::DEPRECATED_CALL_WITH_ARGV, { numArgs, argv }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3663,7 +3696,7 @@ DECLARE_ASM_HANDLER(HandleCallthisrangeImm8Imm8V8)
     GateRef jumpSize = INT_PTR(CALLTHISRANGE_IMM8_IMM8_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue });
+                                 JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3678,7 +3711,7 @@ DECLARE_ASM_HANDLER(HandleWideCallthisrangePrefImm16V8)
     GateRef jumpSize = INT_PTR(WIDE_CALLTHISRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue });
+                                 JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3694,7 +3727,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallthisrangePrefImm16V8)
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue });
+                                 JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3705,7 +3738,7 @@ DECLARE_ASM_HANDLER(HandleCallthis0Imm8V8)
     GateRef func = acc;
     GateRef jumpSize = INT_PTR(CALLTHIS0_IMM8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_THIS_ARG0, { thisValue });
+                                 JSCallMode::CALL_THIS_ARG0, { thisValue }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3718,7 +3751,7 @@ DECLARE_ASM_HANDLER(HandleCallthis1Imm8V8V8)
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = INT_PTR(CALLTHIS1_IMM8_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_THIS_ARG1, { a0Value, thisValue });
+                                 JSCallMode::CALL_THIS_ARG1, { a0Value, thisValue }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3733,7 +3766,7 @@ DECLARE_ASM_HANDLER(HandleCallthis2Imm8V8V8V8)
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef jumpSize = INT_PTR(CALLTHIS2_IMM8_V8_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_THIS_ARG2, { a0Value, a1Value, thisValue });
+                                 JSCallMode::CALL_THIS_ARG2, { a0Value, a1Value, thisValue }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3750,7 +3783,7 @@ DECLARE_ASM_HANDLER(HandleCallthis3Imm8V8V8V8V8)
     GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
     GateRef jumpSize = INT_PTR(CALLTHIS3_IMM8_V8_V8_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_THIS_ARG3, { a0Value, a1Value, a2Value, thisValue });
+                                 JSCallMode::CALL_THIS_ARG3, { a0Value, a1Value, a2Value, thisValue }, callback);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3859,7 +3892,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize, hotnessCounter,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
-                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj });
+                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback);
         Jump(&threadCheck);
     }
     Bind(&slowPath);
@@ -3928,7 +3961,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize, hotnessCounter,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
-                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj });
+                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback);
         Jump(&threadCheck);
     }
     Bind(&slowPath);
@@ -3997,7 +4030,7 @@ DECLARE_ASM_HANDLER(HandleWideNewobjrangePrefImm16V8)
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize, hotnessCounter,
                              JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV,
-                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj });
+                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback);
         Jump(&threadCheck);
     }
     Bind(&slowPath);
@@ -4572,6 +4605,11 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeNotifyConcurrentResultPrefNone)
     CallRuntime(glue, RTSTUB_ID(NotifyConcurrentResult), {acc, thisObj});
     DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
 }
+
+ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_TYPE_PROFILE)
+ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_FUNC_PROFILE)
+ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_FUNC_PROFILE)
+
 #undef DECLARE_ASM_HANDLER
 #undef DISPATCH
 #undef DISPATCH_WITH_ACC

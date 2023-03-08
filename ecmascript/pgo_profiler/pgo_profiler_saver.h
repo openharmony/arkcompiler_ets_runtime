@@ -42,13 +42,13 @@ public:
     void TerminateSaveTask();
     void PostSaveTask();
 
-    void PUBLIC_API Save();
+    bool PUBLIC_API Save();
 
     bool PUBLIC_API LoadAPTextFile(const std::string &inPath);
 
 private:
     void StartSaveTask(const SaveTask *task);
-    void SaveProfiler(const SaveTask *task = nullptr);
+    bool SaveProfiler(const SaveTask *task = nullptr);
 
     bool isInitialized_ {false};
     std::string outDir_;

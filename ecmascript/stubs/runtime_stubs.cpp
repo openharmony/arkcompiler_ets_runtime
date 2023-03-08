@@ -384,6 +384,12 @@ void RuntimeStubs::PGOProfiler(uintptr_t argGlue, uintptr_t func)
     thread->GetEcmaVM()->GetPGOProfiler()->Sample(func);
 }
 
+void RuntimeStubs::PGOTypeProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetPGOProfiler()->TypeSample(func, offset, type);
+}
+
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
 {
     std::string format = MessageString::GetMessageString(fmtMessageId);
@@ -911,7 +917,6 @@ DEF_RUNTIME_STUBS(SetClassConstructorLength)
     return RuntimeSetClassConstructorLength(thread, ctor, length).GetRawData();
 }
 
-
 DEF_RUNTIME_STUBS(UpdateHotnessCounter)
 {
     RUNTIME_STUBS_HEADER(UpdateHotnessCounter);
@@ -920,9 +925,22 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
-        if (thread->IsPGOProfilerEnable()) {
-            thread->GetEcmaVM()->GetPGOProfiler()->Sample(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
-        }
+        uint32_t slotSize = method->GetSlotSize();
+        auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
+        return res.GetRawData();
+    }
+    return profileTypeInfo.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
+{
+    RUNTIME_STUBS_HEADER(UpdateHotnessCounterWithProf);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    thread->CheckSafepoint();
+    JSHandle<Method> method(thread, thisFunc->GetMethod());
+    auto profileTypeInfo = method->GetProfileTypeInfo();
+    if (profileTypeInfo.IsUndefined()) {
+        thread->GetEcmaVM()->GetPGOProfiler()->Sample(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();

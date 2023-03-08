@@ -649,6 +649,7 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
 #endif
         }
     }
+    thread->CheckOrSwitchPGOStubs();
     AsmInterParsedOption asmInterOpt = vm_->GetJSOptions().GetAsmInterParsedOption();
     AdjustBCStubAndDebuggerStubEntries(thread, stubs, asmInterOpt);
 }

@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -377,12 +378,16 @@ public:
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
+    PGOSampleType GetTypedBinaryType(GateRef gate) const;
+    bool HasNumberType(GateRef gate) const;
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnOp(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
     uint32_t TryGetPcOffset(GateRef gate) const;
+    PGOSampleType TryGetPGOType(GateRef gate) const;
+    void TrySetPGOType(GateRef gate, PGOSampleType type);
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;

@@ -88,6 +88,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(DebugPrint)                              \
     V(DebugPrintInstruction)                   \
     V(PGOProfiler)                             \
+    V(PGOTypeProfiler)                         \
     V(Comment)                                 \
     V(FatalPrint)                              \
     V(GetActualArgvNoGC)                       \
@@ -185,6 +186,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
     V(CheckSafePoint)                     \
+    V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \
     V(GetModuleNamespace)                 \
@@ -330,6 +332,7 @@ public:
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
     static void Comment(uintptr_t argStr);
     static void PGOProfiler(uintptr_t argGlue, uintptr_t func);
+    static void PGOTypeProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type);
     static void FatalPrint(int fmtMessageId, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);

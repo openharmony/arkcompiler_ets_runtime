@@ -48,6 +48,11 @@ protected:
         return true;
     }
 
+    bool VerifyVersionInner(const std::array<uint8_t, VERSION_SIZE> &expectVersion) const
+    {
+        return version_ >= expectVersion;
+    }
+
     std::string GetVersionInner() const
     {
         return ConvToStr(version_);

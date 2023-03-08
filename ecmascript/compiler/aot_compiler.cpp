@@ -106,7 +106,8 @@ int Main(const int argc, const char **argv)
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
         bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
         bool isEnableTypeInfer = isEnableTypeLowering || vm->GetTSManager()->AssertTypes();
-        PassOptions passOptions(isEnableTypeLowering, isEnableTypeInfer, isEnableOptInlining);
+        bool isEnableOptPGOType = runtimeOptions.IsEnableOptPGOType();
+        PassOptions passOptions(isEnableTypeLowering, isEnableTypeInfer, isEnableOptInlining, isEnableOptPGOType);
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);
 

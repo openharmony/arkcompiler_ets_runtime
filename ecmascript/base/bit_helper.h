@@ -29,6 +29,14 @@ union Data {
 };
 
 template <typename T>
+inline T ReadBuffer(void **buffer, size_t offset)
+{
+    T result = *(reinterpret_cast<T *>(*buffer));
+    *buffer = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(*buffer) + offset);
+    return result;
+}
+
+template <typename T>
 inline T ReadBuffer(void **buffer)
 {
     T result = *(reinterpret_cast<T *>(*buffer));

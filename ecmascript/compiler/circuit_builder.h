@@ -241,7 +241,7 @@ public:
     GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type = DeoptType::NOTCHECK);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
-                                std::vector<GateRef> inList, GateType gateType);
+                                std::vector<GateRef> inList, GateType gateType, PGOSampleType sampleType);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
@@ -443,7 +443,8 @@ public:
     GateRef HasPendingException(GateRef glue);
     // middle ir: operations with any type
     template<TypedBinOp Op>
-    inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType);
+    inline GateRef TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType,
+        PGOSampleType sampleType);
     template<TypedUnOp Op>
     inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
 

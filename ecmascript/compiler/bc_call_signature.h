@@ -381,6 +381,78 @@ namespace panda::ecmascript::kungfu {
     V(NewObjectRangeThrowException)                     \
     V(ThrowStackOverflowException)
 
+#define APPEND_SUFFIX(name, V) \
+    V(name##WithProf, name)
+
+#define ASM_INTERPRETER_BC_PROFILER_STUB_LIST(V)      \
+    ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(V)     \
+    ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(V) \
+    ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(V)
+
+#define ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(V) \
+    APPEND_SUFFIX(HandleAdd2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleSub2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleMul2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleDiv2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleMod2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleShl2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleShr2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleAnd2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleOr2Imm8V8, V)                 \
+    APPEND_SUFFIX(HandleXor2Imm8V8, V)                \
+    APPEND_SUFFIX(HandleAshr2Imm8V8, V)               \
+    APPEND_SUFFIX(HandleExpImm8V8, V)                 \
+    APPEND_SUFFIX(HandleNegImm8, V)                   \
+    APPEND_SUFFIX(HandleNotImm8, V)                   \
+    APPEND_SUFFIX(HandleIncImm8, V)                   \
+    APPEND_SUFFIX(HandleDecImm8, V)                   \
+    APPEND_SUFFIX(HandleNoteqImm8V8, V)               \
+    APPEND_SUFFIX(HandleLessImm8V8, V)                \
+    APPEND_SUFFIX(HandleLesseqImm8V8, V)              \
+    APPEND_SUFFIX(HandleGreaterImm8V8, V)             \
+    APPEND_SUFFIX(HandleGreatereqImm8V8, V)           \
+    APPEND_SUFFIX(HandleStrictnoteqImm8V8, V)         \
+    APPEND_SUFFIX(HandleStricteqImm8V8, V)
+
+#define ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(V)      \
+    APPEND_SUFFIX(HandleJmpImm8, V)                            \
+    APPEND_SUFFIX(HandleJmpImm16, V)                           \
+    APPEND_SUFFIX(HandleJmpImm32, V)                           \
+    APPEND_SUFFIX(HandleJeqzImm8, V)                           \
+    APPEND_SUFFIX(HandleJeqzImm16, V)                          \
+    APPEND_SUFFIX(HandleJeqzImm32, V)                          \
+    APPEND_SUFFIX(HandleJnezImm8, V)                           \
+    APPEND_SUFFIX(HandleJnezImm16, V)                          \
+    APPEND_SUFFIX(HandleJnezImm32, V)                          \
+    APPEND_SUFFIX(HandleReturn, V)                             \
+    APPEND_SUFFIX(HandleReturnundefined, V)                    \
+    APPEND_SUFFIX(HandleSuspendgeneratorV8, V)                 \
+    APPEND_SUFFIX(HandleDeprecatedSuspendgeneratorPrefV8V8, V) \
+    APPEND_SUFFIX(HandleAsyncgeneratorresolveV8V8V8, V)        \
+
+#define ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(V)    \
+    APPEND_SUFFIX(HandleCallarg0Imm8, V)                       \
+    APPEND_SUFFIX(HandleDeprecatedCallarg0PrefV8, V)           \
+    APPEND_SUFFIX(HandleCallarg1Imm8V8, V)                     \
+    APPEND_SUFFIX(HandleDeprecatedCallarg1PrefV8V8, V)         \
+    APPEND_SUFFIX(HandleCallargs2Imm8V8V8, V)                  \
+    APPEND_SUFFIX(HandleDeprecatedCallargs2PrefV8V8V8, V)      \
+    APPEND_SUFFIX(HandleCallargs3Imm8V8V8V8, V)                \
+    APPEND_SUFFIX(HandleDeprecatedCallargs3PrefV8V8V8V8, V)    \
+    APPEND_SUFFIX(HandleCallrangeImm8Imm8V8, V)                \
+    APPEND_SUFFIX(HandleWideCallrangePrefImm16V8, V)           \
+    APPEND_SUFFIX(HandleDeprecatedCallrangePrefImm16V8, V)     \
+    APPEND_SUFFIX(HandleCallthisrangeImm8Imm8V8, V)            \
+    APPEND_SUFFIX(HandleWideCallthisrangePrefImm16V8, V)       \
+    APPEND_SUFFIX(HandleDeprecatedCallthisrangePrefImm16V8, V) \
+    APPEND_SUFFIX(HandleCallthis0Imm8V8, V)                    \
+    APPEND_SUFFIX(HandleCallthis1Imm8V8V8, V)                  \
+    APPEND_SUFFIX(HandleCallthis2Imm8V8V8V8, V)                \
+    APPEND_SUFFIX(HandleCallthis3Imm8V8V8V8V8, V)              \
+    APPEND_SUFFIX(HandleNewobjrangeImm8Imm8V8, V)              \
+    APPEND_SUFFIX(HandleNewobjrangeImm16Imm8V8, V)             \
+    APPEND_SUFFIX(HandleWideNewobjrangePrefImm16V8, V)
+
 #define INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(V)           \
     ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)         \
     ASM_INTERPRETER_DEPRECATED_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V) \
@@ -414,6 +486,9 @@ public:
         INTERPRETER_BC_STUB_LIST(DEF_VALID_BC_STUB_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_VALID_BC_STUB_ID)
 #undef DEF_VALID_BC_STUB_ID
+#define DEF_VALID_BC_STUB_ID(name, ...) name,
+        ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_VALID_BC_STUB_ID)
+#undef DEF_VALID_BC_STUB_ID
         NUM_OF_VALID_STUBS
     };
 
@@ -443,6 +518,9 @@ public:
         lastOpcode = LAST_VALID_OPCODE, // last Opcode is max opcode size
         ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_BC_STUB_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_BC_STUB_ID)
+#undef DEF_BC_STUB_ID
+#define DEF_BC_STUB_ID(name, ...) ID_##name,
+        ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_BC_STUB_ID)
         NUM_OF_STUBS,
         ID_Wide_Start = lastOpcode + 1,
         ID_Throw_Start = ID_Wide_Start + NUM_OF_WIDE_STUBS,

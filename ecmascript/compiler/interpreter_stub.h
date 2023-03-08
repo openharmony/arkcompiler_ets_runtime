@@ -145,6 +145,9 @@ public:
                                  GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
     inline void DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
+    inline void PGOTypeProfiler(GateRef glue, GateRef sp, GateRef pc, GateRef profileTypeInfo, GateRef type);
+    inline void PGOFuncProfiler(GateRef glue, GateRef func);
+
     template <bool needPrint>
     void DebugPrintInstruction();
 private:
@@ -177,12 +180,28 @@ public:
         NO_COPY_SEMANTIC(name##StubBuilder);                                                    \
         void GenerateCircuit() override;                                                        \
                                                                                                 \
-    private:                                                                                    \
+    protected:                                                                                  \
         void GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,       \
-                                 GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter); \
+                                 GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter,  \
+                                 ProfileOperation callback);                                    \
     };
     INTERPRETER_BC_STUB_LIST(DECLARE_HANDLE_STUB_CLASS)
     ASM_INTERPRETER_BC_HELPER_STUB_LIST(DECLARE_HANDLE_STUB_CLASS)
+
+#define DECLARE_HANDLE_PROFILE_STUB_CLASS(name, base)                              \
+    class name##StubBuilder : public base##StubBuilder {                           \
+    public:                                                                        \
+        explicit name##StubBuilder(CallSignature *callSignature, Environment *env) \
+            : base##StubBuilder(callSignature, env)                                \
+        {                                                                          \
+        }                                                                          \
+        ~name##StubBuilder() = default;                                            \
+        NO_MOVE_SEMANTIC(name##StubBuilder);                                       \
+        NO_COPY_SEMANTIC(name##StubBuilder);                                       \
+        void GenerateCircuit() override;                                           \
+    };
+    ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DECLARE_HANDLE_PROFILE_STUB_CLASS)
+#undef DECLARE_HANDLE_PROFILE_STUB_CLASS
 #undef DECLARE_HANDLE_STUB_CLASS
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_INTERPRETER_STUB_H

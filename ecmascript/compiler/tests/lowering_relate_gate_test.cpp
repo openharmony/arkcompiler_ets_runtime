@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/mem/native_area_allocator.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {
@@ -81,7 +82,8 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorAddFramework)
     auto arg1 = builder.Arguments(1);
     auto nadd = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_ADD,
                                             GateType::NumberType(), GateType::NumberType(),
-                                            {entry, depend, arg0, arg1}, GateType::NumberType());
+                                            {entry, depend, arg0, arg1}, GateType::NumberType(),
+                                            ecmascript::PGOSampleType::NoneType());
     builder.Return(nadd, nadd, nadd);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);
@@ -103,7 +105,8 @@ HWTEST_F_L0(LoweringRelateGateTests, TypedBinaryOperatorLessFramework)
     auto arg1 = builder.Arguments(1);
     auto nless = builder.TypedBinaryOperator(MachineType::I64, TypedBinOp::TYPED_LESS,
                                             GateType::NumberType(), GateType::NumberType(),
-                                            {entry, depend, arg0, arg1}, GateType::BooleanType());
+                                            {entry, depend, arg0, arg1}, GateType::BooleanType(),
+                                            ecmascript::PGOSampleType::NoneType());
     builder.Return(nless, nless, nless);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config("x86_64-unknown-linux-gnu", false);

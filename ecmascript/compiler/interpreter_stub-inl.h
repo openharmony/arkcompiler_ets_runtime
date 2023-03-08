@@ -22,6 +22,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 
 namespace panda::ecmascript::kungfu {
 void InterpreterStubBuilder::SetVregValue(GateRef glue, GateRef sp, GateRef idx, GateRef val)
@@ -582,6 +583,57 @@ void InterpreterStubBuilder::DispatchDebuggerLast(GateRef glue, GateRef sp, Gate
     auto args = { glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter };
     GetEnvironment()->GetBuilder()->CallBCDebugger(glue, target, args);
     Return();
+}
+
+void InterpreterStubBuilder::PGOTypeProfiler(GateRef glue, GateRef sp, GateRef pc,
+    GateRef profileTypeInfo, GateRef type)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    Label exit(env);
+    Label profiler(env);
+    Branch(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    Bind(&profiler);
+    {
+        Label pushLabel(env);
+        Label compareLabel(env);
+
+        GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        DEFVARIABLE(curType, VariableType::INT32(), type);
+        Branch(TaggedIsInt(slotValue), &compareLabel, &pushLabel);
+        Bind(&compareLabel);
+        {
+            GateRef oldSlotValue = TaggedGetInt(slotValue);
+            curType = Int32Or(oldSlotValue, type);
+            Branch(Int32Equal(oldSlotValue, *curType), &exit, &pushLabel);
+        }
+        Bind(&pushLabel);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(*curType));
+
+            GateRef func = GetFunctionFromFrame(GetFrame(sp));
+            GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+            GateRef firstPC = Load(VariableType::NATIVE_POINTER(), method,
+                IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+            GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+            CallNGCRuntime(glue, RTSTUB_ID(PGOTypeProfiler), { glue, func, offset, *curType });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void InterpreterStubBuilder::PGOFuncProfiler(GateRef glue, GateRef func)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    CallNGCRuntime(glue, RTSTUB_ID(PGOProfiler), { glue, func });
+    env->SubCfgExit();
 }
 
 GateRef InterpreterStubBuilder::GetHotnessCounterFromMethod(GateRef method)
