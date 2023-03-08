@@ -22,11 +22,32 @@ bool VmThreadControl::NotifyVMThreadSuspension() // block caller thread
         return false;
     }
     SetVMNeedSuspension(true);
+    thread_->SetCheckSafePointStatus();
     os::memory::LockHolder lock(vmThreadSuspensionMutex_);
     while (!IsSuspended()) {
         vmThreadNeedSuspensionCV_.Wait(&vmThreadSuspensionMutex_);
     }
     return true;
+}
+
+void VmThreadControl::SetVMNeedSuspension(bool flag)
+{
+    thread_->SetVMNeedSuspension(flag);
+}
+
+bool VmThreadControl::VMNeedSuspension() const
+{
+    return thread_->VMNeedSuspension();
+}
+
+void VmThreadControl::SetVMSuspended(bool flag)
+{
+    thread_->SetVMSuspended(flag);
+}
+
+bool VmThreadControl::IsSuspended() const
+{
+    return thread_->IsVMSuspended();
 }
 
 void VmThreadControl::SuspendVM() // block vm thread

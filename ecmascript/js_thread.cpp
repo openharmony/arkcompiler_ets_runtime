@@ -81,7 +81,7 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
         isWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::IsWeak, globalDebugStorage_, std::placeholders::_1);
     }
     propertiesCache_ = new PropertiesCache();
-    vmThreadControl_ = new VmThreadControl();
+    vmThreadControl_ = new VmThreadControl(this);
 }
 
 JSThread::~JSThread()
@@ -457,21 +457,20 @@ void JSThread::CheckSwitchDebuggerBCStub()
     }
 }
 
-bool JSThread::CheckSafepoint() const
+bool JSThread::CheckSafepoint()
 {
+    ResetCheckSafePointStatus();
     if (vmThreadControl_->VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
     }
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC()) {
         GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
-        return true;
     }
 #endif
     if (IsMarkFinished()) {
         auto heap = GetEcmaVM()->GetHeap();
         heap->GetConcurrentMarker()->HandleMarkingFinished();
-        return true;
     }
     return false;
 }
