@@ -42,6 +42,7 @@ public:
     static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
     static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
+    static constexpr char NAME_SPACE_TAG[] = "@";
 
     static constexpr size_t MAX_PACKAGE_LEVEL = 1;
     static constexpr size_t SEGMENTS_LIMIT_TWO = 2;
@@ -148,7 +149,7 @@ public:
             // Temporarily handle the relative path sent by arkui
             if (StringStartWith(inputFileName, PREFIX_BUNDLE, PREFIX_BUNDLE_LEN)) {
                 entryPoint = inputFileName.substr(PREFIX_BUNDLE_LEN);
-                outFileName = ParseNewPagesUrl(vm, entryPoint);
+                outFileName = ParseUrl(vm, entryPoint);
             } else {
                 entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
             }
@@ -159,16 +160,28 @@ public:
         return entryPoint;
     }
 
-    static CString ParseNewPagesUrl(EcmaVM *vm, const CString &entryPoint)
+    static void CropNamespaceIfAbsent(CString &moduleName)
+    {
+        size_t pos = moduleName.find(NAME_SPACE_TAG);
+        if (pos == CString::npos) {
+            return;
+        }
+        moduleName.erase(pos, moduleName.size() - pos);
+    }
+
+    // current ohmUrl format : @bundle:bundlename/modulename@namespace/entry/src/index
+    static CString ParseUrl(EcmaVM *vm, const CString &entryPoint)
     {
         CVector<CString> vec;
         SplitString(entryPoint, vec, 0, SEGMENTS_LIMIT_TWO);
         if (vec.size() < SEGMENTS_LIMIT_TWO) {
-            LOG_ECMA(ERROR) << "ParseNewPagesUrl SplitString filed, please check Url" << entryPoint;
+            LOG_ECMA(ERROR) << "ParseUrl SplitString filed, please check Url" << entryPoint;
             return CString();
         }
         CString bundleName = vec[0];
         CString moduleName = vec[1];
+        CropNamespaceIfAbsent(moduleName);
+
         CString baseFileName;
         if (bundleName != vm->GetBundleName()) {
             // Cross-application
@@ -251,6 +264,8 @@ public:
             }
             CString bundleName = vec[0];
             CString moduleName = vec[1];
+            CropNamespaceIfAbsent(moduleName);
+
             EcmaVM *vm = thread->GetEcmaVM();
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
             if (bundleName != vm->GetBundleName()) {
@@ -370,6 +385,44 @@ public:
         return CString();
     }
 
+    static CString FindPackageInTopLevelWithNewForm(const JSPandaFile *jsPandaFile, const CString& requestName,
+                                                    const CString &recordName, const CString &packagePath)
+    {
+        // first : find <packagePath>@[moduleName|namespace]/<requestName>
+        // second : find <packagePath>/<requestName>
+        CString entryPoint;
+        CString key;
+        if (StringStartWith(recordName, packagePath, packagePath.size())) {
+            size_t pos = recordName.find('/');
+            if (pos == CString::npos) {
+                LOG_ECMA(ERROR) << "wrong recordname : " << recordName;
+                return CString();
+            }
+            key = recordName.substr(0, pos + 1) + requestName;
+            entryPoint = FindNpmEntryPoint(jsPandaFile, key);
+        } else {
+            CVector<CString> vec;
+            SplitString(recordName, vec, 0, SEGMENTS_LIMIT_TWO);
+            if (vec.size() < SEGMENTS_LIMIT_TWO) {
+                LOG_ECMA(ERROR) << "SplitString filed, please check moduleRequestName";
+                return CString();
+            }
+            CString moduleName = vec[1];
+            // If namespace exists, use namespace as moduleName
+            size_t pos = moduleName.find(NAME_SPACE_TAG);
+            if (pos != CString::npos) {
+                moduleName = moduleName.substr(pos + 1);
+            }
+            key = packagePath + NAME_SPACE_TAG + moduleName + "/" + requestName;
+            entryPoint = FindNpmEntryPoint(jsPandaFile, key);
+        }
+        if (!entryPoint.empty()) {
+            return entryPoint;
+        }
+        key =  packagePath + "/" + requestName;
+        return FindNpmEntryPoint(jsPandaFile, key);
+    }
+
     static CString ParseThirdPartyPackage(const JSPandaFile *jsPandaFile, const CString &recordName,
                                           const CString &requestName, const CString &packagePath)
     {
@@ -388,11 +441,14 @@ public:
                 if (pos == CString::npos || pos < 0) {
                     break;
                 }
-                PackageName = PackageName.erase(pos, PackageName.size() - pos);
+                PackageName.erase(pos, PackageName.size() - pos);
             }
         }
-        entryPoint = FindPackageInTopLevel(jsPandaFile, requestName, packagePath);
-        return entryPoint;
+        entryPoint = FindPackageInTopLevelWithNewForm(jsPandaFile, requestName, recordName, packagePath);
+        if (!entryPoint.empty()) {
+            return entryPoint;
+        }
+        return FindPackageInTopLevel(jsPandaFile, requestName, packagePath);
     }
 
     static CString ParseThirdPartyPackage(const JSPandaFile *jsPandaFile, const CString &recordName,
@@ -443,7 +499,7 @@ public:
             entryPoint = ParsePreixModule(baseFileName, recordName, requestName);
         } else if (StringStartWith(requestName, PREFIX_PACKAGE, PREFIX_PACKAGE_LEN)) {
             entryPoint = requestName.substr(PREFIX_PACKAGE_LEN);
-        } else if (IsImportFile(requestName)) {
+        } else if (IsImportFile(requestName)) { // load a relative pathname.
             entryPoint = MakeNewRecord(jsPandaFile, baseFileName, recordName, requestName);
         } else {
             entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);

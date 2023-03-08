@@ -303,12 +303,16 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
     ASSERT(GetJSPandaFile(pf) == nullptr);
     JSPandaFile *newJsPandaFile = NewJSPandaFile(pf, desc);
     auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
+    EcmaVM *vm = thread->GetEcmaVM();
     if (aotFM->IsLoad(newJsPandaFile)) {
         uint32_t index = aotFM->GetAnFileIndex(newJsPandaFile);
         newJsPandaFile->SetAOTFileInfoIndex(index);
     }
 
     CString methodName = entryPoint.data();
+    if (!newJsPandaFile->IsBundlePack() && !vm->GetBundleName().empty()) {
+        newJsPandaFile->CheckIsNewRecord(vm);
+    }
     if (newJsPandaFile->IsBundlePack()) {
         // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
         auto pos = entryPoint.find_last_of("::");
@@ -324,7 +328,7 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
         os::memory::LockHolder lock(jsPandaFileLock_);
         const JSPandaFile *jsPandaFile = FindJSPandaFileUnlocked(desc);
         if (jsPandaFile != nullptr) {
-            if (!thread->GetEcmaVM()->HasCachedConstpool(jsPandaFile)) {
+            if (!vm->HasCachedConstpool(jsPandaFile)) {
                 IncreaseRefJSPandaFileUnlocked(jsPandaFile);
             }
             ReleaseJSPandaFile(newJsPandaFile);
