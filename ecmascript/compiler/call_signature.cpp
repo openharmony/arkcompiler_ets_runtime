@@ -921,6 +921,26 @@ DEF_CALL_SIGNATURE(JSCall)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(JSAotCall)
+{
+    // 6 : 6 input parameters
+    CallSignature jSCall("JSAotCall", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = jSCall;
+    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),      // lexenv
+        VariableType::INT64(),       // actual argC
+        VariableType::JS_ANY(),      // call target
+        VariableType::JS_ANY(),      // new target
+        VariableType::JS_ANY(),      // thisobj
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::WebKitJSCallConv);
+    callSign->SetTargetKind(CallSignature::TargetKind::AOT_STUB);
+}
+
 DEF_CALL_SIGNATURE(JSCallNew)
 {
     // 6 : 6 input parameters

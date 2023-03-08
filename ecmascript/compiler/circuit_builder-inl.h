@@ -517,6 +517,27 @@ void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
     Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
 }
 
+inline GateRef CircuitBuilder::HasAotCode(GateRef method)
+{
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
+    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
+    return Int64NotEqual(
+        Int64And(
+            Int64LSR(callfield, Int64(MethodLiteral::IsAotCodeBit::START_BIT)),
+            Int64((1LU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
+        Int64(0));
+}
+
+inline GateRef CircuitBuilder::IsJSFunction(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef greater = Int32GreaterThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
+    GateRef less = Int32LessThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
+    return BoolAnd(greater, less);
+}
+
 GateRef CircuitBuilder::IsJsType(GateRef obj, JSType type)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));

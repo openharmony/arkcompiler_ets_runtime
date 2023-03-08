@@ -229,6 +229,7 @@ public:
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param);
+    GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type = DeoptType::NOTCHECK);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
@@ -428,9 +429,12 @@ public:
     GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
+    GateRef TypedAotCall(GateRef hirGate, std::vector<GateRef> args);
 
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
+    inline GateRef HasAotCode(GateRef method);
+    inline GateRef IsJSFunction(GateRef obj);
     inline GateRef IsDictionaryMode(GateRef object);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     inline GateRef IsJsType(GateRef object, JSType type);
@@ -468,6 +472,7 @@ public:
         GateRef value, GateRef attrOffset, VariableType type);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetConstPool(GateRef jsFunc);
+    GateRef GetCodeAddr(GateRef method);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);

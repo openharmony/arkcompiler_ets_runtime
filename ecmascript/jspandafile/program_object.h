@@ -110,6 +110,21 @@ public:
         return indexs[index];
     }
 
+    int GetMethodIndexByEntityId(panda_file::File::EntityId entityId) const
+    {
+        JSPandaFile *jsPandaFile = GetJSPandaFile();
+        panda_file::File::IndexHeader *indexHeader = GetIndexHeader();
+        Span<const panda_file::File::EntityId> indexs = jsPandaFile->GetMethodIndex(indexHeader);
+        int size = static_cast<int>(indexs.size());
+        for (int i = 0; i < size; i++) {
+            if (indexs[i] == entityId) {
+                return i;
+            }
+        }
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+
     inline void SetIndexHeader(const panda_file::File::IndexHeader *indexHeader)
     {
         Barriers::SetPrimitive(GetData(), GetIndexHeaderOffset(), indexHeader);

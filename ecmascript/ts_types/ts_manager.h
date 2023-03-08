@@ -330,6 +330,8 @@ public:
 
     std::string PUBLIC_API GetFuncName(kungfu::GateType gt) const;
 
+    int PUBLIC_API GetMethodIndex(GlobalTSTypeRef gt) const;
+
     inline GlobalTSTypeRef PUBLIC_API GetArrayParameterTypeGT(kungfu::GateType gateType) const
     {
         GlobalTSTypeRef gt = gateType.GetGTRef();
@@ -537,6 +539,16 @@ public:
     inline const CString &GetBuiltinRecordName() const
     {
         return builtinsRecordName_;
+    }
+
+    inline kungfu::BytecodeInfoCollector *GetBytecodeInfoCollector() const
+    {
+        return bcInfoCollector_;
+    }
+
+    inline void SetBytecodeInfoCollector(kungfu::BytecodeInfoCollector *bcInfoCollector)
+    {
+        bcInfoCollector_ = bcInfoCollector;
     }
 
     class IHClassData {
@@ -757,6 +769,7 @@ private:
     friend class EcmaVM;
 
     std::map<std::pair<const JSPandaFile *, uint32_t>, std::string> literalOffsetClassNameMap_ {};
+    kungfu::BytecodeInfoCollector *bcInfoCollector_ {nullptr};
 };
 }  // namespace panda::ecmascript
 

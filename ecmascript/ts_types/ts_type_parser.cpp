@@ -124,7 +124,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
             return JSHandle<JSTaggedValue>(unionType);
         }
         case TSTypeKind::FUNCTION: {
-            JSHandle<TSFunctionType> functionType = ParseFunctionType(jsPandaFile, recordName, literal);
+            JSHandle<TSFunctionType> functionType = ParseFunctionType(jsPandaFile, recordName, literal, typeId);
             return JSHandle<JSTaggedValue>(functionType);
         }
         case TSTypeKind::ARRAY: {
@@ -276,7 +276,7 @@ JSHandle<TSUnionType> TSTypeParser::ParseUnionType(const JSPandaFile *jsPandaFil
 }
 
 JSHandle<TSFunctionType> TSTypeParser::ParseFunctionType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                         const JSHandle<TaggedArray> &literal)
+                                                         const JSHandle<TaggedArray> &literal, uint32_t functionId)
 {
     uint32_t index = 0;
     ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::FUNCTION);
@@ -316,7 +316,14 @@ JSHandle<TSFunctionType> TSTypeParser::ParseFunctionType(const JSPandaFile *jsPa
     auto returnGT = CreateGT(jsPandaFile, recordName, returntypeId);
     functionType->SetReturnGT(returnGT);
     functionType->SetBitField(bitField);
-
+    auto bcInfoCollector = tsManager_->GetBytecodeInfoCollector();
+    if (bcInfoCollector != nullptr) {
+        auto &bcInfo = bcInfoCollector->GetBytecodeInfo();
+        uint32_t methodOffset = bcInfo.IterateFunctionTypeIDAndMethodOffset(functionId);
+        if (methodOffset != 0) {
+            functionType->SetMethodOffset(methodOffset);
+        }
+    }
     return functionType;
 }
 

@@ -91,6 +91,11 @@ private:
     void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget);
 
     void LowerCallThis1Imm8V8V8(GateRef gate);
+    void LowerTypedCallArg0(GateRef gate);
+    void LowerTypedCallArg1(GateRef gate);
+    void LowerTypedCallArg2(GateRef gate);
+    void LowerTypedCallArg3(GateRef gate);
+    void LowerTypedCallrange(GateRef gate);
     bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
 
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,

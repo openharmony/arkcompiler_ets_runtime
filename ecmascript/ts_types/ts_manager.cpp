@@ -527,6 +527,16 @@ std::string TSManager::GetFuncName(kungfu::GateType type) const
     return nameStr;
 }
 
+int TSManager::GetMethodIndex(GlobalTSTypeRef gt) const
+{
+    ASSERT(IsFunctionTypeKind(gt));
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(tsType);
+    uint32_t methodOffset = functionType->GetMethodOffset();
+    JSHandle<ConstantPool> constantPool(GetConstantPool());
+    return constantPool->GetMethodIndexByEntityId(panda_file::File::EntityId(methodOffset));
+}
+
 uint32_t TSManager::GetFunctionTypeLength(GlobalTSTypeRef gt) const
 {
     ASSERT(IsFunctionTypeKind(gt));

@@ -406,6 +406,22 @@ public:
             classTypeLOffsetToDefMethod_.emplace(classLiteralOffset, methodOffset);
         }
     }
+
+    uint32_t IterateFunctionTypeIDAndMethodOffset(uint32_t functionTypeId)
+    {
+        auto iter = functionTypeIdToMethodOffset_.find(functionTypeId);
+        if (iter != functionTypeIdToMethodOffset_.end()) {
+            return iter->second;
+        }
+        return 0;
+    }
+
+    void SetFunctionTypeIDAndMethodOffset(uint32_t functionTypeId, uint32_t methodOffset)
+    {
+        if (functionTypeIdToMethodOffset_.find(functionTypeId) == functionTypeIdToMethodOffset_.end()) {
+            functionTypeIdToMethodOffset_.emplace(functionTypeId, methodOffset);
+        }
+    }
 private:
     std::vector<uint32_t> mainMethodIndexes_ {};
     std::vector<CString> recordNames_ {};
@@ -416,6 +432,7 @@ private:
     ConstantPoolInfo cpInfo_;
     size_t maxMethodSize_;
     std::unordered_map<uint32_t, uint32_t> classTypeLOffsetToDefMethod_ {};
+    std::unordered_map<uint32_t, uint32_t> functionTypeIdToMethodOffset_ {};
 };
 
 class LexEnvManager {
@@ -525,6 +542,7 @@ private:
     void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
+    void CollectFunctionTypeId(JSThread *thread, panda_file::File::EntityId fieldId);
 
     EcmaVM *vm_;
     JSPandaFile *jsPandaFile_ {nullptr};

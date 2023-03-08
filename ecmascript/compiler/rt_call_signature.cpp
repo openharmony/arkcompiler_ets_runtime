@@ -21,6 +21,7 @@
 
 namespace panda::ecmascript::kungfu {
 CallSignature RuntimeStubCSigns::callSigns_[RuntimeStubCSigns::NUM_OF_RTSTUBS_WITHOUT_GC];
+CallSignature RuntimeStubCSigns::aotCallSign_;
 
 void RuntimeStubCSigns::Initialize()
 {
@@ -46,6 +47,7 @@ void RuntimeStubCSigns::Initialize()
 
     RUNTIME_ASM_STUB_LIST(INIT_ASM_SIGNATURES)
 #undef INIT_ASM_SIGNATURES
+    JSAotCallCallSignature::Initialize(&aotCallSign_);
 }
 
 void RuntimeStubCSigns::GetASMCSigns(std::vector<const CallSignature*>& outputCallSigns)

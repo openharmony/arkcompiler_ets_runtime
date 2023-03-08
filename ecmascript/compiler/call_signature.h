@@ -41,6 +41,7 @@ public:
         RUNTIME_STUB,
         RUNTIME_STUB_VARARGS,
         RUNTIME_STUB_NO_GC,
+        AOT_STUB,
         DEOPT_STUB,
         BYTECODE_HANDLER,
         BYTECODE_DEBUGGER_HANDLER,
@@ -135,6 +136,11 @@ public:
     bool IsRuntimeNGCStub() const
     {
         return (GetTargetKind() == TargetKind::RUNTIME_STUB_NO_GC);
+    }
+
+    bool IsAotStub() const
+    {
+        return (GetTargetKind() == TargetKind::AOT_STUB);
     }
 
     bool IsBCDebuggerStub() const
@@ -421,6 +427,7 @@ private:
     V(CallThisRange)                        \
     V(CallRange)                            \
     V(JSCall)                               \
+    V(JSAotCall)                            \
     V(ConstructorJSCall)                    \
     V(JSFunctionEntry)                      \
     V(JSProxyCallInternalWithArgV)          \

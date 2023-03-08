@@ -63,6 +63,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     // ts type system
     TSManager *tsManager = vm_->GetTSManager();
     tsManager->SetCompilationDriver(&cmpDriver);
+    tsManager->SetBytecodeInfoCollector(&bcInfoCollector);
     PassInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_,
         jsPandaFile, &bcInfoCollector, aotModule);
 

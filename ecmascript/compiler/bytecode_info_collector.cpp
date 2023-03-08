@@ -50,6 +50,7 @@ void BytecodeInfoCollector::ProcessClasses()
         cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns, &desc,
             &mainMethodIndexes, &recordNames, &methodPcInfos] (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
+            CollectFunctionTypeId(vm_->GetJSThread(), methodId);
 
             // Generate all constpool
             vm_->FindOrCreateConstPool(jsPandaFile_, methodId);
@@ -110,6 +111,43 @@ void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,
             vm_->GetTSManager()->AddElementToClassNameMap(jsPandaFile_, classOffsetVec[i], classNameVec[i]);
         }
     }
+}
+
+void BytecodeInfoCollector::CollectFunctionTypeId(JSThread *thread, panda_file::File::EntityId fieldId)
+{
+    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, fieldId);
+    mda.EnumerateAnnotations([this, fieldId, pf, thread] (panda_file::File::EntityId annotationId) {
+        panda_file::AnnotationDataAccessor ada(*pf, annotationId);
+        auto *annotationName = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(ada.GetClassId()).data);
+        ASSERT(annotationName != nullptr);
+        if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {
+            return;
+        }
+        uint32_t length = ada.GetCount();
+        for (uint32_t i = 0; i < length; i++) {
+            panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
+            auto *elemName = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(adae.GetNameId()).data);
+            ASSERT(elemName != nullptr);
+            if (::strcmp("_TypeOfInstruction", elemName) != 0) {
+                continue;
+            }
+
+            panda_file::ScalarValue sv = adae.GetScalarValue();
+            panda_file::File::EntityId literalOffset(sv.GetValue());
+            JSHandle<TaggedArray> typeOfInstruction =
+                LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile_, literalOffset);
+
+            for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // + 2 means bcOffset and typeId
+                int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
+                uint32_t typeId = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
+                if (bcOffset == TypeRecorder::METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
+                    bytecodeInfo_.SetFunctionTypeIDAndMethodOffset(typeId, fieldId.GetOffset());
+                    return;
+                }
+            }
+        }
+    });
 }
 
 void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,

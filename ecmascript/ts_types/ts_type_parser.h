@@ -80,7 +80,7 @@ private:
                                          const JSHandle<TaggedArray> &literal);
 
     JSHandle<TSFunctionType> ParseFunctionType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                               const JSHandle<TaggedArray> &literal);
+                                               const JSHandle<TaggedArray> &literal, uint32_t functionId);
 
     JSHandle<TSArrayType> ParseArrayType(const JSPandaFile *jsPandaFile, const CString &recordName,
                                          const JSHandle<TaggedArray> &literal);
