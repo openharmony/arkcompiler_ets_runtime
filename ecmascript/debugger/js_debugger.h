@@ -118,6 +118,7 @@ public:
 
     bool SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> condFuncRef) override;
     bool RemoveBreakpoint(const JSPtLocation &location) override;
+    void RemoveAllBreakpoints() override;
     void BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset) override;
     void LoadModule(std::string_view filename, std::string_view entryPoint) override
     {

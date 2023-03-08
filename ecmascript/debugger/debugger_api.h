@@ -113,6 +113,7 @@ public:
     static bool SetBreakpoint(JSDebugger *debugger, const JSPtLocation &location,
         Local<FunctionRef> condFuncRef);
     static bool RemoveBreakpoint(JSDebugger *debugger, const JSPtLocation &location);
+    static void RemoveAllBreakpoints(JSDebugger *debugger);
     static void HandleUncaughtException(const EcmaVM *ecmaVm, std::string &message);
     static Local<JSValueRef> EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<FunctionRef> funcRef,
         std::shared_ptr<FrameHandler> &frameHandler);
