@@ -60,7 +60,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Default: 'none'\n"
     "--compiler-log-methods:               Specific method list for compiler log, only used when compiler-log."
                                            "Default: 'none'\n"
-    "--compiler-type-threshold: enable to skip methods whose type coverage is no more than threshold.. Default: -1\n"
+    "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold.. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"

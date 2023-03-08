@@ -38,7 +38,7 @@ public:
     }
 
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
-        uint32_t moduleIndex, const CompilerLog &log)
+                              uint32_t moduleIndex, const CompilerLog &log)
     {
         auto engine = assembler_->GetEngine();
         auto callSigns = llvmModule_->GetCSigns();
@@ -269,6 +269,7 @@ public:
     {
         modulePackage_.emplace_back(Module(llvmModule, assembler));
     }
+    void DisassembleAsmStubs(std::map<uintptr_t, std::string> &addr2name);
     // save function funcs for aot files containing stubs
     void SaveStubFile(const std::string &filename);
 private:

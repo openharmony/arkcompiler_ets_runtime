@@ -224,7 +224,8 @@ public:
     }
     void Disassemble(const std::map<uintptr_t, std::string> &addr2name,
                      const CompilerLog &log, const MethodLogList &logList) const;
-    static void Disassemble(uint8_t *buf, size_t size);
+    static void Disassemble(const std::map<uintptr_t, std::string> *addr2name,
+                            const std::string& triple, uint8_t *buf, size_t size);
     static int GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log);
     static kungfu::CalleeRegAndOffsetVec GetCalleeReg2Offset(LLVMValueRef fn, const CompilerLog &log);
 

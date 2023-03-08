@@ -140,8 +140,8 @@ class CompilationConfig {
 public:
     explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false,
                                bool profiling = false)
-        : triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), enablePGOProfiler_(enablePGOProfiler),
-          profiling_(profiling)
+        : tripleStr_(triple), triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC),
+          enablePGOProfiler_(enablePGOProfiler), profiling_(profiling)
     {
     }
     ~CompilationConfig() = default;
@@ -169,6 +169,11 @@ public:
     Triple GetTriple() const
     {
         return triple_;
+    }
+
+    std::string GetTripleStr() const
+    {
+        return tripleStr_;
     }
 
     bool IsTraceBC() const
@@ -203,6 +208,7 @@ private:
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
+    std::string tripleStr_;
     Triple triple_;
     bool isTraceBc_;
     bool enablePGOProfiler_;

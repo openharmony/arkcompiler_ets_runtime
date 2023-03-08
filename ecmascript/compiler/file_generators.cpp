@@ -59,24 +59,34 @@ void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> 
         }
         stubInfo_.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entryOffset, bridgeModuleIdx, 0, funSize);
         ASSERT(!cs->GetName().empty());
-        auto curSecBegin = asmModule_.GetBuffer();
-        uintptr_t entry = reinterpret_cast<uintptr_t>(curSecBegin) + entryOffset;
-        addr2name[entry] = cs->GetName();
+        addr2name[entryOffset] = cs->GetName();
     }
 }
 
 void StubFileGenerator::CollectCodeInfo()
 {
-    std::map<uintptr_t, std::string> addr2name;
+    std::map<uintptr_t, std::string> stubAddr2Name;
     for (size_t i = 0; i < modulePackage_.size(); i++) {
-        modulePackage_[i].CollectFuncEntryInfo(addr2name, stubInfo_, i, GetLog());
+        modulePackage_[i].CollectFuncEntryInfo(stubAddr2Name, stubInfo_, i, GetLog());
         ModuleSectionDes des;
         modulePackage_[i].CollectModuleSectionDes(des, true);
         stubInfo_.AddModuleDes(des);
     }
+    std::map<uintptr_t, std::string> asmAddr2Name;
     // idx for bridge module is the one after last module in modulePackage
-    CollectAsmStubCodeInfo(addr2name, modulePackage_.size());
-    DisassembleEachFunc(addr2name);
+    CollectAsmStubCodeInfo(asmAddr2Name, modulePackage_.size());
+    if (log_->OutputASM()) {
+        DisassembleAsmStubs(asmAddr2Name);
+        DisassembleEachFunc(stubAddr2Name);
+    }
+}
+
+void StubFileGenerator::DisassembleAsmStubs(std::map<uintptr_t, std::string> &addr2name)
+{
+    std::string tri = cfg_.GetTripleStr();
+    uint8_t *buf = reinterpret_cast<uint8_t*>(stubInfo_.GetAsmStubAddr());
+    size_t size = stubInfo_.GetAsmStubSize();
+    LLVMAssembler::Disassemble(&addr2name, tri, buf, size);
 }
 
 void AOTFileGenerator::CollectCodeInfo()
@@ -88,7 +98,9 @@ void AOTFileGenerator::CollectCodeInfo()
         modulePackage_[i].CollectModuleSectionDes(des);
         aotInfo_.AddModuleDes(des);
     }
-    DisassembleEachFunc(addr2name);
+    if (log_->OutputASM()) {
+        DisassembleEachFunc(addr2name);
+    }
 }
 
 void StubFileGenerator::RunAsmAssembler()

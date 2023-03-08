@@ -301,7 +301,7 @@ int LLVMAssembler::GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log)
 }
 
 void LLVMAssembler::PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &numBytes,
-    size_t instSize, char *outString, bool logFlag)
+                                     size_t instSize, char *outString, bool logFlag)
 {
     if (instSize == 0) {
         instSize = 4; // 4: default instruction step size while instruction can't be resolved or be constant
@@ -316,9 +316,9 @@ void LLVMAssembler::PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &
     numBytes -= instSize;
 }
 
-void LLVMAssembler::Disassemble(uint8_t *buf, size_t size)
+void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> *addr2name,
+                                const std::string& triple, uint8_t *buf, size_t size)
 {
-    std::string triple = "x86_64-unknown-linux-gnu";
     LLVMModuleRef module = LLVMModuleCreateWithName("Emit");
     LLVMSetTarget(module, triple.c_str());
     LLVMDisasmContextRef dcr = LLVMCreateDisasm(LLVMGetTarget(module), nullptr, 0, nullptr, SymbolLookupCallback);
@@ -327,11 +327,17 @@ void LLVMAssembler::Disassemble(uint8_t *buf, size_t size)
         return;
     }
     uint8_t *byteSp = buf;
+    uint64_t bufAddr = reinterpret_cast<uint64_t>(buf);
     uintptr_t numBytes = size;
     unsigned pc = 0;
     const size_t outStringSize = 128;
     char outString[outStringSize];
     while (numBytes > 0) {
+        uint64_t addr = reinterpret_cast<uint64_t>(byteSp) - bufAddr;
+        if (addr2name != nullptr && addr2name->find(addr) != addr2name->end()) {
+            std::string methodName = addr2name->at(addr);
+            LOG_COMPILER(INFO) << "------------------- asm code [" << methodName << "] -------------------";
+        }
         size_t instSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
         PrintInstAndStep(pc, &byteSp, numBytes, instSize, outString);
     }
@@ -363,10 +369,7 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
                     logFlag = false;
                 }
                 if (logFlag) {
-                    LOG_COMPILER(INFO) << "\033[34m"
-                                       << "========================  Generated Asm Code ============================="
-                                       << "\033[0m";
-                    LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << methodName << "]:" << "\033[0m";
+                    LOG_COMPILER(INFO) << "------------------- asm code [" << methodName << "] -------------------";
                 }
             }
 

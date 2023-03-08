@@ -141,7 +141,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
     const MethodLogList *logList = GetLogList();
     StubFileGenerator generator(log, logList, triple_, enablePGOProfiler_);
     if (!filePath_.empty()) {
-        LOG_COMPILER(INFO) << "compiling bytecode handler stubs";
+        LOG_COMPILER(INFO) << "=============== compiling bytecode handler stubs ===============";
         LLVMModule bcStubModule("bc_stub", triple_, enablePGOProfiler_);
         LLVMAssembler bcStubAssembler(bcStubModule.GetModule(), LOptions(optLevel_, false, relocMode_));
         bcStubModule.SetUpForBytecodeHandlerStubs();
@@ -149,7 +149,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
         generator.AddModule(&bcStubModule, &bcStubAssembler);
         res++;
 
-        LOG_COMPILER(INFO) << "compiling common stubs";
+        LOG_COMPILER(INFO) << "=============== compiling common stubs ===============";
         LLVMModule comStubModule("com_stub", triple_, enablePGOProfiler_);
         LLVMAssembler comStubAssembler(comStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
         comStubModule.SetUpForCommonStubs();
@@ -157,7 +157,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
         generator.AddModule(&comStubModule, &comStubAssembler);
         res++;
 
-        LOG_COMPILER(INFO) << "compiling builtins stubs";
+        LOG_COMPILER(INFO) << "=============== compiling builtins stubs ===============";
         LLVMModule builtinsStubModule("builtins_stub", triple_, enablePGOProfiler_);
         LLVMAssembler builtinsStubAssembler(builtinsStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
         builtinsStubModule.SetUpForBuiltinsStubs();
