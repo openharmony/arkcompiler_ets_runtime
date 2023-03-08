@@ -97,7 +97,7 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
             ASSERT(deopt.kind == kungfu::LocationTy::Kind::CONSTANT);
             v = JSTaggedType(static_cast<int64_t>(std::get<kungfu::OffsetType>(deopt.value)));
         }
-        if (id != static_cast<kungfu::OffsetType>(SpecVregIndex::PC_INDEX)) {
+        if (id != static_cast<kungfu::OffsetType>(SpecVregIndex::PC_OFFSET_INDEX)) {
             if (id == static_cast<kungfu::OffsetType>(SpecVregIndex::ENV_INDEX)) {
                 env_ = JSTaggedValue(v);
             } else {

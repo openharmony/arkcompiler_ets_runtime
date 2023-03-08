@@ -981,9 +981,10 @@ void SlowPathLowering::LowerCallSpread(GateRef gate)
     const int id = RTSTUB_ID(CallSpread);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef stateInGate = builder_.GetState();
     GateRef newGate = LowerCallRuntime(gate, id,
         {acc_.GetValueIn(gate, 2), acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-    ReplaceHirWithValue(gate, newGate);
+    ReplaceHirWithPendingException(gate, stateInGate, newGate, newGate);
 }
 
 void SlowPathLowering::LowerCallrangeImm8Imm8V8(GateRef gate)

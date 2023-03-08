@@ -211,8 +211,6 @@ std::string MachineTypeToStr(MachineType machineType);
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
     V(ValueSelector, VALUE_SELECTOR, GateFlags::FIXED, 1, 0, value)                      \
-    V(TypedCall, TYPED_CALL, GateFlags::NONE_FLAG, 1, 1, value)                          \
-    V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)                           \
     V(FrameState, FRAME_STATE, GateFlags::NONE_FLAG, 0, 0, value)                        \
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
@@ -223,6 +221,10 @@ std::string MachineTypeToStr(MachineType machineType);
     V(BuiltinsCallWithArgv, BUILTINS_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)  \
     V(BuiltinsCall, BUILTINS_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)                    \
+
+#define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
+    V(TypedCall, TYPED_CALL, GateFlags::NONE_FLAG, 1, 1, value)                \
+    V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)                 \
 
 #define GATE_META_DATA_LIST_WITH_SIZE(V)                                            \
     V(Merge, MERGE, GateFlags::CONTROL, value, 0, 0)                                \
@@ -268,6 +270,7 @@ enum class OpCode : uint8_t {
     IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)

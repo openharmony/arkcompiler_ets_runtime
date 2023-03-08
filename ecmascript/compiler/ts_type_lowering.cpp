@@ -856,7 +856,7 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
 
-    GateRef constructGate = builder_.Construct(args);
+    GateRef constructGate = builder_.Construct(gate, args);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
@@ -887,7 +887,7 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
 
-    GateRef constructGate = builder_.Construct(args);
+    GateRef constructGate = builder_.Construct(gate, args);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
@@ -898,7 +898,7 @@ void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID i
     builder_.CallTargetCheck(function, builder_.IntPtr(static_cast<int64_t>(id)), a0);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
-    GateRef result = builder_.TypedCallBuiltin(a0, id);
+    GateRef result = builder_.TypedCallBuiltin(gate, a0, id);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }

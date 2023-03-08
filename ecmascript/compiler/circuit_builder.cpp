@@ -292,10 +292,12 @@ GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, 
         type, inList.size(), inList.data(), gateType);
 }
 
-GateRef CircuitBuilder::TypedCallOperator(MachineType type, const std::initializer_list<GateRef>& args)
+GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args)
 {
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     auto numValueIn = args.size() - 2; // 2: state & depend
-    return GetCircuit()->NewGate(circuit_->TypedCall(numValueIn), type, args, GateType::AnyType());
+    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+    return GetCircuit()->NewGate(circuit_->TypedCall(numValueIn, pcOffset), type, args, GateType::AnyType());
 }
 
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
@@ -534,8 +536,7 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     inputs.insert(inputs.end(), args.begin(), args.end());
     auto numValuesIn = args.size() + 2; // 2: target & glue
     if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate != Circuit::NullGate()) {
-        GateRef pcOffset = (acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE) ?
-            Int64(acc_.GetPcOffset(hirGate)) : Int64(0);
+        GateRef pcOffset = Int64(acc_.GetPcOffset(hirGate));
         inputs.emplace_back(pcOffset);
         numValuesIn += 1;
     }
@@ -648,15 +649,17 @@ GateRef CircuitBuilder::LoadArrayLength(GateRef array)
     return ret;
 }
 
-GateRef CircuitBuilder::Construct(std::vector<GateRef> args)
+GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
 {
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t bitfield = args.size();
+    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    auto callGate = GetCircuit()->NewGate(circuit_->Construct(bitfield), MachineType::I64,
+    auto callGate = GetCircuit()->NewGate(circuit_->Construct(bitfield, pcOffset), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);

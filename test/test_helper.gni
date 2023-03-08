@@ -366,6 +366,11 @@ template("host_aot_js_test_action") {
       _aot_compile_options_ += " --enable-type-lowering=false"
     }
 
+    if (defined(invoker.is_enable_trace_deopt) &&
+        invoker.is_enable_trace_deopt) {
+      _aot_compile_options_ += " --trace-deopt=true"
+    }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
@@ -497,6 +502,10 @@ template("host_aot_test_action") {
         invoker.is_disable_type_lowering) {
       _aot_compile_options_ += ""
     }
+    if (defined(invoker.is_enable_trace_deopt) &&
+        invoker.is_enable_trace_deopt) {
+      _aot_compile_options_ += " --trace-deopt=true"
+    }
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
       deps += [ "//arkcompiler/ets_runtime:gen_builtins_d_abc" ]
@@ -549,6 +558,10 @@ template("host_aot_test_action") {
     if (defined(invoker.is_disable_type_lowering) &&
         invoker.is_disable_type_lowering) {
       _aot_compile_options_ += ""
+    }
+    if (defined(invoker.is_enable_trace_deopt) &&
+        invoker.is_enable_trace_deopt) {
+      _aot_compile_options_ += " --trace-deopt=true"
     }
 
     if (defined(invoker.is_enable_builtins_dts) &&
@@ -733,6 +746,10 @@ template("host_typeinfer_test_action") {
     if (defined(invoker.is_disable_type_lowering) &&
         invoker.is_disable_type_lowering) {
       _aot_compile_options_ += " --enable-type-lowering=false"
+    }
+    if (defined(invoker.is_enable_trace_deopt) &&
+        invoker.is_enable_trace_deopt) {
+      _aot_compile_options_ += " --trace-deopt=true"
     }
 
     args = [
