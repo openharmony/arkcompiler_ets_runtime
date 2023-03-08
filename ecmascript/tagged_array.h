@@ -81,7 +81,7 @@ public:
     {
         return (oldLength - newLength > MAX_END_UNUSED);
     }
-    inline void Trim(JSThread *thread, uint32_t newLength);
+    inline void Trim(const JSThread *thread, uint32_t newLength);
 
     static constexpr size_t LENGTH_OFFSET = TaggedObjectSize();
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, EXTRACT_LENGTH_OFFSET)

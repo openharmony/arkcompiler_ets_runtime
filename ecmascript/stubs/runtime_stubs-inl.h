@@ -900,6 +900,18 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
     JSHandle<JSObject> clsPrototype(thread, JSHandle<JSFunction>(ctor)->GetFunctionPrototype());
     clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
 
+    // by enableing the ProtoChangeMarker, the IHC generated in the Aot stage
+    // is registered into the listener of its prototype. In this way, it is ensured
+    // that when the prototype changes, the affected IHC can be notified.
+    JSTaggedValue protoOrHClass = JSHandle<JSFunction>(ctor)->GetProtoOrHClass();
+    if (protoOrHClass.IsJSHClass()) {
+        JSHClass *ihc = JSHClass::Cast(protoOrHClass.GetTaggedObject());
+        if (ihc->IsTS()) {
+            JSHandle<JSHClass> ihcHandle(thread, ihc);
+            JSHClass::EnableProtoChangeMarker(thread, ihcHandle);
+        }
+    }
+
     return JSTaggedValue::Undefined();
 }
 

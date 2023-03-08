@@ -75,7 +75,7 @@ public:
         return new_capacity > MAX_PROPERTIES_LENGTH ? MAX_PROPERTIES_LENGTH : new_capacity;
     }
 
-    int FindElementWithCache(JSThread *thread, JSHClass *cls, JSTaggedValue key, int propertiesNumber);
+    int FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key, int propertiesNumber);
     int BinarySearch(JSTaggedValue key, int propertiesNumber);
     void GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray,
                     const JSHandle<JSObject> object);

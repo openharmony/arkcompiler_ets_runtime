@@ -67,12 +67,9 @@ public:
     {
         return static_cast<CellRecordVector *>(object);
     }
-    static constexpr uint32_t DEFAULT_GROW_SIZE = 5; // If the capacity is not enough, we Expansion five each time
-    static JSHandle<CellRecordVector> Append(const JSThread *thread, const JSHandle<CellRecordVector> &array,
+    static JSHandle<CellRecordVector> Append(const JSThread *thread, const JSHandle<CellRecordVector> &vector,
                                              const JSHandle<JSTaggedValue> &value);
     bool IsEmpty();
-private:
-    static uint32_t CheckHole(const JSHandle<CellRecordVector> &array);
 };
 
 class JSFinalizationRegistry : public JSObject {

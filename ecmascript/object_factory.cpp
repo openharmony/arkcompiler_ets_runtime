@@ -26,6 +26,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/property_box.h"
@@ -3988,6 +3989,18 @@ JSHandle<AOTLiteralInfo> ObjectFactory::NewAOTLiteralInfo(uint32_t length, JSTag
     JSHandle<AOTLiteralInfo> aotLiteralInfo(thread_, header);
     aotLiteralInfo->InitializeWithSpecialValue(initVal, length);
     return aotLiteralInfo;
+}
+
+JSHandle<VTable> ObjectFactory::NewVTable(uint32_t length, JSTaggedValue initVal)
+{
+    NewObjectHook();
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length * VTable::TUPLE_SIZE);
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetVTableClass().GetTaggedObject()), size);
+
+    JSHandle<VTable> vtable(thread_, header);
+    vtable->InitializeWithSpecialValue(initVal, length * VTable::TUPLE_SIZE);
+    return vtable;
 }
 
 JSHandle<ClassLiteral> ObjectFactory::NewClassLiteral()

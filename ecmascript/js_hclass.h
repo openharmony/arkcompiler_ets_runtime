@@ -244,6 +244,7 @@ class ProtoChangeDetails;
         TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_ITERATOR_INSTANCE_TYPE,    /* //////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
+        VTABLE,                       /* //////////////////////////////////////////////////////////////////-PADDING */ \
         AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         TYPE_LAST = AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
@@ -284,6 +285,7 @@ enum class JSType : uint8_t {
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
+    static constexpr int LEVEL_BTTFIELD_NUM = 5;
     using ObjectTypeBits = BitField<JSType, 0, TYPE_BITFIELD_NUM>;  // 8
     using CallableBit = ObjectTypeBits::NextFlag;
     using ConstructorBit = CallableBit::NextFlag;      // 10
@@ -299,6 +301,8 @@ public:
     using ClassPrototypeBit = ClassConstructorBit::NextFlag;                               // 22
     using GlobalConstOrBuiltinsObjectBit = ClassPrototypeBit::NextFlag;                    // 23
     using IsTSBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                              // 24
+    using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                     // 29
+
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
     static constexpr int MAX_CAPACITY_OF_OUT_OBJECTS =
@@ -356,12 +360,18 @@ public:
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
 
-    static void NoticeRegisteredUser(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
+    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static void RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &oldHclass,
                              const JSHandle<JSHClass> &newHclass);
+
+    void InitTSInheritInfo(const JSThread *thread);
+
+    bool HasTSInheritInfo() const;
+
+    bool IsTSIHCWithInheritInfo() const;
 
     inline void ClearBitField()
     {
@@ -495,6 +505,7 @@ public:
             case JSType::LEXICAL_ENV:
             case JSType::CONSTANT_POOL:
             case JSType::AOT_LITERAL_INFO:
+            case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
                 return true;
             default:
@@ -1328,6 +1339,11 @@ public:
         return GetObjectType() == JSType::AOT_LITERAL_INFO;
     }
 
+    inline bool IsVTable() const
+    {
+        return GetObjectType() == JSType::VTABLE;
+    }
+
     inline bool IsModuleRecord() const
     {
         JSType jsType = GetObjectType();
@@ -1400,6 +1416,19 @@ public:
     {
         uint32_t bits = GetBitField();
         return ElementRepresentationBits::Decode(bits);
+    }
+
+    inline void SetLevel(uint8_t level)
+    {
+        uint32_t bits = GetBitField();
+        uint32_t newVal = LevelBit::Update(bits, level);
+        SetBitField(newVal);
+    }
+
+    inline uint8_t GetLevel() const
+    {
+        uint32_t bits = GetBitField();
+        return LevelBit::Decode(bits);
     }
 
     inline void UpdateRepresentation(JSTaggedValue value)
@@ -1554,9 +1583,11 @@ public:
     ACCESSORS(Transitions, TRANSTIONS_OFFSET, PROTO_CHANGE_MARKER_OFFSET);
     ACCESSORS(ProtoChangeMarker, PROTO_CHANGE_MARKER_OFFSET, PROTO_CHANGE_DETAILS_OFFSET);
     ACCESSORS(ProtoChangeDetails, PROTO_CHANGE_DETAILS_OFFSET, ENUM_CACHE_OFFSET);
-    ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, SUPERS_OFFSET);
+    ACCESSORS(Supers, SUPERS_OFFSET, VTABLE_OFFSET);
+    ACCESSORS(VTable, VTABLE_OFFSET, BIT_FIELD_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, BIT_FIELD1_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, LAST_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     void SetPrototype(const JSThread *thread, JSTaggedValue proto);

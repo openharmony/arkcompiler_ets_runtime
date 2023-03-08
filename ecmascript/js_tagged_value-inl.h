@@ -502,6 +502,11 @@ inline bool JSTaggedValue::IsAOTLiteralInfo() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsAOTLiteralInfo();
 }
 
+inline bool JSTaggedValue::IsVTable() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsVTable();
+}
+
 inline bool JSTaggedValue::IsLinkedNode() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsLinkedNode();
