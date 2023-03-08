@@ -60,9 +60,6 @@ void JSPandaFile::CheckIsBundlePack()
 void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
 {
     CString bundleName = vm->GetBundleName();
-    if (bundleName.empty()) {
-        return;
-    }
 
     for (auto info : jsRecordInfo_) {
         if (info.first.find(PACKAGE_PATH_SEGMENT) != CString::npos ||
