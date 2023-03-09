@@ -20,8 +20,8 @@
 namespace panda::ecmascript {
 Taskpool *Taskpool::GetCurrentTaskpool()
 {
-    static Taskpool taskpool;
-    return &taskpool;
+    static Taskpool *taskpool = new Taskpool();
+    return taskpool;
 }
 
 void Taskpool::Initialize(int threadNum)

@@ -55,6 +55,7 @@ void Runner::TerminateThread()
     TerminateTask(ALL_TASK_ID, TaskType::ALL);
     taskQueue_.Terminate();
 
+    os::memory::LockHolder holder(mtxPool_);
     uint32_t threadNum = threadPool_.size();
     for (uint32_t i = 0; i < threadNum; i++) {
         threadPool_.at(i)->join();
