@@ -11,30 +11,30 @@ Use Ubuntu 18.04 or 20.04. For details about how to set up the environment, see:
 1.  First compilation:
 
     ```
-    ./build.sh --product-name hispark_taurus_standard
+    ./build.sh --product-name rk3568
     ```
 
 2.  Compile an ARK runtime after the first compilation:
 
-    x64：
+    linux-x86:
 	```
-    ./build.sh --product-name rk3568 --build-target ark_js_host_linux_tools_packages --build-target ark_ts2abc_build
+    ./build.sh --product-name rk3568 --build-target ark_js_host_linux_tools_packages
     ```
 
-	arm64：
+	oh-arm64:
 	```
-	./build.sh --product-name ohos_arm64 --build-target ark_js_vm --build-target ld-musl-aarch64.so.1
+	./build.sh --product-name rk3568 --gn-args use_musl=true --target-cpu arm64 --build-target ark_js_packages
 	```
 
-	arm32:
+	oh-arm32:
 	```
-	./build.sh --product-name rk3568 --build-target ark_js_runtime --build-target ld-musl-arm.so.1
+	./build.sh --product-name rk3568 --build-target  ark_js_packages
 	```
 
 3.  Compile the ARK frontend after the first compilation:
 
     ```
-    ./build.sh --product-name hispark_taurus_standard --build-target ark_ts2abc_build
+    ./build.sh --product-name rk3568 --build-target ets_frontend_build
     ```
 
 **NOTE**:  Run the compilation commands in the project root directory.

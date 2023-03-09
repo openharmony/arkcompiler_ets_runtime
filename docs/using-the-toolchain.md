@@ -9,13 +9,13 @@ Front-end tools, converting JS source code into ARK bytecode, can be built by sp
 Build tools:
 
 ```
-$ ./build.sh --product-name hispark_taurus_standard --build-target ark_ts2abc_build
+$ $ ./build.sh --product-name rk3568 --build-target ark_ts2abc_build
 ```
 
 Install `node` and `npm`, then use tools:
 
 ```
-$ cd out/hispark_taurus/clang_x64/arkcompiler/ets_frontend/build
+$ cd out/rk3568/clang_x64/arkcompiler/ets_frontend/build
 $ npm install
 $ node --expose-gc src/index.js [option] file.js
 ```

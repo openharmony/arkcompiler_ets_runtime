@@ -29,7 +29,7 @@ ArkCompiler运行时直接运行字节码文件，实现对应语言规范的语
 
 -   **Compiler Subsystem**
 
-   Compiler Subsystem包含Stub编译器、基于IR的编译优化框架和代码生成器。
+    Compiler Subsystem包含Stub编译器、基于IR的编译优化框架和代码生成器。
 
 -   **Runtime subsystem**
 
