@@ -51,8 +51,9 @@ public:
         return totalThreadNum_;
     }
 
-    bool IsInThreadPool(std::thread::id id) const
+    bool IsInThreadPool(std::thread::id id)
     {
+        os::memory::LockHolder holder(mtxPool_);
         for (auto &thread : threadPool_) {
             if (thread->get_id() == id) {
                 return true;
@@ -70,6 +71,7 @@ private:
     std::array<Task*, MAX_TASKPOOL_THREAD_NUM + 1> runningTask_;
     uint32_t totalThreadNum_ {0};
     os::memory::Mutex mtx_;
+    os::memory::Mutex mtxPool_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TASKPOOL_RUNNER_H
