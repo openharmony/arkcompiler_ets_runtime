@@ -80,6 +80,7 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 
 bool SparseSpace::Expand()
 {
+    heap_->EnableNotifyIdle();
     if (committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_) {
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;

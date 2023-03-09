@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -66,6 +67,7 @@ public:
     static size_t GetHeapTotalSize(const EcmaVM *vm);
     static size_t GetHeapUsedSize(const EcmaVM *vm);
     static void NotifyApplicationState(EcmaVM *vm, bool inBackground);
+    static void NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback);
     static void NotifyIdleTime(const EcmaVM *vm, int idleMicroSec);
     static void NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure);
     static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
