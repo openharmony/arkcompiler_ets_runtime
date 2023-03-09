@@ -680,7 +680,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
             JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());
             return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
         }
-        if (!jsPandaFile->IsNewRecord()) {
+        if (!vm->IsRecordWithBundleName()) {
             PathHelper::CroppingRecord(entry);
         }
     }

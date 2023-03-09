@@ -245,11 +245,6 @@ public:
         return isBundlePack_;
     }
 
-    bool IsNewRecord() const
-    {
-        return isNewRecord_;
-    }
-
     bool IsLoadedAOT() const
     {
         return (anFileInfoIndex_ != INVALID_INDEX);
@@ -369,7 +364,6 @@ private:
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
-    bool isNewRecord_ {true};
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
 };
 }  // namespace ecmascript

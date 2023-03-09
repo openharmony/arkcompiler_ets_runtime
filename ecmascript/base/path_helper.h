@@ -250,12 +250,13 @@ public:
         }
     }
 
-    static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                     [[maybe_unused]] CString &baseFileName, CString moduleRequestName)
+    static CString ParsePrefixBundle(JSThread *thread, [[maybe_unused]] CString &baseFileName,
+        CString moduleRequestName)
     {
+        EcmaVM *vm = thread->GetEcmaVM();
         moduleRequestName = moduleRequestName.substr(PREFIX_BUNDLE_LEN);
         CString entryPoint = moduleRequestName;
-        if (jsPandaFile->IsNewRecord()) {
+        if (vm->IsRecordWithBundleName()) {
             CVector<CString> vec;
             SplitString(moduleRequestName, vec, 0, SEGMENTS_LIMIT_TWO);
             if (vec.size() < SEGMENTS_LIMIT_TWO) {
@@ -266,7 +267,6 @@ public:
             CString moduleName = vec[1];
             CropNamespaceIfAbsent(moduleName);
 
-            EcmaVM *vm = thread->GetEcmaVM();
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
             if (bundleName != vm->GetBundleName()) {
                 baseFileName =
@@ -494,7 +494,7 @@ public:
     {
         CString entryPoint;
         if (StringStartWith(requestName, PREFIX_BUNDLE, PREFIX_BUNDLE_LEN)) {
-            entryPoint = ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName);
+            entryPoint = ParsePrefixBundle(thread, baseFileName, requestName);
         } else if (StringStartWith(requestName, PREFIX_MODULE, PREFIX_MODULE_LEN)) {
             entryPoint = ParsePreixModule(baseFileName, recordName, requestName);
         } else if (StringStartWith(requestName, PREFIX_PACKAGE, PREFIX_PACKAGE_LEN)) {
