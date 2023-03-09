@@ -37,4 +37,7 @@ st2
 a
 
 undefined
+AAA
+AAA
+AAA
 builtins regexp end
