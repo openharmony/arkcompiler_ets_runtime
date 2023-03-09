@@ -827,7 +827,7 @@ ohos_source_set("libark_jsruntime_set") {
     }
     if (use_musl && current_cpu == "arm" && !is_mac && !is_mingw &&
         target_os != "ios") {
-      defines += [ "BLOCK_HOOK" ]
+      defines += [ "HOOK_ENABLE" ]
     }
   }
 }
