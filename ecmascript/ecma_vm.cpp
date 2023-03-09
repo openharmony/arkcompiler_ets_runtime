@@ -963,18 +963,24 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         return;
     }
 
+    bool success = true;
     if (result.IsJSPromise()) {
         // Async concurrent will return Promise
         auto promise = JSPromise::Cast(result.GetTaggedObject());
-        if (promise->GetPromiseState() == PromiseState::PENDING) {
-            LOG_ECMA(ERROR) << "Promise is in pending state, don't return";
-            return;
+        auto status = promise->GetPromiseState();
+        if (status == PromiseState::PENDING) {
+            result = JSHandle<JSTaggedValue>::Cast(factory_->GetJSError(
+                ErrorType::ERROR, "Can't return Promise in pending state")).GetTaggedValue();
+        } else {
+            result = promise->GetPromiseResult();
         }
-        result = promise->GetPromiseResult();
+
+        if (status != PromiseState::FULFILLED) {
+            success = false;
+        }
     }
 
-    auto ret = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result));
-    auto data = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, hint));
-    concurrentCallback_(ret, data, concurrentData_);
+    concurrentCallback_(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result)), success,
+                        JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, hint)), concurrentData_);
 }
 }  // namespace panda::ecmascript
