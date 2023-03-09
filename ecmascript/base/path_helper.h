@@ -175,7 +175,7 @@ public:
         CVector<CString> vec;
         SplitString(entryPoint, vec, 0, SEGMENTS_LIMIT_TWO);
         if (vec.size() < SEGMENTS_LIMIT_TWO) {
-            LOG_ECMA(ERROR) << "ParseUrl SplitString filed, please check Url" << entryPoint;
+            LOG_ECMA(DEBUG) << "ParseUrl SplitString filed, please check Url" << entryPoint;
             return CString();
         }
         CString bundleName = vec[0];
@@ -259,7 +259,7 @@ public:
             CVector<CString> vec;
             SplitString(moduleRequestName, vec, 0, SEGMENTS_LIMIT_TWO);
             if (vec.size() < SEGMENTS_LIMIT_TWO) {
-                LOG_ECMA(ERROR) << "SplitString filed, please check moduleRequestName";
+                LOG_ECMA(DEBUG) << "SplitString filed, please check moduleRequestName";
                 return CString();
             }
             CString bundleName = vec[0];
@@ -298,7 +298,7 @@ public:
         SplitString(moduleRecordName, vec, 0, 1);
         SplitString(moduleRequestName, vec, 0, 1);
         if (vec.size() < SEGMENTS_LIMIT_TWO) {
-            LOG_ECMA(ERROR) << "SplitString filed, please check moduleRequestName and moduleRecordName";
+            LOG_ECMA(DEBUG) << "SplitString filed, please check moduleRequestName and moduleRecordName";
             return CString();
         }
         CString bundleName = vec[0];
@@ -395,7 +395,7 @@ public:
         if (StringStartWith(recordName, packagePath, packagePath.size())) {
             size_t pos = recordName.find('/');
             if (pos == CString::npos) {
-                LOG_ECMA(ERROR) << "wrong recordname : " << recordName;
+                LOG_ECMA(DEBUG) << "wrong recordname : " << recordName;
                 return CString();
             }
             key = recordName.substr(0, pos + 1) + requestName;
@@ -404,7 +404,7 @@ public:
             CVector<CString> vec;
             SplitString(recordName, vec, 0, SEGMENTS_LIMIT_TWO);
             if (vec.size() < SEGMENTS_LIMIT_TWO) {
-                LOG_ECMA(ERROR) << "SplitString filed, please check moduleRequestName";
+                LOG_ECMA(DEBUG) << "SplitString filed, please check moduleRequestName";
                 return CString();
             }
             CString moduleName = vec[1];
