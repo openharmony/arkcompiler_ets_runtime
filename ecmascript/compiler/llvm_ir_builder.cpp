@@ -1996,7 +1996,7 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
         values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ACC_INDEX), false));
         values.emplace_back(gate2LValue_.at(acc));
     }
-    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_INDEX), false));
+    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), false));
     values.emplace_back(gate2LValue_.at(pc));
     LLVMValueRef runtimeCall =
         LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());

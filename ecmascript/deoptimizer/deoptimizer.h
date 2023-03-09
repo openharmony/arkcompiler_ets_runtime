@@ -28,10 +28,9 @@
 namespace panda::ecmascript {
 class JSThread;
 enum class SpecVregIndex: int {
-    PC_INDEX = -1,
+    PC_OFFSET_INDEX = -1,
     ACC_INDEX = -2,
-    PC_OFFSET_INDEX = -3,
-    ENV_INDEX = -4,
+    ENV_INDEX = -3,
 };
 
 struct Context {

@@ -177,9 +177,18 @@ const ChunkVector<char>& GateAccessor::GetConstantString(GateRef gate) const
 
 uint32_t GateAccessor::GetPcOffset(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::JS_BYTECODE);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetJSBytecodeMetaData()->GetPcOffset();
+    OpCode op = GetOpCode(gate);
+    switch (op) {
+        case OpCode::JS_BYTECODE:
+            return gatePtr->GetJSBytecodeMetaData()->GetPcOffset();
+        case OpCode::TYPED_CALL:
+        case OpCode::CONSTRUCT:
+            return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());
+        default:
+            break;
+    }
+    return 0;
 }
 
 EcmaOpcode GateAccessor::GetByteCodeOpcode(GateRef gate) const

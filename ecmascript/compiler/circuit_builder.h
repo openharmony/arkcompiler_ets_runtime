@@ -232,8 +232,8 @@ public:
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type = DeoptType::NOTCHECK);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
-    GateRef TypedCallOperator(MachineType type, const std::initializer_list<GateRef>& args);
-    inline GateRef TypedCallBuiltin(GateRef x, BuiltinsStubCSigns::ID id);
+    GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
+    inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
@@ -427,7 +427,7 @@ public:
     GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);
     GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
-    GateRef Construct(std::vector<GateRef> args);
+    GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
 
     // Object Operations
     inline GateRef LoadHClass(GateRef object);

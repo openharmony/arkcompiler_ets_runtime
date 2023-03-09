@@ -904,13 +904,13 @@ inline GateRef CircuitBuilder::IsBase(GateRef ctor)
     return Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
 }
 
-inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef x, BuiltinsStubCSigns::ID id)
+inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef idGate = Int8(static_cast<int8_t>(id));
-    auto numberMathOp = TypedCallOperator(MachineType::I64, {currentControl, currentDepend, x, idGate});
+    auto numberMathOp = TypedCallOperator(hirGate, MachineType::I64, {currentControl, currentDepend, x, idGate});
     currentLabel->SetControl(numberMathOp);
     currentLabel->SetDepend(numberMathOp);
     return numberMathOp;

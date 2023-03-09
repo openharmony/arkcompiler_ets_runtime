@@ -74,8 +74,9 @@ group("ark_aot_ts_test") {
     "duplicatefunctions",
     "duplicatekey",
     "exception_case1",
-
-    # "exception_case10",
+    "exception_case10",
+    "exception_case11",
+    "exception_case12",
     "exception_case2",
     "exception_case3",
     "exception_case4",
