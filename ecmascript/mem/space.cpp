@@ -70,7 +70,8 @@ HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllo
 
 uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
 {
-    size_t alignedSize = AlignUp(objectSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
+    // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
+    size_t alignedSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
     if (heap_->OldSpaceExceedCapacity(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
