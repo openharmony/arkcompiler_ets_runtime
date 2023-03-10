@@ -423,6 +423,17 @@ double NumberHelper::TruncateDouble(double d)
     return (d >= 0) ? std::floor(d) : std::ceil(d);
 }
 
+int64_t NumberHelper::DoubleToInt64(double d)
+{
+    if (d >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
+        return std::numeric_limits<int64_t>::max();
+    }
+    if (d <= static_cast<double>(std::numeric_limits<int64_t>::min())) {
+        return std::numeric_limits<int64_t>::min();
+    }
+    return static_cast<int64_t>(d);
+}
+
 double NumberHelper::StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags)
 {
     auto p = const_cast<uint8_t *>(start);

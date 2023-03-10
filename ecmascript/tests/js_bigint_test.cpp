@@ -593,6 +593,15 @@ HWTEST_F_L0(JSBigintTest, CreateBigWords)
     for (size_t i = 0; i < wordCount1; i++) {
         EXPECT_TRUE(words1[i] == wordsOut1[i]);
     }
+
+    size_t wordCount2 = 0;
+    uint64_t words2[10] = { 0 };
+    JSHandle<BigInt> bigint1 = BigInt::CreateBigWords(thread, true, wordCount2, words2);
+    EXPECT_TRUE(bigint1->IsZero());
+
+    BigInt::CreateBigWords(thread, true, INT_MAX, words2);
+    EXPECT_TRUE(thread->HasPendingException());
+    thread->ClearException();
 }
 
 /**
