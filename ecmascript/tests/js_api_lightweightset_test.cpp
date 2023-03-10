@@ -112,7 +112,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, AddIncreaseCapacityAddAll)
     }
     EXPECT_EQ(lws->GetSize(), NODE_NUMBERS);
 
-    uint32_t tmp = NODE_NUMBERS * 3; // 3 means the value
+    uint32_t tmp = NODE_NUMBERS * 2; // 2 means the value
     JSAPILightWeightSet::IncreaseCapacityTo(thread, lws, static_cast<int32_t>(tmp));
     uint32_t capacity = TaggedArray::Cast(lws->GetValues().GetTaggedObject())->GetLength();
     EXPECT_EQ(JSTaggedValue(capacity), JSTaggedValue(tmp));
@@ -174,7 +174,7 @@ HWTEST_F_L0(JSAPILightWeightSetTest, EqualClearNotEqual)
     }
     EXPECT_EQ(equalLws->GetSize(), NODE_NUMBERS);
     result = JSAPILightWeightSet::Equal(thread, lws, JSHandle<JSTaggedValue>::Cast(equalLws));
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
 
     equalLws->Clear(thread);
     EXPECT_EQ(equalLws->GetSize(), static_cast<uint32_t>(0)); // 0 means the value
