@@ -20,6 +20,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/region-inl.h"
+#include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {
 static ARK_INLINE void WriteBarrier(void *obj, size_t offset, JSTaggedType value)
@@ -27,6 +28,11 @@ static ARK_INLINE void WriteBarrier(void *obj, size_t offset, JSTaggedType value
     ASSERT(value != JSTaggedValue::VALUE_UNDEFINED);
     Region *objectRegion = Region::ObjectAddressToRange(static_cast<TaggedObject *>(obj));
     Region *valueRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value));
+#if ECMASCRIPT_ENABLE_BARRIER_CHECK
+    if (!valueRegion->GetJSThread()->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+        LOG_FULL(FATAL) << "WriteBarrier checked value:" << value << " is invalid!";
+    }
+#endif
     uintptr_t slotAddr = ToUintPtr(obj) + offset;
     if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
         // Should align with '8' in 64 and 32 bit platform
