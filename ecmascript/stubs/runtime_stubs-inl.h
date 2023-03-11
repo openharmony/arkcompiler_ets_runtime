@@ -1289,7 +1289,7 @@ JSTaggedValue RuntimeStubs::RuntimeTryUpdateGlobalRecord(JSThread *thread, JSTag
     ASSERT(entry != -1);
 
     if (dict->GetAttributes(entry).IsConstProps()) {
-        return RuntimeThrowSyntaxError(thread, "const variable can not be modified");
+        return RuntimeThrowTypeError(thread, "const variable can not be modified");
     }
 
     PropertyBox *box = dict->GetBox(entry);
@@ -1929,9 +1929,12 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
                                                                 uint16_t firstArgRegIdx)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> restObj = factory->NewEmptyJSObject();
+    if (objVal->IsNull() || objVal->IsUndefined()) {
+        return restObj.GetTaggedValue();
+    }
+    JSHandle<JSObject> obj(JSTaggedValue::ToObject(thread, objVal));
 
-    ASSERT(objVal->IsJSObject());
-    JSHandle<JSObject> obj(objVal);
     uint32_t numExcludedKeys = 0;
     JSHandle<TaggedArray> excludedKeys = factory->NewTaggedArray(numKeys + 1);
     FrameHandler frameHandler(thread);
@@ -1945,11 +1948,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
         }
     }
 
-    uint32_t numAllKeys = obj->GetNumberOfKeys();
-    JSHandle<TaggedArray> allKeys = factory->NewTaggedArray(numAllKeys);
-    JSObject::GetAllKeys(thread, obj, 0, allKeys);
-
-    JSHandle<JSObject> restObj = factory->NewEmptyJSObject();
+    JSHandle<TaggedArray> allKeys = JSObject::GetOwnPropertyKeys(thread, obj);
+    uint32_t numAllKeys = allKeys->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < numAllKeys; i++) {
         key.Update(allKeys->Get(i));
