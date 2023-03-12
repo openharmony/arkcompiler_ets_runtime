@@ -97,14 +97,14 @@ public:
         return NumArgsBits::Decode(callField);
     }
 
-    static uint64_t SetCallNative(uint64_t callField, bool isCallNative)
+    static uint64_t SetCallNapi(uint64_t callField, bool isCallNapi)
     {
-        return IsCallNativeBit::Update(callField, isCallNative);
+        return IsCallNapiBit::Update(callField, isCallNapi);
     }
 
-    static bool IsCallNative(uint64_t callField)
+    static bool IsCallNapi(uint64_t callField)
     {
-        return IsCallNativeBit::Decode(callField);
+        return IsCallNapiBit::Decode(callField);
     }
 
     void SetNumArgsWithCallField(uint32_t numargs)
@@ -313,17 +313,17 @@ public:
         return GetBuiltinId(extraLiteralInfo);
     }
 
-    void SetCallNative(bool isCallNative)
+    void SetCallNapi(bool isCallNapi)
     {
         uint64_t callField = GetCallField();
-        uint64_t newValue = MethodLiteral::SetCallNative(callField, isCallNative);
+        uint64_t newValue = MethodLiteral::SetCallNapi(callField, isCallNapi);
         SetCallField(newValue);
     }
 
-    bool IsCallNative() const
+    bool IsCallNapi() const
     {
         uint64_t callField = GetCallField();
-        return MethodLiteral::IsCallNative(callField);
+        return MethodLiteral::IsCallNapi(callField);
     }
 
     void SetBuiltinId(uint8_t id)
@@ -396,7 +396,7 @@ public:
     using IsNativeBit = NumArgsBits::NextFlag;  // offset 60
     using IsAotCodeBit = IsNativeBit::NextFlag; // offset 61
     using IsFastBuiltinBit = IsAotCodeBit::NextFlag; // offset 62
-    using IsCallNativeBit = IsFastBuiltinBit::NextFlag; // offset 63
+    using IsCallNapiBit = IsFastBuiltinBit::NextFlag; // offset 63
 
     /*  ExtraLiteralInfo */
     static constexpr size_t BUILTINID_NUM_BITS = 8;

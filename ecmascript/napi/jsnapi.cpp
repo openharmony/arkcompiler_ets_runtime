@@ -1274,19 +1274,19 @@ void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
 
 // ----------------------------------- FunctionRef --------------------------------------
 Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNative, size_t nativeBindingsize)
+    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     JSThread *thread = vm->GetJSThread();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
     current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
-    current->SetCallNative(callNative);
+    current->SetCallNapi(callNapi);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
 
 Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback nativeFunc,
-    Deleter deleter, void *data, bool callNative, size_t nativeBindingsize)
+    Deleter deleter, void *data, bool callNapi, size_t nativeBindingsize)
 {
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
@@ -1311,7 +1311,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
     JSHandle<JSTaggedValue> parent = env->GetFunctionPrototype();
     JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(current), parent);
     current->SetHomeObject(thread, clsPrototype);
-    current->SetCallNative(callNative);
+    current->SetCallNapi(callNapi);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }
@@ -2133,14 +2133,14 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
 
     JsiRuntimeCallInfo jsiRuntimeCallInfo(ecmaRuntimeCallInfo, extraInfo->GetData());
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (thread->GetCallNapiGetStack() && function->IsCallNative()) {
-        thread->GetEcmaVM()->GetProfiler()->GetStackBeforeCallNapi(thread);
+    if (thread->GetCallNapiGetStack() && function->IsCallNapi()) {
+        thread->GetEcmaVM()->GetProfiler()->GetStackCallNapi(thread, true);
     }
 #endif
     Local<JSValueRef> result = nativeFunc(&jsiRuntimeCallInfo);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (thread->GetCallNapiGetStack() && function->IsCallNative()) {
-        thread->GetEcmaVM()->GetProfiler()->GetStackAfterCallNapi();
+    if (thread->GetCallNapiGetStack() && function->IsCallNapi()) {
+        thread->GetEcmaVM()->GetProfiler()->GetStackCallNapi(thread, false);
     }
 #endif
     return JSNApiHelper::ToJSHandle(result).GetTaggedValue();
