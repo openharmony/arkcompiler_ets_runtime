@@ -1999,6 +1999,11 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t slotAddr = object + offset;
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+#if ECMASCRIPT_ENABLE_BARRIER_CHECK
+    if (!valueRegion->GetJSThread()->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+        LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrier checked value:" << value << " is invalid!";
+    }
+#endif
     if (!valueRegion->IsMarking()) {
         return;
     }
@@ -2011,6 +2016,11 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
     uintptr_t slotAddr = object + offset;
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
+#if ECMASCRIPT_ENABLE_BARRIER_CHECK
+    if (!valueRegion->GetJSThread()->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+        LOG_FULL(FATAL) << "RuntimeStubs::StoreBarrier checked value:" << value << " is invalid!";
+    }
+#endif
     if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
