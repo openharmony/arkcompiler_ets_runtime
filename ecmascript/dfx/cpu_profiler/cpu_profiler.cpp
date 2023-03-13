@@ -332,10 +332,17 @@ void CpuProfiler::GetStack(FrameIterator &it)
 
 void CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
 {
-    uint64_t lastPostTime = generator_->samplesQueue_->GetLastPostTime();
-    uint64_t timeDelta = SamplingProcessor::GetMicrosecondsTimeStamp() - lastPostTime;
-    if (timeDelta < interval_) {
-        return ;
+    uint64_t tempTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+    if (beforeCallNapi) {
+        if (tempTimeStamp - beforeCallNapiTimeStamp_ < INTERVAL_OF_ACTIVE_SAMPLING) {
+            beforeCallNapiTimeStamp_ = tempTimeStamp;
+            return;
+        }
+        beforeCallNapiTimeStamp_ = tempTimeStamp;
+    } else {
+        if (tempTimeStamp - beforeCallNapiTimeStamp_ < CPUPROFILER_DEFAULT_INTERVAL) {
+            return;
+        }
     }
     [[maybe_unused]] CallNapiScope scope(generator_);
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
