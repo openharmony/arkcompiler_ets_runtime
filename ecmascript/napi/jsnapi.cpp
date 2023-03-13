@@ -1318,7 +1318,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
 
 Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     const Local<JSValueRef> argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    int32_t length)
+    int32_t length, bool isNapi)
 {
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
@@ -1340,7 +1340,9 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
-    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+    if (!isNapi) {
+        EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+    }
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     vm->GetHeap()->ClearKeptObjects();
 
