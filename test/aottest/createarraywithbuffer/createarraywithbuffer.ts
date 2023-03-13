@@ -18,3 +18,50 @@ var arrayIterator = ['fifth', 'sixth', 666];
 print(arrayIterator[0]);
 print(arrayIterator[1]);
 print(arrayIterator[2]);
+
+class Index {
+    currentArrays: number[][] = [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+      ]
+
+    changeCurretArrays() {
+        let newArrays = [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ]
+
+        for (let j = 0; j < 4; j++) {
+            for (let i = 0; i < 4; i++) {
+                newArrays[j][i] = this.currentArrays[j][i] + 1;
+            }
+        }
+        return newArrays;
+    }
+
+    computeScore(array) {
+        let total = 0;
+        for (let j = 0; j < 4; j++) {
+            for (let i = 0; i < 4; i++) {
+                total  += array[j][i];
+            }
+        }
+        return total;
+    }
+
+    run() {
+        let newArray = this.changeCurretArrays();
+        print(this.computeScore(newArray));
+        print(this.computeScore(this.currentArrays));
+        this.currentArrays = newArray;
+    }
+}
+
+let index = new Index;
+for (let i = 0; i < 3; i++) {
+    index.run();
+}
