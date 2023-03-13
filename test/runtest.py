@@ -31,7 +31,7 @@ import json
 DEFAULT_TIMEOUT = 300
 DEFAULT_PGO_THRESHOLD = 10
 TARGET_PLATFORM = ['x64', 'arm64']
-PRODUCT_LIST = ['hispark_taurus', 'rk3568', 'baltimore']
+PRODUCT_LIST = ['hispark_taurus', 'rk3568', 'baltimore', 'generic_generic_arm_64only/hisi_newbaltimore_newphone_standard']
 TARGET_PRODUCT_MAP = {'x64': 0, 'arm64': 1}
 
 def parse_args():
