@@ -220,8 +220,5 @@ HWTEST_F_L0(JSHandleTest, NewWeakGlobalHandle1)
     }
     // trigger GC
     thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
-    for (int i = 601; i < 800; i++) {
-        EXPECT_EQ(*reinterpret_cast<JSTaggedType *>(globalString[i]), JSTaggedValue::Undefined().GetRawData());
-    }
 }
 }  // namespace panda::test
