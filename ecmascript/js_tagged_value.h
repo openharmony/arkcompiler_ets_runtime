@@ -200,6 +200,14 @@ public:
         return JSTaggedValue(value_ | TAG_WEAK);
     }
 
+    inline JSTaggedValue GetWeakRawValue() const
+    {
+        if (IsHeapObject()) {
+            return JSTaggedValue(value_ & (~TAG_WEAK));
+        }
+        return JSTaggedValue(value_);
+    }
+
     ARK_INLINE bool IsWeak() const
     {
         return ((value_ & TAG_WEAK_MASK) == TAG_WEAK);
