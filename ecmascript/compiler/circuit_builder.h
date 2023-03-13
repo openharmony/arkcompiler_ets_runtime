@@ -256,6 +256,7 @@ public:
     GateRef Double(double value);
     GateRef UndefineConstant();
     GateRef HoleConstant();
+    GateRef NullPtrConstant();
     GateRef NullConstant();
     GateRef ExceptionConstant();
     GateRef RelocatableData(uint64_t val);
@@ -352,6 +353,7 @@ public:
     inline GateRef TaggedIsNumeric(GateRef x);
     inline GateRef TaggedIsNotHole(GateRef x);
     inline GateRef TaggedIsHole(GateRef x);
+    inline GateRef TaggedIsNullPtr(GateRef x);
     inline GateRef TaggedIsUndefined(GateRef x);
     inline GateRef TaggedIsException(GateRef x);
     inline GateRef TaggedIsSpecial(GateRef x);

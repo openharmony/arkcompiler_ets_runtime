@@ -288,6 +288,11 @@ GateRef CircuitBuilder::TaggedIsHole(GateRef x)
     return Equal(x, HoleConstant());
 }
 
+GateRef CircuitBuilder::TaggedIsNullPtr(GateRef x)
+{
+    return Equal(x, NullPtrConstant());
+}
+
 GateRef CircuitBuilder::TaggedIsNotHole(GateRef x)
 {
     return NotEqual(x, HoleConstant());

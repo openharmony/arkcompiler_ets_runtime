@@ -369,6 +369,12 @@ GateRef CircuitBuilder::HoleConstant()
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_HOLE, type);
 }
 
+GateRef CircuitBuilder::NullPtrConstant()
+{
+    auto type = GateType::TaggedValue();
+    return GetCircuit()->GetConstantGate(MachineType::I64, 0u, type);
+}
+
 GateRef CircuitBuilder::NullConstant()
 {
     auto type = GateType::TaggedValue();
@@ -783,7 +789,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
 
     auto cacheValue = GetValueFromTaggedArray(constPool, index);
     DEFVAlUE(result, env_, VariableType::JS_ANY(), cacheValue);
-    Branch(TaggedIsHole(*result), &cacheMiss, &cache);
+    Branch(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {
         if (type == ConstPoolType::STRING) {
