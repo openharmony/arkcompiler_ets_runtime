@@ -2734,6 +2734,15 @@ std::string JSNApi::GetAssetPath(EcmaVM *vm)
     return vm->GetAssetPath().c_str();
 }
 
+void JSNApi::SetRecordWithBundleNameTag(EcmaVM *vm, bool isNewRecord)
+{
+    vm->SetRecordWithBundleNameTag(isNewRecord);
+}
+
+bool JSNApi::GetRecordWithBundleNameTag(EcmaVM *vm)
+{
+    return vm->IsRecordWithBundleName();
+}
 bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
 {
     vm->SetConcurrentCallback(cb, data);
