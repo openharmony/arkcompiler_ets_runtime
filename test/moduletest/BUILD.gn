@@ -37,6 +37,7 @@ group("ark_js_moduletest") {
     "dynamicimport",
     "dyninstruction",
     "ecmastringtable",
+    "forawaitof",
     "forin",
     "fortest",
     "generator",
