@@ -378,7 +378,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
     uint32_t num = lda.GetLiteralValsNum(id) / 2;  // 2: half
-    JSHandle<TaggedArray> literals = factory->NewOldSpaceTaggedArray(num);
+    JSHandle<TaggedArray> literals = JSHandle<TaggedArray>(factory->NewCOWTaggedArray(num));
     uint32_t pos = 0;
     uint32_t methodId = 0;
     FunctionKind kind;
