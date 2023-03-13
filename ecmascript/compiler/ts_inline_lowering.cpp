@@ -172,7 +172,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
 bool TSInlineLowering::CheckParameter(GateRef gate, bool isCallThis, MethodLiteral* method)
 {
     size_t numIns = acc_.GetNumValueIn(gate);
-    size_t fixedInputsNum = isCallThis ? 1 : 0;
+    size_t fixedInputsNum = isCallThis ? 2 : 1; // 2: calltarget and this
 
     uint32_t declaredNumArgs = method->GetNumArgsWithCallField();
     return declaredNumArgs == (numIns - fixedInputsNum);
@@ -208,15 +208,13 @@ void TSInlineLowering::ReplaceCallInput(GateRef gate, bool isCallThis)
     LowerToInlineCall(gate, vec);
 }
 
-GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVector,
-    GateRef &state, GateRef &depend, size_t numOfIns)
+GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend)
 {
+    size_t numOfIns = returnVector.size();
     auto stateList = std::vector<GateRef>(numOfIns, Circuit::NullGate());
     auto dependList = std::vector<GateRef>(numOfIns + 1, Circuit::NullGate());
     auto vaueList = std::vector<GateRef>(numOfIns + 1, Circuit::NullGate());
 
-    dependList[0] = state;
-    vaueList[0] = state;
     for (size_t i = 0; i < returnVector.size(); i++) {
         GateRef returnGate = returnVector.at(i);
         ASSERT(acc_.GetOpCode(acc_.GetState(returnGate)) != OpCode::IF_EXCEPTION);
@@ -227,8 +225,10 @@ GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVecto
     }
 
     state = circuit_->NewGate(circuit_->Merge(numOfIns), stateList);
+    dependList[0] = state;
+    vaueList[0] = state;
     depend = circuit_->NewGate(circuit_->DependSelector(numOfIns), dependList);
-    return circuit_->NewGate(circuit_->ValueSelector(numOfIns), MachineType::I64, numOfIns,
+    return circuit_->NewGate(circuit_->ValueSelector(numOfIns), MachineType::I64, numOfIns + 1,
                              vaueList.data(), GateType::AnyType());
 }
 
@@ -239,39 +239,35 @@ void TSInlineLowering::ReplaceEntryGate(GateRef callGate)
 
     GateRef callState = acc_.GetState(callGate);
     GateRef callDepend = acc_.GetDep(callGate);
-    auto stateUse = acc_.Uses(stateEntry).begin();
-    acc_.ReplaceIn(stateUse, callState);
-    auto dependUse = acc_.Uses(dependEntry).begin();
-    acc_.ReplaceIn(dependUse, callDepend);
+    auto stateUse = acc_.Uses(stateEntry);
+    for (auto stateUseIt = stateUse.begin(); stateUseIt != stateUse.end();) {
+        stateUseIt = acc_.ReplaceIn(stateUseIt, callState);
+    }
+
+    auto dependUse = acc_.Uses(dependEntry);
+    for (auto dependUseIt = dependUse.begin(); dependUseIt != dependUse.end();) {
+        dependUseIt = acc_.ReplaceIn(dependUseIt, callDepend);
+    }
 }
 
 void TSInlineLowering::ReplaceReturnGate(GateRef callGate)
 {
     std::vector<GateRef> returnVector;
     acc_.GetReturnOuts(returnVector);
-    size_t successReturn = 0;
 
     GateRef value = Circuit::NullGate();
     GateRef state = Circuit::NullGate();
     GateRef depend = Circuit::NullGate();
-    // 2: if success and if exception
-    for (size_t i = 0; i < returnVector.size(); i++) {
-        GateRef returnGate = returnVector.at(i);
+
+    if (returnVector.size() == 1) {
+        GateRef returnGate = returnVector.at(0);
         GateRef returnState = acc_.GetState(returnGate);
-        if (acc_.GetOpCode(returnState) == OpCode::IF_EXCEPTION) {
-            continue;
-        }
-        successReturn++;
-        ASSERT(acc_.GetOpCode(returnState) == OpCode::IF_SUCCESS ||
-               acc_.GetOpCode(returnState) == OpCode::MERGE);
         depend = acc_.GetDep(returnGate);
         state = returnState;
         value = acc_.GetValueIn(returnGate, 0);
         acc_.DeleteGate(returnGate);
-        break;
-    }
-    if (successReturn > 1) {
-        value = MergeAllReturn(returnVector, state, depend, successReturn);
+    } else {
+        value = MergeAllReturn(returnVector, state, depend);
     }
     ReplaceHirAndDeleteState(callGate, state, depend, value);
 }
@@ -280,16 +276,8 @@ void TSInlineLowering::ReplaceHirAndDeleteState(GateRef gate, GateRef state, Gat
 {
     auto uses = acc_.Uses(gate);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
-        const OpCode op = acc_.GetOpCode(*useIt);
-        if (op == OpCode::IF_SUCCESS) {
-            auto firstUse = acc_.Uses(*useIt).begin();
-            acc_.ReplaceIn(*firstUse, firstUse.GetIndex(), state);
-            useIt = acc_.DeleteGate(useIt);
-        } else if (op == OpCode::IF_EXCEPTION) {
-            auto exceptionUseIt = acc_.Uses(*useIt).begin();
-            ASSERT(acc_.GetOpCode(*exceptionUseIt) == OpCode::RETURN);
-            acc_.DeleteGate(exceptionUseIt);
-            useIt = acc_.DeleteGate(useIt);
+        if (acc_.IsStateIn(useIt)) {
+            useIt = acc_.ReplaceIn(useIt, state);
         } else if (acc_.IsDependIn(useIt)) {
             useIt = acc_.ReplaceIn(useIt, depend);
         } else if (acc_.IsValueIn(useIt)) {
@@ -316,5 +304,18 @@ void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<Gat
     ReplaceEntryGate(callGate);
     // replace use gate
     ReplaceReturnGate(callGate);
+    // remove Useless root gates
+    RemoveRoot();
+}
+
+void TSInlineLowering::RemoveRoot()
+{
+    GateRef circuitRoot = acc_.GetRoot(OpCode::CIRCUIT_ROOT);
+    auto uses = acc_.Uses(circuitRoot);
+    for (auto it = uses.begin(); it != uses.end();) {
+        it = acc_.DeleteGate(it);
+    }
+
+    acc_.DeleteGate(circuitRoot);
 }
 }  // namespace panda::ecmascript

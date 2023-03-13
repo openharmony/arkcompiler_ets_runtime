@@ -105,6 +105,7 @@ enum CommandValues {
     OPTION_ENTRY_POINT,
     OPTION_MERGE_ABC,
     OPTION_ENABLE_TYPE_LOWERING,
+    OPTION_ENABLE_OPT_INLINING,
     OPTION_HELP,
     OPTION_PGO_PROFILER_PATH,
     OPTION_PGO_HOTNESS_THRESHOLD,
@@ -845,6 +846,16 @@ public:
         return enableTypeLowering_;
     }
 
+    void SetEnableOptInlining(bool value)
+    {
+        enableOptInlining_ = value;
+    }
+
+    bool IsEnableOptInlining() const
+    {
+        return enableOptInlining_;
+    }
+
     void WasSet(int opt)
     {
         wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
@@ -941,6 +952,7 @@ private:
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};
+    bool enableOptInlining_ {false};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};

@@ -559,6 +559,7 @@ private:
     friend class EarlyElimination;
     friend class ArgumentAccessor;
     friend class BytecodeCircuitBuilder;
+    friend class TSInlineLowering;
 };
 
 class ConstGateAccessor {
