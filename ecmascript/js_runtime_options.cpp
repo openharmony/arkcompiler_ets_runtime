@@ -72,6 +72,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
     "--enable-type-lowering:               Enable TSTypeLowering and TypeLowering for aot runtime. Default: 'true'\n"
+    "--enable-opt-inlining:                Enable inlining function for aot compiler: Default: 'false'\n"
     "--entry-point:                        Full name of entrypoint function. Default: '_GLOBAL::func_main_0'\n"
     "--force-full-gc:                      If true trigger full gc, else trigger semi and old gc. Default: 'true'\n"
     "--framework-abc-file:                 Snapshot file. Default: 'strip.native.min.abc'\n"
@@ -144,6 +145,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"enable-type-lowering", required_argument, nullptr, OPTION_ENABLE_TYPE_LOWERING},
+        {"enable-opt-inlining", required_argument, nullptr, OPTION_ENABLE_OPT_INLINING},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
         {"gcThreadNum", required_argument, nullptr, OPTION_GC_THREADNUM},
@@ -518,6 +520,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableTypeLowering(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_OPT_INLINING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableOptInlining(argBool);
                 } else {
                     return false;
                 }

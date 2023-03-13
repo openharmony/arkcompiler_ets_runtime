@@ -109,6 +109,9 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         if (data.IsTypeAbort()) {
             return;
         }
+        if (EnableOptInlining()) {
+            pipeline.RunPass<TSInlineLoweringPass>();
+        }
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         if (EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>();

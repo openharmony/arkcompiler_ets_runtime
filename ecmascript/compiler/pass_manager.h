@@ -102,12 +102,12 @@ class PassManager {
 public:
     PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
                 CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, bool enableTypeLowering,
-                const std::string &profIn, uint32_t hotnessThreshold)
+                const std::string &profIn, uint32_t hotnessThreshold, bool enableOptInlining)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize),
           enableTypeLowering_(enableTypeLowering),
           enableTypeInfer_(enableTypeLowering || vm_->GetTSManager()->AssertTypes()),
-          profilerLoader_(profIn, hotnessThreshold) {};
+          profilerLoader_(profIn, hotnessThreshold), enableOptInlining_(enableOptInlining) {};
     PassManager() = default;
     ~PassManager() = default;
 
@@ -128,6 +128,11 @@ private:
         return enableTypeInfer_;
     }
 
+    bool EnableOptInlining() const
+    {
+        return enableOptInlining_;
+    }
+
     EcmaVM *vm_ {nullptr};
     std::string entry_ {};
     std::string triple_ {};
@@ -139,6 +144,7 @@ private:
     bool enableTypeLowering_ {true};
     bool enableTypeInfer_ {true};
     PGOProfilerLoader profilerLoader_;
+    bool enableOptInlining_ {true};
 };
 }
 #endif // ECMASCRIPT_COMPILER_PASS_MANAGER_H

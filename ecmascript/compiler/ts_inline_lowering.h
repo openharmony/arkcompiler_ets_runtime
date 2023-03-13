@@ -76,11 +76,11 @@ private:
 
     void ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value);
 
-    GateRef MergeAllReturn(const std::vector<GateRef> &returnVector,
-        GateRef &state, GateRef &depend, size_t numOfIns);
+    GateRef MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend);
     bool CheckParameter(GateRef gate, bool isCallThis, MethodLiteral* method);
 
     void LowerToInlineCall(GateRef gate, const std::vector<GateRef> &args);
+    void RemoveRoot();
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

@@ -236,11 +236,11 @@ public:
 
 class TSInlineLoweringPass {
 public:
-    bool Run(PassData *data, PassInfo *info)
+    bool Run(PassData *data)
     {
         TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        TSInlineLowering inlining(data->GetCircuit(), info, enableLog, data->GetMethodName());
+        TSInlineLowering inlining(data->GetCircuit(), data->GetInfo(), enableLog, data->GetMethodName());
         inlining.RunTSInlineLowering();
         return true;
     }

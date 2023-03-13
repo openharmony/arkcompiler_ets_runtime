@@ -95,6 +95,7 @@ int Main(const int argc, const char **argv)
         bool isTraceBC = runtimeOptions.IsTraceBC();
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
+        bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         BytecodeStubCSigns::Initialize();
         CommonStubCSigns::Initialize();
@@ -109,7 +110,7 @@ int Main(const int argc, const char **argv)
             entrypoint = runtimeOptions.GetEntryPoint();
         }
         PassManager passManager(vm, entrypoint, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
-                                isEnableTypeLowering, profilerIn, hotnessThreshold);
+                                isEnableTypeLowering, profilerIn, hotnessThreshold, isEnableOptInlining);
         for (const auto &fileName : pandaFileNames) {
             auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
             LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
