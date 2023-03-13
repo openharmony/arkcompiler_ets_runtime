@@ -128,7 +128,8 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
     ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
            GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
-           GetOpCode(gate) == OpCode::INDEX_CHECK);
+           GetOpCode(gate) == OpCode::INDEX_CHECK ||
+           GetOpCode(gate) == OpCode::JSCALLTARGET_TYPE_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
@@ -184,6 +185,7 @@ uint32_t GateAccessor::GetPcOffset(GateRef gate) const
             return gatePtr->GetJSBytecodeMetaData()->GetPcOffset();
         case OpCode::TYPED_CALL:
         case OpCode::CONSTRUCT:
+        case OpCode::TYPEDAOTCALL:
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());
         default:
             break;

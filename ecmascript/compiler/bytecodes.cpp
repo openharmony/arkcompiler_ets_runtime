@@ -165,6 +165,11 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+        case EcmaOpcode::CALLARG0_IMM8:
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
             flags |= BytecodeFlags::SUPPORT_DEOPT;
             break;
         case EcmaOpcode::RETURNUNDEFINED:

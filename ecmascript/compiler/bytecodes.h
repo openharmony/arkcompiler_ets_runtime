@@ -22,6 +22,7 @@
 #include "libpandabase/macros.h"
 #include "libpandabase/utils/bit_field.h"
 #include "libpandafile/bytecode_instruction-inl.h"
+#include "ecmascript/common.h"
 #include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript::kungfu {
@@ -34,6 +35,7 @@ class BytecodeCircuitBuilder;
 class Bytecodes;
 class BytecodeInfo;
 class BytecodeIterator;
+
 enum BytecodeFlags : uint32_t {
     READ_ACC = 1 << 0, // 1: flag bit
     WRITE_ACC = 1 << 1, // 1: flag 1
@@ -650,6 +652,26 @@ private:
     uint32_t start_ {0};
     uint32_t end_ {0};
     uint32_t index_{ INVALID_INDEX };
+};
+
+class BytecodeCallArgc {
+public:
+    static int ComputeCallArgc(int gateNumIn, EcmaOpcode op)
+    {
+        switch (op) {
+            case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::CALLTHIS0_IMM8_V8: {
+                return gateNumIn + NUM_MANDATORY_JSFUNC_ARGS - 2; // 2: calltarget, this
+            }
+            default: {
+                return gateNumIn + NUM_MANDATORY_JSFUNC_ARGS - 1; // 1: calltarget
+            }
+        }
+    }
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODES_H

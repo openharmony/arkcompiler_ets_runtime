@@ -141,6 +141,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::RUNTIME_CALL, &LLVMIRBuilder::HandleRuntimeCall},
         {OpCode::RUNTIME_CALL_WITH_ARGV, &LLVMIRBuilder::HandleRuntimeCallWithArgv},
         {OpCode::NOGC_RUNTIME_CALL, &LLVMIRBuilder::HandleCall},
+        {OpCode::AOT_CALL, &LLVMIRBuilder::HandleCall},
         {OpCode::CALL, &LLVMIRBuilder::HandleCall},
         {OpCode::BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::DEBUGGER_BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
@@ -461,7 +462,7 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
     acc_.GetIns(gate, ins);
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL ||
-        callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV) {
+        callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV || callOp == OpCode::AOT_CALL) {
         VisitCall(gate, ins, callOp);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -737,6 +738,21 @@ void LLVMIRBuilder::UpdateLeaveFrame(LLVMValueRef glue)
     LLVMBuildStore(builder_, fp, leaveFrameAddr);
 }
 
+LLVMValueRef LLVMIRBuilder::GetCallee(const std::vector<GateRef> &inList, const CallSignature *signature,
+    const std::string &realName)
+{
+    LLVMTypeRef rtfuncType = llvmModule_->GetFuncType(signature);
+    LLVMTypeRef rtfuncTypePtr = LLVMPointerType(rtfuncType, 0);
+
+    std::string name = realName.empty()
+            ? signature->GetName()
+            : realName;
+    LLVMValueRef code = gate2LValue_[inList[static_cast<size_t>(CallInputs::TARGET)]];
+    LLVMValueRef callee = LLVMBuildIntToPtr(builder_, code, rtfuncTypePtr, (name + "-cast").c_str());
+    ASSERT(callee != nullptr);
+    return callee;
+}
+
 void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, OpCode op)
 {
     size_t targetIndex = static_cast<size_t>(CallInputs::TARGET);
@@ -762,6 +778,10 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         kind = GetCallExceptionKind(index, op);
+    } else if (op == OpCode::AOT_CALL) {
+        calleeDescriptor = RuntimeStubCSigns::GetAotCallSign();
+        callee = GetCallee(inList, calleeDescriptor);
+        kind = CallExceptionKind::HAS_PC_OFFSET;
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = gate2LValue_[inList[targetIndex]];

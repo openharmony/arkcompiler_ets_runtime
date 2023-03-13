@@ -89,6 +89,7 @@ enum class DeoptType : uint8_t {
     NOTDECOV,
     NOTNEGOV,
     NOTCALLTGT,
+    NOTJSCALLTGT,
 };
 
 enum class ICmpCondition : uint8_t {
@@ -215,6 +216,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
     V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
+    V(AotCall, AOT_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
     V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
     V(BytecodeCall, BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \
@@ -225,20 +227,22 @@ std::string MachineTypeToStr(MachineType machineType);
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
     V(TypedCall, TYPED_CALL, GateFlags::NONE_FLAG, 1, 1, value)                \
     V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)                 \
+    V(TypedAotCall, TYPEDAOTCALL, GateFlags::NONE_FLAG, 1, 1, value)           \
 
 #define GATE_META_DATA_LIST_WITH_SIZE(V)                                            \
     V(Merge, MERGE, GateFlags::CONTROL, value, 0, 0)                                \
     V(DependSelector, DEPEND_SELECTOR, GateFlags::FIXED, 1, value, 0)               \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                  \
-    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)       \
-    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
-    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                  \
-    V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
-    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)              \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                \
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                       \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)      \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)            \
+    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)\
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)            \
+    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                       \
+    V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)      \
+    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                   \
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                     \
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                         \

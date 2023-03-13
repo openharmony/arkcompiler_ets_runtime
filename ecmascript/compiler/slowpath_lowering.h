@@ -282,7 +282,6 @@ private:
     void LowerCopyRestArgs(GateRef gate, GateRef actualArgc);
     GateRef LowerCallRuntime(GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel = false);
     GateRef LowerCallNGCRuntime(GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel = false);
-    int32_t ComputeCallArgc(GateRef gate, EcmaOpcode op);
     void LowerCreateAsyncGeneratorObj(GateRef gate);
     void LowerAsyncGeneratorResolve(GateRef gate);
     void LowerAsyncGeneratorReject(GateRef gate);
@@ -296,6 +295,7 @@ private:
     void LowerConstPoolData(GateRef gate);
     void LowerDeoptCheck(GateRef gate);
     void LowerConstruct(GateRef gate);
+    void LowerTypedAotCall(GateRef gate);
     void LowerUpdateHotness(GateRef gate);
     void LowerNotifyConcurrentResult(GateRef gate);
 

@@ -299,6 +299,8 @@ private:
     }
     LLVMValueRef GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset,
                              const std::string &realName = "") const;
+    LLVMValueRef GetCallee(const std::vector<GateRef> &inList, const CallSignature *signature,
+                           const std::string &realName = "");
     LLVMValueRef GetFunctionFromGlobalValue(LLVMValueRef glue, const CallSignature *signature,
         LLVMValueRef reloc) const;
     bool IsInterpreted() const;

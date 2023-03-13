@@ -234,6 +234,20 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef pa
     return ret;
 }
 
+GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->JSCallTargetTypeCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, func, methodIndex, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptType type)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -564,6 +578,8 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
         meta = circuit_->BuiltinsCallWithArgv(numValuesIn);
     } else if (cs->IsRuntimeNGCStub()) {
         meta = circuit_->NoGcRuntimeCall(numValuesIn);
+    } else if (cs->IsAotStub()) {
+        meta = circuit_->AotCall(numValuesIn);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -666,6 +682,23 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
     auto callGate = GetCircuit()->NewGate(circuit_->Construct(bitfield, pcOffset), MachineType::I64,
+                                          args.size(), args.data(), GateType::AnyType());
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
+GateRef CircuitBuilder::TypedAotCall(GateRef hirGate, std::vector<GateRef> args)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    uint64_t bitfield = args.size();
+    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+    args.insert(args.begin(), currentDepend);
+    args.insert(args.begin(), currentControl);
+    auto callGate = GetCircuit()->NewGate(circuit_->TypedAotCall(bitfield, pcOffset), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
@@ -953,6 +986,12 @@ GateRef CircuitBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t
 {
     auto valueIndex = IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
     return Load(type, env, valueIndex);
+}
+
+GateRef CircuitBuilder::GetCodeAddr(GateRef method)
+{
+    auto codeAddOffset = IntPtr(Method::CODE_ENTRY_OFFSET);
+    return Load(VariableType::NATIVE_POINTER(), method, codeAddOffset);
 }
 
 GateRef CircuitBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
