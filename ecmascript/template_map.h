@@ -59,6 +59,11 @@ public:
     {
         return HashTable::Create(thread, numberOfElements);
     }
+    static int ComputeCompactSize([[maybe_unused]] const JSHandle<TemplateMap> &table, int computeHashTableSize,
+        [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
+    {
+        return computeHashTableSize;
+    }
     static const int ENTRY_SIZE = 2;
     static const int ENTRY_KEY_INDEX = 0;
     static const int ENTRY_VALUE_INDEX = 1;

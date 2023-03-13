@@ -132,6 +132,11 @@ public:
                                                 const JSHandle<CjsModuleCache> &dictionary,
                                                 const JSHandle<JSTaggedValue> &key,
                                                 const JSHandle<JSTaggedValue> &value);
+    static int ComputeCompactSize([[maybe_unused]] const JSHandle<CjsModuleCache> &table, int computeHashTableSize,
+        [[maybe_unused]] int tableSize, [[maybe_unused]] int addedElements)
+    {
+        return computeHashTableSize;
+    }
     static constexpr int ENTRY_KEY_INDEX = 0;
     static constexpr int ENTRY_VALUE_INDEX = 1;
     static constexpr int ENTRY_SIZE = 2;
