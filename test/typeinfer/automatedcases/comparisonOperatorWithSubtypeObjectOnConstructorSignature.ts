@@ -99,9 +99,6 @@ let b9: { new (...a: Derived[]): Base };
 AssertType(b9, "new (...Derived[]) => Base");
 AssertType(a, "Derived[]");
 
-//let a10: { <T, U extends T>(t: T, u: U): T[] };
-//let b10: { <A, B extends A>(a: A, b: B): A[] };
-
 // operator <
 let r1a1 = a1 < b1;
 AssertType(r1a1, "boolean");
@@ -157,8 +154,6 @@ AssertType(a9 < b9, "boolean");
 AssertType(a9, "new (...Base[]) => Base");
 AssertType(b9, "new (...Derived[]) => Base");
 
-//let r1a10 = a10 < b10;
-
 let r1b1 = b1 < a1;
 AssertType(r1b1, "boolean");
 AssertType(b1 < a1, "boolean");
@@ -212,8 +207,6 @@ AssertType(r1b9, "boolean");
 AssertType(b9 < a9, "boolean");
 AssertType(b9, "new (...Derived[]) => Base");
 AssertType(a9, "new (...Base[]) => Base");
-
-//let r1b10 = b10 < a10;
 
 // operator >
 let r2a1 = a1 > b1;
@@ -270,8 +263,6 @@ AssertType(a9 > b9, "boolean");
 AssertType(a9, "new (...Base[]) => Base");
 AssertType(b9, "new (...Derived[]) => Base");
 
-//let r2a10 = a10 > b10;
-
 let r2b1 = b1 > a1;
 AssertType(r2b1, "boolean");
 AssertType(b1 > a1, "boolean");
@@ -325,8 +316,6 @@ AssertType(r2b9, "boolean");
 AssertType(b9 > a9, "boolean");
 AssertType(b9, "new (...Derived[]) => Base");
 AssertType(a9, "new (...Base[]) => Base");
-
-//let r2b10 = b10 > a10;
 
 // operator <=
 let r3a1 = a1 <= b1;

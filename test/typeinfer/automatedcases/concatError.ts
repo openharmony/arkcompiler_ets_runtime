@@ -21,12 +21,6 @@ declare function AssertType(value:any, type:string):void;
 let n1: number[];
 AssertType(n1, "number[]");
 
-/*
-interface Array<T> {
-    concat(...items: T[][]): T[]; // Note: This overload needs to be picked for arrays of arrays, even though both are applicable
-    concat(...items: T[]): T[];
-}
-*/
 let fa: number[];
 AssertType(fa, "number[]");
 

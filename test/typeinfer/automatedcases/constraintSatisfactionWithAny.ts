@@ -49,7 +49,6 @@ AssertType(foo2(a), "any");
 AssertType(foo2, "<T extends { x: number; }>(T) => T");
 AssertType(a, "any");
 
-//foo3(a);
 foo4(a);
 AssertType(foo4(a), "any");
 AssertType(foo4, "<T extends <T>(T) => void>(T) => T");
@@ -73,10 +72,6 @@ foo4<any>(b);
 AssertType(foo4<any>(b), "any");
 AssertType(foo4, "<T extends <T>(T) => void>(T) => T");
 AssertType(b, "number");
-
-//function foo5<T extends String, U extends T>(x: T, y: U): T { return null; }
-//foo5(a, a);
-//foo5<any, any>(b, b);
 
 class C<T extends String> {
     constructor(public x: T) { }
@@ -109,13 +104,6 @@ AssertType(c4, "C2<any>");
 AssertType(new C2<any>(b), "C2<any>");
 AssertType(C2, "typeof C2");
 AssertType(b, "number");
-
-//class C3<T extends T[]> {
-//    constructor(public x: T) { }
-//}
-
-//let c5 = new C3(a);
-//let c6 = new C3<any>(b);
 
 class C4<T extends <T>(x:T) => T> {
     constructor(public x: T) { }

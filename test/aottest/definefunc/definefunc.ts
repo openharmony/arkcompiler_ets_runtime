@@ -27,4 +27,3 @@ function printArg(a:any, b:any)
 }
 
 print(getHelloWorld());
-//printArg(33333, 44444);

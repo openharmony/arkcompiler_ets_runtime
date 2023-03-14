@@ -30,7 +30,6 @@ AssertType(r, "(T) => T");
     return r;
 }
 
-//let r1 = foo((x: number) => 1, (x: string) => ''); // error
 let r1b = foo((x) => 1, (x) => ''); // {} => {
 AssertType(r1b, "(unknown) => unknown");
 
@@ -190,9 +189,6 @@ AssertType(r8, "T");
 AssertType(r7(null), "T");
 AssertType(r7, "(T) => T");
 AssertType(null, "null");
-
-    // BUG 835518
-    //let r9 = r7(new Date());
 }
 
 

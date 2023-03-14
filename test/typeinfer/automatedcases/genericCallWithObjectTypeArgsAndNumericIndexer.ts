@@ -81,15 +81,5 @@ AssertType(d, "T");
 AssertType(r2[1], "T");
 AssertType(r2, "{ [number]: T; }");
 AssertType(1, "int");
-
-    // BUG 821629
-    //let u: U = r2[1]; // ok
 }
-//function other3<T extends U, U extends Date>(arg: T) {
-//    let b: { [x: number]: T };
-//    let r2 = foo(b);
-//    let d = r2[1];
-//    // BUG 821629
-//    //let u: U = r2[1]; // ok
-//}
 

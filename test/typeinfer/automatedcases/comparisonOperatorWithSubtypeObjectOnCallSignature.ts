@@ -133,9 +133,6 @@ AssertType(b11, "{ fn(...Derived[]): void; }");
 AssertType(fn, "(...Derived[]) => void");
 AssertType(a, "Derived[]");
 
-//let a12: { fn<T, U extends T>(t: T, u: U): T[] };
-//let b12: { fn<A, B extends A>(a: A, b: B): A[] };
-
 // operator <
 let r1a1 = a1 < b1;
 AssertType(r1a1, "boolean");
@@ -203,8 +200,6 @@ AssertType(a11 < b11, "boolean");
 AssertType(a11, "{ fn(...Base[]): void; }");
 AssertType(b11, "{ fn(...Derived[]): void; }");
 
-//let r1a12 = a12 < b12;
-
 let r1b1 = b1 < a1;
 AssertType(r1b1, "boolean");
 AssertType(b1 < a1, "boolean");
@@ -270,8 +265,6 @@ AssertType(r1b11, "boolean");
 AssertType(b11 < a11, "boolean");
 AssertType(b11, "{ fn(...Derived[]): void; }");
 AssertType(a11, "{ fn(...Base[]): void; }");
-
-//let r1b12 = b12 < a12;
 
 // operator >
 let r2a1 = a1 > b1;
@@ -340,8 +333,6 @@ AssertType(a11 > b11, "boolean");
 AssertType(a11, "{ fn(...Base[]): void; }");
 AssertType(b11, "{ fn(...Derived[]): void; }");
 
-//let r2a12 = a12 > b12;
-
 let r2b1 = b1 > a1;
 AssertType(r2b1, "boolean");
 AssertType(b1 > a1, "boolean");
@@ -407,8 +398,6 @@ AssertType(r2b11, "boolean");
 AssertType(b11 > a11, "boolean");
 AssertType(b11, "{ fn(...Derived[]): void; }");
 AssertType(a11, "{ fn(...Base[]): void; }");
-
-//let r2b12 = b12 > a12;
 
 // operator <=
 let r3a1 = a1 <= b1;

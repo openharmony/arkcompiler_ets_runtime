@@ -19,9 +19,7 @@
 // === tests/cases/compiler/classOrder1.ts ===
 declare function AssertType(value:any, type:string):void;
 class A {
-    public foo() {
-        /*WScript.Echo("Here!");*/
-    }
+    public foo() {}
 }
 
 let a = new A();

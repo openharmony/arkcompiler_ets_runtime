@@ -80,7 +80,7 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
         return MemMap();
     }
 
-    size_t size = lseek(fd, 0, SEEK_END);
+    size_t size = static_cast<size_t>(lseek(fd, 0, SEEK_END));
     if (size <= 0) {
         close(fd);
         LOG_ECMA(ERROR) << fileName << " file is empty";

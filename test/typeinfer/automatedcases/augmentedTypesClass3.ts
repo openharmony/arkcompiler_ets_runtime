@@ -31,5 +31,4 @@ module c5b { export let y = 2; } // should be ok
 
 //// class then import
 class c5c { public foo() { } }
-//import c5c = require('');
 

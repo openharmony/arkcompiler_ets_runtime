@@ -90,7 +90,7 @@ public:
                     return true;
                 default:
                     LOG_NO_TAG(ERROR) << "Invalid option";
-                    return -1;
+                    return false;
             }
         }
         if (optind != argc - MIN_PARAM_COUNT + 1) {
