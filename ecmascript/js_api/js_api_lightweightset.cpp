@@ -247,7 +247,7 @@ bool JSAPILightWeightSet::Equal(JSThread *thread, const JSHandle<JSAPILightWeigh
                                 const JSHandle<JSTaggedValue> &value)
 {
     bool result = false;
-    JSHandle<TaggedArray> destHashes(thread, obj->GetHashes());
+    JSHandle<TaggedArray> destHashes(thread, obj->GetValues());
     uint32_t destSize = obj->GetLength();
     uint32_t srcSize = 0;
     JSMutableHandle<TaggedArray> srcHashes(thread, obj->GetHashes());
@@ -269,14 +269,20 @@ bool JSAPILightWeightSet::Equal(JSThread *thread, const JSHandle<JSAPILightWeigh
     if (srcSize != destSize) {
         return false;
     }
-    for (uint32_t i = 0; i < srcSize; i++) {
-        uint32_t destHashCode = destHashes->Get(i).GetNumber();
-        uint32_t srcHashCode = srcHashes->Get(i).GetNumber();
-        if (srcHashCode != destHashCode) {
-            result = false;
-            break;
+    for (uint32_t i = 0; i < destSize; i++) {
+        JSTaggedValue compareValue = destHashes->Get(i);
+        JSTaggedValue values = srcHashes->Get(i);
+        if (compareValue.IsNumber() && values.IsNumber()) {
+            result = JSTaggedValue::SameValueNumberic(compareValue, values);
         }
-        result = true;
+        if (compareValue.IsString() && values.IsString()) {
+            result =
+                JSTaggedValue::StringCompare(EcmaString::Cast(compareValue.GetTaggedObject()),
+                                             EcmaString::Cast(values.GetTaggedObject()));
+        }
+        if (!result) {
+            return result;
+        }
     }
     return result;
 }
@@ -293,7 +299,11 @@ void JSAPILightWeightSet::IncreaseCapacityTo(JSThread *thread, const JSHandle<JS
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
-    obj->SizeCopy(thread, obj, intCapacity, minCapacity);
+    JSHandle<TaggedArray> hashArray(thread, obj->GetHashes());
+    JSHandle<TaggedArray> newElements =
+        thread->GetEcmaVM()->GetFactory()->NewAndCopyTaggedArray(hashArray,
+                                                                 static_cast<uint32_t>(minCapacity), capacity);
+    obj->SetHashes(thread, newElements);
 }
 
 JSHandle<JSTaggedValue> JSAPILightWeightSet::GetIteratorObj(JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,

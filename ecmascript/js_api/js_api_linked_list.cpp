@@ -183,10 +183,9 @@ JSTaggedValue JSAPILinkedList::Set(JSThread *thread, const JSHandle<JSAPILinkedL
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSTaggedValue oldValue = doubleList->Get(index);
     TaggedDoubleList::Set(thread, doubleList, index, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return oldValue;
+    return value.GetTaggedValue();
 }
 
 bool JSAPILinkedList::Has(const JSTaggedValue &element)

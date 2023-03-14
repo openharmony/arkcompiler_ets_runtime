@@ -82,10 +82,9 @@ JSTaggedValue JSAPIList::Set(JSThread *thread, const JSHandle<JSAPIList> &list,
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSTaggedValue oldValue = singleList->Get(index);
     TaggedSingleList::Set(thread, singleList, index, value);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return oldValue;
+    return value.GetTaggedValue();
 }
 
 bool JSAPIList::Has(const JSTaggedValue &element)
