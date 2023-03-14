@@ -27,7 +27,6 @@ export let a = function () {
 AssertType(a, "() => void");
 AssertType(function () {    //let x = mod.id; // TODO needed hack that mod is loaded    b.b(mod);}, "() => void");
 
-    //let x = mod.id; // TODO needed hack that mod is loaded
     b.b(mod);
 AssertType(b.b(mod), "any");
 AssertType(b.b, "(any) => any");

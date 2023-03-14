@@ -38,15 +38,3 @@ AssertType(x[0], "Derived");
 AssertType(x, "FooOf<Derived>");
 AssertType(0, "int");
 
-/*
-// Note - the equivalent for normal interface methods works fine:
-interface A {
-    foo(): Base;
-}
-interface B<TBase extends Base> extends A {
-    foo(): TBase;
-}
-let b: B<Derived> = null;
-let z: Derived = b.foo();
-*/
-

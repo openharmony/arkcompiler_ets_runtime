@@ -91,7 +91,6 @@ AssertType(fn, "(string, number) => {}");
 AssertType(x, "string");
 AssertType(y, "number");
 
-//let a7: { fn<T, U extends T>(x: T, y: U): T };
 let b7: { fn(x: Base, y: Derived): Base };
 AssertType(b7, "{ fn(Base, Derived): Base; }");
 AssertType(fn, "(Base, Derived) => Base");
@@ -135,8 +134,6 @@ AssertType(a6 < b6, "boolean");
 AssertType(a6, "{ fn<T>(T, T): T; }");
 AssertType(b6, "{ fn(string, number): {}; }");
 
-//let r1a7 = a7 < b7;
-
 let r1b1 = b1 < a1;
 AssertType(r1b1, "boolean");
 AssertType(b1 < a1, "boolean");
@@ -172,8 +169,6 @@ AssertType(r1b6, "boolean");
 AssertType(b6 < a6, "boolean");
 AssertType(b6, "{ fn(string, number): {}; }");
 AssertType(a6, "{ fn<T>(T, T): T; }");
-
-//let r1b7 = b7 < a7;
 
 // operator >
 let r2a1 = a1 > b1;
@@ -212,8 +207,6 @@ AssertType(a6 > b6, "boolean");
 AssertType(a6, "{ fn<T>(T, T): T; }");
 AssertType(b6, "{ fn(string, number): {}; }");
 
-//let r2a7 = a7 > b7;
-
 let r2b1 = b1 > a1;
 AssertType(r2b1, "boolean");
 AssertType(b1 > a1, "boolean");
@@ -249,8 +242,6 @@ AssertType(r2b6, "boolean");
 AssertType(b6 > a6, "boolean");
 AssertType(b6, "{ fn(string, number): {}; }");
 AssertType(a6, "{ fn<T>(T, T): T; }");
-
-//let r2b7 = b7 > a7;
 
 // operator <=
 let r3a1 = a1 <= b1;

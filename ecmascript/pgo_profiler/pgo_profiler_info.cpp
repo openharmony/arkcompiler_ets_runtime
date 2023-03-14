@@ -187,7 +187,7 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, EntityId methodId, const CString 
         return false;
     } else {
         size_t strlen = methodName.size();
-        size_t size = PGOMethodInfo::Size(strlen);
+        size_t size = static_cast<size_t>(PGOMethodInfo::Size(strlen));
         void *infoAddr = chunk->Allocate(size);
         auto info = new (infoAddr) PGOMethodInfo(methodId, 1, mode, methodName.c_str());
         methodInfos_.emplace(methodId, info);
@@ -207,7 +207,7 @@ void PGOMethodInfoMap::Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos)
             toMethodInfo->Merge(fromMethodInfo);
         } else {
             size_t len = strlen(fromMethodInfo->GetMethodName());
-            size_t size = PGOMethodInfo::Size(len);
+            size_t size = static_cast<size_t>(PGOMethodInfo::Size(len));
             void *infoAddr = chunk->Allocate(size);
             auto newMethodInfo = new (infoAddr) PGOMethodInfo(methodId, fromMethodInfo->GetCount(),
                 fromMethodInfo->GetSampleMode(), fromMethodInfo->GetMethodName());

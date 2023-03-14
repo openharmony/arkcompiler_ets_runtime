@@ -29,7 +29,6 @@ AssertType(arguments.length, "number");
 AssertType(i++, "number");
 AssertType(i, "number");
 
-           // WScript.Echo("param: " + arguments[i]);
        }
     }
 }

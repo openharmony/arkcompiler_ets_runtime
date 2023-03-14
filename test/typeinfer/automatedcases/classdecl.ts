@@ -19,7 +19,6 @@
 // === tests/cases/compiler/classdecl.ts ===
 declare function AssertType(value:any, type:string):void;
 class a {
-    //constructor ();
     constructor (n: number);
     constructor (s: string);
     constructor (ns: any) {

@@ -92,14 +92,6 @@ AssertType(null, "null");
     }
 }
 
-//function f7<T extends U, U>(x: T, y: U) {
-//    if (true) {
-//        return x;
-//    } else {
-//        return y;
-//    }
-//}
-
 let a: { x: number; y?: number };
 AssertType(a, "{ x: number; y?: number; }");
 AssertType(x, "number");

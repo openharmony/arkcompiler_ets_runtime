@@ -214,7 +214,7 @@ public:
         : id_(id), count_(count), mode_(mode)
     {
         size_t len = strlen(methodName);
-        size_ = Size(len);
+        size_ = static_cast<size_t>(Size(len));
         if (len > 0 && memcpy_s(&methodName_, len, methodName, len) != EOK) {
             LOG_ECMA(ERROR) << "SetMethodName memcpy_s failed" << methodName << ", len = " << len;
             UNREACHABLE();
