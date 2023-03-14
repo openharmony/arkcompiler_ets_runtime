@@ -44,7 +44,7 @@ public:
         // update profile and update compile queue
         std::unordered_set<EntityId> fullResolvedMethodSet;
         auto dfs = [this, &fullResolvedMethodSet, resolvedMethod] (const CString &recordName,
-            [[maybe_unused]] const std::unordered_set<EntityId> &oldIds) -> std::unordered_set<EntityId> & {
+            [[maybe_unused]] const std::unordered_set<EntityId> &oldIds) -> std::unordered_set<EntityId> &{
                 fullResolvedMethodSet.clear();
                 std::unordered_set<EntityId> currentResolvedMethodSet {resolvedMethod};
                 uint32_t mainMethodOffset = jsPandaFile_->GetMainMethodIndex(recordName);

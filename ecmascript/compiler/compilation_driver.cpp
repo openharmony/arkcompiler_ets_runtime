@@ -20,7 +20,7 @@ void CompilationDriver::UpdatePGO()
 {
     std::unordered_set<EntityId> newMethodIds;
     auto dfs = [this, &newMethodIds] (const CString &recordName,
-        const std::unordered_set<EntityId> &oldIds) -> std::unordered_set<EntityId> & {
+        const std::unordered_set<EntityId> &oldIds) -> std::unordered_set<EntityId> &{
             newMethodIds.clear();
             if (!jsPandaFile_->HasTSTypes(recordName)) {
                 return newMethodIds;
