@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -3115,24 +3116,18 @@ void SlowPathLowering::LowerTypedAotCall(GateRef gate)
 void SlowPathLowering::LowerUpdateHotness(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
-    GateRef method = builder_.Load(VariableType::JS_ANY(), jsFunc, builder_.IntPtr(JSFunctionBase::METHOD_OFFSET));
-    GateRef hotness = builder_.Load(VariableType::INT16(), method, builder_.IntPtr(Method::LITERAL_INFO_OFFSET));
-    GateRef value = builder_.ZExtInt16ToInt32(hotness);
-    GateRef offset = acc_.GetValueIn(gate, 0);
-    GateRef newValue = builder_.Int32Add(value, offset);
-    DEFVAlUE(newHotness, (&builder_), VariableType::INT16(), builder_.TruncInt32ToInt16(newValue));
+    GateRef interruptsFlag = builder_.Load(VariableType::INT8(), glue_,
+     builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
     Label slowPath(&builder_);
     Label dispatch(&builder_);
-    builder_.Branch(builder_.Int32LessThan(newValue, builder_.Int32(0)), &slowPath, &dispatch);
+    builder_.Branch(builder_.Int8Equal(interruptsFlag,
+        builder_.Int8(VmThreadControl::VM_NEED_SUSPENSION)), &slowPath, &dispatch);
     builder_.Bind(&slowPath);
     {
-        LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        newHotness = builder_.Int16(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
+        LowerCallRuntime(glue_, RTSTUB_ID(CheckSafePoint), { }, true);
         builder_.Jump(&dispatch);
     }
     builder_.Bind(&dispatch);
-    builder_.Store(VariableType::VOID(), glue_, method, builder_.IntPtr(Method::LITERAL_INFO_OFFSET), *newHotness);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

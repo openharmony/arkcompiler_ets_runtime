@@ -38,6 +38,7 @@ template<typename T>
 class EcmaGlobalStorage;
 class Node;
 class DebugNode;
+class VmThreadControl;
 using WeakClearCallback = void (*)(void *);
 
 enum class MarkStatus : uint8_t {
@@ -179,9 +180,15 @@ class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
     static constexpr int PGO_PROFILER_BITFIELD_NUM = 1;
+    static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
+    static constexpr int BOOL_BITFIELD_NUM = 1;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using PGOStatusBits = MarkStatusBits::NextField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_NUM>;
+
+    using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
+    using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
+    using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
     using ThreadId = uint32_t;
 
     explicit JSThread(EcmaVM *vm);
@@ -437,24 +444,24 @@ public:
 
     void SetMarkStatus(MarkStatus status)
     {
-        MarkStatusBits::Set(status, &glueData_.threadStateBitField_);
+        MarkStatusBits::Set(status, &glueData_.gcStateBitField_);
     }
 
     bool IsReadyToMark() const
     {
-        auto status = MarkStatusBits::Decode(glueData_.threadStateBitField_);
+        auto status = MarkStatusBits::Decode(glueData_.gcStateBitField_);
         return status == MarkStatus::READY_TO_MARK;
     }
 
     bool IsMarking() const
     {
-        auto status = MarkStatusBits::Decode(glueData_.threadStateBitField_);
+        auto status = MarkStatusBits::Decode(glueData_.gcStateBitField_);
         return status == MarkStatus::MARKING;
     }
 
     bool IsMarkFinished() const
     {
-        auto status = MarkStatusBits::Decode(glueData_.threadStateBitField_);
+        auto status = MarkStatusBits::Decode(glueData_.gcStateBitField_);
         return status == MarkStatus::MARK_FINISHED;
     }
 
@@ -462,16 +469,16 @@ public:
     {
         PGOProfilerStatus status =
             enable ? PGOProfilerStatus::PGO_PROFILER_ENABLE : PGOProfilerStatus::PGO_PROFILER_DISABLE;
-        PGOStatusBits::Set(status, &glueData_.threadStateBitField_);
+        PGOStatusBits::Set(status, &glueData_.gcStateBitField_);
     }
 
     bool IsPGOProfilerEnable() const
     {
-        auto status = PGOStatusBits::Decode(glueData_.threadStateBitField_);
+        auto status = PGOStatusBits::Decode(glueData_.gcStateBitField_);
         return status == PGOProfilerStatus::PGO_PROFILER_ENABLE;
     }
 
-    bool CheckSafepoint() const;
+    bool CheckSafepoint();
 
     void SetGetStackSignal(bool isParseStack)
     {
@@ -542,6 +549,37 @@ public:
     {
         // very careful to modify here
         return reinterpret_cast<JSThread *>(glue - GetGlueDataOffset());
+    }
+
+    void SetCheckSafePointStatus()
+    {
+        ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
+        CheckSafePointBit::Set(true, &glueData_.interruptVector_);
+    }
+
+    void ResetCheckSafePointStatus()
+    {
+        ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
+        CheckSafePointBit::Set(false, &glueData_.interruptVector_);
+    }
+
+    void SetVMNeedSuspension(bool flag)
+    {
+        VMNeedSuspensionBit::Set(flag, &glueData_.interruptVector_);
+    }
+
+    bool VMNeedSuspension() {
+        return VMNeedSuspensionBit::Decode(glueData_.interruptVector_);
+    }
+
+    void SetVMSuspended(bool flag)
+    {
+        VMHasSuspendedBit::Set(flag, &glueData_.interruptVector_);
+    }
+
+    bool IsVMSuspended()
+    {
+        return VMHasSuspendedBit::Decode(glueData_.interruptVector_);
     }
 
     static uintptr_t GetCurrentStackPosition()
@@ -653,6 +691,7 @@ public:
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  GlobalEnvConstants,
+                                                 base::AlignedUint64,
                                                  base::AlignedUint64> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -675,6 +714,7 @@ public:
             GlueGlobalEnvIndex,
             GlobalConstIndex,
             AllowCrossThreadExecutionIndex,
+            InterruptVectorIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -779,6 +819,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::AllowCrossThreadExecutionIndex)>(isArch32);
         }
 
+        static size_t GetInterruptVectorOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::InterruptVectorIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -792,13 +837,14 @@ public:
         alignas(EAS) COStubEntries coStubEntries_;
         alignas(EAS) BuiltinStubEntries builtinStubEntries_;
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
-        alignas(EAS) volatile uint64_t threadStateBitField_ {0ULL};
+        alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
         alignas(EAS) uint64_t stackLimit_ {0};
         alignas(EAS) GlobalEnv *glueGlobalEnv_;
         alignas(EAS) GlobalEnvConstants globalConst_;
         alignas(EAS) bool allowCrossThreadExecution_ {false};
+        alignas(EAS) volatile uint64_t interruptVector_ {0};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 

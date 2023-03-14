@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
@@ -923,6 +924,13 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckSafePoint)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    thread->CheckSafepoint();
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LoadICByName)

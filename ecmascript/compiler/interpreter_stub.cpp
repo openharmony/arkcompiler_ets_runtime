@@ -92,16 +92,24 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 #define DISPATCH_LAST_WITH_ACC()                                                          \
     DispatchLast(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter)       \
 
-#define UPDATE_HOTNESS(_sp)                                                                \
-    varHotnessCounter = Int32Add(offset, *varHotnessCounter);                              \
-    Branch(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);             \
-    Bind(&slowPath);                                                                       \
-    {                                                                                      \
-        GateRef func = GetFunctionFromFrame(GetFrame(_sp));                                \
-        varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func }); \
-        varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);              \
-        Jump(&dispatch);                                                                   \
-    }                                                                                      \
+#define UPDATE_HOTNESS(_sp)                                                                                    \
+    varHotnessCounter = Int32Add(offset, *varHotnessCounter);                                                  \
+    Branch(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                                 \
+    Bind(&slowPath);                                                                                           \
+    {                                                                                                          \
+        GateRef func = GetFunctionFromFrame(GetFrame(_sp));                                                    \
+        GateRef iVecOffset = IntPtr(JSThread::GlueData::GetInterruptVectorOffset(env->IsArch32Bit()));         \
+        GateRef interruptsFlag = Load(VariableType::INT8(), glue, iVecOffset);                                 \
+        varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                                  \
+        Label callRuntime(env);                                                                                \
+        Branch(BoolOr(TaggedIsUndefined(*varProfileTypeInfo), Int8Equal(interruptsFlag,                        \
+            Int8(VmThreadControl::VM_NEED_SUSPENSION))), &callRuntime, &dispatch);                             \
+        Bind(&callRuntime);                                                                                    \
+        {                                                                                                      \
+            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });                 \
+        }                                                                                                      \
+        Jump(&dispatch);                                                                                       \
+    }                                                                                                          \
     Bind(&dispatch);
 
 #define CHECK_EXCEPTION(res, offset)                                                      \

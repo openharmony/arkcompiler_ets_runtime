@@ -167,6 +167,7 @@ void ConcurrentMarker::FinishMarking(float spendTime)
 {
     os::memory::LockHolder lock(waitMarkingFinishedMutex_);
     thread_->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    thread_->SetCheckSafePointStatus();
     if (vmThreadWaitMarkingFinished_) {
         vmThreadWaitMarkingFinished_ = false;
         waitMarkingFinishedCV_.Signal();

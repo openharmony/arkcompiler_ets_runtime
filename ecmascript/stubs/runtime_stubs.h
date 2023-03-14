@@ -184,6 +184,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(LoadICByName)                       \
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
+    V(CheckSafePoint)                     \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \
     V(GetModuleNamespace)                 \

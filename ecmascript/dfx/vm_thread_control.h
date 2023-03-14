@@ -16,27 +16,22 @@
 #ifndef ECMASCRIPT_VM_THREAD_CONTROL_H
 #define ECMASCRIPT_VM_THREAD_CONTROL_H
 
+#include "ecmascript/js_thread.h"
 #include "libpandabase/os/mutex.h"
 #include "libpandabase/utils/bit_field.h"
 
 namespace panda::ecmascript {
 class VmThreadControl {
 public:
-    using VMNeedSuspensionBit = BitField<bool, 0, 1>;
-    using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
+    static constexpr char VM_NEED_SUSPENSION = 1;
 
-    void SetVMNeedSuspension(bool flag)
-    {
-        uint64_t newVal = VMNeedSuspensionBit::Update(threadStateBitField_, flag);
-        threadStateBitField_ = newVal;
+    VmThreadControl(JSThread *thread) {
+        thread_ = thread;
     }
 
-    bool VMNeedSuspension()
-    {
-        return VMNeedSuspensionBit::Decode(threadStateBitField_);
-    }
+    void SetVMNeedSuspension(bool flag);
 
-    bool CheckSafepoint();
+    bool VMNeedSuspension() const;
 
     void SuspendVM();
 
@@ -44,19 +39,12 @@ public:
 
     bool NotifyVMThreadSuspension();
 
-    void SetVMSuspended(bool flag)
-    {
-        uint64_t newVal = VMHasSuspendedBit::Update(threadStateBitField_, flag);
-        threadStateBitField_ = newVal;
-    }
+    void SetVMSuspended(bool flag);
 
-    bool IsSuspended()
-    {
-        return VMHasSuspendedBit::Decode(threadStateBitField_);
-    }
+    bool IsSuspended() const;
 
 private:
-    std::atomic<uint8_t> threadStateBitField_ {0};
+    JSThread *thread_;
     os::memory::Mutex vmThreadSuspensionMutex_;
     os::memory::ConditionVariable vmThreadNeedSuspensionCV_;
     os::memory::ConditionVariable vmThreadHasSuspendedCV_;
