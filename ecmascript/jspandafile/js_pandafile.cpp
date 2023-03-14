@@ -59,8 +59,7 @@ void JSPandaFile::CheckIsBundlePack()
 
 void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
 {
-    CString bundleName = vm->GetBundleName();
-    if (bundleName.empty()) {
+    if (vm->IsRecordWithBundleName()) {
         return;
     }
     for (auto info : jsRecordInfo_) {
@@ -69,12 +68,11 @@ void JSPandaFile::CheckIsNewRecord(EcmaVM *vm)
             continue;
         }
         CString recordName = info.first;
+        CString bundleName = vm->GetBundleName();
         size_t bundleNameLen = bundleName.length();
         // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
         if (recordName.length() > bundleNameLen && (recordName.compare(0, bundleNameLen, bundleName) == 0)) {
-            isNewRecord_ = true;
-        } else {
-            isNewRecord_ = false;
+            vm->SetRecordWithBundleNameTag(true);
         }
         return;
     }

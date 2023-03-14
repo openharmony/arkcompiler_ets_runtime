@@ -658,7 +658,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
             JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());
             return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
         }
-        if (!jsPandaFile->IsNewRecord()) {
+        if (!vm->IsRecordWithBundleName()) {
             PathHelper::CroppingRecord(entry);
         }
     }
@@ -2698,6 +2698,16 @@ void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 std::string JSNApi::GetAssetPath(EcmaVM *vm)
 {
     return vm->GetAssetPath().c_str();
+}
+
+void JSNApi::SetRecordWithBundleNameTag(EcmaVM *vm, bool isNewRecord)
+{
+    vm->SetRecordWithBundleNameTag(isNewRecord);
+}
+
+bool JSNApi::GetRecordWithBundleNameTag(EcmaVM *vm)
+{
+    return vm->IsRecordWithBundleName();
 }
 
 void JSNApi::SetBundleName(EcmaVM *vm, std::string bundleName)
