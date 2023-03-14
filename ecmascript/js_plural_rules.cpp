@@ -15,7 +15,7 @@
 
 #include "ecmascript/js_plural_rules.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
@@ -155,7 +155,7 @@ JSHandle<JSPluralRules> JSPluralRules::InitializePluralRules(JSThread *thread,
     auto globalConst = thread->GlobalConstants();
 
     // 1. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPluralRules, thread);
 
     // 2&3. If options is undefined, then Let options be ObjectCreate(null). else Let options be ? ToObject(options).
@@ -255,7 +255,7 @@ JSHandle<JSPluralRules> JSPluralRules::InitializePluralRules(JSThread *thread,
     SetIcuNumberFormatter(thread, pluralRules, icuNumberFormatter, JSPluralRules::FreeIcuNumberFormatter);
 
     // 12. Set pluralRules.[[Locale]] to the value of r.[[locale]].
-    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     pluralRules->SetLocale(thread, localeStr.GetTaggedValue());
 
     // 13. Return pluralRules.
@@ -361,7 +361,7 @@ void JSPluralRules::ResolvedOptions(JSThread *thread, const JSHandle<JSPluralRul
     for (int32_t i = 0; i < count; i++) {
         const icu::UnicodeString *category = categories->snext(status);
         ASSERT(U_SUCCESS(status));
-        JSHandle<EcmaString> value = base::LocaleHelper::UStringToString(thread, *category);
+        JSHandle<EcmaString> value = intl::LocaleHelper::UStringToString(thread, *category);
         pluralCategories->Set(thread, i, value);
     }
 

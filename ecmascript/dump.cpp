@@ -65,19 +65,14 @@
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
-#include "ecmascript/js_bigint.h"
-#include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_date.h"
-#include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_global_object.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/js_intl.h"
-#include "ecmascript/js_locale.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_number_format.h"
@@ -88,7 +83,6 @@
 #include "ecmascript/js_realm.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_regexp_iterator.h"
-#include "ecmascript/js_relative_time_format.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
@@ -120,6 +114,14 @@
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/js_displaynames.h"
 #include "ecmascript/js_list_format.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/js_bigint.h"
+#include "ecmascript/js_collator.h"
+#include "ecmascript/js_date_time_format.h"
+#include "ecmascript/js_intl.h"
+#include "ecmascript/js_locale.h"
+#include "ecmascript/js_relative_time_format.h"
+#endif
 
 namespace panda::ecmascript {
 using MicroJobQueue = panda::ecmascript::job::MicroJobQueue;
@@ -811,6 +813,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_REALM:
             JSRealm::Cast(obj)->Dump(os);
             break;
+#ifdef ARK_SUPPORT_INTL
         case JSType::JS_INTL:
             JSIntl::Cast(obj)->Dump(os);
             break;
@@ -838,6 +841,18 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_LIST_FORMAT:
             JSListFormat::Cast(obj)->Dump(os);
             break;
+#else
+        case JSType::JS_INTL:
+        case JSType::JS_LOCALE:
+        case JSType::JS_DATE_TIME_FORMAT:
+        case JSType::JS_RELATIVE_TIME_FORMAT:
+        case JSType::JS_NUMBER_FORMAT:
+        case JSType::JS_COLLATOR:
+        case JSType::JS_PLURAL_RULES:
+        case JSType::JS_DISPLAYNAMES:
+        case JSType::JS_LIST_FORMAT:
+            break;
+#endif
         case JSType::JS_GENERATOR_OBJECT:
             JSGeneratorObject::Cast(obj)->Dump(os);
             break;
@@ -2746,7 +2761,7 @@ void JSRealm::Dump(std::ostream &os) const
     os << "\n";
     JSObject::Dump(os);
 }
-
+#ifdef ARK_SUPPORT_INTL
 void JSIntl::Dump(std::ostream &os) const
 {
     os << " - FallbackSymbol: ";
@@ -2937,7 +2952,7 @@ void JSListFormat::Dump(std::ostream &os) const
     os << "\n";
     JSObject::Dump(os);
 }
-
+#endif
 void JSGeneratorObject::Dump(std::ostream &os) const
 {
     os << " - GeneratorContext: ";
@@ -3742,6 +3757,7 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_REALM:
             JSRealm::Cast(obj)->DumpForSnapshot(vec);
             return;
+#ifdef ARK_SUPPORT_INTL
         case JSType::JS_INTL:
             JSIntl::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -3757,15 +3773,6 @@ static void DumpObject(TaggedObject *obj,
         case JSType::JS_NUMBER_FORMAT:
             JSNumberFormat::Cast(obj)->DumpForSnapshot(vec);
             return;
-        case JSType::JS_CJS_MODULE:
-            CjsModule::Cast(obj)->DumpForSnapshot(vec);
-            return;
-        case JSType::JS_CJS_EXPORTS:
-            CjsExports::Cast(obj)->DumpForSnapshot(vec);
-            return;
-        case JSType::JS_CJS_REQUIRE:
-            CjsRequire::Cast(obj)->DumpForSnapshot(vec);
-            return;
         case JSType::JS_COLLATOR:
             JSCollator::Cast(obj)->DumpForSnapshot(vec);
             return;
@@ -3777,6 +3784,27 @@ static void DumpObject(TaggedObject *obj,
             return;
         case JSType::JS_LIST_FORMAT:
             JSListFormat::Cast(obj)->DumpForSnapshot(vec);
+            return;
+#else
+        case JSType::JS_INTL:
+        case JSType::JS_LOCALE:
+        case JSType::JS_DATE_TIME_FORMAT:
+        case JSType::JS_RELATIVE_TIME_FORMAT:
+        case JSType::JS_NUMBER_FORMAT:
+        case JSType::JS_COLLATOR:
+        case JSType::JS_PLURAL_RULES:
+        case JSType::JS_DISPLAYNAMES:
+        case JSType::JS_LIST_FORMAT:
+            return;
+#endif
+        case JSType::JS_CJS_MODULE:
+            CjsModule::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_CJS_EXPORTS:
+            CjsExports::Cast(obj)->DumpForSnapshot(vec);
+            return;
+        case JSType::JS_CJS_REQUIRE:
+            CjsRequire::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::JS_GENERATOR_OBJECT:
             JSGeneratorObject::Cast(obj)->DumpForSnapshot(vec);
@@ -4908,7 +4936,7 @@ void JSRealm::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &ve
     vec.emplace_back("GLobalEnv", GetGlobalEnv());
     JSObject::DumpForSnapshot(vec);
 }
-
+#ifdef ARK_SUPPORT_INTL
 void JSIntl::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.emplace_back("FallbackSymbol", GetFallbackSymbol());
@@ -5031,7 +5059,7 @@ void JSListFormat::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>
     vec.emplace_back("IcuLF", GetIcuLF());
     JSObject::DumpForSnapshot(vec);
 }
-
+#endif
 void JSGeneratorObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.emplace_back("GeneratorContext", GetGeneratorContext());

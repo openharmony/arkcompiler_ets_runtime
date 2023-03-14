@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/js_number_format.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tests/test_helper.h"
@@ -87,7 +87,7 @@ HWTEST_F_L0(JSNumberFormatTest, GetIcuCallTarget)
     UErrorCode status = U_ZERO_ERROR;
     icu::number::FormattedNumber formattedNumber = resultIcuNumberFormatter->formatInt(value, status);
     icu::UnicodeString result = formattedNumber.toString(status);
-    JSHandle<EcmaString> stringValue = base::LocaleHelper::UStringToString(thread, result);
+    JSHandle<EcmaString> stringValue = intl::LocaleHelper::UStringToString(thread, result);
     EXPECT_STREQ("-123,456", EcmaStringAccessor(stringValue).ToCString().c_str());
 }
 

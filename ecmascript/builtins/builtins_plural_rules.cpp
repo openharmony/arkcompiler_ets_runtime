@@ -15,7 +15,7 @@
 
 #include "ecmascript/builtins/builtins_plural_rules.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_object.h"
@@ -63,7 +63,7 @@ JSTaggedValue BuiltinsPluralRules::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 
     // 2. Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
-    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Return ? SupportedLocales(availableLocales, requestedLocales, options).

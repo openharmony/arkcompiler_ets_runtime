@@ -18,7 +18,7 @@
 
 #include "unicode/reldatefmt.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"

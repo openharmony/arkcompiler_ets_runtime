@@ -72,12 +72,8 @@
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_bigint.h"
-#include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/js_date.h"
-#include "ecmascript/js_date_time_format.h"
-#include "ecmascript/js_displaynames.h"
-#include "ecmascript/js_list_format.h"
 #include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_generator_object.h"
@@ -86,16 +82,13 @@
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
-#include "ecmascript/js_number_format.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_plural_rules.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_realm.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_regexp_iterator.h"
-#include "ecmascript/js_relative_time_format.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
@@ -129,7 +122,15 @@
 #include "ecmascript/ts_types/ts_type.h"
 #include "ecmascript/ts_types/ts_type_table.h"
 #include "ecmascript/aot_file_manager.h"
-
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/js_collator.h"
+#include "ecmascript/js_date_time_format.h"
+#include "ecmascript/js_displaynames.h"
+#include "ecmascript/js_list_format.h"
+#include "ecmascript/js_number_format.h"
+#include "ecmascript/js_plural_rules.h"
+#include "ecmascript/js_relative_time_format.h"
+#endif
 namespace panda::ecmascript {
 using Error = builtins::BuiltinsError;
 using RangeError = builtins::BuiltinsRangeError;
@@ -911,6 +912,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_ITERATOR: {
             break;
         }
+#ifdef ARK_SUPPORT_INTL
         case JSType::JS_INTL: {
             JSIntl::Cast(*obj)->SetFallbackSymbol(thread_, JSTaggedValue::Undefined());
             JSHandle<JSSymbol> jsSymbol = NewPublicSymbolWithChar("IntlLegacyConstructedSymbol");
@@ -1006,6 +1008,19 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSListFormat::Cast(*obj)->SetIcuLF(thread_, JSTaggedValue::Undefined());
             break;
         }
+#else
+        case JSType::JS_INTL:
+        case JSType::JS_LOCALE:
+        case JSType::JS_DATE_TIME_FORMAT:
+        case JSType::JS_NUMBER_FORMAT:
+        case JSType::JS_RELATIVE_TIME_FORMAT:
+        case JSType::JS_COLLATOR:
+        case JSType::JS_PLURAL_RULES:
+        case JSType::JS_DISPLAYNAMES:
+        case JSType::JS_LIST_FORMAT: {
+            break;
+        }
+#endif
         case JSType::JS_ARRAY: {
             JSArray::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
             ASSERT(!obj->GetJSHClass()->IsDictionaryMode());

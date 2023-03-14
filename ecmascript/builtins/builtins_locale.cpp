@@ -15,7 +15,7 @@
 
 #include "ecmascript/builtins/builtins_locale.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_locale.h"
@@ -57,7 +57,7 @@ JSTaggedValue BuiltinsLocale::LocaleConstructor(EcmaRuntimeCallInfo *argv)
         localeString = JSTaggedValue::ToString(thread, tag);
     } else {
         icu::Locale *icuLocale = (JSHandle<JSLocale>::Cast(tag))->GetIcuLocale();
-        localeString = base::LocaleHelper::ToLanguageTag(thread, *icuLocale);
+        localeString = intl::LocaleHelper::ToLanguageTag(thread, *icuLocale);
     }
     // 10. If options is undefined, then
     //    a.Let options be ! ObjectCreate(null).
@@ -171,7 +171,7 @@ JSTaggedValue BuiltinsLocale::GetBaseName(EcmaRuntimeCallInfo *argv)
     // 4. Return the substring of locale corresponding to the unicode_language_id production.
     JSHandle<JSLocale> locale = JSHandle<JSLocale>::Cast(loc);
     icu::Locale icuLocale = icu::Locale::createFromName(locale->GetIcuLocale()->getBaseName());
-    JSHandle<EcmaString> baseName = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> baseName = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     return baseName.GetTaggedValue();
 }
 

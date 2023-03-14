@@ -249,7 +249,7 @@ HWTEST_F_L0(JSLocaleTest, ApplyOptionsToTag)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     TagElements tagElements;
     JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
-    JSHandle<EcmaString> languageTag = base::LocaleHelper::DefaultLocale(thread);
+    JSHandle<EcmaString> languageTag = intl::LocaleHelper::DefaultLocale(thread);
 
     JSHandle<JSTaggedValue> languageKey = thread->GlobalConstants()->GetHandledLanguageString();
     JSHandle<JSTaggedValue> regionKey = thread->GlobalConstants()->GetHandledRegionString();
@@ -577,7 +577,7 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_001)
     EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
     // availableLocales and requestLocales is not empty
     std::vector<std::string> availableStringLocales =
-        base::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
+        intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
     availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     requestedLocales = factory->NewTaggedArray(1);
     // test locale1
@@ -618,7 +618,7 @@ HWTEST_F_L0(JSLocaleTest, ResolveLocale_002)
     EXPECT_STREQ("en-US", result.locale.c_str()); // default locale
     // availableLocales and requestLocales is not empty
     std::vector<std::string> availableStringLocales =
-        base::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
+        intl::LocaleHelper::GetAvailableLocales(thread, "calendar", nullptr);
     availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     requestedLocales = factory->NewTaggedArray(1);
     // test locale1

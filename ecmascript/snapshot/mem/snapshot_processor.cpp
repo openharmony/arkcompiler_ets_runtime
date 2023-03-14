@@ -28,34 +28,25 @@
 #include "ecmascript/builtins/builtins_cjs_exports.h"
 #include "ecmascript/builtins/builtins_cjs_module.h"
 #include "ecmascript/builtins/builtins_cjs_require.h"
-#include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_dataview.h"
 #include "ecmascript/builtins/builtins_date.h"
-#include "ecmascript/builtins/builtins_date_time_format.h"
-#include "ecmascript/builtins/builtins_displaynames.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/builtins/builtins_finalization_registry.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_generator.h"
 #include "ecmascript/builtins/builtins_global.h"
-#include "ecmascript/builtins/builtins_intl.h"
 #include "ecmascript/builtins/builtins_iterator.h"
 #include "ecmascript/builtins/builtins_json.h"
-#include "ecmascript/builtins/builtins_list_format.h"
-#include "ecmascript/builtins/builtins_locale.h"
 #include "ecmascript/builtins/builtins_map.h"
 #include "ecmascript/builtins/builtins_math.h"
 #include "ecmascript/builtins/builtins_number.h"
-#include "ecmascript/builtins/builtins_number_format.h"
 #include "ecmascript/builtins/builtins_object.h"
-#include "ecmascript/builtins/builtins_plural_rules.h"
 #include "ecmascript/builtins/builtins_promise.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_promise_job.h"
 #include "ecmascript/builtins/builtins_proxy.h"
 #include "ecmascript/builtins/builtins_reflect.h"
 #include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/builtins/builtins_relative_time_format.h"
 #include "ecmascript/builtins/builtins_set.h"
 #include "ecmascript/builtins/builtins_sharedarraybuffer.h"
 #include "ecmascript/builtins/builtins_string.h"
@@ -113,13 +104,23 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 #include "ecmascript/aot_file_manager.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/builtins/builtins_collator.h"
+#include "ecmascript/builtins/builtins_date_time_format.h"
+#include "ecmascript/builtins/builtins_displaynames.h"
+#include "ecmascript/builtins/builtins_intl.h"
+#include "ecmascript/builtins/builtins_list_format.h"
+#include "ecmascript/builtins/builtins_locale.h"
+#include "ecmascript/builtins/builtins_number_format.h"
+#include "ecmascript/builtins/builtins_plural_rules.h"
+#include "ecmascript/builtins/builtins_relative_time_format.h"
+#endif
 
 namespace panda::ecmascript {
 using Number = builtins::BuiltinsNumber;
 using BuiltinsBigInt = builtins::BuiltinsBigInt;
 using Object = builtins::BuiltinsObject;
 using Date = builtins::BuiltinsDate;
-using DisplayNames = builtins::BuiltinsDisplayNames;
 using Symbol = builtins::BuiltinsSymbol;
 using Boolean = builtins::BuiltinsBoolean;
 using BuiltinsMap = builtins::BuiltinsMap;
@@ -160,21 +161,12 @@ using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 using Promise = builtins::BuiltinsPromise;
 using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
-using ListFormat = builtins::BuiltinsListFormat;
 using BuiltinsCjsExports = builtins::BuiltinsCjsExports;
 using BuiltinsCjsModule = builtins::BuiltinsCjsModule;
 using BuiltinsCjsRequire = builtins::BuiltinsCjsRequire;
 using ArkTools = builtins::BuiltinsArkTools;
-
 using ErrorType = base::ErrorType;
 using DataView = builtins::BuiltinsDataView;
-using Intl = builtins::BuiltinsIntl;
-using Locale = builtins::BuiltinsLocale;
-using DateTimeFormat = builtins::BuiltinsDateTimeFormat;
-using NumberFormat = builtins::BuiltinsNumberFormat;
-using RelativeTimeFormat = builtins::BuiltinsRelativeTimeFormat;
-using Collator = builtins::BuiltinsCollator;
-using PluralRules = builtins::BuiltinsPluralRules;
 using ArrayList = containers::ContainersArrayList;
 using HashMap = containers::ContainersHashMap;
 using HashSet = containers::ContainersHashSet;
@@ -190,6 +182,17 @@ using PlainArray = containers::ContainersPlainArray;
 using Deque = containers::ContainersDeque;
 using ContainerStack = panda::ecmascript::containers::ContainersStack;
 using ContainersPrivate = containers::ContainersPrivate;
+#ifdef ARK_SUPPORT_INTL
+using DisplayNames = builtins::BuiltinsDisplayNames;
+using ListFormat = builtins::BuiltinsListFormat;
+using Intl = builtins::BuiltinsIntl;
+using Locale = builtins::BuiltinsLocale;
+using DateTimeFormat = builtins::BuiltinsDateTimeFormat;
+using NumberFormat = builtins::BuiltinsNumberFormat;
+using RelativeTimeFormat = builtins::BuiltinsRelativeTimeFormat;
+using Collator = builtins::BuiltinsCollator;
+using PluralRules = builtins::BuiltinsPluralRules;
+#endif
 
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 static uintptr_t g_nativeTable[] = {
@@ -237,12 +240,6 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(Number::IsSafeInteger),
     reinterpret_cast<uintptr_t>(Number::ParseFloat),
     reinterpret_cast<uintptr_t>(Number::ParseInt),
-    reinterpret_cast<uintptr_t>(BuiltinsBigInt::BigIntConstructor),
-    reinterpret_cast<uintptr_t>(BuiltinsBigInt::AsUintN),
-    reinterpret_cast<uintptr_t>(BuiltinsBigInt::AsIntN),
-    reinterpret_cast<uintptr_t>(BuiltinsBigInt::ToLocaleString),
-    reinterpret_cast<uintptr_t>(BuiltinsBigInt::ToString),
-    reinterpret_cast<uintptr_t>(BuiltinsBigInt::ValueOf),
     reinterpret_cast<uintptr_t>(Symbol::SymbolConstructor),
     reinterpret_cast<uintptr_t>(Symbol::For),
     reinterpret_cast<uintptr_t>(Symbol::KeyFor),
@@ -299,10 +296,6 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(Date::Now),
     reinterpret_cast<uintptr_t>(Date::Parse),
     reinterpret_cast<uintptr_t>(Date::UTC),
-    reinterpret_cast<uintptr_t>(DisplayNames::DisplayNamesConstructor),
-    reinterpret_cast<uintptr_t>(DisplayNames::SupportedLocalesOf),
-    reinterpret_cast<uintptr_t>(DisplayNames::Of),
-    reinterpret_cast<uintptr_t>(DisplayNames::ResolvedOptions),
     reinterpret_cast<uintptr_t>(Object::Assign),
     reinterpret_cast<uintptr_t>(Object::Create),
     reinterpret_cast<uintptr_t>(Object::DefineProperties),
@@ -649,6 +642,31 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::PromiseReactionJob),
     reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::PromiseResolveThenableJob),
     reinterpret_cast<uintptr_t>(BuiltinsPromiseJob::DynamicImportJob),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsExports::CjsExportsConstructor),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::CjsModuleConstructor),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::Compiler),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::Load),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::Require),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::GetExportsForCircularRequire),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::UpdateChildren),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::ResolveFilename),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsRequire::CjsRequireConstructor),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsRequire::Main),
+    reinterpret_cast<uintptr_t>(BuiltinsCjsRequire::Resolve),
+    reinterpret_cast<uintptr_t>(ArkTools::ObjectDump),
+    reinterpret_cast<uintptr_t>(ArkTools::CompareHClass),
+    reinterpret_cast<uintptr_t>(ArkTools::DumpHClass),
+    reinterpret_cast<uintptr_t>(BuiltinsBigInt::BigIntConstructor),
+    reinterpret_cast<uintptr_t>(BuiltinsBigInt::AsUintN),
+    reinterpret_cast<uintptr_t>(BuiltinsBigInt::AsIntN),
+    reinterpret_cast<uintptr_t>(BuiltinsBigInt::ToLocaleString),
+    reinterpret_cast<uintptr_t>(BuiltinsBigInt::ToString),
+    reinterpret_cast<uintptr_t>(BuiltinsBigInt::ValueOf),
+#ifdef ARK_SUPPORT_INTL
+    reinterpret_cast<uintptr_t>(DisplayNames::DisplayNamesConstructor),
+    reinterpret_cast<uintptr_t>(DisplayNames::SupportedLocalesOf),
+    reinterpret_cast<uintptr_t>(DisplayNames::Of),
+    reinterpret_cast<uintptr_t>(DisplayNames::ResolvedOptions),
     reinterpret_cast<uintptr_t>(Intl::GetCanonicalLocales),
     reinterpret_cast<uintptr_t>(Locale::LocaleConstructor),
     reinterpret_cast<uintptr_t>(Locale::Maximize),
@@ -694,20 +712,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(ListFormat::Format),
     reinterpret_cast<uintptr_t>(ListFormat::FormatToParts),
     reinterpret_cast<uintptr_t>(ListFormat::ResolvedOptions),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsExports::CjsExportsConstructor),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::CjsModuleConstructor),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::Compiler),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::Load),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::Require),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::GetExportsForCircularRequire),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::UpdateChildren),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsModule::ResolveFilename),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsRequire::CjsRequireConstructor),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsRequire::Main),
-    reinterpret_cast<uintptr_t>(BuiltinsCjsRequire::Resolve),
-    reinterpret_cast<uintptr_t>(ArkTools::ObjectDump),
-    reinterpret_cast<uintptr_t>(ArkTools::CompareHClass),
-    reinterpret_cast<uintptr_t>(ArkTools::DumpHClass),
+#endif
 
     // non ECMA standard jsapi containers.
     reinterpret_cast<uintptr_t>(ContainersPrivate::Load),

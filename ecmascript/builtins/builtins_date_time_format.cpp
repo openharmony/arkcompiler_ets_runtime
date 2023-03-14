@@ -15,7 +15,7 @@
 
 #include "builtins_date_time_format.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_date.h"
@@ -87,7 +87,7 @@ JSTaggedValue BuiltinsDateTimeFormat::SupportedLocalesOf(EcmaRuntimeCallInfo *ar
 
     // 2. Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
-    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Return ? SupportedLocales(availableLocales, requestedLocales, options).

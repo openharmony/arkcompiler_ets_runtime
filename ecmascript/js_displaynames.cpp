@@ -17,7 +17,7 @@
 
 #include <cstring>
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
 
@@ -83,7 +83,7 @@ JSHandle<TaggedArray> JSDisplayNames::GetAvailableLocales(JSThread *thread)
 {
     const char *key = "calendar";
     const char *path = nullptr;
-    std::vector<std::string> availableStringLocales = base::LocaleHelper::GetAvailableLocales(thread, key, path);
+    std::vector<std::string> availableStringLocales = intl::LocaleHelper::GetAvailableLocales(thread, key, path);
     JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
     return availableLocales;
 }
@@ -117,7 +117,7 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     ObjectFactory *factory = ecmaVm->GetFactory();
     auto globalConst = thread->GlobalConstants();
     // 3. Let requestedLocales be ? CanonicalizeLocaleList(locales).
-    JSHandle<TaggedArray> requestedLocales = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
 
     // 4. If options is undefined, throw a TypeError exception.
@@ -192,7 +192,7 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     displayNames->SetFallback(fallback);
 
     // 18. Set displayNames.[[Locale]] to the value of r.[[Locale]].
-    JSHandle<EcmaString> localeStr = base::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
     displayNames->SetLocale(thread, localeStr.GetTaggedValue());
     // 19. Let dataLocale be r.[[dataLocale]].
     // 20. Let dataLocaleData be localeData.[[<dataLocale>]].
@@ -236,7 +236,7 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
     if (typeOpt == TypednsOption::LANGUAGE) {
         // a. If code does not match the unicode_language_id production, throw a RangeError exception.
         UErrorCode status = U_ZERO_ERROR;
-        std::string codeSt = base::LocaleHelper::ConvertToStdString(code);
+        std::string codeSt = intl::LocaleHelper::ConvertToStdString(code);
         icu::Locale loc = icu::Locale(icu::Locale::forLanguageTag(codeSt, status).getBaseName());
         std::string checked = loc.toLanguageTag<std::string>(status);
         if (checked.size() == 0) {
@@ -248,19 +248,19 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
         // b. If IsStructurallyValidLanguageTag(code) is false, throw a RangeError exception.
         // c. Set code to CanonicalizeUnicodeLocaleId(code).
         // d. Return code.
-        if (!base::LocaleHelper::IsStructurallyValidLanguageTag(code)) {
+        if (!intl::LocaleHelper::IsStructurallyValidLanguageTag(code)) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "not a structurally valid", code);
         }
-        JSHandle<EcmaString> codeStr = base::LocaleHelper::CanonicalizeUnicodeLocaleId(thread, code);
+        JSHandle<EcmaString> codeStr = intl::LocaleHelper::CanonicalizeUnicodeLocaleId(thread, code);
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::UnicodeString result;
-        std::string codeString = base::LocaleHelper::ConvertToStdString(codeStr);
+        std::string codeString = intl::LocaleHelper::ConvertToStdString(codeStr);
         icuLocaldisplaynames->languageDisplayName(codeString.c_str(), result);
-        JSHandle<EcmaString> codeResult = base::LocaleHelper::UStringToString(thread, result);
+        JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     } else if (typeOpt == TypednsOption::REGION) {
         // a. If code does not match the unicode_region_subtag production, throw a RangeError exception.
-        std::string regionCode = base::LocaleHelper::ConvertToStdString(code);
+        std::string regionCode = intl::LocaleHelper::ConvertToStdString(code);
         if (!IsUnicodeRegionSubtag(regionCode)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid region", code);
         }
@@ -269,30 +269,30 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::UnicodeString result;
         icuLocaldisplaynames->regionDisplayName(regionCode.c_str(), result);
-        JSHandle<EcmaString> codeResult = base::LocaleHelper::UStringToString(thread, result);
+        JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     } else if (typeOpt == TypednsOption::SCRIPT) {
-        std::string scriptCode = base::LocaleHelper::ConvertToStdString(code);
+        std::string scriptCode = intl::LocaleHelper::ConvertToStdString(code);
         if (!IsUnicodeScriptSubtag(scriptCode)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid script", code);
         }
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::UnicodeString result;
         icuLocaldisplaynames->scriptDisplayName(scriptCode.c_str(), result);
-        JSHandle<EcmaString> codeResult = base::LocaleHelper::UStringToString(thread, result);
+        JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
         return codeResult;
     }
     // 4. 4. Assert: type is "currency".
     // 5. If ! IsWellFormedCurrencyCode(code) is false, throw a RangeError exception.
     ASSERT(typeOpt == TypednsOption::CURRENCY);
-    std::string cCode = base::LocaleHelper::ConvertToStdString(code);
+    std::string cCode = intl::LocaleHelper::ConvertToStdString(code);
     if (!JSLocale::IsWellFormedCurrencyCode(cCode)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "not a wellformed currency code", code);
     }
     icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
     icu::UnicodeString result;
     icuLocaldisplaynames->keyValueDisplayName("currency", cCode.c_str(), result);
-    JSHandle<EcmaString> codeResult = base::LocaleHelper::UStringToString(thread, result);
+    JSHandle<EcmaString> codeResult = intl::LocaleHelper::UStringToString(thread, result);
     return codeResult;
 }
 

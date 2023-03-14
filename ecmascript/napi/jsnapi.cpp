@@ -41,18 +41,14 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
-#include "ecmascript/js_bigint.h"
-#include "ecmascript/js_collator.h"
 #include "ecmascript/js_dataview.h"
 #include "ecmascript/byte_array.h"
-#include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
-#include "ecmascript/js_number_format.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_regexp.h"
@@ -76,6 +72,12 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/regexp/regexp_parser.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/js_bigint.h"
+#include "ecmascript/js_collator.h"
+#include "ecmascript/js_date_time_format.h"
+#include "ecmascript/js_number_format.h"
+#endif
 
 #include "ohos/init_data.h"
 
@@ -153,9 +155,11 @@ using ecmascript::JSIterator;
 using ecmascript::JSGeneratorFunction;
 using ecmascript::JSGeneratorObject;
 using ecmascript::GeneratorContext;
+#ifdef ARK_SUPPORT_INTL
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
 using ecmascript::JSNumberFormat;
+#endif
 using ecmascript::RegExpParser;
 using ecmascript::DebugInfoExtractor;
 using ecmascript::PatchErrorCode;
@@ -2090,28 +2094,44 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorReceiver(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<GeneratorObjectRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 }
 
+
 Local<JSValueRef> CollatorRef::GetCompareFunction(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
+#ifdef ARK_SUPPORT_INTL
     JSHandle<JSCollator> jsCollator(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue jsTagValue = jsCollator->GetBoundCompare();
     return JSNApiHelper::ToLocal<CollatorRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler intl";
+    return JSNApiHelper::ToLocal<CollatorRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+#endif
 }
 
 Local<JSValueRef> DataTimeFormatRef::GetFormatFunction(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
+#ifdef ARK_SUPPORT_INTL
     JSHandle<JSDateTimeFormat> jsDateTimeFormat(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue jsTagValue = jsDateTimeFormat->GetBoundFormat();
     return JSNApiHelper::ToLocal<DataTimeFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler intl";
+    return JSNApiHelper::ToLocal<DataTimeFormatRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+#endif
 }
 
 Local<JSValueRef> NumberFormatRef::GetFormatFunction(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
+#ifdef ARK_SUPPORT_INTL
     JSHandle<JSNumberFormat> jsNumberFormat(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue jsTagValue = jsNumberFormat->GetBoundFormat();
     return JSNApiHelper::ToLocal<NumberFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler intl";
+    return JSNApiHelper::ToLocal<NumberFormatRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+#endif
 }
 
 // ----------------------------------- FunctionCallback ---------------------------------

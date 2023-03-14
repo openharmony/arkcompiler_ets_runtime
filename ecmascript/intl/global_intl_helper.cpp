@@ -15,7 +15,7 @@
 
 #include "ecmascript/intl/global_intl_helper.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -205,7 +205,7 @@ std::string GlobalIntlHelper::EcmaConvertToStr(const JSHandle<EcmaString> &strin
 std::vector<std::string> GlobalIntlHelper::LocalesToVector(JSThread *thread,
     const JSHandle<JSTaggedValue> &locales)
 {
-    JSHandle<TaggedArray> tArray = base::LocaleHelper::CanonicalizeLocaleList(thread, locales);
+    JSHandle<TaggedArray> tArray = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     return TaggedArrayToVector(thread, tArray);
 }
 
@@ -217,7 +217,7 @@ std::vector<std::string> GlobalIntlHelper::TaggedArrayToVector(JSThread *thread,
     uint32_t availablecalesLength = taggedarray->GetLength();
     for (uint32_t i = 0; i < availablecalesLength; i++) {
         availableItem.Update(taggedarray->Get(thread, i));
-        availableStringLocales.emplace_back(base::LocaleHelper::ConvertToStdString(availableItem));
+        availableStringLocales.emplace_back(intl::LocaleHelper::ConvertToStdString(availableItem));
     }
     return availableStringLocales;
 }

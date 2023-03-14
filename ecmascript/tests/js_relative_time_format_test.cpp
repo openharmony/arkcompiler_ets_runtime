@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/js_relative_time_format.h"
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/napi/jsnapi_helper.h"
@@ -99,14 +99,14 @@ HWTEST_F_L0(JSRelativeTimeFormatTest, GetIcuRTFFormatter)
     icu::RelativeDateTimeFormatter rtfFormatter(icuLocale, icuNumberFormat, UDAT_STYLE_LONG,
                                                 UDISPCTX_CAPITALIZATION_NONE, status);
     icu::UnicodeString result1 = rtfFormatter.formatNumericToValue(value, UDAT_REL_UNIT_YEAR, status).toString(status);
-    JSHandle<EcmaString> stringValue1 = base::LocaleHelper::UStringToString(thread, result1);
+    JSHandle<EcmaString> stringValue1 = intl::LocaleHelper::UStringToString(thread, result1);
     // Set Icu RelativeDateTimeFormatter to Icu Field
     factory->NewJSIntlIcuData(relativeTimeFormat, rtfFormatter, JSRelativeTimeFormat::FreeIcuRTFFormatter);
     // Get Icu Field
     icu::RelativeDateTimeFormatter *resultRelativeDateTimeFormatter = relativeTimeFormat->GetIcuRTFFormatter();
     icu::UnicodeString result2 =
         resultRelativeDateTimeFormatter->formatNumericToValue(value, UDAT_REL_UNIT_YEAR, status).toString(status);
-    JSHandle<EcmaString> stringValue2 = base::LocaleHelper::UStringToString(thread, result2);
+    JSHandle<EcmaString> stringValue2 = intl::LocaleHelper::UStringToString(thread, result2);
     EXPECT_EQ(EcmaStringAccessor::StringsAreEqual(*stringValue1, *stringValue2), true);
 }
 

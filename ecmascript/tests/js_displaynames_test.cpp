@@ -15,7 +15,7 @@
 
 #include "ecmascript/js_displaynames.h"
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
@@ -86,7 +86,7 @@ HWTEST_F_L0(JSDisplayNamesTest, GetIcuLocaleDisplayNames)
     icu::LocaleDisplayNames *resultIculocaledisplaynames = displayNames->GetIcuLocaleDisplayNames();
     EXPECT_TRUE(iculocaledisplaynames == resultIculocaledisplaynames);
     JSHandle<EcmaString> localeStr =
-        base::LocaleHelper::ToLanguageTag(thread, resultIculocaledisplaynames->getLocale());
+        intl::LocaleHelper::ToLanguageTag(thread, resultIculocaledisplaynames->getLocale());
     EXPECT_STREQ(EcmaStringAccessor(localeStr).ToCString().c_str(), "en");
 }
 

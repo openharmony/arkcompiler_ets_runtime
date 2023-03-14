@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/locale_helper.h"
+#include "ecmascript/intl/locale_helper.h"
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"
@@ -35,7 +35,7 @@
 #pragma GCC diagnostic pop
 #endif
 
-namespace panda::ecmascript::base {
+namespace panda::ecmascript::intl {
 JSHandle<EcmaString> LocaleHelper::UStringToString(JSThread *thread, const icu::UnicodeString &string)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -71,6 +71,7 @@ JSHandle<TaggedArray> LocaleHelper::CanonicalizeLocaleList(JSThread *thread, con
         JSHandle<JSArray> obj = JSArray::CreateArrayFromList(thread, temp);
         JSHandle<TaggedArray> finalSeen = CanonicalizeHelper<JSArray>(thread, obj, localeSeen);
         return finalSeen;
+#ifdef ARK_SUPPORT_INTL
     } else if (locales->IsJSLocale()) {
         JSHandle<EcmaString> tag = JSLocale::ToString(thread, JSHandle<JSLocale>::Cast(locales));
         JSHandle<TaggedArray> temp = factory->NewTaggedArray(1);
@@ -79,6 +80,7 @@ JSHandle<TaggedArray> LocaleHelper::CanonicalizeLocaleList(JSThread *thread, con
         JSHandle<JSArray> obj = JSArray::CreateArrayFromList(thread, temp);
         JSHandle<TaggedArray> finalSeen = CanonicalizeHelper<JSArray>(thread, obj, localeSeen);
         return finalSeen;
+#endif
     } else {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, locales);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
@@ -130,6 +132,7 @@ JSHandle<TaggedArray> LocaleHelper::CanonicalizeHelper(JSThread *thread, JSHandl
             //        1. Let tag be kValue.[[Locale]].
             // iv.  Else,
             //        1. Let tag be ? ToString(kValue).
+#ifdef ARK_SUPPORT_INTL
             if (kValue->IsJSLocale()) {
                 JSHandle<EcmaString> kValueStr = JSLocale::ToString(thread, JSHandle<JSLocale>::Cast(kValue));
                 RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
@@ -141,6 +144,13 @@ JSHandle<TaggedArray> LocaleHelper::CanonicalizeHelper(JSThread *thread, JSHandl
                 RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
                 tag.Update(canonicalStr.GetTaggedValue());
             }
+#else
+            JSHandle<EcmaString> kValueString = JSTaggedValue::ToString(thread, kValue);
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+            JSHandle<EcmaString> canonicalStr = CanonicalizeUnicodeLocaleId(thread, kValueString);
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+            tag.Update(canonicalStr.GetTaggedValue());
+#endif
             // vii. If canonicalizedTag is not an element of seen, append canonicalizedTag as the last element of seen.
             bool isExist = false;
             uint32_t seenLen = seen->GetLength();
