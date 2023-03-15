@@ -85,7 +85,7 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
         }
     } else {
         // without static properties, set class name
-        std::string clsName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+        std::string clsName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
         JSHandle<EcmaString> clsNameHandle = factory->NewFromStdString(clsName);
         staticProperties->Set(thread, NAME_INDEX, clsNameHandle);
     }
@@ -153,7 +153,7 @@ bool ClassInfoExtractor::ExtractAndReturnWhetherWithElements(JSThread *thread, c
             [[maybe_unused]] EcmaHandleScope handleScope(thread);
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             EntityId methodId = detail.methodLiteral->GetMethodId();
-            std::string clsName = detail.methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+            std::string clsName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
             JSHandle<EcmaString> clsNameHandle = factory->NewFromStdString(clsName);
             properties->Set(thread, NAME_INDEX, clsNameHandle);
         } else {

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_JS_METHOD_H
-#define ECMASCRIPT_JS_METHOD_H
+#ifndef ECMASCRIPT_METHOD_H
+#define ECMASCRIPT_METHOD_H
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/jspandafile/method_literal.h"
@@ -379,7 +379,7 @@ public:
     MethodLiteral *GetMethodLiteral() const;
 
     const char *PUBLIC_API GetMethodName() const;
-    const char *PUBLIC_API GetMethodName(const JSPandaFile* file) const;
+    const char *PUBLIC_API GetMethodName(const JSPandaFile *file) const;
     std::string PUBLIC_API ParseFunctionName() const;
     const CString GetRecordName() const;
 
@@ -433,4 +433,4 @@ private:
 };
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_JS_METHOD_H
+#endif  // ECMASCRIPT_METHOD_H

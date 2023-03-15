@@ -1251,16 +1251,17 @@ void TSManager::GenerateBuiltinSummary()
 {
     ASSERT(IsBuiltinsDTSEnabled());
     CString builtinsDTSFileName = GetBuiltinsDTS();
-    JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(builtinsDTSFileName);
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->OpenJSPandaFile(builtinsDTSFileName);
     if (jsPandaFile == nullptr) {
         LOG_COMPILER(FATAL) << "load lib_ark_builtins.d.ts failed";
     }
-    JSPandaFileManager::GetInstance()->InsertJSPandaFile(jsPandaFile);
-    SetBuiltinPandaFile(jsPandaFile);
+    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, jsPandaFile);
+    SetBuiltinPandaFile(jsPandaFile.get());
     CString builtinsRecordName(TSTypeTable::BUILTINS_TABLE_NAME);
     SetBuiltinRecordName(builtinsRecordName);
     panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset(builtinsRecordName));
-    JSHandle<TaggedArray> builtinOffsets = LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile, summaryOffset);
+    JSHandle<TaggedArray> builtinOffsets =
+        LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile.get(), summaryOffset);
     for (uint32_t i = 0; i <= static_cast<uint32_t>(BuiltinTypeId::NUM_OF_BUILTIN_TYPES); i++) {
         builtinOffsets_.emplace_back(static_cast<uint32_t>(builtinOffsets->Get(i).GetInt()));
     }

@@ -114,7 +114,7 @@ class JSThread;
     V(JSTaggedValue, CellRecordClass, CELL_RECORD_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
-    V(JSTaggedValue, MethodClass, JS_METHOD_CLASS_INDEX, ecma_roots_class)                                            \
+    V(JSTaggedValue, MethodClass, METHOD_CLASS_INDEX, ecma_roots_class)                                            \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
     V(JSTaggedValue, AOTLiteralInfoClass, AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                             \

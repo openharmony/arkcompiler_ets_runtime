@@ -679,7 +679,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
     ecmascript::CString name = vm->GetAssetPath();
     if (!vm->IsBundlePack()) {
         entry = PathHelper::ParseOhmUrl(vm, entry, name);
-        const JSPandaFile *jsPandaFile =
+        std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), false);
         if (jsPandaFile == nullptr) {
             JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());

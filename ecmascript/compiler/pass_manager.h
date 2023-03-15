@@ -62,7 +62,7 @@ public:
         return log_;
     }
 
-    const JSPandaFile* GetJSPandaFile() const
+    const JSPandaFile *GetJSPandaFile() const
     {
         return jsPandaFile_;
     }

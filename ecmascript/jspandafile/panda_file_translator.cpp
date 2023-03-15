@@ -108,7 +108,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     JSHandle<ConstantPool> constpool;
     bool isNewVersion = jsPandaFile->IsNewVersion();
     if (isNewVersion) {
-        constpool = vm->FindOrCreateConstPool(jsPandaFile, panda_file::File::EntityId(mainMethodIndex));
+        constpool = vm->FindOrCreateConstPool(jsPandaFile, EntityId(mainMethodIndex));
     } else {
         JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, 0);
         if (constpoolVal.IsHole()) {
@@ -124,11 +124,12 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
         }
     }
 
-    return GenerateProgramInternal(vm, jsPandaFile, mainMethodIndex, constpool);
+    MethodLiteral *mainMethodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
+    return GenerateProgramInternal(vm, mainMethodLiteral, constpool);
 }
 
-JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                               uint32_t mainMethodIndex,
+JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
+                                                               MethodLiteral *mainMethodLiteral,
                                                                JSHandle<ConstantPool> constpool)
 {
     JSThread *thread = vm->GetJSThread();
@@ -136,12 +137,11 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm, const
     JSHandle<Program> program = factory->NewProgram();
 
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    auto methodLiteral = jsPandaFile->FindMethodLiteral(mainMethodIndex);
-    if (methodLiteral == nullptr) {
+    if (mainMethodLiteral == nullptr) {
         program->SetMainFunction(thread, JSTaggedValue::Undefined());
     } else {
         JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-        JSHandle<Method> method = factory->NewMethod(methodLiteral);
+        JSHandle<Method> method = factory->NewMethod(mainMethodLiteral);
         JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
         JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
 

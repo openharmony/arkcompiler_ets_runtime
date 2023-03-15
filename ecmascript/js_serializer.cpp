@@ -146,6 +146,26 @@ bool JSSerializer::WriteRawData(const void *data, size_t length)
     return true;
 }
 
+bool JSSerializer::WriteString(const CString &str)
+{
+    if (!WriteType(SerializationUID::C_STRING)) {
+        return false;
+    }
+
+    size_t length = str.length() + 1;  // 1: '\0'
+    if ((bufferSize_ + length) > bufferCapacity_) {
+        if (!AllocateBuffer(length)) {
+            return false;
+        }
+    }
+    if (memcpy_s(buffer_ + bufferSize_, bufferCapacity_ - bufferSize_, str.c_str(), length) != EOK) {
+        LOG_FULL(ERROR) << "Failed to memcpy_s Data";
+        return false;
+    }
+    bufferSize_ += length;
+    return true;
+}
+
 bool JSSerializer::AllocateBuffer(size_t bytes)
 {
     // Get internal heap size
@@ -314,8 +334,6 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
             return WriteJSFunction(value);
         case JSType::METHOD:
             return WriteMethod(value);
-        case JSType::CONSTANT_POOL:
-            return WriteConstantPool(value);
         case JSType::TAGGED_ARRAY:
             return WriteTaggedArray(value);
         default:
@@ -419,36 +437,6 @@ uint32_t JSSerializer::GetDataViewTypeIndex(const DataViewType viewType)
     return index;
 }
 
-bool JSSerializer::WriteConstantPool(const JSHandle<JSTaggedValue> &value)
-{
-    JSHandle<ConstantPool> constPool = JSHandle<ConstantPool>::Cast(value);
-    size_t oldSize = bufferSize_;
-    if (!WriteType(SerializationUID::CONSTANT_POOL)) {
-        return false;
-    }
-    uint32_t len = constPool->GetLength();
-    if (!WriteInt(len)) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-
-    const panda_file::File::IndexHeader *indexHeader = constPool->GetIndexHeader();
-    if (!WriteRawData(&indexHeader, sizeof(uintptr_t))) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-    const JSPandaFile *jsPandaFile = constPool->GetJSPandaFile();
-    if (!jsPandaFile->IsNewVersion()) {
-        LOG_ECMA(ERROR) << "Serialize function only support panda file with new ISA";
-        return false;
-    }
-    if (!WriteRawData(&jsPandaFile, sizeof(uintptr_t))) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-    return true;
-}
-
 bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<Method> method = JSHandle<Method>::Cast(value);
@@ -463,7 +451,7 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
             return false;
         }
     } else {
-        if (!WriteType(SerializationUID::JS_METHOD)) {
+        if (!WriteType(SerializationUID::METHOD)) {
             return false;
         }
         const MethodLiteral *methodLiteral = method->GetMethodLiteral();
@@ -471,8 +459,13 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
             bufferSize_ = oldSize;
             return false;
         }
-        JSHandle<JSTaggedValue> constPool(thread_, method->GetConstantPool());
-        if (!SerializeJSTaggedValue(constPool)) {
+        JSHandle<ConstantPool> constPool(thread_, method->GetConstantPool());
+        const JSPandaFile *jsPandaFile = constPool->GetJSPandaFile();
+        if (jsPandaFile == nullptr) {
+            return false;
+        }
+        const CString &desc = jsPandaFile->GetJSPandaFileDesc();
+        if (!WriteString(desc)) {
             bufferSize_ = oldSize;
             return false;
         }
@@ -1233,12 +1226,10 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
             return ReadJSFunction();
         case SerializationUID::TAGGED_ARRAY:
             return ReadTaggedArray();
-        case SerializationUID::JS_METHOD:
-            return ReadJSMethod();
+        case SerializationUID::METHOD:
+            return ReadMethod();
         case SerializationUID::NATIVE_METHOD:
             return ReadNativeMethod();
-        case SerializationUID::CONSTANT_POOL:
-            return ReadConstantPool();
         default:
             return JSHandle<JSTaggedValue>();
     }
@@ -1324,36 +1315,7 @@ DataViewType JSDeserializer::GetDataViewTypeByIndex(uint32_t viewTypeIndex)
     return viewType;
 }
 
-JSHandle<JSTaggedValue> JSDeserializer::ReadConstantPool()
-{
-    int32_t len = 0;
-    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&len)) {
-        return JSHandle<JSTaggedValue>();
-    }
-    int32_t cacheLength = len - 2; // 2 : RESERVED_POOL_LENGTH
-    JSHandle<ConstantPool> constPool = factory_->NewConstantPool(cacheLength);
-    JSHandle<JSTaggedValue> constPoolTag(constPool);
-    referenceMap_.emplace(objectId_++, constPoolTag);
-
-    uintptr_t indexHeader;
-    if (!ReadNativePointer(&indexHeader)) {
-        return JSHandle<JSTaggedValue>();
-    }
-    uintptr_t jsPandafile;
-    if (!ReadNativePointer(&jsPandafile)) {
-        return JSHandle<JSTaggedValue>();
-    }
-    JSPandaFile *pf = reinterpret_cast<JSPandaFile *>(jsPandafile);
-    if (!pf->IsNewVersion()) {
-        LOG_ECMA(ERROR) << "Deserialize function only support panda file with new ISA";
-        return JSHandle<JSTaggedValue>();
-    }
-    constPool->SetJSPandaFile(pf);
-    constPool->SetIndexHeader(reinterpret_cast<panda_file::File::IndexHeader *>(indexHeader));
-    return constPoolTag;
-}
-
-JSHandle<JSTaggedValue> JSDeserializer::ReadJSMethod()
+JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
 {
     uintptr_t methodLiteral;
     if (!ReadNativePointer(&methodLiteral)) {
@@ -1362,9 +1324,31 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSMethod()
     JSHandle<Method> method = factory_->NewMethod(reinterpret_cast<MethodLiteral *>(methodLiteral));
     JSHandle<JSTaggedValue> methodTag(method);
     referenceMap_.emplace(objectId_++, methodTag);
-    JSHandle<JSTaggedValue> constPool = DeserializeJSTaggedValue();
+
+    CString desc;
+    if (!ReadString(&desc)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(desc);
+    if (jsPandaFile == nullptr) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<ConstantPool> constPool =
+        thread_->GetEcmaVM()->FindOrCreateConstPool(jsPandaFile.get(), method->GetMethodId());
     method->SetConstantPool(thread_, constPool.GetTaggedValue());
     return methodTag;
+}
+
+bool JSDeserializer::ReadString(CString *value)
+{
+    if (!JudgeType(SerializationUID::C_STRING)) {
+        return false;
+    }
+
+    *value = reinterpret_cast<char *>(const_cast<uint8_t *>(position_));
+    size_t len = value->length() + 1; // 1: '\0'
+    position_ += len;
+    return true;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadNativeMethod()

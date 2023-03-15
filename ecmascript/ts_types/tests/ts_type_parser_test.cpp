@@ -138,14 +138,14 @@ HWTEST_F_L0(TSTypeParserTest, TestTSClassType)
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     const CString fileName(abcFileName.c_str());
-    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
-    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile.get(), recordName, testTypeOffset);
     EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
     EXPECT_TRUE(tsManager->IsClassTypeKind(resultGT));
     JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
@@ -211,14 +211,14 @@ HWTEST_F_L0(TSTypeParserTest, TestTSFunctionType)
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     const CString fileName(abcFileName.c_str());
-    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
-    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile.get(), recordName, testTypeOffset);
     EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
     EXPECT_TRUE(tsManager->IsFunctionTypeKind(resultGT));
     JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
@@ -277,14 +277,14 @@ HWTEST_F_L0(TSTypeParserTest, TestTSUnionType)
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     const CString fileName(abcFileName.c_str());
-    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
-    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile.get(), recordName, testTypeOffset);
     EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
     EXPECT_TRUE(tsManager->IsUnionTypeKind(resultGT));
     JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
@@ -336,14 +336,14 @@ HWTEST_F_L0(TSTypeParserTest, TestTSArrayType)
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     const CString fileName(abcFileName.c_str());
-    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
-    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile.get(), recordName, testTypeOffset);
     EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
     EXPECT_TRUE(tsManager->IsArrayTypeKind(resultGT));
     JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);
@@ -402,14 +402,14 @@ HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     const CString fileName(abcFileName.c_str());
-    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
-    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
+    GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile.get(), recordName, testTypeOffset);
     EXPECT_EQ(resultGT, GlobalTSTypeRef(FIRST_USER_DEFINE_MODULE_ID, FIRST_USER_DEFINE_LOCAL_ID));
     EXPECT_TRUE(tsManager->IsObjectTypeKind(resultGT));
     JSHandle<JSTaggedValue> type = tsManager->GetTSType(resultGT);

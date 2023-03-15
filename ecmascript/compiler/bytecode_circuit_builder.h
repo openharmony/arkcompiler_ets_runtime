@@ -300,7 +300,7 @@ public:
         return method_;
     }
 
-    [[nodiscard]] const JSPandaFile* GetJSPandaFile() const
+    [[nodiscard]] const JSPandaFile *GetJSPandaFile() const
     {
         return file_;
     }

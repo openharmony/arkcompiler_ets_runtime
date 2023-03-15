@@ -786,7 +786,7 @@ void HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
     struct FunctionInfo codeEntry;
     codeEntry.functionId = sequenceId;
     panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
-    const std::string &functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+    const std::string &functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
     if (functionName.empty()) {
         codeEntry.functionName = "anonymous";
     } else {

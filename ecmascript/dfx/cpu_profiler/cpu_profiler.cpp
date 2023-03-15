@@ -409,8 +409,9 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
             return false;
         }
-        const char *tempVariable = MethodLiteral::GetMethodName(jsPandaFile,
-            reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId());
+
+        EntityId methodId = reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId();
+        const char *tempVariable = MethodLiteral::GetMethodName(jsPandaFile, methodId);
         uint8_t length = strlen(tempVariable);
         if (length != 0 && tempVariable[0] == '#') {
             uint8_t index = length - 1;
@@ -428,8 +429,7 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
         // source file
         DebugInfoExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
-        const std::string &sourceFile =
-            debugExtractor->GetSourceFile(reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId());
+        const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
         if (sourceFile.empty()) {
             tempVariable = "";
         } else {
@@ -439,8 +439,6 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
             return false;
         }
         // line number and clomn number
-        panda_file::File::EntityId methodId =
-                                   reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId();
         codeEntry.lineNumber = debugExtractor->GetFristLine(methodId);
         codeEntry.columnNumber = debugExtractor->GetFristColumn(methodId);
     }

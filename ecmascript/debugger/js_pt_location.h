@@ -77,7 +77,7 @@ public:
     DEFAULT_MOVE_SEMANTIC(JSPtLocation);
 
 private:
-    const JSPandaFile *jsPandaFile_;
+    const JSPandaFile *jsPandaFile_ {nullptr};
     EntityId methodId_;
     uint32_t bytecodeOffset_ {0};
     std::string sourceFile_; // mainly used for breakpoint

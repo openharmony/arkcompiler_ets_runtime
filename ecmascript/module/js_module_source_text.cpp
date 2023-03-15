@@ -93,15 +93,16 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     CString baseFilename = ConvertToString(module->GetEcmaModuleFilename());
     ASSERT(module->GetEcmaModuleRecordName().IsHeapObject());
     CString moduleRecordName = ConvertToString(module->GetEcmaModuleRecordName());
-    const JSPandaFile *jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + baseFilename + "' failed, recordName '" + moduleRecordName + "'";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
+
     CString outFileName = baseFilename;
-    CString entryPoint =
-        PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, outFileName, moduleRecordName, moduleRequestName);
+    CString entryPoint = PathHelper::ConcatFileNameWithMerge(
+        thread, jsPandaFile.get(), outFileName, moduleRecordName, moduleRequestName);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -953,7 +954,7 @@ void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTe
         entryPoint = ConvertToString(moduleRecordName);
     }
 
-    const JSPandaFile *jsPandaFile = nullptr;
+    std::shared_ptr<JSPandaFile> jsPandaFile;
     if (buffer != nullptr) {
         jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr, entryPoint, buffer, size);
@@ -967,7 +968,7 @@ void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTe
                       entryPoint.c_str() + "'";
         THROW_ERROR(thread, ErrorType::REFERENCE_ERROR, msg.c_str());
     }
-    JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint, excuteFromJob);
+    JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entryPoint, excuteFromJob);
 }
 
 void SourceTextModule::AddImportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,

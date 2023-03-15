@@ -327,9 +327,9 @@ EcmaVM::~EcmaVM()
     // clear c_address: c++ pointer delete
     ClearBufferData();
     if (!isBundlePack_) {
-        const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
+        std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
         if (jsPandaFile != nullptr) {
-            const_cast<JSPandaFile *>(jsPandaFile)->DeleteParsedConstpoolVM(this);
+            jsPandaFile->DeleteParsedConstpoolVM(this);
         }
     }
     // clear icu cache
@@ -470,8 +470,8 @@ void EcmaVM::CheckStartCpuProfiler()
 #endif
 }
 
-Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                                           bool excuteFromJob)
+Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+                                                           std::string_view entryPoint, bool excuteFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
@@ -564,7 +564,7 @@ JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, panda_file::
     return FindConstpool(jsPandaFile, index);
 }
 
-JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
+JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, EntityId id)
 {
     panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
@@ -735,7 +735,8 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             ++constpoolIter;
         }
         if (constpools.size() == 0) {
-            JSPandaFileManager::RemoveJSPandaFile(const_cast<JSPandaFile *>(iterator->first));
+            LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(this, iterator->first);
             iterator = cachedConstpools_.erase(iterator);
         } else {
             ++iterator;
@@ -785,7 +786,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             ++constpoolIter;
         }
         if (constpools.size() == 0) {
-            JSPandaFileManager::RemoveJSPandaFile(const_cast<JSPandaFile *>(iterator->first));
+            LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(this, iterator->first);
             iterator = cachedConstpools_.erase(iterator);
         } else {
             ++iterator;
@@ -815,6 +817,12 @@ void EcmaVM::ClearBufferData()
     }
     nativePointerList_.clear();
 
+    auto iter = cachedConstpools_.begin();
+    while (iter != cachedConstpools_.end()) {
+        LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file:" << iter->first->GetJSPandaFileDesc();
+        JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(this, iter->first);
+        iter++;
+    }
     cachedConstpools_.clear();
     internalNativeMethods_.clear();
     workerList_.clear();

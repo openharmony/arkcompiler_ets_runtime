@@ -271,7 +271,7 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
     SetConstant(ConstantIndex::CELL_RECORD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, CellRecord::SIZE, JSType::CELL_RECORD));
     SetConstant(ConstantIndex::OBJECT_HCLASS_INDEX, factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
-    SetConstant(ConstantIndex::JS_METHOD_CLASS_INDEX,
+    SetConstant(ConstantIndex::METHOD_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, Method::SIZE, JSType::METHOD));
     SetConstant(ConstantIndex::CLASS_LITERAL_HCLASS_INDEX,
                 factory->NewEcmaHClass(hClass, ClassLiteral::SIZE, JSType::CLASS_LITERAL));

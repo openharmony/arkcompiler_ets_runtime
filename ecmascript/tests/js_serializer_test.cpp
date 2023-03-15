@@ -643,21 +643,6 @@ public:
         Destroy();
     }
 
-    void ConstantPoolTest(std::pair<uint8_t *, size_t> data)
-    {
-        Init();
-        JSDeserializer deserializer(thread, data.first, data.second);
-        JSHandle<JSTaggedValue> res = deserializer.Deserialize();
-        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ConstantPool fail";
-        EXPECT_TRUE(res.GetTaggedValue().IsConstantPool()) << "[NotConstantPool] Deserialize ConstantPool fail";
-
-        // check constantPool
-        JSHandle<ConstantPool> constPool = JSHandle<ConstantPool>::Cast(res);
-        EXPECT_EQ(constPool->GetLength(), 6U);
-        EXPECT_EQ(constPool->GetCacheLength(), 4U);
-        Destroy();
-    }
-
     void MethodTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
@@ -681,6 +666,14 @@ public:
 
         JSHandle<Method> method = JSHandle<Method>::Cast(res);
         EXPECT_FALSE(method->IsNativeWithCallField());
+
+        JSHandle<ConstantPool> constpool(thread, method->GetConstantPool());
+        EXPECT_EQ(constpool->GetLength(), 3U);
+        EXPECT_EQ(constpool->GetCacheLength(), 1U);
+        const JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
+        EXPECT_TRUE(jsPandaFile != nullptr);
+        const CString &desc = jsPandaFile->GetJSPandaFileDesc();
+        EXPECT_EQ(desc, "test.pa");
         Destroy();
     }
 
@@ -1465,7 +1458,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeTaggedArray)
     delete serializer;
 };
 
-JSPandaFile *CreateJSPandaFile(const char *source, const CString filename)
+std::shared_ptr<JSPandaFile> CreateJSPandaFile(const char *source, const CString filename, uint32_t *methodOffset)
 {
     pandasm::Parser parser;
     const std::string fn = "SRC.pa"; // test file name : "SRC.pa"
@@ -1473,43 +1466,18 @@ JSPandaFile *CreateJSPandaFile(const char *source, const CString filename)
 
     std::unique_ptr<const panda_file::File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
+    const panda_file::File *file = pf->GetPandaFile();
+    const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+    panda_file::File::EntityId classId = file->GetClassId(typeDesc);
+    EXPECT_TRUE(classId.IsValid());
+
+    panda_file::ClassDataAccessor cda(*file, classId);
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        *methodOffset = mda.GetMethodId().GetOffset();
+    });
     return pf;
 }
-
-HWTEST_F_L0(JSSerializerTest, SerializeConstantPool)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
-    const char *source = R"(
-        .function void foo() {}
-    )";
-    const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
-    EXPECT_TRUE(pf != nullptr);
-
-    JSHandle<ConstantPool> constPool = factory->NewConstantPool(4);
-    JSHandle<JSFunction> funcFunc(env->GetFunctionFunction());
-    JSHandle<JSFunction> dateFunc(env->GetDateFunction());
-    JSHandle<EcmaString> str1 = factory->NewFromASCII("str11");
-    JSHandle<EcmaString> str2 = factory->NewFromASCII("str22");
-    constPool->SetObjectToCache(thread, 0, funcFunc.GetTaggedValue());
-    constPool->SetObjectToCache(thread, 1, dateFunc.GetTaggedValue());
-    constPool->SetObjectToCache(thread, 2, str1.GetTaggedValue());
-    constPool->SetObjectToCache(thread, 3, str2.GetTaggedValue());
-    constPool->SetJSPandaFile(pf);
-    EXPECT_TRUE(constPool.GetTaggedValue().IsConstantPool());
-
-    JSSerializer *serializer = new JSSerializer(thread);
-    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(constPool));
-    EXPECT_TRUE(success);
-    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
-    JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::ConstantPoolTest, jsDeserializerTest, data);
-    t1.join();
-    delete serializer;
-};
 
 static void TestFunc()
 {
@@ -1535,9 +1503,25 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod1)
 HWTEST_F_L0(JSSerializerTest, SerializeMethod2)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
+    const char *source = R"(
+        .function void foo() {
+            lda.str "helloworld"
+            returnundefined
+        }
+    )";
+    const CString fileName = "test.pa";
+    uint32_t methodOffset = 0;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName, &methodOffset);
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(methodOffset));
     JSHandle<Method> method = factory->NewMethod(methodLiteral);
     EXPECT_TRUE(method.GetTaggedValue().IsMethod());
+    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(thread->GetEcmaVM(), pf);
+    EXPECT_TRUE(pf != nullptr);
+
+    JSHandle<ConstantPool> constPool = factory->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
+    EXPECT_TRUE(constPool.GetTaggedValue().IsConstantPool());
+    method->SetConstantPool(thread, constPool.GetTaggedValue());
 
     JSSerializer *serializer = new JSSerializer(thread);
     bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(method));

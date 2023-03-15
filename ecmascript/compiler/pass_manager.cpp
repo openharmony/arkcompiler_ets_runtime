@@ -132,7 +132,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 JSPandaFile *PassManager::CreateAndVerifyJSPandaFile(const CString &fileName)
 {
     JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
-    JSPandaFile *jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName);
+    std::shared_ptr<JSPandaFile> jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName);
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "open file " << fileName << " error";
         return nullptr;
@@ -144,8 +144,8 @@ JSPandaFile *PassManager::CreateAndVerifyJSPandaFile(const CString &fileName)
         return nullptr;
     }
 
-    JSPandaFileManager::GetInstance()->InsertJSPandaFile(jsPandaFile);
-    return jsPandaFile;
+    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, jsPandaFile);
+    return jsPandaFile.get();
 }
 
 bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const

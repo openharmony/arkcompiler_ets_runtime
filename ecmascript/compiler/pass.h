@@ -84,7 +84,7 @@ public:
         return info_->GetTSManager();
     }
 
-    const JSPandaFile* GetJSPandaFile() const
+    const JSPandaFile *GetJSPandaFile() const
     {
         return info_->GetJSPandaFile();
     }
