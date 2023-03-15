@@ -456,15 +456,15 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
         switch (type) {
             case IcuCacheType::DEFAULT:
-                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatDefault, cacheEntry,
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT, cacheEntry,
                                                simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::DATE:
-                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatDate, cacheEntry,
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE, cacheEntry,
                                                simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::TIME:
-                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SimpleDateFormatTime, cacheEntry,
+                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME, cacheEntry,
                                                simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             default:

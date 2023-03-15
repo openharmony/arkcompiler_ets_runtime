@@ -467,7 +467,7 @@ std::string LocaleHelper::BestAvailableLocale(const std::vector<std::string> &av
             pos -= INTL_INDEX_TWO;
         }
         // d. Let candidate be the substring of candidate from position 0, inclusive, to position pos, exclusive.
-        localeCandidate = localeCandidate.substr(0, pos);
+        localeCandidate.resize(pos);
     }
 }
 } // namespace panda::ecmascript::base

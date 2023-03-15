@@ -87,11 +87,11 @@ class ConstantPool;
 class OptCodeProfiler;
 
 enum class IcuFormatterType {
-    SimpleDateFormatDefault,
-    SimpleDateFormatDate,
-    SimpleDateFormatTime,
-    NumberFormatter,
-    Collator
+    SIMPLE_DATE_FORMAT_DEFAULT,
+    SIMPLE_DATE_FORMAT_DATE,
+    SIMPLE_DATE_FORMAT_TIME,
+    NUMBER_FORMATTER,
+    COLLATOR
 };
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,

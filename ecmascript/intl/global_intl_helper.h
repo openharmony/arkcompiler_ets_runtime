@@ -90,19 +90,19 @@ public:
         IcuFormatterType icuType;
         switch (types) {
             case GlobalFormatterType::Collator:
-                icuType = IcuFormatterType::Collator;
+                icuType = IcuFormatterType::COLLATOR;
                 break;
             case GlobalFormatterType::SimpleDateFormatDate:
-                icuType = IcuFormatterType::SimpleDateFormatDate;
+                icuType = IcuFormatterType::SIMPLE_DATE_FORMAT_DATE;
                 break;
             case GlobalFormatterType::SimpleDateFormatTime:
-                icuType = IcuFormatterType::SimpleDateFormatTime;
+                icuType = IcuFormatterType::SIMPLE_DATE_FORMAT_TIME;
                 break;
             case GlobalFormatterType::DateFormatter:
-                icuType = IcuFormatterType::SimpleDateFormatDefault;
+                icuType = IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT;
                 break;
             case GlobalFormatterType::NumberFormatter:
-                icuType = IcuFormatterType::NumberFormatter;
+                icuType = IcuFormatterType::NUMBER_FORMATTER;
                 break;
         }
         EcmaVM *ecmaVm = thread->GetEcmaVM();
@@ -118,15 +118,15 @@ public:
         if (cache) {
             T *cacheObject = tObject.release();
             switch (icuType) {
-                case IcuFormatterType::Collator:
+                case IcuFormatterType::COLLATOR:
                     ecmaVm->SetIcuFormatterToCache(icuType, cacheEntry, cacheObject, FreeCollatorFormat);
                     break;
-                case IcuFormatterType::SimpleDateFormatDate:
-                case IcuFormatterType::SimpleDateFormatTime:
-                case IcuFormatterType::SimpleDateFormatDefault:
+                case IcuFormatterType::SIMPLE_DATE_FORMAT_DATE:
+                case IcuFormatterType::SIMPLE_DATE_FORMAT_TIME:
+                case IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT:
                     ecmaVm->SetIcuFormatterToCache(icuType, cacheEntry, cacheObject, FreeDateTimeFormat);
                     break;
-                case IcuFormatterType::NumberFormatter:
+                case IcuFormatterType::NUMBER_FORMATTER:
                     ecmaVm->SetIcuFormatterToCache(icuType, cacheEntry, cacheObject, FreeNumberFormat);
                     break;
             }

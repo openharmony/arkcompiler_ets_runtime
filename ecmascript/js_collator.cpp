@@ -287,7 +287,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     if (forIcuCache) {
         std::string cacheEntry =
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
-        ecmaVm->SetIcuFormatterToCache(IcuFormatterType::Collator, cacheEntry, icuCollator.release(),
+        ecmaVm->SetIcuFormatterToCache(IcuFormatterType::COLLATOR, cacheEntry, icuCollator.release(),
                                        JSCollator::FreeIcuCollator);
     } else {
         SetIcuCollator(thread, collator, icuCollator.release(), JSCollator::FreeIcuCollator);
@@ -301,7 +301,7 @@ icu::Collator *JSCollator::GetCachedIcuCollator(JSThread *thread, const JSHandle
 {
     std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
     EcmaVM *ecmaVm = thread->GetEcmaVM();
-    void *cachedCollator = ecmaVm->GetIcuFormatterFromCache(IcuFormatterType::Collator, cacheEntry);
+    void *cachedCollator = ecmaVm->GetIcuFormatterFromCache(IcuFormatterType::COLLATOR, cacheEntry);
     if (cachedCollator != nullptr) {
         return reinterpret_cast<icu::Collator*>(cachedCollator);
     }
