@@ -1783,6 +1783,14 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
     return JSTypedArray::FastSetPropertyByIndex(thread, obj, idx.GetInt(), value, JSType(jsType.GetInt())).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(FastCopyElementToArray)
+{
+    RUNTIME_STUBS_HEADER(FastCopyElementToArray);
+    JSHandle<JSTaggedValue> typedArray = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<TaggedArray> array = GetHArg<TaggedArray>(argv, argc, 1);  // 1: means the first parameter
+    return JSTaggedValue(JSTypedArray::FastCopyElementToArray(thread, typedArray, array)).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(DebugAOTPrint)
 {
     RUNTIME_STUBS_HEADER(DebugAOTPrint);

@@ -119,6 +119,61 @@ GateRef TypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef arra
     return ret;
 }
 
+GateRef TypedArrayStubBuilder::FastCopyElementToArray(GateRef glue, GateRef typedArray, GateRef array)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    DEFVARIABLE(start, VariableType::INT32(), Int32(0));
+    Label exit(env);
+    Label isDetached(env);
+    Label notDetached(env);
+    Label slowPath(env);
+    Label begin(env);
+    Label storeValue(env);
+    Label endLoop(env);
+
+    GateRef buffer = GetViewedArrayBuffer(typedArray);
+    Branch(IsDetachedBuffer(buffer), &isDetached, &notDetached);
+    Bind(&isDetached);
+    {
+        result = False();
+        Jump(&slowPath);
+    }
+    Bind(&notDetached);
+    {
+        GateRef arrLen = GetArrayLength(typedArray);
+        GateRef offset = GetByteOffset(typedArray);
+        GateRef hclass = LoadHClass(typedArray);
+        GateRef jsType = GetObjectType(hclass);
+
+        Jump(&begin);
+        LoopBegin(&begin);
+        {
+            Branch(Int32UnsignedLessThan(*start, arrLen), &storeValue, &exit);
+            Bind(&storeValue);
+            {
+                GateRef value = GetValueFromBuffer(buffer, *start, offset, jsType);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *start, value);
+                start = Int32Add(*start, Int32(1));
+                Jump(&endLoop);
+            }
+            Bind(&endLoop);
+            LoopEnd(&begin);
+        }
+    }
+    Bind(&slowPath);
+    {
+        CallRuntime(glue, RTSTUB_ID(FastCopyElementToArray), { typedArray, array});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef TypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType)
 {
     auto env = GetEnvironment();
