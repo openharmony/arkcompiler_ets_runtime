@@ -22,3 +22,12 @@ function f(a:any,...A:any) {
 
 f(1, 2, 3);
 f(1, "success", "fail");
+
+// The following test cases have exposed a bug: the variable actualRestNum in RuntimeOptCopyRestArgs
+// computed mistakely and may out of uint32_t range.
+function foo(x: number, y?: number, ...restArgs: number[]):void {
+    let arr = [...restArgs];
+    print(arr.length);
+}
+
+foo(1);

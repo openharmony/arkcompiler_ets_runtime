@@ -2236,7 +2236,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptCopyRestArgs(JSThread *thread, uint32_t ac
 {
     // when only have three fixed args, restIndex in bytecode maybe not zero, but it actually should be zero.
     uint32_t actualRestNum = 0;
-    if (actualArgc > NUM_MANDATORY_JSFUNC_ARGS) {
+    if (actualArgc > NUM_MANDATORY_JSFUNC_ARGS + restIndex) {
         actualRestNum = actualArgc - NUM_MANDATORY_JSFUNC_ARGS - restIndex;
     }
     JSHandle<JSTaggedValue> restArray = JSArray::ArrayCreate(thread, JSTaggedNumber(actualRestNum));
