@@ -289,6 +289,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
             return
         }
     )";
+    thread->GetEcmaVM()->SetRecordWithBundleNameTag(true);
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     Parser parser;
     auto res = parser.Parse(data);
