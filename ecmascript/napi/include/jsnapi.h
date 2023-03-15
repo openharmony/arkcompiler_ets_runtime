@@ -1300,6 +1300,9 @@ public:
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
+    static void SetRecordWithBundleNameTag(EcmaVM *vm, bool isNewRecord);
+    static bool GetRecordWithBundleNameTag(EcmaVM *vm);
+
     static void SetLoop(EcmaVM *vm, void *loop);
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
