@@ -1909,6 +1909,31 @@ DEF_RUNTIME_STUBS(SlowFlattenString)
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(OtherToNumber)
+{
+    RUNTIME_STUBS_HEADER(OtherToNumber);
+    JSTaggedValue tagged = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    if (tagged.IsString()) {
+        return JSTaggedValue::StringToDouble(tagged).GetRawData();
+    }
+    if (tagged.IsECMAObject()) {
+        JSHandle<JSTaggedValue> taggedHandle(thread, tagged);
+        JSHandle<JSTaggedValue> primValue(thread, JSTaggedValue::ToPrimitive(thread, taggedHandle, PREFER_NUMBER));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        return JSTaggedValue::ToNumber(thread, primValue).GetRawData();
+    }
+
+    if (tagged.IsSymbol()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Symbol value to a number",
+                                    JSTaggedValue::VALUE_EXCEPTION);
+    }
+    if (tagged.IsBigInt()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a BigInt value to a number",
+                                    JSTaggedValue::VALUE_EXCEPTION);
+    }
+    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Unknown value to a number", JSTaggedValue::VALUE_EXCEPTION);
+}
+
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,
                                                JSTaggedValue *argvPtr)
 {

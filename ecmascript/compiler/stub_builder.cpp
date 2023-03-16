@@ -5208,4 +5208,63 @@ GateRef StubBuilder::FlattenString(GateRef glue, GateRef str)
     env->SubCfgExit();
     return ret;
 }
+
+GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isNumber(env);
+    Label notNumber(env);
+    Label defaultLabel(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Branch(TaggedIsNumber(tagged), &isNumber, &notNumber);
+    Bind(&isNumber);
+    {
+        result = tagged;
+        Jump(&exit);
+    }
+    Bind(&notNumber);
+    {
+        Label returnNan(env);
+        Label notNan(env);
+        Label returnNumber1(env);
+        Label notNumber1(env);
+        Label returnNumber0(env);
+        auto isHole = TaggedIsHole(tagged);
+        auto isUndefined = TaggedIsUndefined(tagged);
+        Branch(BoolOr(isHole, isUndefined), &returnNan, &notNan);
+        Bind(&returnNan);
+        {
+            result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
+            Jump(&exit);
+        }
+        Bind(&notNan);
+        Branch(TaggedIsTrue(tagged), &returnNumber1, &notNumber1);
+        Bind(&returnNumber1);
+        {
+            result = Int64ToTaggedPtr(Int32(1));
+            Jump(&exit);
+        }
+        Bind(&notNumber1);
+        auto isFalse = TaggedIsFalse(tagged);
+        auto isNull = TaggedIsNull(tagged);
+        Branch(BoolOr(isFalse, isNull), &returnNumber0, &defaultLabel);
+        Bind(&returnNumber0);
+        {
+            result = Int64ToTaggedPtr(Int32(0));
+            Jump(&exit);
+        }
+        Bind(&defaultLabel);
+        {
+            CallRuntime(glue, RTSTUB_ID(OtherToNumber), { tagged });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu

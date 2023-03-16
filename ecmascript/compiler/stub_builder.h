@@ -585,6 +585,7 @@ public:
 
     GateRef FlattenString(GateRef glue, GateRef str);
     void Comment(GateRef glue, const std::string &str);
+    GateRef ToNumber(GateRef glue, GateRef tagged);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode Op>
