@@ -270,7 +270,7 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
 #ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
-            IcuFormatterType::SimpleDateFormatDefault);
+            IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT);
         if (simpleDateFormat != nullptr) {
             JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -290,7 +290,7 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
-            IcuFormatterType::SimpleDateFormatDefault);
+            IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT);
         ASSERT(simpleDateFormat != nullptr);
         JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -350,7 +350,7 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
 #ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
-            IcuFormatterType::SimpleDateFormatDate);
+            IcuFormatterType::SIMPLE_DATE_FORMAT_DATE);
         if (simpleDateFormat != nullptr) {
             JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -370,7 +370,7 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
-            IcuFormatterType::SimpleDateFormatDate);
+            IcuFormatterType::SIMPLE_DATE_FORMAT_DATE);
         ASSERT(simpleDateFormat != nullptr);
         JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -430,7 +430,7 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
 #ifdef ARK_SUPPORT_INTL
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
-            IcuFormatterType::SimpleDateFormatTime);
+            IcuFormatterType::SIMPLE_DATE_FORMAT_TIME);
         if (simpleDateFormat != nullptr) {
             JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -450,7 +450,7 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (cacheable) {
         auto simpleDateFormat = JSDateTimeFormat::GetCachedIcuSimpleDateFormat(thread, locales,
-            IcuFormatterType::SimpleDateFormatTime);
+            IcuFormatterType::SIMPLE_DATE_FORMAT_TIME);
         ASSERT(simpleDateFormat != nullptr);
         JSHandle<EcmaString> result = JSDateTimeFormat::FormatDateTime(thread, simpleDateFormat, x);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
