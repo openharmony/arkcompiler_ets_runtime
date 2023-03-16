@@ -2844,7 +2844,7 @@ std::string JSNApi::GetModuleName(EcmaVM *vm)
 // Enable cross thread execution.
 void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
 {
-    vm->GetJSThread()->EnableCrossThreadExecution();
+    vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
 }
 
 }  // namespace panda
