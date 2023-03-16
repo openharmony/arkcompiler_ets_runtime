@@ -31,6 +31,7 @@ public:
     virtual ~GraphVisitor() = default;
 
     void VisitGraph();
+    void ReVisitGate(GateRef gate);
 
     virtual GateRef VisitGate(GateRef gate) = 0;
 protected:

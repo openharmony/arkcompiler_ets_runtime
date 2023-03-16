@@ -76,6 +76,14 @@ void GraphVisitor::VisitGraph()
     }
 }
 
+void GraphVisitor::ReVisitGate(GateRef gate)
+{
+    if (acc_.GetMark(gate) == MarkCode::FINISHED) {
+        PushEffectGate(gate);
+    }
+}
+
+
 // Reverse post-order
 void GraphVisitor::VisitTopGate(Edge& current)
 {

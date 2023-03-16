@@ -116,6 +116,12 @@ GateRef CircuitBuilder::GetDoubleOfTDouble(GateRef x)
     return CastInt64ToFloat64(val);
 }
 
+GateRef CircuitBuilder::GetBooleanOfTBoolean(GateRef x)
+{
+    GateRef tagged = ChangeTaggedPointerToInt64(x);
+    return TruncInt64ToInt1(tagged);
+}
+
 GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
 {
     Label subentry(env_);

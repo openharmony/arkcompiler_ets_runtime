@@ -41,6 +41,7 @@ void SlowPathLowering::CallRuntimeLowering()
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
+
     for (const auto &gate : gateList) {
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
@@ -59,6 +60,8 @@ void SlowPathLowering::CallRuntimeLowering()
             LowerTypedAotCall(gate);
         } else if (op == OpCode::UPDATE_HOTNESS) {
             LowerUpdateHotness(gate);
+        } else if (op == OpCode::STATE_SPLIT) {
+            DeleteStateSplit(gate);
         }
     }
 
@@ -71,6 +74,12 @@ void SlowPathLowering::CallRuntimeLowering()
         circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "=========================== End ===========================" << "\033[0m";
     }
+}
+
+void SlowPathLowering::DeleteStateSplit(GateRef gate)
+{
+    auto depend = acc_.GetDep(gate);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), depend, Circuit::NullGate());
 }
 
 void SlowPathLowering::LowerToJSCall(GateRef hirGate, const std::vector<GateRef> &args)

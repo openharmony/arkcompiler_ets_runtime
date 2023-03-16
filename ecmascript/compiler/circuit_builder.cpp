@@ -49,7 +49,6 @@ GateRef CircuitBuilder::Selector(OpCode opcode, MachineType machineType, GateRef
     return circuit_->NewGate(meta, machineType, inList.size(), inList.data(), type.GetGateType());
 }
 
-
 GateRef CircuitBuilder::Selector(OpCode opcode, GateRef control,
     const std::vector<GateRef> &values, int valueCounts, VariableType type)
 {
@@ -201,6 +200,126 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
+}
+
+MachineType CircuitBuilder::GetMachineTypeOfValueType(ValueType type)
+{
+    switch (type) {
+        case ValueType::BOOL:
+            return MachineType::I1;
+        case ValueType::INT32:
+            return MachineType::I32;
+        case ValueType::FLOAT64:
+            return MachineType::F64;
+        case ValueType::TAGGED_BOOLEAN:
+        case ValueType::TAGGED_INT:
+        case ValueType::TAGGED_DOUBLE:
+        case ValueType::TAGGED_NUMBER:
+            return MachineType::I64;
+        default:
+            return MachineType::NOVALUE;
+    }
+}
+
+GateType CircuitBuilder::GetGateTypeOfValueType(ValueType type)
+{
+    switch (type) {
+        case ValueType::BOOL:
+        case ValueType::INT32:
+        case ValueType::FLOAT64:
+            return GateType::NJSValue();
+        case ValueType::TAGGED_BOOLEAN:
+            return GateType::BooleanType();
+        case ValueType::TAGGED_INT:
+            return GateType::IntType();
+        case ValueType::TAGGED_DOUBLE:
+            return GateType::DoubleType();
+        case ValueType::TAGGED_NUMBER:
+            return GateType::NumberType();
+        default:
+            return GateType::Empty();
+    }
+}
+
+GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType dst)
+{
+    MachineType machineType = GetMachineTypeOfValueType(dst);
+    GateType gateType = GetGateTypeOfValueType(dst);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    uint64_t value = ValuePairTypeAccessor::ToValue(src, dst);
+    GateRef ret = GetCircuit()->NewGate(circuit_->CheckAndConvert(value),
+        machineType, {currentControl, currentDepend, gate, frameState}, gateType);
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::Convert(GateRef gate, ValueType src, ValueType dst)
+{
+    MachineType machineType = GetMachineTypeOfValueType(dst);
+    GateType gateType = GetGateTypeOfValueType(dst);
+    uint64_t value = ValuePairTypeAccessor::ToValue(src, dst);
+    GateRef ret = GetCircuit()->NewGate(circuit_->Convert(value), machineType, {gate}, gateType);
+    return ret;
+}
+
+GateRef CircuitBuilder::ConvertInt32ToFloat64(GateRef gate)
+{
+    return Convert(gate, ValueType::INT32, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::ConvertFloat64ToInt32(GateRef gate)
+{
+    return Convert(gate, ValueType::FLOAT64, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::ConvertBoolToTaggedBoolean(GateRef gate)
+{
+    return Convert(gate, ValueType::BOOL, ValueType::TAGGED_BOOLEAN);
+}
+
+GateRef CircuitBuilder::ConvertInt32ToTaggedInt(GateRef gate)
+{
+    return Convert(gate, ValueType::INT32, ValueType::TAGGED_INT);
+}
+
+GateRef CircuitBuilder::ConvertFloat64ToTaggedDouble(GateRef gate)
+{
+    return Convert(gate, ValueType::FLOAT64, ValueType::TAGGED_DOUBLE);
+}
+
+GateRef CircuitBuilder::CheckTaggedIntAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_INT, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckTaggedDoubleAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_DOUBLE, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckTaggedNumberAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NUMBER, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckTaggedIntAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_INT, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckTaggedDoubleAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_DOUBLE, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckTaggedNumberAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NUMBER, ValueType::FLOAT64);
 }
 
 GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)

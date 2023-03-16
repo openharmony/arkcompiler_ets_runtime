@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/llvm_codegen.h"
+#include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
@@ -271,6 +272,18 @@ public:
             UNREACHABLE();
         }
         return isQualified;
+    }
+};
+
+class NumberSpeculativePass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("NumberSpeculativePass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        return true;
     }
 };
 

@@ -341,7 +341,7 @@ class EarlyElimination : public GraphVisitor {
 public:
     EarlyElimination(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
         : GraphVisitor(circuit, chunk), enableLog_(enableLog),
-        methodName_(name), dependInfos_(chunk), stateSplits_(chunk) {}
+        methodName_(name), dependInfos_(chunk) {}
 
     ~EarlyElimination() = default;
 
@@ -391,7 +391,6 @@ private:
     bool enableLog_ {false};
     std::string methodName_;
     ChunkVector<DependChainInfo*> dependInfos_;
-    ChunkSet<GateRef> stateSplits_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_EARLY_ELIMINATION_H

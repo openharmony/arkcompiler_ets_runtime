@@ -106,6 +106,7 @@ class Variable;
     V(TruncInt32ToInt1, Trunc, MachineType::I1)                        \
     V(TruncInt32ToInt16, Trunc, MachineType::I16)                      \
     V(TruncFloatToInt64, TruncFloatToInt64, MachineType::I64)          \
+    V(TruncFloatToInt32, TruncFloatToInt32, MachineType::I32)          \
     V(ExtFloat32ToDouble, Fext, MachineType::F64)                      \
     V(TruncDoubleToFloat32, Ftrunc, MachineType::F32)                  \
     V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)     \
@@ -242,6 +243,21 @@ public:
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
+    MachineType GetMachineTypeOfValueType(ValueType type);
+    GateType GetGateTypeOfValueType(ValueType type);
+    GateRef Convert(GateRef gate, ValueType src, ValueType dst);
+    GateRef ConvertBoolToTaggedBoolean(GateRef gate);
+    GateRef ConvertInt32ToTaggedInt(GateRef gate);
+    GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
+    GateRef ConvertFloat64ToInt32(GateRef gate);
+    GateRef ConvertInt32ToFloat64(GateRef gate);
+    GateRef CheckAndConvert(GateRef gate, ValueType src, ValueType dst);
+    GateRef CheckTaggedIntAndConvertToInt32(GateRef gate);
+    GateRef CheckTaggedDoubleAndConvertToInt32(GateRef gate);
+    GateRef CheckTaggedNumberAndConvertToInt32(GateRef gate);
+    GateRef CheckTaggedIntAndConvertToFloat64(GateRef gate);
+    GateRef CheckTaggedDoubleAndConvertToFloat64(GateRef gate);
+    GateRef CheckTaggedNumberAndConvertToFloat64(GateRef gate);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
@@ -347,6 +363,7 @@ public:
     inline GateRef GetInt32OfTInt(GateRef x);
     inline GateRef TaggedCastToIntPtr(GateRef x);
     inline GateRef GetDoubleOfTDouble(GateRef x);
+    inline GateRef GetBooleanOfTBoolean(GateRef x);
     inline GateRef GetDoubleOfTNumber(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
