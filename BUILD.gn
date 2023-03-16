@@ -781,8 +781,8 @@ source_set("libark_jsruntime_set") {
     if (enable_leak_check) {
       defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
     }
-    if (use_musl && current_cpu == "arm" && !is_mac && !is_mingw &&
-        target_os != "ios") {
+    if (use_musl && (current_cpu == "arm" || current_cpu == "arm64") &&
+        !is_mac && !is_mingw && target_os != "ios") {
       defines += [ "HOOK_ENABLE" ]
     }
   }
