@@ -34,7 +34,8 @@ protected:
     bool VerifyInner(const char* fileDesc, const std::array<uint8_t, VERSION_SIZE> &lastVersion) const
     {
         if (magic_ != MAGIC) {
-            LOG_HOST_TOOL_ERROR << "Magic mismatch, please make sure " << fileDesc << " and the source code are matched";
+            LOG_HOST_TOOL_ERROR << "Magic mismatch, please make sure " << fileDesc <<
+                " and the source code are matched";
             LOG_ECMA(ERROR) << "magic error, expected magic is " << ConvToStr(MAGIC)
                             << ", but got " << ConvToStr(magic_);
             return false;

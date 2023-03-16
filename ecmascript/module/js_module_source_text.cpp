@@ -1093,7 +1093,7 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTagge
     }
     JSHandle<NameDictionary> dataDict = JSHandle<NameDictionary>::Cast(data);
     data.Update(NameDictionary::Put(thread, dataDict, key, value,
-                                        PropertyAttributes::Default()));
+        PropertyAttributes::Default()));
 
     module->SetNameDictionary(thread, data);
 }
