@@ -338,6 +338,7 @@ void Heap::CollectGarbage(TriggerGCType gcType)
     [[maybe_unused]] GcStateScope scope(thread_);
 #endif
     CHECK_NO_GC
+
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     isVerifying_ = true;
     // pre gc heap verify

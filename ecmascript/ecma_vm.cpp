@@ -889,6 +889,11 @@ void EcmaVM::LoadAOTFiles(const std::string& aotFileName)
     aotFileManager_->LoadAiFile(aiFile);
 }
 
+void EcmaVM::DumpAOTInfo() const
+{
+    aotFileManager_->DumpAOTInfo();
+}
+
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
 void EcmaVM::DeleteHeapProfile()
 {

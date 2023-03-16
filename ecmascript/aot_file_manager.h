@@ -376,6 +376,8 @@ public:
         return isLoad_;
     }
 
+    void Dump() const;
+
     void RewriteRelcateDeoptHandler(EcmaVM *vm);
 
 private:
@@ -441,6 +443,8 @@ public:
         SetAsmStubSize(bufferSize);
     }
 
+    void Dump() const DUMP_API_ATTR;
+
 private:
     bool Load();
     void *asmStubAddr_ {nullptr};
@@ -487,6 +491,8 @@ public:
     {
         return anEnable_;
     }
+
+    void Dump() const DUMP_API_ATTR;
 
     // only main thread call this, only call once, no need to lock
     void SetDir(std::string dir)
@@ -552,6 +558,8 @@ public:
     void AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList);
     JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
     std::string GetAotFileName(EcmaVM *vm, const JSPandaFile *jsPandaFile, const std::string &extensionName) const;
+
+    void DumpAOTInfo() const DUMP_API_ATTR;
 
 private:
 

@@ -96,8 +96,7 @@ void ModuleSectionDes::LoadStackMapSection(BinaryBufferParser &parser, uintptr_t
     SetFuncCount(cnt);
 }
 
-void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser,
-    uint32_t &curUnitOffset, uint64_t codeAddress)
+void ModuleSectionDes::LoadSectionsInfo(BinaryBufferParser &parser, uint32_t &curUnitOffset, uint64_t codeAddress)
 {
     uint32_t secInfoSize = 0;
     parser.ParseBuffer(&secInfoSize, sizeof(secInfoSize));
@@ -133,8 +132,7 @@ void ModuleSectionDes::LoadStackMapSection(std::ifstream &file, uintptr_t secBeg
     SetFuncCount(cnt);
 }
 
-void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file,
-    uint32_t &curUnitOffset, uint64_t codeAddress)
+void ModuleSectionDes::LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset, uint64_t codeAddress)
 {
     uint32_t secInfoSize;
     file.read(reinterpret_cast<char *>(&secInfoSize), sizeof(secInfoSize));
@@ -227,6 +225,25 @@ bool StubFileInfo::Load()
     }
     LOG_COMPILER(INFO) << "loaded stub file successfully";
     return true;
+}
+
+void StubFileInfo::Dump() const
+{
+    uint64_t asmAddr = GetAsmStubAddr();
+    uint64_t asmSize = GetAsmStubSize();
+
+    LOG_COMPILER(ERROR) << "Stub file loading: ";
+    LOG_COMPILER(ERROR) << " - asm stubs [0x" << std::hex << asmAddr << ", 0x" << std::hex << asmAddr + asmSize << "]";
+
+    for (const ModuleSectionDes& d : des_) {
+        for (auto &s : d.sectionsInfo_) {
+            std::string name = d.GetSecName(s.first);
+            uint32_t size = d.GetSecSize(s.first);
+            uint64_t addr = d.GetSecAddr(s.first);
+            LOG_COMPILER(ERROR) << " - section = " << name << " [0x" << std::hex << addr
+                                << ", 0x" << std::hex << addr + size << "]";
+        }
+    }
 }
 
 void AnFileInfo::Save(const std::string &filename, kungfu::Triple triple)
@@ -357,6 +374,22 @@ bool AnFileInfo::Load(const std::string &filename)
     return true;
 }
 
+void AnFileInfo::Dump() const
+{
+     LOG_COMPILER(ERROR) << "An file loading: ";
+     int i = 0;
+     for (const ModuleSectionDes& d : des_) {
+         i++;
+         for (auto &s : d.sectionsInfo_) {
+             std::string name = d.GetSecName(s.first);
+             uint32_t size = d.GetSecSize(s.first);
+             uint64_t addr = d.GetSecAddr(s.first);
+             LOG_COMPILER(ERROR) << " - module-" << i << " <" << name << "> [0x" << std::hex << addr
+                                 << ", 0x" << std::hex << addr + size << "]";
+         }
+     }
+}
+
 bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const
 {
     auto methodId = jsPandaFile->GetMainMethodIndex(entry);
@@ -377,6 +410,12 @@ void AOTFileManager::Iterate(const RootVisitor &v)
             v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second.at(curCP.first))));
         }
     }
+}
+
+void AOTFileManager::DumpAOTInfo() const
+{
+    AnFileDataManager *m = AnFileDataManager::GetInstance();
+    m->Dump();
 }
 
 void AOTFileManager::LoadStubFile(const std::string &fileName)
@@ -834,7 +873,7 @@ bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, EcmaVM*
     if (type == Type::STUB) {
         if (loadedStub_ != nullptr) {
                 return true;
-            }
+        }
         return UnsafeLoadFromStub();
     } else {
         const std::shared_ptr<const AOTFileInfo> aotFileInfo = UnsafeFind(fileName);
@@ -866,6 +905,14 @@ bool AnFileDataManager::UnsafeLoadFromStub()
         return false;
     }
     return true;
+}
+
+void AnFileDataManager::Dump() const
+{
+    loadedStub_->Dump();
+    for (auto an : loadedAn_) {
+        an->Dump();
+    }
 }
 
 bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *vm)

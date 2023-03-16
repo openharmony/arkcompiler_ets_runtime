@@ -123,7 +123,7 @@ void FrameIterator::Advance()
         case FrameType::OPTIMIZED_FRAME : {
             auto frame = GetFrame<OptimizedFrame>();
             if constexpr (GCVisit == GCVisitedFlag::VISITED) {
-                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
             }
@@ -162,7 +162,7 @@ void FrameIterator::Advance()
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
             if constexpr (GCVisit == GCVisitedFlag::VISITED) {
-                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
             }
@@ -270,7 +270,7 @@ void FrameIterator::Advance()
         case FrameType::ASM_INTERPRETER_BRIDGE_FRAME : {
             auto frame = GetFrame<AsmInterpretedBridgeFrame>();
             if constexpr (GCVisit == GCVisitedFlag::VISITED) {
-                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp(optimizedReturnAddr_);
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
             }
@@ -299,7 +299,7 @@ void FrameIterator::Advance()
 template void FrameIterator::Advance<GCVisitedFlag::VISITED>();
 template void FrameIterator::Advance<GCVisitedFlag::IGNORED>();
 
-uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc) const
+uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
 {
     if (Done()) {
         return 0;

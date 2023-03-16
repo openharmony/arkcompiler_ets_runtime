@@ -498,6 +498,8 @@ public:
         return moduleName_;
     }
 
+    void DumpAOTInfo() const DUMP_API_ATTR;
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {

@@ -178,7 +178,8 @@ HWTEST_F_L0(AssemblerX64Test, Emit)
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xC3U);
 
-    ecmascript::kungfu::LLVMAssembler::Disassemble(masm.GetBegin(), masm.GetCurrentPosition());
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
 }
 
 HWTEST_F_L0(AssemblerX64Test, Emit1)
@@ -258,7 +259,8 @@ HWTEST_F_L0(AssemblerX64Test, Emit1)
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xE0U);
 
-    ecmascript::kungfu::LLVMAssembler::Disassemble(masm.GetBegin(), masm.GetCurrentPosition());
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
 }
 
 HWTEST_F_L0(AssemblerX64Test, Emit2)
@@ -319,7 +321,8 @@ HWTEST_F_L0(AssemblerX64Test, Emit2)
     ASSERT_EQ(value, 0xE0U);
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0x08U);
-    ecmascript::kungfu::LLVMAssembler::Disassemble(masm.GetBegin(), masm.GetCurrentPosition());
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
 }
 
 HWTEST_F_L0(AssemblerX64Test, Emit3)
@@ -397,7 +400,8 @@ HWTEST_F_L0(AssemblerX64Test, Emit3)
     ASSERT_EQ(value, 0x21U);
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xC2U);
-    ecmascript::kungfu::LLVMAssembler::Disassemble(masm.GetBegin(), masm.GetCurrentPosition());
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
 }
 
 HWTEST_F_L0(AssemblerX64Test, Emit4)
@@ -463,7 +467,8 @@ HWTEST_F_L0(AssemblerX64Test, Emit4)
     __ Int3();
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xCCU);
-    ecmascript::kungfu::LLVMAssembler::Disassemble(masm.GetBegin(), masm.GetCurrentPosition());
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
 }
 #undef __
 }  // namespace panda::test

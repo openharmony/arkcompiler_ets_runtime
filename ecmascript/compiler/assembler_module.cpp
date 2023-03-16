@@ -40,7 +40,7 @@ void AssemblerModule::Run(const CompilationConfig *cfg, Chunk* chunk)
 void AssemblerModule::GenerateStubsX64(Chunk* chunk)
 {
     x64::ExtendedAssembler assembler(chunk, this);
-    LOG_COMPILER(INFO) << "compiling asm stubs";
+    LOG_COMPILER(INFO) << "================ compiling asm stubs ================";
     for (size_t i = 0; i < asmCallSigns_.size(); i++) {
         auto cs = asmCallSigns_[i];
         ASSERT(cs->HasConstructor());
@@ -57,7 +57,7 @@ void AssemblerModule::GenerateStubsX64(Chunk* chunk)
 void AssemblerModule::GenerateStubsAarch64(Chunk* chunk)
 {
     aarch64::ExtendedAssembler assembler(chunk, this);
-    LOG_COMPILER(INFO) << "compiling asm stubs";
+    LOG_COMPILER(INFO) << "================ compiling asm stubs ================";
     for (size_t i = 0; i < asmCallSigns_.size(); i++) {
         auto cs = asmCallSigns_[i];
         ASSERT(cs->HasConstructor());

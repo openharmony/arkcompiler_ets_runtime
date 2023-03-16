@@ -188,6 +188,10 @@ public:
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::TypeIndex);
         return slotSize * slotOffset;
     }
+    FrameType GetType() const
+    {
+        return type;
+    }
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -210,7 +214,8 @@ private:
     {
         return returnAddr;
     }
-    [[maybe_unused]] alignas(EAS) FrameType type {0};
+
+    alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
     friend class FrameIterator;
@@ -243,6 +248,11 @@ public:
     {
         return MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp);
     }
+    FrameType GetType() const
+    {
+        return type;
+    }
+
 private:
     enum class Index : size_t {
         CallSiteSpIndex = 0,
@@ -271,7 +281,7 @@ private:
         return callSiteSp;
     }
     alignas(EAS) uintptr_t callSiteSp {0};
-    [[maybe_unused]] alignas(EAS) FrameType type {0};
+    alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
     friend class FrameIterator;
@@ -308,6 +318,11 @@ public:
     {
         return MEMBER_OFFSET(OptimizedJSFunctionArgConfigFrame, prevFp);
     }
+    FrameType GetType() const
+    {
+        return type;
+    }
+
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -325,7 +340,8 @@ private:
     {
         return prevFp;
     }
-    [[maybe_unused]] alignas(EAS) FrameType type {0};
+
+    alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     friend class FrameIterator;
 };
@@ -437,6 +453,11 @@ public:
         return slotSize * slotOffset;
     }
 
+    FrameType GetType() const
+    {
+        return type;
+    }
+
     friend class FrameIterator;
     friend class FrameHandler;
     void GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const;
@@ -453,7 +474,7 @@ private:
 
     // dynamic callee saveregisters for x86-64
     alignas(EAS) JSTaggedValue jsFunc {JSTaggedValue::Undefined()};
-    [[maybe_unused]] alignas(EAS) FrameType type {0};
+    alignas(EAS) FrameType type {0};
     alignas(EAS) JSTaggedType *prevFp {nullptr};
     alignas(EAS) uintptr_t returnAddr {0};
     // dynamic callee saveregisters for arm64
@@ -512,17 +533,33 @@ public:
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::PreLeaveFrameFpIndex);
         return slotSize * slotOffset;
     }
+
+    FrameType GetType() const
+    {
+        return type;
+    }
     friend class FrameIterator;
 
 private:
-    alignas(EAS) JSTaggedType *preLeaveFrameFp {nullptr};
-    alignas(EAS) [[maybe_unused]] FrameType type {0};
-    alignas(EAS) [[maybe_unused]] JSTaggedType *prevFp {nullptr};
     static OptimizedEntryFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<OptimizedEntryFrame *>(reinterpret_cast<uintptr_t>(sp) -
-            MEMBER_OFFSET(OptimizedEntryFrame, prevFp));
+                                                       MEMBER_OFFSET(OptimizedEntryFrame, prevFp));
     }
+
+    JSTaggedType* GetLeaveFp() const
+    {
+        return preLeaveFrameFp;
+    }
+
+    JSTaggedType* GetPrevFp() const
+    {
+        return prevFp;
+    }
+
+    alignas(EAS) JSTaggedType *preLeaveFrameFp {nullptr};
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedEntryFrame), OptimizedEntryFrame::SizeArch32, OptimizedEntryFrame::SizeArch64);
 
@@ -1143,8 +1180,13 @@ public:
         return reinterpret_cast<const JSTaggedType *>(&argc + 1);
     }
 
+    FrameType GetType() const
+    {
+        return type;
+    }
+
 private:
-    [[maybe_unused]] FrameType type;
+    FrameType type;
     uintptr_t callsiteFp; // thread sp set here
     uintptr_t returnAddr;
     JSTaggedValue thread;
@@ -1373,7 +1415,7 @@ public:
     template <GCVisitedFlag GCVisit = GCVisitedFlag::IGNORED>
     void Advance();
     uint32_t GetBytecodeOffset() const;
-    uintptr_t GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc = 0) const;
+    uintptr_t GetPrevFrameCallSiteSp() const;
     uintptr_t GetPrevFrame() const;
     uintptr_t GetCallSiteSp() const
     {
