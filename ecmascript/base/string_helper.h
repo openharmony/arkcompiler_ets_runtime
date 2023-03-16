@@ -401,6 +401,52 @@ public:
         }
         return true;
     }
+
+    static bool StringStartWith(const CString& str, const CString& startStr)
+    {
+        size_t startStrLen = startStr.length();
+        return ((str.length() >= startStrLen) && (str.compare(0, startStrLen, startStr) == 0));
+    }
+
+    static bool StringEndWith(const CString& str, const CString& endStr)
+    {
+        size_t endStrLen = endStr.length();
+        size_t len = str.length();
+        return ((len >= endStrLen) && (str.compare(len - endStrLen, endStrLen, endStr) == 0));
+    }
+
+    static void SplitString(const CString& str, CVector<CString>& out, size_t startPos, size_t times = 0, char c = '/')
+    {
+        size_t left = startPos;
+        size_t pos = 0;
+        size_t index = 0;
+        while ((pos = str.find(c, left)) != CString::npos) {
+            if (times != 0 && index >= times) {
+                return;
+            }
+            out.emplace_back(str.substr(left, pos - left));
+            left = pos + 1;
+            index++;
+        }
+
+        if ((times == 0 || index < times) && left < str.length()) {
+            out.emplace_back(str.substr(left));
+        }
+    }
+
+    static CString JoinString(const CVector<CString>& strs, size_t startIndex, size_t endIndex, char c = '/')
+    {
+        CString out;
+        for (size_t index = startIndex; index < strs.size() && index <= endIndex; ++index) {
+            if (!strs[index].empty()) {
+                out.append(strs[index]) += c;
+            }
+        }
+        if (!out.empty()) {
+            out.pop_back();
+        }
+        return out;
+    }
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_STRING_HELP_H
