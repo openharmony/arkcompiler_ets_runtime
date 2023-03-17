@@ -256,13 +256,19 @@ const char *JSPandaFile::GetJsonStringId(JSThread *thread, const CString &record
     THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), nullptr);
 }
 
-CString JSPandaFile::FindNpmEntryPoint(const CString &recordName) const
+CString JSPandaFile::GetEntryPoint(const CString &recordName) const
 {
-    if (HasRecord(recordName)) {
-        return recordName;
+    CString entryPoint = GetNpmEntries(recordName);
+    if (HasRecord(entryPoint)) {
+        return entryPoint;
     }
+    return CString();
+}
+
+CString JSPandaFile::GetNpmEntries(const CString &recordName) const
+{
     Span<const uint32_t> classIndexes = pf_->GetClasses();
-    CString entryPoint;
+    CString npmEntrie;
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -270,21 +276,19 @@ CString JSPandaFile::FindNpmEntryPoint(const CString &recordName) const
         }
         panda_file::ClassDataAccessor cda(*pf_, classId);
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (std::strcmp(recordName.c_str(), ParseEntryPoint(desc).c_str()) == 0) {
+        if (recordName == ParseEntryPoint(desc)) {
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = pf_->GetStringData(fieldNameId);
                 CString fieldName = utf::Mutf8AsCString(sd.data);
-                if (HasRecord(fieldName)) {
-                    entryPoint = fieldName;
-                }
+                npmEntrie = fieldName;
             });
         }
-        if (!entryPoint.empty()) {
-            return entryPoint;
+        if (!npmEntrie.empty()) {
+            return npmEntrie;
         }
     }
-    return entryPoint;
+    return npmEntrie;
 }
 
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
