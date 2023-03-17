@@ -37,17 +37,24 @@ declare function AssertType(value:any, type:string):void;
 
     let obj : {
         10 : number,
+        "abc" : number,
         10.13 : number,
-        9 : "bb"
+        9 : "bb",
+        100.3e2 : string,
     } = {
         10 : 13,
+        "abc" : 13,
         10.13 : 13,
-        9 : "bb"
+        9 : "bb",
+        100.3e2 : "abc"
     }
-
+    let index = 10.13;
+    let index02 = 100.3e2;
     AssertType(obj[10], "number");
     AssertType(obj[10.13], "number");
     AssertType(obj[9], "string");
+    AssertType(obj[index], "number");
+    AssertType(obj[index02], "string");
 
     class Stu {
         8 : number;
@@ -73,7 +80,9 @@ declare function AssertType(value:any, type:string):void;
     AssertType(Stu[9.1](), "string");
 
     let stu = new Stu();
+    let index2 = 10.1;
     AssertType(stu[10](), "number");
     AssertType(stu[10.1](), "number");
     AssertType(stu[8], "number");
+    AssertType(stu[index2](), "number");
 }

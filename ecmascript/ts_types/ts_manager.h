@@ -221,16 +221,16 @@ public:
 
     inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSTaggedValue propertyName) const
     {
-        return GetPropType(gateType, JSHandle<EcmaString>(vm_->GetJSThread(), propertyName));
+        return GetPropType(gateType, JSHandle<JSTaggedValue>(vm_->GetJSThread(), propertyName));
     }
 
-    inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSHandle<EcmaString> propertyName) const
+    inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSHandle<JSTaggedValue> propertyName) const
     {
         GlobalTSTypeRef gt = gateType.GetGTRef();
         return GetPropType(gt, propertyName);
     }
 
-    GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> propertyName) const;
+    GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName) const;
 
     // use for object
     inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, const uint64_t key) const
@@ -274,14 +274,15 @@ public:
     bool PUBLIC_API IsStaticFunc(GlobalTSTypeRef gt) const;
 
     GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
-                                                JSHandle<EcmaString> propertyName,
+                                                JSHandle<JSTaggedValue> propertyName,
                                                 PropertyType propType) const;
 
     inline GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
                                                        JSTaggedValue propertyName,
                                                        PropertyType propType) const
     {
-        return GetSuperPropType(gt, JSHandle<EcmaString>(vm_->GetJSThread(), propertyName), propType);
+        return GetSuperPropType(gt, JSHandle<JSTaggedValue>(vm_->GetJSThread(), propertyName),
+                                propType);
     }
 
     GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,

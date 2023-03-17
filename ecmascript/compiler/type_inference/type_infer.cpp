@@ -705,6 +705,12 @@ bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t inde
         if (JSTaggedValue::SameValue(name, lengthKey)) {
             return SetIntType(gate);
         }
+        if (tsManager_->IsTypedArrayType(objType)) {
+            uint32_t eleIdx = 0;
+            if (EcmaStringAccessor(name).ToElementIndex(&eleIdx)) {
+                return UpdateType(gate, GateType::NumberType());
+            }
+        }
     }
     auto type = GetPropType(objType, name);
     if (tsManager_->IsGetterSetterFunc(type)) {
@@ -773,6 +779,9 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
     if (ShouldInferWithLdObjByValue(objType)) {
         auto valueGate = gateAccessor_.GetValueIn(gate, 2);  // 2: value input slot
         if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
+            if (tsManager_->IsTypedArrayType(objType)) {
+                return UpdateType(gate, GateType::NumberType());
+            }
             auto value = gateAccessor_.GetConstantValue(valueGate);
             auto type = GetPropType(objType, value);
             return UpdateType(gate, type);

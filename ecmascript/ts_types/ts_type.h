@@ -58,7 +58,8 @@ public:
 
     static JSHClass *GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType, TSObjectTypeKind kind);
 
-    static GlobalTSTypeRef GetPropTypeGT(JSHandle<TSObjectType> objectType, JSHandle<EcmaString> propName);
+    static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
+                                         JSHandle<JSTaggedValue> propName);
 
     ACCESSORS(ObjLayoutInfo, PROPERTIES_OFFSET, HCLASS_OFFSET);
     ACCESSORS(HClass, HCLASS_OFFSET, SIZE);
@@ -80,13 +81,13 @@ public:
     static constexpr size_t INSTANCE_TYPE_OFFSET = TSType::SIZE;
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
-                                         JSHandle<EcmaString> propName);
+                                         JSHandle<JSTaggedValue> propName);
 
     static GlobalTSTypeRef GetSuperPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
-                                              JSHandle<EcmaString> propName, PropertyType propType);
+                                              JSHandle<JSTaggedValue> propName, PropertyType propType);
 
     static GlobalTSTypeRef GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
-                                                  JSHandle<EcmaString> propName);
+                                                  JSHandle<JSTaggedValue> propName);
 
     ACCESSORS(InstanceType, INSTANCE_TYPE_OFFSET, CONSTRUCTOR_TYPE_OFFSET);
     ACCESSORS(ConstructorType, CONSTRUCTOR_TYPE_OFFSET, PROTOTYPE_TYPE_OFFSET);
@@ -121,7 +122,7 @@ public:
     CAST_CHECK(TSClassInstanceType, IsTSClassInstanceType);
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassInstanceType> classInstanceType,
-                                         JSHandle<EcmaString> propName);
+                                         JSHandle<JSTaggedValue> propName);
 
     static constexpr size_t CLASS_GT_OFFSET = TSType::SIZE;
     static constexpr size_t CREATE_CLASS_OFFSET = 1;
@@ -152,7 +153,7 @@ public:
     static constexpr size_t FIELD_LENGTH = 4;
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSInterfaceType> classInstanceType,
-                                         JSHandle<EcmaString> propName);
+                                         JSHandle<JSTaggedValue> propName);
 
     static constexpr size_t EXTENDS_TYPE_ID_OFFSET = TSType::SIZE;
     ACCESSORS(Extends, EXTENDS_TYPE_ID_OFFSET, KEYS_OFFSET);
@@ -220,7 +221,7 @@ public:
     static constexpr size_t KIND_GT_OFFSET = TSType::SIZE;
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSIteratorInstanceType> instanceType,
-                                         JSHandle<EcmaString> propName);
+                                         JSHandle<JSTaggedValue> propName);
 
     ACCESSORS_ATTACHED_TYPEREF(KindGT, KIND_GT_OFFSET, ELEMENT_GT_OFFSET);
     ACCESSORS_ATTACHED_TYPEREF(ElementGT, ELEMENT_GT_OFFSET, LAST_OFFSET);

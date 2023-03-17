@@ -163,7 +163,7 @@ bool TSUnionType::IsEqual(JSHandle<TSUnionType> unionB)
 }
 
 GlobalTSTypeRef TSClassType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
-                                           JSHandle<EcmaString> propName)
+                                           JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
@@ -172,7 +172,7 @@ GlobalTSTypeRef TSClassType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassTyp
     GlobalTSTypeRef propTypeGT = GlobalTSTypeRef::Default();
 
     while (propTypeGT.IsDefault()) {  // not find
-        propTypeGT = TSObjectType::GetPropTypeGT(mutableConstructorType, propName);
+        propTypeGT = TSObjectType::GetPropTypeGT(thread, mutableConstructorType, propName);
         GlobalTSTypeRef classTypeGT = mutableClassType->GetExtensionGT();
         if (classTypeGT.IsDefault()) {  // end of prototype chain
             break;
@@ -189,7 +189,7 @@ GlobalTSTypeRef TSClassType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassTyp
 }
 
 GlobalTSTypeRef TSClassType::GetSuperPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
-                                                JSHandle<EcmaString> propName, PropertyType propType)
+                                                JSHandle<JSTaggedValue> propName, PropertyType propType)
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
@@ -206,7 +206,7 @@ GlobalTSTypeRef TSClassType::GetSuperPropTypeGT(JSThread *thread, JSHandle<TSCla
     JSMutableHandle<TSObjectType> mutablePropTypes(thread, isStatic ?
         mutableClassType->GetConstructorType() : mutableClassType->GetPrototypeType());
     while (propTypeGT.IsDefault()) {
-        propTypeGT = TSObjectType::GetPropTypeGT(mutablePropTypes, propName);
+        propTypeGT = TSObjectType::GetPropTypeGT(thread, mutablePropTypes, propName);
         GlobalTSTypeRef classTypeGT = mutableClassType->GetExtensionGT();
         if (classTypeGT.IsDefault()) {  // end of prototype chain
             break;
@@ -223,14 +223,14 @@ GlobalTSTypeRef TSClassType::GetSuperPropTypeGT(JSThread *thread, JSHandle<TSCla
 }
 
 GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
-                                                    JSHandle<EcmaString> propName)
+                                                    JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
 
     JSHandle<TSObjectType> instanceType(thread, classType->GetInstanceType());
 
-    GlobalTSTypeRef propTypeGT = TSObjectType::GetPropTypeGT(instanceType, propName);
+    GlobalTSTypeRef propTypeGT = TSObjectType::GetPropTypeGT(thread, instanceType, propName);
     if (!propTypeGT.IsDefault()) {
         return propTypeGT;
     }
@@ -239,7 +239,7 @@ GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<T
     JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
     JSMutableHandle<TSObjectType> mutablePrototypeType(thread, classType->GetPrototypeType());
     while (propTypeGT.IsDefault()) {  // not find
-        propTypeGT = TSObjectType::GetPropTypeGT(mutablePrototypeType, propName);
+        propTypeGT = TSObjectType::GetPropTypeGT(thread, mutablePrototypeType, propName);
         GlobalTSTypeRef classTypeGT = mutableClassType->GetExtensionGT();
         if (classTypeGT.IsDefault()) {  // end of prototype chain
             break;
@@ -256,7 +256,7 @@ GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<T
 }
 
 GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassInstanceType> classInstanceType,
-                                                   JSHandle<EcmaString> propName)
+                                                   JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
@@ -273,17 +273,18 @@ GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TS
     return propTypeGT;
 }
 
-GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSHandle<TSObjectType> objectType, JSHandle<EcmaString> propName)
+GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
+                                            JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSObjLayoutInfo *layout = TSObjLayoutInfo::Cast(objectType->GetObjLayoutInfo().GetTaggedObject());
     uint32_t numOfProps = layout->GetNumOfProperties();
+    JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < numOfProps; ++i) {
-        EcmaString* propKey = EcmaString::Cast(layout->GetKey(i).GetTaggedObject());
-        if (!EcmaStringAccessor::StringsAreEqual(propKey, *propName)) {
+        propKey.Update(layout->GetKey(i));
+        if (!JSTaggedValue::Equal(thread, propName, propKey)) {
             continue;
         }
-
         uint32_t gtRawData = static_cast<uint32_t>(layout->GetTypeId(i).GetInt());
         return GlobalTSTypeRef(gtRawData);
     }
@@ -302,7 +303,7 @@ GlobalTSTypeRef TSFunctionType::GetParameterTypeGT(int index) const
 }
 
 GlobalTSTypeRef TSIteratorInstanceType::GetPropTypeGT(JSThread *thread,
-    JSHandle<TSIteratorInstanceType> iteratorInstanceType, JSHandle<EcmaString> propName)
+    JSHandle<TSIteratorInstanceType> iteratorInstanceType, JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
@@ -311,7 +312,7 @@ GlobalTSTypeRef TSIteratorInstanceType::GetPropTypeGT(JSThread *thread,
 
     JSHandle<JSTaggedValue> tsType = tsManager->GetTSType(kindGt);
     JSHandle<TSObjectType> objType(tsType);
-    GlobalTSTypeRef propGt = TSObjectType::GetPropTypeGT(objType, propName);
+    GlobalTSTypeRef propGt = TSObjectType::GetPropTypeGT(thread, objType, propName);
     if (tsManager->IsTSIterator(kindGt)) {
         GlobalTSTypeRef iteratorFunctionInstance =
             tsManager->GetOrCreateTSIteratorInstanceType(static_cast<TSRuntimeType>(propGt.GetLocalId()), elementGt);
@@ -321,8 +322,9 @@ GlobalTSTypeRef TSIteratorInstanceType::GetPropTypeGT(JSThread *thread,
     if (tsManager->IsTSIteratorResult(kindGt)) {
         if (propGt.IsDefault()) {
 #ifndef NDEBUG
+            ASSERT(propName->IsString());
             JSHandle<JSTaggedValue> valueString = thread->GlobalConstants()->GetHandledValueString();
-            ASSERT(EcmaStringAccessor::StringsAreEqual(*propName, EcmaString::Cast(
+            ASSERT(EcmaStringAccessor::StringsAreEqual(*JSHandle<EcmaString>::Cast(propName), EcmaString::Cast(
                 valueString.GetTaggedValue().GetTaggedObject())));
 #endif
             propGt = elementGt;
@@ -333,7 +335,7 @@ GlobalTSTypeRef TSIteratorInstanceType::GetPropTypeGT(JSThread *thread,
 }
 
 GlobalTSTypeRef TSInterfaceType::GetPropTypeGT(JSThread *thread, JSHandle<TSInterfaceType> interfaceType,
-                                               JSHandle<EcmaString> propName)
+                                               JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
@@ -341,7 +343,7 @@ GlobalTSTypeRef TSInterfaceType::GetPropTypeGT(JSThread *thread, JSHandle<TSInte
     JSMutableHandle<TSInterfaceType> mutableInterfaceType(thread, interfaceType.GetTaggedValue());
     JSMutableHandle<TSObjectType> mutableFieldsType(thread, mutableInterfaceType->GetFields());
     GlobalTSTypeRef propTypeGT = GlobalTSTypeRef::Default();
-    propTypeGT = TSObjectType::GetPropTypeGT(mutableFieldsType, propName);
+    propTypeGT = TSObjectType::GetPropTypeGT(thread, mutableFieldsType, propName);
 
     TaggedArray* extendsArray = TaggedArray::Cast(mutableInterfaceType->GetExtends().GetTaggedObject());
     uint32_t extendsLength = extendsArray->GetLength();
