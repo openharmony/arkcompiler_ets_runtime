@@ -295,8 +295,8 @@ public:
     void CheckIsBundlePack();
     void CheckIsNewRecord(EcmaVM *vm);
 
-    CString FindNpmEntryPoint(const CString &record) const;
-
+    CString GetEntryPoint(const CString &recordName) const;
+    CString GetNpmEntries(const CString &recordName) const;
     uint32_t GetAOTFileInfoIndex() const
     {
         return anFileInfoIndex_;
