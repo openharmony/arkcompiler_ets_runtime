@@ -179,15 +179,17 @@ private:
     void LowerTypedDecOverflowCheck(GateRef gate);
     void LowerTypedNegOverflowCheck(GateRef gate);
     void LowerObjectTypeCheck(GateRef gate);
-    void LowerClassInstanceCheck(GateRef gate);
+    void LowerTSSubtypingCheck(GateRef gate);
     void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
     void LowerArrayCheck(GateRef gate, GateRef glue);
     void LowerStableArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayCheck(GateRef gate, GateRef glue);
     void LowerFloat32ArrayIndexCheck(GateRef gate);
     void LowerArrayIndexCheck(GateRef gate);
-    void LowerLoadProperty(GateRef gate, GateRef glue);
+    void LowerLoadProperty(GateRef gate);
+    void LowerCallGetter(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate, GateRef glue);
+    void LowerCallSetter(GateRef gate, GateRef glue);
     void LowerLoadArrayLength(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
     void LowerLoadElement(GateRef gate);
@@ -207,6 +209,15 @@ private:
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
+
+    enum AccessorMode {
+        GETTER,
+        SETTER,
+    };
+
+    GateRef CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver, AccessorMode mode,
+                         GateRef value = Circuit::NullGate());
+    void ReplaceHirWithPendingException(GateRef hirGate, GateRef glue, GateRef state, GateRef depend, GateRef value);
 
     template<OpCode Op>
     GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
@@ -246,6 +257,13 @@ private:
     {
         return acc_.GetFrameState(gate);
     }
+
+    GateRef LoadVTable(GateRef object);
+    GateRef GetOwnerFromVTable(GateRef vtable, GateRef offset);
+    GateRef GetOffsetFromVTable(GateRef vtable, GateRef offset);
+    GateRef LoadSupers(GateRef hclass);
+    GateRef GetLengthFromSupers(GateRef supers);
+    GateRef GetValueFromSupers(GateRef supers, GateRef index);
 
     Circuit *circuit_;
     GateAccessor acc_;

@@ -262,8 +262,8 @@ std::string Deoptimizier::DisplayItems(kungfu::DeoptType type)
             return "NOT SARRAY";
         case kungfu::DeoptType::NOTF32ARRAY:
             return "NOT F32ARRAY";
-        case kungfu::DeoptType::WRONGHCLASS:
-            return "WRONG HCLASS";
+        case kungfu::DeoptType::INCONSISTENTHCLASS:
+            return "INCONSISTENT HCLASS";
         case kungfu::DeoptType::NOTNEWOBJ:
             return "NOT NEWOBJ TYPE";
         case kungfu::DeoptType::NOTARRAYIDX:

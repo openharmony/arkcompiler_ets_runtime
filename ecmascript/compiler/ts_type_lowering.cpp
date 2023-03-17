@@ -648,10 +648,14 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
-    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex);
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+    if (!hclass->HasTSSubtyping()) {  // slowpath
+        acc_.DeleteStateSplitAndFrameState(gate);
+        return;
+    }
 
-    auto propertyOffset = tsManager_->GetPropertyOffset(hclass, prop);
-    if (propertyOffset == -1) { // slowpath
+    PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
+    if (!plr.IsFound()) {  // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
@@ -659,11 +663,16 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     AddProfiling(gate);
 
     GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-    GateRef propertyOffsetGate = builder_.IntPtr(propertyOffset);
     builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
-    GateRef result = builder_.LoadProperty(receiver, propertyOffsetGate);
+    GateRef pfrGate = builder_.Int32(plr.GetData());
+    GateRef result = Circuit::NullGate();
+    if (LIKELY(!plr.IsAccessor())) {
+        result = builder_.LoadProperty(receiver, pfrGate);
+    } else {
+        result = builder_.CallGetter(gate, receiver, pfrGate);
+    }
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
@@ -695,10 +704,14 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
-    JSTaggedValue hclass = tsManager_->GetHClassFromCache(hclassIndex);
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+    if (!hclass->HasTSSubtyping()) {  // slowpath
+        acc_.DeleteStateSplitAndFrameState(gate);
+        return;
+    }
 
-    auto propertyOffset = tsManager_->GetPropertyOffset(hclass, prop);
-    if (propertyOffset == -1) { // slowpath
+    PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
+    if (!plr.IsFound() || plr.IsFunction()) {  // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
@@ -706,11 +719,15 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     AddProfiling(gate);
 
     GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-    GateRef propertyOffsetGate = builder_.IntPtr(propertyOffset);
     builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
-    builder_.StoreProperty(receiver, propertyOffsetGate, value);
+    GateRef pfrGate = builder_.Int32(plr.GetData());
+    if (LIKELY(plr.IsLocal())) {
+        builder_.StoreProperty(receiver, pfrGate, value);
+    } else {
+        builder_.CallSetter(gate, receiver, pfrGate, value);
+    }
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
@@ -1076,7 +1093,7 @@ void TSTypeLowering::LowerTypedCallrange(GateRef gate)
     const size_t callTargetIndex = 1; // acc
     size_t argc = numArgs - callTargetIndex;
     GateRef func = acc_.GetValueIn(gate, argc);
-    
+
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         acc_.DeleteStateSplitAndFrameState(gate);

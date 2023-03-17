@@ -32,6 +32,9 @@ public:
 
     static void GenVTable(const JSThread *thread, const JSHandle<JSHClass> &ihcHandle,
                           const JSHandle<JSHClass> &phcHandle, const JSHandle<JSHClass> &eIhcHandle);
+
+    static void TryMaintainTSSubtyping(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
+                                       JSHandle<JSHClass> &newHClass, const JSHandle<JSTaggedValue> &key);
 private:
     static constexpr uint8_t MAX_LEVEL = 1 << JSHClass::LEVEL_BTTFIELD_NUM;
 

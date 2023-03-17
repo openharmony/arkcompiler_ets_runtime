@@ -52,6 +52,7 @@ std::string GateMetaData::Str(OpCode opcode)
     GATE_META_DATA_LIST_WITH_SIZE(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(GATE_NAME_MAP)
+    GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(GATE_NAME_MAP)
 #undef GATE_NAME_MAP
 #define GATE_NAME_MAP(OP) { OpCode::OP, #OP },
         GATE_OPCODE_LIST(GATE_NAME_MAP)
@@ -279,6 +280,16 @@ const GateMetaData* GateMetaBuilder::NAME(uint64_t value, uint64_t pcOffset)    
     return meta;                                                                         \
 }
 GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
+
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                                          \
+const GateMetaData* GateMetaBuilder::NAME(uint64_t pcOffset) const                       \
+{                                                                                        \
+    auto meta = new (chunk_) OneParameterMetaData(OpCode::OP, R, S, D, V, pcOffset);     \
+    meta->SetKind(GateMetaData::Kind::MUTABLE_ONE_PARAMETER);                            \
+    return meta;                                                                         \
+}
+GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
 const GateMetaData* GateMetaBuilder::Arg(uint64_t value)

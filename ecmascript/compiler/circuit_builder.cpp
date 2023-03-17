@@ -635,25 +635,27 @@ GateRef CircuitBuilder::HeapAlloc(GateRef initialHClass, GateType type, RegionSp
     return ret;
 }
 
-GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef offset)
+GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef propertyLookupResult)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->LoadProperty(), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, offset }, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, propertyLookupResult },
+                                     GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef offset, GateRef value)
+GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->StoreProperty(), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, offset, value }, GateType::AnyType());
+                                     { currentControl, currentDepend, receiver, propertyLookupResult, value },
+                                     GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -700,6 +702,38 @@ GateRef CircuitBuilder::TypedAotCall(GateRef hirGate, std::vector<GateRef> args)
     args.insert(args.begin(), currentControl);
     auto callGate = GetCircuit()->NewGate(circuit_->TypedAotCall(bitfield, pcOffset), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
+GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto callGate = GetCircuit()->NewGate(circuit_->CallGetter(pcOffset), MachineType::I64,
+                                          { currentControl, currentDepend, receiver, propertyLookupResult },
+                                          GateType::AnyType());
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
+GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, GateRef value)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto callGate = GetCircuit()->NewGate(circuit_->CallSetter(pcOffset), MachineType::I64,
+                                          { currentControl, currentDepend, receiver, propertyLookupResult, value },
+                                          GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
     return callGate;

@@ -224,6 +224,15 @@ inline void JSHClass::Copy(const JSThread *thread, const JSHClass *jshclass)
     SetBitField(jshclass->GetBitField());
     SetNumberOfProps(jshclass->NumberOfProps());
 }
+
+inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    uint32_t propsNumber = hclass->NumberOfProps();
+    int entry = layout->FindElementWithCache(thread, hclass, key, propsNumber);
+    return entry;
+}
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JS_HCLASS_INL_H

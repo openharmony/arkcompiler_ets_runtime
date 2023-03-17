@@ -61,8 +61,8 @@ JSTaggedValue BuiltinsArkTools::CompareHClass(EcmaRuntimeCallInfo *info)
 
     JSHandle<JSTaggedValue> obj1 = GetCallArg(info, 0);
     JSHandle<JSTaggedValue> obj2 = GetCallArg(info, 1);
-    JSHClass* obj1Hclass = obj1->GetTaggedObject()->GetClass();
-    JSHClass* obj2Hclass = obj2->GetTaggedObject()->GetClass();
+    JSHClass *obj1Hclass = obj1->GetTaggedObject()->GetClass();
+    JSHClass *obj2Hclass = obj2->GetTaggedObject()->GetClass();
     std::ostringstream oss;
     obj1Hclass->Dump(oss);
     obj2Hclass->Dump(oss);
@@ -80,7 +80,7 @@ JSTaggedValue BuiltinsArkTools::DumpHClass(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
-    JSHClass* objHclass = obj->GetTaggedObject()->GetClass();
+    JSHClass *objHclass = obj->GetTaggedObject()->GetClass();
     std::ostringstream oss;
     objHclass->Dump(oss);
 
@@ -96,7 +96,7 @@ JSTaggedValue BuiltinsArkTools::IsTSHClass(EcmaRuntimeCallInfo *info)
 
     ASSERT(info->GetArgsNumber() == 1);
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
-    JSHClass* hclass = object->GetTaggedObject()->GetClass();
+    JSHClass *hclass = object->GetTaggedObject()->GetClass();
     bool isTSHClass = hclass->IsTS();
     return GetTaggedBoolean(isTSHClass);
 }
@@ -109,8 +109,20 @@ JSTaggedValue BuiltinsArkTools::GetHClass(EcmaRuntimeCallInfo *info)
 
     ASSERT(info->GetArgsNumber() == 1);
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
-    JSHClass* hclass = object->GetTaggedObject()->GetClass();
+    JSHClass *hclass = object->GetTaggedObject()->GetClass();
     return JSTaggedValue(hclass);
+}
+
+JSTaggedValue BuiltinsArkTools::HasTSSubtyping(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    JSHClass *hclass = object->GetTaggedObject()->GetClass();
+    return GetTaggedBoolean(hclass->HasTSSubtyping());
 }
 
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)

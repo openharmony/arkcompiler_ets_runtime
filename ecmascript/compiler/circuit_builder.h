@@ -412,6 +412,7 @@ public:
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
+    inline GateRef LoadObjectFromWeakRef(GateRef x);
 
     GateRef IsJSHClass(GateRef obj);
     GateRef HasPendingException(GateRef glue);
@@ -432,12 +433,14 @@ public:
     GateRef LoadElement(GateRef receiver, GateRef index);
     template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
-    GateRef LoadProperty(GateRef receiver, GateRef offset);
-    GateRef StoreProperty(GateRef receiver, GateRef offset, GateRef value);
+    GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult);
+    GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef TypedAotCall(GateRef hirGate, std::vector<GateRef> args);
+    GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult);
+    GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, GateRef value);
 
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
@@ -484,6 +487,7 @@ public:
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
+
     void SetEnvironment(Environment *env)
     {
         env_ = env;

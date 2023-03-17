@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/subtyping_operator-inl.h"
 #include "ecmascript/vtable.h"
 
@@ -195,5 +196,42 @@ void SubtypingOperator::AddSuper(const JSThread *thread, const JSHandle<JSHClass
     JSHandle<WeakVector> newSupers = WeakVector::Append(thread, supersHandle,
         iHClassVal, WeakVector::ElementType::WEAK);
     iHClass->SetSupers(thread, newSupers);
+}
+
+// when add property in local, try maintain.
+void SubtypingOperator::TryMaintainTSSubtyping(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
+                                               JSHandle<JSHClass> &newHClass, const JSHandle<JSTaggedValue> &key)
+{
+    if (!key->IsString()) {  // symbol
+        return;
+    }
+
+    ASSERT(!oldHClass->IsPrototype());  // normal object hclass
+    JSHandle<VTable> vtable(thread, oldHClass->GetVTable());
+    ASSERT(vtable->GetNumberOfTuples() > 0);   // there have default key 'constructor' at least
+
+    if (vtable->Find(key.GetTaggedValue())) {  // new key shadows vtable property
+        LOG_ECMA(DEBUG) << "TryMaintainTSSubtyping failed, key: "
+                        << ConvertToString(EcmaString::Cast(key->GetTaggedObject()));
+        return;
+    }
+
+    // Add newHClass to phc's listeners
+    JSHandle<JSTaggedValue> prototype(thread, oldHClass->GetPrototype());
+    ASSERT(prototype->IsClassPrototype());
+    JSHandle<JSHClass> phc(thread, prototype->GetTaggedObject()->GetClass());
+    // If hclass has inherit info, it had been registered on proto chain, details and listeners must not be Undefined.
+    JSHandle<ProtoChangeDetails> details(thread, phc->GetProtoChangeDetails());
+    JSHandle<ChangeListener> listeners(thread, details->GetChangeListener());
+    uint32_t registerIndex = 0;
+    JSHandle<ChangeListener> newListeners = ChangeListener::Add(thread, listeners, newHClass, &registerIndex);
+    if (UNLIKELY(registerIndex == TaggedArray::MAX_ARRAY_INDEX)) {
+        return;
+    }
+
+    // maintaining succeeds
+    details->SetChangeListener(thread, newListeners);
+
+    JSHClass::CopyTSInheritInfo(thread, oldHClass, newHClass);
 }
 }  // namespace panda::ecmascript

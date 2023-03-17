@@ -47,6 +47,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_manager.h"
@@ -345,6 +346,10 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
 
     // 5. Add newClass to old hclass's transitions.
     JSHClass::AddTransitions(thread, oldHClassHandle, newHClassHandle, keyHandle, attrValue);
+
+    if (oldHClassHandle->HasTSSubtyping()) {
+        SubtypingOperator::TryMaintainTSSubtyping(thread, oldHClassHandle, newHClassHandle, keyHandle);
+    }
     return JSTaggedValue::Hole().GetRawData();
 }
 

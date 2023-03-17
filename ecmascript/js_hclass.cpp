@@ -24,6 +24,7 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/weak_vector.h"
 
@@ -273,6 +274,11 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass);
 #endif
     obj->SetClass(*newJsHClass);
+
+    // Maintaining subtyping is no longer required when transition succeeds.
+    if (jshclass->HasTSSubtyping()) {
+        SubtypingOperator::TryMaintainTSSubtyping(thread, jshclass, newJsHClass, key);
+    }
 }
 
 JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -522,13 +528,17 @@ JSHandle<ProtoChangeDetails> JSHClass::GetProtoChangeDetails(const JSThread *thr
     return GetProtoChangeDetails(thread, jshclass);
 }
 
-void JSHClass::MarkProtoChanged([[maybe_unused]] const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
-    ASSERT(jshclass->IsPrototype() || jshclass->HasTSInheritInfo());
+    ASSERT(jshclass->IsPrototype() || jshclass->HasTSSubtyping());
     JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
     if (markerValue.IsProtoChangeMarker()) {
         ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
         protoChangeMarker->SetHasChanged(true);
+    }
+
+    if (jshclass->HasTSSubtyping()) {
+        jshclass->InitTSInheritInfo(thread);
     }
 }
 
@@ -570,7 +580,7 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
     }
 }
 
-bool JSHClass::HasTSInheritInfo() const
+bool JSHClass::HasTSSubtyping() const
 {
     // if fill TS inherit info, supers must not be empty
     WeakVector *supers = WeakVector::Cast(GetSupers().GetTaggedObject());
@@ -579,6 +589,56 @@ bool JSHClass::HasTSInheritInfo() const
 
 bool JSHClass::IsTSIHCWithInheritInfo() const
 {
-    return IsTS() && !IsPrototype() && HasTSInheritInfo();
+    return IsTS() && !IsPrototype() && HasTSSubtyping();
+}
+
+PropertyLookupResult JSHClass::LookupProperty(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(hclass->IsTS());
+
+    PropertyLookupResult result;
+    int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+
+    // found in local
+    if (entry != -1) {
+        result.SetIsFound(true);
+        result.SetIsLocal(true);
+        uint32_t offset = hclass->GetInlinedPropertiesOffset(entry);
+        result.SetOffset(offset);
+        return result;
+    }
+
+    // found in vtable
+    JSHandle<VTable> vtable(thread, hclass->GetVTable());
+    entry = vtable->GetTupleIndexByName(key);
+    if (entry != -1) {
+        result.SetIsVtable();
+        uint32_t offset = entry * VTable::TUPLE_SIZE;
+        result.SetOffset(offset);
+        if (vtable->IsAccessor(entry)) {
+            result.SetIsAccessor(true);
+        }
+        return result;
+    }
+
+    // not fuond
+    result.SetIsFound(false);
+    return result;
+}
+
+void JSHClass::CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
+                                 JSHandle<JSHClass> &newHClass)
+{
+    JSHandle<WeakVector> supers(thread, oldHClass->GetSupers());
+    JSHandle<WeakVector> copySupers = WeakVector::Copy(thread, supers);
+    newHClass->SetSupers(thread, copySupers);
+
+    uint8_t level = oldHClass->GetLevel();
+    newHClass->SetLevel(level);
+
+    JSHandle<VTable> vtable(thread, oldHClass->GetVTable());
+    JSHandle<VTable> copyVtable = VTable::Copy(thread, vtable);
+    newHClass->SetVTable(thread, copyVtable);
 }
 }  // namespace panda::ecmascript

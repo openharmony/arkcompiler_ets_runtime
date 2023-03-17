@@ -67,10 +67,9 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
         if (LIKELY(!hclass->IsDictionaryMode())) {
             ASSERT(!TaggedArray::Cast(JSObject::Cast(holder)->GetProperties().GetTaggedObject())->IsDictionaryMode());
 
-            LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-            uint32_t propsNumber = hclass->NumberOfProps();
-            int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber);
+            int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
             if (entry != -1) {
+                LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
                 PropertyAttributes attr(layoutInfo->GetAttr(entry));
                 ASSERT(static_cast<int>(attr.GetOffset()) == entry);
                 auto value = JSObject::Cast(holder)->GetProperty(hclass, attr);
@@ -138,11 +137,10 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
         if (LIKELY(!hclass->IsDictionaryMode())) {
             ASSERT(!TaggedArray::Cast(JSObject::Cast(holder)->GetProperties().GetTaggedObject())->IsDictionaryMode());
 
-            LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
 
-            uint32_t propsNumber = hclass->NumberOfProps();
-            int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber);
+            int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
             if (entry != -1) {
+                LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
                 PropertyAttributes attr(layoutInfo->GetAttr(entry));
                 ASSERT(static_cast<int>(attr.GetOffset()) == entry);
                 if (UNLIKELY(attr.IsAccessor())) {
