@@ -513,6 +513,7 @@ public:
     bool IsByteArray() const;
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
+    bool IsVTable() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;
     bool IsNativePointer() const;

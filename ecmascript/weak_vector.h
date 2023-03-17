@@ -23,14 +23,26 @@
 namespace panda::ecmascript {
 class WeakVector : public TaggedArray {
 public:
+    enum ElementType {
+        NORMAL = 0,
+        WEAK,
+    };
+
     static WeakVector *Cast(TaggedObject *object)
     {
         return static_cast<WeakVector *>(object);
     }
 
     static constexpr uint32_t DEFAULT_CAPACITY = 4;
+    static constexpr uint32_t DEFAULT_GROW_SIZE = 5;
     static JSHandle<WeakVector> Create(const JSThread *thread, uint32_t capacity = DEFAULT_CAPACITY);
     static JSHandle<WeakVector> Grow(const JSThread *thread, const JSHandle<WeakVector> &old, uint32_t newCapacity);
+    static JSHandle<WeakVector> Append(const JSThread *thread, const JSHandle<WeakVector> &vec,
+                                       const JSHandle<JSTaggedValue> &value, ElementType type = ElementType::NORMAL);
+    static JSHandle<WeakVector> FillOrAppend(const JSThread *thread, const JSHandle<WeakVector> &vec,
+                                             const JSHandle<JSTaggedValue> &value,
+                                             ElementType type = ElementType::NORMAL);
+    static JSHandle<WeakVector> Copy(const JSThread *thread, const JSHandle<WeakVector> &vec, bool needExtend = false);
     uint32_t PushBack(const JSThread *thread, JSTaggedValue value);
     // just set index value to Hole
     bool Delete(const JSThread *thread, uint32_t index);
@@ -67,6 +79,14 @@ public:
         TaggedArray::Set(thread, VectorToArrayIndex(index), value);
     }
 
+    template <class Callback>
+    void Iterate(const Callback &cb) {
+        uint32_t end = GetEnd();
+        for (uint32_t index = 0; index < end; ++index) {
+            cb(Get(index));
+        }
+    }
+
 private:
     static const uint32_t MIN_CAPACITY = 2;
     static const uint32_t END_INDEX = 0;
@@ -83,6 +103,13 @@ private:
         ASSERT(end <= GetCapacity());
         TaggedArray::Set(thread, END_INDEX, JSTaggedValue(end));
     }
+
+    static JSTaggedValue GetStoreVal(const JSHandle<JSTaggedValue> &value, ElementType type);
+
+    static uint32_t CheckHole(const JSHandle<WeakVector> &vec);
+
+    static JSHandle<WeakVector> AppendToFullVec(const JSThread *thread, const JSHandle<WeakVector> &vec,
+                                                const JSHandle<JSTaggedValue> &value, ElementType type);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_WEAK_VECTOR_H

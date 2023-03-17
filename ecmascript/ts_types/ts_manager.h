@@ -19,6 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
+#include "ecmascript/ts_types/ts_obj_layout_info.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compilation_driver.h"
 
@@ -271,7 +272,7 @@ public:
 
     GlobalTSTypeRef PUBLIC_API GetClassType(GlobalTSTypeRef classInstanceGT) const;
 
-    JSHandle<TSClassType> GetExtendClassType(JSHandle<TSClassType> classType) const;
+    JSHandle<TSClassType> GetExtendedClassType(JSHandle<TSClassType> classType) const;
 
     GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, const uint64_t key) const;
 
@@ -370,9 +371,15 @@ public:
         return CString(fileName);
     }
 
-    void GenerateTSHClass(JSHandle<TSClassType> classType);
+    JSHandle<JSHClass> GenerateTSHClass(const JSHandle<TSClassType> &classType);
+
+    JSTaggedValue GetInstanceTSHClass(const JSHandle<TSClassType> &classType) const;
+
+    bool HasTSHClass(const JSHandle<TSClassType> &classType) const;
 
     void GenerateTSHClasses();
+
+    void RecursiveGenTSHClass(const JSHandle<TSClassType> &classType);
 
     JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
 
@@ -529,8 +536,6 @@ public:
 
     bool PUBLIC_API IsBuiltinMath(kungfu::GateType funcType) const;
 
-    void RecursivelyMergeClassField(JSHandle<TSClassType> classType);
-
     inline const JSPandaFile *GetBuiltinPandaFile() const
     {
         return builtinPandaFile_;
@@ -679,8 +684,6 @@ public:
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
-
-    bool IsDuplicatedKey(JSHandle<TSObjLayoutInfo> extendLayout, JSTaggedValue key);
 
     GlobalTSTypeRef PUBLIC_API AddTSTypeToInferTable(JSHandle<TSType> type) const;
 

@@ -19,6 +19,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/vtable.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_symbol.h"
@@ -145,6 +146,22 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
+    InitTSInheritInfo(thread);
+}
+
+void JSHClass::InitTSInheritInfo(const JSThread *thread)
+{
+    // Supers and Level are used to record the relationship between TSHClass.
+    if (IsECMAObject()) {
+        SetSupers(thread, thread->GlobalConstants()->GetEmptyWeakVector());
+    } else {
+        SetSupers(thread, JSTaggedValue::Undefined());
+    }
+    SetLevel(0);
+
+    // VTable records the location information of properties and methods of TSHClass,
+    // which is used to perform efficient IC at runtime
+    SetVTable(thread, JSTaggedValue::Undefined());
 }
 
 JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -385,7 +402,16 @@ JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread
     }
     JSHandle<JSObject> protoHandle(thread, proto);
     JSHandle<JSHClass> protoClass(thread, protoHandle->GetJSHClass());
-    RegisterOnProtoChain(thread, protoClass);
+    // in AOT's IC mechanism (VTable), when the prototype chain changes, it needs to notify each subclass
+    // PHC (prototype-HClass) and its IHC (instance-HClass) from the current PHC along the chain.
+    // therefore, when registering, it is also necessary to register IHC into its
+    // PHC's Listener to ensure that it can be notified.
+    if (jshclass->IsTSIHCWithInheritInfo()) {
+        RegisterOnProtoChain(thread, jshclass);
+    } else {
+        RegisterOnProtoChain(thread, protoClass);
+    }
+
     JSTaggedValue protoChangeMarker = protoClass->GetProtoChangeMarker();
     if (protoChangeMarker.IsProtoChangeMarker()) {
         JSHandle<ProtoChangeMarker> markerHandle(thread, ProtoChangeMarker::Cast(protoChangeMarker.GetTaggedObject()));
@@ -415,7 +441,6 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
 
 void JSHClass::RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
-    ASSERT(jshclass->IsPrototype());
     JSHandle<JSHClass> user = jshclass;
     JSHandle<ProtoChangeDetails> userDetails = GetProtoChangeDetails(thread, user);
 
@@ -497,9 +522,9 @@ JSHandle<ProtoChangeDetails> JSHClass::GetProtoChangeDetails(const JSThread *thr
     return GetProtoChangeDetails(thread, jshclass);
 }
 
-void JSHClass::NoticeRegisteredUser([[maybe_unused]] const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+void JSHClass::MarkProtoChanged([[maybe_unused]] const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
-    ASSERT(jshclass->IsPrototype());
+    ASSERT(jshclass->IsPrototype() || jshclass->HasTSInheritInfo());
     JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
     if (markerValue.IsProtoChangeMarker()) {
         ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
@@ -509,7 +534,7 @@ void JSHClass::NoticeRegisteredUser([[maybe_unused]] const JSThread *thread, con
 
 void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
-    NoticeRegisteredUser(thread, jshclass);
+    MarkProtoChanged(thread, jshclass);
     JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
     if (!protoDetailsValue.IsProtoChangeDetails()) {
         return;
@@ -543,5 +568,17 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
         }
         RegisterOnProtoChain(thread, newHclass);
     }
+}
+
+bool JSHClass::HasTSInheritInfo() const
+{
+    // if fill TS inherit info, supers must not be empty
+    WeakVector *supers = WeakVector::Cast(GetSupers().GetTaggedObject());
+    return !(supers->Empty());
+}
+
+bool JSHClass::IsTSIHCWithInheritInfo() const
+{
+    return IsTS() && !IsPrototype() && HasTSInheritInfo();
 }
 }  // namespace panda::ecmascript

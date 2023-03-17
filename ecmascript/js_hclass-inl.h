@@ -183,6 +183,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::LEXICAL_ENV:
         case JSType::CONSTANT_POOL:
         case JSType::AOT_LITERAL_INFO:
+        case JSType::VTABLE:
         case JSType::COW_TAGGED_ARRAY:
             size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(),
                 reinterpret_cast<TaggedArray *>(header)->GetLength());

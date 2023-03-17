@@ -16,6 +16,8 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 #include "ecmascript/aot_file_manager.h"
+#include "ecmascript/subtyping_operator.h"
+#include "ecmascript/vtable.h"
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -72,66 +74,6 @@ void TSManager::AddTypeTable(JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaStr
     JSHandle<TSModuleTable> table = GetTSModuleTable();
     JSHandle<TSModuleTable> updateTable = TSModuleTable::AddTypeTable(thread_, table, typeTable, amiPath);
     SetTSModuleTable(updateTable);
-}
-
-void TSManager::RecursivelyMergeClassField(JSHandle<TSClassType> classType)
-{
-    ASSERT(!classType->GetHasLinked());
-    JSHandle<TSClassType> extendClassType = GetExtendClassType(classType);
-    if (!extendClassType->GetHasLinked()) {
-        RecursivelyMergeClassField(extendClassType);
-    }
-
-    ASSERT(extendClassType->GetHasLinked());
-
-    JSHandle<TSObjectType> field(thread_, classType->GetInstanceType());
-    JSHandle<TSObjLayoutInfo> layout(thread_, field->GetObjLayoutInfo());
-    uint32_t numSelfTypes = layout->GetNumOfProperties();
-
-    JSHandle<TSObjectType> extendField(thread_, extendClassType->GetInstanceType());
-    JSHandle<TSObjLayoutInfo> extendLayout(thread_, extendField->GetObjLayoutInfo());
-    uint32_t numExtendTypes = extendLayout->GetNumOfProperties();
-
-    uint32_t numTypes = numSelfTypes + numExtendTypes;
-
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<TSObjLayoutInfo> newLayout = factory->CreateTSObjLayoutInfo(numTypes);
-
-    for (uint32_t index = 0; index < numExtendTypes; index++) {
-        JSTaggedValue key = extendLayout->GetKey(index);
-        JSTaggedValue type = extendLayout->GetTypeId(index);
-        newLayout->AddKeyAndType(thread_, key, type);
-    }
-
-    for (uint32_t index = 0; index < numSelfTypes; index++) {
-        JSTaggedValue key = layout->GetKey(index);
-        if (IsDuplicatedKey(extendLayout, key)) {
-            continue;
-        }
-        JSTaggedValue type = layout->GetTypeId(index);
-        newLayout->AddKeyAndType(thread_, key, type);
-    }
-
-    field->SetObjLayoutInfo(thread_, newLayout);
-    classType->SetHasLinked(true);
-}
-
-bool TSManager::IsDuplicatedKey(JSHandle<TSObjLayoutInfo> extendLayout, JSTaggedValue key)
-{
-    ASSERT_PRINT(key.IsString(), "TS class field key is not a string");
-    EcmaString *keyString = EcmaString::Cast(key.GetTaggedObject());
-
-    uint32_t length = extendLayout->GetNumOfProperties();
-    for (uint32_t i = 0; i < length; ++i) {
-        JSTaggedValue extendKey = extendLayout->GetKey(i);
-        ASSERT_PRINT(extendKey.IsString(), "TS class field key is not a string");
-        EcmaString *extendKeyString = EcmaString::Cast(extendKey.GetTaggedObject());
-        if (EcmaStringAccessor::StringsAreEqual(keyString, extendKeyString)) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 int TSManager::GetHClassIndexByInstanceGateType(const kungfu::GateType &gateType)
@@ -215,7 +157,7 @@ int TSManager::GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key)
 }
 
 
-JSHandle<TSClassType> TSManager::GetExtendClassType(JSHandle<TSClassType> classType) const
+JSHandle<TSClassType> TSManager::GetExtendedClassType(JSHandle<TSClassType> classType) const
 {
     ASSERT(classType.GetTaggedValue().IsTSClassType());
     // Get extended type of classType based on ExtensionGT
@@ -651,10 +593,11 @@ GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
     return arrayType->GetElementGT();
 }
 
-void TSManager::GenerateTSHClass(JSHandle<TSClassType> classType)
+JSHandle<JSHClass> TSManager::GenerateTSHClass(const JSHandle<TSClassType> &classType)
 {
     JSHandle<TSObjectType> instanceType(thread_, classType->GetInstanceType());
     JSHClass *ihc = TSObjectType::GetOrCreateHClass(thread_, instanceType, TSObjectTypeKind::INSTANCE);
+    JSHandle<JSHClass> ihcHandle(thread_, JSTaggedValue(ihc));
     JSHandle<TSObjectType> prototypeType(thread_, classType->GetPrototypeType());
     JSHClass *phc = TSObjectType::GetOrCreateHClass(thread_, prototypeType, TSObjectTypeKind::PROTOTYPE);
     JSHandle<JSHClass> phcHandle(thread_, JSTaggedValue(phc));
@@ -662,7 +605,21 @@ void TSManager::GenerateTSHClass(JSHandle<TSClassType> classType)
     ihc->SetProto(thread_, prototype);
 
     GlobalTSTypeRef gt = classType->GetGT();
-    gtIhcMap_.insert({gt, IHClassData(JSTaggedValue(ihc).GetRawData())});
+    gtIhcMap_.insert({gt, IHClassData(ihcHandle.GetTaggedType())});
+    return ihcHandle;
+}
+
+JSTaggedValue TSManager::GetInstanceTSHClass(const JSHandle<TSClassType> &classType) const
+{
+    GlobalTSTypeRef gt = classType->GetGT();
+    IHClassData data = gtIhcMap_.at(gt);
+    return JSTaggedValue(data.GetIHC());
+}
+
+bool TSManager::HasTSHClass(const JSHandle<TSClassType> &classType) const
+{
+    GlobalTSTypeRef gt = classType->GetGT();
+    return gtIhcMap_.find(gt) != gtIhcMap_.end();
 }
 
 void TSManager::GenerateTSHClasses()
@@ -674,14 +631,41 @@ void TSManager::GenerateTSHClasses()
         }
         ASSERT(tsType->IsTSClassType());
         JSHandle<TSClassType> classType(tsType);
-        if (!classType->GetHasLinked()) {
-            RecursivelyMergeClassField(classType);
-        }
         if (IsUserDefinedClassTypeKind(gt)) {
-            GenerateTSHClass(classType);
+            RecursiveGenTSHClass(classType);
+        } else {
+            if (!classType->GetHasLinked()) {
+                SubtypingOperator::MergeClassField(thread_, classType);
+            }
         }
     }
     collectedTypeOffsets_.clear();
+}
+
+void TSManager::RecursiveGenTSHClass(const JSHandle<TSClassType> &classType) {
+    if (!classType->IsBaseClassType()) {
+        JSHandle<TSClassType> extendedClassType(GetExtendedClassType(classType));
+        if (!HasTSHClass(extendedClassType)) {
+            RecursiveGenTSHClass(extendedClassType);
+        }
+    }
+
+    bool passed = false;
+    if (classType->IsBaseClassType()) {
+        passed = SubtypingOperator::CheckBaseClass(thread_, classType);
+    } else {
+        passed = SubtypingOperator::CheckSubtyping(thread_, classType);
+    }
+
+    if (passed) {
+        if (!classType->IsBaseClassType()) {
+            SubtypingOperator::MergeClassField(thread_, classType);
+        }
+        JSHandle<JSHClass> ihcHandle = GenerateTSHClass(classType);
+        SubtypingOperator::FillTSInheritInfo(thread_, classType, ihcHandle);
+        return;
+    }
+    GenerateTSHClass(classType);
 }
 
 JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const

@@ -24,25 +24,12 @@
 
 namespace panda::ecmascript {
 // -------------------------------CellRecordVector-----------------------------------
-JSHandle<CellRecordVector> CellRecordVector::Append(const JSThread *thread, const JSHandle<CellRecordVector> &array,
+JSHandle<CellRecordVector> CellRecordVector::Append(const JSThread *thread, const JSHandle<CellRecordVector> &vector,
                                                     const JSHandle<JSTaggedValue> &value)
 {
-    if (!array->Full()) {
-        array->PushBack(thread, value.GetTaggedValue());
-        return array;
-    }
-    // if exist hole, use it.
-    uint32_t holeIndex = CheckHole(array);
-    if (holeIndex != TaggedArray::MAX_ARRAY_INDEX) {
-        array->Set(thread, holeIndex, value.GetTaggedValue());
-        return array;
-    }
-    // the vector is full and no hole exists.
-    uint32_t newCapacity = array->GetCapacity() + DEFAULT_GROW_SIZE;
-    JSHandle<WeakVector> newArray = WeakVector::Grow(thread, JSHandle<WeakVector>(array), newCapacity);
-    [[maybe_unused]] uint32_t arrayIndex = newArray->PushBack(thread, value.GetTaggedValue());
-    ASSERT(arrayIndex != TaggedArray::MAX_ARRAY_INDEX);
-    return JSHandle<CellRecordVector>(newArray);
+    JSHandle<WeakVector> oldVector(vector);
+    JSHandle<WeakVector> newVector = WeakVector::FillOrAppend(thread, oldVector, value);
+    return JSHandle<CellRecordVector>(newVector);
 }
 
 bool CellRecordVector::IsEmpty()
@@ -57,17 +44,6 @@ bool CellRecordVector::IsEmpty()
         }
     }
     return true;
-}
-
-uint32_t CellRecordVector::CheckHole(const JSHandle<CellRecordVector> &array)
-{
-    for (uint32_t i = 0; i < array->GetEnd(); i++) {
-        JSTaggedValue value = array->Get(i);
-        if (value.IsHole()) {
-            return i;
-        }
-    }
-    return TaggedArray::MAX_ARRAY_INDEX;
 }
 
 // ---------------------------JSFinalizationRegistry-----------------------------------

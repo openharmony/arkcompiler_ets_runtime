@@ -240,6 +240,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "TaggedDict[");
         case JSType::AOT_LITERAL_INFO:
             return GetArrayString(TaggedArray::Cast(entry), "AOTLiteralInfo[");
+        case JSType::VTABLE:
+            return GetArrayString(TaggedArray::Cast(entry), "VTable[");
         case JSType::COW_TAGGED_ARRAY:
             return GetArrayString(TaggedArray::Cast(entry), "COWArray[");
         case JSType::HCLASS:

@@ -171,6 +171,7 @@ class ProfileTypeInfo;
 class MachineCode;
 class ClassInfoExtractor;
 class AOTLiteralInfo;
+class VTable;
 
 enum class CompletionRecordType : uint8_t;
 enum class PrimitiveType : uint8_t;
@@ -602,8 +603,9 @@ public:
     // ---------------------------------New objects used internally--------------------------------------
     JSHandle<JSArray> NewJSStableArrayWithElements(const JSHandle<TaggedArray> &elements);
 
-    // ---------------------------------AOT snapshot-----------------------------------------------------
+    // ---------------------------------------Used by AOT------------------------------------------------
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
 
 private:
     friend class GlobalEnv;

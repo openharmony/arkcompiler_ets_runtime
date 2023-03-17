@@ -238,7 +238,7 @@ inline bool TaggedArray::IsDictionaryMode() const
     return GetClass()->IsDictionary();
 }
 
-void TaggedArray::Trim(JSThread *thread, uint32_t newLength)
+void TaggedArray::Trim(const JSThread *thread, uint32_t newLength)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t oldLength = GetLength();

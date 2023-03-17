@@ -82,6 +82,10 @@ public:
         return (properties_number * ENTRY_SIZE) + ELEMENTS_START_INDEX;
     }
 
+    bool Find(JSTaggedValue key) const;
+
+    int GetElementIndexByKey(JSTaggedValue key) const;
+
 private:
     inline void SetKey(const JSThread *thread, int index, const JSTaggedValue &key)
     {

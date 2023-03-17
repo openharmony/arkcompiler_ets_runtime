@@ -22,6 +22,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/vtable.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -439,6 +440,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "AOTLiteralInfo";
         case JSType::CLASS_LITERAL:
             return "ClassLiteral";
+        case JSType::VTABLE:
+            return "VTable";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);
@@ -517,8 +520,24 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     JSTaggedValue transtions = jshclass->GetTransitions();
     transtions.DumpTaggedValue(os);
     os << "\n";
-    if (withDetail && !transtions.IsNull()) {
+    if (withDetail && !transtions.IsUndefined()) {
         transtions.Dump(os);
+    }
+
+    os << " - Supers :" << std::setw(DUMP_TYPE_OFFSET);
+    JSTaggedValue supers = jshclass->GetSupers();
+    supers.DumpTaggedValue(os);
+    os << "\n";
+    if (withDetail && !supers.IsUndefined()) {
+        WeakVector::Cast(supers.GetTaggedObject())->Dump(os);
+    }
+
+    os << " - VTable :" << std::setw(DUMP_TYPE_OFFSET);
+    JSTaggedValue vtable = jshclass->GetVTable();
+    vtable.DumpTaggedValue(os);
+    os << "\n";
+    if (withDetail && !vtable.IsUndefined()) {
+        VTable::Cast(vtable.GetTaggedObject())->Dump(os);
     }
 
     os << " - Flags : " << std::setw(DUMP_TYPE_OFFSET);
@@ -529,6 +548,7 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     os << "| NumberOfProps :" << std::dec << jshclass->NumberOfProps();
     os << "| InlinedProperties :" << std::dec << jshclass->GetInlinedProperties();
     os << "| IsTS :" << std::boolalpha << jshclass->IsTS();
+    os << "| Level :" << std::dec << static_cast<int>(jshclass->GetLevel());
     os << "\n";
 }
 
@@ -584,10 +604,14 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::TEMPLATE_MAP:
         case JSType::LEXICAL_ENV:
         case JSType::COW_TAGGED_ARRAY:
+        case JSType::AOT_LITERAL_INFO:
             DumpArrayClass(TaggedArray::Cast(obj), os);
             break;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), os);
+            break;
+        case JSType::VTABLE:
+            VTable::Cast(obj)->Dump(os);
             break;
         case JSType::LINE_STRING:
         case JSType::TREE_STRING:
@@ -1411,6 +1435,27 @@ void Program::Dump(std::ostream &os) const
 void ConstantPool::Dump(std::ostream &os) const
 {
     DumpArrayClass(this, os);
+}
+
+void VTable::Dump(std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t num = GetNumberOfTuples();
+
+    for (uint32_t i = 0; i < num; i++) {
+        os << std::right << std::setw(DUMP_PROPERTY_OFFSET);
+        os << "[" << i << "]: [ name :";
+        JSTaggedValue name = GetTupleItem(i, VTable::TupleItem::NAME);
+        DumpPropertyKey(name, os);
+        os << ", type :" << (IsAccessor(i) ? "Accessor" : "Function");
+        JSTaggedValue owner = GetTupleItem(i, VTable::TupleItem::OWNER);
+        os << ", owner :";
+        owner.DumpTaggedValue(os);
+        JSTaggedValue offset = GetTupleItem(i, VTable::TupleItem::OFFSET);
+        os << ", offset :" << offset.GetInt();
+        os << " ] ";
+        os << "\n";
+    }
 }
 
 void JSFunction::Dump(std::ostream &os) const
@@ -4265,6 +4310,11 @@ void Program::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &ve
 }
 
 void ConstantPool::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    DumpArrayClass(this, vec);
+}
+
+void VTable::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     DumpArrayClass(this, vec);
 }

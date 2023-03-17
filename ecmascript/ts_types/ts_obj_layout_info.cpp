@@ -23,4 +23,25 @@ void TSObjLayoutInfo::AddKeyAndType(const JSThread *thread, const JSTaggedValue 
     SetKey(thread, number, key);
     SetTypeId(thread, number, typeIdVal);
 }
+
+bool TSObjLayoutInfo::Find(JSTaggedValue key) const
+{
+    return GetElementIndexByKey(key) != -1;
+}
+
+int TSObjLayoutInfo::GetElementIndexByKey(JSTaggedValue key) const
+{
+    [[maybe_unused]] EcmaString *str = EcmaString::Cast(key.GetTaggedObject());
+    ASSERT_PRINT(EcmaStringAccessor(str).IsInternString(), "TS class field key is not an intern string");
+
+    uint32_t length = GetNumOfProperties();
+    for (uint32_t i = 0; i < length; ++i) {
+        JSTaggedValue keyVal = GetKey(i);
+        ASSERT_PRINT(keyVal.IsString(), "TS class field key is not a string");
+        if (keyVal == key) {
+            return i;
+        }
+    }
+    return -1;
+}
 }  // namespace panda::ecmascript

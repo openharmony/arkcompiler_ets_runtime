@@ -94,7 +94,7 @@ inline void LayoutInfo::SetSortedIndex(const JSThread *thread, int index, int so
     TaggedArray::Set(thread, fixed_idx, attr.GetTaggedValue());
 }
 
-inline int LayoutInfo::FindElementWithCache(JSThread *thread, JSHClass *cls, JSTaggedValue key,
+inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key,
                                             int propertiesNumber)
 {
     ASSERT(NumberOfElements() >= propertiesNumber);

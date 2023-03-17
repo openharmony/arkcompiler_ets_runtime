@@ -109,6 +109,11 @@ public:
         const int baseClassTypeExtendsTypeId = 0;
         return extendsTypeId == baseClassTypeExtendsTypeId;
     }
+
+    inline bool IsBaseClassType() const
+    {
+        return GetExtensionGT() == GlobalTSTypeRef::Default();
+    }
 };
 
 class TSClassInstanceType : public TSType {
