@@ -85,9 +85,8 @@ public:
                moduleType == ModuleTypes::NATIVE_MODULE;
     }
     static std::pair<bool, ModuleTypes> CheckNativeModule(const CString &moduleRequestName);
-    static void EvaluateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord,
+    static bool LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
         const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType);
-
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
@@ -95,6 +94,12 @@ private:
     JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   int32_t index, JSTaggedValue value);
+
+    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
+        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
+    JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
+        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
+    JSTaggedValue GetValueFromExportObject(JSHandle<JSTaggedValue> &exportObject, int32_t index);
 
     // deprecated begin
     JSTaggedValue GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule);

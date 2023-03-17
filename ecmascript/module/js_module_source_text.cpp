@@ -149,26 +149,24 @@ bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &mod
     return false;
 }
 
-JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                                           const JSHandle<JSTaggedValue> &cjsExports,
-                                                           const JSHandle<JSTaggedValue> &exportName)
+JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
+    const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &exportObject,
+    const JSHandle<JSTaggedValue> &exportName)
 {
     // Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
-    // if cjsExports Is JSObject, means the cjs module has multiple outputs
-    if (cjsExports->IsJSObject()) {
-        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(cjsExports.GetTaggedValue())->GetJSHClass());
+    if (exportObject->IsJSObject()) {
+        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(exportObject.GetTaggedValue())->GetJSHClass());
         // Get layoutInfo and compare the input and output names of files
         JSHandle<LayoutInfo> layoutInfo(thread, jsHclass->GetLayout());
         if (layoutInfo->NumberOfElements() != 0) {
-            JSHandle<JSTaggedValue> resolution = ResolveCjsLocalExport(thread, jsHclass, exportName, module);
+            JSHandle<JSTaggedValue> resolution = ResolveElementOfObject(thread, jsHclass, exportName, module);
             if (!resolution->IsUndefined()) {
                 return resolution;
             }
-            // When cjsExports Is JSObject, and can not resolve local export, continue.
         }
     }
-    // If cjsExports != JSObject, means the cjs module use default output
+    // For CJS, if exportObject is not JSObject, means the CJS module use default output
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
     if (JSTaggedValue::SameValue(exportName, defaultString)) {
         // bind with a number
@@ -240,7 +238,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     return starResolution;
 }
 
-void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTextModule> &module,
+void SourceTextModule::InstantiateCJS(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
                                       const JSHandle<SourceTextModule> &requiredModule)
 {
     JSTaggedValue cjsFileName(requiredModule->GetEcmaModuleFilename());
@@ -256,15 +254,38 @@ void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTex
         isBundle = false;
     }
     JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
+    InitializeEnvironment(thread, currentModule, cjsModuleName, cjsExports, isBundle);
+}
+
+void SourceTextModule::InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
+    JSHandle<SourceTextModule> &requiredModule, const JSHandle<JSTaggedValue> &moduleRequest,
+    ModuleTypes moduleType)
+{
+    if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
+        if (!ModuleManager::LoadNativeModule(thread, requiredModule, moduleRequest, moduleType)) {
+            LOG_FULL(WARN) << "LoadNativeModule " << ConvertToString(
+                EcmaString::Cast(moduleRequest->GetTaggedObject())) << " failed";
+            return;
+        }
+    }
+
+    JSHandle<JSTaggedValue> nativeModuleName(thread, requiredModule->GetEcmaModuleRecordName());
+    JSHandle<JSTaggedValue> nativeExports(thread, requiredModule->GetModuleValue(thread, 0, false));
+    InitializeEnvironment(thread, currentModule, nativeModuleName, nativeExports, false);
+}
+
+void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
+    JSHandle<JSTaggedValue> &moduleName, JSHandle<JSTaggedValue> &exports, bool isBundle)
+{
     // Get esm environment
-    JSHandle<JSTaggedValue> moduleEnvironment(thread, module->GetEnvironment());
+    JSHandle<JSTaggedValue> moduleEnvironment(thread, currentModule->GetEnvironment());
     auto globalConstants = thread->GlobalConstants();
     if (moduleEnvironment->IsUndefined()) {
         return;
     }
     JSHandle<TaggedArray> environment = JSHandle<TaggedArray>::Cast(moduleEnvironment);
     size_t length = environment->GetLength();
-    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries());
+    JSHandle<TaggedArray> importEntries(thread, currentModule->GetImportEntries());
     JSMutableHandle<ImportEntry> host(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
     // update required module
@@ -283,17 +304,17 @@ void SourceTextModule::CJSInstantiate(JSThread *thread, const JSHandle<SourceTex
             requestedName.Update(requestedModule->GetEcmaModuleRecordName());
         }
         // if not the same module, then don't have to update
-        if (!JSTaggedValue::SameValue(requestedName, cjsModuleName)) {
+        if (!JSTaggedValue::SameValue(requestedName, moduleName)) {
             continue;
         }
         // rebinding here
         host.Update(importEntries->Get(idx));
         importName.Update(host->GetImportName());
         JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveCjsExport(thread, requestedModule, cjsExports, importName);
+            SourceTextModule::ResolveExportObject(thread, requestedModule, exports, importName);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "CJSInstantiate find importName " + ConvertToString(importName.GetTaggedValue());
+            CString msg = "InitializeEnvironment find importName " + ConvertToString(importName.GetTaggedValue());
             msg += " failed\nrequestedName" + ConvertToString(requestedName.GetTaggedValue());
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
@@ -787,10 +808,8 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (ModuleManager::IsNativeModule(moduleType)) {
-                if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
-                    ModuleManager::EvaluateNativeModule(thread, requiredModule, required, moduleType);
-                    requiredModule->SetStatus(ModuleStatus::EVALUATED);
-                }
+                InstantiateNativeModule(thread, module, requiredModule, required, moduleType);
+                requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
             }
             // if requiredModule is jsonModule, then don't need to execute.
@@ -820,7 +839,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
             }
             // if requiredModule is CommonJS Module, instantiate here (after CommonJS execution).
             if (moduleType == ModuleTypes::CJS_MODULE) {
-                CJSInstantiate(thread, module, requiredModule);
+                InstantiateCJS(thread, module, requiredModule);
             }
         }
     }
@@ -874,10 +893,8 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (ModuleManager::IsNativeModule(moduleType)) {
-                if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
-                    ModuleManager::EvaluateNativeModule(thread, requiredModule, required, moduleType);
-                    requiredModule->SetStatus(ModuleStatus::EVALUATED);
-                }
+                InstantiateNativeModule(thread, module, requiredModule, required, moduleType);
+                requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
             }
             if (moduleType == ModuleTypes::JSON_MODULE) {
@@ -890,7 +907,7 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
             [[maybe_unused]] ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
             ASSERT(requiredModuleStatus == ModuleStatus::EVALUATED);
             if (moduleType == ModuleTypes::CJS_MODULE) {
-                CJSInstantiate(thread, module, requiredModule);
+                InstantiateCJS(thread, module, requiredModule);
             }
         }
     }
@@ -1214,7 +1231,7 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
     }
 }
 
-JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsLocalExport(JSThread *thread,
+JSHandle<JSTaggedValue> SourceTextModule::ResolveElementOfObject(JSThread *thread,
                                                                 const JSHandle<JSHClass> &hclass,
                                                                 const JSHandle<JSTaggedValue> &exportName,
                                                                 const JSHandle<SourceTextModule> &module)
@@ -1241,9 +1258,10 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
     for (size_t idx = 0; idx < localExportEntriesLen; idx++) {
         ee.Update(localExportEntries->Get(idx));
         // a. If SameValue(exportName, e.[[ExportName]]) is true, then
-        // if module == CommonJS, export first, check after execution.
+        // if module is type of CommonJS or native, export first, check after execution.
+        auto moduleType = module->GetTypes();
         if ((JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue())) ||
-            (module->GetTypes() == ModuleTypes::CJS_MODULE)) {
+            (moduleType == ModuleTypes::CJS_MODULE || ModuleManager::IsNativeModule(moduleType))) {
             // Adapter new module
             if (module->GetIsNewBcVersion()) {
                 return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, idx));
