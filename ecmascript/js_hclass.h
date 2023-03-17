@@ -60,6 +60,7 @@
  */
 namespace panda::ecmascript {
 class ProtoChangeDetails;
+class PropertyLookupResult;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define JSTYPE_DECL       /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -369,9 +370,12 @@ public:
 
     void InitTSInheritInfo(const JSThread *thread);
 
-    bool HasTSInheritInfo() const;
+    bool HasTSSubtyping() const;
 
     bool IsTSIHCWithInheritInfo() const;
+
+    static void CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
+                                  JSHandle<JSHClass> &newHClass);
 
     inline void ClearBitField()
     {
@@ -1577,6 +1581,11 @@ public:
         uint32_t bits = GetBitField1();
         return HasDeletePropertyBit::Decode(bits);
     }
+
+    inline static int FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
+
+    static PropertyLookupResult LookupProperty(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
+
     static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);
     ACCESSORS(Layout, LAYOUT_OFFSET, TRANSTIONS_OFFSET);
@@ -1630,6 +1639,84 @@ private:
     friend class RuntimeStubs;
 };
 static_assert(JSHClass::BIT_FIELD_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT) == 0);
+
+// record property look up info in local and vtable
+class PropertyLookupResult {
+public:
+    using IsFoundBit = BitField<bool, 0, 1>;
+    using IsLocalBit = IsFoundBit::NextFlag;
+    using IsAccessorBit = IsLocalBit::NextFlag;
+    using OffsetBits = IsAccessorBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
+
+    explicit PropertyLookupResult(uint32_t data = 0) : data_(data) {}
+    ~PropertyLookupResult() = default;
+    DEFAULT_NOEXCEPT_MOVE_SEMANTIC(PropertyLookupResult);
+    DEFAULT_COPY_SEMANTIC(PropertyLookupResult);
+
+    inline bool IsFound() const
+    {
+        return IsFoundBit::Get(data_);
+    }
+
+    inline void SetIsFound(bool flag)
+    {
+        IsFoundBit::Set(flag, &data_);
+    }
+
+    inline bool IsLocal() const
+    {
+        return IsLocalBit::Get(data_);
+    }
+
+    inline void SetIsLocal(bool flag)
+    {
+        IsLocalBit::Set(flag, &data_);
+    }
+
+    inline bool IsVtable() const
+    {
+        return IsFound() && !IsLocal();
+    }
+
+    inline void SetIsVtable()
+    {
+        SetIsFound(true);
+        SetIsLocal(false);
+    }
+
+    inline bool IsAccessor() const
+    {
+        return IsAccessorBit::Get(data_);
+    }
+
+    inline void SetIsAccessor(bool flag)
+    {
+        IsAccessorBit::Set(flag, &data_);
+    }
+
+    inline bool IsFunction() const
+    {
+        return IsVtable() && !IsAccessor();
+    }
+
+    inline uint32_t GetOffset() const
+    {
+        return OffsetBits::Get(data_);
+    }
+
+    inline void SetOffset(uint32_t offset)
+    {
+        OffsetBits::Set<uint32_t>(offset, &data_);
+    }
+
+    inline uint32_t GetData() const
+    {
+        return data_;
+    }
+
+private:
+    uint32_t data_ {0};
+};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JS_HCLASS_H

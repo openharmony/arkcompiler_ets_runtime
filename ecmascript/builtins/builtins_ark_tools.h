@@ -35,6 +35,8 @@ public:
 
     static JSTaggedValue GetHClass(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue HasTSSubtyping(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue RemoveAOTFlag(EcmaRuntimeCallInfo *info);

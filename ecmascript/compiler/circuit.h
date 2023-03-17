@@ -123,6 +123,14 @@ public:
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V)                    \
+    const GateMetaData* NAME(uint64_t pcOffset) const              \
+    {                                                              \
+        return metaBuilder_.NAME(pcOffset);                        \
+    }
+    GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
+
     const GateMetaData* Nop()
     {
         return metaBuilder_.Nop();

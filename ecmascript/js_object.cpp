@@ -162,6 +162,11 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
 
         if (i < numberInlinedProps) {
             value = receiver->GetPropertyInlinedProps(i);
+            // If delete a property in hclass which has subtyping info and not prototype, only set value as hole and
+            // not remove. When transition to dictionary, exclude it.
+            if (value.IsHole()) {
+                continue;
+            }
         } else {
             value = array->Get(i - numberInlinedProps);
         }
@@ -282,7 +287,9 @@ void JSObject::DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject>
     }
 
     if (!array->IsDictionaryMode()) {
-        if (obj->GetJSHClass()->IsTS()) {
+        JSHClass *hclass = obj->GetJSHClass();
+        // To maintain TS inherit info, not change hclass, just set hole.
+        if (hclass->HasTSSubtyping() && !hclass->IsPrototype()) {
             obj->SetPropertyInlinedProps(thread, index, JSTaggedValue::Hole());
             return;
         }

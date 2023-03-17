@@ -35,6 +35,8 @@ public:
 
     static constexpr uint32_t DEFAULT_CAPACITY = 4;
     static constexpr uint32_t DEFAULT_GROW_SIZE = 5;
+    static constexpr uint32_t END_INDEX = 0;
+    static constexpr uint32_t ELEMENTS_START_INDEX = 1;
     static JSHandle<WeakVector> Create(const JSThread *thread, uint32_t capacity = DEFAULT_CAPACITY);
     static JSHandle<WeakVector> Grow(const JSThread *thread, const JSHandle<WeakVector> &old, uint32_t newCapacity);
     static JSHandle<WeakVector> Append(const JSThread *thread, const JSHandle<WeakVector> &vec,
@@ -89,8 +91,6 @@ public:
 
 private:
     static const uint32_t MIN_CAPACITY = 2;
-    static const uint32_t END_INDEX = 0;
-    static const uint32_t ELEMENTS_START_INDEX = 1;
     static const uint32_t MAX_VECTOR_INDEX = TaggedArray::MAX_ARRAY_INDEX - ELEMENTS_START_INDEX;
 
     inline static constexpr uint32_t VectorToArrayIndex(uint32_t index)

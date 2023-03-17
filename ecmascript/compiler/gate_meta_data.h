@@ -81,7 +81,7 @@ enum class DeoptType : uint8_t {
     NOTARRAY,
     NOTSARRAY,
     NOTF32ARRAY,
-    WRONGHCLASS,
+    INCONSISTENTHCLASS,
     NOTNEWOBJ,
     NOTARRAYIDX,
     NOTF32ARRAYIDX,
@@ -222,12 +222,16 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \
     V(BuiltinsCallWithArgv, BUILTINS_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)  \
     V(BuiltinsCall, BUILTINS_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
-    V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)                    \
+    V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)
 
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
     V(TypedCall, TYPED_CALL, GateFlags::NONE_FLAG, 1, 1, value)                \
     V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)                 \
-    V(TypedAotCall, TYPEDAOTCALL, GateFlags::NONE_FLAG, 1, 1, value)           \
+    V(TypedAotCall, TYPEDAOTCALL, GateFlags::NONE_FLAG, 1, 1, value)
+
+#define GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(V)                      \
+    V(CallGetter, CALL_GETTER, GateFlags::NONE_FLAG, 1, 1, 2)                  \
+    V(CallSetter, CALL_SETTER, GateFlags::NONE_FLAG, 1, 1, 3)
 
 #define GATE_META_DATA_LIST_WITH_SIZE(V)                                            \
     V(Merge, MERGE, GateFlags::CONTROL, value, 0, 0)                                \
@@ -242,7 +246,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                       \
     V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)      \
     V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                   \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                     \
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                         \
@@ -275,6 +279,7 @@ enum class OpCode : uint8_t {
     GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)

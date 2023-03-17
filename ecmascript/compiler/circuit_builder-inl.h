@@ -510,6 +510,11 @@ GateRef CircuitBuilder::GetGlobalConstantString(ConstantIndex index)
     return PtrMul(IntPtr(sizeof(JSTaggedValue)), IntPtr(static_cast<int>(index)));
 }
 
+GateRef CircuitBuilder::LoadObjectFromWeakRef(GateRef x)
+{
+    return PtrAdd(x, IntPtr(-JSTaggedValue::TAG_WEAK));
+}
+
 // object operation
 GateRef CircuitBuilder::LoadHClass(GateRef object)
 {

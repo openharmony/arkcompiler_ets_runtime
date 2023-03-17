@@ -26,4 +26,4 @@ true
 true
 true
 xxxx
-TypeError: CallObj is NonCallable
+true

@@ -522,9 +522,6 @@ public:
                (l == static_cast<uint32_t>(TSRuntimeType::ITERATOR_RESULT));
     }
 
-    // not consider [[prototype]] properties and accessor, -1: not find
-    int PUBLIC_API GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key);
-
     void PUBLIC_API SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
 
     JSHandle<JSTaggedValue> PUBLIC_API GetConstantPool() const

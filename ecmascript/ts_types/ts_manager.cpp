@@ -142,21 +142,6 @@ JSTaggedValue TSManager::GetHClassFromCache(uint32_t index)
     return JSTaggedValue(hcVec[index - constantPool->GetCacheLength()]);
 }
 
-int TSManager::GetPropertyOffset(JSTaggedValue hclass, JSTaggedValue key)
-{
-    JSHClass *hc = JSHClass::Cast(hclass.GetTaggedObject());
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(hc->GetLayout().GetTaggedObject());
-    uint32_t propsNumber = hc->NumberOfProps();
-    int entry = layoutInfo->FindElementWithCache(thread_, hc, key, propsNumber);
-    if (entry == -1) {
-        return entry;
-    }
-
-    int offset = hc->GetInlinedPropertiesOffset(entry);
-    return offset;
-}
-
-
 JSHandle<TSClassType> TSManager::GetExtendedClassType(JSHandle<TSClassType> classType) const
 {
     ASSERT(classType.GetTaggedValue().IsTSClassType());

@@ -77,6 +77,6 @@ declare function print(arg:any):string;
     try {
         b5.foo();
     } catch(e) {
-        print(e);
+        print(e instanceof TypeError);
     }
 }

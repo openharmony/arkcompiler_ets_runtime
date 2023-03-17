@@ -16,11 +16,10 @@ group("aot_compatibility_test") {
 
   test_list = [
     "base_verification",
+    "builtins_api",
+    "property_operation",
     "prototype_accessor",
     "prototype_base_verification",
-
-    #"builtins_api",
-    #"property_operation",
   ]
 
   deps = []

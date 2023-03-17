@@ -156,7 +156,7 @@ private:
                                                       const JSHandle<JSTaggedValue> &exportName,
                                                       const JSHandle<SourceTextModule> &module);
     static JSHandle<JSTaggedValue> ResolveCjsLocalExport(JSThread *thread,
-                                                         JSHandle<LayoutInfo> layoutInfo,
+                                                         const JSHandle<JSHClass> &hclass,
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module);
     static bool CheckCircularImport(const JSHandle<SourceTextModule> &module,

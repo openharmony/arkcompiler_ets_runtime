@@ -19,6 +19,7 @@
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
+#include "ecmascript/vtable.h"
 
 namespace panda::ecmascript::kungfu {
 void TypeLowering::RunTypeLowering()
@@ -82,10 +83,16 @@ void TypeLowering::LowerType(GateRef gate)
             LowerTypedUnaryOp(gate);
             break;
         case OpCode::LOAD_PROPERTY:
-            LowerLoadProperty(gate, glue);
+            LowerLoadProperty(gate);
+            break;
+        case OpCode::CALL_GETTER:
+            LowerCallGetter(gate, glue);
             break;
         case OpCode::STORE_PROPERTY:
             LowerStoreProperty(gate, glue);
+            break;
+        case OpCode::CALL_SETTER:
+            LowerCallSetter(gate, glue);
             break;
         case OpCode::LOAD_ARRAY_LENGTH:
             LowerLoadArrayLength(gate);
@@ -258,25 +265,53 @@ void TypeLowering::LowerObjectTypeCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
     if (tsManager_->IsClassInstanceTypeKind(type)) {
-        LowerClassInstanceCheck(gate);
+        LowerTSSubtypingCheck(gate);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
 
-void TypeLowering::LowerClassInstanceCheck(GateRef gate)
+void TypeLowering::LowerTSSubtypingCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
 
     ArgumentAccessor argAcc(circuit_);
     GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
-    auto receiver = acc_.GetValueIn(gate, 0);
-    auto receiverHClass = builder_.LoadHClass(receiver);
-    auto hclassOffset = acc_.GetValueIn(gate, 1);
-    GateRef hclass = GetObjectFromConstPool(jsFunc, hclassOffset);
-    GateRef check = builder_.Equal(receiverHClass, hclass);
-    builder_.DeoptCheck(check, frameState, DeoptType::WRONGHCLASS);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
+
+    Label receiverIsHeapObject(&builder_);
+    Label exit(&builder_);
+
+    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    builder_.Branch(builder_.TaggedIsHeapObject(receiver), &receiverIsHeapObject, &exit);
+
+    builder_.Bind(&receiverIsHeapObject);
+    {
+        JSTaggedValue aotHC = tsManager_->GetHClassFromCache(acc_.TryGetValue(aotHCIndex));
+        ASSERT(aotHC.IsJSHClass());
+
+        int32_t level = JSHClass::Cast(aotHC.GetTaggedObject())->GetLevel();
+        ASSERT(level >= 0);
+        GateRef levelGate = builder_.Int32(level);
+
+        GateRef receiverHC = builder_.LoadHClass(receiver);
+        GateRef supers = LoadSupers(receiverHC);
+        GateRef length = GetLengthFromSupers(supers);
+
+        // Nextly, consider remove level check by guaranteeing not read illegal addresses.
+        Label levelValid(&builder_);
+        builder_.Branch(builder_.Int32LessThan(levelGate, length), &levelValid, &exit);
+        builder_.Bind(&levelValid);
+        {
+            GateRef aotHCGate = GetObjectFromConstPool(jsFunc, aotHCIndex);
+            check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, levelGate));
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&exit);
+    builder_.DeoptCheck(*check, frameState, DeoptType::INCONSISTENTHCLASS);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -466,34 +501,109 @@ GateRef TypeLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
     return builder_.GetValueFromTaggedArray(constPool, index);
 }
 
-void TypeLowering::LowerLoadProperty(GateRef gate, [[maybe_unused]] GateRef glue)
+void TypeLowering::LowerLoadProperty(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    Label hole(&builder_);
-    Label exit(&builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef offset = acc_.GetValueIn(gate, 1);
-    result = builder_.Load(VariableType::JS_ANY(), receiver, offset);
-    // simplify the process, need to query the vtable to complete the whole process later
-    builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE), &hole, &exit);
-    builder_.Bind(&hole);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    ASSERT(plr.IsLocal() || plr.IsFunction());
+    GateRef offset = builder_.IntPtr(plr.GetOffset());
+
+    if (plr.IsLocal()) {
+        Label returnUndefined(&builder_);
+        Label exit(&builder_);
+        result = builder_.Load(VariableType::JS_ANY(), receiver, offset);
+        builder_.Branch(builder_.IsSpecial(*result, JSTaggedValue::VALUE_HOLE), &returnUndefined, &exit);
+        builder_.Bind(&returnUndefined);
+        {
+            result = builder_.UndefineConstant();
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&exit);
+    } else {
+        GateRef vtable = LoadVTable(receiver);
+        GateRef itemOwner = GetOwnerFromVTable(vtable, offset);
+        GateRef itemOffset = GetOffsetFromVTable(vtable, offset);
+        result = builder_.Load(VariableType::JS_ANY(), itemOwner, itemOffset);
+    }
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeLowering::LowerCallGetter(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    ASSERT(plr.IsAccessor());
+    GateRef offset = builder_.IntPtr(plr.GetOffset());
+    GateRef vtable = LoadVTable(receiver);
+    GateRef itemOwner = GetOwnerFromVTable(vtable, offset);
+    GateRef itemOffset = GetOffsetFromVTable(vtable, offset);
+
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    Label callGetter(&builder_);
+    Label exit(&builder_);
+    GateRef accessor = builder_.Load(VariableType::JS_ANY(), itemOwner, itemOffset);
+    GateRef getter = builder_.Load(VariableType::JS_ANY(), accessor,
+                                   builder_.IntPtr(AccessorData::GETTER_OFFSET));
+    builder_.Branch(builder_.IsSpecial(getter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callGetter);
+    builder_.Bind(&callGetter);
     {
-        result = builder_.UndefineConstant();
+        result = CallAccessor(glue, gate, getter, receiver, AccessorMode::GETTER);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypeLowering::LowerStoreProperty(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: receiver, plr, value
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef offset = acc_.GetValueIn(gate, 1);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
     GateRef value = acc_.GetValueIn(gate, 2);
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    ASSERT(plr.IsLocal());
+    GateRef offset = builder_.IntPtr(plr.GetOffset());
     builder_.Store(VariableType::JS_ANY(), glue, receiver, offset, value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerCallSetter(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: receiver, plr, value
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    ASSERT(plr.IsAccessor());
+    GateRef offset = builder_.IntPtr(plr.GetOffset());
+    GateRef vtable = LoadVTable(receiver);
+    GateRef itemOwner = GetOwnerFromVTable(vtable, offset);
+    GateRef itemOffset = GetOffsetFromVTable(vtable, offset);
+
+    Label callSetter(&builder_);
+    Label exit(&builder_);
+    GateRef accessor = builder_.Load(VariableType::JS_ANY(), itemOwner, itemOffset);
+    GateRef setter = builder_.Load(VariableType::JS_ANY(), accessor, builder_.IntPtr(AccessorData::SETTER_OFFSET));
+    builder_.Branch(builder_.IsSpecial(setter, JSTaggedValue::VALUE_UNDEFINED), &exit, &callSetter);
+    builder_.Bind(&callSetter);
+    {
+        CallAccessor(glue, gate, setter, receiver, AccessorMode::SETTER, value);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypeLowering::LowerLoadArrayLength(GateRef gate)
@@ -2971,5 +3081,72 @@ void TypeLowering::LowerGetSuperConstructor(GateRef gate)
     GateRef protoOffset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
     GateRef superCtor = builder_.Load(VariableType::JS_ANY(), hclass, protoOffset);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
+}
+
+GateRef TypeLowering::LoadVTable(GateRef object)
+{
+    GateRef hclass = builder_.LoadHClass(object);
+    return builder_.Load(VariableType::JS_ANY(), hclass, builder_.IntPtr(JSHClass::VTABLE_OFFSET));
+}
+
+GateRef TypeLowering::GetOwnerFromVTable(GateRef vtable, GateRef offset)
+{
+    GateRef dataOffset = builder_.PtrAdd(offset, builder_.IntPtr(VTable::TupleItem::OWNER));
+    return builder_.GetValueFromTaggedArray(vtable, dataOffset);
+}
+
+GateRef TypeLowering::GetOffsetFromVTable(GateRef vtable, GateRef offset)
+{
+    GateRef dataOffset = builder_.PtrAdd(offset, builder_.IntPtr(VTable::TupleItem::OFFSET));
+    return builder_.TaggedGetInt(builder_.GetValueFromTaggedArray(vtable, dataOffset));
+}
+
+GateRef TypeLowering::LoadSupers(GateRef hclass)
+{
+    return builder_.Load(VariableType::JS_ANY(), hclass, builder_.IntPtr(JSHClass::SUPERS_OFFSET));
+}
+
+GateRef TypeLowering::GetLengthFromSupers(GateRef supers)
+{
+    GateRef length = builder_.GetValueFromTaggedArray(supers, builder_.Int32(WeakVector::END_INDEX));
+    return builder_.TaggedGetInt(length);
+}
+
+GateRef TypeLowering::GetValueFromSupers(GateRef supers, GateRef index)
+{
+    GateRef val = builder_.GetValueFromTaggedArray(supers,
+        builder_.Int32Add(index, builder_.Int32(WeakVector::ELEMENTS_START_INDEX)));
+    return builder_.LoadObjectFromWeakRef(val);
+}
+
+GateRef TypeLowering::CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver, AccessorMode mode,
+                                   GateRef value)
+{
+    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
+    GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));
+    GateRef envArg = builder_.Undefined();
+    GateRef newTarget = builder_.Undefined();
+    GateRef argc = builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS + (mode == AccessorMode::SETTER ? 1 : 0));  // 1: value
+    std::vector<GateRef> args { glue, envArg, argc, function, newTarget, receiver };
+    if (mode == AccessorMode::SETTER) {
+        args.emplace_back(value);
+    }
+
+    return builder_.Call(cs, glue, target, builder_.GetDepend(), args, gate);
+}
+
+void TypeLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef glue, GateRef state, GateRef depend,
+                                                  GateRef value)
+{
+    auto condition = builder_.HasPendingException(glue);
+    GateRef ifBranch = builder_.Branch(state, condition);
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
 }
 }  // namespace panda::ecmascript

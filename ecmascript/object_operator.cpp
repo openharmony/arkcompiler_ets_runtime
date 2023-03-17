@@ -335,13 +335,12 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
     TaggedArray *array = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
     if (!array->IsDictionaryMode()) {
         JSHClass *jshclass = obj->GetJSHClass();
-        JSTaggedValue attrs = jshclass->GetLayout();
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(attrs.GetTaggedObject());
-        uint32_t propsNumber = jshclass->NumberOfProps();
-        int entry = layoutInfo->FindElementWithCache(thread_, jshclass, key_.GetTaggedValue(), propsNumber);
+        int entry = JSHClass::FindPropertyEntry(thread_, jshclass, key_.GetTaggedValue());
         if (entry == -1) {
             return;
         }
+        JSTaggedValue attrs = jshclass->GetLayout();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(attrs.GetTaggedObject());
         PropertyAttributes attr(layoutInfo->GetAttr(entry));
         ASSERT(entry == static_cast<int>(attr.GetOffset()));
         JSTaggedValue value;

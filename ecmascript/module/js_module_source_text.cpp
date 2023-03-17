@@ -161,7 +161,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsExport(JSThread *thread, con
         // Get layoutInfo and compare the input and output names of files
         JSHandle<LayoutInfo> layoutInfo(thread, jsHclass->GetLayout());
         if (layoutInfo->NumberOfElements() != 0) {
-            JSHandle<JSTaggedValue> resolution = ResolveCjsLocalExport(thread, layoutInfo, exportName, module);
+            JSHandle<JSTaggedValue> resolution = ResolveCjsLocalExport(thread, jsHclass, exportName, module);
             if (!resolution->IsUndefined()) {
                 return resolution;
             }
@@ -393,7 +393,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
                 ASSERT(moduleRecordName.IsString());
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);    
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
                 requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleRecordName());
             }
@@ -1215,13 +1215,12 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsLocalExport(JSThread *thread,
-                                                                JSHandle<LayoutInfo> layoutInfo,
+                                                                const JSHandle<JSHClass> &hclass,
                                                                 const JSHandle<JSTaggedValue> &exportName,
                                                                 const JSHandle<SourceTextModule> &module)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    int propertiesNumber = layoutInfo->NumberOfElements();
-    int idx = layoutInfo->FindElementWithCache(thread, nullptr, exportName.GetTaggedValue(), propertiesNumber);
+    int idx = JSHClass::FindPropertyEntry(thread, *hclass, exportName.GetTaggedValue());
     if (idx != -1) {
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, idx));
     }

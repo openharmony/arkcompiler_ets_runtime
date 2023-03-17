@@ -1683,7 +1683,7 @@ inline GateRef StubBuilder::GetDoubleOfTNumber(GateRef x)
 
 inline GateRef StubBuilder::LoadObjectFromWeakRef(GateRef x)
 {
-    return env_->GetBuilder()->PtrAdd(x, IntPtr(-JSTaggedValue::TAG_WEAK));
+    return env_->GetBuilder()->LoadObjectFromWeakRef(x);
 }
 
 inline GateRef StubBuilder::ExtFloat32ToDouble(GateRef x)
