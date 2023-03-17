@@ -310,7 +310,8 @@ GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, con
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     auto numValueIn = args.size() - 2; // 2: state & depend
-    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
     return GetCircuit()->NewGate(circuit_->TypedCall(numValueIn, pcOffset), type, args, GateType::AnyType());
 }
 
@@ -556,7 +557,7 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     inputs.insert(inputs.end(), args.begin(), args.end());
     auto numValuesIn = args.size() + 2; // 2: target & glue
     if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate != Circuit::NullGate()) {
-        GateRef pcOffset = Int64(acc_.GetPcOffset(hirGate));
+        GateRef pcOffset = Int64(acc_.TryGetPcOffset(hirGate));
         inputs.emplace_back(pcOffset);
         numValuesIn += 1;
     }
@@ -680,7 +681,8 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t bitfield = args.size();
-    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
     auto callGate = GetCircuit()->NewGate(circuit_->Construct(bitfield, pcOffset), MachineType::I64,
@@ -697,7 +699,8 @@ GateRef CircuitBuilder::TypedAotCall(GateRef hirGate, std::vector<GateRef> args)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t bitfield = args.size();
-    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
     auto callGate = GetCircuit()->NewGate(circuit_->TypedAotCall(bitfield, pcOffset), MachineType::I64,
@@ -710,7 +713,8 @@ GateRef CircuitBuilder::TypedAotCall(GateRef hirGate, std::vector<GateRef> args)
 GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
-    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
 
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -726,7 +730,8 @@ GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef pr
 GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, GateRef value)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
-    uint64_t pcOffset = acc_.GetPcOffset(hirGate);
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
 
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();

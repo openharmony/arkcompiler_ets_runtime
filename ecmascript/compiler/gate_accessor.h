@@ -380,7 +380,7 @@ public:
     TypedUnaryAccessor GetTypedUnOp(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
-    uint32_t GetPcOffset(GateRef gate) const;
+    uint32_t TryGetPcOffset(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;

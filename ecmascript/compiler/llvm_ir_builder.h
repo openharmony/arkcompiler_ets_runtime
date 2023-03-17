@@ -169,6 +169,9 @@ public:
     {
         return callSigns_;
     }
+    LLVMValueRef GetDeoptFunction();
+
+    static constexpr int kDeoptEntryOffset = 0;
 private:
     LLVMValueRef AddAndGetFunc(const CallSignature *stubDescriptor);
     void InitialLLVMFuncTypeAndFuncByModuleCSigns();
@@ -336,10 +339,11 @@ private:
                                     CallExceptionKind kind);
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
     void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
-    void SaveFrameTypeOnFrame(FrameType frameType);
+    void SaveFrameTypeOnFrame(FrameType frameType, LLVMBuilderRef builder);
     void UpdateLeaveFrame(LLVMValueRef glue);
     LLVMTypeRef GetExperimentalDeoptTy();
     LLVMValueRef GetExperimentalDeopt(LLVMModuleRef &module);
+    void GenDeoptEntry(LLVMModuleRef &module);
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
     const Circuit *circuit_ {nullptr};

@@ -1702,11 +1702,12 @@ DEF_CALL_SIGNATURE(CreateArrayFromList)
 DEF_CALL_SIGNATURE(DeoptHandlerAsm)
 {
     // 1 : 1 input parameters
-    CallSignature deoptHandlerAsm("DeoptHandlerAsm", 0, 1,
+    CallSignature deoptHandlerAsm("DeoptHandlerAsm", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = deoptHandlerAsm;
-    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
         VariableType::NATIVE_POINTER(),     // glue
+        VariableType::NATIVE_POINTER(),     // deoptType
     };
     callSign->SetVariadicArgs(false);
     callSign->SetParameters(params.data());
