@@ -351,6 +351,14 @@ HWTEST_F_L0(JSTaggedValueTest, ToNumber)
     result = JSTaggedValue::ToNumber(thread, stringV30);
     EXPECT_EQ(result.GetNumber(), 0);
 
+    JSHandle<JSTaggedValue> stringV31(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 000. "));
+    result = JSTaggedValue::ToNumber(thread, stringV31);
+    EXPECT_EQ(result.GetNumber(), 0);
+
+    JSHandle<JSTaggedValue> stringV32(thread->GetEcmaVM()->GetFactory()->NewFromASCII(" 123. "));
+    result = JSTaggedValue::ToNumber(thread, stringV32);
+    EXPECT_EQ(result.GetNumber(), 123);
+
     thread->ClearException();
     JSHandle<JSTaggedValue> symbolV1(thread->GetEcmaVM()->GetFactory()->NewJSSymbol());
     JSTaggedValue::ToNumber(thread, symbolV1);

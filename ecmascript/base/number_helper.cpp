@@ -560,7 +560,7 @@ double NumberHelper::StringToDouble(const uint8_t *start, const uint8_t *end, ui
 
     // 8. parse '.'
     if (radix == DECIMAL && *p == '.') {
-        RETURN_IF_CONVERSION_END(++p, end, (digits > 0) ? (number * std::pow(radix, exponent)) : NAN_VALUE);
+        RETURN_IF_CONVERSION_END(++p, end, (digits > 0 || (digits == 0 && leadingZero)) ? (number * std::pow(radix, exponent)) : NAN_VALUE);
         while (ToDigit(*p) < radix) {
             --exponent;
             ++digits;
