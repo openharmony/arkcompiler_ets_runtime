@@ -113,6 +113,9 @@ bool DebuggerApi::IsNativeMethod(const EcmaVM *ecmaVm)
 
 bool DebuggerApi::IsNativeMethod(const FrameHandler *frameHandler)
 {
+    if (!frameHandler->HasFrame()) {
+        return false;
+    }
     Method* method = frameHandler->GetMethod();
     return method->IsNativeWithCallField();
 }
@@ -211,6 +214,11 @@ bool DebuggerApi::SetBreakpoint(JSDebugger *debugger, const JSPtLocation &locati
 bool DebuggerApi::RemoveBreakpoint(JSDebugger *debugger, const JSPtLocation &location)
 {
     return debugger->RemoveBreakpoint(location);
+}
+
+void DebuggerApi::RemoveAllBreakpoints(JSDebugger *debugger)
+{
+    return debugger->RemoveAllBreakpoints();
 }
 
 // ScopeInfo
@@ -694,9 +702,11 @@ Local<JSValueRef> DebuggerApi::EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<Functio
     bool prevDebugMode = mgr->IsDebugMode();
     mgr->SetEvalFrameHandler(frameHandler);
     mgr->SetDebugMode(false); // in order to catch exception
+    ecmaVm->GetJSThread()->CheckSwitchDebuggerBCStub();
     std::vector<Local<JSValueRef>> args;
     auto result = funcRef->Call(ecmaVm, JSValueRef::Undefined(ecmaVm), args.data(), args.size());
     mgr->SetDebugMode(prevDebugMode);
+    ecmaVm->GetJSThread()->CheckSwitchDebuggerBCStub();
     mgr->SetEvalFrameHandler(nullptr);
 
     return result;

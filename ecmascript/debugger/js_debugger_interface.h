@@ -95,13 +95,11 @@ public:
     /**
      * \brief Register debug hooks in the ecmavm
      * @param hooks Pointer to object that implements PtHooks interface
-     * @return Error if any errors occur
      */
     virtual void RegisterHooks(PtHooks *hooks) = 0;
 
     /**
      * \brief Unregister debug hooks in the ecmavm
-     * @return Error if any errors occur
      */
     virtual void UnregisterHooks() = 0;
 
@@ -119,6 +117,12 @@ public:
      * @return Error if any errors occur
      */
     virtual bool RemoveBreakpoint(const JSPtLocation &location) = 0;
+
+    /**
+     * \brief Remove all breakpoints from \param location
+     * @param location Breakpoint location
+     */
+    virtual void RemoveAllBreakpoints() = 0;
 
     virtual ~JSDebugInterface() = default;
 
