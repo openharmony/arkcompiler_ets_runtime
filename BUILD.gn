@@ -239,15 +239,28 @@ config("ark_jsruntime_compiler_config") {
   configs = [ "$js_root:ark_jsruntime_common_config" ]
 }
 
-config("ark_jsruntime_windows_config") {
-  ldflags = [ "-lshlwapi" ]
-  if (enable_hilog && !ark_standalone_build) {
-    defines = [ "ENABLE_HILOG" ]
-    include_dirs = [ "$hilog_root/include" ]
+config("hiviewdfx_config") {
+  defines = []
+  if (enable_dump_in_faultlog) {
+    defines += [ "ENABLE_DUMP_IN_FAULTLOG" ]
   }
+  if (enable_bytrace) {
+    defines += [ "ENABLE_BYTRACE" ]
+    cflags_cc = [ "-Wno-gnu-zero-variadic-macro-arguments" ]
+  }
+  if (enable_hitrace) {
+    defines += [ "ENABLE_HITRACE" ]
+  }
+  if (enable_hilog) {
+    defines += [ "ENABLE_HILOG" ]
+  }
+
+  include_dirs = [ "$hilog_root/include" ]
 }
 
 config("ark_jsruntime_common_config") {
+  configs = [ ":hiviewdfx_config" ]
+
   defines = [ "PANDA_ENABLE_LTO" ]
   cflags_cc = [
     "-Wall",
@@ -284,6 +297,7 @@ config("ark_jsruntime_common_config") {
     defines += ark_profiler_features
   }
 
+  ldflags = []
   if (is_linux) {
     defines += [
       "PANDA_TARGET_UNIX",
@@ -301,6 +315,8 @@ config("ark_jsruntime_common_config") {
       "__LIBMSVCRT__",
     ]
 
+    ldflags += [ "-lshlwapi" ]
+
     # not support profiler on Windows yet
     if (ark_compile_mode != "release") {
       defines -= ark_profiler_features
@@ -310,11 +326,6 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_UNIX",
       "PANDA_TARGET_MACOS",
     ]
-
-    if (enable_hilog && !is_cross_platform_build && !ark_standalone_build) {
-      defines += [ "ENABLE_HILOG" ]
-      include_dirs = [ "$hilog_root/include" ]
-    }
 
     # not support profiler on MacOS yet
     if (ark_compile_mode != "release") {
@@ -350,7 +361,7 @@ config("ark_jsruntime_common_config") {
   if (!is_mac && target_os != "ios" && !use_libfuzzer &&
       !ark_standalone_build) {
     cflags_cc += [ "-flto" ]
-    ldflags = [ "-flto" ]
+    ldflags += [ "-flto" ]
   }
 
   if (is_debug) {
@@ -421,7 +432,20 @@ config("ark_jsruntime_common_config") {
     if (target_os == "android" || target_os == "ios") {
       defines += [ "ARK_NOT_SUPPORT_INTL_GLOBAL" ]
     } else {
-      configs = [ "$global_root/frameworks/intl:intl_util_config" ]
+      configs += [ "$global_root/frameworks/intl:intl_util_config" ]
+    }
+  }
+
+  if (enable_leak_check) {
+    defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    defines += [ "ENABLE_EXCEPTION_BACKTRACE" ]
+
+    if (use_musl && (current_cpu == "arm" || current_cpu == "arm64") &&
+        !is_mac && !is_mingw && target_os != "ios" && !is_asan) {
+      defines += [ "HOOK_ENABLE" ]
     }
   }
 }
@@ -803,48 +827,16 @@ ohos_source_set("libark_jsruntime_set") {
     "$js_root:asm_interp_enable_config",
   ]
 
-  deps = []
-  if (is_mingw) {
-    public_configs += [ ":ark_jsruntime_windows_config" ]
-  }
   cflags_cc = []
   if (is_standard_system || target_os == "android" || target_os == "ios") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
-  deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
 
-  if (is_ohos && is_standard_system) {
-    defines = [ "ENABLE_EXCEPTION_BACKTRACE" ]
-    if (enable_dump_in_faultlog || enable_bytrace || enable_hitrace ||
-        enable_hilog) {
-      external_deps = []
-    }
-    if (enable_dump_in_faultlog) {
-      defines += [ "ENABLE_DUMP_IN_FAULTLOG" ]
-      external_deps += [ "faultloggerd:libfaultloggerd" ]
-    }
-    if (enable_bytrace) {
-      defines += [ "ENABLE_BYTRACE" ]
-      external_deps += [ "hitrace_native:hitrace_meter" ]
-      cflags_cc += [ "-Wno-gnu-zero-variadic-macro-arguments" ]
-    }
-    if (enable_hitrace) {
-      defines += [ "ENABLE_HITRACE" ]
-      external_deps += [ "hitrace_native:libhitracechain" ]
-    }
-    if (enable_hilog) {
-      defines += [ "ENABLE_HILOG" ]
-      external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
-    }
-    if (enable_leak_check) {
-      defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
-    }
-    if (use_musl && (current_cpu == "arm" || current_cpu == "arm64") &&
-        !is_mac && !is_mingw && target_os != "ios" && !is_asan) {
-      defines += [ "HOOK_ENABLE" ]
-    }
-  }
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
 }
 
 ohos_source_set("libark_js_intl_set") {
@@ -854,7 +846,16 @@ ohos_source_set("libark_js_intl_set") {
 
   configs = [ "$js_root:ark_jsruntime_common_config" ]
 
+  cflags_cc = []
+  if (is_standard_system || target_os == "android" || target_os == "ios") {
+    cflags_cc += [ "-fvisibility=hidden" ]
+  }
+
   deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
 }
 
 ohos_source_set("libark_jsruntime_test_set") {
@@ -862,6 +863,7 @@ ohos_source_set("libark_jsruntime_test_set") {
   sources += intl_sources
   sources += ecma_profiler_source
   sources += ecma_debugger_source
+  sources += hitrace_scope_source
   sources += ecma_platform_source
 
   defines = [ "OHOS_UNIT_TEST" ]
@@ -895,6 +897,10 @@ ohos_source_set("libark_jsruntime_test_set") {
     "$js_root:asm_interp_enable_config",
     "$js_root:icu_path_test_config",
   ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
 }
 
 ohos_source_set("libark_jsruntime_static") {
@@ -924,32 +930,15 @@ ohos_shared_library("libark_jsruntime") {
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
-  if (is_ohos && is_standard_system) {
-    if (!is_debug) {
-      version_script = "libark_jsruntime.map"
-    }
-    if (enable_dump_in_faultlog || enable_bytrace || enable_hitrace ||
-        enable_hilog) {
-      external_deps = []
-    }
-    if (enable_dump_in_faultlog) {
-      external_deps += [ "faultloggerd:libfaultloggerd" ]
-    }
-    if (enable_bytrace) {
-      external_deps += [ "hitrace_native:hitrace_meter" ]
-    }
-    if (enable_hitrace) {
-      external_deps += [ "hitrace_native:libhitracechain" ]
-    }
-    if (enable_hilog) {
-      external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
-    }
+  if (is_ohos && is_standard_system && !is_debug) {
+    version_script = "libark_jsruntime.map"
   }
 
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+
   if (!enable_ark_intl) {
-    if (!defined(external_deps)) {
-      external_deps = []
-    }
     external_deps += [ "i18n:intl_util" ]
   }
 
@@ -965,12 +954,6 @@ ohos_shared_library("libark_jsruntime") {
   if (target_os == "android") {
     aosp_deps = [ "shared_library:liblog" ]
     version_script = "libark_jsruntime.map"
-  }
-  if (is_mingw && !ark_standalone_build) {
-    deps += [ "$hilog_root:libhilog_windows" ]
-  }
-  if (is_mac && !is_cross_platform_build && !ark_standalone_build) {
-    deps += [ "$hilog_root:libhilog_mac" ]
   }
   if (target_os == "ios" || ark_standalone_build) {
     deps += [

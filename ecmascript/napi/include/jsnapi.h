@@ -24,7 +24,6 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem_common.h"
 
 #include "libpandabase/macros.h"
@@ -1065,7 +1064,6 @@ private:
                 gcType = "epsilon";
                 break;
             default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
         return gcType;

@@ -32,6 +32,10 @@ host_unittest_action("HeapTrackerTest") {
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
 }
 
 host_unittest_action("HProfTest") {
@@ -50,6 +54,10 @@ host_unittest_action("HProfTest") {
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
 }
 
 group("unittest") {

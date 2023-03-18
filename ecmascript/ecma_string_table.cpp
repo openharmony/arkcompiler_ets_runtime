@@ -200,8 +200,7 @@ void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
         auto *object = it->second;
         auto fwd = visitor(object);
         if (fwd == nullptr) {
-            LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object
-                           << ", val = " << ConvertToString(object);
+            LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
             table_.erase(it++);
         } else if (fwd != object) {
             it->second = static_cast<EcmaString *>(fwd);
