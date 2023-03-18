@@ -268,7 +268,8 @@ public:
     void CheckIsBundlePack();
     void CheckIsNewRecord(EcmaVM *vm);
 
-    CString FindNpmEntryPoint(const CString &record) const;
+    CString GetEntryPoint(const CString &recordName) const;
+    CString GetNpmEntries(const CString &recordName) const;
 
     bool IsSystemLib() const
     {
