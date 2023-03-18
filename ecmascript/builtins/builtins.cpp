@@ -1638,8 +1638,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
                         BuiltinsString::GetStringIterator, FunctionLength::ZERO);
 
     // String method
-    SetFunction(env, stringFunction, "fromCharCode", BuiltinsString::FromCharCode, FunctionLength::ONE,
-                BUILTINS_STUB_ID(FromCharCode));
+    SetFunction(env, stringFunction, "fromCharCode", BuiltinsString::FromCharCode, FunctionLength::ONE);
     SetFunction(env, stringFunction, "fromCodePoint", BuiltinsString::FromCodePoint, FunctionLength::ONE);
     SetFunction(env, stringFunction, "raw", BuiltinsString::Raw, FunctionLength::ONE);
 

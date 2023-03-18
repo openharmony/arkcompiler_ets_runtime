@@ -79,11 +79,6 @@ public:
         return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
     }
 
-    inline GateRef GetCallArg(GateRef index)
-    {
-        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV) + static_cast<size_t>(index));
-    }
-
     inline GateRef GetArgv()
     {
         return PtrArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
