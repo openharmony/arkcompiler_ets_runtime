@@ -49,7 +49,6 @@ namespace panda::ecmascript::kungfu {
     V(ListForEach)                                  \
     V(ArrayListForEach)                             \
     V(ArrayListReplaceAllElements)                  \
-    V(FromCharCode)                                 \
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
